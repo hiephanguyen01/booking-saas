@@ -12,6 +12,7 @@ import { IdentityAccessModule } from './modules/identity-access/infrastructure/h
 import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.module';
 import { PartnerModule } from './modules/partner/infrastructure/http/partner.module';
 import { CatalogModule } from './modules/catalog/infrastructure/http/catalog.module';
+import { ListingModule } from './modules/listing/infrastructure/http/listing.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CatalogModule } from './modules/catalog/infrastructure/http/catalog.mod
     TenancyModule,
     PartnerModule,
     CatalogModule,
+    ListingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

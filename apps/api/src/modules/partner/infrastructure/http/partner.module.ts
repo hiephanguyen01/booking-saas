@@ -41,7 +41,8 @@ import { PartnerProfileController } from './partner-profile.controller';
     GetPartnerUseCase,
     PartnerVerificationService,
   ],
-  // Exported so Task 1.4 (listing creation) can enforce the identity-verification gate.
-  exports: [PartnerVerificationService],
+  // Exported so Task 1.4 (listing creation) enforces the identity-verification gate
+  // and reads the partner's verification status.
+  exports: [PartnerVerificationService, PARTNER_REPOSITORY],
 })
 export class PartnerModule {}

@@ -1,4 +1,9 @@
-import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/shared';
+import type {
+  PublicListingDetailResponse,
+  PublicListingResponse,
+  PublicListingTypeResponse,
+  QuoteResponse,
+} from '@booking/shared';
 
 /**
  * Server-only catalog fetches (BFF). The storefront menu + filters are generated
@@ -37,5 +42,37 @@ export async function fetchListings(
     return (await res.json()) as PublicListingResponse[];
   } catch {
     return [];
+  }
+}
+
+export async function fetchListing(
+  request: Request,
+  slug: string,
+): Promise<PublicListingDetailResponse | null> {
+  try {
+    const res = await fetch(`${backendUrl()}/public/listings/${encodeURIComponent(slug)}`, {
+      headers: { 'x-forwarded-host': hostOf(request), accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PublicListingDetailResponse;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchQuote(
+  request: Request,
+  slug: string,
+  query: URLSearchParams,
+): Promise<QuoteResponse | null> {
+  try {
+    const res = await fetch(
+      `${backendUrl()}/public/listings/${encodeURIComponent(slug)}/quote?${query.toString()}`,
+      { headers: { 'x-forwarded-host': hostOf(request), accept: 'application/json' } },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as QuoteResponse;
+  } catch {
+    return null;
   }
 }

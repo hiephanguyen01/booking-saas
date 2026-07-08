@@ -1,4 +1,4 @@
-import { Form, useSearchParams } from 'react-router';
+import { Form, Link, useSearchParams } from 'react-router';
 import type { AttributeField, PublicListingResponse } from '@booking/shared';
 import type { Route } from './+types/catalog';
 import { fetchListings, fetchListingTypes } from '../lib/catalog.server';
@@ -125,7 +125,11 @@ function FilterField({ field, value }: { field: AttributeField; value: string })
 function ListingCard({ listing }: { listing: PublicListingResponse }) {
   return (
     <li className="rounded-lg border border-black/10 p-4">
-      <h3 className="font-medium">{listing.title}</h3>
+      <h3 className="font-medium">
+        <Link to={`/l/${listing.slug}`} className="hover:text-(--sf-accent)">
+          {listing.title}
+        </Link>
+      </h3>
       {listing.priceFrom ? (
         <p className="mt-1 text-sm text-(--sf-accent)">
           từ {Number(listing.priceFrom).toLocaleString('vi-VN')}₫

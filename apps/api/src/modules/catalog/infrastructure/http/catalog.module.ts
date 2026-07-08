@@ -32,7 +32,8 @@ import { PublicCatalogController } from './public-catalog.controller';
     ListPublicListingsUseCase,
     AttributeValidatorService,
   ],
-  // Exported so Task 1.4 (listing creation) validates attributes against the type schema.
-  exports: [AttributeValidatorService],
+  // Exported so Task 1.4 (listing creation) validates attributes against the type
+  // schema and reads the type (allowedModes / requiresIdentityVerification).
+  exports: [AttributeValidatorService, LISTING_TYPE_REPOSITORY],
 })
 export class CatalogModule {}

@@ -328,7 +328,7 @@ async function seedDemo(): Promise<void> {
     },
   });
 
-  await upsertRoomListing(tenant.id, partner.id, studioType.id, {
+  const studioA = await upsertRoomListing(tenant.id, partner.id, studioType.id, {
     title: 'Studio A — Hàn Quốc',
     slug: 'studio-a-han-quoc',
     groupId: group.id,
@@ -383,6 +383,21 @@ async function seedDemo(): Promise<void> {
     bufferAfter: 30,
     depositPercent: 100,
   });
+
+  // ── Golden-hour pricing rule on Studio A (18:00–22:00 costs more) ───────────
+  if (!(await prisma.pricingRule.findFirst({ where: { listingId: studioA.id, ruleType: 'time_range' } }))) {
+    await prisma.pricingRule.create({
+      data: {
+        tenantId: tenant.id,
+        listingId: studioA.id,
+        bookingMode: 'hourly',
+        ruleType: 'time_range',
+        params: { from: '18:00', to: '22:00' },
+        price: 450_000n, // vs the 300k base per-hour rate
+        priority: 10,
+      },
+    });
+  }
 
   // ── Standalone inventory listing (equipment) with a security deposit ────────
   await upsertRoomListing(tenant.id, housePartner.id, equipmentType.id, {
