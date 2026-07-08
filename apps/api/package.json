@@ -8,6 +8,7 @@
     "typecheck": "prisma generate && tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "dev": "nest start --watch",
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",

@@ -1,4 +1,4 @@
-import { Button } from '@booking/ui';
+import { Button } from '@booking/ui/components/ui/button';
 import type { StorefrontTenant } from '../../lib/tenant.server';
 
 /**
@@ -14,7 +14,6 @@ export function StudioHero({ tenant }: { tenant: StorefrontTenant }) {
         Đặt studio, thiết bị và dịch vụ — nền tảng booking đa tenant.
       </p>
       <Button
-        variant="primary"
         className="rounded-lg bg-(--sf-accent) px-6 py-3 font-medium text-white"
       >
         Khám phá

@@ -4,8 +4,11 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "outDir": "dist",
-    "rootDir": "src"
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "paths": {
+      "@booking/ui/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

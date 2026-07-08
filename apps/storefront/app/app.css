@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import '@booking/ui/globals.css';
 
 :root {
   /* defaults — overridden per tenant by themeStyle() on the app shell */

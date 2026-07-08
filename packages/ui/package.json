@@ -3,24 +3,53 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+    ".": "./src/index.ts",
+    "./globals.css": "./src/styles/globals.css",
+    "./lib/*": "./src/lib/*.ts",
+    "./components/*": "./src/components/*.tsx",
+    "./hooks/*": "./src/hooks/*.ts"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "echo 'no build — raw TSX is compiled by each consuming app'",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@hookform/resolvers": "^5.4.0",
+    "@shadcn/react": "^0.2.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "date-fns": "^4.4.0",
+    "embla-carousel-react": "^8.6.0",
+    "input-otp": "^1.4.2",
+    "lucide-react": "^0.400.0",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.6.2",
+    "react-day-picker": "^10.0.1",
+    "react-hook-form": "^7.81.0",
+    "react-resizable-panels": "^4.12.1",
+    "recharts": "3.8.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.0.0",
+    "tw-animate-css": "^1.2.0",
+    "vaul": "^1.1.2",
+    "zod": "^3.25.76"
+  },
   "peerDependencies": {
-    "react": "^19.0.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
-    "react": "^19.0.0"
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.0"
   }
 }
