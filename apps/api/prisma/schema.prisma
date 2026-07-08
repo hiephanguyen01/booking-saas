@@ -509,6 +509,8 @@ model TenantDomain {
   tenantId   String    @map("tenant_id") @db.Uuid
   hostname   String    @unique @db.Citext
   isPrimary  Boolean   @default(false) @map("is_primary")
+  /// TXT value the tenant publishes to prove ownership of a custom domain (§6.1). Null once verified/for subdomains.
+  verificationToken String? @map("verification_token")
   verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)

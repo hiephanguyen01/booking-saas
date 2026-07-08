@@ -9,6 +9,7 @@ import { RedisModule } from './shared/redis/redis.module';
 import { TenantContextModule } from './shared/tenant-context/tenant-context.module';
 import { OutboxModule } from './shared/outbox/outbox.module';
 import { IdentityAccessModule } from './modules/identity-access/infrastructure/http/identity-access.module';
+import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { IdentityAccessModule } from './modules/identity-access/infrastructure/h
     OutboxModule,
     HealthModule,
     IdentityAccessModule,
+    TenancyModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
