@@ -61,7 +61,16 @@ import { PublicTenantController } from './public-tenant.controller';
     PlanLimitGuard,
     RequireActiveSubscriptionGuard,
   ],
-  // Exported so downstream feature modules can enforce limits / active plans.
-  exports: [PlanLimitService, PlanLimitGuard, RequireActiveSubscriptionGuard],
+  // Exported so downstream feature modules can enforce limits / active plans and
+  // look up tenants (e.g. partner onboarding validates the target tenant).
+  // SUBSCRIPTION_REPOSITORY is exported too so RequireActiveSubscriptionGuard can
+  // be re-instantiated in a consuming module's injector via @UseGuards.
+  exports: [
+    PlanLimitService,
+    PlanLimitGuard,
+    RequireActiveSubscriptionGuard,
+    TENANT_REPOSITORY,
+    SUBSCRIPTION_REPOSITORY,
+  ],
 })
 export class TenancyModule {}

@@ -1,0 +1,100 @@
+import { z } from 'zod';
+import { paginationQuerySchema, uuidSchema } from './common';
+import { slugSchema } from './tenancy';
+
+/** Partner classification (§7.3): a freelancer vs a registered company. */
+export const partnerTypeSchema = z.enum(['individual', 'company']);
+export type PartnerType = z.infer<typeof partnerTypeSchema>;
+
+/** Onboarding lifecycle (§7.3): tenant approves, may later suspend. */
+export const partnerStatusSchema = z.enum(['pending', 'approved', 'suspended']);
+export type PartnerStatus = z.infer<typeof partnerStatusSchema>;
+
+/** Identity-verification state for people-booking listing types (§7.3). */
+export const partnerVerificationStatusSchema = z.enum([
+  'unsubmitted',
+  'pending',
+  'verified',
+  'rejected',
+]);
+export type PartnerVerificationStatus = z.infer<typeof partnerVerificationStatusSchema>;
+
+export const identityDocumentTypeSchema = z.enum(['national_id', 'passport', 'driver_license']);
+export type IdentityDocumentType = z.infer<typeof identityDocumentTypeSchema>;
+
+/** Bank details for receiving payouts; `holderName` is matched against the ID name. */
+export const payoutInfoSchema = z.object({
+  bank: z.string().min(1).max(120),
+  accountNumber: z.string().min(1).max(64),
+  holderName: z.string().min(1).max(200),
+});
+export type PayoutInfo = z.infer<typeof payoutInfoSchema>;
+
+// ── Inputs (validated identically on FE + BE) ────────────────────────────────
+
+/** A logged-in user applies to become a partner under a tenant (self-signup). */
+export const partnerApplyInputSchema = z.object({
+  tenantId: uuidSchema,
+  name: z.string().min(1).max(200),
+  slug: slugSchema,
+  partnerType: partnerTypeSchema.default('individual'),
+  description: z.string().max(1000).optional(),
+  businessInfo: z.record(z.unknown()).optional(),
+  contactInfo: z.record(z.unknown()).optional(),
+});
+export type PartnerApplyInput = z.infer<typeof partnerApplyInputSchema>;
+
+/** Tenant admin creates a house partner (tenant sells its own inventory). */
+export const createHousePartnerInputSchema = z.object({
+  name: z.string().min(1).max(200),
+  slug: slugSchema,
+  description: z.string().max(1000).optional(),
+});
+export type CreateHousePartnerInput = z.infer<typeof createHousePartnerInputSchema>;
+
+/** Tenant approves a pending partner; records fee-schedule agreement acceptance. */
+export const approvePartnerInputSchema = z.object({
+  agreementVersion: z.string().min(1).max(40).optional(),
+});
+export type ApprovePartnerInput = z.infer<typeof approvePartnerInputSchema>;
+
+export const updatePayoutInfoInputSchema = payoutInfoSchema;
+export type UpdatePayoutInfoInput = z.infer<typeof updatePayoutInfoInputSchema>;
+
+/** Partner submits ID document metadata + DOB for manual review (eKYC is Phase 3). */
+export const submitIdentityInputSchema = z.object({
+  documentType: identityDocumentTypeSchema,
+  documentNumber: z.string().min(1).max(64),
+  holderName: z.string().min(1).max(200),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be an ISO date (YYYY-MM-DD)'),
+});
+export type SubmitIdentityInput = z.infer<typeof submitIdentityInputSchema>;
+
+/** Tenant admin's manual identity review; verifies unless under-18 / name mismatch. */
+export const verifyIdentityInputSchema = z.object({
+  note: z.string().max(1000).optional(),
+});
+export type VerifyIdentityInput = z.infer<typeof verifyIdentityInputSchema>;
+
+export const listPartnersQuerySchema = paginationQuerySchema.extend({
+  status: partnerStatusSchema.optional(),
+});
+export type ListPartnersQuery = z.infer<typeof listPartnersQuerySchema>;
+
+// ── Responses ────────────────────────────────────────────────────────────────
+
+export interface PartnerResponse {
+  id: string;
+  tenantId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  partnerType: PartnerType;
+  isHouse: boolean;
+  status: PartnerStatus;
+  verificationStatus: PartnerVerificationStatus;
+  verifiedAt: string | null;
+  dateOfBirth: string | null;
+  payoutInfo: Record<string, unknown>;
+  createdAt: string;
+}

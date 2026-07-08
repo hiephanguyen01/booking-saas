@@ -16,6 +16,8 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   // Tenant
   { key: 'tenant.settings.manage', scopeLevel: 'tenant' },
   { key: 'tenant.theme.manage', scopeLevel: 'tenant' },
+  { key: 'tenant.partners.read', scopeLevel: 'tenant' },
+  { key: 'tenant.partners.manage', scopeLevel: 'tenant' },
   { key: 'tenant.partners.approve', scopeLevel: 'tenant' },
   { key: 'tenant.listings.read', scopeLevel: 'tenant' },
   { key: 'tenant.listings.write', scopeLevel: 'tenant' },
@@ -32,6 +34,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'tenant.roles.manage', scopeLevel: 'tenant' },
   { key: 'tenant.reports.read', scopeLevel: 'tenant' },
   // Partner
+  { key: 'partner.profile.manage', scopeLevel: 'partner' },
   { key: 'partner.listings.read', scopeLevel: 'partner' },
   { key: 'partner.listings.write', scopeLevel: 'partner' },
   { key: 'partner.listings.publish', scopeLevel: 'partner' },

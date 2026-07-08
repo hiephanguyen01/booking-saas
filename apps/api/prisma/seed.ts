@@ -127,6 +127,9 @@ async function seedDemo(): Promise<void> {
   for (const [hostname, isPrimary] of [
     ['studiohub.bookify.vn', true],
     ['studiohub.vn', false],
+    // Local dev hosts so the storefront resolves on localhost/127.0.0.1.
+    ['localhost', false],
+    ['127.0.0.1', false],
   ] as const) {
     await prisma.tenantDomain.upsert({
       where: { hostname },
@@ -186,13 +189,49 @@ async function seedDemo(): Promise<void> {
       verifiedAt: new Date(),
       businessInfo: { taxId: '0312345678' },
       contactInfo: { phone: '0900000002', address: '12 Nguyen Hue, Q1, HCMC' },
-      payoutInfo: { bank: 'Vietcombank', account: '0011223344', holder: 'CONG TY GIANG STUDIO' },
+      payoutInfo: { bank: 'Vietcombank', accountNumber: '0011223344', holderName: 'CONG TY GIANG STUDIO' },
     },
   });
   await ensureRoleAssignment(partnerUser.id, partnerOwnerRole.id, tenant.id, partner.id);
   if (!(await prisma.partnerMember.findFirst({ where: { partnerId: partner.id, userId: partnerUser.id } }))) {
     await prisma.partnerMember.create({
       data: { tenantId: tenant.id, partnerId: partner.id, userId: partnerUser.id },
+    });
+  }
+  // Fee-schedule + terms acceptance recorded at approval (§7.2).
+  for (const agreementType of ['partner_terms', 'commission_schedule'] as const) {
+    if (!(await prisma.agreementAcceptance.findFirst({ where: { partnerId: partner.id, agreementType } }))) {
+      await prisma.agreementAcceptance.create({
+        data: { tenantId: tenant.id, partnerId: partner.id, userId: partnerUser.id, agreementType, version: '2026-01' },
+      });
+    }
+  }
+  // A pending individual partner — the approval-queue + identity-verification fixture.
+  const applicantUser = await prisma.user.upsert({
+    where: { email: 'trang@makeup.vn' },
+    update: {},
+    create: { email: 'trang@makeup.vn', passwordHash: password, fullName: 'Tran Thi Trang', phone: '0900000003' },
+  });
+  const pendingPartner = await prisma.partner.upsert({
+    where: { tenantId_slug: { tenantId: tenant.id, slug: 'trang-makeup' } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      name: 'Trang Makeup',
+      slug: 'trang-makeup',
+      partnerType: 'individual',
+      status: 'pending',
+      verificationStatus: 'pending',
+      dateOfBirth: new Date('1996-05-20T00:00:00.000Z'),
+      contactInfo: { phone: '0900000003' },
+      payoutInfo: { bank: 'Techcombank', accountNumber: '9988776655', holderName: 'TRAN THI TRANG' },
+      identityInfo: { documentType: 'national_id', documentNumber: '079196000123', holderName: 'TRAN THI TRANG' },
+    },
+  });
+  await ensureRoleAssignment(applicantUser.id, partnerOwnerRole.id, tenant.id, pendingPartner.id);
+  if (!(await prisma.partnerMember.findFirst({ where: { partnerId: pendingPartner.id, userId: applicantUser.id } }))) {
+    await prisma.partnerMember.create({
+      data: { tenantId: tenant.id, partnerId: pendingPartner.id, userId: applicantUser.id },
     });
   }
   const housePartner = await prisma.partner.upsert({
@@ -228,6 +267,8 @@ async function seedDemo(): Promise<void> {
     defaultModes: ['hourly'],
     unitLabel: 'giờ',
     sortOrder: 2,
+    // People-booking type: the partner must be identity-verified to serve it (§7.3, Task 1.2).
+    requiresIdentityVerification: true,
     attributeSchema: [
       { key: 'height', label: 'Chiều cao (cm)', type: 'number', filterable: true },
       { key: 'portfolio', label: 'Portfolio', type: 'text' },
@@ -420,7 +461,7 @@ async function seedDemo(): Promise<void> {
   });
 
   console.log(
-    `Seeded demo tenant "${tenant.name}" (2 partners, 3 listing types, 3 listings, commission rules, WELCOME10).`,
+    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings, commission rules, WELCOME10).`,
   );
 }
 
@@ -454,6 +495,7 @@ async function upsertListingType(
     unitLabel: string;
     sortOrder: number;
     attributeSchema: unknown;
+    requiresIdentityVerification?: boolean;
   },
 ) {
   return prisma.listingType.upsert({
@@ -468,6 +510,7 @@ async function upsertListingType(
       unitLabel: input.unitLabel,
       sortOrder: input.sortOrder,
       attributeSchema: input.attributeSchema as never,
+      requiresIdentityVerification: input.requiresIdentityVerification ?? false,
     },
   });
 }

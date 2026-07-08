@@ -10,6 +10,7 @@ import { TenantContextModule } from './shared/tenant-context/tenant-context.modu
 import { OutboxModule } from './shared/outbox/outbox.module';
 import { IdentityAccessModule } from './modules/identity-access/infrastructure/http/identity-access.module';
 import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.module';
+import { PartnerModule } from './modules/partner/infrastructure/http/partner.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.mod
     HealthModule,
     IdentityAccessModule,
     TenancyModule,
+    PartnerModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

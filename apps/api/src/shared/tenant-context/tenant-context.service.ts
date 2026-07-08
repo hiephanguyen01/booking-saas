@@ -47,4 +47,16 @@ export class TenantContextService {
     }
     return tenantId;
   }
+
+  partnerId(): string | undefined {
+    return this.als.getStore()?.partnerId;
+  }
+
+  partnerIdOrThrow(): string {
+    const partnerId = this.partnerId();
+    if (!partnerId) {
+      throw new InternalServerErrorException('No partner in context for a partner-scoped operation');
+    }
+    return partnerId;
+  }
 }
