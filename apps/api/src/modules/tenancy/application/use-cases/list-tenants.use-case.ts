@@ -1,0 +1,16 @@
+import { Inject, Injectable } from '@nestjs/common';
+import type { PaginationQuery } from '@booking/shared';
+import {
+  TENANT_REPOSITORY,
+  type ITenantRepository,
+  type TenantRecord,
+} from '../../domain/ports/tenant-repository.port';
+
+@Injectable()
+export class ListTenantsUseCase {
+  constructor(@Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository) {}
+
+  async execute(query: PaginationQuery): Promise<{ items: TenantRecord[]; total: number }> {
+    return this.tenants.list({ page: query.page, pageSize: query.pageSize });
+  }
+}

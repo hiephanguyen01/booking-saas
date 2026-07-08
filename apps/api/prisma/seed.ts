@@ -105,9 +105,9 @@ async function seedDemo(): Promise<void> {
     },
   });
   await prisma.user.upsert({
-    where: { email: 'khach@example.com' },
+    where: { email: 'customer@studiohub.vn' },
     update: {},
-    create: { email: 'khach@example.com', passwordHash: password, fullName: 'Nguyen Van Khach' },
+    create: { email: 'customer@studiohub.vn', passwordHash: password, fullName: 'Nguyen Van Khach' },
   });
 
   // ── Tenant + domains + subscription ─────────────────────────────────────────

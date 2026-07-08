@@ -1,0 +1,28 @@
+import type { SubscriptionState } from '../subscription-status';
+
+export const SUBSCRIPTION_REPOSITORY = Symbol('SUBSCRIPTION_REPOSITORY');
+
+export interface SubscriptionRecord {
+  id: string;
+  tenantId: string;
+  planId: string;
+  status: SubscriptionState;
+  startsAt: Date;
+  expiresAt: Date;
+  note: string | null;
+}
+
+export interface AssignSubscriptionData {
+  tenantId: string;
+  planId: string;
+  status: SubscriptionState;
+  startsAt: Date;
+  expiresAt: Date;
+  note?: string | null;
+}
+
+export interface ISubscriptionRepository {
+  create(data: AssignSubscriptionData): Promise<SubscriptionRecord>;
+  /** The most recently started subscription for a tenant (the current one). */
+  findCurrentByTenant(tenantId: string): Promise<SubscriptionRecord | null>;
+}
