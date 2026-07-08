@@ -50,6 +50,10 @@ export class LoginUseCase {
         message: 'Account is suspended',
       });
     }
+    // Guest-checkout users have no password (§8.6) — they can never password-log-in.
+    if (user.passwordHash === null) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
     const valid = await this.hasher.verify(user.passwordHash, input.password);
     if (!valid) {
       await this.users.updateLockout(user.id, recordFailure(user, now));

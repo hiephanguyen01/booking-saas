@@ -5,7 +5,8 @@ export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
 export interface UserRecord {
   id: string;
   email: string;
-  passwordHash: string;
+  /** Null for guest-checkout users (§8.6) — they have no password to log in with. */
+  passwordHash: string | null;
   fullName: string;
   phone: string | null;
   locale: string;
