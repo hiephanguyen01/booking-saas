@@ -1,7 +1,14 @@
 import { Form, useSearchParams } from 'react-router';
-import type { BookingMode, QuoteResponse } from '@booking/shared';
+import type { BookingMode, PublicListingDetailResponse, QuoteResponse } from '@booking/shared';
+import { Badge } from '@booking/ui/components/ui/badge';
+import { Button } from '@booking/ui/components/ui/button';
+import { Card, CardContent } from '@booking/ui/components/ui/card';
+import { Input } from '@booking/ui/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
+import { Separator } from '@booking/ui/components/ui/separator';
 import type { Route } from './+types/listing';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
+import { formatVnd } from '../lib/ui';
 
 export function meta({ data }: Route.MetaArgs) {
   return [{ title: data?.listing?.title ?? 'Listing' }];
@@ -34,7 +41,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return { listing, quote };
 }
 
-const vnd = (amount: string): string => `${Number(amount).toLocaleString('vi-VN')}₫`;
+/** Cheapest configured base price across modes (for the "from" price). */
+function fromPrice(modeConfig: Record<string, unknown>): string | null {
+  const prices: number[] = [];
+  for (const cfg of Object.values(modeConfig)) {
+    if (cfg && typeof cfg === 'object') {
+      const c = cfg as Record<string, unknown>;
+      for (const key of ['basePrice', 'basePricePerNight']) {
+        const n = Number(c[key]);
+        if (Number.isFinite(n) && n > 0) prices.push(n);
+      }
+    }
+  }
+  return prices.length > 0 ? String(Math.min(...prices)) : null;
+}
 
 export default function ListingDetail({ loaderData, params }: Route.ComponentProps) {
   const { listing, quote } = loaderData;
@@ -42,111 +62,190 @@ export default function ListingDetail({ loaderData, params }: Route.ComponentPro
 
   if (!listing) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-16 text-center text-gray-500">
+      <div className="mx-auto max-w-6xl px-6 py-24 text-center text-gray-500">
         Không tìm thấy “{params.listingSlug}”.
       </div>
     );
   }
 
+  const attrs = Object.entries(listing.attributes).filter(
+    ([, v]) => v !== null && v !== '' && typeof v !== 'boolean',
+  );
+
   return (
-    <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-[1fr_320px]">
-      <div>
-        <h1 className="text-2xl font-bold text-(--sf-primary)">{listing.title}</h1>
-        {listing.description ? <p className="mt-2 text-gray-600">{listing.description}</p> : null}
-        {listing.photos.length > 0 ? (
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {listing.photos.map((src) => (
-              <img key={src} src={src} alt="" className="aspect-video w-full rounded-lg object-cover" />
-            ))}
-          </div>
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{listing.title}</h1>
+        {attrs.length > 0 ? (
+          <p className="mt-1 text-sm text-(--sf-muted)">
+            {attrs.map(([, v]) => String(v)).join(' · ')}
+          </p>
         ) : null}
-        <dl className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
-          {Object.entries(listing.attributes).map(([key, value]) => (
-            <div key={key}>
-              <dt className="font-medium">{key}</dt>
-              <dd>{String(value)}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
 
-      <aside className="rounded-xl border border-black/10 p-5">
-        <h2 className="mb-3 font-semibold">Báo giá</h2>
-        <QuoteForm bookingModes={listing.bookingModes} searchParams={sp} />
-        {quote ? <QuoteResult quote={quote} /> : null}
-      </aside>
+      <Gallery photos={listing.photos} title={listing.title} />
+
+      <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_380px]">
+        <div>
+          {listing.description ? (
+            <p className="text-[15px] leading-relaxed text-gray-700">{listing.description}</p>
+          ) : null}
+          {attrs.length > 0 ? (
+            <>
+              <Separator className="my-6" />
+              <h2 className="mb-3 text-lg font-semibold">Thông tin</h2>
+              <div className="flex flex-wrap gap-2">
+                {attrs.map(([key, value]) => (
+                  <Badge key={key} variant="secondary" className="rounded-full px-3 py-1 font-normal">
+                    {key}: {String(value)}
+                  </Badge>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        <div>
+          <QuoteCard listing={listing} quote={quote} searchParams={sp} />
+        </div>
+      </div>
     </div>
   );
 }
 
-function QuoteForm({
-  bookingModes,
+function Gallery({ photos, title }: { photos: string[]; title: string }) {
+  if (photos.length === 0) {
+    return (
+      <div className="flex aspect-[16/9] w-full items-center justify-center rounded-3xl bg-gray-100 text-gray-400">
+        {title}
+      </div>
+    );
+  }
+  const [cover, ...rest] = photos;
+  return (
+    <div className="overflow-hidden rounded-3xl">
+      <div className="grid gap-2 md:h-[440px] md:grid-cols-4 md:grid-rows-2">
+        <img
+          src={cover}
+          alt={title}
+          className="aspect-[4/3] w-full object-cover md:col-span-2 md:row-span-2 md:aspect-auto md:h-full"
+        />
+        {rest.slice(0, 4).map((src, i) => (
+          <img key={i} src={src} alt="" className="hidden h-full w-full object-cover md:block" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuoteCard({
+  listing,
+  quote,
   searchParams,
 }: {
-  bookingModes: BookingMode[];
+  listing: PublicListingDetailResponse;
+  quote: QuoteResponse | null;
   searchParams: URLSearchParams;
 }) {
-  const inputClass = 'w-full rounded-md border border-black/15 px-2 py-1 text-sm';
+  const from = formatVnd(fromPrice(listing.modeConfig));
   return (
-    <Form method="get" className="space-y-3">
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Hình thức</span>
-        <select name="mode" defaultValue={searchParams.get('mode') ?? bookingModes[0]} className={inputClass}>
-          {bookingModes.map((mode) => (
-            <option key={mode} value={mode}>
-              {mode}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Bắt đầu</span>
-        <input type="datetime-local" name="from" defaultValue={searchParams.get('from') ?? ''} className={inputClass} />
-      </label>
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Kết thúc</span>
-        <input type="datetime-local" name="to" defaultValue={searchParams.get('to') ?? ''} className={inputClass} />
-      </label>
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Số lượng</span>
-        <input type="number" name="quantity" min={1} defaultValue={searchParams.get('quantity') ?? '1'} className={inputClass} />
-      </label>
-      <button type="submit" className="w-full rounded-md bg-(--sf-primary) px-3 py-2 text-sm text-white">
-        Xem giá
-      </button>
-    </Form>
+    <Card className="sticky top-28 rounded-2xl border-black/10 shadow-xl">
+      <CardContent className="p-6">
+        <div className="mb-5 flex items-baseline gap-2">
+          {quote ? (
+            <>
+              <span className="text-2xl font-bold">{formatVnd(quote.subtotal)}</span>
+              <span className="text-sm text-(--sf-muted)">tổng tạm tính</span>
+            </>
+          ) : from ? (
+            <>
+              <span className="text-2xl font-bold">{from}</span>
+              <span className="text-sm text-(--sf-muted)">trở lên</span>
+            </>
+          ) : (
+            <span className="text-lg font-semibold">Chọn lịch để xem giá</span>
+          )}
+        </div>
+
+        <Form method="get" className="space-y-3">
+          <Field label="Hình thức">
+            <NativeSelect name="mode" defaultValue={searchParams.get('mode') ?? listing.bookingModes[0]}>
+              {listing.bookingModes.map((mode: BookingMode) => (
+                <NativeSelectOption key={mode} value={mode}>
+                  {mode}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Bắt đầu">
+              <Input type="datetime-local" name="from" defaultValue={searchParams.get('from') ?? ''} />
+            </Field>
+            <Field label="Kết thúc">
+              <Input type="datetime-local" name="to" defaultValue={searchParams.get('to') ?? ''} />
+            </Field>
+          </div>
+          <Field label="Số lượng">
+            <Input
+              type="number"
+              name="quantity"
+              min={1}
+              defaultValue={searchParams.get('quantity') ?? '1'}
+              className="w-28"
+            />
+          </Field>
+          <Button type="submit" className="h-11 w-full text-base">
+            Xem giá
+          </Button>
+        </Form>
+
+        {quote ? (
+          <>
+            <Separator className="my-4" />
+            <Breakdown quote={quote} />
+          </>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
-function QuoteResult({ quote }: { quote: QuoteResponse }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="mt-4 border-t border-black/10 pt-4 text-sm">
-      <ul className="space-y-1 text-gray-600">
-        {quote.lineItems.map((line, i) => (
-          <li key={i} className="flex justify-between">
-            <span>
-              {line.label} × {line.quantity}
-              {line.block ? ' (bundle)' : ''}
-              {line.appliedRuleId ? ' ★' : ''}
-            </span>
-            <span>{vnd(line.amount)}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-2 flex justify-between border-t border-black/10 pt-2 font-semibold">
-        <span>Tạm tính</span>
-        <span className="text-(--sf-accent)">{vnd(quote.subtotal)}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Breakdown({ quote }: { quote: QuoteResponse }) {
+  return (
+    <dl className="space-y-1.5 text-sm">
+      {quote.lineItems.map((line, i) => (
+        <div key={i} className="flex justify-between text-gray-600">
+          <dt>
+            {line.label}
+            {line.block ? ' (gói)' : ''}
+          </dt>
+          <dd>{formatVnd(line.amount)}</dd>
+        </div>
+      ))}
+      <Separator className="my-2" />
+      <div className="flex justify-between font-semibold">
+        <dt>Tạm tính</dt>
+        <dd>{formatVnd(quote.subtotal)}</dd>
       </div>
-      <div className="mt-1 flex justify-between text-gray-500">
-        <span>Đặt cọc</span>
-        <span>{vnd(quote.depositAmount)}</span>
+      <div className="flex justify-between text-gray-500">
+        <dt>Đặt cọc</dt>
+        <dd>{formatVnd(quote.depositAmount)}</dd>
       </div>
       {quote.securityDeposit !== '0' ? (
-        <div className="mt-1 flex justify-between text-gray-500">
-          <span>Tiền cọc thiết bị</span>
-          <span>{vnd(quote.securityDeposit)}</span>
+        <div className="flex justify-between text-gray-500">
+          <dt>Cọc thiết bị</dt>
+          <dd>{formatVnd(quote.securityDeposit)}</dd>
         </div>
       ) : null}
-    </div>
+    </dl>
   );
 }

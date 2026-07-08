@@ -325,12 +325,23 @@ async function seedDemo(): Promise<void> {
       status: 'published',
       publishedBy: 'partner',
       amenities: ['Lễ tân', 'Chỗ đậu xe', 'Máy lạnh'],
+      photos: [
+        'https://picsum.photos/seed/giang-q1-1/1200/900',
+        'https://picsum.photos/seed/giang-q1-2/1200/900',
+      ],
     },
   });
 
   const studioA = await upsertRoomListing(tenant.id, partner.id, studioType.id, {
     title: 'Studio A — Hàn Quốc',
     slug: 'studio-a-han-quoc',
+    photos: [
+      'https://picsum.photos/seed/studio-a-1/1200/900',
+      'https://picsum.photos/seed/studio-a-2/1200/900',
+      'https://picsum.photos/seed/studio-a-3/1200/900',
+      'https://picsum.photos/seed/studio-a-4/1200/900',
+      'https://picsum.photos/seed/studio-a-5/1200/900',
+    ],
     groupId: group.id,
     categoryId: category.id,
     cancellationPolicyId: cancelPolicy.id,
@@ -364,6 +375,12 @@ async function seedDemo(): Promise<void> {
   await upsertRoomListing(tenant.id, partner.id, studioType.id, {
     title: 'Studio B — Vintage',
     slug: 'studio-b-vintage',
+    photos: [
+      'https://picsum.photos/seed/studio-b-1/1200/900',
+      'https://picsum.photos/seed/studio-b-2/1200/900',
+      'https://picsum.photos/seed/studio-b-3/1200/900',
+      'https://picsum.photos/seed/studio-b-4/1200/900',
+    ],
     groupId: group.id,
     categoryId: category.id,
     cancellationPolicyId: cancelPolicy.id,
@@ -403,6 +420,11 @@ async function seedDemo(): Promise<void> {
   await upsertRoomListing(tenant.id, housePartner.id, equipmentType.id, {
     title: 'Sony FX3 (Cinema camera)',
     slug: 'sony-fx3',
+    photos: [
+      'https://picsum.photos/seed/sony-fx3-1/1200/900',
+      'https://picsum.photos/seed/sony-fx3-2/1200/900',
+      'https://picsum.photos/seed/sony-fx3-3/1200/900',
+    ],
     groupId: null,
     categoryId: null,
     cancellationPolicyId: cancelPolicy.id,
@@ -548,6 +570,7 @@ async function upsertRoomListing(
     bufferBefore: number;
     bufferAfter: number;
     depositPercent: number;
+    photos?: string[];
   },
 ) {
   const existing = await prisma.listing.findUnique({
@@ -570,6 +593,7 @@ async function upsertRoomListing(
       cancellationPolicyId: input.cancellationPolicyId,
       title: input.title,
       slug: input.slug,
+      photos: (input.photos ?? []) as never,
       bookingModes: input.bookingModes as never,
       attributes: input.attributes as never,
       modeConfig: input.modeConfig as never,

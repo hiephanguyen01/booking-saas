@@ -51,9 +51,20 @@ export default function App({ loaderData }: Route.ComponentProps) {
     );
   }
   return (
-    <div style={themeStyle(tenant.theme)} className="min-h-screen bg-(--sf-background)">
+    <div
+      style={themeStyle(tenant.theme)}
+      className="flex min-h-[100dvh] flex-col bg-(--sf-background) text-gray-900"
+    >
       <SiteHeader tenant={tenant} listingTypes={listingTypes} />
-      <Outlet context={{ tenant, listingTypes } satisfies StorefrontContext} />
+      <main className="flex-1">
+        <Outlet context={{ tenant, listingTypes } satisfies StorefrontContext} />
+      </main>
+      <footer className="mt-16 border-t border-black/5">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-8 text-sm text-(--sf-muted) sm:flex-row sm:items-center sm:justify-between">
+          <span className="font-semibold text-gray-900">{tenant.name}</span>
+          <span>Nền tảng đặt chỗ · thanh toán an toàn · VND</span>
+        </div>
+      </footer>
     </div>
   );
 }

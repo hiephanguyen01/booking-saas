@@ -1,15 +1,18 @@
-import { Form, Link, useSearchParams } from 'react-router';
-import type { AttributeField, PublicListingResponse } from '@booking/shared';
+import { Form, useSearchParams } from 'react-router';
+import type { AttributeField } from '@booking/shared';
+import { Button } from '@booking/ui/components/ui/button';
+import { Input } from '@booking/ui/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import type { Route } from './+types/catalog';
 import { fetchListings, fetchListingTypes } from '../lib/catalog.server';
+import { ListingCard } from '../components/listing-card';
+import { typeIcon } from '../lib/ui';
 
 export function meta({ params }: Route.MetaArgs) {
   return [{ title: params.typeSlug }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  // The public listings endpoint reads `type` + `attr.*` from the query string;
-  // pin `type` to the route param and pass through any attr.* filters.
   const search = new URLSearchParams(new URL(request.url).search);
   search.set('type', params.typeSlug);
 
@@ -27,53 +30,67 @@ export default function Catalog({ loaderData, params }: Route.ComponentProps) {
 
   if (!type) {
     return (
-      <div className="mx-auto max-w-6xl px-6 py-16 text-center text-gray-500">
+      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-gray-500">
         Không tìm thấy loại “{params.typeSlug}”.
       </div>
     );
   }
 
+  const Icon = typeIcon(type.slug);
+
   return (
-    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-[240px_1fr]">
-      <aside>
-        <h1 className="mb-4 text-lg font-semibold text-(--sf-primary)">{type.name}</h1>
-        <FilterForm fields={type.attributeSchema} searchParams={searchParams} />
-      </aside>
-      <section>
-        <p className="mb-4 text-sm text-gray-500">{listings.length} kết quả</p>
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mb-6 flex items-center gap-3">
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-(--sf-primary)/10 text-(--sf-primary)">
+          <Icon className="size-5" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{type.name}</h1>
+          <p className="text-sm text-(--sf-muted)">{listings.length} kết quả</p>
+        </div>
+      </div>
+
+      {type.attributeSchema.length > 0 ? (
+        <FilterBar fields={type.attributeSchema} searchParams={searchParams} />
+      ) : null}
+
+      {listings.length === 0 ? (
+        <div className="mt-16 rounded-2xl border border-dashed border-black/10 py-16 text-center text-(--sf-muted)">
+          Không có kết quả phù hợp bộ lọc.
+        </div>
+      ) : (
+        <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
           {listings.map((listing) => (
             <ListingCard key={listing.id} listing={listing} />
           ))}
-        </ul>
-      </section>
+        </div>
+      )}
     </div>
   );
 }
 
-/** The filter form is generated entirely from the type's filterable attributes. */
-function FilterForm({
+function FilterBar({
   fields,
   searchParams,
 }: {
   fields: AttributeField[];
   searchParams: URLSearchParams;
 }) {
-  if (fields.length === 0) {
-    return <p className="text-sm text-gray-500">Không có bộ lọc.</p>;
-  }
   return (
-    <Form method="get" className="space-y-4">
+    <Form
+      method="get"
+      className="flex flex-wrap items-end gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
+    >
       {fields.map((field) => (
         <FilterField key={field.key} field={field} value={searchParams.get(`attr.${field.key}`) ?? ''} />
       ))}
-      <div className="flex gap-2">
-        <button type="submit" className="rounded-md bg-(--sf-primary) px-3 py-2 text-sm text-white">
+      <div className="ml-auto flex gap-2">
+        <Button type="submit" size="sm">
           Lọc
-        </button>
-        <a href="?" className="rounded-md border border-black/15 px-3 py-2 text-sm">
-          Xóa
-        </a>
+        </Button>
+        <Button asChild variant="ghost" size="sm">
+          <a href="?">Xóa</a>
+        </Button>
       </div>
     </Form>
   );
@@ -81,67 +98,42 @@ function FilterForm({
 
 function FilterField({ field, value }: { field: AttributeField; value: string }) {
   const name = `attr.${field.key}`;
-  const inputClass = 'w-full rounded-md border border-black/15 px-2 py-1 text-sm';
   let control: React.ReactNode;
 
   switch (field.type) {
     case 'select':
     case 'multiselect':
       control = (
-        <select name={name} defaultValue={value} className={inputClass}>
-          <option value="">Tất cả</option>
+        <NativeSelect name={name} defaultValue={value} size="sm">
+          <NativeSelectOption value="">Tất cả</NativeSelectOption>
           {(field.options ?? []).map((option) => (
-            <option key={option} value={option}>
+            <NativeSelectOption key={option} value={option}>
               {option}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       );
       break;
     case 'boolean':
       control = (
-        <select name={name} defaultValue={value} className={inputClass}>
-          <option value="">Tất cả</option>
-          <option value="true">Có</option>
-          <option value="false">Không</option>
-        </select>
+        <NativeSelect name={name} defaultValue={value} size="sm">
+          <NativeSelectOption value="">Tất cả</NativeSelectOption>
+          <NativeSelectOption value="true">Có</NativeSelectOption>
+          <NativeSelectOption value="false">Không</NativeSelectOption>
+        </NativeSelect>
       );
       break;
     case 'number':
-      control = <input type="number" name={name} defaultValue={value} className={inputClass} />;
+      control = <Input type="number" name={name} defaultValue={value} className="h-8 w-28" />;
       break;
     default:
-      control = <input type="text" name={name} defaultValue={value} className={inputClass} />;
+      control = <Input type="text" name={name} defaultValue={value} className="h-8 w-44" />;
   }
 
   return (
-    <div>
-      <label className="mb-1 block text-sm font-medium">{field.label}</label>
+    <label className="flex flex-col gap-1.5 text-sm">
+      <span className="font-medium text-gray-700">{field.label}</span>
       {control}
-    </div>
-  );
-}
-
-function ListingCard({ listing }: { listing: PublicListingResponse }) {
-  return (
-    <li className="rounded-lg border border-black/10 p-4">
-      <h3 className="font-medium">
-        <Link to={`/l/${listing.slug}`} className="hover:text-(--sf-accent)">
-          {listing.title}
-        </Link>
-      </h3>
-      {listing.priceFrom ? (
-        <p className="mt-1 text-sm text-(--sf-accent)">
-          từ {Number(listing.priceFrom).toLocaleString('vi-VN')}₫
-        </p>
-      ) : null}
-      <dl className="mt-2 flex flex-wrap gap-x-3 text-xs text-gray-500">
-        {Object.entries(listing.attributes).map(([key, val]) => (
-          <span key={key}>
-            {key}: {String(val)}
-          </span>
-        ))}
-      </dl>
-    </li>
+    </label>
   );
 }

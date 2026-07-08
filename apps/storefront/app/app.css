@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import '@booking/ui/globals.css';
 
 :root {
@@ -5,4 +6,17 @@
   --sf-primary: #0ea5e9;
   --sf-accent: #f97316;
   --sf-background: #ffffff;
+  /* page canvas: a hair off-white so white cards lift off it */
+  --sf-canvas: #ffffff;
+  --sf-muted: #6b7280;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
