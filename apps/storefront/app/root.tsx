@@ -32,10 +32,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
+  const { tenant } = loaderData;
   return (
-    <div style={themeStyle(loaderData.tenant.theme)} className="min-h-screen bg-(--sf-background)">
-      <Outlet context={loaderData.tenant} />
+    <div style={themeStyle(tenant.theme)} className="min-h-screen bg-(--sf-background)">
+      {tenant.live ? <Outlet context={tenant} /> : <SuspendedNotice name={tenant.name} />}
     </div>
+  );
+}
+
+function SuspendedNotice({ name }: { name: string }) {
+  return (
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-3 p-8 text-center">
+      <h1 className="text-2xl font-semibold">{name} tạm ngưng hoạt động</h1>
+      <p className="text-muted-foreground">
+        Trang đặt chỗ này hiện không khả dụng. Vui lòng liên hệ chủ cửa hàng để biết thêm chi tiết.
+      </p>
+    </main>
   );
 }
 
