@@ -1,0 +1,16 @@
+{
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "confirm": "Xác nhận"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "register": "Đăng ký",
+    "logout": "Đăng xuất",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "invalidCredentials": "Email hoặc mật khẩu không đúng",
+    "accountLocked": "Tài khoản tạm khóa do đăng nhập sai nhiều lần, thử lại sau"
+  }
+}

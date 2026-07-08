@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+:root {
+  /* defaults — overridden per tenant by themeStyle() on the app shell */
+  --sf-primary: #0ea5e9;
+  --sf-accent: #f97316;
+  --sf-background: #ffffff;
+}

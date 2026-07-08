@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+*.log
+.env
+.env.local
+.DS_Store
+.react-router/
+build/
+.agents/skills/*/node_modules/

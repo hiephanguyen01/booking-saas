@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@swc/core'
+  - argon2
+  - cpu-features
+  - esbuild
+  - msgpackr-extract
+  - prisma
+  - protobufjs
+  - ssh2

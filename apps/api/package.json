@@ -1,0 +1,53 @@
+{
+  "name": "@booking/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "lint": "eslint src test",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "start:dev": "nest start --watch",
+    "prisma:generate": "prisma generate",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed": "ts-node --transpile-only prisma/seed.ts"
+  },
+  "dependencies": {
+    "@booking/shared": "workspace:*",
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/throttler": "^6.4.0",
+    "@prisma/client": "^6.11.0",
+    "argon2": "^0.43.0",
+    "bullmq": "^5.56.0",
+    "cookie-parser": "^1.4.7",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.6.0",
+    "nestjs-pino": "^4.4.0",
+    "pino": "^9.7.0",
+    "pino-http": "^10.5.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.1.0",
+    "@swc/core": "^1.12.0",
+    "@testcontainers/postgresql": "^11.0.0",
+    "@testcontainers/redis": "^11.0.0",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.19.0",
+    "@types/supertest": "^6.0.3",
+    "prisma": "^6.11.0",
+    "supertest": "^7.1.0",
+    "ts-node": "^10.9.2",
+    "unplugin-swc": "^1.5.5",
+    "vitest": "^3.2.0"
+  }
+}

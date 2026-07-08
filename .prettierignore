@@ -1,0 +1,5 @@
+dist
+.turbo
+pnpm-lock.yaml
+tasks
+*.md

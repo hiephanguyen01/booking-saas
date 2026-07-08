@@ -1,0 +1,29 @@
+import type { Response } from 'express';
+import type { SessionTokens } from '../../domain/ports/session-store.port';
+
+export const ACCESS_COOKIE = 'sid';
+export const REFRESH_COOKIE = 'rid';
+
+const secure = () => process.env.SESSION_COOKIE_SECURE !== 'false';
+
+export function setSessionCookies(res: Response, tokens: SessionTokens): void {
+  res.cookie(ACCESS_COOKIE, tokens.accessToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: secure(),
+    expires: tokens.refreshExpiresAt, // cookie outlives the access TTL; the DB decides validity
+    path: '/',
+  });
+  res.cookie(REFRESH_COOKIE, tokens.refreshToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: secure(),
+    expires: tokens.refreshExpiresAt,
+    path: '/auth', // only ever sent to the auth endpoints
+  });
+}
+
+export function clearSessionCookies(res: Response): void {
+  res.clearCookie(ACCESS_COOKIE, { path: '/' });
+  res.clearCookie(REFRESH_COOKIE, { path: '/auth' });
+}

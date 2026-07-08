@@ -1,0 +1,241 @@
+// First-pass schema (Phase 0): identity-access + tenancy + outbox.
+// Anything Prisma cannot express (RLS policies, DB roles, NULLS NOT DISTINCT
+// unique) lives in hand-written SQL migrations — see prisma/migrations.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("MIGRATE_DATABASE_URL")
+  extensions = [citext, pgcrypto, btree_gist]
+}
+
+enum UserStatus {
+  active
+  suspended
+
+  @@map("user_status")
+}
+
+enum ScopeLevel {
+  platform
+  tenant
+  partner
+
+  @@map("scope_level")
+}
+
+enum TenantStatus {
+  active
+  suspended
+  expired
+
+  @@map("tenant_status")
+}
+
+enum SubscriptionStatus {
+  trial
+  active
+  past_due
+  expired
+  cancelled
+
+  @@map("subscription_status")
+}
+
+model User {
+  id               String     @id @default(uuid(7)) @db.Uuid
+  email            String     @unique @db.Citext
+  passwordHash     String     @map("password_hash")
+  fullName         String     @map("full_name")
+  phone            String?
+  locale           String     @default("vi")
+  status           UserStatus @default(active)
+  failedLoginCount Int        @default(0) @map("failed_login_count")
+  lockedUntil      DateTime?  @map("locked_until") @db.Timestamptz(6)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions        Session[]
+  roleAssignments RoleAssignment[]
+
+  @@map("users")
+}
+
+model Session {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  accessTokenHash  String    @unique @map("access_token_hash")
+  accessExpiresAt  DateTime  @map("access_expires_at") @db.Timestamptz(6)
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  refreshExpiresAt DateTime  @map("refresh_expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  ip               String?
+  userAgent        String?   @map("user_agent")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Permission {
+  key         String     @id
+  scopeLevel  ScopeLevel @map("scope_level")
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id         String     @id @default(uuid(7)) @db.Uuid
+  name       String
+  scopeLevel ScopeLevel @map("scope_level")
+  tenantId   String?    @map("tenant_id") @db.Uuid
+  partnerId  String?    @map("partner_id") @db.Uuid
+  isSystem   Boolean    @default(false) @map("is_system")
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  roleAssignments RoleAssignment[]
+
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId        String @map("role_id") @db.Uuid
+  permissionKey String @map("permission_key")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([roleId, permissionKey])
+  @@map("role_permissions")
+}
+
+model RoleAssignment {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  partnerId String?  @map("partner_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // uniqueness (user, role, tenant, partner) with NULLS NOT DISTINCT is added
+  // in the hand-written RLS migration — Prisma cannot express it
+  @@index([userId])
+  @@index([tenantId])
+  @@map("role_assignments")
+}
+
+model Tenant {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  name            String
+  slug            String       @unique
+  status          TenantStatus @default(active)
+  defaultTimezone String       @default("Asia/Ho_Chi_Minh") @map("default_timezone")
+  defaultLocale   String       @default("vi") @map("default_locale")
+  vertical        String       @default("studio")
+  themeConfig     Json         @default("{}") @map("theme_config")
+  settings        Json         @default("{}")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  domains         TenantDomain[]
+  subscriptions   TenantSubscription[]
+  roles           Role[]
+  roleAssignments RoleAssignment[]
+
+  @@map("tenants")
+}
+
+model TenantDomain {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  hostname   String    @unique @db.Citext
+  isPrimary  Boolean   @default(false) @map("is_primary")
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tenant_domains")
+}
+
+model SubscriptionPlan {
+  id           String  @id @default(uuid(7)) @db.Uuid
+  name         String  @unique
+  priceMonthly BigInt  @map("price_monthly")
+  limits       Json    @default("{}")
+  isActive     Boolean @default(true) @map("is_active")
+
+  subscriptions TenantSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model TenantSubscription {
+  id        String             @id @default(uuid(7)) @db.Uuid
+  tenantId  String             @map("tenant_id") @db.Uuid
+  planId    String             @map("plan_id") @db.Uuid
+  status    SubscriptionStatus @default(trial)
+  startsAt  DateTime           @map("starts_at") @db.Timestamptz(6)
+  expiresAt DateTime           @map("expires_at") @db.Timestamptz(6)
+  note      String?
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan   SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([tenantId])
+  @@map("tenant_subscriptions")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String?   @map("tenant_id") @db.Uuid
+  eventType   String    @map("event_type")
+  payload     Json
+  attempts    Int       @default(0)
+  // dbgenerated: the DB clock must own this value — a client-side now() can
+  // run ahead of Postgres and make fresh events invisible to the relay's
+  // `available_at <= now()` claim query
+  availableAt DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @map("available_at") @db.Timestamptz(6)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+  lastError   String?   @map("last_error")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([processedAt, availableAt])
+  @@map("outbox_events")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  data        Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
