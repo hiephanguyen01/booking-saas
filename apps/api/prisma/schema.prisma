@@ -1,6 +1,22 @@
-// First-pass schema (Phase 0): identity-access + tenancy + outbox.
-// Anything Prisma cannot express (RLS policies, DB roles, NULLS NOT DISTINCT
-// unique) lives in hand-written SQL migrations — see prisma/migrations.
+// Full data model (TONG-QUAN.md §7) — the single source of truth.
+//
+// Anything Prisma cannot express lives in hand-written SQL migrations
+// (prisma/migrations/*):
+//   - RLS policies + FORCE ROW LEVEL SECURITY per tenant table (§6.2)
+//   - app_user / app_admin database roles (§6.3)
+//   - the tstzrange GiST EXCLUDE constraint against double-booking (§10)
+//   - NULLS NOT DISTINCT unique indexes
+//   - the ledger deferred debit=credit balancing trigger (§13)
+//   - append-only (no UPDATE/DELETE) guard on ledger_entries
+//
+// Conventions (§7 header):
+//   - PK: uuid v7. Money: BigInt (VND, no decimals). Time: timestamptz UTC.
+//   - Every tenant-scoped table carries `tenant_id`. Top-level aggregates
+//     declare a Prisma relation back to Tenant; deep child tables keep
+//     `tenant_id` as a plain indexed RLS column (their FK to the aggregate
+//     already cascades the tenant), so `db:check-rls` still sees the column.
+//   - tstzrange columns (timeslot, blocked_period) are Unsupported() — bookings
+//     are written via raw SQL so the GiST exclusion constraint applies.
 
 generator client {
   provider        = "prisma-client-js"
@@ -12,6 +28,10 @@ datasource db {
   url        = env("MIGRATE_DATABASE_URL")
   extensions = [citext, pgcrypto, btree_gist]
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
 
 enum UserStatus {
   active
@@ -46,21 +66,321 @@ enum SubscriptionStatus {
   @@map("subscription_status")
 }
 
+enum AgreementType {
+  partner_terms
+  commission_schedule
+  promo_funding
+
+  @@map("agreement_type")
+}
+
+enum PartnerType {
+  individual
+  company
+
+  @@map("partner_type")
+}
+
+enum PartnerStatus {
+  pending
+  approved
+  suspended
+
+  @@map("partner_status")
+}
+
+/// Storefront booking type of a listing (§2 "booking mode").
+enum BookingMode {
+  hourly
+  daily
+  appointment
+  class
+  inventory
+
+  @@map("booking_mode")
+}
+
+/// Post-level moderation state shared by listing_groups + standalone listings.
+enum PublishStatus {
+  draft
+  pending_review
+  published
+  archived
+
+  @@map("publish_status")
+}
+
+/// Records who published/hid a post — `admin` hide locks the partner out (§7.3).
+enum ModerationActor {
+  partner
+  admin
+
+  @@map("moderation_actor")
+}
+
+enum PricingRuleType {
+  day_of_week
+  date_range
+  time_range
+
+  @@map("pricing_rule_type")
+}
+
+enum AvailabilityExceptionType {
+  closed
+  custom_hours
+
+  @@map("availability_exception_type")
+}
+
+/// Booking state machine (§8). `no_show`/`completed`/`refunded`/`rejected`/
+/// `expired`/`cancelled` are terminal branches.
+enum BookingStatus {
+  draft
+  pending_approval
+  pending_payment
+  confirmed
+  cancelled
+  completed
+  no_show
+  rejected
+  expired
+  refunded
+
+  @@map("booking_status")
+}
+
+/// How the remaining balance on a deposit booking is collected (§8.3).
+enum BalanceDue {
+  online_before
+  on_arrival
+
+  @@map("balance_due")
+}
+
+enum PaymentGateway {
+  payos
+  momo
+  vnpay
+  mock
+
+  @@map("payment_gateway")
+}
+
+/// `security_deposit` is a refundable hold, never revenue (§7.6/§9.4).
+enum PaymentKind {
+  deposit
+  balance
+  full
+  security_deposit
+
+  @@map("payment_kind")
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+  expired
+
+  @@map("payment_status")
+}
+
+/// `manual_required`: gateway has no refund API → tenant transfers by hand (§11.3).
+enum RefundStatus {
+  pending
+  succeeded
+  failed
+  manual_required
+
+  @@map("refund_status")
+}
+
+enum GatewayEnvironment {
+  sandbox
+  production
+
+  @@map("gateway_environment")
+}
+
+enum RateType {
+  percent
+  fixed
+
+  @@map("rate_type")
+}
+
+/// Commission rule precedence: partner → listing_type/category → tenant_default (§3.2).
+enum CommissionAppliesTo {
+  tenant_default
+  listing_type
+  category
+  partner
+
+  @@map("commission_applies_to")
+}
+
+enum LedgerOwnerType {
+  platform
+  tenant
+  partner
+  affiliate
+
+  @@map("ledger_owner_type")
+}
+
+enum LedgerEntryType {
+  booking_revenue
+  partner_share
+  platform_fee
+  affiliate_commission
+  promo_discount
+  cancellation_fee
+  additional_charge
+  security_deposit
+  damage_deduction
+  clawback
+  refund
+  payout
+
+  @@map("ledger_entry_type")
+}
+
+enum PayoutPayeeType {
+  partner
+  affiliate
+
+  @@map("payout_payee_type")
+}
+
+enum PayoutStatus {
+  pending
+  processing
+  paid
+  failed
+
+  @@map("payout_status")
+}
+
+enum AffiliateStatus {
+  pending
+  approved
+  suspended
+
+  @@map("affiliate_status")
+}
+
+enum ReferralTarget {
+  tenant_home
+  listing
+
+  @@map("referral_target")
+}
+
+/// Affiliate commission lifecycle (§7.8): pending → confirmed → paid,
+/// with reversed / clawed_back branches.
+enum AffiliateCommissionStatus {
+  pending
+  confirmed
+  paid
+  reversed
+  clawed_back
+
+  @@map("affiliate_commission_status")
+}
+
+enum PromotionDiscountType {
+  percent
+  fixed
+
+  @@map("promotion_discount_type")
+}
+
+/// Who bears the discount cost — drives the commission calc (§12.4).
+enum PromotionFundedBy {
+  tenant
+  partner
+
+  @@map("promotion_funded_by")
+}
+
+enum PromotionAppliesTo {
+  all
+  listing_type
+  listing_group
+  category
+  listing
+  partner
+
+  @@map("promotion_applies_to")
+}
+
+enum PromotionStatus {
+  draft
+  active
+  paused
+  ended
+
+  @@map("promotion_status")
+}
+
+/// Redemption lifecycle (§12.3): reserved → applied, or → released (usage returned).
+enum PromoRedemptionStatus {
+  reserved
+  applied
+  released
+
+  @@map("promo_redemption_status")
+}
+
+enum ClassSessionStatus {
+  scheduled
+  cancelled
+
+  @@map("class_session_status")
+}
+
+enum NotificationChannel {
+  email
+  zns
+  in_app
+
+  @@map("notification_channel")
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+
+  @@map("notification_status")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.1 Identity & Access
+// ─────────────────────────────────────────────────────────────────────────────
+
 model User {
   id               String     @id @default(uuid(7)) @db.Uuid
   email            String     @unique @db.Citext
-  passwordHash     String     @map("password_hash")
+  /// Null for guest-checkout users (§8.6) — they authenticate by booking code + email OTP.
+  passwordHash     String?    @map("password_hash")
   fullName         String     @map("full_name")
   phone            String?
   locale           String     @default("vi")
   status           UserStatus @default(active)
+  emailVerifiedAt  DateTime?  @map("email_verified_at") @db.Timestamptz(6)
   failedLoginCount Int        @default(0) @map("failed_login_count")
   lockedUntil      DateTime?  @map("locked_until") @db.Timestamptz(6)
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  sessions        Session[]
-  roleAssignments RoleAssignment[]
+  sessions           Session[]
+  roleAssignments    RoleAssignment[]
+  bookings           Booking[]        @relation("CustomerBookings")
+  affiliates         Affiliate[]
+  partnerMemberships PartnerMember[]
+  staffProfiles      Staff[]
 
   @@map("users")
 }
@@ -142,6 +462,10 @@ model RoleAssignment {
   @@map("role_assignments")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.2 Tenancy
+// ─────────────────────────────────────────────────────────────────────────────
+
 model Tenant {
   id              String       @id @default(uuid(7)) @db.Uuid
   name            String
@@ -149,16 +473,33 @@ model Tenant {
   status          TenantStatus @default(active)
   defaultTimezone String       @default("Asia/Ho_Chi_Minh") @map("default_timezone")
   defaultLocale   String       @default("vi") @map("default_locale")
+  /// Storefront base template only (§16.1); the real menu comes from listing_types.
   vertical        String       @default("studio")
   themeConfig     Json         @default("{}") @map("theme_config")
   settings        Json         @default("{}")
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  domains         TenantDomain[]
-  subscriptions   TenantSubscription[]
-  roles           Role[]
-  roleAssignments RoleAssignment[]
+  domains              TenantDomain[]
+  subscriptions        TenantSubscription[]
+  roles                Role[]
+  roleAssignments      RoleAssignment[]
+  agreementAcceptances AgreementAcceptance[]
+  partners             Partner[]
+  listingTypes         ListingType[]
+  listingGroups        ListingGroup[]
+  resources            Resource[]
+  listings             Listing[]
+  categories           Category[]
+  cancellationPolicies CancellationPolicy[]
+  bookings             Booking[]
+  payments             Payment[]
+  gatewayConfigs       TenantGatewayConfig[]
+  commissionRules      CommissionRule[]
+  ledgerAccounts       LedgerAccount[]
+  payouts              Payout[]
+  promotions           Promotion[]
+  affiliates           Affiliate[]
 
   @@map("tenants")
 }
@@ -178,10 +519,30 @@ model TenantDomain {
   @@map("tenant_domains")
 }
 
+/// Proof-of-acceptance for partner terms / commission schedules / promo funding (§7.2).
+model AgreementAcceptance {
+  id            String        @id @default(uuid(7)) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  userId        String?       @map("user_id") @db.Uuid
+  partnerId     String?       @map("partner_id") @db.Uuid
+  agreementType AgreementType @map("agreement_type")
+  version       String
+  acceptedAt    DateTime      @default(now()) @map("accepted_at") @db.Timestamptz(6)
+  ip            String?
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner Partner? @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@map("agreement_acceptances")
+}
+
 model SubscriptionPlan {
   id           String  @id @default(uuid(7)) @db.Uuid
   name         String  @unique
   priceMonthly BigInt  @map("price_monthly")
+  /// { maxPartners, maxListings, maxBookingsPerMonth, customDomain, affiliateModule } (§6.5).
   limits       Json    @default("{}")
   isActive     Boolean @default(true) @map("is_active")
 
@@ -208,19 +569,824 @@ model TenantSubscription {
   @@map("tenant_subscriptions")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.3 Catalog
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Partner {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.Uuid
+  name         String
+  slug         String
+  description  String?
+  partnerType  PartnerType   @default(individual) @map("partner_type")
+  /// Tenant-owned inventory: no partner payable/payout, platform fee on GMV (§7.3).
+  isHouse      Boolean       @default(false) @map("is_house")
+  status       PartnerStatus @default(pending)
+  /// tax ID / business registration for a `company` partner.
+  businessInfo Json          @default("{}") @map("business_info")
+  contactInfo  Json          @default("{}") @map("contact_info")
+  /// bank account for receiving payouts.
+  payoutInfo   Json          @default("{}") @map("payout_info")
+  /// national ID / DOB verification for people-booking listing types (§7.3).
+  verifiedAt   DateTime?     @map("verified_at") @db.Timestamptz(6)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members              PartnerMember[]
+  listingGroups        ListingGroup[]
+  resources            Resource[]
+  listings             Listing[]
+  bookings             Booking[]
+  commissionRules      CommissionRule[]
+  staff                Staff[]
+  promotions           Promotion[]           @relation("PartnerCreatedPromotions")
+  agreementAcceptances AgreementAcceptance[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("partners")
+}
+
+/// Membership of a user in a partner org; the actual role lives in role_assignments.
+model PartnerMember {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("partner_members")
+}
+
+/// A tenant-defined service category (dynamic, not hard-coded) — §7.3.
+model ListingType {
+  tenantId        String        @map("tenant_id") @db.Uuid
+  id              String        @id @default(uuid(7)) @db.Uuid
+  name            String
+  slug            String
+  icon            String?
+  /// which BookingModes this type may enable / enables by default on a new listing.
+  allowedModes    BookingMode[] @map("allowed_modes")
+  defaultModes    BookingMode[] @map("default_modes")
+  /// [{key,label,type,required,filterable,options}] — validates listing.attributes.
+  attributeSchema Json          @default("[]") @map("attribute_schema")
+  /// price display unit: "hour", "day", "session", "set"…
+  unitLabel       String?       @map("unit_label")
+  sortOrder       Int           @default(0) @map("sort_order")
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  listingGroups   ListingGroup[]
+  listings        Listing[]
+  commissionRules CommissionRule[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("listing_types")
+}
+
+/// A "parent" post grouping multiple child listings (rooms/packages) — display +
+/// moderation layer only; customers book the child listing, never the group (§7.3).
+model ListingGroup {
+  id            String           @id @default(uuid(7)) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
+  partnerId     String           @map("partner_id") @db.Uuid
+  listingTypeId String           @map("listing_type_id") @db.Uuid
+  title         String
+  slug          String
+  description   String?
+  address       String?
+  workingArea   String?          @map("working_area")
+  photos        Json             @default("[]")
+  /// post-level amenities (reception, parking…) — distinct from listing attributes.
+  amenities     Json             @default("[]")
+  status        PublishStatus    @default(draft)
+  publishedBy   ModerationActor? @map("published_by")
+  hiddenBy      ModerationActor? @map("hidden_by")
+  ratingAvg     Decimal?         @map("rating_avg") @db.Decimal(3, 2)
+  bookingCount  Int              @default(0) @map("booking_count")
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner     Partner     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  listingType ListingType @relation(fields: [listingTypeId], references: [id])
+  listings    Listing[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([partnerId])
+  @@map("listing_groups")
+}
+
+/// The calendar-holding unit. Multiple listings pointing at one resource share a
+/// single calendar and can never double-book (§7.3).
+model Resource {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  name      String
+  timezone  String   @default("Asia/Ho_Chi_Minh")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner                Partner                 @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  listings               Listing[]
+  bookings               Booking[]
+  availabilityExceptions AvailabilityException[]
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@map("resources")
+}
+
+model Listing {
+  id                      String           @id @default(uuid(7)) @db.Uuid
+  tenantId                String           @map("tenant_id") @db.Uuid
+  partnerId               String           @map("partner_id") @db.Uuid
+  listingTypeId           String           @map("listing_type_id") @db.Uuid
+  resourceId              String           @map("resource_id") @db.Uuid
+  groupId                 String?          @map("group_id") @db.Uuid
+  categoryId              String?          @map("category_id") @db.Uuid
+  title                   String
+  slug                    String
+  description             String?
+  photos                  Json             @default("[]")
+  /// attribute values, validated against the listing type's attribute_schema.
+  attributes              Json             @default("{}")
+  /// enabled modes, bounded by listing_type.allowed_modes.
+  bookingModes            BookingMode[]    @map("booking_modes")
+  /// per-mode config: prices, blocks (bundle pricing), min/max, granularity, deposit… (§7.3).
+  modeConfig              Json             @default("{}") @map("mode_config")
+  /// units in stock — `inventory` mode only.
+  stockQuantity           Int?             @map("stock_quantity")
+  /// max guests; class = number of seats.
+  capacity                Int?
+  bufferBefore            Int              @default(0) @map("buffer_before")
+  bufferAfter             Int              @default(0) @map("buffer_after")
+  approvalRequired        Boolean          @default(false) @map("approval_required")
+  /// 0–100; 100 = pay in full.
+  depositPercent          Int              @default(100) @map("deposit_percent")
+  balanceDue              BalanceDue       @default(online_before) @map("balance_due")
+  rescheduleAllowed       Boolean          @default(false) @map("reschedule_allowed")
+  rescheduleDeadlineHours Int?             @map("reschedule_deadline_hours")
+  rescheduleFee           BigInt?          @map("reschedule_fee")
+  cancellationPolicyId    String?          @map("cancellation_policy_id") @db.Uuid
+  status                  PublishStatus    @default(draft)
+  publishedBy             ModerationActor? @map("published_by")
+  hiddenBy                ModerationActor? @map("hidden_by")
+  createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner            Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  listingType        ListingType         @relation(fields: [listingTypeId], references: [id])
+  resource           Resource            @relation(fields: [resourceId], references: [id])
+  group              ListingGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  category           Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  cancellationPolicy CancellationPolicy? @relation(fields: [cancellationPolicyId], references: [id], onDelete: SetNull)
+  pricingRules       PricingRule[]
+  availabilityRules  AvailabilityRule[]
+  bookings           Booking[]
+  referralLinks      ReferralLink[]
+  classSessions      ClassSession[]
+  listingStaff       ListingStaff[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([resourceId])
+  @@index([groupId])
+  @@index([listingTypeId])
+  @@map("listings")
+}
+
+/// Conditional pricing (§7.3) — weekday/weekend + time windows in Phase 1.
+model PricingRule {
+  id          String          @id @default(uuid(7)) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  listingId   String          @map("listing_id") @db.Uuid
+  bookingMode BookingMode     @map("booking_mode")
+  ruleType    PricingRuleType @map("rule_type")
+  params      Json            @default("{}")
+  /// replaces the mode's per-unit price when matched; never overrides block pricing.
+  price       BigInt
+  priority    Int             @default(0)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([listingId])
+  @@map("pricing_rules")
+}
+
+model Category {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  slug      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  listings        Listing[]
+  commissionRules CommissionRule[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.4 Scheduling
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Weekly recurring opening hours (§7.4). Times are local to the resource timezone.
+model AvailabilityRule {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  dayOfWeek Int      @map("day_of_week")
+  openTime  String   @map("open_time")
+  closeTime String   @map("close_time")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([listingId])
+  @@map("availability_rules")
+}
+
+/// Date-specific exceptions — keyed by RESOURCE so a maintenance/holiday block hits
+/// every listing sharing that calendar (§7.4).
+model AvailabilityException {
+  id         String                    @id @default(uuid(7)) @db.Uuid
+  tenantId   String                    @map("tenant_id") @db.Uuid
+  resourceId String                    @map("resource_id") @db.Uuid
+  date       DateTime                  @db.Date
+  type       AvailabilityExceptionType
+  openTime   String?                   @map("open_time")
+  closeTime  String?                   @map("close_time")
+  reason     String?
+  createdAt  DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([resourceId, date])
+  @@map("availability_exceptions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.5 Booking
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Booking {
+  id                         String                    @id @default(uuid(7)) @db.Uuid
+  tenantId                   String                    @map("tenant_id") @db.Uuid
+  listingId                  String                    @map("listing_id") @db.Uuid
+  partnerId                  String                    @map("partner_id") @db.Uuid
+  resourceId                 String                    @map("resource_id") @db.Uuid
+  customerId                 String                    @map("customer_id") @db.Uuid
+  classSessionId             String?                   @map("class_session_id") @db.Uuid
+  /// short human code shown to the customer, e.g. BK-7F3K9Q — globally unique.
+  code                       String                    @unique
+  /// unique per tenant — retried creates return the existing booking.
+  idempotencyKey             String                    @map("idempotency_key")
+  bookingMode                BookingMode               @map("booking_mode")
+  status                     BookingStatus             @default(draft)
+  /// [start, end) UTC. Written via raw SQL (GiST exclusion constraint).
+  timeslot                   Unsupported("tstzrange")?
+  /// timeslot expanded by buffer, snapshotted at booking time — the exclusion key.
+  blockedPeriod              Unsupported("tstzrange")? @map("blocked_period")
+  guestCount                 Int                       @default(1) @map("guest_count")
+  /// units rented (`inventory` mode); 1 otherwise.
+  quantity                   Int                       @default(1)
+  /// overtime/surcharges added before `completed`; commissioned like an on_arrival amount.
+  additionalCharges          Json                      @default("[]") @map("additional_charges")
+  /// total after pricing rules, before discount.
+  totalAmount                BigInt                    @map("total_amount")
+  discountAmount             BigInt                    @default(0) @map("discount_amount")
+  /// what the customer pays at checkout = total − discount (excludes later additional_charges).
+  finalAmount                BigInt                    @map("final_amount")
+  depositAmount              BigInt                    @map("deposit_amount")
+  paidAmount                 BigInt                    @default(0) @map("paid_amount")
+  promotionId                String?                   @map("promotion_id") @db.Uuid
+  promoCode                  String?                   @map("promo_code")
+  affiliateId                String?                   @map("affiliate_id") @db.Uuid
+  referralCode               String?                   @map("referral_code")
+  cancellationPolicyId       String?                   @map("cancellation_policy_id") @db.Uuid
+  // Immutable snapshots captured at booking time (§8.2/§13.1).
+  promotionSnapshot          Json?                     @map("promotion_snapshot")
+  cancellationPolicySnapshot Json?                     @map("cancellation_policy_snapshot")
+  pricingSnapshot            Json?                     @map("pricing_snapshot")
+  commissionSnapshot         Json?                     @map("commission_snapshot")
+  customerNote               String?                   @map("customer_note")
+  partnerNote                String?                   @map("partner_note")
+  /// payment/approval deadline while pending.
+  expiresAt                  DateTime?                 @map("expires_at") @db.Timestamptz(6)
+  createdAt                  DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant              Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  listing             Listing                @relation(fields: [listingId], references: [id])
+  partner             Partner                @relation(fields: [partnerId], references: [id])
+  resource            Resource               @relation(fields: [resourceId], references: [id])
+  customer            User                   @relation("CustomerBookings", fields: [customerId], references: [id])
+  classSession        ClassSession?          @relation(fields: [classSessionId], references: [id])
+  promotion           Promotion?             @relation(fields: [promotionId], references: [id])
+  affiliate           Affiliate?             @relation(fields: [affiliateId], references: [id])
+  cancellationPolicy  CancellationPolicy?    @relation(fields: [cancellationPolicyId], references: [id])
+  payments            Payment[]
+  refunds             Refund[]
+  statusHistory       BookingStatusHistory[]
+  promoRedemption     PromoRedemption?
+  affiliateCommission AffiliateCommission?
+  ledgerEntries       LedgerEntry[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId])
+  @@index([listingId])
+  @@index([partnerId])
+  @@index([resourceId])
+  @@index([customerId])
+  @@index([status])
+  @@map("bookings")
+}
+
+/// Audit mirror of Redis holds (Redis is the source of truth) — §7.5.
+model BookingHold {
+  id         String                    @id @default(uuid(7)) @db.Uuid
+  tenantId   String                    @map("tenant_id") @db.Uuid
+  resourceId String                    @map("resource_id") @db.Uuid
+  listingId  String                    @map("listing_id") @db.Uuid
+  timeslot   Unsupported("tstzrange")?
+  sessionId  String?                   @map("session_id")
+  customerId String?                   @map("customer_id") @db.Uuid
+  expiresAt  DateTime                  @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([resourceId])
+  @@map("booking_holds")
+}
+
+/// Full audit trail of every state transition (§8.2).
+model BookingStatusHistory {
+  id         String         @id @default(uuid(7)) @db.Uuid
+  tenantId   String         @map("tenant_id") @db.Uuid
+  bookingId  String         @map("booking_id") @db.Uuid
+  fromStatus BookingStatus? @map("from_status")
+  toStatus   BookingStatus  @map("to_status")
+  actorId    String?        @map("actor_id") @db.Uuid
+  reason     String?
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([bookingId])
+  @@map("booking_status_history")
+}
+
+/// Tiered refund policy (§7.5): rules = [{hoursBefore, refundPercent}].
+model CancellationPolicy {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  rules     Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  listings Listing[]
+  bookings Booking[]
+
+  @@index([tenantId])
+  @@map("cancellation_policies")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.6 Payments
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Payment {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  bookingId      String         @map("booking_id") @db.Uuid
+  gateway        PaymentGateway
+  kind           PaymentKind
+  amount         BigInt
+  status         PaymentStatus  @default(pending)
+  gatewayTxnId   String?        @map("gateway_txn_id")
+  gatewayPayload Json?          @map("gateway_payload")
+  idempotencyKey String         @unique @map("idempotency_key")
+  paidAt         DateTime?      @map("paid_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  refunds       Refund[]
+  ledgerEntries LedgerEntry[]
+
+  @@index([tenantId])
+  @@index([bookingId])
+  @@index([gatewayTxnId])
+  @@map("payments")
+}
+
+model Refund {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  tenantId        String       @map("tenant_id") @db.Uuid
+  paymentId       String       @map("payment_id") @db.Uuid
+  bookingId       String       @map("booking_id") @db.Uuid
+  amount          BigInt
+  status          RefundStatus @default(pending)
+  reason          String?
+  gatewayRefundId String?      @map("gateway_refund_id")
+  evidence        Json?
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([paymentId])
+  @@index([bookingId])
+  @@map("refunds")
+}
+
+/// Per-tenant gateway credentials — credentials jsonb is AES-256-GCM encrypted at
+/// the app layer, never returned by the API (§7.6/§20).
+model TenantGatewayConfig {
+  id          String             @id @default(uuid(7)) @db.Uuid
+  tenantId    String             @map("tenant_id") @db.Uuid
+  gateway     PaymentGateway
+  credentials Json               @default("{}")
+  isActive    Boolean            @default(true) @map("is_active")
+  environment GatewayEnvironment @default(sandbox)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, gateway, environment])
+  @@index([tenantId])
+  @@map("tenant_gateway_configs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.7 Finance
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CommissionRule {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  appliesTo         CommissionAppliesTo @map("applies_to")
+  listingTypeId     String?             @map("listing_type_id") @db.Uuid
+  categoryId        String?             @map("category_id") @db.Uuid
+  partnerId         String?             @map("partner_id") @db.Uuid
+  tenantRateType    RateType            @default(percent) @map("tenant_rate_type")
+  /// percent = basis points or 0–100; fixed = VND. See §18 rounding.
+  tenantRate        BigInt              @map("tenant_rate")
+  /// platform fee %, editable only by the platform admin.
+  platformRate      Int                 @default(0) @map("platform_rate")
+  affiliateRateType RateType            @default(percent) @map("affiliate_rate_type")
+  affiliateRate     BigInt              @default(0) @map("affiliate_rate")
+  effectiveFrom     DateTime?           @map("effective_from") @db.Timestamptz(6)
+  effectiveTo       DateTime?           @map("effective_to") @db.Timestamptz(6)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  listingType ListingType? @relation(fields: [listingTypeId], references: [id], onDelete: Cascade)
+  category    Category?    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  partner     Partner?     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("commission_rules")
+}
+
+/// One account per party per tenant (§7.7). owner is polymorphic (owner_type + owner_id).
+model LedgerAccount {
+  id        String          @id @default(uuid(7)) @db.Uuid
+  tenantId  String          @map("tenant_id") @db.Uuid
+  ownerType LedgerOwnerType @map("owner_type")
+  ownerId   String?         @map("owner_id") @db.Uuid
+  currency  String          @default("VND")
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries LedgerEntry[]
+
+  @@unique([tenantId, ownerType, ownerId])
+  @@index([tenantId])
+  @@map("ledger_accounts")
+}
+
+/// Double-entry, immutable (append-only — enforced by a trigger in the SQL migration).
+/// A business transaction groups its lines by journal_id; sum(debit) = sum(credit).
+model LedgerEntry {
+  id        String          @id @default(uuid(7)) @db.Uuid
+  tenantId  String          @map("tenant_id") @db.Uuid
+  journalId String          @map("journal_id") @db.Uuid
+  accountId String          @map("account_id") @db.Uuid
+  entryType LedgerEntryType @map("entry_type")
+  debit     BigInt          @default(0)
+  credit    BigInt          @default(0)
+  bookingId String?         @map("booking_id") @db.Uuid
+  paymentId String?         @map("payment_id") @db.Uuid
+  payoutId  String?         @map("payout_id") @db.Uuid
+  memo      String?
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  account LedgerAccount @relation(fields: [accountId], references: [id])
+  booking Booking?      @relation(fields: [bookingId], references: [id])
+  payment Payment?      @relation(fields: [paymentId], references: [id])
+  payout  Payout?       @relation(fields: [payoutId], references: [id])
+
+  @@index([tenantId])
+  @@index([journalId])
+  @@index([accountId])
+  @@index([bookingId])
+  @@map("ledger_entries")
+}
+
+model Payout {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  tenantId   String          @map("tenant_id") @db.Uuid
+  payeeType  PayoutPayeeType @map("payee_type")
+  payeeId    String          @map("payee_id") @db.Uuid
+  amount     BigInt
+  periodFrom DateTime?       @map("period_from") @db.Timestamptz(6)
+  periodTo   DateTime?       @map("period_to") @db.Timestamptz(6)
+  status     PayoutStatus    @default(pending)
+  paidAt     DateTime?       @map("paid_at") @db.Timestamptz(6)
+  /// transfer reference number + evidence file key.
+  evidence   Json?
+  createdBy  String?         @map("created_by") @db.Uuid
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ledgerEntries LedgerEntry[]
+
+  @@index([tenantId])
+  @@index([payeeType, payeeId])
+  @@map("payouts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.9 Promotions
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Promotion {
+  id                    String                @id @default(uuid(7)) @db.Uuid
+  tenantId              String                @map("tenant_id") @db.Uuid
+  name                  String
+  /// entered by the customer, uppercase, unique within tenant; null = auto-campaign (Phase 2).
+  code                  String?
+  discountType          PromotionDiscountType @map("discount_type")
+  discountValue         BigInt                @map("discount_value")
+  /// cap on the discount for a `percent` type.
+  maxDiscount           BigInt?               @map("max_discount")
+  fundedBy              PromotionFundedBy     @default(tenant) @map("funded_by")
+  appliesTo             PromotionAppliesTo    @default(all) @map("applies_to")
+  /// the target id matching applies_to (listing/type/category/partner/group).
+  appliesToId           String?               @map("applies_to_id") @db.Uuid
+  minOrderAmount        BigInt?               @map("min_order_amount")
+  firstBookingOnly      Boolean               @default(false) @map("first_booking_only")
+  usageLimitTotal       Int?                  @map("usage_limit_total")
+  usageLimitPerCustomer Int?                  @map("usage_limit_per_customer")
+  /// atomically incremented; race-safe (§12.3).
+  redeemedCount         Int                   @default(0) @map("redeemed_count")
+  startsAt              DateTime?             @map("starts_at") @db.Timestamptz(6)
+  endsAt                DateTime?             @map("ends_at") @db.Timestamptz(6)
+  status                PromotionStatus       @default(draft)
+  createdByPartnerId    String?               @map("created_by_partner_id") @db.Uuid
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByPartner Partner?          @relation("PartnerCreatedPromotions", fields: [createdByPartnerId], references: [id], onDelete: SetNull)
+  redemptions      PromoRedemption[]
+  bookings         Booking[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("promotions")
+}
+
+/// Each use of a code, tied 1:1 to a booking (§7.9).
+model PromoRedemption {
+  id             String                @id @default(uuid(7)) @db.Uuid
+  tenantId       String                @map("tenant_id") @db.Uuid
+  promotionId    String                @map("promotion_id") @db.Uuid
+  bookingId      String                @unique @map("booking_id") @db.Uuid
+  customerId     String                @map("customer_id") @db.Uuid
+  discountAmount BigInt                @map("discount_amount")
+  status         PromoRedemptionStatus @default(reserved)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([promotionId])
+  @@index([promotionId, customerId])
+  @@map("promo_redemptions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.8 Affiliate (Phase 2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Affiliate {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  tenantId   String          @map("tenant_id") @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  status     AffiliateStatus @default(pending)
+  /// overrides the applicable commission rule's affiliate rate.
+  customRate BigInt?         @map("custom_rate")
+  payoutInfo Json            @default("{}") @map("payout_info")
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referralLinks ReferralLink[]
+  commissions   AffiliateCommission[]
+  bookings      Booking[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@map("affiliates")
+}
+
+model ReferralLink {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  tenantId    String         @map("tenant_id") @db.Uuid
+  affiliateId String         @map("affiliate_id") @db.Uuid
+  code        String
+  target      ReferralTarget @default(tenant_home)
+  listingId   String?        @map("listing_id") @db.Uuid
+  clicksCount Int            @default(0) @map("clicks_count")
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  affiliate Affiliate       @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  listing   Listing?        @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  clicks    ReferralClick[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([affiliateId])
+  @@map("referral_links")
+}
+
+model ReferralClick {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  referralLinkId String   @map("referral_link_id") @db.Uuid
+  visitorId      String?  @map("visitor_id")
+  ipHash         String?  @map("ip_hash")
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  referralLink ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([referralLinkId])
+  @@map("referral_clicks")
+}
+
+model AffiliateCommission {
+  id          String                    @id @default(uuid(7)) @db.Uuid
+  tenantId    String                    @map("tenant_id") @db.Uuid
+  affiliateId String                    @map("affiliate_id") @db.Uuid
+  bookingId   String                    @unique @map("booking_id") @db.Uuid
+  amount      BigInt
+  status      AffiliateCommissionStatus @default(pending)
+  createdAt   DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([affiliateId])
+  @@map("affiliate_commissions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.3 Catalog — appointment/class support (Phase 3, modelled from day one §9.3/§9.5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Staff {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  partnerId   String   @map("partner_id") @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  displayName String   @map("display_name")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  partner      Partner             @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  availability StaffAvailability[]
+  listingStaff ListingStaff[]
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@map("staff")
+}
+
+model StaffAvailability {
+  id        String @id @default(uuid(7)) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  staffId   String @map("staff_id") @db.Uuid
+  dayOfWeek Int    @map("day_of_week")
+  openTime  String @map("open_time")
+  closeTime String @map("close_time")
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([staffId])
+  @@map("staff_availability")
+}
+
+model ListingStaff {
+  tenantId        String @map("tenant_id") @db.Uuid
+  listingId       String @map("listing_id") @db.Uuid
+  staffId         String @map("staff_id") @db.Uuid
+  serviceDuration Int?   @map("service_duration")
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, staffId])
+  @@index([tenantId])
+  @@map("listing_staff")
+}
+
+model ClassSession {
+  id          String             @id @default(uuid(7)) @db.Uuid
+  tenantId    String             @map("tenant_id") @db.Uuid
+  listingId   String             @map("listing_id") @db.Uuid
+  startsAt    DateTime           @map("starts_at") @db.Timestamptz(6)
+  endsAt      DateTime           @map("ends_at") @db.Timestamptz(6)
+  capacity    Int
+  bookedCount Int                @default(0) @map("booked_count")
+  status      ClassSessionStatus @default(scheduled)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listing  Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tenantId])
+  @@index([listingId])
+  @@map("class_sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7.10 Infrastructure
+// ─────────────────────────────────────────────────────────────────────────────
+
 model OutboxEvent {
-  id          String    @id @default(uuid(7)) @db.Uuid
-  tenantId    String?   @map("tenant_id") @db.Uuid
-  eventType   String    @map("event_type")
-  payload     Json
-  attempts    Int       @default(0)
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  aggregateType String?   @map("aggregate_type")
+  aggregateId   String?   @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type")
+  payload       Json
+  attempts      Int       @default(0)
   // dbgenerated: the DB clock must own this value — a client-side now() can
   // run ahead of Postgres and make fresh events invisible to the relay's
   // `available_at <= now()` claim query
-  availableAt DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @map("available_at") @db.Timestamptz(6)
-  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
-  lastError   String?   @map("last_error")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  availableAt   DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @map("available_at") @db.Timestamptz(6)
+  processedAt   DateTime? @map("processed_at") @db.Timestamptz(6)
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([processedAt, availableAt])
   @@map("outbox_events")
@@ -234,8 +1400,28 @@ model AuditLog {
   entityType  String   @map("entity_type")
   entityId    String?  @map("entity_id")
   data        Json?
+  ip          String?
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([tenantId, createdAt])
   @@map("audit_logs")
+}
+
+/// What was sent per notification event (§17).
+model NotificationLog {
+  id        String              @id @default(uuid(7)) @db.Uuid
+  tenantId  String?             @map("tenant_id") @db.Uuid
+  userId    String?             @map("user_id") @db.Uuid
+  channel   NotificationChannel
+  eventType String              @map("event_type")
+  recipient String?
+  status    NotificationStatus  @default(pending)
+  payload   Json?
+  error     String?
+  sentAt    DateTime?           @map("sent_at") @db.Timestamptz(6)
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("notification_logs")
 }
