@@ -258,6 +258,7 @@ async function seedDemo(): Promise<void> {
     attributeSchema: [
       { key: 'area', label: 'Diện tích (m²)', type: 'number', filterable: true },
       { key: 'style', label: 'Phong cách', type: 'select', filterable: true, options: ['Hàn Quốc', 'Vintage', 'Tối giản'] },
+      { key: 'naturalLight', label: 'Ánh sáng tự nhiên', type: 'boolean', filterable: true },
     ],
   });
   await upsertListingType(tenant.id, {
@@ -334,7 +335,7 @@ async function seedDemo(): Promise<void> {
     categoryId: category.id,
     cancellationPolicyId: cancelPolicy.id,
     bookingModes: ['hourly', 'daily'],
-    attributes: { area: 40, style: 'Hàn Quốc' },
+    attributes: { area: 40, style: 'Hàn Quốc', naturalLight: true },
     modeConfig: {
       hourly: {
         basePrice: 300_000,
@@ -367,7 +368,7 @@ async function seedDemo(): Promise<void> {
     categoryId: category.id,
     cancellationPolicyId: cancelPolicy.id,
     bookingModes: ['hourly'],
-    attributes: { area: 25, style: 'Vintage' },
+    attributes: { area: 25, style: 'Vintage', naturalLight: false },
     modeConfig: {
       hourly: {
         basePrice: 250_000,

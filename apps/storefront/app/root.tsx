@@ -1,12 +1,22 @@
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
+import type { PublicListingTypeResponse } from '@booking/shared';
 import type { Route } from './+types/root';
-import { resolveTenant } from './lib/tenant.server';
+import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
+import { fetchListingTypes } from './lib/catalog.server';
+import { SiteHeader } from './components/site-header';
 import { themeStyle } from './theme/theme';
 import './app.css';
 
+/** Shared route context: the resolved tenant + its auto-generated menu. */
+export interface StorefrontContext {
+  tenant: StorefrontTenant;
+  listingTypes: PublicListingTypeResponse[];
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
-  return { tenant };
+  const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
+  return { tenant, listingTypes };
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -32,10 +42,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { tenant } = loaderData;
+  const { tenant, listingTypes } = loaderData;
+  if (!tenant.live) {
+    return (
+      <div style={themeStyle(tenant.theme)} className="min-h-screen bg-(--sf-background)">
+        <SuspendedNotice name={tenant.name} />
+      </div>
+    );
+  }
   return (
     <div style={themeStyle(tenant.theme)} className="min-h-screen bg-(--sf-background)">
-      {tenant.live ? <Outlet context={tenant} /> : <SuspendedNotice name={tenant.name} />}
+      <SiteHeader tenant={tenant} listingTypes={listingTypes} />
+      <Outlet context={{ tenant, listingTypes } satisfies StorefrontContext} />
     </div>
   );
 }

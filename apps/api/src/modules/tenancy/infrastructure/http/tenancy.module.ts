@@ -71,6 +71,8 @@ import { PublicTenantController } from './public-tenant.controller';
     RequireActiveSubscriptionGuard,
     TENANT_REPOSITORY,
     SUBSCRIPTION_REPOSITORY,
+    // The catalog's public endpoints resolve the tenant from the Host with this.
+    ResolveTenantByHostUseCase,
   ],
 })
 export class TenancyModule {}

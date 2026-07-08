@@ -1,0 +1,145 @@
+import { z } from 'zod';
+import { slugSchema } from './tenancy';
+
+/** How a listing may be booked (mirrors the Prisma BookingMode enum, §7.3). */
+export const bookingModeSchema = z.enum(['hourly', 'daily', 'appointment', 'class', 'inventory']);
+export type BookingMode = z.infer<typeof bookingModeSchema>;
+
+/** An attribute key is an identifier (e.g. `area`, `style`, `naturalLight`). */
+export const attributeKeySchema = z
+  .string()
+  .min(1)
+  .max(40)
+  .regex(/^[a-zA-Z][a-zA-Z0-9_]*$/, 'Must be an identifier (letters, digits, underscore)');
+
+export const attributeFieldTypeSchema = z.enum([
+  'text',
+  'number',
+  'select',
+  'multiselect',
+  'boolean',
+]);
+export type AttributeFieldType = z.infer<typeof attributeFieldTypeSchema>;
+
+/** One typed field in a listing type's attribute schema (§7.3). */
+export const attributeFieldSchema = z
+  .object({
+    key: attributeKeySchema,
+    label: z.string().min(1).max(120),
+    type: attributeFieldTypeSchema,
+    required: z.boolean().default(false),
+    filterable: z.boolean().default(false),
+    options: z.array(z.string().min(1)).optional(),
+  })
+  .superRefine((field, ctx) => {
+    if ((field.type === 'select' || field.type === 'multiselect') && !field.options?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '`options` is required for select/multiselect fields',
+        path: ['options'],
+      });
+    }
+  });
+export type AttributeField = z.infer<typeof attributeFieldSchema>;
+
+export const attributeSchemaSchema = z.array(attributeFieldSchema).superRefine((fields, ctx) => {
+  const keys = fields.map((f) => f.key);
+  const duplicates = [...new Set(keys.filter((k, i) => keys.indexOf(k) !== i))];
+  if (duplicates.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Duplicate attribute keys: ${duplicates.join(', ')}`,
+    });
+  }
+});
+
+// ── Inputs (validated identically on FE + BE) ────────────────────────────────
+
+const listingTypeBaseSchema = z.object({
+  name: z.string().min(1).max(120),
+  slug: slugSchema,
+  icon: z.string().max(60).optional(),
+  allowedModes: z.array(bookingModeSchema).min(1),
+  defaultModes: z.array(bookingModeSchema).default([]),
+  attributeSchema: attributeSchemaSchema.default([]),
+  unitLabel: z.string().max(40).optional(),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+  requiresIdentityVerification: z.boolean().default(false),
+});
+
+/** `defaultModes` must be a subset of `allowedModes` (only checked when both present). */
+const defaultModesSubsetRefine = (
+  value: { allowedModes?: BookingMode[]; defaultModes?: BookingMode[] },
+  ctx: z.RefinementCtx,
+): void => {
+  if (!value.allowedModes || !value.defaultModes) return;
+  const allowed = new Set(value.allowedModes);
+  const invalid = value.defaultModes.filter((m) => !allowed.has(m));
+  if (invalid.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `defaultModes must be a subset of allowedModes; invalid: ${invalid.join(', ')}`,
+      path: ['defaultModes'],
+    });
+  }
+};
+
+export const createListingTypeInputSchema =
+  listingTypeBaseSchema.superRefine(defaultModesSubsetRefine);
+export type CreateListingTypeInput = z.infer<typeof createListingTypeInputSchema>;
+
+export const updateListingTypeInputSchema = listingTypeBaseSchema
+  .partial()
+  .superRefine(defaultModesSubsetRefine);
+export type UpdateListingTypeInput = z.infer<typeof updateListingTypeInputSchema>;
+
+/** Storefront listing query — `attr.*` filters are parsed separately (dynamic keys). */
+export const listPublicListingsQuerySchema = z.object({
+  type: slugSchema.optional(),
+  category: slugSchema.optional(),
+  q: z.string().max(200).optional(),
+});
+export type ListPublicListingsQuery = z.infer<typeof listPublicListingsQuerySchema>;
+
+// ── Responses ────────────────────────────────────────────────────────────────
+
+export interface ListingTypeResponse {
+  id: string;
+  tenantId: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  allowedModes: BookingMode[];
+  defaultModes: BookingMode[];
+  attributeSchema: AttributeField[];
+  unitLabel: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  requiresIdentityVerification: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The storefront menu entry — active types only, schema trimmed to filterable fields. */
+export interface PublicListingTypeResponse {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  unitLabel: string | null;
+  sortOrder: number;
+  requiresIdentityVerification: boolean;
+  attributeSchema: AttributeField[];
+}
+
+export interface PublicListingResponse {
+  id: string;
+  title: string;
+  slug: string;
+  listingTypeSlug: string;
+  attributes: Record<string, unknown>;
+  photos: unknown[];
+  /** Lowest configured price in VND đồng as a digit string, or null. */
+  priceFrom: string | null;
+}

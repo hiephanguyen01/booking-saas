@@ -11,6 +11,7 @@ import { OutboxModule } from './shared/outbox/outbox.module';
 import { IdentityAccessModule } from './modules/identity-access/infrastructure/http/identity-access.module';
 import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.module';
 import { PartnerModule } from './modules/partner/infrastructure/http/partner.module';
+import { CatalogModule } from './modules/catalog/infrastructure/http/catalog.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PartnerModule } from './modules/partner/infrastructure/http/partner.mod
     IdentityAccessModule,
     TenancyModule,
     PartnerModule,
+    CatalogModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
