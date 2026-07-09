@@ -4,6 +4,7 @@ export * from './contracts/tenancy';
 export * from './contracts/partner';
 export * from './contracts/listing-type';
 export * from './contracts/listing';
+export * from './contracts/availability';
 export * from './contracts/storage';
 export { default as viMessages } from './i18n/vi.json';
 export { default as enMessages } from './i18n/en.json';

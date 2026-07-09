@@ -91,7 +91,8 @@ import { PublicListingController } from './public-listing.controller';
     RepublishListingUseCase,
     GroupModerationUseCase,
   ],
-  // Exported so Task 1.7 (bookings) can price a quote before checkout.
-  exports: [PricingService],
+  // Exported for Task 1.6 (scheduling) + 1.7 (bookings): the quote calculator and
+  // the listing/resource/pricing repositories they read from.
+  exports: [PricingService, LISTING_REPOSITORY, RESOURCE_REPOSITORY, PRICING_RULE_REPOSITORY],
 })
 export class ListingModule {}

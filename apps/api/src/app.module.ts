@@ -14,6 +14,7 @@ import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.mod
 import { PartnerModule } from './modules/partner/infrastructure/http/partner.module';
 import { CatalogModule } from './modules/catalog/infrastructure/http/catalog.module';
 import { ListingModule } from './modules/listing/infrastructure/http/listing.module';
+import { SchedulingModule } from './modules/scheduling/infrastructure/http/scheduling.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ListingModule } from './modules/listing/infrastructure/http/listing.mod
     PartnerModule,
     CatalogModule,
     ListingModule,
+    SchedulingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
