@@ -1,15 +1,19 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { ModerationError } from '../../domain/moderation/listing-moderation';
-import type { ListingRecord } from '../../domain/ports/listing-repository.port';
 
 /** Who is acting + the audit metadata every moderation use case needs. */
 export interface ModerationContext {
   tenantId: string;
   actorUserId?: string;
   ip?: string;
-  /** Set on partner-scoped calls to enforce that the listing is the partner's own. */
+  /** Set on partner-scoped calls to enforce that the entity is the partner's own. */
   partnerId?: string;
+}
+
+/** Minimal shape a moderatable record (listing or group) exposes. */
+interface OwnedRecord {
+  partnerId: string;
 }
 
 export function listingNotFound(): never {
@@ -20,12 +24,20 @@ export function listingNotFound(): never {
   });
 }
 
-export function assertOwnership(listing: ListingRecord, partnerId?: string): void {
-  if (partnerId && listing.partnerId !== partnerId) {
+export function groupNotFound(): never {
+  throw new NotFoundException({
+    statusCode: 404,
+    code: 'LISTING_GROUP_NOT_FOUND',
+    message: 'Listing group not found',
+  });
+}
+
+export function assertOwnership(record: OwnedRecord, partnerId?: string): void {
+  if (partnerId && record.partnerId !== partnerId) {
     throw new ForbiddenException({
       statusCode: 403,
-      code: 'LISTING_NOT_OWNED',
-      message: 'This listing belongs to another partner',
+      code: 'NOT_OWNED',
+      message: 'This resource belongs to another partner',
     });
   }
 }
@@ -50,18 +62,25 @@ export function runModeration<T>(fn: () => T): T {
 export async function writeModerationAudit(
   tx: PrismaTx,
   ctx: ModerationContext,
-  params: { action: string; listing: ListingRecord; toStatus: string; reason?: string },
+  params: {
+    action: string;
+    entityType: 'listing' | 'listing_group';
+    entityId: string;
+    fromStatus: string;
+    toStatus: string;
+    reason?: string;
+  },
 ): Promise<void> {
   await tx.auditLog.create({
     data: {
       tenantId: ctx.tenantId,
       actorUserId: ctx.actorUserId ?? null,
       action: params.action,
-      entityType: 'listing',
-      entityId: params.listing.id,
+      entityType: params.entityType,
+      entityId: params.entityId,
       ip: ctx.ip ?? null,
       data: {
-        fromStatus: params.listing.status,
+        fromStatus: params.fromStatus,
         toStatus: params.toStatus,
         reason: params.reason ?? null,
       },

@@ -8,6 +8,7 @@ import type {
   ListingGroupRecord,
   UpdateListingGroupData,
 } from '../../domain/ports/listing-group-repository.port';
+import type { ModerationUpdate } from '../../domain/ports/listing-repository.port';
 
 type Row = Prisma.ListingGroupGetPayload<Record<string, never>>;
 
@@ -91,6 +92,15 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
           amenities: data.amenities as Prisma.InputJsonValue | undefined,
           photos: data.photos as Prisma.InputJsonValue | undefined,
         },
+      }),
+    );
+  }
+
+  async moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingGroupRecord> {
+    return toRecord(
+      await tx.listingGroup.update({
+        where: { id },
+        data: { status: update.status, publishedBy: update.publishedBy, hiddenBy: update.hiddenBy },
       }),
     );
   }

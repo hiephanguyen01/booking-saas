@@ -43,7 +43,9 @@ export class RepublishListingUseCase {
       const updated = await this.listings.moderate(tx, listingId, outcome);
       await writeModerationAudit(tx, ctx, {
         action: 'listing.republished',
-        listing,
+        entityType: 'listing',
+        entityId: listing.id,
+        fromStatus: listing.status,
         toStatus: outcome.status,
       });
       await this.outbox.emit(tx, {

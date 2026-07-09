@@ -1,5 +1,6 @@
 import type { ModerationActor, PublishStatus } from '@booking/shared';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { ModerationUpdate } from './listing-repository.port';
 
 export const LISTING_GROUP_REPOSITORY = Symbol('LISTING_GROUP_REPOSITORY');
 
@@ -42,6 +43,7 @@ export interface IListingGroupRepository {
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingGroupRecord | null>;
   list(tx: PrismaTx): Promise<ListingGroupRecord[]>;
   update(tx: PrismaTx, id: string, data: UpdateListingGroupData): Promise<ListingGroupRecord>;
+  moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingGroupRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   countListings(tx: PrismaTx, groupId: string): Promise<number>;
 }

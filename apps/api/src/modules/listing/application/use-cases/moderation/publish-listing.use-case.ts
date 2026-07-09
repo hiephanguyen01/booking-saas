@@ -47,7 +47,9 @@ export class PublishListingUseCase {
       const updated = await this.listings.moderate(tx, listingId, outcome);
       await writeModerationAudit(tx, ctx, {
         action: 'listing.published',
-        listing,
+        entityType: 'listing',
+        entityId: listing.id,
+        fromStatus: listing.status,
         toStatus: outcome.status,
       });
       await this.outbox.emit(tx, {

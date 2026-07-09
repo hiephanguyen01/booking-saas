@@ -43,7 +43,9 @@ export class HideListingUseCase {
       const updated = await this.listings.moderate(tx, listingId, outcome);
       await writeModerationAudit(tx, ctx, {
         action: 'listing.hidden',
-        listing,
+        entityType: 'listing',
+        entityId: listing.id,
+        fromStatus: listing.status,
         toStatus: outcome.status,
         reason,
       });

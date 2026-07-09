@@ -35,10 +35,15 @@ import { SubmitListingUseCase } from '../../application/use-cases/moderation/sub
 import { PublishListingUseCase } from '../../application/use-cases/moderation/publish-listing.use-case';
 import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
 import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
+import { GroupModerationUseCase } from '../../application/use-cases/moderation/group-moderation.use-case';
 import { TenantListingGroupController } from './tenant-listing-group.controller';
 import { TenantListingController } from './tenant-listing.controller';
 import { TenantListingModerationController } from './tenant-listing-moderation.controller';
 import { PartnerListingModerationController } from './partner-listing-moderation.controller';
+import {
+  TenantListingGroupModerationController,
+  PartnerListingGroupModerationController,
+} from './listing-group-moderation.controller';
 import { TenantResourceController } from './tenant-resource.controller';
 import { TenantPricingRuleController } from './tenant-pricing-rule.controller';
 import { PublicListingController } from './public-listing.controller';
@@ -50,6 +55,8 @@ import { PublicListingController } from './public-listing.controller';
     TenantListingController,
     TenantListingModerationController,
     PartnerListingModerationController,
+    TenantListingGroupModerationController,
+    PartnerListingGroupModerationController,
     TenantResourceController,
     TenantPricingRuleController,
     PublicListingController,
@@ -82,6 +89,7 @@ import { PublicListingController } from './public-listing.controller';
     PublishListingUseCase,
     HideListingUseCase,
     RepublishListingUseCase,
+    GroupModerationUseCase,
   ],
   // Exported so Task 1.7 (bookings) can price a quote before checkout.
   exports: [PricingService],
