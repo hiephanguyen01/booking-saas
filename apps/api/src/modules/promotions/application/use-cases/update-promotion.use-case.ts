@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { UpdatePromotionInput } from '@booking/shared';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { vnd } from '../../../../shared/money/money';
@@ -9,10 +9,13 @@ import {
   type UpdatePromotionData,
 } from '../../domain/ports/promotion-repository.port';
 import { normalizeCode } from '../apply-promotion.service';
+import { assertTenantShareRisk } from '../assert-tenant-share-risk';
 
 /** Edit a discount code (§12.2). Historic bookings keep their immutable snapshot. */
 @Injectable()
 export class UpdatePromotionUseCase {
+  private readonly logger = new Logger(UpdatePromotionUseCase.name);
+
   constructor(
     @Inject(PROMOTION_REPOSITORY) private readonly promotions: IPromotionRepository,
     private readonly tenantDb: TenantDbService,
@@ -27,6 +30,17 @@ export class UpdatePromotionUseCase {
       if (existing.status === 'ended') {
         throw new ConflictException({ statusCode: 409, code: 'PROMO_ENDED', message: 'An ended promotion cannot be edited' });
       }
+
+      // §12.4: re-check the tenant-share risk against the merged discount details.
+      await assertTenantShareRisk(
+        tx,
+        {
+          fundedBy: existing.fundedBy,
+          discountType: input.discountType ?? existing.discountType,
+          discountValue: input.discountValue !== undefined ? Number(input.discountValue) : Number(existing.discountValue),
+        },
+        this.logger,
+      );
 
       const data: UpdatePromotionData = {};
       if (input.name !== undefined) data.name = input.name;

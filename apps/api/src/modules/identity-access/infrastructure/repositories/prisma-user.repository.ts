@@ -36,6 +36,10 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
+  setPassword(userId: string, passwordHash: string): Promise<UserRecord> {
+    return this.prisma.admin.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
   async updateLockout(userId: string, state: LockoutState): Promise<void> {
     await this.prisma.admin.user.update({
       where: { id: userId },

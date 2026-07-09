@@ -41,6 +41,8 @@ export interface PublicListingRecord extends ListingRecord {
   partnerVerifiedAt: Date | null;
   partnerActiveSince: Date;
   completedBookings: number;
+  /** Avg seconds from booking creation to approval (§16.1); null when none. */
+  avgApprovalResponseSeconds: number | null;
 }
 
 /** The fields a moderation transition persists (§7.3). */

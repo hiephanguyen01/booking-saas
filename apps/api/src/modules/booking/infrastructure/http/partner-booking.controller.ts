@@ -1,12 +1,12 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import {
-  markNoShowInputSchema,
+  reasonInputSchema,
   markReturnedInputSchema,
   uuidSchema,
   type BookingResponse,
   type CancelBookingResponse,
-  type MarkNoShowInput,
+  type ReasonInput,
   type MarkReturnedInput,
   type ReturnBookingResponse,
 } from '@booking/shared';
@@ -96,7 +96,7 @@ export class PartnerBookingController {
   @HttpCode(200)
   async reject(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(markNoShowInputSchema)) body: MarkNoShowInput,
+    @Body(new ZodValidationPipe(reasonInputSchema)) body: ReasonInput,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<BookingResponse> {
     return toBookingResponse(await this.partnerBooking.reject(this.ctx(principal), id, body.reason));
@@ -108,7 +108,7 @@ export class PartnerBookingController {
   @HttpCode(200)
   async noShow(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(markNoShowInputSchema)) body: MarkNoShowInput,
+    @Body(new ZodValidationPipe(reasonInputSchema)) body: ReasonInput,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<BookingResponse> {
     return toBookingResponse(await this.partnerBooking.markNoShow(this.ctx(principal), id, body.reason));
@@ -120,7 +120,7 @@ export class PartnerBookingController {
   @HttpCode(200)
   async cancel(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(markNoShowInputSchema)) body: MarkNoShowInput,
+    @Body(new ZodValidationPipe(reasonInputSchema)) body: ReasonInput,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<CancelBookingResponse> {
     const ctx = this.ctx(principal);

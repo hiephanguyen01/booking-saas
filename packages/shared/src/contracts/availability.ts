@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { uuidSchema } from './common';
 
 // Local primitives (mirror the ones in contracts/listing.ts).
 const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM (24h)');
@@ -56,6 +57,21 @@ export const availabilityExceptionInputSchema = z
     }
   });
 export type AvailabilityExceptionInput = z.infer<typeof availabilityExceptionInputSchema>;
+
+/**
+ * Quick calendar block (§14) — the dashboard `QuickBlockDialog` GenericForm body.
+ * The partner picks a listing (`listingId`); the route maps it to the listing's
+ * real resource id and POSTs a `{ date, type: 'closed', reason }` block via
+ * `POST /partner/resources/:id/availability-exceptions`. `date` is a `Date` (the
+ * calendar picker's value) that the route re-validates and formats to the VN
+ * calendar day before sending.
+ */
+export const createBlockExceptionInputSchema = z.object({
+  listingId: uuidSchema,
+  date: z.coerce.date(),
+  reason: z.string().max(200).optional(),
+});
+export type CreateBlockExceptionInput = z.infer<typeof createBlockExceptionInputSchema>;
 
 // ── Public availability query (§9) ────────────────────────────────────────────
 

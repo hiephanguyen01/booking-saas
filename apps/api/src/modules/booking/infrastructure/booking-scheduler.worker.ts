@@ -22,8 +22,11 @@ interface DueRow {
 /**
  * Time-driven booking transitions (§8.2), DB-polled like the outbox relay:
  * pending_payment past its deadline → expired; pending_approval past its
- * deadline → rejected; confirmed past end + 24h → completed. Idempotent — the
- * repository's `WHERE status = from` guard makes double-processing a no-op.
+ * deadline → rejected; confirmed past end + 48h → completed. The auto-complete
+ * fires only AFTER the 48h no-show window (§8.5) so the partner keeps the full
+ * window to mark a no-show; firing at +24h would cut that window in half.
+ * Idempotent — the repository's `WHERE status = from` guard makes
+ * double-processing a no-op.
  */
 @Injectable()
 export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdown {
@@ -71,7 +74,9 @@ export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdo
              -- never expire a booking a webhook already paid (avoids paid-but-expired)
              AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'succeeded'))
          OR (status = 'confirmed' AND booking_mode <> 'inventory'
-             AND upper(timeslot) + interval '24 hours' <= now())
+             -- §8.5: auto-complete only AFTER the 48h no-show window so a partner
+             -- keeps the full window to mark a no-show first.
+             AND upper(timeslot) + interval '48 hours' <= now())
       LIMIT 100`;
 
     let processed = 0;

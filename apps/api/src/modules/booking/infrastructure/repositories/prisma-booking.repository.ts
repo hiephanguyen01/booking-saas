@@ -41,6 +41,7 @@ interface Row {
   damageAmount: bigint;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
+  promotionId: string | null;
   customerNote: string | null;
   expiresAt: Date | null;
   createdAt: Date;
@@ -60,6 +61,7 @@ const SELECT = Prisma.sql`
          returned_at AS "returnedAt", damage_amount AS "damageAmount",
          cancellation_policy_id AS "cancellationPolicyId",
          cancellation_policy_snapshot AS "cancellationPolicySnapshot",
+         promotion_id AS "promotionId",
          customer_note AS "customerNote", expires_at AS "expiresAt", created_at AS "createdAt"
   FROM bookings`;
 

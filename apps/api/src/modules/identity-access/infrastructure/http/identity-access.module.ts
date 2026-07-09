@@ -11,6 +11,7 @@ import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUseCase } from '../../application/use-cases/register.use-case';
 import { FindOrCreateGuestUseCase } from '../../application/use-cases/find-or-create-guest.use-case';
+import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';
 import { Argon2PasswordHasher } from '../services/argon2-password-hasher';
 import { PermissionResolverService } from '../services/permission-resolver.service';
@@ -34,6 +35,7 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     LogoutUseCase,
     GetSessionInfoUseCase,
     FindOrCreateGuestUseCase,
+    UpgradeGuestUseCase,
     // guard order matters: authentication first, then deny-by-default authorization
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

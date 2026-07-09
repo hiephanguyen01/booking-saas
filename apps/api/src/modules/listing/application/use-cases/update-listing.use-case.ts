@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -18,11 +19,16 @@ import {
   type IListingRepository,
   type ListingRecord,
 } from '../../domain/ports/listing-repository.port';
+import {
+  LISTING_GROUP_REPOSITORY,
+  type IListingGroupRepository,
+} from '../../domain/ports/listing-group-repository.port';
 
 @Injectable()
 export class UpdateListingUseCase {
   constructor(
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
+    @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
     private readonly attributeValidator: AttributeValidatorService,
     private readonly tenantDb: TenantDbService,
@@ -46,6 +52,26 @@ export class UpdateListingUseCase {
             statusCode: 409,
             code: 'LISTING_SLUG_TAKEN',
             message: `Slug "${input.slug}" is already in use`,
+          });
+        }
+      }
+
+      // A re-bound group must belong to the listing's own partner (§7.3) — a
+      // partner cannot move a listing under another partner's post.
+      if (input.groupId !== undefined && input.groupId !== null) {
+        const group = await this.groups.findById(tx, input.groupId);
+        if (!group) {
+          throw new NotFoundException({
+            statusCode: 404,
+            code: 'LISTING_GROUP_NOT_FOUND',
+            message: 'Listing group not found',
+          });
+        }
+        if (group.partnerId !== existing.partnerId) {
+          throw new ForbiddenException({
+            statusCode: 403,
+            code: 'LISTING_GROUP_NOT_OWNED',
+            message: 'The listing group belongs to another partner',
           });
         }
       }

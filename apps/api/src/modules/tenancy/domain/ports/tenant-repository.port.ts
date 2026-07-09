@@ -1,3 +1,5 @@
+import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+
 export const TENANT_REPOSITORY = Symbol('TENANT_REPOSITORY');
 
 export interface TenantRecord {
@@ -36,7 +38,13 @@ export interface UpdateTenantData {
  * tenant management is cross-tenant and has no tenant context (§6.3).
  */
 export interface ITenantRepository {
-  create(data: CreateTenantData): Promise<TenantRecord>;
+  create(data: CreateTenantData, tx?: PrismaTx): Promise<TenantRecord>;
+  /**
+   * Runs `fn` inside one admin-pool (BYPASSRLS) transaction so a multi-table
+   * platform-admin write — e.g. a tenant + its primary domain — commits
+   * atomically and never leaves an orphan row.
+   */
+  runInTransaction<T>(fn: (tx: PrismaTx) => Promise<T>): Promise<T>;
   findById(id: string): Promise<TenantRecord | null>;
   findBySlug(slug: string): Promise<TenantRecord | null>;
   list(params: { page: number; pageSize: number }): Promise<{ items: TenantRecord[]; total: number }>;

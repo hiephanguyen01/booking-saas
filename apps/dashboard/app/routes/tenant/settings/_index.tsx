@@ -1,21 +1,22 @@
 import { Form, useNavigation, data as routeData } from 'react-router';
 import {
   addDomainInputSchema,
+  themeConfigSchema,
   type AddDomainInput,
   type DomainResponse,
+  type ThemeConfigInput,
 } from '@booking/shared';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
-import { Input } from '@booking/ui/components/ui/input';
-import { Label } from '@booking/ui/components/ui/label';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { CheckCircle2, CircleAlert, Clock, Globe } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
+import { useTenantArea } from '../area-context';
 import { formatDate } from '../format';
 import { PageHeader } from '../components/page';
 
@@ -44,24 +45,32 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-const str = (v: FormDataEntryValue | null) => {
-  const s = typeof v === 'string' ? v.trim() : '';
-  return s === '' ? undefined : s;
-};
-
 export async function action({ request }: Route.ActionArgs) {
   const { auth } = await requireTenant(request);
   const contentType = request.headers.get('content-type') ?? '';
 
-  // GenericForm (domain add) submits JSON.
+  // Both the theme editor and the domain-add form submit JSON via GenericForm.
+  // They carry disjoint keys, so `hostname` disambiguates the domain payload.
   if (contentType.includes('application/json')) {
-    const parsed = addDomainInputSchema.safeParse(await request.json());
-    if (!parsed.success) {
-      return routeData({ form: 'domain', fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
+    const body: unknown = await request.json();
+
+    if (body && typeof body === 'object' && 'hostname' in body) {
+      const parsed = addDomainInputSchema.safeParse(body);
+      if (!parsed.success) {
+        return routeData({ form: 'domain', fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
+      }
+      const res = await apiPost<DomainResponse>('/tenant/domains', parsed.data, auth);
+      if (!res.ok) return routeData({ form: 'domain', error: res.error ?? 'Không thêm được tên miền.' }, { status: 400 });
+      return { form: 'domain', ok: true };
     }
-    const res = await apiPost<DomainResponse>('/tenant/domains', parsed.data, auth);
-    if (!res.ok) return routeData({ form: 'domain', error: res.error ?? 'Không thêm được tên miền.' }, { status: 400 });
-    return { form: 'domain', ok: true };
+
+    const parsed = themeConfigSchema.safeParse(body);
+    if (!parsed.success) {
+      return routeData({ form: 'theme', fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
+    }
+    const res = await apiPatch<TenantThemeResponse>('/tenant/theme', { themeConfig: parsed.data }, auth);
+    if (!res.ok) return routeData({ form: 'theme', error: res.error ?? 'Không lưu được giao diện.' }, { status: 400 });
+    return { form: 'theme', ok: true };
   }
 
   const formData = await request.formData();
@@ -74,25 +83,6 @@ export async function action({ request }: Route.ActionArgs) {
     return { form: 'verify', ok: true };
   }
 
-  if (intent === 'update-theme') {
-    let base: Record<string, unknown> = {};
-    try {
-      base = JSON.parse(String(formData.get('base') ?? '{}')) as Record<string, unknown>;
-    } catch {
-      base = {};
-    }
-    const themeConfig: Record<string, unknown> = {
-      ...base,
-      brandName: str(formData.get('brandName')) ?? null,
-      primaryColor: str(formData.get('primaryColor')) ?? null,
-      logoUrl: str(formData.get('logoUrl')) ?? null,
-      tagline: str(formData.get('tagline')) ?? null,
-    };
-    const res = await apiPatch<TenantThemeResponse>('/tenant/theme', { themeConfig }, auth);
-    if (!res.ok) return routeData({ form: 'theme', error: res.error ?? 'Không lưu được giao diện.' }, { status: 400 });
-    return { form: 'theme', ok: true };
-  }
-
   return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
 }
 
@@ -101,8 +91,57 @@ const domainFields: FieldConfig<AddDomainInput>[] = [
   { name: 'isPrimary', type: 'switch', label: 'Đặt làm tên miền chính' },
 ];
 
+const themeFields: FieldConfig<ThemeConfigInput>[] = [
+  { name: 'logoUrl', type: 'url', label: 'URL logo', placeholder: 'https://cdn.cuahang.vn/logo.png', colSpan: 2 },
+  { name: 'faviconUrl', type: 'url', label: 'URL favicon', placeholder: 'https://cdn.cuahang.vn/favicon.ico', colSpan: 2 },
+  { name: 'colors.primary', type: 'text', label: 'Màu chủ đạo', placeholder: '#0f172a' },
+  { name: 'colors.accent', type: 'text', label: 'Màu nhấn', placeholder: '#f59e0b' },
+  { name: 'colors.background', type: 'text', label: 'Màu nền', placeholder: '#ffffff' },
+  { name: 'font', type: 'text', label: 'Phông chữ', placeholder: 'Inter' },
+  { name: 'hero.title', type: 'text', label: 'Hero — Tiêu đề', placeholder: 'Đặt chỗ nhanh chóng', colSpan: 2 },
+  { name: 'hero.subtitle', type: 'textarea', label: 'Hero — Mô tả', rows: 2, colSpan: 2 },
+  { name: 'hero.imageUrl', type: 'url', label: 'Hero — Ảnh nền', placeholder: 'https://cdn.cuahang.vn/hero.jpg', colSpan: 2 },
+  { name: 'contact.email', type: 'email', label: 'Email liên hệ', placeholder: 'lienhe@cuahang.vn' },
+  { name: 'contact.phone', type: 'text', label: 'Số điện thoại', placeholder: '0900000000' },
+  { name: 'contact.address', type: 'text', label: 'Địa chỉ', colSpan: 2 },
+  { name: 'seo.title', type: 'text', label: 'SEO — Tiêu đề', colSpan: 2 },
+  { name: 'seo.description', type: 'textarea', label: 'SEO — Mô tả', rows: 2, colSpan: 2 },
+  { name: 'socialLinks.facebook', type: 'url', label: 'Facebook', placeholder: 'https://facebook.com/…' },
+  { name: 'socialLinks.instagram', type: 'url', label: 'Instagram', placeholder: 'https://instagram.com/…' },
+  { name: 'socialLinks.tiktok', type: 'url', label: 'TikTok', placeholder: 'https://tiktok.com/@…' },
+  { name: 'socialLinks.youtube', type: 'url', label: 'YouTube', placeholder: 'https://youtube.com/@…' },
+];
+
+/** Reads `theme_config` (a free-form JSON blob) into typed form defaults. */
+function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
+  const s = (v: unknown): string => (typeof v === 'string' ? v : '');
+  const obj = (v: unknown): Record<string, unknown> =>
+    v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+  const colors = obj(tc.colors);
+  const hero = obj(tc.hero);
+  const contact = obj(tc.contact);
+  const seo = obj(tc.seo);
+  const social = obj(tc.socialLinks);
+  return {
+    logoUrl: s(tc.logoUrl),
+    faviconUrl: s(tc.faviconUrl),
+    colors: { primary: s(colors.primary), accent: s(colors.accent), background: s(colors.background) },
+    font: s(tc.font),
+    hero: { title: s(hero.title), subtitle: s(hero.subtitle), imageUrl: s(hero.imageUrl) },
+    contact: { email: s(contact.email), phone: s(contact.phone), address: s(contact.address) },
+    seo: { title: s(seo.title), description: s(seo.description) },
+    socialLinks: {
+      facebook: s(social.facebook),
+      instagram: s(social.instagram),
+      tiktok: s(social.tiktok),
+      youtube: s(social.youtube),
+    },
+  };
+}
+
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
   const { theme, domains, canTheme, canDomains } = loaderData;
+  const { readOnly } = useTenantArea();
   const nav = useNavigation();
   const busy = nav.state !== 'idle';
 
@@ -121,17 +160,19 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
   const okFor = (form: string): boolean =>
     !!actionData && 'form' in actionData && actionData.form === form && 'ok' in actionData;
 
-  const themeError = errFor('theme');
-  const themeSaved = okFor('theme');
-  const verifyError = errFor('verify');
-  const domainError = errFor('domain');
-  const domainFieldErrors =
-    actionData && 'form' in actionData && actionData.form === 'domain' && 'fieldErrors' in actionData
-      ? (actionData.fieldErrors as Record<string, string[]> | undefined)
+  const fieldErrorsFor = (form: string): Record<string, string[]> | null =>
+    actionData && 'form' in actionData && actionData.form === form && 'fieldErrors' in actionData
+      ? (actionData.fieldErrors as Record<string, string[]> | undefined) ?? null
       : null;
 
-  const tc = theme?.themeConfig ?? {};
-  const val = (k: string) => (typeof tc[k] === 'string' ? (tc[k] as string) : '');
+  const themeError = errFor('theme');
+  const themeSaved = okFor('theme');
+  const themeFieldErrors = fieldErrorsFor('theme');
+  const verifyError = errFor('verify');
+  const domainError = errFor('domain');
+  const domainFieldErrors = fieldErrorsFor('domain');
+
+  const themeDefaults = toThemeDefaults(theme?.themeConfig ?? {});
 
   return (
     <div className="space-y-6">
@@ -152,34 +193,24 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 <AlertDescription>Đã lưu giao diện.</AlertDescription>
               </Alert>
             ) : null}
-            {themeError ? (
-              <Alert variant="destructive" className="mb-4"><CircleAlert className="size-4" /><AlertDescription>{themeError}</AlertDescription></Alert>
+            {readOnly ? (
+              <Alert className="mb-4 border-amber-500/40 text-amber-700 dark:text-amber-300">
+                <CircleAlert className="size-4" />
+                <AlertDescription>Chế độ chỉ đọc — gia hạn gói dịch vụ để chỉnh sửa giao diện.</AlertDescription>
+              </Alert>
             ) : null}
-            <Form method="post" className="space-y-6">
-              <input type="hidden" name="intent" value="update-theme" />
-              <input type="hidden" name="base" value={JSON.stringify(tc)} />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="brandName">Tên thương hiệu</Label>
-                  <Input id="brandName" name="brandName" defaultValue={val('brandName')} placeholder={theme.name} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Màu chủ đạo</Label>
-                  <div className="flex items-center gap-2">
-                    <Input id="primaryColor" name="primaryColor" defaultValue={val('primaryColor') || '#0f172a'} className="font-mono" placeholder="#0f172a" />
-                  </div>
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="logoUrl">URL logo</Label>
-                  <Input id="logoUrl" name="logoUrl" type="url" defaultValue={val('logoUrl')} placeholder="https://cdn.cuahang.vn/logo.png" />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="tagline">Khẩu hiệu</Label>
-                  <Input id="tagline" name="tagline" defaultValue={val('tagline')} placeholder="Đặt chỗ nhanh chóng, tiện lợi" />
-                </div>
-              </div>
-              <Button type="submit" disabled={busy}>Lưu giao diện</Button>
-            </Form>
+            <fieldset disabled={readOnly} className="min-w-0 disabled:opacity-60">
+              <GenericForm
+                schema={themeConfigSchema}
+                fields={themeFields}
+                columns={2}
+                defaultValues={themeDefaults}
+                submitLabel="Lưu giao diện"
+                method="patch"
+                serverError={themeError}
+                fieldErrors={themeFieldErrors}
+              />
+            </fieldset>
           </CardContent>
         </Card>
       ) : null}
@@ -221,7 +252,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                       <Form method="post">
                         <input type="hidden" name="intent" value="verify-domain" />
                         <input type="hidden" name="domainId" value={d.id} />
-                        <Button type="submit" variant="outline" size="sm" disabled={busy}>Xác minh</Button>
+                        <Button type="submit" variant="outline" size="sm" disabled={busy || readOnly}>Xác minh</Button>
                       </Form>
                     ) : null}
                   </li>
@@ -231,7 +262,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               <p className="text-sm text-muted-foreground">Chưa có tên miền riêng nào.</p>
             )}
 
-            <div className="space-y-3 rounded-md border border-dashed p-4">
+            <fieldset disabled={readOnly} className="min-w-0 space-y-3 rounded-md border border-dashed p-4 disabled:opacity-60">
               <h3 className="text-sm font-medium">Thêm tên miền</h3>
               <GenericForm
                 schema={addDomainInputSchema}
@@ -242,7 +273,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 serverError={domainError}
                 fieldErrors={domainFieldErrors}
               />
-            </div>
+            </fieldset>
           </CardContent>
         </Card>
       ) : null}

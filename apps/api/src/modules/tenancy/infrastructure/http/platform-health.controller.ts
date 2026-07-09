@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import type { PlatformHealthResponse } from '@booking/shared';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import {
   GetPlatformHealthUseCase,
@@ -7,48 +8,9 @@ import {
 
 /**
  * Platform-admin health board (Task 1.12). Money crosses the wire as VND đồng
- * digit strings; timestamps as ISO. The response shape is not part of the shared
- * contracts package — the dashboard declares a matching local type.
+ * digit strings; timestamps as ISO. The response shape is the shared
+ * `PlatformHealthResponse` contract — the dashboard imports the same type.
  */
-export interface PlatformHealthTenant {
-  tenantId: string;
-  name: string;
-  slug: string;
-  status: string;
-  createdAt: string;
-  gmv: string;
-  gmv30d: string;
-  bookings30d: number;
-  firstBookingHours: number | null;
-  publishedListings: number;
-  webhookFailures: number;
-  overduePayouts: number;
-  subscription: { status: string; expiresAt: string; planName: string } | null;
-}
-
-export interface PlatformHealthResponse {
-  kpis: {
-    tenantCount: number;
-    activeTenantCount: number;
-    gmvAllTime: string;
-    gmv30d: string;
-    publishedListings: number;
-    bookings30d: number;
-    webhookFailures: number;
-    overduePayouts: number;
-  };
-  gmvTrend: Array<{ date: string; gmv: string }>;
-  tenants: PlatformHealthTenant[];
-  expiring: Array<{
-    tenantId: string;
-    tenantName: string;
-    planName: string;
-    status: string;
-    expiresAt: string;
-    daysLeft: number;
-  }>;
-}
-
 @Controller('platform/health')
 export class PlatformHealthController {
   constructor(private readonly getHealth: GetPlatformHealthUseCase) {}

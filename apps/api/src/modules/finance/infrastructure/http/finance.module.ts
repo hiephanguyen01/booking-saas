@@ -23,6 +23,7 @@ import { FailPayoutUseCase } from '../../application/use-cases/fail-payout.use-c
 import { GetTenantFinanceSummaryUseCase } from '../../application/use-cases/get-tenant-finance-summary.use-case';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
 import { GetPlatformFinanceUseCase } from '../../application/use-cases/get-platform-finance.use-case';
+import { ListTenantLedgerUseCase } from '../../application/use-cases/list-tenant-ledger.use-case';
 import { TenantFinanceController } from './tenant-finance.controller';
 import { PartnerFinanceController } from './partner-finance.controller';
 import { PlatformFinanceController } from './platform-finance.controller';
@@ -48,6 +49,7 @@ import { PlatformFinanceController } from './platform-finance.controller';
     GetTenantFinanceSummaryUseCase,
     GetPartnerFinanceUseCase,
     GetPlatformFinanceUseCase,
+    ListTenantLedgerUseCase,
   ],
   // Exported so the booking module can snapshot the commission at booking time.
   exports: [ResolveCommissionService],

@@ -101,6 +101,23 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     return rows.map(toRecord);
   }
 
+  async listEntries(
+    tx: PrismaTx,
+    page: number,
+    pageSize: number,
+  ): Promise<{ items: LedgerEntryRecord[]; total: number }> {
+    const [rows, total] = await Promise.all([
+      tx.ledgerEntry.findMany({
+        include: { account: true },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      tx.ledgerEntry.count(),
+    ]);
+    return { items: rows.map(toRecord), total };
+  }
+
   async maturePayable(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, cutoff: Date): Promise<bigint> {
     const rows = await tx.$queryRaw<{ balance: bigint }[]>(Prisma.sql`
       SELECT COALESCE(SUM(

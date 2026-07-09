@@ -103,6 +103,17 @@ export class PrismaListingRepository implements IListingRepository {
     const completedBookings = await tx.booking.count({
       where: { listingId: l.id, status: 'completed' },
     });
+    // Avg partner approval response time (§16.1): the gap between a request-to-book
+    // booking's creation and its pending_approval → pending_payment transition.
+    const approval = await tx.$queryRaw<{ avg_seconds: number | null }[]>`
+      SELECT AVG(EXTRACT(EPOCH FROM (h.created_at - b.created_at))) AS avg_seconds
+      FROM booking_status_history h
+      JOIN bookings b ON b.id = h.booking_id
+      WHERE b.listing_id = ${l.id}::uuid
+        AND h.from_status = 'pending_approval'
+        AND h.to_status = 'pending_payment'
+    `;
+    const avgSeconds = approval[0]?.avg_seconds;
     return {
       ...toRecord(l),
       resourceTimezone: l.resource.timezone,
@@ -111,6 +122,8 @@ export class PrismaListingRepository implements IListingRepository {
       partnerVerifiedAt: l.partner.verifiedAt,
       partnerActiveSince: l.partner.createdAt,
       completedBookings,
+      avgApprovalResponseSeconds:
+        avgSeconds === null || avgSeconds === undefined ? null : Math.round(Number(avgSeconds)),
     };
   }
 

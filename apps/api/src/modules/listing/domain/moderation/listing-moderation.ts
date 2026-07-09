@@ -53,12 +53,18 @@ export function transitionPublish(state: ModerationState, actor: ModerationActor
   return { status: 'published', publishedBy: actor, hiddenBy: null };
 }
 
-/** published/pending_review → archived (hidden). Records who hid it. */
+/**
+ * published/pending_review → archived (hidden). Records who hid it.
+ *
+ * An **admin** hide always escalates the lock to `admin`, even on a post the
+ * partner already hid (or an already-archived one) — otherwise an admin hiding a
+ * partner-hidden post would be a no-op and the partner could still republish it
+ * (§7.3: an admin lock can only be lifted by an admin). Conversely a **partner**
+ * hide must never downgrade an existing admin lock.
+ */
 export function transitionHide(state: ModerationState, actor: ModerationActor): ModerationOutcome {
-  if (state.status === 'archived') {
-    return { status: 'archived', publishedBy: state.publishedBy, hiddenBy: state.hiddenBy };
-  }
-  return { status: 'archived', publishedBy: state.publishedBy, hiddenBy: actor };
+  const hiddenBy: ModerationActor = actor === 'admin' || state.hiddenBy === 'admin' ? 'admin' : actor;
+  return { status: 'archived', publishedBy: state.publishedBy, hiddenBy };
 }
 
 /** archived → published. A partner cannot re-publish an admin-hidden post. */

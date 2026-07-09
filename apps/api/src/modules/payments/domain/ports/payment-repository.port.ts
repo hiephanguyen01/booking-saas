@@ -46,7 +46,12 @@ export interface IPaymentRepository {
   findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   /** Atomically mark succeeded (only if not already) — the webhook idempotency guard. */
   markSucceeded(tx: PrismaTx, id: string, paidAt: Date, payload: unknown): Promise<boolean>;
-  updateStatus(tx: PrismaTx, id: string, status: PaymentStatus): Promise<void>;
+  /**
+   * Atomically set a terminal `failed`/`expired` status ONLY while still `pending`
+   * (§11.2: `succeeded` is terminal — a late/out-of-order failed must not clobber it).
+   * Returns whether a row was updated. Mirrors `markSucceeded`'s guarded write.
+   */
+  markTerminalIfPending(tx: PrismaTx, id: string, status: 'failed' | 'expired'): Promise<boolean>;
   // ── admin pool (cross-tenant; no request context) ──
   findByGatewayTxnId(gatewayTxnId: string): Promise<PaymentRef | null>;
   findStalePending(olderThanSec: number): Promise<PaymentRef[]>;

@@ -90,6 +90,66 @@ export const addDomainInputSchema = z.object({
 });
 export type AddDomainInput = z.infer<typeof addDomainInputSchema>;
 
+// ── Storefront theme config (§16.1 / §16.2) ──────────────────────────────────
+
+/**
+ * A URL field that also accepts a blank string (meaning "not set"). Kept free of
+ * `.transform()`/`.default()` so the schema's input and output types match — this
+ * lets it drive a `GenericForm` and re-validate identically in the route action.
+ */
+const themeUrl = z.string().url({ message: 'Phải là một URL hợp lệ' }).or(z.literal(''));
+/** An email field that also accepts a blank string. */
+const themeEmail = z.string().email({ message: 'Email không hợp lệ' }).or(z.literal(''));
+
+/**
+ * Storefront `theme_config` shape (§16.2). Every field is optional so a partially
+ * configured tenant still validates; URL/email fields additionally accept a blank
+ * string. Colors are free-form tokens (hex or CSS values). No `.default()` /
+ * `.transform()` — input and output types are identical, so the tenant settings
+ * form validates client-side and re-validates in the action with this same schema.
+ */
+export const themeConfigSchema = z.object({
+  logoUrl: themeUrl.optional(),
+  faviconUrl: themeUrl.optional(),
+  colors: z
+    .object({
+      primary: z.string().max(64).optional(),
+      accent: z.string().max(64).optional(),
+      background: z.string().max(64).optional(),
+    })
+    .optional(),
+  font: z.string().max(80).optional(),
+  hero: z
+    .object({
+      title: z.string().max(200).optional(),
+      subtitle: z.string().max(500).optional(),
+      imageUrl: themeUrl.optional(),
+    })
+    .optional(),
+  contact: z
+    .object({
+      email: themeEmail.optional(),
+      phone: z.string().max(40).optional(),
+      address: z.string().max(500).optional(),
+    })
+    .optional(),
+  seo: z
+    .object({
+      title: z.string().max(200).optional(),
+      description: z.string().max(500).optional(),
+    })
+    .optional(),
+  socialLinks: z
+    .object({
+      facebook: themeUrl.optional(),
+      instagram: themeUrl.optional(),
+      tiktok: themeUrl.optional(),
+      youtube: themeUrl.optional(),
+    })
+    .optional(),
+});
+export type ThemeConfigInput = z.infer<typeof themeConfigSchema>;
+
 // ── Responses ────────────────────────────────────────────────────────────────
 
 export interface TenantResponse {
@@ -130,6 +190,45 @@ export interface DomainResponse {
   verifiedAt: string | null;
   /** TXT record the tenant must publish to verify a custom domain. */
   verificationToken?: string;
+}
+
+/**
+ * Result of triggering a custom-domain verification (§6.1). The DNS TXT lookup
+ * runs in a background job, so a not-yet-verified domain returns `checking`
+ * (the worker flips `verifiedAt` once the record propagates); an
+ * already-verified domain returns `verified` immediately.
+ */
+export interface DomainVerificationResult {
+  status: 'verified' | 'checking';
+  domain: DomainResponse;
+}
+
+/**
+ * Soft monthly-bookings quota (§6.5). Never blocks checkout — the dashboard uses
+ * `overLimit` to nudge an upgrade. `null` on the status response when the tenant
+ * has no active plan.
+ */
+export interface BookingQuotaStatus {
+  used: number;
+  limit: number;
+  overLimit: boolean;
+}
+
+/**
+ * Tenant-facing subscription snapshot the dashboard reads to render a read-only
+ * banner (§6.5). `dashboardReadOnly` is true once the subscription has expired or
+ * is cancelled; `bookingQuota` surfaces the soft monthly-bookings warning.
+ */
+export interface SubscriptionStatusResponse {
+  /** null when the tenant has never been subscribed. */
+  status: SubscriptionStatus | null;
+  phase: 'active' | 'grace' | 'expired';
+  storefrontLive: boolean;
+  dashboardReadOnly: boolean;
+  newBookingsAllowed: boolean;
+  daysUntilExpiry: number;
+  expiresAt: string | null;
+  bookingQuota: BookingQuotaStatus | null;
 }
 
 /**

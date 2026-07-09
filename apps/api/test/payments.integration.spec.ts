@@ -7,7 +7,7 @@ import path from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startTestDb, type TestDb } from './helpers/test-db';
-import { signMockWebhook } from '../src/modules/payments/infrastructure/gateways/mock-gateway.adapter';
+import { MockGatewayAdapter, signMockWebhook } from '../src/modules/payments/infrastructure/gateways/mock-gateway.adapter';
 import { ExecuteRefundUseCase } from '../src/modules/payments/application/use-cases/execute-refund.use-case';
 import { ReconciliationWorker } from '../src/modules/payments/infrastructure/reconciliation.worker';
 
@@ -179,15 +179,31 @@ describe('payments (PayOS + mock)', () => {
     expect(refund.status).toBe('manual_required');
   });
 
-  it('reconciles a stuck pending payment by polling the gateway', async () => {
-    // Reset to mock gateway for reconciliation (queryPaymentStatus → succeeded).
+  it('reconciles a stuck pending payment (paid at gateway, webhook lost)', async () => {
+    // Reset to mock gateway for reconciliation.
     await db.admin.tenantGatewayConfig.updateMany({ where: { tenantId }, data: { isActive: false } });
     const booking = await createBooking(6, 45).expect(201);
     await checkout(booking.body.id).expect(201); // pending, no webhook
+    const { gatewayTxnId, amount } = await paymentOf(booking.body.id);
+    // The payment really succeeded at the gateway but the webhook never arrived —
+    // that is precisely what the reconciliation sweep recovers (§11.2).
+    app.get(MockGatewayAdapter).markPaid(gatewayTxnId, amount);
 
     const reconciled = await app.get(ReconciliationWorker).sweep();
     expect(reconciled).toBeGreaterThanOrEqual(1);
     const b = await db.admin.booking.findFirstOrThrow({ where: { id: booking.body.id } });
     expect(b.status).toBe('confirmed');
+  });
+
+  it('does NOT reconcile a never-paid pending payment', async () => {
+    await db.admin.tenantGatewayConfig.updateMany({ where: { tenantId }, data: { isActive: false } });
+    const booking = await createBooking(7, 46).expect(201);
+    await checkout(booking.body.id).expect(201); // pending, never paid at the gateway
+
+    await app.get(ReconciliationWorker).sweep();
+    const b = await db.admin.booking.findFirstOrThrow({ where: { id: booking.body.id } });
+    expect(b.status).not.toBe('confirmed');
+    const p = await db.admin.payment.findFirstOrThrow({ where: { bookingId: booking.body.id } });
+    expect(p.status).toBe('pending');
   });
 });

@@ -3,6 +3,7 @@ import type {
   PlanResponse,
   PublicTenantResponse,
   SubscriptionResponse,
+  SubscriptionStatusResponse,
   TenantResponse,
   Vertical,
 } from '@booking/shared';
@@ -10,6 +11,7 @@ import type { TenantRecord } from '../domain/ports/tenant-repository.port';
 import type { PlanRecord } from '../domain/ports/plan-repository.port';
 import type { SubscriptionRecord } from '../domain/ports/subscription-repository.port';
 import type { DomainRecord } from '../domain/ports/tenant-domain-repository.port';
+import type { SubscriptionStatusView } from './use-cases/get-subscription-status.use-case';
 
 export function toTenantResponse(t: TenantRecord): TenantResponse {
   return {
@@ -55,6 +57,22 @@ export function toPublicTenantResponse(t: TenantRecord, live: boolean): PublicTe
     defaultLocale: t.defaultLocale as 'vi' | 'en',
     themeConfig: t.themeConfig,
     live,
+  };
+}
+
+export function toSubscriptionStatusResponse(
+  v: SubscriptionStatusView,
+): SubscriptionStatusResponse {
+  return {
+    status: v.status,
+    phase: v.evaluation.phase,
+    storefrontLive: v.evaluation.storefrontLive,
+    // The dashboard is read-only whenever it is not writable (§6.5: expired/cancelled).
+    dashboardReadOnly: !v.evaluation.dashboardWritable,
+    newBookingsAllowed: v.evaluation.newBookingsAllowed,
+    daysUntilExpiry: v.evaluation.daysUntilExpiry,
+    expiresAt: v.expiresAt ? v.expiresAt.toISOString() : null,
+    bookingQuota: v.bookingQuota,
   };
 }
 

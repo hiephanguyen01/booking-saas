@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Form, useNavigation, data as routeData } from 'react-router';
+import { Form, Link, useNavigation, data as routeData } from 'react-router';
 import {
   createPayoutInputSchema,
   markPayoutPaidInputSchema,
@@ -22,10 +22,11 @@ import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@booking/ui/components/ui/dialog';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { Banknote, CircleAlert, Plus } from 'lucide-react';
+import { Banknote, BookText, CircleAlert, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
+import { useTenantArea } from '../area-context';
 import { formatVnd } from '../format';
 import { BarRow, PageHeader, StatCard } from '../components/page';
 import { PayoutStatusBadge } from '../components/status';
@@ -95,6 +96,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function TenantFinance({ loaderData, actionData }: Route.ComponentProps) {
   const { summary, payouts, partnerNames, canPayouts, error } = loaderData;
+  const { readOnly } = useTenantArea();
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
 
   const partnerBalances = summary?.partnerBalances ?? [];
@@ -118,7 +120,7 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
       className: 'text-right',
       cell: (p) =>
         p.status === 'pending' || p.status === 'processing' ? (
-          <MarkPaidDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} />
+          <MarkPaidDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
         ) : p.reference ? (
           <span className="text-xs text-muted-foreground">Ref: {p.reference}</span>
         ) : null,
@@ -133,7 +135,16 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         title="Tài chính"
         description="Số dư công nợ, sổ cái và chi trả thủ công cho đối tác."
         actions={
-          canPayouts ? <CreatePayoutDialog payees={payeeOptions} partnerNames={partnerNames} /> : undefined
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/tenant/finance/ledger">
+                <BookText className="size-4" /> Xem sổ cái
+              </Link>
+            </Button>
+            {canPayouts ? (
+              <CreatePayoutDialog payees={payeeOptions} partnerNames={partnerNames} readOnly={readOnly} />
+            ) : null}
+          </>
         }
       />
 
@@ -211,10 +222,11 @@ function BalanceCard({
 }
 
 function CreatePayoutDialog({
-  payees, partnerNames,
+  payees, partnerNames, readOnly,
 }: {
   payees: OwnerBalanceResponse[];
   partnerNames: Record<string, string>;
+  readOnly: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const nav = useNavigation();
@@ -223,7 +235,7 @@ function CreatePayoutDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm"><Plus className="size-4" /> Tạo lệnh chi</Button>
+        <Button size="sm" disabled={readOnly}><Plus className="size-4" /> Tạo lệnh chi</Button>
       </DialogTrigger>
       <DialogContent>
         <Form method="post" onSubmit={() => setOpen(false)}>
@@ -262,7 +274,7 @@ function CreatePayoutDialog({
   );
 }
 
-function MarkPaidDialog({ payout, name }: { payout: PayoutResponse; name: string }) {
+function MarkPaidDialog({ payout, name, readOnly }: { payout: PayoutResponse; name: string; readOnly: boolean }) {
   const [open, setOpen] = useState(false);
   const nav = useNavigation();
   const busy = nav.state !== 'idle';
@@ -270,7 +282,7 @@ function MarkPaidDialog({ payout, name }: { payout: PayoutResponse; name: string
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Đánh dấu đã chi</Button>
+        <Button variant="outline" size="sm" disabled={readOnly}>Đánh dấu đã chi</Button>
       </DialogTrigger>
       <DialogContent>
         <Form method="post" onSubmit={() => setOpen(false)}>

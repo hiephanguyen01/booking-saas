@@ -76,8 +76,11 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     return affected > 0;
   }
 
-  async updateStatus(tx: PrismaTx, id: string, status: Row['status']): Promise<void> {
-    await tx.payment.update({ where: { id }, data: { status } });
+  /** Atomic guarded write: the UPDATE ... WHERE status = 'pending' is a single
+   * statement, so a concurrent succeeded delivery is never clobbered (§11.2). */
+  async markTerminalIfPending(tx: PrismaTx, id: string, status: 'failed' | 'expired'): Promise<boolean> {
+    const res = await tx.payment.updateMany({ where: { id, status: 'pending' }, data: { status } });
+    return res.count > 0;
   }
 
   async findByGatewayTxnId(gatewayTxnId: string): Promise<PaymentRef | null> {

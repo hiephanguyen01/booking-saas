@@ -1,3 +1,5 @@
+import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+
 export const TENANT_DOMAIN_REPOSITORY = Symbol('TENANT_DOMAIN_REPOSITORY');
 
 export interface DomainRecord {
@@ -18,7 +20,7 @@ export interface CreateDomainData {
 }
 
 export interface ITenantDomainRepository {
-  create(data: CreateDomainData): Promise<DomainRecord>;
+  create(data: CreateDomainData, tx?: PrismaTx): Promise<DomainRecord>;
   findByHostname(hostname: string): Promise<DomainRecord | null>;
   findById(id: string): Promise<DomainRecord | null>;
   listByTenant(tenantId: string): Promise<DomainRecord[]>;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { uuidSchema } from './common';
+import { passwordSchema } from './auth';
 
 /** Booking state machine (§8). Terminal-ish branches: completed/no_show/rejected/expired/refunded. */
 export const bookingStatusSchema = z.enum([
@@ -52,8 +53,28 @@ export const cancelBookingInputSchema = z.object({
 });
 export type CancelBookingInput = z.infer<typeof cancelBookingInputSchema>;
 
-export const markNoShowInputSchema = z.object({ reason: z.string().max(500).optional() });
-export type MarkNoShowInput = z.infer<typeof markNoShowInputSchema>;
+/**
+ * Generic optional-reason body shared by the partner reject / no-show / cancel
+ * endpoints (§8.2). Replaces the old `markNoShowInputSchema` (kept as an alias
+ * for backward compatibility) — the shape is identical.
+ */
+export const reasonInputSchema = z.object({ reason: z.string().max(500).optional() });
+export type ReasonInput = z.infer<typeof reasonInputSchema>;
+
+/** @deprecated Use {@link reasonInputSchema}. Retained so existing importers keep compiling. */
+export const markNoShowInputSchema = reasonInputSchema;
+export type MarkNoShowInput = ReasonInput;
+
+/**
+ * Guest upgrade-to-account (§8.6): a passwordless guest-checkout user sets a
+ * password to become a full account. Refused server-side if the email already
+ * has a password account.
+ */
+export const upgradeGuestInputSchema = z.object({
+  email: z.string().email().toLowerCase(),
+  password: passwordSchema,
+});
+export type UpgradeGuestInput = z.infer<typeof upgradeGuestInputSchema>;
 
 /** Partner marks an inventory rental returned + inspected (§9.4). */
 export const markReturnedInputSchema = z.object({
@@ -111,4 +132,25 @@ export interface BookingOtpResponse {
   code: string;
   expiresInSec: number;
   devOtp?: string;
+}
+
+/**
+ * Wire shape of the partner master-calendar feed (`GET /partner/bookings`, Task
+ * 1.14). Amounts are VND đồng digit strings; instants are UTC ISO strings.
+ */
+export interface PartnerCalendarBookingResponse {
+  id: string;
+  code: string;
+  status: BookingStatus;
+  listingId: string;
+  listingTitle: string;
+  listingTypeId: string;
+  listingTypeName: string;
+  resourceId: string;
+  bookingMode: string;
+  startUtc: string;
+  endUtc: string;
+  guestCount: number;
+  quantity: number;
+  finalAmount: string;
 }

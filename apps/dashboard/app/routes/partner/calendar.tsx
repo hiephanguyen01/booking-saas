@@ -1,35 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Link, useFetcher, useSearchParams } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { data } from 'react-router';
 import { Ban, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { ListingResponse } from '@booking/shared';
+import {
+  createBlockExceptionInputSchema,
+  type CreateBlockExceptionInput,
+  type ListingResponse,
+  type PartnerCalendarBookingResponse,
+} from '@booking/shared';
 import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@booking/ui/components/ui/dialog';
-import { Input } from '@booking/ui/components/ui/input';
-import { Label } from '@booking/ui/components/ui/label';
-import { Textarea } from '@booking/ui/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@booking/ui/components/ui/select';
+import { GenericForm } from '@booking/ui/components/form/generic-form';
+import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/calendar';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner, canPartner } from './lib.server';
-import type { PartnerCalendarBooking } from './types';
 import { MasterCalendar } from './components/master-calendar';
 import { PageHeader } from './components/page-header';
-import { formatDate } from './components/format';
+import { dayKey, formatDate } from './components/format';
 import {
   addDays,
   mondayOf,
@@ -71,7 +66,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const canReadListings = canPartner(membership, 'partner.listings.read');
 
   const [feed, listingsRes] = await Promise.all([
-    apiGet<PartnerCalendarBooking[]>(
+    apiGet<PartnerCalendarBookingResponse[]>(
       `/partner/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
       auth,
     ),
@@ -108,25 +103,45 @@ export async function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
   const { auth, membership } = await requirePartner(request);
   if (!canPartner(membership, 'partner.availability.manage')) {
-    return data({ ok: false, error: 'Không có quyền chặn lịch.' }, { status: 403 });
-  }
-  const form = await request.formData();
-  const resourceId = String(form.get('resourceId') ?? '');
-  const date = String(form.get('date') ?? '');
-  const reason = String(form.get('reason') ?? '').trim();
-  if (!resourceId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return data({ ok: false, error: 'Vui lòng chọn tài nguyên và ngày hợp lệ.' }, { status: 400 });
+    return data({ ok: false as const, error: 'Không có quyền chặn lịch.' }, { status: 403 });
   }
 
+  const parsed = createBlockExceptionInputSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return data(
+      {
+        ok: false as const,
+        error: 'Vui lòng chọn tài nguyên và ngày hợp lệ.',
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      },
+      { status: 400 },
+    );
+  }
+
+  // Map the chosen listing to its real resource id server-side. Re-fetching the
+  // partner-scoped listing feed also confirms the listing belongs to this partner
+  // (no cross-partner block).
+  const listingsRes = await apiGet<ListingResponse[]>('/partner/listings', auth);
+  const listing =
+    listingsRes.ok && listingsRes.data
+      ? listingsRes.data.find((l) => l.id === parsed.data.listingId)
+      : undefined;
+  if (!listing?.resourceId) {
+    return data({ ok: false as const, error: 'Không tìm thấy tài nguyên.' }, { status: 400 });
+  }
+
+  // The picker's Date is an instant; format it back to the VN calendar day the
+  // partner selected before sending the block body.
+  const date = dayKey(parsed.data.date.toISOString());
   const res = await apiPost(
-    `/partner/resources/${resourceId}/availability-exceptions`,
-    { date, type: 'closed', ...(reason ? { reason } : {}) },
+    `/partner/resources/${listing.resourceId}/availability-exceptions`,
+    { date, type: 'closed', ...(parsed.data.reason ? { reason: parsed.data.reason } : {}) },
     auth,
   );
   if (!res.ok) {
-    return data({ ok: false, error: res.error ?? 'Không chặn được lịch.' }, { status: 400 });
+    return data({ ok: false as const, error: res.error ?? 'Không chặn được lịch.' }, { status: 400 });
   }
-  return data({ ok: true, error: null });
+  return data({ ok: true as const, error: null });
 }
 
 /** Build a link to the same route with an updated query param set. */
@@ -139,11 +154,27 @@ function useCalendarLink() {
   };
 }
 
-export default function PartnerCalendarPage({ loaderData }: Route.ComponentProps) {
+export default function PartnerCalendarPage({ loaderData, actionData }: Route.ComponentProps) {
   const { view, days, anchor, today, bookings, listings, listingTypes, canBlock, loadError } =
     loaderData;
   const link = useCalendarLink();
   const [blockDay, setBlockDay] = useState<string | null>(null);
+
+  // Close the dialog once a block succeeds. Track the handled result by reference
+  // so re-opening the dialog (same stale `actionData`) does not auto-close.
+  const handled = useRef<unknown>(null);
+  useEffect(() => {
+    if (actionData?.ok && handled.current !== actionData) {
+      handled.current = actionData;
+      setBlockDay(null);
+    }
+  }, [actionData]);
+
+  const blockError = actionData && !actionData.ok ? actionData.error : null;
+  const blockFieldErrors =
+    actionData && !actionData.ok && 'fieldErrors' in actionData
+      ? (actionData.fieldErrors as Partial<Record<string, string[] | undefined>>)
+      : null;
 
   const rangeLabel =
     view === 'day'
@@ -237,6 +268,8 @@ export default function PartnerCalendarPage({ loaderData }: Route.ComponentProps
         <QuickBlockDialog
           day={blockDay}
           listings={listings}
+          serverError={blockError}
+          fieldErrors={blockFieldErrors}
           onOpenChange={(open) => !open && setBlockDay(null)}
         />
       ) : null}
@@ -247,22 +280,29 @@ export default function PartnerCalendarPage({ loaderData }: Route.ComponentProps
 function QuickBlockDialog({
   day,
   listings,
+  serverError,
+  fieldErrors,
   onOpenChange,
 }: {
   day: string | null;
   listings: BlockableListing[];
+  serverError: string | null;
+  fieldErrors: Partial<Record<string, string[] | undefined>> | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const fetcher = useFetcher<typeof action>();
-  const [resourceId, setResourceId] = useState<string>(listings[0]?.id ?? '');
-
-  // Close the dialog once the block succeeds.
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data?.ok) onOpenChange(false);
-  }, [fetcher.state, fetcher.data, onOpenChange]);
-
-  const selected = listings.find((l) => l.id === resourceId) ?? listings[0];
-  const error = fetcher.data && !fetcher.data.ok ? fetcher.data.error : null;
+  // Note: the select stores a *listing* id; the route action maps it to the
+  // listing's real resource id before submitting the block.
+  const fields: FieldConfig<CreateBlockExceptionInput>[] = [
+    {
+      name: 'listingId',
+      type: 'select',
+      label: 'Tài nguyên',
+      placeholder: 'Chọn tài nguyên',
+      options: listings.map((l) => ({ value: l.id, label: l.title })),
+    },
+    { name: 'date', type: 'date', label: 'Ngày', placeholder: 'Chọn ngày' },
+    { name: 'reason', type: 'textarea', label: 'Lý do (tuỳ chọn)', placeholder: 'Bảo trì, nghỉ lễ…', rows: 2 },
+  ];
 
   return (
     <Dialog open={day !== null} onOpenChange={onOpenChange}>
@@ -273,41 +313,22 @@ function QuickBlockDialog({
             Đánh dấu một ngày là đóng cho một tài nguyên. Ngày bị chặn sẽ không còn hiển thị để khách đặt.
           </DialogDescription>
         </DialogHeader>
-        <fetcher.Form method="post" className="space-y-4">
-          <input type="hidden" name="resourceId" value={selected?.resourceId ?? ''} />
-          <div className="space-y-2">
-            <Label htmlFor="block-listing">Tài nguyên</Label>
-            <Select value={resourceId} onValueChange={setResourceId}>
-              <SelectTrigger id="block-listing" className="w-full">
-                <SelectValue placeholder="Chọn tài nguyên" />
-              </SelectTrigger>
-              <SelectContent>
-                {listings.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="block-date">Ngày</Label>
-            <Input id="block-date" name="date" type="date" defaultValue={day ?? ''} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="block-reason">Lý do (tuỳ chọn)</Label>
-            <Textarea id="block-reason" name="reason" rows={2} placeholder="Bảo trì, nghỉ lễ…" />
-          </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Huỷ
-            </Button>
-            <Button type="submit" disabled={fetcher.state !== 'idle' || !selected}>
-              {fetcher.state !== 'idle' ? 'Đang chặn…' : 'Chặn ngày này'}
-            </Button>
-          </DialogFooter>
-        </fetcher.Form>
+        <GenericForm
+          key={day ?? 'closed'}
+          schema={createBlockExceptionInputSchema}
+          fields={fields}
+          submitLabel="Chặn ngày này"
+          serverError={serverError}
+          fieldErrors={fieldErrors}
+          defaultValues={{
+            listingId: listings[0]?.id ?? '',
+            date: day ? parseDay(day) : undefined,
+          }}
+        >
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            Huỷ
+          </Button>
+        </GenericForm>
       </DialogContent>
     </Dialog>
   );

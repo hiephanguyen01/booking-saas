@@ -27,20 +27,22 @@ import {
   type IAvailabilityExceptionRepository,
 } from '../../domain/ports/availability-exception-repository.port';
 import { BUSY_READER, type IBusyReader } from '../../domain/ports/busy-reader.port';
+import { HOLD_READER, type IHoldReader } from '../../domain/ports/hold-reader.port';
 import { eachDate, parseDate, weekdayOf } from '../../domain/availability/date-util';
 import { openWindowsForDate, type DateException } from '../../domain/availability/open-windows';
-import { generateHourlySlots } from '../../domain/availability/slot-generator';
+import { applyLiveHolds, generateHourlySlots } from '../../domain/availability/slot-generator';
 import { computeDay } from '../../domain/availability/day-availability';
 import type { Interval } from '../../domain/availability/interval';
+import { AvailabilityCache, type CachedSlot } from '../../infrastructure/availability-cache';
 
 const DAY_MS = 86_400_000;
 
 /**
  * Public availability for a listing over a date range (§9), host-resolved.
- * Computed live on every request — bookings and holds are merged into one busy
- * list so a naturally-expired hold never leaves a ghost-busy slot.
- * TODO(Task 1.7): add a measured Redis cache once bookings/holds + real traffic
- * exist and the `computeQuote`-per-slot cost is worth caching.
+ * The booking/config-derived hourly slots are cached in Redis by `(listing, date)`
+ * (§9.1) and invalidated by resource on booking/block changes; live holds are read
+ * from Redis and merged on top every request, so a naturally-expired hold never
+ * leaves a ghost-busy slot.
  */
 @Injectable()
 export class GetAvailabilityUseCase {
@@ -51,9 +53,11 @@ export class GetAvailabilityUseCase {
     @Inject(AVAILABILITY_EXCEPTION_REPOSITORY)
     private readonly exceptions: IAvailabilityExceptionRepository,
     @Inject(BUSY_READER) private readonly busy: IBusyReader,
+    @Inject(HOLD_READER) private readonly holds: IHoldReader,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly pricing: PricingService,
     private readonly tenantDb: TenantDbService,
+    private readonly cache: AvailabilityCache,
   ) {}
 
   async execute(host: string, slug: string, query: AvailabilityQuery): Promise<AvailabilityResponse> {
@@ -100,11 +104,9 @@ export class GetAvailabilityUseCase {
       const dayZero = (d: string) => zonedTimeToUtc({ ...parseDate(d), hour: 0, minute: 0 }, tz);
       const rangeStart = dayZero(query.from);
       const rangeEnd = new Date(dayZero(query.to).getTime() + 2 * DAY_MS);
-      // Bookings + holds are one busy list: holds are always live (never cached).
-      const busy: Interval[] = [
-        ...(await this.busy.busyBookings(tx, listing.resourceId, rangeStart, rangeEnd)),
-        ...(await this.busy.activeHolds(tx, listing.resourceId, rangeStart, rangeEnd)),
-      ];
+      // Holds live in Redis and are never cached — read them fresh for the range
+      // and merge at read time so an expired hold never leaves a ghost-busy slot.
+      const liveHolds = await this.holds.activeHolds(listing.resourceId, rangeStart, rangeEnd);
 
       const priceFor = (startUtc: Date, endUtc: Date): string =>
         this.pricing.quote({
@@ -123,38 +125,73 @@ export class GetAvailabilityUseCase {
 
       if (query.mode === 'hourly') {
         const hourly = modeConfig.hourly;
-        const days = dates.map<HourlyDay>((date) => {
-          const windows = openWindowsForDate(date, tz, ruleRows, excByDate.get(date));
-          const slots = hourly
-            ? generateHourlySlots({
-                openWindows: windows,
-                busy,
-                now,
-                granularityMin: hourly.granularity,
-                minDurationHours: hourly.minDuration,
-                bufferBeforeMin: listing.bufferBefore,
-                bufferAfterMin: listing.bufferAfter,
-                leadTimeMin: hourly.leadTimeMin,
-                priceAt: priceFor,
-              })
-            : [];
-          return {
+        // Booking-derived busy is resource-scoped; fetch it once, lazily, only
+        // when some date misses the cache.
+        let bookingBusy: Interval[] | null = null;
+        const days: HourlyDay[] = [];
+        for (const date of dates) {
+          let cached = hourly ? await this.cache.get(listing.id, date) : [];
+          if (hourly && cached === null) {
+            bookingBusy ??= await this.busy.busyBookings(tx, listing.resourceId, rangeStart, rangeEnd);
+            const windows = openWindowsForDate(date, tz, ruleRows, excByDate.get(date));
+            const generated = generateHourlySlots({
+              openWindows: windows,
+              busy: bookingBusy,
+              now,
+              granularityMin: hourly.granularity,
+              minDurationHours: hourly.minDuration,
+              maxDurationHours: hourly.maxDuration,
+              bufferBeforeMin: listing.bufferBefore,
+              bufferAfterMin: listing.bufferAfter,
+              leadTimeMin: hourly.leadTimeMin,
+              priceAt: priceFor,
+            });
+            cached = generated.map<CachedSlot>((s) => ({
+              startUtc: s.startUtc.toISOString(),
+              endUtc: s.endUtc.toISOString(),
+              available: s.available,
+              price: s.price,
+            }));
+            await this.cache.set(listing.resourceId, listing.id, date, cached);
+          }
+          // Merge live holds on top of the cached booking/config-derived slots.
+          const merged = applyLiveHolds(
+            (cached ?? []).map((s) => ({
+              startUtc: new Date(s.startUtc),
+              endUtc: new Date(s.endUtc),
+              available: s.available,
+              price: s.price,
+            })),
+            {
+              bufferBeforeMin: listing.bufferBefore,
+              bufferAfterMin: listing.bufferAfter,
+              holds: liveHolds,
+            },
+          );
+          days.push({
             date,
-            slots: slots.map((s) => ({
+            slots: merged.map((s) => ({
               startUtc: s.startUtc.toISOString(),
               endUtc: s.endUtc.toISOString(),
               available: s.available,
               price: s.price,
             })),
-          };
-        });
+          });
+        }
         return { mode: 'hourly', timezone: tz, days };
       }
 
+      // Daily is one price per day (cheap) → computed live, holds included directly.
+      const dailyBusy: Interval[] = [
+        ...(await this.busy.busyBookings(tx, listing.resourceId, rangeStart, rangeEnd)),
+        ...liveHolds,
+      ];
       return {
         mode: 'daily',
         timezone: tz,
-        days: dates.map((date) => this.daily(date, tz, modeConfig, ruleRows, excByDate.get(date), busy, priceFor)),
+        days: dates.map((date) =>
+          this.daily(date, tz, modeConfig, ruleRows, excByDate.get(date), dailyBusy, priceFor),
+        ),
       };
     });
   }

@@ -4,10 +4,12 @@ import type { Request, Response } from 'express';
 import {
   loginInputSchema,
   registerInputSchema,
+  upgradeGuestInputSchema,
   type AuthSessionResponse,
   type LoginInput,
   type RegisterInput,
   type SessionInfoResponse,
+  type UpgradeGuestInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
@@ -17,6 +19,7 @@ import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUseCase } from '../../application/use-cases/register.use-case';
+import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
 import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './cookies';
 import { AuthenticatedOnly } from './decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from './decorators/current-principal.decorator';
@@ -44,6 +47,7 @@ export class AuthController {
     private readonly refreshUseCase: RefreshSessionUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getSessionInfoUseCase: GetSessionInfoUseCase,
+    private readonly upgradeGuestUseCase: UpgradeGuestUseCase,
   ) {}
 
   @Public()
@@ -55,6 +59,29 @@ export class AuthController {
     @Ip() ip: string,
   ): Promise<AuthSessionResponse> {
     const { user, tokens } = await this.registerUseCase.execute(input, {
+      ip,
+      userAgent: req.headers['user-agent'],
+    });
+    setSessionCookies(res, tokens);
+    return toResponse(user, tokens);
+  }
+
+  /**
+   * Guest upgrade-to-account (§8.6): a passwordless guest sets a password and is
+   * signed in. Public (the guest isn't logged in) and throttled like login;
+   * refuses an email that already owns a password account.
+   */
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('upgrade-guest')
+  @HttpCode(200)
+  async upgradeGuest(
+    @Body(new ZodValidationPipe(upgradeGuestInputSchema)) input: UpgradeGuestInput,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+    @Ip() ip: string,
+  ): Promise<AuthSessionResponse> {
+    const { user, tokens } = await this.upgradeGuestUseCase.execute(input, {
       ip,
       userAgent: req.headers['user-agent'],
     });

@@ -55,13 +55,19 @@ function refineTarget(
 }
 
 function refinePercentRate(
-  data: { tenantRateType?: RateTypeDto; tenantRate?: string },
+  data: { tenantRateType?: RateTypeDto; tenantRate?: string; affiliateRateType?: RateTypeDto; affiliateRate?: string },
   ctx: z.RefinementCtx,
 ): void {
   if (data.tenantRateType === 'percent' && data.tenantRate !== undefined) {
     const n = Number(data.tenantRate);
     if (n < 0 || n > 100) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tenantRate'], message: 'A percent tenant rate must be between 0 and 100' });
+    }
+  }
+  if (data.affiliateRateType === 'percent' && data.affiliateRate !== undefined) {
+    const n = Number(data.affiliateRate);
+    if (n < 0 || n > 100) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['affiliateRate'], message: 'A percent affiliate rate must be between 0 and 100' });
     }
   }
 }
@@ -191,10 +197,20 @@ export type PayoutPayeeTypeDto = z.infer<typeof payoutPayeeTypeSchema>;
 export const payoutStatusSchema = z.enum(['pending', 'processing', 'paid', 'failed']);
 export type PayoutStatusDto = z.infer<typeof payoutStatusSchema>;
 
+/** Payout cycle configured per tenant (§7.7): the cadence a payout run covers. */
+export const payoutCycleSchema = z.enum(['weekly', 'monthly']);
+export type PayoutCycleDto = z.infer<typeof payoutCycleSchema>;
+
 export const createPayoutInputSchema = z.object({
   payeeType: payoutPayeeTypeSchema,
   payeeId: uuidSchema,
-  /** Optional ISO window; when omitted the current outstanding balance is paid. */
+  /**
+   * Override the tenant's configured payout cycle for this run (§7.7). When
+   * omitted the tenant policy cycle applies; either way the run derives its
+   * `period_from`/`period_to` window from the cycle when they are not supplied.
+   */
+  cycle: payoutCycleSchema.optional(),
+  /** Optional explicit ISO window; when omitted it is derived from the cycle. */
   periodFrom: z.string().datetime().optional(),
   periodTo: z.string().datetime().optional(),
 });

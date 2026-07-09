@@ -64,3 +64,18 @@ export function scanForContactInfo(
 ): ContactFlag[] {
   return Object.entries(fields).flatMap(([field, text]) => scanField(field, text));
 }
+
+/**
+ * Turn a listing/post photo list into named scan fields. §7.3 mandates scanning
+ * "description/images metadata", so a phone number smuggled into an image URL,
+ * filename or alt text (e.g. `call-0901234567.jpg`) is caught like prose is.
+ */
+export function photoScanFields(
+  photos: readonly string[] | null | undefined,
+): Record<string, string> {
+  const fields: Record<string, string> = {};
+  (photos ?? []).forEach((photo, index) => {
+    fields[`photo[${index}]`] = photo;
+  });
+  return fields;
+}

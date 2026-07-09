@@ -10,6 +10,7 @@ import {
   type AssignSubscriptionInput,
   type CreateTenantInput,
   type DomainResponse,
+  type DomainVerificationResult,
   type Paginated,
   type PaginationQuery,
   type PlanResponse,
@@ -126,11 +127,12 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.write')
   @Post(':id/domains/:domainId/verify')
-  @HttpCode(200)
+  @HttpCode(202)
   async verify(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Param('domainId', new ZodValidationPipe(uuidSchema)) domainId: string,
-  ): Promise<DomainResponse> {
-    return toDomainResponse(await this.verifyDomain.execute(id, domainId));
+  ): Promise<DomainVerificationResult> {
+    const { status, domain } = await this.verifyDomain.execute(id, domainId);
+    return { status, domain: toDomainResponse(domain) };
   }
 }

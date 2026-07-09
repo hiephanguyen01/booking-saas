@@ -81,6 +81,20 @@ async function seedDemo(): Promise<void> {
     type: argon2.argon2id,
   });
 
+  // Time anchors for the platform-health fixtures further below. The tenant is
+  // backdated so its realized bookings yield a positive time-to-first-booking,
+  // and so recent bookings/payouts land inside the board's 30-day / overdue
+  // windows (§13.3, GetPlatformHealthUseCase).
+  const seedNow = Date.now();
+  const daysAgo = (days: number): Date => new Date(seedNow - days * 24 * 60 * 60 * 1000);
+  const daysFromNow = (days: number): Date => new Date(seedNow + days * 24 * 60 * 60 * 1000);
+  const atHour = (day: Date, hour: number): Date => {
+    const d = new Date(day);
+    d.setUTCHours(hour, 0, 0, 0);
+    return d;
+  };
+  const tenantCreatedAt = daysAgo(45);
+
   // ── Users ──────────────────────────────────────────────────────────────────
   const owner = await prisma.user.upsert({
     where: { email: 'owner@studiohub.vn' },
@@ -104,7 +118,7 @@ async function seedDemo(): Promise<void> {
       emailVerifiedAt: new Date(),
     },
   });
-  await prisma.user.upsert({
+  const customer = await prisma.user.upsert({
     where: { email: 'customer@studiohub.vn' },
     update: {},
     create: { email: 'customer@studiohub.vn', passwordHash: password, fullName: 'Nguyen Van Khach' },
@@ -118,6 +132,7 @@ async function seedDemo(): Promise<void> {
       name: 'StudioHub',
       slug: 'studiohub',
       vertical: 'studio',
+      createdAt: tenantCreatedAt,
       themeConfig: {
         colors: { primary: '#0EA5E9', accent: '#F97316', background: '#FFFFFF' },
         hero: { title: 'Đặt studio trong 30 giây', subtitle: 'Chụp ảnh chuyên nghiệp' },
@@ -498,8 +513,118 @@ async function seedDemo(): Promise<void> {
     },
   });
 
+  // ── Platform-health fixtures (Task 1.12 admin board) ────────────────────────
+  // Without realized bookings/payouts/failures the health board renders all
+  // zeros. Seed a small, idempotent scenario so GMV, gmv30d, bookings30d,
+  // time-to-first-booking, overdue payouts, webhook failures and the
+  // expiring-subscription queue are all demonstrably non-empty.
+  await seedBooking({
+    tenantId: tenant.id,
+    listingId: studioA.id,
+    partnerId: partner.id,
+    resourceId: studioA.resourceId,
+    customerId: customer.id,
+    code: 'BK-HEALTH01',
+    idempotencyKey: 'seed-health-booking-1',
+    status: 'completed',
+    finalAmount: 700_000,
+    createdAt: daysAgo(40), // first realized booking → sets time-to-first-booking
+    startAt: atHour(daysAgo(39), 9),
+    endAt: atHour(daysAgo(39), 11),
+  });
+  await seedBooking({
+    tenantId: tenant.id,
+    listingId: studioA.id,
+    partnerId: partner.id,
+    resourceId: studioA.resourceId,
+    customerId: customer.id,
+    code: 'BK-HEALTH02',
+    idempotencyKey: 'seed-health-booking-2',
+    status: 'confirmed', // upcoming → constrained by the GiST exclusion (future slot)
+    finalAmount: 500_000,
+    createdAt: daysAgo(12),
+    startAt: atHour(daysFromNow(3), 14),
+    endAt: atHour(daysFromNow(3), 16),
+  });
+  await seedBooking({
+    tenantId: tenant.id,
+    listingId: studioA.id,
+    partnerId: partner.id,
+    resourceId: studioA.resourceId,
+    customerId: customer.id,
+    code: 'BK-HEALTH03',
+    idempotencyKey: 'seed-health-booking-3',
+    status: 'completed',
+    finalAmount: 1_800_000,
+    createdAt: daysAgo(4),
+    startAt: atHour(daysAgo(3), 8),
+    endAt: atHour(daysAgo(3), 12),
+  });
+
+  // An overdue partner payout: still pending with period_to in the past.
+  if (
+    !(await prisma.payout.findFirst({
+      where: { tenantId: tenant.id, payeeType: 'partner', payeeId: partner.id },
+    }))
+  ) {
+    await prisma.payout.create({
+      data: {
+        tenantId: tenant.id,
+        payeeType: 'partner',
+        payeeId: partner.id,
+        amount: 1_275_000n,
+        periodFrom: daysAgo(37),
+        periodTo: daysAgo(7), // < now → counts as overdue on the board
+        status: 'pending',
+      },
+    });
+  }
+
+  // A failed, still-unprocessed outbox event → the "webhook failures" counter.
+  if (
+    !(await prisma.outboxEvent.findFirst({
+      where: { tenantId: tenant.id, eventType: 'payment.webhook.failed', processedAt: null },
+    }))
+  ) {
+    await prisma.outboxEvent.create({
+      data: {
+        tenantId: tenant.id,
+        aggregateType: 'payment',
+        eventType: 'payment.webhook.failed',
+        payload: { gateway: 'payos', reason: 'signature verification timed out' },
+        attempts: 5,
+        lastError: 'PayOS webhook signature verification failed after 5 attempts',
+      },
+    });
+  }
+
+  // A second, small tenant whose trial subscription is about to lapse feeds the
+  // "expiring soon" queue — the primary demo tenant keeps a healthy 1-year plan.
+  const trialTenant = await prisma.tenant.upsert({
+    where: { slug: 'aperture-rentals' },
+    update: {},
+    create: {
+      name: 'Aperture Rentals',
+      slug: 'aperture-rentals',
+      vertical: 'rental',
+      createdAt: daysAgo(20),
+    },
+  });
+  if (!(await prisma.tenantSubscription.findFirst({ where: { tenantId: trialTenant.id } }))) {
+    await prisma.tenantSubscription.create({
+      data: {
+        tenantId: trialTenant.id,
+        planId: plan.id,
+        status: 'trial',
+        startsAt: daysAgo(9),
+        expiresAt: daysFromNow(5), // within the board's 14-day expiry window
+        note: 'Demo — trial expiring soon',
+      },
+    });
+  }
+
   console.log(
-    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings, commission rules, WELCOME10).`,
+    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings, commission rules, WELCOME10) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure, "Aperture Rentals" trial expiring soon).`,
   );
 }
 
@@ -507,6 +632,59 @@ async function seedDemo(): Promise<void> {
 
 async function ensure<T>(find: () => Promise<T | null>, create: () => Promise<T>): Promise<T> {
   return (await find()) ?? (await create());
+}
+
+/**
+ * Seeds one realized (`confirmed`/`completed`) hourly booking for the health
+ * board. `timeslot`/`blocked_period` are Prisma `Unsupported("tstzrange")`, so
+ * they are written via raw SQL after the insert. Slots must be non-overlapping
+ * per resource for `confirmed` rows (the GiST exclusion constraint). Idempotent
+ * on `(tenantId, idempotencyKey)`.
+ */
+async function seedBooking(input: {
+  tenantId: string;
+  listingId: string;
+  partnerId: string;
+  resourceId: string;
+  customerId: string;
+  code: string;
+  idempotencyKey: string;
+  status: 'confirmed' | 'completed';
+  finalAmount: number;
+  createdAt: Date;
+  startAt: Date;
+  endAt: Date;
+}) {
+  const existing = await prisma.booking.findFirst({
+    where: { tenantId: input.tenantId, idempotencyKey: input.idempotencyKey },
+  });
+  if (existing) return existing;
+
+  const amount = BigInt(input.finalAmount);
+  const booking = await prisma.booking.create({
+    data: {
+      tenantId: input.tenantId,
+      listingId: input.listingId,
+      partnerId: input.partnerId,
+      resourceId: input.resourceId,
+      customerId: input.customerId,
+      code: input.code,
+      idempotencyKey: input.idempotencyKey,
+      bookingMode: 'hourly',
+      status: input.status,
+      totalAmount: amount,
+      finalAmount: amount,
+      depositAmount: amount / 2n,
+      paidAmount: amount,
+      createdAt: input.createdAt,
+    },
+  });
+  await prisma.$executeRaw`
+    UPDATE bookings
+       SET timeslot = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)'),
+           blocked_period = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)')
+     WHERE id = ${booking.id}::uuid`;
+  return booking;
 }
 
 async function ensureRoleAssignment(

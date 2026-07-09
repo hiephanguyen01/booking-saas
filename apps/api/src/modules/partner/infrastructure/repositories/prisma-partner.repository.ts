@@ -65,6 +65,17 @@ export class PrismaPartnerRepository implements IPartnerRepository {
     return p ? toRecord(p) : null;
   }
 
+  async findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerRecord | null> {
+    // Lock the row first (RLS scopes it to the current tenant), then read via
+    // Prisma. A concurrent reviewer blocks here until this tx commits, then sees
+    // the already-transitioned status and fails the pending gate.
+    const locked = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM partners WHERE id = ${id}::uuid FOR UPDATE
+    `;
+    if (locked.length === 0) return null;
+    return this.findById(tx, id);
+  }
+
   async findBySlug(tx: PrismaTx, slug: string): Promise<PartnerRecord | null> {
     // RLS scopes this to the current tenant; slug is unique per tenant.
     const p = await tx.partner.findFirst({ where: { slug } });
@@ -127,8 +138,19 @@ export class PrismaPartnerRepository implements IPartnerRepository {
     });
   }
 
-  countActiveBookings(tx: PrismaTx, partnerId: string): Promise<number> {
-    return tx.booking.count({ where: { partnerId, status: 'confirmed' } });
+  async countActiveBookings(tx: PrismaTx, partnerId: string): Promise<number> {
+    // §7.3: only FUTURE confirmed bookings block a suspend — one whose slot has
+    // already ended can't leave a customer at a closed door. The slot end is the
+    // upper bound of `timeslot` (time-based) or `blocked_period` (inventory);
+    // `upper()` on a tstzrange needs raw SQL. RLS scopes this to the current tenant.
+    const rows = await tx.$queryRaw<{ count: bigint }[]>`
+      SELECT count(*) AS count
+      FROM bookings
+      WHERE partner_id = ${partnerId}::uuid
+        AND status = 'confirmed'
+        AND upper(COALESCE(timeslot, blocked_period)) > now()
+    `;
+    return Number(rows[0]?.count ?? 0n);
   }
 
   async tenantIdOfPartner(partnerId: string): Promise<string | null> {

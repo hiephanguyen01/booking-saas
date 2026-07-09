@@ -269,6 +269,12 @@ export interface TrustSignals {
   partnerName: string;
   /** Count of completed bookings for this listing (0 until the booking module lands). */
   completedBookings: number;
+  /**
+   * Average seconds a partner takes to approve a request-to-book booking on this
+   * listing — the time from the booking's creation to its pending_approval →
+   * pending_payment transition (§16.1). `null` when no approvals exist yet.
+   */
+  avgApprovalResponseSeconds: number | null;
 }
 
 /** Storefront listing detail (public) — enough to render the page + a quote form. */

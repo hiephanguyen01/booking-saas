@@ -34,5 +34,7 @@ export interface IUserRepository {
   create(data: CreateUserData): Promise<UserRecord>;
   /** Guest-checkout user (§8.6) — no password, cannot log in until upgraded. */
   createGuest(data: CreateGuestData): Promise<UserRecord>;
+  /** Set a guest's password hash — the upgrade-to-account step (§8.6). */
+  setPassword(userId: string, passwordHash: string): Promise<UserRecord>;
   updateLockout(userId: string, state: LockoutState): Promise<void>;
 }

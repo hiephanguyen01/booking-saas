@@ -1,6 +1,6 @@
 import type { BookingMode, ListingReviewResponse } from '@booking/shared';
 import type { ListingRecord } from '../../domain/ports/listing-repository.port';
-import { scanForContactInfo } from '../../domain/moderation/contact-scan';
+import { photoScanFields, scanForContactInfo } from '../../domain/moderation/contact-scan';
 import {
   buildReviewChecklist,
   checklistPassed,
@@ -31,6 +31,7 @@ export function buildListingReview(listing: ListingRecord): ListingReviewRespons
   const contactFlags = scanForContactInfo({
     title: listing.title,
     description: listing.description,
+    ...photoScanFields(listing.photos),
   });
   return {
     listingId: listing.id,

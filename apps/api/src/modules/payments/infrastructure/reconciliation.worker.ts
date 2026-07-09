@@ -5,6 +5,7 @@ import { TenantDbService } from '../../../shared/tenant-context/tenant-db.servic
 import { utcNow } from '../../../shared/time/time';
 import { ConfirmBookingUseCase } from '../../booking/application/use-cases/confirm-booking.use-case';
 import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../domain/ports/payment-repository.port';
+import { amountMatches } from '../domain/payment-status';
 import { GatewayRegistry } from './gateway-registry';
 
 export const RECONCILIATION_QUEUE = 'payment-reconciliation';
@@ -49,21 +50,37 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       if (!p.gatewayTxnId) continue;
       const txnId = p.gatewayTxnId;
       try {
-        const confirmed = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
+        // Record the payment durably first (its own tx), then confirm — mirroring the
+        // webhook path so the slot-taken auto-refund (§8.2 row 665) actually fires.
+        const flipped = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
           const gateway = await this.registry.resolveForTenant(tx, p.tenantId);
           const status = await gateway.queryPaymentStatus(txnId);
           if (status.status === 'expired') {
-            await this.payments.updateStatus(tx, p.id, 'expired');
+            // Guarded: only expire while still pending (a concurrent succeeded wins).
+            await this.payments.markTerminalIfPending(tx, p.id, 'expired');
             return false;
           }
           if (status.status !== 'succeeded') return false;
-          const flipped = await this.payments.markSucceeded(tx, p.id, utcNow(), { reconciled: true });
-          if (!flipped) return false;
-          // Confirm atomically in the same tx (§8.2 late-webhook restore).
-          await this.confirmBooking.confirmInTx(tx, p.tenantId, p.bookingId).catch(() => undefined);
-          return true;
+          // Same amount guard as the webhook path (§11.2): an underpaid result must
+          // not confirm — leave it pending for a human/next poll rather than settle.
+          if (!amountMatches(p.amount, status.amountVnd)) {
+            this.logger.warn(
+              `reconcile ${p.id}: gateway reports succeeded but amount ${status.amountVnd} < expected ${p.amount}; leaving pending`,
+            );
+            return false;
+          }
+          return this.payments.markSucceeded(tx, p.id, utcNow(), { reconciled: true });
         });
-        if (confirmed) reconciled++;
+        if (flipped) {
+          reconciled++;
+          // Own tx: execute() handles the expired→confirmed restore and auto-refunds
+          // if the slot was taken. Absorbs SlotTaken; other errors are logged.
+          try {
+            await this.confirmBooking.execute(p.tenantId, p.bookingId);
+          } catch (err) {
+            this.logger.error(`reconcile ${p.id}: confirm after payment succeeded failed: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
       } catch (err) {
         this.logger.debug(`reconcile ${p.id} failed: ${err instanceof Error ? err.message : String(err)}`);
       }

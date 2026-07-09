@@ -7,6 +7,7 @@ import { Plus, ArrowUpRight } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
+import { useTenantArea } from '../area-context';
 import { formatDiscount } from '../format';
 import { PageHeader } from '../components/page';
 import { PromotionStatusBadge } from '../components/status';
@@ -26,6 +27,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
   const { promotions, error } = loaderData;
+  const { readOnly } = useTenantArea();
 
   const columns: DataTableColumn<PromotionResponse>[] = [
     {
@@ -74,7 +76,7 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
         title="Khuyến mãi"
         description="Tạo và theo dõi mã giảm giá cho cửa hàng của bạn."
         actions={
-          <Button asChild size="sm">
+          <Button asChild size="sm" disabled={readOnly} aria-disabled={readOnly}>
             <Link to="/tenant/promotions/new"><Plus className="size-4" /> Tạo mã mới</Link>
           </Button>
         }

@@ -1,8 +1,8 @@
 /**
- * Local mirror of the backend `GET /platform/health` response
- * (apps/api/.../platform-health.controller.ts). This shape is intentionally NOT
- * in @booking/shared — the health board is admin-only, so the contract lives
- * beside its single consumer. Keep the two in sync when either changes.
+ * Platform-admin health board (`GET /platform/health`, Task 1.12). Shared so the
+ * backend controller and the dashboard type the same contract instead of each
+ * hand-mirroring it. Money crosses the wire as VND đồng digit strings; timestamps
+ * as UTC ISO strings.
  */
 export interface PlatformHealthTenant {
   tenantId: string;
@@ -22,6 +22,15 @@ export interface PlatformHealthTenant {
   subscription: { status: string; expiresAt: string; planName: string } | null;
 }
 
+export interface PlatformHealthExpiring {
+  tenantId: string;
+  tenantName: string;
+  planName: string;
+  status: string;
+  expiresAt: string;
+  daysLeft: number;
+}
+
 export interface PlatformHealthResponse {
   kpis: {
     tenantCount: number;
@@ -35,12 +44,5 @@ export interface PlatformHealthResponse {
   };
   gmvTrend: Array<{ date: string; gmv: string }>;
   tenants: PlatformHealthTenant[];
-  expiring: Array<{
-    tenantId: string;
-    tenantName: string;
-    planName: string;
-    status: string;
-    expiresAt: string;
-    daysLeft: number;
-  }>;
+  expiring: PlatformHealthExpiring[];
 }

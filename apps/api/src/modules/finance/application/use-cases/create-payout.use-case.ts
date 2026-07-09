@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import type { CreatePayoutInput } from '@booking/shared';
+import type { CreatePayoutInput, PayoutCycleDto } from '@booking/shared';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { addDays, utcNow } from '../../../../shared/time/time';
 import {
@@ -12,7 +12,12 @@ import { LEDGER_REPOSITORY, type ILedgerRepository } from '../../domain/ports/le
 interface PayoutPolicy {
   holdingDays: number;
   minAmount: bigint;
+  /** Cadence a payout run covers (§7.7) — drives the derived period window. */
+  cycle: PayoutCycleDto;
 }
+
+/** Days a cycle spans, used to derive `period_from` when it is not supplied. */
+const CYCLE_DAYS: Record<PayoutCycleDto, number> = { weekly: 7, monthly: 30 };
 
 /**
  * Open a manual payout run (§7.7). It covers only payable that has cleared the
@@ -46,12 +51,18 @@ export class CreatePayoutUseCase {
         });
       }
 
+      // Derive the run window from the tenant's cycle (input can override), so a
+      // weekly/monthly run covers a consistent period even when unspecified (§7.7).
+      const cycle = input.cycle ?? policy.cycle;
+      const periodTo = input.periodTo ? new Date(input.periodTo) : cutoff;
+      const periodFrom = input.periodFrom ? new Date(input.periodFrom) : addDays(periodTo, -CYCLE_DAYS[cycle]);
+
       const payout = await this.payouts.create(tx, tenantId, {
         payeeType: input.payeeType,
         payeeId: input.payeeId,
         amount: available,
-        periodFrom: input.periodFrom ? new Date(input.periodFrom) : null,
-        periodTo: input.periodTo ? new Date(input.periodTo) : cutoff,
+        periodFrom,
+        periodTo,
         createdBy,
       });
       await tx.auditLog.create({
@@ -63,9 +74,12 @@ export class CreatePayoutUseCase {
 
   private async policy(tx: PrismaTx): Promise<PayoutPolicy> {
     const tenant = await tx.tenant.findFirst({ select: { settings: true } });
-    const payout = (tenant?.settings as { payout?: { holdingDays?: number; minAmount?: string | number } } | null)?.payout;
+    const payout = (
+      tenant?.settings as { payout?: { holdingDays?: number; minAmount?: string | number; cycle?: string } } | null
+    )?.payout;
     const holdingDays = typeof payout?.holdingDays === 'number' ? payout.holdingDays : 3;
     const minAmount = payout?.minAmount !== undefined && /^\d+$/.test(String(payout.minAmount)) ? BigInt(payout.minAmount) : 0n;
-    return { holdingDays, minAmount };
+    const cycle: PayoutCycleDto = payout?.cycle === 'weekly' ? 'weekly' : 'monthly';
+    return { holdingDays, minAmount, cycle };
   }
 }

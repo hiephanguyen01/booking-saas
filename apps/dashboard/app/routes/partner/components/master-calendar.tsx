@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@booking/ui/components/ui/empty';
-import type { PartnerCalendarBooking } from '../types';
+import type { PartnerCalendarBookingResponse } from '@booking/shared';
 import { dayKey, formatTime, formatVnd, minutesOfDay, statusMeta } from './format';
 import { parseDay } from './calendar-dates';
 
@@ -28,7 +28,7 @@ interface MasterCalendarProps {
   view: 'week' | 'day';
   /** Column day strings ("YYYY-MM-DD"); 7 for week, 1 for day. */
   days: string[];
-  bookings: PartnerCalendarBooking[];
+  bookings: PartnerCalendarBookingResponse[];
   listingTypes: ListingType[];
   today: string;
   /** Opens the quick-block dialog prefilled for a given calendar day. */
@@ -37,8 +37,8 @@ interface MasterCalendarProps {
 
 const WEEKDAY = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-function bucketByDay(bookings: PartnerCalendarBooking[]): Map<string, PartnerCalendarBooking[]> {
-  const map = new Map<string, PartnerCalendarBooking[]>();
+function bucketByDay(bookings: PartnerCalendarBookingResponse[]): Map<string, PartnerCalendarBookingResponse[]> {
+  const map = new Map<string, PartnerCalendarBookingResponse[]>();
   for (const b of bookings) {
     const key = dayKey(b.startUtc);
     const list = map.get(key) ?? [];
@@ -110,7 +110,7 @@ function WeekGrid({
   onQuickBlock,
 }: {
   days: string[];
-  byDay: Map<string, PartnerCalendarBooking[]>;
+  byDay: Map<string, PartnerCalendarBookingResponse[]>;
   today: string;
   onQuickBlock: (day: string) => void;
 }) {
@@ -171,7 +171,7 @@ function DayGrid({
   onQuickBlock,
 }: {
   day: string;
-  bookings: PartnerCalendarBooking[];
+  bookings: PartnerCalendarBookingResponse[];
   onQuickBlock: (day: string) => void;
 }) {
   const allDay = bookings.filter((b) => b.bookingMode !== 'hourly');
@@ -188,7 +188,7 @@ function DayGrid({
   }, [timed]);
 
   const byHour = useMemo(() => {
-    const map = new Map<number, PartnerCalendarBooking[]>();
+    const map = new Map<number, PartnerCalendarBookingResponse[]>();
     for (const b of timed) {
       const h = Math.floor(minutesOfDay(b.startUtc) / 60);
       const list = map.get(h) ?? [];
@@ -258,7 +258,7 @@ function DayGrid({
   );
 }
 
-function EventChip({ booking, className }: { booking: PartnerCalendarBooking; className?: string }) {
+function EventChip({ booking, className }: { booking: PartnerCalendarBookingResponse; className?: string }) {
   const meta = statusMeta(booking.status);
   const isHourly = booking.bookingMode === 'hourly';
   return (

@@ -22,7 +22,7 @@ import { Empty, EmptyDescription, EmptyTitle } from '@booking/ui/components/ui/e
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { platformLoader } from '~/routes/admin/lib/api.server';
-import type { PlatformHealthResponse, PlatformHealthTenant } from '~/routes/admin/lib/health-types';
+import type { PlatformHealthResponse, PlatformHealthTenant } from '@booking/shared';
 import {
   formatDate,
   formatDaysLeft,

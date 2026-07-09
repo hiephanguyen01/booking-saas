@@ -7,6 +7,7 @@ import { SUBSCRIPTION_REPOSITORY } from '../../domain/ports/subscription-reposit
 import { TENANT_DOMAIN_REPOSITORY } from '../../domain/ports/tenant-domain-repository.port';
 import { TENANT_CACHE } from '../../domain/ports/tenant-cache.port';
 import { DNS_VERIFIER } from '../../domain/ports/dns-verifier.port';
+import { DOMAIN_VERIFICATION_QUEUE } from '../../domain/ports/domain-verification-queue.port';
 import { TENANCY_CONFIG } from '../../domain/ports/tenancy-config';
 import { PrismaTenantRepository } from '../repositories/prisma-tenant.repository';
 import { PrismaPlanRepository } from '../repositories/prisma-plan.repository';
@@ -14,6 +15,7 @@ import { PrismaSubscriptionRepository } from '../repositories/prisma-subscriptio
 import { PrismaTenantDomainRepository } from '../repositories/prisma-tenant-domain.repository';
 import { RedisTenantCache } from '../services/redis-tenant-cache';
 import { NodeDnsVerifier } from '../services/node-dns-verifier';
+import { DomainVerificationWorker } from '../domain-verification.worker';
 import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
 import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use-case';
 import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
@@ -22,6 +24,7 @@ import { CreatePlanUseCase } from '../../application/use-cases/create-plan.use-c
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
 import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
 import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
+import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
@@ -52,6 +55,8 @@ import { TenantSettingsController } from './tenant-settings.controller';
     { provide: TENANT_DOMAIN_REPOSITORY, useClass: PrismaTenantDomainRepository },
     { provide: TENANT_CACHE, useClass: RedisTenantCache },
     { provide: DNS_VERIFIER, useClass: NodeDnsVerifier },
+    DomainVerificationWorker,
+    { provide: DOMAIN_VERIFICATION_QUEUE, useExisting: DomainVerificationWorker },
     {
       provide: TENANCY_CONFIG,
       useValue: { baseDomain: process.env.PLATFORM_BASE_DOMAIN ?? 'bookify.vn' },
@@ -64,6 +69,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     ListPlansUseCase,
     AssignSubscriptionUseCase,
     GetCurrentSubscriptionUseCase,
+    GetSubscriptionStatusUseCase,
     AddDomainUseCase,
     VerifyDomainUseCase,
     ListDomainsUseCase,

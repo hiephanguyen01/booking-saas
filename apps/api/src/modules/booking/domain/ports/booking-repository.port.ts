@@ -30,6 +30,8 @@ export interface BookingRecord {
   damageAmount: bigint;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
+  /** Promotion applied at checkout (Task 1.11) — null when no code was used. */
+  promotionId: string | null;
   customerNote: string | null;
   expiresAt: Date | null;
   createdAt: Date;

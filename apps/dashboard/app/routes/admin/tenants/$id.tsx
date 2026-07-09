@@ -1,9 +1,12 @@
 import { data, Form, Link, redirect, useNavigation } from 'react-router';
-import { ArrowLeft, Globe, PauseCircle, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Globe, PauseCircle, PlayCircle, ShieldCheck } from 'lucide-react';
 import {
+  addDomainInputSchema,
   assignSubscriptionInputSchema,
   updateTenantInputSchema,
+  type AddDomainInput,
   type DomainResponse,
+  type DomainVerificationResult,
   type PlanResponse,
   type SubscriptionResponse,
   type TenantResponse,
@@ -79,8 +82,25 @@ export async function action({ request, params }: Route.ActionArgs) {
   // GenericForm (tenant edit) submits JSON; the quick actions + subscription
   // assignment submit urlencoded FormData.
   if (contentType.includes('application/json')) {
+    const body: unknown = await request.json();
     const { auth, refreshedCookie } = await platformSession(request, 'platform.tenants.write');
-    const parsed = updateTenantInputSchema.safeParse(await request.json());
+
+    // Both the tenant-edit and add-domain GenericForms post JSON to this route.
+    // Discriminate on `hostname`, which exists only in the add-domain payload.
+    if (body && typeof body === 'object' && 'hostname' in body) {
+      const parsed = addDomainInputSchema.safeParse(body);
+      if (!parsed.success) {
+        return data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
+      }
+      const res = await apiPost<DomainResponse>(`/admin/tenants/${id}/domains`, parsed.data, auth);
+      const cookie = await refreshedCookie();
+      const init = cookie ? { headers: { 'Set-Cookie': cookie } } : {};
+      if (!res.ok)
+        return data({ error: res.error, fieldErrors: res.errors }, { status: 400, ...init });
+      return data({ ok: true, message: 'Đã thêm tên miền.' }, init);
+    }
+
+    const parsed = updateTenantInputSchema.safeParse(body);
     if (!parsed.success) {
       return data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
@@ -94,8 +114,25 @@ export async function action({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
   const permission =
-    intent === 'set-status' ? 'platform.tenants.write' : 'platform.subscriptions.manage';
+    intent === 'assign-subscription' ? 'platform.subscriptions.manage' : 'platform.tenants.write';
   const { auth, refreshedCookie } = await platformSession(request, permission);
+
+  if (intent === 'verify-domain') {
+    const domainId = String(form.get('domainId') ?? '');
+    const res = await apiPost<DomainVerificationResult>(
+      `/admin/tenants/${id}/domains/${domainId}/verify`,
+      {},
+      auth,
+    );
+    const cookie = await refreshedCookie();
+    const init = cookie ? { headers: { 'Set-Cookie': cookie } } : {};
+    if (!res.ok) return data({ error: res.error }, { status: 400, ...init });
+    const message =
+      res.data?.status === 'verified'
+        ? 'Tên miền đã được xác minh.'
+        : 'Đang kiểm tra bản ghi DNS, vui lòng thử lại sau ít phút.';
+    return data({ ok: true, message }, init);
+  }
 
   if (intent === 'set-status') {
     const status = String(form.get('status') ?? '');
@@ -263,7 +300,12 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
 
         <div className="space-y-6">
           <SubscriptionCard subscription={subscription} plans={plans} busy={busy} />
-          <DomainsCard domains={domains} />
+          <DomainsCard
+            domains={domains}
+            busy={busy}
+            serverError={serverError}
+            fieldErrors={fieldErrors}
+          />
         </div>
       </div>
     </div>
@@ -378,7 +420,22 @@ function SubscriptionCard({
   );
 }
 
-function DomainsCard({ domains }: { domains: DomainResponse[] }) {
+const domainFields: FieldConfig<AddDomainInput>[] = [
+  { name: 'hostname', type: 'text', label: 'Tên miền', placeholder: 'booking.tenant.com' },
+  { name: 'isPrimary', type: 'checkbox', label: 'Đặt làm tên miền chính' },
+];
+
+function DomainsCard({
+  domains,
+  busy,
+  serverError,
+  fieldErrors,
+}: {
+  domains: DomainResponse[];
+  busy: boolean;
+  serverError: string | null | undefined;
+  fieldErrors: Partial<Record<string, string[] | undefined>> | null | undefined;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -386,38 +443,72 @@ function DomainsCard({ domains }: { domains: DomainResponse[] }) {
           <Globe className="size-4 text-muted-foreground" />
           Tên miền
         </CardTitle>
+        <CardDescription>Gắn tên miền riêng và xác minh qua bản ghi DNS TXT.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {domains.length === 0 ? (
           <p className="text-sm text-muted-foreground">Chưa có tên miền.</p>
         ) : (
           <ul className="space-y-2">
             {domains.map((d) => (
-              <li
-                key={d.id}
-                className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
-              >
-                <span className="truncate font-medium">{d.hostname}</span>
-                <span className="flex shrink-0 items-center gap-2 text-xs">
-                  {d.isPrimary ? (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
-                      Chính
+              <li key={d.id} className="space-y-2 rounded-md border px-3 py-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-medium">{d.hostname}</span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs">
+                    {d.isPrimary ? (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                        Chính
+                      </span>
+                    ) : null}
+                    <span
+                      className={
+                        d.verifiedAt
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }
+                    >
+                      {d.verifiedAt ? 'Đã xác minh' : 'Chờ xác minh'}
                     </span>
-                  ) : null}
-                  <span
-                    className={
-                      d.verifiedAt
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-amber-600 dark:text-amber-400'
-                    }
-                  >
-                    {d.verifiedAt ? 'Đã xác minh' : 'Chờ xác minh'}
                   </span>
-                </span>
+                </div>
+                {!d.verifiedAt ? (
+                  <div className="space-y-2">
+                    {d.verificationToken ? (
+                      <div className="rounded-md bg-muted/40 p-2 text-xs">
+                        <p className="text-muted-foreground">
+                          Thêm bản ghi DNS TXT sau rồi bấm “Xác minh”:
+                        </p>
+                        <code className="mt-1 block break-all font-mono text-[11px]">
+                          {d.verificationToken}
+                        </code>
+                      </div>
+                    ) : null}
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="verify-domain" />
+                      <input type="hidden" name="domainId" value={d.id} />
+                      <Button type="submit" variant="outline" size="sm" disabled={busy}>
+                        <ShieldCheck className="size-4" />
+                        Xác minh
+                      </Button>
+                    </Form>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
         )}
+
+        <div className="space-y-3 border-t pt-4">
+          <p className="text-sm font-medium">Thêm tên miền</p>
+          <GenericForm
+            schema={addDomainInputSchema}
+            fields={domainFields}
+            submitLabel="Thêm tên miền"
+            serverError={serverError}
+            fieldErrors={fieldErrors}
+            defaultValues={{ hostname: '', isPrimary: false }}
+          />
+        </div>
       </CardContent>
     </Card>
   );

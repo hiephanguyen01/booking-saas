@@ -1,13 +1,17 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router';
 import { CalendarClock, CalendarDays, Hourglass, Store, Wallet } from 'lucide-react';
-import type { BookingStatus, ListingResponse, PartnerFinanceResponse } from '@booking/shared';
+import type {
+  BookingStatus,
+  ListingResponse,
+  PartnerCalendarBookingResponse,
+  PartnerFinanceResponse,
+} from '@booking/shared';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner, canPartner } from './lib.server';
-import type { PartnerCalendarBooking } from './types';
 import { PageHeader } from './components/page-header';
 import { KpiCard } from './components/kpi-card';
 import { MiniBarChart, type BarDatum } from './components/mini-bar-chart';
@@ -32,7 +36,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? apiGet<PartnerFinanceResponse>('/partner/finance', auth)
       : Promise.resolve(null),
     canPartner(membership, 'partner.bookings.read')
-      ? apiGet<PartnerCalendarBooking[]>(
+      ? apiGet<PartnerCalendarBookingResponse[]>(
           `/partner/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
           auth,
         )

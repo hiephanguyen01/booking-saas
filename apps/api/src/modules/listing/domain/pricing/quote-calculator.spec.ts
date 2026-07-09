@@ -166,6 +166,34 @@ describe('computeQuote — inventory & deposit', () => {
     expect(q.securityDeposit).toBe(10_000_000n); // 5M × 2 — never in subtotal
   });
 
+  it('applies a matching pricing rule to the inventory per-unit price by priority', () => {
+    // A day_of_week rule matching the rental days replaces the 800k base per unit
+    // (§7.3 line 466) — inventory now honours pricing_rules like hourly/daily.
+    const start = new Date('2026-05-01T00:00:00Z');
+    const weekday = wallClockInZone(start, TZ).weekday;
+    const weekendRule: PricingRuleView = {
+      id: 'rule-inv-dow',
+      bookingMode: 'inventory',
+      ruleType: 'day_of_week',
+      params: { days: [weekday, (weekday + 1) % 7, (weekday + 2) % 7] },
+      price: '1000000',
+      priority: 5,
+    };
+    const q = computeQuote(
+      base({
+        mode: 'inventory',
+        modeConfig: inventoryConfig,
+        startUtc: start,
+        endUtc: new Date('2026-05-04T00:00:00Z'), // 3 days
+        quantity: 2,
+        pricingRules: [weekendRule],
+      }),
+    );
+    expect(q.subtotal).toBe(6_000_000n); // 1M × 2 units × 3 days (rule, not 800k base)
+    expect(q.securityDeposit).toBe(10_000_000n); // deposit still separate, unscaled by rule
+    expect(q.lineItems.every((l) => l.appliedRuleId === 'rule-inv-dow')).toBe(true);
+  });
+
   it('computes the deposit as depositPercent of the subtotal', () => {
     const q = computeQuote(base({ depositPercent: 50 }));
     expect(q.subtotal).toBe(900_000n);

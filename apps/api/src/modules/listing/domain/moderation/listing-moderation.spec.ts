@@ -41,6 +41,30 @@ describe('listing moderation transitions', () => {
     });
   });
 
+  it('escalates the lock when an admin hides a post the partner already hid', () => {
+    const hiddenByPartner: ModerationState = {
+      status: 'archived',
+      publishedBy: 'admin',
+      hiddenBy: 'partner',
+    };
+    // An admin hiding an already-partner-hidden post must stamp hiddenBy=admin so
+    // the partner can no longer silently republish it (§7.3 escalate-lock).
+    const outcome = transitionHide(hiddenByPartner, 'admin');
+    expect(outcome).toEqual({ status: 'archived', publishedBy: 'admin', hiddenBy: 'admin' });
+    expect(() => transitionRepublish(outcome, 'partner')).toThrowError(
+      expect.objectContaining({ code: 'LISTING_ADMIN_LOCKED' }),
+    );
+  });
+
+  it('a partner hide never downgrades an existing admin lock', () => {
+    const adminHidden: ModerationState = {
+      status: 'archived',
+      publishedBy: 'admin',
+      hiddenBy: 'admin',
+    };
+    expect(transitionHide(adminHidden, 'partner').hiddenBy).toBe('admin');
+  });
+
   it('lets a partner re-publish a post the partner hid', () => {
     const hiddenByPartner: ModerationState = {
       status: 'archived',

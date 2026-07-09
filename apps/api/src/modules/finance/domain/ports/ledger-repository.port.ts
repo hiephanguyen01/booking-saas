@@ -48,6 +48,11 @@ export interface ILedgerRepository {
   /** Recent ledger entries for one owner (partner/affiliate history). */
   entriesForOwner(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, limit: number): Promise<LedgerEntryRecord[]>;
   /**
+   * Paginated journal/ledger lines for the current tenant (RLS-scoped), newest
+   * first — the tenant finance ledger view (§13.3). Returns the page + the total.
+   */
+  listEntries(tx: PrismaTx, page: number, pageSize: number): Promise<{ items: LedgerEntryRecord[]; total: number }>;
+  /**
    * Payable that has cleared the holding period (§7.7): net (credit − debit) over
    * the owner's entries older than `cutoff`, while settlements (payout/clawback)
    * always count so a recent payout still reduces what is available.

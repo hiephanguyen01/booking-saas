@@ -13,7 +13,7 @@ import {
   transitionRepublish,
   transitionSubmit,
 } from '../../../domain/moderation/listing-moderation';
-import { scanForContactInfo } from '../../../domain/moderation/contact-scan';
+import { photoScanFields, scanForContactInfo } from '../../../domain/moderation/contact-scan';
 import {
   assertOwnership,
   groupNotFound,
@@ -49,7 +49,11 @@ export class GroupModerationUseCase {
 
   publish(ctx: ModerationContext, id: string): Promise<ListingGroupRecord> {
     return this.run(ctx, id, 'published', 'listing_group.published', (g) => {
-      const flags = scanForContactInfo({ title: g.title, description: g.description });
+      const flags = scanForContactInfo({
+        title: g.title,
+        description: g.description,
+        ...photoScanFields(g.photos),
+      });
       if (flags.length > 0) {
         throw new BadRequestException({
           statusCode: 400,

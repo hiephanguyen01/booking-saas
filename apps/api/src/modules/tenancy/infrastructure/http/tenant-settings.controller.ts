@@ -5,6 +5,8 @@ import {
   uuidSchema,
   type AddDomainInput,
   type DomainResponse,
+  type DomainVerificationResult,
+  type SubscriptionStatusResponse,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -15,7 +17,8 @@ import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.u
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
-import { toDomainResponse } from '../../application/tenancy.mapper';
+import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
+import { toDomainResponse, toSubscriptionStatusResponse } from '../../application/tenancy.mapper';
 
 /** Free-form storefront theme config (§16.1). Stored as `tenants.theme_config`. */
 const updateThemeInputSchema = z.object({
@@ -44,8 +47,25 @@ export class TenantSettingsController {
     private readonly addDomain: AddDomainUseCase,
     private readonly listDomains: ListDomainsUseCase,
     private readonly verifyDomain: VerifyDomainUseCase,
+    private readonly getSubscriptionStatus: GetSubscriptionStatusUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  // ── Subscription status ───────────────────────────────────────────────────────
+
+  /**
+   * The dashboard reads this to render the read-only / expiry banner (§6.5) and
+   * the soft booking-quota nudge. Never blocks anything — purely informational.
+   */
+  @RequirePermissions('tenant.settings.manage')
+  @Get('subscription/status')
+  async subscriptionStatus(): Promise<SubscriptionStatusResponse> {
+    const view = await this.getSubscriptionStatus.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      new Date(),
+    );
+    return toSubscriptionStatusResponse(view);
+  }
 
   // ── Theme ───────────────────────────────────────────────────────────────────
 
@@ -101,12 +121,14 @@ export class TenantSettingsController {
   @RequirePermissions('tenant.settings.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post('domains/:id/verify')
-  @HttpCode(200)
+  @HttpCode(202)
   async verify(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<DomainResponse> {
-    return toDomainResponse(
-      await this.verifyDomain.execute(this.tenantContext.tenantIdOrThrow(), id),
+  ): Promise<DomainVerificationResult> {
+    const { status, domain } = await this.verifyDomain.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
     );
+    return { status, domain: toDomainResponse(domain) };
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
+import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateTenantData,
   ITenantRepository,
@@ -30,8 +31,14 @@ function toRecord(t: PrismaTenant): TenantRecord {
 export class PrismaTenantRepository implements ITenantRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateTenantData): Promise<TenantRecord> {
-    return toRecord(await this.prisma.admin.tenant.create({ data }));
+  async create(data: CreateTenantData, tx?: PrismaTx): Promise<TenantRecord> {
+    const client = tx ?? this.prisma.admin;
+    return toRecord(await client.tenant.create({ data }));
+  }
+
+  /** One admin-pool transaction so multi-table platform-admin writes are atomic. */
+  runInTransaction<T>(fn: (tx: PrismaTx) => Promise<T>): Promise<T> {
+    return this.prisma.admin.$transaction((tx) => fn(tx));
   }
 
   async findById(id: string): Promise<TenantRecord | null> {

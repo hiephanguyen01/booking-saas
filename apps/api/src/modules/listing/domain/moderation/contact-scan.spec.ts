@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scanForContactInfo } from './contact-scan';
+import { photoScanFields, scanForContactInfo } from './contact-scan';
 
 describe('scanForContactInfo', () => {
   it('flags a Vietnamese phone number in the description (DoD)', () => {
@@ -44,5 +44,22 @@ describe('scanForContactInfo', () => {
   it('does not treat an ordinary number (area, price) as a phone', () => {
     const flags = scanForContactInfo({ description: 'Rộng 40m2, giá 500000 mỗi giờ' });
     expect(flags.some((f) => f.type === 'phone')).toBe(false);
+  });
+
+  it('flags a phone number smuggled into an image filename/metadata (§7.3)', () => {
+    const flags = scanForContactInfo({
+      title: 'Studio ánh sáng',
+      description: 'Không gian rộng rãi',
+      ...photoScanFields(['https://cdn.example.com/uploads/call-0901234567.jpg']),
+    });
+    const hit = flags.find((f) => f.type === 'phone');
+    expect(hit).toMatchObject({ type: 'phone', field: 'photo[0]', match: '0901234567' });
+  });
+
+  it('scans every photo entry independently', () => {
+    const flags = scanForContactInfo(
+      photoScanFields(['clean-cover.jpg', 'zalo-me.png']),
+    );
+    expect(flags.some((f) => f.type === 'zalo' && f.field === 'photo[1]')).toBe(true);
   });
 });

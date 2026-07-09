@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -28,6 +29,10 @@ import {
   RESOURCE_REPOSITORY,
   type IResourceRepository,
 } from '../../domain/ports/resource-repository.port';
+import {
+  LISTING_GROUP_REPOSITORY,
+  type IListingGroupRepository,
+} from '../../domain/ports/listing-group-repository.port';
 
 /**
  * Create a listing. Inside one tenant transaction it validates the attributes
@@ -40,6 +45,7 @@ export class CreateListingUseCase {
   constructor(
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     @Inject(RESOURCE_REPOSITORY) private readonly resources: IResourceRepository,
+    @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
     @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
     private readonly attributeValidator: AttributeValidatorService,
@@ -89,6 +95,26 @@ export class CreateListingUseCase {
         { requiresIdentityVerification: type.requiresIdentityVerification },
       );
 
+      // A bound group must belong to the same partner (§7.3: a post and its child
+      // listings share one owner — a partner cannot attach to another's post).
+      if (input.groupId) {
+        const group = await this.groups.findById(tx, input.groupId);
+        if (!group) {
+          throw new NotFoundException({
+            statusCode: 404,
+            code: 'LISTING_GROUP_NOT_FOUND',
+            message: 'Listing group not found',
+          });
+        }
+        if (group.partnerId !== input.partnerId) {
+          throw new ForbiddenException({
+            statusCode: 403,
+            code: 'LISTING_GROUP_NOT_OWNED',
+            message: 'The listing group belongs to another partner',
+          });
+        }
+      }
+
       // Reuse a shared resource, or auto-create a dedicated 1:1 one.
       let resourceId = input.resourceId;
       if (resourceId) {
@@ -98,6 +124,15 @@ export class CreateListingUseCase {
             statusCode: 404,
             code: 'RESOURCE_NOT_FOUND',
             message: 'Resource not found',
+          });
+        }
+        // A shared calendar resource belongs to a partner (§7.3) — partner A must
+        // not attach partner B's resource and thereby read/block B's calendar.
+        if (resource.partnerId !== input.partnerId) {
+          throw new ForbiddenException({
+            statusCode: 403,
+            code: 'RESOURCE_NOT_OWNED',
+            message: 'The resource belongs to another partner',
           });
         }
       } else {

@@ -20,6 +20,7 @@ import {
   type AvailabilityExceptionRecord,
   type IAvailabilityExceptionRepository,
 } from '../../domain/ports/availability-exception-repository.port';
+import { AvailabilityCacheInvalidator } from '../availability-cache-invalidator';
 
 /** Tenant/partner context. `partnerId` set → the target must be the partner's own. */
 export interface ManageContext {
@@ -37,6 +38,7 @@ export class ManageAvailabilityUseCase {
     @Inject(AVAILABILITY_EXCEPTION_REPOSITORY)
     private readonly exceptions: IAvailabilityExceptionRepository,
     private readonly tenantDb: TenantDbService,
+    private readonly cacheInvalidator: AvailabilityCacheInvalidator,
   ) {}
 
   listRules(ctx: ManageContext, listingId: string): Promise<AvailabilityRuleRecord[]> {
@@ -46,15 +48,19 @@ export class ManageAvailabilityUseCase {
     });
   }
 
-  setRules(
+  async setRules(
     ctx: ManageContext,
     listingId: string,
     rules: AvailabilityRuleInput[],
   ): Promise<AvailabilityRuleRecord[]> {
-    return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
-      await this.assertListing(tx, listingId, ctx.partnerId);
-      return this.rules.replaceForListing(tx, ctx.tenantId, listingId, rules);
+    const { saved, resourceId } = await this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
+      const listing = await this.assertListing(tx, listingId, ctx.partnerId);
+      const saved = await this.rules.replaceForListing(tx, ctx.tenantId, listingId, rules);
+      return { saved, resourceId: listing.resourceId };
     });
+    // Open windows changed → the cached slots for this resource are stale (§9.1).
+    await this.cacheInvalidator.invalidateResource(resourceId);
+    return saved;
   }
 
   listExceptions(ctx: ManageContext, resourceId: string): Promise<AvailabilityExceptionRecord[]> {
@@ -66,19 +72,21 @@ export class ManageAvailabilityUseCase {
     });
   }
 
-  addException(
+  async addException(
     ctx: ManageContext,
     resourceId: string,
     data: AvailabilityExceptionInput,
   ): Promise<AvailabilityExceptionRecord> {
-    return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
+    const created = await this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       await this.assertResource(tx, resourceId, ctx.partnerId);
       return this.exceptions.create(tx, ctx.tenantId, resourceId, data);
     });
+    await this.cacheInvalidator.invalidateResource(resourceId);
+    return created;
   }
 
-  deleteException(ctx: ManageContext, resourceId: string, exceptionId: string): Promise<void> {
-    return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
+  async deleteException(ctx: ManageContext, resourceId: string, exceptionId: string): Promise<void> {
+    await this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       await this.assertResource(tx, resourceId, ctx.partnerId);
       const existing = await this.exceptions.findById(tx, exceptionId);
       if (!existing || existing.resourceId !== resourceId) {
@@ -86,9 +94,14 @@ export class ManageAvailabilityUseCase {
       }
       await this.exceptions.delete(tx, exceptionId);
     });
+    await this.cacheInvalidator.invalidateResource(resourceId);
   }
 
-  private async assertListing(tx: PrismaTx, listingId: string, partnerId?: string): Promise<void> {
+  private async assertListing(
+    tx: PrismaTx,
+    listingId: string,
+    partnerId?: string,
+  ): Promise<{ resourceId: string }> {
     const listing = await this.listings.findById(tx, listingId);
     if (!listing) {
       throw new NotFoundException({ statusCode: 404, code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
@@ -96,6 +109,7 @@ export class ManageAvailabilityUseCase {
     if (partnerId && listing.partnerId !== partnerId) {
       throw new ForbiddenException({ statusCode: 403, code: 'NOT_OWNED', message: 'Listing belongs to another partner' });
     }
+    return { resourceId: listing.resourceId };
   }
 
   private async assertResource(tx: PrismaTx, resourceId: string, partnerId?: string): Promise<void> {

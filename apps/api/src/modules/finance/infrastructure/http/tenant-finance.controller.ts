@@ -1,16 +1,20 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   createCommissionRuleInputSchema,
   createPayoutInputSchema,
   failPayoutInputSchema,
   markPayoutPaidInputSchema,
+  paginationQuerySchema,
   updateCommissionRuleInputSchema,
   uuidSchema,
   type CommissionRuleResponse,
   type CreateCommissionRuleInput,
   type CreatePayoutInput,
   type FailPayoutInput,
+  type LedgerEntryResponse,
   type MarkPayoutPaidInput,
+  type Paginated,
+  type PaginationQuery,
   type PartnerFinanceResponse,
   type PayoutResponse,
   type TenantFinanceSummaryResponse,
@@ -32,8 +36,10 @@ import { MarkPayoutPaidUseCase } from '../../application/use-cases/mark-payout-p
 import { FailPayoutUseCase } from '../../application/use-cases/fail-payout.use-case';
 import { GetTenantFinanceSummaryUseCase } from '../../application/use-cases/get-tenant-finance-summary.use-case';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
+import { ListTenantLedgerUseCase } from '../../application/use-cases/list-tenant-ledger.use-case';
 import {
   toCommissionRuleResponse,
+  toLedgerEntryResponse,
   toPartnerFinanceResponse,
   toPayoutResponse,
   toTenantFinanceSummaryResponse,
@@ -53,6 +59,7 @@ export class TenantFinanceController {
     private readonly failPayoutUseCase: FailPayoutUseCase,
     private readonly summaryUseCase: GetTenantFinanceSummaryUseCase,
     private readonly partnerFinanceUseCase: GetPartnerFinanceUseCase,
+    private readonly listLedgerUseCase: ListTenantLedgerUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -100,6 +107,15 @@ export class TenantFinanceController {
   @Get('summary')
   async summary(): Promise<TenantFinanceSummaryResponse> {
     return toTenantFinanceSummaryResponse(await this.summaryUseCase.execute(this.tenantId));
+  }
+
+  @RequirePermissions('tenant.finance.read')
+  @Get('ledger')
+  async ledger(
+    @Query(new ZodValidationPipe(paginationQuerySchema)) query: PaginationQuery,
+  ): Promise<Paginated<LedgerEntryResponse>> {
+    const { items, total } = await this.listLedgerUseCase.execute(this.tenantId, query);
+    return { items: items.map(toLedgerEntryResponse), page: query.page, pageSize: query.pageSize, total };
   }
 
   @RequirePermissions('tenant.finance.read')

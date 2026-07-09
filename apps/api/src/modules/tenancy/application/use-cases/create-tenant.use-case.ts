@@ -45,20 +45,31 @@ export class CreateTenantUseCase {
       });
     }
 
-    const tenant = await this.tenants.create({
-      name: input.name,
-      slug: input.slug,
-      vertical: input.vertical,
-      defaultTimezone: input.defaultTimezone,
-      defaultLocale: input.defaultLocale,
-    });
-    // The default subdomain is trusted (we own the base domain) → verified now.
-    const primaryDomain = await this.domains.create({
-      tenantId: tenant.id,
-      hostname: subdomain,
-      isPrimary: true,
-      verificationToken: null,
-      verifiedAt: new Date(),
+    // Tenant + its primary domain commit in ONE admin-pool transaction: a failure
+    // provisioning the domain must not leave an orphaned tenant row behind.
+    const { tenant, primaryDomain } = await this.tenants.runInTransaction(async (tx) => {
+      const tenant = await this.tenants.create(
+        {
+          name: input.name,
+          slug: input.slug,
+          vertical: input.vertical,
+          defaultTimezone: input.defaultTimezone,
+          defaultLocale: input.defaultLocale,
+        },
+        tx,
+      );
+      // The default subdomain is trusted (we own the base domain) → verified now.
+      const primaryDomain = await this.domains.create(
+        {
+          tenantId: tenant.id,
+          hostname: subdomain,
+          isPrimary: true,
+          verificationToken: null,
+          verifiedAt: new Date(),
+        },
+        tx,
+      );
+      return { tenant, primaryDomain };
     });
     await this.cache.invalidateHost(subdomain);
     return { tenant, primaryDomain };

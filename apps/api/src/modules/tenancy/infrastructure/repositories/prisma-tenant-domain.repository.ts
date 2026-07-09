@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
+import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateDomainData,
   DomainRecord,
@@ -24,8 +25,9 @@ function toRecord(d: PrismaDomain): DomainRecord {
 export class PrismaTenantDomainRepository implements ITenantDomainRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateDomainData): Promise<DomainRecord> {
-    return toRecord(await this.prisma.admin.tenantDomain.create({ data }));
+  async create(data: CreateDomainData, tx?: PrismaTx): Promise<DomainRecord> {
+    const client = tx ?? this.prisma.admin;
+    return toRecord(await client.tenantDomain.create({ data }));
   }
 
   async findByHostname(hostname: string): Promise<DomainRecord | null> {

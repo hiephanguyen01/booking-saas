@@ -174,18 +174,22 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
     if (!cfg) throw new PricingError('MODE_CONFIG_MISSING', 'No inventory config on this listing');
     const unitMs = cfg.unit === 'hour' ? HOUR_MS : DAY_MS;
     const duration = wholeUnits(req.startUtc, req.endUtc, unitMs, cfg.unit);
-    const unitPrice = vnd(cfg.basePrice);
-    const totalUnits = duration * req.quantity;
-    subtotal = unitPrice * BigInt(totalUnits);
+    const basePrice = vnd(cfg.basePrice);
+    // Per time-unit price with the highest-priority matching pricing_rule
+    // replacing the per-unit base (§7.3 line 466) — inventory participates in
+    // rule pricing exactly like hourly/daily (it has no bundle blocks to shield).
+    const units = Array.from({ length: duration }, (_, i) => {
+      const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
+      const rule = matchingRule(rules, unitStart, req.timezone);
+      return { price: rule ? vnd(rule.price) : basePrice, ruleId: rule?.id };
+    });
+    // Price one item across the range, then scale each line by the quantity rented.
+    lineItems = coalesce(units, cfg.unit === 'hour' ? 'Giờ' : 'Ngày').map((line) => {
+      const quantity = line.quantity * req.quantity;
+      return { ...line, quantity, amount: line.unitPrice * BigInt(quantity) };
+    });
+    subtotal = lineItems.reduce((sum, l) => sum + l.amount, 0n);
     securityDeposit = vnd(cfg.securityDeposit) * BigInt(req.quantity);
-    lineItems = [
-      {
-        label: `${req.quantity} × ${duration} ${cfg.unit === 'hour' ? 'giờ' : 'ngày'}`,
-        quantity: totalUnits,
-        unitPrice,
-        amount: subtotal,
-      },
-    ];
   } else {
     throw new PricingError('MODE_UNSUPPORTED', `Pricing for "${req.mode}" is not supported in Phase 1`);
   }

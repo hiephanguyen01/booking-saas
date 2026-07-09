@@ -105,6 +105,7 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
       partnerActiveSince: l.partnerActiveSince.toISOString(),
       partnerName: l.partnerName,
       completedBookings: l.completedBookings,
+      avgApprovalResponseSeconds: l.avgApprovalResponseSeconds,
     },
   };
 }

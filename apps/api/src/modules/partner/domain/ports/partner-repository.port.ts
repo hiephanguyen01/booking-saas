@@ -57,6 +57,12 @@ export interface ListPartnersFilter {
 export interface IPartnerRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePartnerData): Promise<PartnerRecord>;
   findById(tx: PrismaTx, id: string): Promise<PartnerRecord | null>;
+  /**
+   * Like {@link findById} but takes a `SELECT … FOR UPDATE` row lock so a
+   * check-then-transition (e.g. identity review) is serialized — two concurrent
+   * reviewers can't both read `pending` and both write a decision.
+   */
+  findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerRecord | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<PartnerRecord | null>;
   list(tx: PrismaTx, filter: ListPartnersFilter): Promise<{ items: PartnerRecord[]; total: number }>;
   update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord>;

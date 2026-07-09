@@ -40,41 +40,26 @@ export class VerifyIdentityUseCase {
     input: VerifyIdentityInput,
     ctx: VerifyContext,
   ): Promise<PartnerRecord> {
-    const partner = await this.tenantDb.forTenant(tenantId, (tx) =>
-      this.partners.findById(tx, partnerId),
-    );
-    if (!partner) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PARTNER_NOT_FOUND',
-        message: 'Partner not found',
-      });
-    }
-    if (partner.verificationStatus !== 'pending') {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'NO_PENDING_IDENTITY',
-        message: 'There is no pending identity submission to review',
-      });
-    }
-    if (!partner.dateOfBirth) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'MISSING_DOB',
-        message: 'Identity submission is missing a date of birth',
-      });
-    }
+    // The pending gate and the state transition run in ONE tx (with a row lock in
+    // findByIdForUpdate): two concurrent reviews can't both pass the `pending`
+    // check and both write a decision. The `rejected` decision must persist even
+    // though we then fail the request, so we commit inside the tx and translate
+    // the outcome into an HTTP error afterwards (throwing here would roll it back).
+    const outcome = await this.tenantDb.forTenant(tenantId, async (tx) => {
+      const partner = await this.partners.findByIdForUpdate(tx, partnerId);
+      if (!partner) return { kind: 'not_found' as const };
+      if (partner.verificationStatus !== 'pending') return { kind: 'no_pending' as const };
+      if (!partner.dateOfBirth) return { kind: 'missing_dob' as const };
 
-    const idHolderName = (partner.identityInfo as { holderName?: string }).holderName ?? '';
-    const payoutHolderName = (partner.payoutInfo as { holderName?: string }).holderName ?? '';
-    const reason = !isAdult(partner.dateOfBirth, new Date())
-      ? 'UNDER_18'
-      : !nameMatches(idHolderName, payoutHolderName)
-        ? 'NAME_MISMATCH'
-        : null;
+      const idHolderName = (partner.identityInfo as { holderName?: string }).holderName ?? '';
+      const payoutHolderName = (partner.payoutInfo as { holderName?: string }).holderName ?? '';
+      const reason = !isAdult(partner.dateOfBirth, new Date())
+        ? 'UNDER_18'
+        : !nameMatches(idHolderName, payoutHolderName)
+          ? 'NAME_MISMATCH'
+          : null;
 
-    if (reason) {
-      await this.tenantDb.forTenant(tenantId, async (tx) => {
+      if (reason) {
         await this.partners.update(tx, partnerId, {
           verificationStatus: 'rejected',
           identityInfo: {
@@ -88,15 +73,9 @@ export class VerifyIdentityUseCase {
           eventType: 'partner.verification_rejected',
           payload: { partnerId, reason },
         });
-      });
-      const message =
-        reason === 'UNDER_18'
-          ? 'Partner is under 18 — cannot verify for people-booking listing types'
-          : 'ID holder name does not match the payout account holder name';
-      throw new ForbiddenException({ statusCode: 403, code: reason, message });
-    }
+        return { kind: 'rejected' as const, reason };
+      }
 
-    return this.tenantDb.forTenant(tenantId, async (tx) => {
       const updated = await this.partners.update(tx, partnerId, {
         verificationStatus: 'verified',
         verifiedAt: new Date(),
@@ -111,7 +90,39 @@ export class VerifyIdentityUseCase {
         eventType: 'partner.verified',
         payload: { partnerId },
       });
-      return updated;
+      return { kind: 'verified' as const, partner: updated };
     });
+
+    switch (outcome.kind) {
+      case 'not_found':
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'PARTNER_NOT_FOUND',
+          message: 'Partner not found',
+        });
+      case 'no_pending':
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'NO_PENDING_IDENTITY',
+          message: 'There is no pending identity submission to review',
+        });
+      case 'missing_dob':
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'MISSING_DOB',
+          message: 'Identity submission is missing a date of birth',
+        });
+      case 'rejected':
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: outcome.reason,
+          message:
+            outcome.reason === 'UNDER_18'
+              ? 'Partner is under 18 — cannot verify for people-booking listing types'
+              : 'ID holder name does not match the payout account holder name',
+        });
+      case 'verified':
+        return outcome.partner;
+    }
   }
 }
