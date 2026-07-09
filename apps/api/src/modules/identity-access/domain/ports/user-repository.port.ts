@@ -23,8 +23,16 @@ export interface CreateUserData {
   locale: string;
 }
 
+export interface CreateGuestData {
+  email: string;
+  fullName: string;
+  phone: string;
+}
+
 export interface IUserRepository {
   findByEmail(email: string): Promise<UserRecord | null>;
   create(data: CreateUserData): Promise<UserRecord>;
+  /** Guest-checkout user (§8.6) — no password, cannot log in until upgraded. */
+  createGuest(data: CreateGuestData): Promise<UserRecord>;
   updateLockout(userId: string, state: LockoutState): Promise<void>;
 }
