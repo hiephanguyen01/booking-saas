@@ -81,6 +81,7 @@ export default function ListingDetail({ loaderData, params }: Route.ComponentPro
             {attrs.map(([, v]) => String(v)).join(' · ')}
           </p>
         ) : null}
+        <TrustSignals trust={listing.trust} />
       </div>
 
       <Gallery photos={listing.photos} title={listing.title} />
@@ -111,6 +112,45 @@ export default function ListingDetail({ loaderData, params }: Route.ComponentPro
       </div>
     </div>
   );
+}
+
+/**
+ * Trust signals (§16.1) — shown before ratings exist, all from data on hand.
+ * Contact details are never here: they are revealed only after a booking is
+ * confirmed (§7.3 anti-disintermediation).
+ */
+function TrustSignals({ trust }: { trust: PublicListingDetailResponse['trust'] }) {
+  const since = activeSinceLabel(trust.partnerActiveSince);
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+      <span className="font-medium text-gray-700">Cung cấp bởi {trust.partnerName}</span>
+      {trust.identityVerified ? (
+        <Badge className="gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-white hover:bg-emerald-600">
+          <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
+          </svg>
+          Đã xác minh danh tính
+        </Badge>
+      ) : null}
+      {since ? (
+        <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 font-normal">
+          Hoạt động từ {since}
+        </Badge>
+      ) : null}
+      {trust.completedBookings > 0 ? (
+        <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 font-normal">
+          {trust.completedBookings} lượt đặt hoàn tất
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
+/** "thg 7/2026" from an ISO date, without pulling in a locale lib. */
+function activeSinceLabel(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `thg ${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`;
 }
 
 function Gallery({ photos, title }: { photos: string[]; title: string }) {

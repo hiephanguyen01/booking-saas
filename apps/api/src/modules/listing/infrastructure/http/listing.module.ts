@@ -30,8 +30,15 @@ import { ListPricingRulesUseCase } from '../../application/use-cases/list-pricin
 import { DeletePricingRuleUseCase } from '../../application/use-cases/delete-pricing-rule.use-case';
 import { GetPublicListingUseCase } from '../../application/use-cases/get-public-listing.use-case';
 import { GetPublicQuoteUseCase } from '../../application/use-cases/get-public-quote.use-case';
+import { ReviewListingUseCase } from '../../application/use-cases/moderation/review-listing.use-case';
+import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
+import { PublishListingUseCase } from '../../application/use-cases/moderation/publish-listing.use-case';
+import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
+import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
 import { TenantListingGroupController } from './tenant-listing-group.controller';
 import { TenantListingController } from './tenant-listing.controller';
+import { TenantListingModerationController } from './tenant-listing-moderation.controller';
+import { PartnerListingModerationController } from './partner-listing-moderation.controller';
 import { TenantResourceController } from './tenant-resource.controller';
 import { TenantPricingRuleController } from './tenant-pricing-rule.controller';
 import { PublicListingController } from './public-listing.controller';
@@ -41,6 +48,8 @@ import { PublicListingController } from './public-listing.controller';
   controllers: [
     TenantListingGroupController,
     TenantListingController,
+    TenantListingModerationController,
+    PartnerListingModerationController,
     TenantResourceController,
     TenantPricingRuleController,
     PublicListingController,
@@ -68,6 +77,11 @@ import { PublicListingController } from './public-listing.controller';
     DeletePricingRuleUseCase,
     GetPublicListingUseCase,
     GetPublicQuoteUseCase,
+    ReviewListingUseCase,
+    SubmitListingUseCase,
+    PublishListingUseCase,
+    HideListingUseCase,
+    RepublishListingUseCase,
   ],
   // Exported so Task 1.7 (bookings) can price a quote before checkout.
   exports: [PricingService],

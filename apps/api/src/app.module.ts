@@ -8,6 +8,7 @@ import { PrismaModule } from './shared/prisma/prisma.module';
 import { RedisModule } from './shared/redis/redis.module';
 import { TenantContextModule } from './shared/tenant-context/tenant-context.module';
 import { OutboxModule } from './shared/outbox/outbox.module';
+import { StorageModule } from './shared/storage/storage.module';
 import { IdentityAccessModule } from './modules/identity-access/infrastructure/http/identity-access.module';
 import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.module';
 import { PartnerModule } from './modules/partner/infrastructure/http/partner.module';
@@ -28,6 +29,7 @@ import { ListingModule } from './modules/listing/infrastructure/http/listing.mod
     RedisModule,
     TenantContextModule,
     OutboxModule,
+    StorageModule,
     HealthModule,
     IdentityAccessModule,
     TenancyModule,

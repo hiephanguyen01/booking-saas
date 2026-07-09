@@ -24,6 +24,8 @@ export function toListingGroupResponse(g: ListingGroupRecord): ListingGroupRespo
     amenities: g.amenities,
     photos: g.photos,
     status: g.status,
+    publishedBy: g.publishedBy,
+    hiddenBy: g.hiddenBy,
     createdAt: g.createdAt.toISOString(),
     updatedAt: g.updatedAt.toISOString(),
   };
@@ -54,6 +56,8 @@ export function toListingResponse(l: ListingRecord): ListingResponse {
     balanceDue: l.balanceDue,
     cancellationPolicyId: l.cancellationPolicyId,
     status: l.status,
+    publishedBy: l.publishedBy,
+    hiddenBy: l.hiddenBy,
     createdAt: l.createdAt.toISOString(),
     updatedAt: l.updatedAt.toISOString(),
   };
@@ -96,5 +100,11 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
     modeConfig: l.modeConfig,
     depositPercent: l.depositPercent,
     listingTypeSlug: l.listingTypeSlug,
+    trust: {
+      identityVerified: l.partnerVerifiedAt !== null,
+      partnerActiveSince: l.partnerActiveSince.toISOString(),
+      partnerName: l.partnerName,
+      completedBookings: l.completedBookings,
+    },
   };
 }

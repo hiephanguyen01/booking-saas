@@ -1,4 +1,4 @@
-import type { PublishStatus } from '@booking/shared';
+import type { ModerationActor, PublishStatus } from '@booking/shared';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const LISTING_GROUP_REPOSITORY = Symbol('LISTING_GROUP_REPOSITORY');
@@ -16,6 +16,8 @@ export interface ListingGroupRecord {
   amenities: string[];
   photos: string[];
   status: PublishStatus;
+  publishedBy: ModerationActor | null;
+  hiddenBy: ModerationActor | null;
   createdAt: Date;
   updatedAt: Date;
 }

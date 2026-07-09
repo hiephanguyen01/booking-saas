@@ -15,6 +15,10 @@ export type PublishStatus = z.infer<typeof publishStatusSchema>;
 export const balanceDueSchema = z.enum(['online_before', 'on_arrival']);
 export type BalanceDue = z.infer<typeof balanceDueSchema>;
 
+/** Who performed a moderation action — a partner or an admin/tenant reviewer (§7.3). */
+export const moderationActorSchema = z.enum(['partner', 'admin']);
+export type ModerationActor = z.infer<typeof moderationActorSchema>;
+
 export const pricingRuleTypeSchema = z.enum(['day_of_week', 'time_range', 'date_range']);
 export type PricingRuleType = z.infer<typeof pricingRuleTypeSchema>;
 
@@ -187,6 +191,8 @@ export interface ListingGroupResponse {
   amenities: string[];
   photos: string[];
   status: PublishStatus;
+  publishedBy: ModerationActor | null;
+  hiddenBy: ModerationActor | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -215,6 +221,8 @@ export interface ListingResponse {
   balanceDue: BalanceDue;
   cancellationPolicyId: string | null;
   status: PublishStatus;
+  publishedBy: ModerationActor | null;
+  hiddenBy: ModerationActor | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -240,6 +248,23 @@ export interface PricingRuleResponse {
   createdAt: string;
 }
 
+/**
+ * Trust signals shown on the storefront before ratings exist (§16.1) — all
+ * sourced from data already on hand at near-zero cost. Contact details are NOT
+ * part of this: they are revealed to a customer only after a booking is
+ * confirmed (§7.3 anti-disintermediation).
+ */
+export interface TrustSignals {
+  /** Partner passed manual identity verification (drives the "verified" badge). */
+  identityVerified: boolean;
+  /** ISO date the partner started on the tenant → "active since". */
+  partnerActiveSince: string;
+  /** Public partner display name (never phone/email). */
+  partnerName: string;
+  /** Count of completed bookings for this listing (0 until the booking module lands). */
+  completedBookings: number;
+}
+
 /** Storefront listing detail (public) — enough to render the page + a quote form. */
 export interface PublicListingDetailResponse {
   id: string;
@@ -252,6 +277,7 @@ export interface PublicListingDetailResponse {
   modeConfig: Record<string, unknown>;
   depositPercent: number;
   listingTypeSlug: string;
+  trust: TrustSignals;
 }
 
 export interface QuoteLineItem {
@@ -271,4 +297,37 @@ export interface QuoteResponse {
   depositAmount: string;
   securityDeposit: string;
   lineItems: QuoteLineItem[];
+}
+
+// ── Moderation (Task 1.5) ────────────────────────────────────────────────────
+
+/** Optional reason attached to a hide/republish action, kept in the audit log. */
+export const moderationReasonInputSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+export type ModerationReasonInput = z.infer<typeof moderationReasonInputSchema>;
+
+/** A piece of contact info detected in a listing's text at review time (§7.3). */
+export interface ContactFlag {
+  type: 'phone' | 'zalo' | 'url' | 'email';
+  /** The field it was found in, e.g. "description" or "title". */
+  field: string;
+  /** The offending substring (for the reviewer to locate it). */
+  match: string;
+}
+
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  passed: boolean;
+}
+
+/** What a tenant reviewer sees for a listing awaiting moderation. */
+export interface ListingReviewResponse {
+  listingId: string;
+  status: PublishStatus;
+  checklist: ChecklistItem[];
+  checklistPassed: boolean;
+  /** Non-empty when the listing leaks contact info — publishing is blocked by policy. */
+  contactFlags: ContactFlag[];
 }

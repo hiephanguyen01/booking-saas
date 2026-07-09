@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import type { ModerationActor } from '@booking/shared';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateListingGroupData,
@@ -24,6 +25,8 @@ function toRecord(g: Row): ListingGroupRecord {
     amenities: (g.amenities ?? []) as string[],
     photos: (g.photos ?? []) as string[],
     status: g.status,
+    publishedBy: g.publishedBy as ModerationActor | null,
+    hiddenBy: g.hiddenBy as ModerationActor | null,
     createdAt: g.createdAt,
     updatedAt: g.updatedAt,
   };

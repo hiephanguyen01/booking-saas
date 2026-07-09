@@ -1,4 +1,4 @@
-import type { BalanceDue, BookingMode, PublishStatus } from '@booking/shared';
+import type { BalanceDue, BookingMode, ModerationActor, PublishStatus } from '@booking/shared';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const LISTING_REPOSITORY = Symbol('LISTING_REPOSITORY');
@@ -27,14 +27,27 @@ export interface ListingRecord {
   balanceDue: BalanceDue;
   cancellationPolicyId: string | null;
   status: PublishStatus;
+  publishedBy: ModerationActor | null;
+  hiddenBy: ModerationActor | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/** A published listing joined with the context a public quote/detail needs. */
+/** A published listing joined with the context a public quote/detail + trust signals need. */
 export interface PublicListingRecord extends ListingRecord {
   resourceTimezone: string;
   listingTypeSlug: string;
+  partnerName: string;
+  partnerVerifiedAt: Date | null;
+  partnerActiveSince: Date;
+  completedBookings: number;
+}
+
+/** The fields a moderation transition persists (§7.3). */
+export interface ModerationUpdate {
+  status: PublishStatus;
+  publishedBy: ModerationActor | null;
+  hiddenBy: ModerationActor | null;
 }
 
 export interface CreateListingData {
@@ -71,6 +84,7 @@ export interface IListingRepository {
   findPublicBySlug(tx: PrismaTx, slug: string): Promise<PublicListingRecord | null>;
   list(tx: PrismaTx, filter: { groupId?: string }): Promise<ListingRecord[]>;
   update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord>;
+  moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   countBookings(tx: PrismaTx, listingId: string): Promise<number>;
 }

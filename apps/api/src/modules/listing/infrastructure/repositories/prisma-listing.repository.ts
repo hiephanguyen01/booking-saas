@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { BookingMode } from '@booking/shared';
+import type { BookingMode, ModerationActor } from '@booking/shared';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateListingData,
   IListingRepository,
   ListingRecord,
+  ModerationUpdate,
   PublicListingRecord,
   UpdateListingData,
 } from '../../domain/ports/listing-repository.port';
@@ -37,6 +38,8 @@ function toRecord(l: Row): ListingRecord {
     balanceDue: l.balanceDue,
     cancellationPolicyId: l.cancellationPolicyId,
     status: l.status,
+    publishedBy: l.publishedBy as ModerationActor | null,
+    hiddenBy: l.hiddenBy as ModerationActor | null,
     createdAt: l.createdAt,
     updatedAt: l.updatedAt,
   };
@@ -87,10 +90,28 @@ export class PrismaListingRepository implements IListingRepository {
   async findPublicBySlug(tx: PrismaTx, slug: string): Promise<PublicListingRecord | null> {
     const l = await tx.listing.findFirst({
       where: { slug, status: 'published' },
-      include: { resource: { select: { timezone: true } }, listingType: { select: { slug: true } } },
+      include: {
+        resource: { select: { timezone: true } },
+        listingType: { select: { slug: true } },
+        // Trust signals (§16.1) — partner display name + verification + tenure.
+        // Contact info is deliberately NOT selected: it is revealed only after a
+        // booking is confirmed (§7.3 anti-disintermediation).
+        partner: { select: { name: true, verifiedAt: true, createdAt: true } },
+      },
     });
     if (!l) return null;
-    return { ...toRecord(l), resourceTimezone: l.resource.timezone, listingTypeSlug: l.listingType.slug };
+    const completedBookings = await tx.booking.count({
+      where: { listingId: l.id, status: 'completed' },
+    });
+    return {
+      ...toRecord(l),
+      resourceTimezone: l.resource.timezone,
+      listingTypeSlug: l.listingType.slug,
+      partnerName: l.partner.name,
+      partnerVerifiedAt: l.partner.verifiedAt,
+      partnerActiveSince: l.partner.createdAt,
+      completedBookings,
+    };
   }
 
   async list(tx: PrismaTx, filter: { groupId?: string }): Promise<ListingRecord[]> {
@@ -124,6 +145,15 @@ export class PrismaListingRepository implements IListingRepository {
           balanceDue: data.balanceDue,
           cancellationPolicyId: data.cancellationPolicyId,
         },
+      }),
+    );
+  }
+
+  async moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingRecord> {
+    return toRecord(
+      await tx.listing.update({
+        where: { id },
+        data: { status: update.status, publishedBy: update.publishedBy, hiddenBy: update.hiddenBy },
       }),
     );
   }
