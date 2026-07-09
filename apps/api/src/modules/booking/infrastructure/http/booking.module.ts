@@ -35,7 +35,7 @@ import { PartnerBookingController } from './partner-booking.controller';
     BookingLookupUseCase,
     BookingSchedulerWorker,
   ],
-  // Exported so Task 1.9 (payments) can confirm a booking from the gateway webhook.
-  exports: [ConfirmBookingUseCase],
+  // Exported so Task 1.9 (payments) can confirm a booking + read it for checkout/status.
+  exports: [ConfirmBookingUseCase, BOOKING_REPOSITORY],
 })
 export class BookingModule {}

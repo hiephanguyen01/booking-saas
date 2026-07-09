@@ -16,6 +16,7 @@ import { CatalogModule } from './modules/catalog/infrastructure/http/catalog.mod
 import { ListingModule } from './modules/listing/infrastructure/http/listing.module';
 import { SchedulingModule } from './modules/scheduling/infrastructure/http/scheduling.module';
 import { BookingModule } from './modules/booking/infrastructure/http/booking.module';
+import { PaymentsModule } from './modules/payments/infrastructure/http/payments.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { BookingModule } from './modules/booking/infrastructure/http/booking.mod
     ListingModule,
     SchedulingModule,
     BookingModule,
+    PaymentsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
