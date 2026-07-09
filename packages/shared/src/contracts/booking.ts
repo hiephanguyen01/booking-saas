@@ -16,8 +16,8 @@ export const bookingStatusSchema = z.enum([
 ]);
 export type BookingStatus = z.infer<typeof bookingStatusSchema>;
 
-/** Booking-core covers the exclusive-calendar modes; inventory is Task 1.8. */
-export const bookableModeSchema = z.enum(['hourly', 'daily']);
+/** Bookable modes: exclusive-calendar (hourly/daily) + multi-unit inventory (§9.4). */
+export const bookableModeSchema = z.enum(['hourly', 'daily', 'inventory']);
 export type BookableMode = z.infer<typeof bookableModeSchema>;
 
 /** Guest checkout (§8.6): no account, just contact info. */
@@ -34,6 +34,8 @@ export const createBookingInputSchema = z.object({
   /** UTC ISO instants for the requested slot. */
   from: z.string().datetime(),
   to: z.string().datetime(),
+  /** Units to rent — `inventory` mode only; ignored (forced to 1) for hourly/daily. */
+  quantity: z.number().int().positive().max(1000).default(1),
   guestCount: z.number().int().positive().max(1000).default(1),
   customerNote: z.string().max(1000).optional(),
   /** Required when the caller is not a logged-in customer. */
@@ -50,6 +52,14 @@ export type CancelBookingInput = z.infer<typeof cancelBookingInputSchema>;
 
 export const markNoShowInputSchema = z.object({ reason: z.string().max(500).optional() });
 export type MarkNoShowInput = z.infer<typeof markNoShowInputSchema>;
+
+/** Partner marks an inventory rental returned + inspected (§9.4). */
+export const markReturnedInputSchema = z.object({
+  /** Assessed damage in VND đồng deducted from the security deposit (default 0). */
+  damageAmount: z.string().regex(/^\d+$/).default('0'),
+  reason: z.string().max(500).optional(),
+});
+export type MarkReturnedInput = z.infer<typeof markReturnedInputSchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
@@ -71,6 +81,11 @@ export interface BookingResponse {
   finalAmount: string;
   depositAmount: string;
   paidAmount: string;
+  /** Inventory (§9.4): refundable deposit + fulfillment state. */
+  securityDeposit: string;
+  pickedUpAt: string | null;
+  returnedAt: string | null;
+  damageAmount: string;
   customerNote: string | null;
   expiresAt: string | null;
   createdAt: string;
@@ -80,6 +95,13 @@ export interface BookingResponse {
 export interface CancelBookingResponse extends BookingResponse {
   refundAmount: string;
   refundPercent: number;
+}
+
+/** Returned when an inventory rental is returned — the deposit settlement (§9.4). */
+export interface ReturnBookingResponse extends BookingResponse {
+  lateFee: string;
+  depositRefund: string;
+  depositShortfall: string;
 }
 
 /** OTP issuance — `devOtp` is only populated outside production for testing. */

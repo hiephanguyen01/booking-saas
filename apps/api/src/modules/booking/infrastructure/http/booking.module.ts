@@ -15,6 +15,7 @@ import { CreateBookingUseCase } from '../../application/use-cases/create-booking
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { PartnerBookingUseCase } from '../../application/use-cases/partner-booking.use-case';
+import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
 import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
 import { PublicBookingController } from './public-booking.controller';
 import { PartnerBookingController } from './partner-booking.controller';
@@ -30,6 +31,7 @@ import { PartnerBookingController } from './partner-booking.controller';
     ConfirmBookingUseCase,
     CancelBookingUseCase,
     PartnerBookingUseCase,
+    InventoryFulfillmentUseCase,
     BookingLookupUseCase,
     BookingSchedulerWorker,
   ],

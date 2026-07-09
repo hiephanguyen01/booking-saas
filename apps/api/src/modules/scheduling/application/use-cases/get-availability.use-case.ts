@@ -72,6 +72,16 @@ export class GetAvailabilityUseCase {
       }
 
       const tz = listing.resourceTimezone;
+
+      // Inventory (§9.4): remaining = stock − committed quantity over the window.
+      if (query.mode === 'inventory') {
+        const stock = listing.stockQuantity ?? 0;
+        const from = zonedTimeToUtc({ ...parseDate(query.from), hour: 0, minute: 0 }, tz);
+        const to = new Date(zonedTimeToUtc({ ...parseDate(query.to), hour: 0, minute: 0 }, tz).getTime() + DAY_MS);
+        const used = await this.busy.inventoryUsage(tx, listing.id, from, to);
+        return { mode: 'inventory', timezone: tz, inventory: { stock, remaining: Math.max(0, stock - used) } };
+      }
+
       const modeConfig = listing.modeConfig as ModeConfig;
       const pv = (await this.pricingRules.listByListing(tx, listing.id)).map((r) => ({
         id: r.id,

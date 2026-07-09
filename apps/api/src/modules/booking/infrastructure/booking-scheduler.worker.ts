@@ -67,7 +67,8 @@ export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdo
               END) AS "eventType"
       FROM bookings
       WHERE (status IN ('pending_payment', 'pending_approval') AND expires_at <= now())
-         OR (status = 'confirmed' AND upper(timeslot) + interval '24 hours' <= now())
+         OR (status = 'confirmed' AND booking_mode <> 'inventory'
+             AND upper(timeslot) + interval '24 hours' <= now())
       LIMIT 100`;
 
     let processed = 0;

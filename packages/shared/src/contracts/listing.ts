@@ -59,6 +59,10 @@ export const inventoryModeConfigSchema = z.object({
   unit: z.enum(['hour', 'day']),
   basePrice: vndAmountSchema,
   securityDeposit: vndAmountSchema.default('0'),
+  minDuration: z.number().int().positive().optional(),
+  maxDuration: z.number().int().positive().optional(),
+  /** Late-return fee per overdue unit per item (§9.4); defaults to basePrice. */
+  lateFeePerUnit: vndAmountSchema.optional(),
 });
 
 export const modeConfigSchema = z.object({

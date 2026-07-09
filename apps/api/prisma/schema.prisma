@@ -897,6 +897,12 @@ model Booking {
   guestCount                 Int                       @default(1) @map("guest_count")
   /// units rented (`inventory` mode); 1 otherwise.
   quantity                   Int                       @default(1)
+  /// refundable security deposit (`inventory` mode, §9.4) — never revenue, no commission.
+  securityDeposit            BigInt                    @default(0) @map("security_deposit")
+  /// inventory fulfillment (§9.4): handover + return/inspection timestamps and assessed damage.
+  pickedUpAt                 DateTime?                 @map("picked_up_at") @db.Timestamptz(6)
+  returnedAt                 DateTime?                 @map("returned_at") @db.Timestamptz(6)
+  damageAmount               BigInt                    @default(0) @map("damage_amount")
   /// overtime/surcharges added before `completed`; commissioned like an on_arrival amount.
   additionalCharges          Json                      @default("[]") @map("additional_charges")
   /// total after pricing rules, before discount.

@@ -5,6 +5,7 @@ import type { BookingStatus } from '@booking/shared';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   BookingRecord,
+  FulfillmentPatch,
   IBookingRepository,
   InsertBookingData,
   TransitionParams,
@@ -31,6 +32,10 @@ interface Row {
   finalAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  securityDeposit: bigint;
+  pickedUpAt: Date | null;
+  returnedAt: Date | null;
+  damageAmount: bigint;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
   customerNote: string | null;
@@ -48,6 +53,8 @@ const SELECT = Prisma.sql`
          guest_count AS "guestCount", quantity,
          total_amount AS "totalAmount", discount_amount AS "discountAmount",
          final_amount AS "finalAmount", deposit_amount AS "depositAmount", paid_amount AS "paidAmount",
+         security_deposit AS "securityDeposit", picked_up_at AS "pickedUpAt",
+         returned_at AS "returnedAt", damage_amount AS "damageAmount",
          cancellation_policy_id AS "cancellationPolicyId",
          cancellation_policy_snapshot AS "cancellationPolicySnapshot",
          customer_note AS "customerNote", expires_at AS "expiresAt", created_at AS "createdAt"
@@ -75,7 +82,7 @@ export class PrismaBookingRepository implements IBookingRepository {
       INSERT INTO bookings (
         id, tenant_id, listing_id, partner_id, resource_id, customer_id, code, idempotency_key,
         booking_mode, status, timeslot, blocked_period,
-        guest_count, quantity, total_amount, discount_amount, final_amount, deposit_amount,
+        guest_count, quantity, total_amount, discount_amount, final_amount, deposit_amount, security_deposit,
         cancellation_policy_id, cancellation_policy_snapshot, pricing_snapshot, customer_note, updated_at
       ) VALUES (
         ${id}::uuid, ${tenantId}::uuid, ${data.listingId}::uuid, ${data.partnerId}::uuid,
@@ -84,7 +91,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         tstzrange(${data.timeslot.start}, ${data.timeslot.end}, '[)'),
         tstzrange(${data.blockedPeriod.start}, ${data.blockedPeriod.end}, '[)'),
         ${data.guestCount}, ${data.quantity}, ${data.totalAmount}, ${data.discountAmount},
-        ${data.finalAmount}, ${data.depositAmount},
+        ${data.finalAmount}, ${data.depositAmount}, ${data.securityDeposit},
         ${data.cancellationPolicyId}::uuid,
         ${JSON.stringify(data.cancellationPolicySnapshot ?? null)}::jsonb,
         ${JSON.stringify(data.pricingSnapshot ?? null)}::jsonb, ${data.customerNote}, now()
@@ -147,6 +154,36 @@ export class PrismaBookingRepository implements IBookingRepository {
       Prisma.sql`${SELECT} WHERE customer_id = ${customerId}::uuid ORDER BY created_at DESC`,
     );
     return rows.map(toRecord);
+  }
+
+  async lockAndCountInventory(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number> {
+    // Serialise concurrent inventory bookings for this listing until commit (§9.4).
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('inv:' || ${listingId}))`);
+    return this.countInventoryUsage(tx, listingId, from, to);
+  }
+
+  async countInventoryUsage(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number> {
+    const rows = await tx.$queryRaw<{ used: number }[]>(Prisma.sql`
+      SELECT COALESCE(SUM(quantity), 0)::int AS "used"
+      FROM bookings
+      WHERE listing_id = ${listingId}::uuid
+        AND booking_mode = 'inventory'
+        AND status IN ('pending_payment', 'pending_approval', 'confirmed')
+        AND returned_at IS NULL
+        AND (blocked_period && tstzrange(${from}, ${to}, '[)') OR upper(blocked_period) <= now())`);
+    return rows[0]?.used ?? 0;
+  }
+
+  async patchFulfillment(tx: PrismaTx, id: string, patch: FulfillmentPatch): Promise<BookingRecord> {
+    const sets = [Prisma.sql`updated_at = now()`];
+    if (patch.pickedUpAt !== undefined) sets.push(Prisma.sql`picked_up_at = ${patch.pickedUpAt}`);
+    if (patch.returnedAt !== undefined) sets.push(Prisma.sql`returned_at = ${patch.returnedAt}`);
+    if (patch.damageAmount !== undefined) sets.push(Prisma.sql`damage_amount = ${patch.damageAmount}`);
+    if (patch.additionalCharges !== undefined) {
+      sets.push(Prisma.sql`additional_charges = ${JSON.stringify(patch.additionalCharges)}::jsonb`);
+    }
+    await tx.$executeRaw(Prisma.sql`UPDATE bookings SET ${Prisma.join(sets)} WHERE id = ${id}::uuid`);
+    return this.byId(tx, id);
   }
 
   private async byId(tx: PrismaTx, id: string): Promise<BookingRecord> {

@@ -24,6 +24,10 @@ export interface BookingRecord {
   finalAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  securityDeposit: bigint;
+  pickedUpAt: Date | null;
+  returnedAt: Date | null;
+  damageAmount: bigint;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
   customerNote: string | null;
@@ -47,10 +51,19 @@ export interface InsertBookingData {
   discountAmount: bigint;
   finalAmount: bigint;
   depositAmount: bigint;
+  securityDeposit: bigint;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
   pricingSnapshot: unknown;
   customerNote: string | null;
+}
+
+/** Inventory fulfillment patch (§9.4) — pickup / return / damage. */
+export interface FulfillmentPatch {
+  pickedUpAt?: Date;
+  returnedAt?: Date;
+  damageAmount?: bigint;
+  additionalCharges?: unknown;
 }
 
 export interface TransitionParams {
@@ -78,4 +91,14 @@ export interface IBookingRepository {
   findByCode(tx: PrismaTx, code: string): Promise<BookingRecord | null>;
   findByIdempotencyKey(tx: PrismaTx, key: string): Promise<BookingRecord | null>;
   listByCustomer(tx: PrismaTx, customerId: string): Promise<BookingRecord[]>;
+  /**
+   * Take a per-listing advisory lock (serialising concurrent inventory bookings)
+   * and return the quantity currently committed for `[from,to)` — active +
+   * unreturned rentals, including overdue ones that still block re-rental (§9.4).
+   */
+  lockAndCountInventory(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number>;
+  /** Read-only committed quantity for availability (no advisory lock). */
+  countInventoryUsage(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number>;
+  /** Update inventory fulfillment columns (pickup/return/damage). */
+  patchFulfillment(tx: PrismaTx, id: string, patch: FulfillmentPatch): Promise<BookingRecord>;
 }

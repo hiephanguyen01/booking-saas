@@ -1,10 +1,13 @@
 import { Body, Controller, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import {
   markNoShowInputSchema,
+  markReturnedInputSchema,
   uuidSchema,
   type BookingResponse,
   type CancelBookingResponse,
   type MarkNoShowInput,
+  type MarkReturnedInput,
+  type ReturnBookingResponse,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -14,7 +17,8 @@ import type { SessionPrincipal } from '../../../identity-access/domain/ports/ses
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { PartnerBookingUseCase } from '../../application/use-cases/partner-booking.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
-import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
+import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
+import { toBookingResponse, toCancelResponse, toReturnResponse } from '../../application/booking.mapper';
 
 /** Partner-side booking management (§8.2). Scope via x-partner-id. */
 @Controller('partner/bookings')
@@ -22,6 +26,7 @@ export class PartnerBookingController {
   constructor(
     private readonly partnerBooking: PartnerBookingUseCase,
     private readonly cancelBooking: CancelBookingUseCase,
+    private readonly fulfillment: InventoryFulfillmentUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -83,5 +88,28 @@ export class PartnerBookingController {
       reason: body.reason,
     });
     return toCancelResponse(result);
+  }
+
+  @RequirePermissions('partner.bookings.cancel')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Post(':id/pick-up')
+  @HttpCode(200)
+  async pickUp(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<BookingResponse> {
+    return toBookingResponse(await this.fulfillment.markPickedUp(this.ctx(principal), id));
+  }
+
+  @RequirePermissions('partner.bookings.cancel')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Post(':id/return')
+  @HttpCode(200)
+  async return(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body(new ZodValidationPipe(markReturnedInputSchema)) body: MarkReturnedInput,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<ReturnBookingResponse> {
+    return toReturnResponse(await this.fulfillment.markReturned(this.ctx(principal), id, BigInt(body.damageAmount)));
   }
 }

@@ -1,19 +1,20 @@
 import { randomInt } from 'node:crypto';
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CreateBookingInput, ModeConfig } from '@booking/shared';
-import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { CreateBookingInput, ModeConfig, QuoteResponse } from '@booking/shared';
+import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { utcNow, addMinutes } from '../../../../shared/time/time';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { FindOrCreateGuestUseCase } from '../../../identity-access/application/use-cases/find-or-create-guest.use-case';
 import { PricingService } from '../../../listing/application/services/pricing.service';
-import { LISTING_REPOSITORY, type IListingRepository } from '../../../listing/domain/ports/listing-repository.port';
+import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../../listing/domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY, type IResourceRepository } from '../../../listing/domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY, type IPricingRuleRepository } from '../../../listing/domain/ports/pricing-rule-repository.port';
 import { BOOKING_REPOSITORY, type BookingRecord, type IBookingRepository } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE, type IHoldStore } from '../../domain/ports/hold-store.port';
 import { generateBookingCode } from '../../domain/booking-code';
 import { blockedPeriod } from '../../domain/blocked-period';
+import { hasCapacity } from '../../domain/inventory-stock';
 import { SlotTakenError, SlotHeldError } from '../../domain/booking-errors';
 
 export interface CreateBookingContext {
@@ -81,7 +82,7 @@ export class CreateBookingUseCase {
         timezone: resource?.timezone ?? 'Asia/Ho_Chi_Minh',
         startUtc,
         endUtc,
-        quantity: 1,
+        quantity: input.mode === 'inventory' ? input.quantity : 1,
         depositPercent: listing.depositPercent,
       });
       const policy = listing.cancellationPolicyId
@@ -89,60 +90,104 @@ export class CreateBookingUseCase {
         : null;
       return { listing, quote, policyRules: policy?.rules ?? [] };
     });
-    const blocked = blockedPeriod({ start: startUtc, end: endUtc }, listing.bufferBefore, listing.bufferAfter);
+    const timeslot = { start: startUtc, end: endUtc };
+    const blocked = blockedPeriod(timeslot, listing.bufferBefore, listing.bufferAfter);
+    const common = { listing, quote, policyRules, customerId, input, timeslot, blocked, idempotencyKey: ctx.idempotencyKey };
 
+    // Inventory (§9.4): multi-unit, so no exclusion constraint. An advisory lock
+    // per listing + an atomic stock count guarantees stock is never oversold.
+    if (input.mode === 'inventory') {
+      return this.tenantDb.forTenant(tenant.id, async (tx) => {
+        const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
+        if (again) return again;
+        const stock = listing.stockQuantity ?? 0;
+        const used = await this.bookings.lockAndCountInventory(tx, listing.id, blocked.start, blocked.end);
+        if (!hasCapacity(stock, used, input.quantity)) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: 'OUT_OF_STOCK',
+            message: `Only ${Math.max(0, stock - used)} unit(s) available for this period`,
+          });
+        }
+        return this.insertAndActivate(tx, tenant.id, {
+          ...common,
+          quantity: input.quantity,
+          securityDeposit: BigInt(quote.securityDeposit),
+        });
+      });
+    }
+
+    // Exclusive (hourly/daily): Redis hold (Layer 1) + the exclusion constraint (Layer 2).
     const holdId = await this.holds.acquire(listing.resourceId, blocked.start, blocked.end);
     if (!holdId) throw this.slotHeld();
-
     try {
       return await this.tenantDb.forTenant(tenant.id, async (tx) => {
         const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
         if (again) return again;
-
-        const draft = await this.bookings.insertDraft(tx, tenant.id, {
-          listingId: listing.id,
-          partnerId: listing.partnerId,
-          resourceId: listing.resourceId,
-          customerId,
-          code: generateBookingCode((max) => randomInt(max)),
-          idempotencyKey: ctx.idempotencyKey,
-          bookingMode: input.mode,
-          timeslot: { start: startUtc, end: endUtc },
-          blockedPeriod: blocked,
-          guestCount: input.guestCount,
-          quantity: 1,
-          totalAmount: BigInt(quote.subtotal),
-          discountAmount: 0n, // promotions are Task 1.11
-          finalAmount: BigInt(quote.subtotal),
-          depositAmount: BigInt(quote.depositAmount),
-          cancellationPolicyId: listing.cancellationPolicyId,
-          cancellationPolicySnapshot: policyRules,
-          pricingSnapshot: quote,
-          customerNote: input.customerNote ?? null,
-        });
-
-        const toStatus = listing.approvalRequired ? 'pending_approval' : 'pending_payment';
-        const expiresAt = listing.approvalRequired ? addMinutes(utcNow(), 24 * 60) : addMinutes(utcNow(), 15);
-        const booking = await this.bookings.applyTransition(tx, {
-          id: draft.id,
-          from: 'draft',
-          to: toStatus,
-          actor: 'system',
-          actorId: customerId,
-          expiresAt,
-        });
-        await this.outbox.emit(tx, {
-          tenantId: tenant.id,
-          eventType: 'booking.created',
-          payload: { bookingId: booking.id, code: booking.code, status: booking.status },
-        });
-        return booking;
+        return this.insertAndActivate(tx, tenant.id, { ...common, quantity: 1, securityDeposit: 0n });
       });
     } catch (err) {
       await this.holds.release(listing.resourceId, holdId);
       if (err instanceof SlotTakenError) throw this.slotTaken();
       throw err;
     }
+  }
+
+  /** Insert a draft then transition it live — shared by both booking paths. */
+  private async insertAndActivate(
+    tx: PrismaTx,
+    tenantId: string,
+    args: {
+      listing: ListingRecord;
+      quote: QuoteResponse;
+      policyRules: unknown;
+      customerId: string;
+      input: CreateBookingInput;
+      timeslot: { start: Date; end: Date };
+      blocked: { start: Date; end: Date };
+      idempotencyKey: string;
+      quantity: number;
+      securityDeposit: bigint;
+    },
+  ): Promise<BookingRecord> {
+    const draft = await this.bookings.insertDraft(tx, tenantId, {
+      listingId: args.listing.id,
+      partnerId: args.listing.partnerId,
+      resourceId: args.listing.resourceId,
+      customerId: args.customerId,
+      code: generateBookingCode((max) => randomInt(max)),
+      idempotencyKey: args.idempotencyKey,
+      bookingMode: args.input.mode,
+      timeslot: args.timeslot,
+      blockedPeriod: args.blocked,
+      guestCount: args.input.guestCount,
+      quantity: args.quantity,
+      totalAmount: BigInt(args.quote.subtotal),
+      discountAmount: 0n, // promotions are Task 1.11
+      finalAmount: BigInt(args.quote.subtotal),
+      depositAmount: BigInt(args.quote.depositAmount),
+      securityDeposit: args.securityDeposit,
+      cancellationPolicyId: args.listing.cancellationPolicyId,
+      cancellationPolicySnapshot: args.policyRules,
+      pricingSnapshot: args.quote,
+      customerNote: args.input.customerNote ?? null,
+    });
+    const toStatus = args.listing.approvalRequired ? 'pending_approval' : 'pending_payment';
+    const expiresAt = args.listing.approvalRequired ? addMinutes(utcNow(), 24 * 60) : addMinutes(utcNow(), 15);
+    const booking = await this.bookings.applyTransition(tx, {
+      id: draft.id,
+      from: 'draft',
+      to: toStatus,
+      actor: 'system',
+      actorId: args.customerId,
+      expiresAt,
+    });
+    await this.outbox.emit(tx, {
+      tenantId,
+      eventType: 'booking.created',
+      payload: { bookingId: booking.id, code: booking.code, status: booking.status },
+    });
+    return booking;
   }
 
   private async resolveCustomer(input: CreateBookingInput, ctx: CreateBookingContext): Promise<string> {

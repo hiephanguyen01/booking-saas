@@ -59,7 +59,7 @@ export type AvailabilityExceptionInput = z.infer<typeof availabilityExceptionInp
 
 // ── Public availability query (§9) ────────────────────────────────────────────
 
-export const availabilityModeSchema = z.enum(['hourly', 'daily']);
+export const availabilityModeSchema = z.enum(['hourly', 'daily', 'inventory']);
 export type AvailabilityMode = z.infer<typeof availabilityModeSchema>;
 
 export const availabilityQuerySchema = z
@@ -121,6 +121,13 @@ export interface HourlyDay {
   slots: HourlySlot[];
 }
 
+/** Remaining stock for an inventory listing over the queried window (§9.4). */
+export interface InventoryAvailability {
+  stock: number;
+  remaining: number;
+}
+
 export type AvailabilityResponse =
   | { mode: 'hourly'; timezone: string; days: HourlyDay[] }
-  | { mode: 'daily'; timezone: string; days: DayAvailability[] };
+  | { mode: 'daily'; timezone: string; days: DayAvailability[] }
+  | { mode: 'inventory'; timezone: string; inventory: InventoryAvailability };

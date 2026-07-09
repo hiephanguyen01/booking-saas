@@ -13,4 +13,6 @@ export interface IBusyReader {
   busyBookings(tx: PrismaTx, resourceId: string, fromUtc: Date, toUtc: Date): Promise<Interval[]>;
   /** Unexpired holds overlapping `[from,to)`. */
   activeHolds(tx: PrismaTx, resourceId: string, fromUtc: Date, toUtc: Date): Promise<Interval[]>;
+  /** Committed inventory quantity for a listing over `[from,to)` — active + unreturned (§9.4). */
+  inventoryUsage(tx: PrismaTx, listingId: string, fromUtc: Date, toUtc: Date): Promise<number>;
 }

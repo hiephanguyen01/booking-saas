@@ -46,4 +46,16 @@ export class PrismaBusyReader implements IBusyReader {
         AND timeslot && tstzrange(${fromUtc}, ${toUtc}, '[)')`);
     return rows.map((r) => ({ start: r.start, end: r.end }));
   }
+
+  async inventoryUsage(tx: PrismaTx, listingId: string, fromUtc: Date, toUtc: Date): Promise<number> {
+    const rows = await tx.$queryRaw<{ used: number }[]>(Prisma.sql`
+      SELECT COALESCE(SUM(quantity), 0)::int AS "used"
+      FROM bookings
+      WHERE listing_id = ${listingId}::uuid
+        AND booking_mode = 'inventory'
+        AND status IN ('pending_payment', 'pending_approval', 'confirmed')
+        AND returned_at IS NULL
+        AND (blocked_period && tstzrange(${fromUtc}, ${toUtc}, '[)') OR upper(blocked_period) <= now())`);
+    return rows[0]?.used ?? 0;
+  }
 }
