@@ -29,7 +29,7 @@ export class HandleWebhookUseCase {
     const payment = await this.payments.findByGatewayTxnId(ref);
     if (!payment) return; // unknown txn — acknowledge and ignore
 
-    const outcome = await this.tenantDb.forTenant(payment.tenantId, async (tx) => {
+    await this.tenantDb.forTenant(payment.tenantId, async (tx) => {
       const gateway = await this.registry.resolveForTenant(tx, payment.tenantId);
       const v = gateway.verifyWebhook(rawBody, headers);
       if (!v.valid) throw new UnauthorizedException({ statusCode: 401, code: 'INVALID_SIGNATURE', message: 'Webhook signature invalid' });
@@ -39,23 +39,21 @@ export class HandleWebhookUseCase {
         if (payment.status === 'pending') {
           await this.payments.updateStatus(tx, payment.id, v.event === 'expired' ? 'expired' : 'failed');
         }
-        return { confirm: false as const };
+        return;
       }
       if (!amountMatches(payment.amount, v.amountVnd)) {
         throw new BadRequestException({ statusCode: 400, code: 'AMOUNT_MISMATCH', message: 'Paid amount is less than expected' });
       }
+      // Atomic: flip the payment AND confirm the booking in ONE tx, so the expiry
+      // sweep can never expire a paid booking between two separate transactions.
       const flipped = await this.payments.markSucceeded(tx, payment.id, utcNow(), { event: v.event, amountVnd: v.amountVnd.toString() });
-      return { confirm: flipped, bookingId: payment.bookingId };
-    });
-
-    // Confirm in its own tenant tx (no nesting). Idempotent: only the flipper confirms.
-    if (outcome.confirm && outcome.bookingId) {
+      if (!flipped) return; // duplicate delivery — already succeeded + confirmed
       try {
-        await this.confirmBooking.execute(payment.tenantId, outcome.bookingId);
+        await this.confirmBooking.confirmInTx(tx, payment.tenantId, payment.bookingId);
       } catch {
-        // Booking already left pending_payment (e.g. expired) — §8.2 late-webhook
-        // handling (restore / auto-refund) is a follow-up; the payment stands.
+        // Booking already left pending_payment (raced the expiry sweep). Payment
+        // stands; §8.2 late-webhook restore / auto-refund is a follow-up.
       }
-    }
+    });
   }
 }

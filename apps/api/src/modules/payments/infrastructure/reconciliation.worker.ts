@@ -49,19 +49,21 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       if (!p.gatewayTxnId) continue;
       const txnId = p.gatewayTxnId;
       try {
-        const flipped = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
+        const confirmed = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
           const gateway = await this.registry.resolveForTenant(tx, p.tenantId);
           const status = await gateway.queryPaymentStatus(txnId);
-          if (status.status === 'succeeded') {
-            return this.payments.markSucceeded(tx, p.id, utcNow(), { reconciled: true });
+          if (status.status === 'expired') {
+            await this.payments.updateStatus(tx, p.id, 'expired');
+            return false;
           }
-          if (status.status === 'expired') await this.payments.updateStatus(tx, p.id, 'expired');
-          return false;
+          if (status.status !== 'succeeded') return false;
+          const flipped = await this.payments.markSucceeded(tx, p.id, utcNow(), { reconciled: true });
+          if (!flipped) return false;
+          // Confirm atomically in the same tx (§8.2 late-webhook restore).
+          await this.confirmBooking.confirmInTx(tx, p.tenantId, p.bookingId).catch(() => undefined);
+          return true;
         });
-        if (flipped) {
-          await this.confirmBooking.execute(p.tenantId, p.bookingId).catch(() => undefined);
-          reconciled++;
-        }
+        if (confirmed) reconciled++;
       } catch (err) {
         this.logger.debug(`reconcile ${p.id} failed: ${err instanceof Error ? err.message : String(err)}`);
       }

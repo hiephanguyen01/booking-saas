@@ -1031,9 +1031,9 @@ model Payment {
   refunds       Refund[]
   ledgerEntries LedgerEntry[]
 
+  @@unique([gateway, gatewayTxnId])
   @@index([tenantId])
   @@index([bookingId])
-  @@index([gatewayTxnId])
   @@map("payments")
 }
 

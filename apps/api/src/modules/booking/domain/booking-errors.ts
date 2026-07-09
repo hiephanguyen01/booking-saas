@@ -13,3 +13,15 @@ export class SlotHeldError extends Error {
     this.name = 'SlotHeldError';
   }
 }
+
+/**
+ * A concurrent request with the same idempotency key won the insert race (the
+ * `(tenant_id, idempotency_key)` unique index fired). The caller should re-read
+ * the winning booking and return it — the request is idempotent, not a failure.
+ */
+export class IdempotencyConflictError extends Error {
+  constructor() {
+    super('A booking with this idempotency key already exists');
+    this.name = 'IdempotencyConflictError';
+  }
+}

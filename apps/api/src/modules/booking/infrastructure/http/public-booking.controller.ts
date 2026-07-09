@@ -37,8 +37,9 @@ import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking
 import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
 import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
 
-const MOCK_PAY_ENABLED =
-  process.env.ALLOW_MOCK_PAYMENTS === 'true' || process.env.NODE_ENV !== 'production';
+// Fail CLOSED: an explicit opt-in only — never inferred from NODE_ENV (which is
+// unset in many shared/preview envs, which would expose free confirmations).
+const MOCK_PAY_ENABLED = process.env.ALLOW_MOCK_PAYMENTS === 'true';
 
 /** Storefront booking (§8/§8.6). Tenant resolved from Host (BFF). */
 @Controller('public')

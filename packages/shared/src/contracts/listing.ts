@@ -139,7 +139,9 @@ export type UpdateListingInput = z.infer<typeof updateListingInputSchema>;
 export const createResourceInputSchema = z.object({
   partnerId: uuidSchema,
   name: z.string().min(1).max(200),
-  timezone: z.string().min(1).max(64).default('Asia/Ho_Chi_Minh'),
+  // Optional — when omitted the server applies the tenant's own default_timezone
+  // (not a hardcoded zone), so non-VN tenants get their configured zone.
+  timezone: z.string().min(1).max(64).optional(),
 });
 export type CreateResourceInput = z.infer<typeof createResourceInputSchema>;
 

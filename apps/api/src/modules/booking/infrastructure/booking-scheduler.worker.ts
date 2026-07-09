@@ -65,8 +65,11 @@ export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdo
                 WHEN status = 'pending_approval' THEN 'booking.rejected'
                 ELSE 'booking.completed'
               END) AS "eventType"
-      FROM bookings
-      WHERE (status IN ('pending_payment', 'pending_approval') AND expires_at <= now())
+      FROM bookings b
+      WHERE (status = 'pending_approval' AND expires_at <= now())
+         OR (status = 'pending_payment' AND expires_at <= now()
+             -- never expire a booking a webhook already paid (avoids paid-but-expired)
+             AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'succeeded'))
          OR (status = 'confirmed' AND booking_mode <> 'inventory'
              AND upper(timeslot) + interval '24 hours' <= now())
       LIMIT 100`;

@@ -44,6 +44,7 @@ describe('booking core & state machine', () => {
     process.env.REDIS_URL = redis.getConnectionUrl();
     process.env.SESSION_COOKIE_SECURE = 'false';
     process.env.OUTBOX_RELAY_DISABLED = 'true'; // also disables the booking scheduler
+    process.env.ALLOW_MOCK_PAYMENTS = 'true';
     process.env.SEED_DEMO = 'true';
     process.env.PLATFORM_BASE_DOMAIN = 'bookify.vn';
 

@@ -48,7 +48,9 @@ export class CancelBookingUseCase {
               hoursUntil(booking.startUtc, utcNow()),
             )
           : 100; // partner/tenant cancellation is always full refund
-      const refundAmount = computeRefund(booking.paidAmount, percent);
+      // The refundable security deposit is ALWAYS returned in full on cancellation
+      // (no rental happened) — the cancellation policy only bites the paid deposit (§9.4).
+      const refundAmount = computeRefund(booking.paidAmount, percent) + booking.securityDeposit;
 
       const cancelled = await this.bookings.applyTransition(tx, {
         id: bookingId,

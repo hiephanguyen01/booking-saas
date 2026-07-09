@@ -121,7 +121,9 @@ function coalesce(
 function wholeUnits(startUtc: Date, endUtc: Date, unitMs: number, unitName: string): number {
   const span = endUtc.getTime() - startUtc.getTime();
   if (span <= 0) throw new PricingError('INVALID_RANGE', 'End must be after start');
-  const units = Math.round(span / unitMs);
+  // Charge whole STARTED units (a partial hour/night bills as a full one) — never
+  // round a partial down and undercharge the reserved time.
+  const units = Math.ceil(span / unitMs);
   if (units < 1) throw new PricingError('INVALID_RANGE', `Range is shorter than one ${unitName}`);
   return units;
 }

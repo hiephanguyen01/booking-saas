@@ -9,7 +9,8 @@ export class TenantContextMiddleware implements NestMiddleware {
   constructor(private readonly context: TenantContextService) {}
 
   use(_req: Request, _res: Response, next: NextFunction) {
-    this.context.enter({});
-    next();
+    // run() (not enterWith) binds the store for the whole downstream async chain
+    // within a fresh context, so a store can never bleed across requests.
+    this.context.run({}, () => next());
   }
 }

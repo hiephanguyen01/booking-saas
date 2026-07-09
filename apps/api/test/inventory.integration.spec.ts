@@ -50,6 +50,7 @@ describe('inventory mode (quantity + deposit)', () => {
     process.env.REDIS_URL = redis.getConnectionUrl();
     process.env.SESSION_COOKIE_SECURE = 'false';
     process.env.OUTBOX_RELAY_DISABLED = 'true';
+    process.env.ALLOW_MOCK_PAYMENTS = 'true';
     process.env.SEED_DEMO = 'true';
     process.env.PLATFORM_BASE_DOMAIN = 'bookify.vn';
 
@@ -155,5 +156,22 @@ describe('inventory mode (quantity + deposit)', () => {
     expect(returned.body.lateFee).toBe('100000'); // 50k × 2 days × 1
     expect(returned.body.depositRefund).toBe('400000'); // 500k − 100k late fee
     expect(returned.body.returnedAt).toBeTruthy();
+  });
+
+  it('refunds the full security deposit on cancellation (§9.4 — review fix)', async () => {
+    const s = daySlot(43);
+    const created = await book({ listingId, mode: 'inventory', from: s.from, to: s.to, quantity: 1, guest: guest(4) }).expect(201);
+    await request(http).post(`/public/bookings/${created.body.code}/mock-pay`).set('Host', HOST).expect(200);
+
+    const cancelled = await request(http)
+      .post(`/partner/bookings/${created.body.id}/cancel`)
+      .set('Cookie', partnerCookies)
+      .set('x-tenant-id', tenantId)
+      .set('x-partner-id', partnerId)
+      .send({ reason: 'store closed' })
+      .expect(200);
+    expect(cancelled.body.status).toBe('cancelled');
+    // deposit (100k paid, 100% refund) + the full refundable security deposit (500k) = 600k
+    expect(cancelled.body.refundAmount).toBe('600000');
   });
 });

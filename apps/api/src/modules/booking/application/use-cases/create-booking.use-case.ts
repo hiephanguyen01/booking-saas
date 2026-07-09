@@ -1,8 +1,8 @@
 import { randomInt } from 'node:crypto';
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { CreateBookingInput, ModeConfig, QuoteResponse } from '@booking/shared';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow, addMinutes } from '../../../../shared/time/time';
+import { utcNow, addMinutes, DEFAULT_TIMEZONE } from '../../../../shared/time/time';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { FindOrCreateGuestUseCase } from '../../../identity-access/application/use-cases/find-or-create-guest.use-case';
@@ -15,7 +15,7 @@ import { HOLD_STORE, type IHoldStore } from '../../domain/ports/hold-store.port'
 import { generateBookingCode } from '../../domain/booking-code';
 import { blockedPeriod } from '../../domain/blocked-period';
 import { hasCapacity } from '../../domain/inventory-stock';
-import { SlotTakenError, SlotHeldError } from '../../domain/booking-errors';
+import { IdempotencyConflictError, SlotTakenError, SlotHeldError } from '../../domain/booking-errors';
 
 export interface CreateBookingContext {
   /** Logged-in customer's user id, if any (else `input.guest` is required). */
@@ -46,6 +46,9 @@ export class CreateBookingUseCase {
 
   async execute(host: string, input: CreateBookingInput, ctx: CreateBookingContext): Promise<BookingRecord> {
     const tenant = await this.resolveTenant.execute(host);
+    if (!tenant.live) {
+      throw new ForbiddenException({ statusCode: 403, code: 'STOREFRONT_SUSPENDED', message: 'This storefront is not accepting bookings' });
+    }
     const customerId = await this.resolveCustomer(input, ctx);
     const startUtc = new Date(input.from);
     const endUtc = new Date(input.to);
@@ -79,7 +82,7 @@ export class CreateBookingUseCase {
         mode: input.mode,
         modeConfig: listing.modeConfig as ModeConfig,
         pricingRules,
-        timezone: resource?.timezone ?? 'Asia/Ho_Chi_Minh',
+        timezone: resource?.timezone ?? DEFAULT_TIMEZONE,
         startUtc,
         endUtc,
         quantity: input.mode === 'inventory' ? input.quantity : 1,
@@ -97,38 +100,72 @@ export class CreateBookingUseCase {
     // Inventory (§9.4): multi-unit, so no exclusion constraint. An advisory lock
     // per listing + an atomic stock count guarantees stock is never oversold.
     if (input.mode === 'inventory') {
-      return this.tenantDb.forTenant(tenant.id, async (tx) => {
-        const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
-        if (again) return again;
-        const stock = listing.stockQuantity ?? 0;
-        const used = await this.bookings.lockAndCountInventory(tx, listing.id, blocked.start, blocked.end);
-        if (!hasCapacity(stock, used, input.quantity)) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'OUT_OF_STOCK',
-            message: `Only ${Math.max(0, stock - used)} unit(s) available for this period`,
+      return this.insertBooking(tenant.id, ctx.idempotencyKey, () =>
+        this.tenantDb.forTenant(tenant.id, async (tx) => {
+          const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
+          if (again) return again;
+          const stock = listing.stockQuantity ?? 0;
+          const used = await this.bookings.lockAndCountInventory(tx, listing.id, blocked.start, blocked.end);
+          if (!hasCapacity(stock, used, input.quantity)) {
+            throw new ConflictException({
+              statusCode: 409,
+              code: 'OUT_OF_STOCK',
+              message: `Only ${Math.max(0, stock - used)} unit(s) available for this period`,
+            });
+          }
+          return this.insertAndActivate(tx, tenant.id, {
+            ...common,
+            quantity: input.quantity,
+            securityDeposit: BigInt(quote.securityDeposit),
           });
-        }
-        return this.insertAndActivate(tx, tenant.id, {
-          ...common,
-          quantity: input.quantity,
-          securityDeposit: BigInt(quote.securityDeposit),
-        });
-      });
+        }),
+      );
     }
 
     // Exclusive (hourly/daily): Redis hold (Layer 1) + the exclusion constraint (Layer 2).
     const holdId = await this.holds.acquire(listing.resourceId, blocked.start, blocked.end);
     if (!holdId) throw this.slotHeld();
     try {
-      return await this.tenantDb.forTenant(tenant.id, async (tx) => {
-        const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
-        if (again) return again;
-        return this.insertAndActivate(tx, tenant.id, { ...common, quantity: 1, securityDeposit: 0n });
-      });
+      const booking = await this.insertBooking(tenant.id, ctx.idempotencyKey, () =>
+        this.tenantDb.forTenant(tenant.id, async (tx) => {
+          const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
+          if (again) return again;
+          return this.insertAndActivate(tx, tenant.id, { ...common, quantity: 1, securityDeposit: 0n });
+        }),
+      );
+      // Success: release the hold now — the DB row (pending_payment) + the
+      // exclusion constraint hold the slot, so leaving the Redis hold for its
+      // full TTL would falsely block a re-booking after an early cancel.
+      await this.holds.release(listing.resourceId, holdId);
+      return booking;
     } catch (err) {
       await this.holds.release(listing.resourceId, holdId);
       if (err instanceof SlotTakenError) throw this.slotTaken();
+      throw err;
+    }
+  }
+
+  /**
+   * Run an insert path, turning a lost idempotency-key race into the idempotent
+   * result: two concurrent requests with the same key both pass the pre-check,
+   * but the DB unique index lets only one insert — the loser (surfaced as
+   * {@link IdempotencyConflictError}) re-reads and returns the winner's booking
+   * instead of a 500.
+   */
+  private async insertBooking(
+    tenantId: string,
+    idempotencyKey: string,
+    run: () => Promise<BookingRecord>,
+  ): Promise<BookingRecord> {
+    try {
+      return await run();
+    } catch (err) {
+      if (err instanceof IdempotencyConflictError) {
+        const existing = await this.tenantDb.forTenant(tenantId, (tx) =>
+          this.bookings.findByIdempotencyKey(tx, idempotencyKey),
+        );
+        if (existing) return existing;
+      }
       throw err;
     }
   }

@@ -53,6 +53,15 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     return p ? toRecord(p) : null;
   }
 
+  async findPendingCheckout(tx: PrismaTx, bookingId: string): Promise<{ id: string; paymentUrl: string } | null> {
+    const rows = await tx.$queryRaw<{ id: string; paymentUrl: string | null }[]>(Prisma.sql`
+      SELECT id, gateway_payload->>'paymentUrl' AS "paymentUrl"
+      FROM payments WHERE booking_id = ${bookingId}::uuid AND status = 'pending'
+      ORDER BY created_at DESC LIMIT 1`);
+    const r = rows[0];
+    return r?.paymentUrl ? { id: r.id, paymentUrl: r.paymentUrl } : null;
+  }
+
   async findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
     const p = await tx.payment.findFirst({ where: { bookingId, status: 'succeeded' }, orderBy: { createdAt: 'desc' } });
     return p ? toRecord(p) : null;
@@ -77,12 +86,33 @@ export class PrismaPaymentRepository implements IPaymentRepository {
   }
 
   async findStalePending(olderThanSec: number): Promise<PaymentRef[]> {
-    const cutoff = new Date(Date.now() - olderThanSec * 1000);
-    const rows = await this.prisma.admin.payment.findMany({
-      where: { status: 'pending', createdAt: { lt: cutoff } },
-      take: 100,
-    });
-    return rows.map((p) => this.toRef(p));
+    // DB clock, not Date.now() — app/DB clock skew must not make a fresh payment
+    // invisible or a young one look stale (same discipline as the outbox relay).
+    const rows = await this.prisma.admin.$queryRaw<
+      {
+        id: string;
+        tenantId: string;
+        bookingId: string;
+        gateway: string;
+        amount: bigint;
+        status: string;
+        gatewayTxnId: string | null;
+      }[]
+    >(Prisma.sql`
+      SELECT id, tenant_id AS "tenantId", booking_id AS "bookingId", gateway::text AS "gateway",
+             amount, status::text AS "status", gateway_txn_id AS "gatewayTxnId"
+      FROM payments
+      WHERE status = 'pending' AND created_at < now() - make_interval(secs => ${olderThanSec})
+      ORDER BY created_at LIMIT 100`);
+    return rows.map((r) => ({
+      id: r.id,
+      tenantId: r.tenantId,
+      bookingId: r.bookingId,
+      gateway: r.gateway as GatewayKey,
+      amount: r.amount,
+      status: r.status as PaymentRef['status'],
+      gatewayTxnId: r.gatewayTxnId,
+    }));
   }
 
   private toRef(p: Row): PaymentRef {

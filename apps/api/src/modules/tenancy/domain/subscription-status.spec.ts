@@ -54,6 +54,28 @@ describe('evaluateSubscription', () => {
     expect(e.storefrontLive).toBe(false);
   });
 
+  it('a past_due subscription stays live until it actually expires (dunning, not suspension)', () => {
+    const e = evaluateSubscription(
+      { status: 'past_due', startsAt: new Date(now.getTime() - 30 * day), expiresAt: new Date(now.getTime() + 3 * day) },
+      now,
+    );
+    expect(e).toMatchObject({
+      phase: 'active',
+      storefrontLive: true,
+      dashboardWritable: true,
+      newBookingsAllowed: true,
+    });
+  });
+
+  it('a past_due subscription past its expiry is suspended like any lapsed one', () => {
+    const e = evaluateSubscription(
+      { status: 'past_due', startsAt: new Date(now.getTime() - 60 * day), expiresAt: new Date(now.getTime() - 2 * day) },
+      now,
+    );
+    expect(e.phase).toBe('grace');
+    expect(e.storefrontLive).toBe(false);
+  });
+
   it('a cancelled subscription is never live even before its expiry date', () => {
     const e = evaluateSubscription(
       { status: 'cancelled', startsAt: new Date(now.getTime() - 10 * day), expiresAt: new Date(now.getTime() + 10 * day) },

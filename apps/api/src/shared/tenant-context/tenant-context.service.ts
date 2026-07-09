@@ -21,11 +21,6 @@ export class TenantContextService {
     return this.als.run(store, fn);
   }
 
-  /** Bind the rest of the current async chain to a fresh store (middleware). */
-  enter(store: TenantContextStore = {}): void {
-    this.als.enterWith(store);
-  }
-
   setTenantId(tenantId: string): void {
     const store = this.als.getStore();
     if (store) store.tenantId = tenantId;

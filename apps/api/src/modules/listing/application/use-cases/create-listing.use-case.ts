@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { CreateListingInput } from '@booking/shared';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { resolveTenantTimezone } from '../../../../shared/tenant-context/tenant-timezone';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   LISTING_TYPE_REPOSITORY,
@@ -103,7 +104,7 @@ export class CreateListingUseCase {
         const resource = await this.resources.create(tx, tenantId, {
           partnerId: input.partnerId,
           name: input.title,
-          timezone: 'Asia/Ho_Chi_Minh',
+          timezone: await resolveTenantTimezone(tx, tenantId),
         });
         resourceId = resource.id;
       }

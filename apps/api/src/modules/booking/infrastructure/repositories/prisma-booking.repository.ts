@@ -10,7 +10,7 @@ import type {
   InsertBookingData,
   TransitionParams,
 } from '../../domain/ports/booking-repository.port';
-import { SlotTakenError } from '../../domain/booking-errors';
+import { IdempotencyConflictError, SlotTakenError } from '../../domain/booking-errors';
 
 interface Row {
   id: string;
@@ -70,6 +70,15 @@ function isExclusionViolation(err: unknown): boolean {
   return msg.includes('bookings_no_overlap') || msg.includes('23P01');
 }
 
+/** A unique-violation (23505) on the (tenant_id, idempotency_key) index. */
+function isIdempotencyViolation(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    (msg.includes('23505') || msg.includes('duplicate key')) &&
+    msg.includes('idempotency_key')
+  );
+}
+
 @Injectable()
 export class PrismaBookingRepository implements IBookingRepository {
   async insertDraft(
@@ -78,7 +87,8 @@ export class PrismaBookingRepository implements IBookingRepository {
     data: InsertBookingData,
   ): Promise<BookingRecord> {
     const id = randomUUID();
-    await tx.$executeRaw(Prisma.sql`
+    try {
+      await tx.$executeRaw(Prisma.sql`
       INSERT INTO bookings (
         id, tenant_id, listing_id, partner_id, resource_id, customer_id, code, idempotency_key,
         booking_mode, status, timeslot, blocked_period,
@@ -96,6 +106,12 @@ export class PrismaBookingRepository implements IBookingRepository {
         ${JSON.stringify(data.cancellationPolicySnapshot ?? null)}::jsonb,
         ${JSON.stringify(data.pricingSnapshot ?? null)}::jsonb, ${data.customerNote}, now()
       )`);
+    } catch (err) {
+      // A concurrent request with the same idempotency key won the race — the
+      // use case will re-read and return the winning booking (idempotent).
+      if (isIdempotencyViolation(err)) throw new IdempotencyConflictError();
+      throw err;
+    }
     return this.byId(tx, id);
   }
 

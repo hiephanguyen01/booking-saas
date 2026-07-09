@@ -43,7 +43,12 @@ export function evaluateSubscription(
   }
 
   const daysUntilExpiry = Math.ceil((sub.expiresAt.getTime() - now.getTime()) / MS_PER_DAY);
-  const activeStatus = sub.status === 'active' || sub.status === 'trial';
+  // Suspension keys off the *expiry date*, not the payment status (§6.5): a
+  // `past_due` sub is in dunning — payment failed but the paid-through date has
+  // not yet passed — so it stays live until it actually expires, exactly like
+  // `active`/`trial`. Only `cancelled` (explicit) and a lapsed date suspend.
+  const activeStatus =
+    sub.status === 'active' || sub.status === 'trial' || sub.status === 'past_due';
 
   if (activeStatus && now < sub.expiresAt) {
     return {
@@ -57,7 +62,7 @@ export function evaluateSubscription(
 
   const daysSinceExpiry = Math.floor((now.getTime() - sub.expiresAt.getTime()) / MS_PER_DAY);
   return {
-    phase: daysSinceExpiry <= GRACE_PERIOD_DAYS ? 'grace' : 'expired',
+    phase: daysSinceExpiry < GRACE_PERIOD_DAYS ? 'grace' : 'expired',
     storefrontLive: false,
     dashboardWritable: false,
     newBookingsAllowed: false,

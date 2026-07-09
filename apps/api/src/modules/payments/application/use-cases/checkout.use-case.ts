@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { CheckoutResponse } from '@booking/shared';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
@@ -33,12 +33,20 @@ export class CheckoutUseCase {
 
   async execute(host: string, bookingId: string): Promise<CheckoutResponse> {
     const tenant = await this.resolveTenant.execute(host);
+    if (!tenant.live) {
+      throw new ForbiddenException({ statusCode: 403, code: 'STOREFRONT_SUSPENDED', message: 'This storefront is not accepting payments' });
+    }
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
       if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
       if (booking.status !== 'pending_payment') {
         throw new BadRequestException({ statusCode: 400, code: 'BOOKING_NOT_PAYABLE', message: `Booking is ${booking.status}, not awaiting payment` });
       }
+
+      // Idempotent: reuse the existing pending payment link rather than minting a
+      // second gateway payment (which could double-charge on a retry/double-click).
+      const existing = await this.payments.findPendingCheckout(tx, bookingId);
+      if (existing) return { paymentId: existing.id, paymentUrl: existing.paymentUrl };
 
       const amount = booking.depositAmount + booking.securityDeposit;
       const kind = booking.depositAmount >= booking.finalAmount ? 'full' : 'deposit';
