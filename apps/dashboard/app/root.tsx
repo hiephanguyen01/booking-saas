@@ -1,22 +1,41 @@
-import { isRouteErrorResponse, Links, Meta, NavLink, Outlet, Scripts, ScrollRestoration } from 'react-router';
+import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
+import { SidebarInset, SidebarProvider } from '@booking/ui/components/ui/sidebar';
+import { Toaster } from '@booking/ui/components/ui/sonner';
+import { ThemeProvider } from '@booking/ui/components/theme/theme-provider';
 import type { Route } from './+types/root';
+import { loadSessionInfo } from './lib/auth.server';
+import { AppSidebar } from './components/app-sidebar';
+import { DashboardHeader } from './components/dashboard-header';
 import './app.css';
 
 export function meta() {
   return [{ title: 'Bookify Dashboard' }];
 }
 
+/**
+ * Root loader resolves the logged-in identity + scopes for the shell. It returns
+ * `null` for anonymous visitors (login page) instead of redirecting, so auth
+ * routes render outside the shell.
+ */
+export async function loader({ request }: Route.LoaderArgs) {
+  const info = await loadSessionInfo(request);
+  return { info };
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body className="min-h-screen bg-gray-50">
-        {children}
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -24,46 +43,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-const areas = [
-  { to: '/admin', label: 'Platform Admin' },
-  { to: '/tenant', label: 'Tenant' },
-  { to: '/partner', label: 'Partner' },
-  { to: '/affiliate', label: 'Affiliate' },
-];
+export default function App({ loaderData }: Route.ComponentProps) {
+  const info = loaderData?.info ?? null;
 
-export default function App() {
+  // Unauthenticated (login/logout) — render the page without the dashboard shell.
+  if (!info) {
+    return <Outlet />;
+  }
+
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-56 border-r border-gray-200 bg-white p-4">
-        <p className="mb-4 text-lg font-bold">Bookify</p>
-        <nav className="flex flex-col gap-1">
-          {areas.map((area) => (
-            <NavLink
-              key={area.to}
-              to={area.to}
-              className={({ isActive }) =>
-                `rounded px-3 py-2 text-sm ${isActive ? 'bg-sky-100 font-medium text-sky-800' : 'text-gray-700 hover:bg-gray-100'}`
-              }
-            >
-              {area.label}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
-      <main className="flex-1 p-8">
-        <Outlet />
-      </main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar info={info} />
+      <SidebarInset>
+        <DashboardHeader />
+        <main className="flex-1 p-4 lg:p-6">
+          <Outlet />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const message = isRouteErrorResponse(error)
-    ? `${error.status} ${error.statusText}`
-    : 'Đã có lỗi xảy ra';
+  const isResponse = isRouteErrorResponse(error);
+  const title = isResponse ? `${error.status}` : 'Đã có lỗi xảy ra';
+  const detail = isResponse
+    ? typeof error.data === 'string' && error.data
+      ? error.data
+      : error.statusText
+    : 'Vui lòng thử lại hoặc liên hệ quản trị viên.';
+
   return (
-    <main className="mx-auto max-w-lg p-8 text-center">
-      <h1 className="text-2xl font-semibold">{message}</h1>
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-3 p-8 text-center">
+      <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+      <p className="text-muted-foreground">{detail}</p>
     </main>
   );
 }

@@ -17,6 +17,9 @@ import { ListingModule } from './modules/listing/infrastructure/http/listing.mod
 import { SchedulingModule } from './modules/scheduling/infrastructure/http/scheduling.module';
 import { BookingModule } from './modules/booking/infrastructure/http/booking.module';
 import { PaymentsModule } from './modules/payments/infrastructure/http/payments.module';
+import { PromotionsModule } from './modules/promotions/infrastructure/http/promotions.module';
+import { FinanceModule } from './modules/finance/infrastructure/http/finance.module';
+import { NotificationModule } from './modules/notification/infrastructure/http/notification.module';
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { PaymentsModule } from './modules/payments/infrastructure/http/payments.
     SchedulingModule,
     BookingModule,
     PaymentsModule,
+    PromotionsModule,
+    FinanceModule,
+    NotificationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

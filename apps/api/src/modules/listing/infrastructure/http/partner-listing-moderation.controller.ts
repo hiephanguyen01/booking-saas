@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Ip, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Ip, Param, Post, UseGuards } from '@nestjs/common';
 import {
   moderationReasonInputSchema,
   uuidSchema,
@@ -15,6 +15,7 @@ import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/
 import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
 import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
 import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
+import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
 import { toListingResponse } from '../../application/listing.mapper';
 
 /**
@@ -28,8 +29,19 @@ export class PartnerListingModerationController {
     private readonly submitListing: SubmitListingUseCase,
     private readonly hideListing: HideListingUseCase,
     private readonly republishListing: RepublishListingUseCase,
+    private readonly listListings: ListListingsUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  /** The partner's own listings (§7.3) — read-only, scoped to x-partner-id. */
+  @RequirePermissions('partner.listings.read')
+  @Get()
+  async list(): Promise<ListingResponse[]> {
+    const tenantId = this.tenantContext.tenantIdOrThrow();
+    const partnerId = this.tenantContext.partnerIdOrThrow();
+    const listings = await this.listListings.execute(tenantId, { partnerId });
+    return listings.map(toListingResponse);
+  }
 
   private ctx(principal: SessionPrincipal, ip: string) {
     return {

@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { z } from 'zod';
 import {
   markNoShowInputSchema,
   markReturnedInputSchema,
@@ -18,7 +19,27 @@ import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/
 import { PartnerBookingUseCase } from '../../application/use-cases/partner-booking.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
+import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
 import { toBookingResponse, toCancelResponse, toReturnResponse } from '../../application/booking.mapper';
+import {
+  toPartnerCalendarResponse,
+  type PartnerCalendarBookingResponse,
+} from '../../application/partner-calendar.mapper';
+
+/** Window query for the master calendar feed — UTC ISO instants, max 62 days. */
+const calendarRangeSchema = z
+  .object({
+    from: z.string().datetime(),
+    to: z.string().datetime(),
+  })
+  .refine((q) => Date.parse(q.from) < Date.parse(q.to), {
+    path: ['to'],
+    message: 'to must be after from',
+  })
+  .refine((q) => Date.parse(q.to) - Date.parse(q.from) <= 62 * 86_400_000, {
+    path: ['to'],
+    message: 'Range must be at most 62 days',
+  });
 
 /** Partner-side booking management (§8.2). Scope via x-partner-id. */
 @Controller('partner/bookings')
@@ -27,6 +48,7 @@ export class PartnerBookingController {
     private readonly partnerBooking: PartnerBookingUseCase,
     private readonly cancelBooking: CancelBookingUseCase,
     private readonly fulfillment: InventoryFulfillmentUseCase,
+    private readonly calendar: PartnerCalendarUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -36,6 +58,25 @@ export class PartnerBookingController {
       partnerId: this.tenantContext.partnerIdOrThrow(),
       actorId: principal.userId,
     };
+  }
+
+  /**
+   * Master-calendar feed (Task 1.14): every booking across the partner's
+   * resources overlapping `[from,to)`, with listing title + type for rendering
+   * and client-side filtering.
+   */
+  @RequirePermissions('partner.bookings.read')
+  @Get()
+  async calendarFeed(
+    @Query(new ZodValidationPipe(calendarRangeSchema)) query: { from: string; to: string },
+  ): Promise<PartnerCalendarBookingResponse[]> {
+    const bookings = await this.calendar.execute({
+      tenantId: this.tenantContext.tenantIdOrThrow(),
+      partnerId: this.tenantContext.partnerIdOrThrow(),
+      from: new Date(query.from),
+      to: new Date(query.to),
+    });
+    return bookings.map(toPartnerCalendarResponse);
   }
 
   @RequirePermissions('partner.bookings.approve')

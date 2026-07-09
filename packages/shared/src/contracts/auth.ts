@@ -43,3 +43,34 @@ export type AuthSessionResponse = z.infer<typeof authSessionResponseSchema>;
 
 export const scopeLevelSchema = z.enum(['platform', 'tenant', 'partner']);
 export type ScopeLevel = z.infer<typeof scopeLevelSchema>;
+
+/**
+ * One scope the logged-in user belongs to, with the permission keys resolved for
+ * that scope. The dashboard shell uses these to gate areas/nav and to pick the
+ * user's default landing area after login (§14.4). A `platform` membership has
+ * both ids null; a `tenant` membership carries `tenantId`; a `partner`
+ * membership carries both `tenantId` and `partnerId`.
+ */
+export const scopeMembershipSchema = z.object({
+  scope: scopeLevelSchema,
+  tenantId: uuidSchema.nullable(),
+  tenantName: z.string().nullable(),
+  partnerId: uuidSchema.nullable(),
+  partnerName: z.string().nullable(),
+  /** Role names assigned in this scope (for display only). */
+  roles: z.array(z.string()),
+  /** Fully-resolved permission keys (`scope.resource.action`) held in this scope. */
+  permissions: z.array(z.string()),
+});
+export type ScopeMembership = z.infer<typeof scopeMembershipSchema>;
+
+/**
+ * `GET /auth/session` payload — the logged-in identity plus every scope
+ * membership with resolved permissions. This is the single source the dashboard
+ * BFF loads to render the shell and enforce route guards.
+ */
+export const sessionInfoResponseSchema = z.object({
+  user: currentUserSchema,
+  scopes: z.array(scopeMembershipSchema),
+});
+export type SessionInfoResponse = z.infer<typeof sessionInfoResponseSchema>;

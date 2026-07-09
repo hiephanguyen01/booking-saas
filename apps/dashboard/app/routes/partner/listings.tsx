@@ -1,0 +1,225 @@
+import { useMemo, useState } from 'react';
+import { data, useFetcher } from 'react-router';
+import { EyeOff, Lock, Send, Undo2 } from 'lucide-react';
+import type { ListingResponse, PublishStatus } from '@booking/shared';
+import { Badge } from '@booking/ui/components/ui/badge';
+import { Button } from '@booking/ui/components/ui/button';
+import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
+import type { Route } from './+types/listings';
+import { apiGet, apiPost } from '~/lib/api.server';
+import { requirePartner, canPartner } from './lib.server';
+import { PageHeader } from './components/page-header';
+import { formatDate } from './components/format';
+
+const STATUS_META: Record<PublishStatus, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+  draft: { label: 'Nháp', variant: 'outline' },
+  pending_review: { label: 'Chờ duyệt', variant: 'secondary' },
+  published: { label: 'Đang hiển thị', variant: 'default' },
+  archived: { label: 'Đã ẩn', variant: 'outline' },
+};
+
+const MODE_LABEL: Record<string, string> = { hourly: 'Theo giờ', daily: 'Theo ngày', inventory: 'Kho' };
+
+export function meta(): Route.MetaDescriptors {
+  return [{ title: 'Tin đăng · Đối tác · Bookify' }];
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const { auth, membership } = await requirePartner(request);
+  if (!canPartner(membership, 'partner.listings.read')) {
+    throw new Response('Không có quyền xem tin đăng.', { status: 403 });
+  }
+  const res = await apiGet<ListingResponse[]>('/partner/listings', auth);
+  return {
+    listings: res.ok && res.data ? res.data : [],
+    canWrite: canPartner(membership, 'partner.listings.write'),
+    canPublish: canPartner(membership, 'partner.listings.publish'),
+    loadError: res.ok ? null : (res.error ?? 'Không tải được tin đăng.'),
+  };
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const { auth, membership } = await requirePartner(request);
+  const form = await request.formData();
+  const id = String(form.get('id') ?? '');
+  const intent = String(form.get('intent') ?? '');
+  if (!id) return data({ ok: false, error: 'Thiếu mã tin đăng.' }, { status: 400 });
+
+  const publish = (path: string, body: unknown = {}) => apiPost(path, body, auth);
+
+  if (intent === 'submit') {
+    if (!canPartner(membership, 'partner.listings.write')) {
+      return data({ ok: false, error: 'Không có quyền gửi duyệt.' }, { status: 403 });
+    }
+    const res = await publish(`/partner/listings/${id}/submit`);
+    return res.ok ? data({ ok: true, error: null }) : data({ ok: false, error: res.error ?? 'Gửi duyệt không thành công.' }, { status: 400 });
+  }
+  if (intent === 'hide' || intent === 'republish') {
+    if (!canPartner(membership, 'partner.listings.publish')) {
+      return data({ ok: false, error: 'Không có quyền xuất bản.' }, { status: 403 });
+    }
+    const res = await publish(`/partner/listings/${id}/${intent}`);
+    return res.ok
+      ? data({ ok: true, error: null })
+      : data({ ok: false, error: res.error ?? 'Thao tác không thành công.' }, { status: 400 });
+  }
+  return data({ ok: false, error: 'Hành động không hợp lệ.' }, { status: 400 });
+}
+
+const FILTERS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'published', label: 'Đang hiển thị' },
+  { value: 'draft', label: 'Nháp' },
+  { value: 'pending_review', label: 'Chờ duyệt' },
+  { value: 'archived', label: 'Đã ẩn' },
+];
+
+export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
+  const { listings, canWrite, canPublish, loadError } = loaderData;
+  const [filter, setFilter] = useState<string>('all');
+
+  const rows = useMemo(
+    () => (filter === 'all' ? listings : listings.filter((l) => l.status === filter)),
+    [listings, filter],
+  );
+
+  const columns: DataTableColumn<ListingResponse>[] = [
+    {
+      header: 'Tin đăng',
+      cell: (l) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">{l.title}</p>
+          <p className="truncate font-mono text-xs text-muted-foreground">/{l.slug}</p>
+        </div>
+      ),
+    },
+    {
+      header: 'Hình thức',
+      cell: (l) => (
+        <div className="flex flex-wrap gap-1">
+          {l.bookingModes.map((m) => (
+            <Badge key={m} variant="outline" className="font-normal">
+              {MODE_LABEL[m] ?? m}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      header: 'Cập nhật',
+      cell: (l) => <span className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(l.updatedAt)}</span>,
+    },
+    {
+      header: 'Trạng thái',
+      cell: (l) => {
+        const meta = STATUS_META[l.status];
+        const adminLocked = l.status === 'archived' && l.hiddenBy === 'admin';
+        return (
+          <div className="flex items-center gap-1.5">
+            <Badge variant={meta.variant}>{meta.label}</Badge>
+            {adminLocked ? (
+              <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400" title="Bị quản trị viên ẩn">
+                <Lock className="size-3" aria-hidden /> Khoá
+              </span>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
+      header: '',
+      headClassName: 'text-right',
+      className: 'text-right',
+      cell: (l) => <RowActions listing={l} canWrite={canWrite} canPublish={canPublish} />,
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Tin đăng" description="Gửi duyệt, hiển thị hoặc ẩn các tin đăng của bạn." />
+
+      <div className="w-full max-w-xs">
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger size="sm" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FILTERS.map((f) => (
+              <SelectItem key={f.value} value={f.value}>
+                {f.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loadError ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {loadError}
+        </div>
+      ) : null}
+
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowKey={(l) => l.id}
+        emptyMessage="Bạn chưa có tin đăng nào ở nhóm này."
+      />
+    </div>
+  );
+}
+
+function RowActions({
+  listing,
+  canWrite,
+  canPublish,
+}: {
+  listing: ListingResponse;
+  canWrite: boolean;
+  canPublish: boolean;
+}) {
+  const fetcher = useFetcher<typeof action>();
+  const busy = fetcher.state !== 'idle';
+  const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
+
+  const submit = (intent: string): void => {
+    fetcher.submit({ id: listing.id, intent }, { method: 'post' });
+  };
+
+  if (listing.status === 'draft' && canWrite) {
+    return (
+      <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('submit')}>
+        <Send className="size-3.5" aria-hidden /> Gửi duyệt
+      </Button>
+    );
+  }
+  if (listing.status === 'published' && canPublish) {
+    return (
+      <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('hide')}>
+        <EyeOff className="size-3.5" aria-hidden /> Ẩn
+      </Button>
+    );
+  }
+  if (listing.status === 'archived' && canPublish) {
+    if (adminLocked) {
+      return (
+        <Button size="xs" variant="outline" disabled title="Chỉ quản trị viên mới bỏ ẩn được">
+          <Lock className="size-3.5" aria-hidden /> Bị khoá
+        </Button>
+      );
+    }
+    return (
+      <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('republish')}>
+        <Undo2 className="size-3.5" aria-hidden /> Đăng lại
+      </Button>
+    );
+  }
+  return <span className="text-xs text-muted-foreground">-</span>;
+}

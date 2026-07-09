@@ -1,11 +1,26 @@
 import { index, route, type RouteConfig } from '@react-router/dev/routes';
+import { adminChildren } from './routes/admin/routes';
+import { tenantChildren } from './routes/tenant/routes';
+import { partnerChildren } from './routes/partner/routes';
 
-// 4 areas, one per role (TONG-QUAN.md §5). Each grows its own nested routes
-// in Phase 1; route-level permission guards arrive with the BFF auth work.
+// The dashboard shell (sidebar + header) lives in root.tsx and gates areas by the
+// user's scopes. Each area is a permission-guarded nested layout: its `_layout.tsx`
+// loader calls `requireScope(...)`, and children render inside it.
+//
+// Wave-3 convention — each area's child routes live in its OWN file
+// (routes/<area>/routes.ts) and its nav items in routes/<area>/nav.ts, so the
+// three area agents never edit a shared file. To add a screen, edit that area's
+// routes.ts + nav.ts only.
 export default [
   index('routes/home.tsx'),
-  route('admin', 'routes/admin/home.tsx'),
-  route('tenant', 'routes/tenant/home.tsx'),
-  route('partner', 'routes/partner/home.tsx'),
+
+  route('auth/login', 'routes/auth/login.tsx'),
+  route('auth/logout', 'routes/auth/logout.tsx'),
+
+  route('admin', 'routes/admin/_layout.tsx', adminChildren),
+  route('tenant', 'routes/tenant/_layout.tsx', tenantChildren),
+  route('partner', 'routes/partner/_layout.tsx', partnerChildren),
+
+  // Phase-2 affiliate area — left as the original placeholder (do not build yet).
   route('affiliate', 'routes/affiliate/home.tsx'),
 ] satisfies RouteConfig;

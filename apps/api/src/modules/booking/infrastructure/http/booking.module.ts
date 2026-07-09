@@ -4,6 +4,8 @@ import { TenantContextModule } from '../../../../shared/tenant-context/tenant-co
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { ListingModule } from '../../../listing/infrastructure/http/listing.module';
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
+import { PromotionsModule } from '../../../promotions/infrastructure/http/promotions.module';
+import { FinanceModule } from '../../../finance/infrastructure/http/finance.module';
 import { BOOKING_REPOSITORY } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE } from '../../domain/ports/hold-store.port';
 import { OTP_STORE } from '../../domain/ports/otp-store.port';
@@ -17,12 +19,16 @@ import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking
 import { PartnerBookingUseCase } from '../../application/use-cases/partner-booking.use-case';
 import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
 import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
+import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
+import { ListTenantBookingsUseCase } from '../../application/use-cases/list-tenant-bookings.use-case';
+import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-booking-stats.use-case';
 import { PublicBookingController } from './public-booking.controller';
 import { PartnerBookingController } from './partner-booking.controller';
+import { TenantBookingController } from './tenant-booking.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule, ListingModule, IdentityAccessModule],
-  controllers: [PublicBookingController, PartnerBookingController],
+  imports: [PrismaModule, TenantContextModule, TenancyModule, ListingModule, IdentityAccessModule, PromotionsModule, FinanceModule],
+  controllers: [PublicBookingController, PartnerBookingController, TenantBookingController],
   providers: [
     { provide: BOOKING_REPOSITORY, useClass: PrismaBookingRepository },
     { provide: HOLD_STORE, useClass: RedisHoldStore },
@@ -33,6 +39,9 @@ import { PartnerBookingController } from './partner-booking.controller';
     PartnerBookingUseCase,
     InventoryFulfillmentUseCase,
     BookingLookupUseCase,
+    PartnerCalendarUseCase,
+    ListTenantBookingsUseCase,
+    PartnerBookingStatsUseCase,
     BookingSchedulerWorker,
   ],
   // Exported so Task 1.9 (payments) can confirm a booking + read it for checkout/status.

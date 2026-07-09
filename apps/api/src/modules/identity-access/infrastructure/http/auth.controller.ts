@@ -7,10 +7,12 @@ import {
   type AuthSessionResponse,
   type LoginInput,
   type RegisterInput,
+  type SessionInfoResponse,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
+import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
@@ -41,6 +43,7 @@ export class AuthController {
     private readonly loginUseCase: LoginUseCase,
     private readonly refreshUseCase: RefreshSessionUseCase,
     private readonly logoutUseCase: LogoutUseCase,
+    private readonly getSessionInfoUseCase: GetSessionInfoUseCase,
   ) {}
 
   @Public()
@@ -110,6 +113,24 @@ export class AuthController {
       phone: principal.phone,
       locale: principal.locale,
       status: principal.status,
+    };
+  }
+
+  /** Identity + every scope membership with resolved permissions (dashboard shell gating). */
+  @AuthenticatedOnly()
+  @Get('session')
+  async session(@CurrentPrincipal() principal: SessionPrincipal): Promise<SessionInfoResponse> {
+    const scopes = await this.getSessionInfoUseCase.execute(principal.userId);
+    return {
+      user: {
+        id: principal.userId,
+        email: principal.email,
+        fullName: principal.fullName,
+        phone: principal.phone,
+        locale: principal.locale as 'vi' | 'en',
+        status: principal.status as 'active' | 'suspended',
+      },
+      scopes,
     };
   }
 }

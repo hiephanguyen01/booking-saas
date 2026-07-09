@@ -1,0 +1,78 @@
+import { Module, type OnModuleInit } from '@nestjs/common';
+import { PrismaModule } from '../../../../shared/prisma/prisma.module';
+import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
+import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
+import { EMAIL_SENDER } from '../../domain/ports/email-sender.port';
+import { NOTIFICATION_LOG_REPOSITORY } from '../../domain/ports/notification-log-repository.port';
+import { NOTIFICATION_READER } from '../../domain/ports/notification-reader.port';
+import {
+  BOOKING_NOTIFICATION_EVENTS,
+  LISTING_NOTIFICATION_EVENTS,
+  PARTNER_NOTIFICATION_EVENTS,
+} from '../../domain/notification-plan';
+import { SmtpEmailSender } from '../smtp-email-sender';
+import { PrismaNotificationLogRepository } from '../repositories/prisma-notification-log.repository';
+import { PrismaNotificationReader } from '../prisma-notification.reader';
+import { ReminderWorker } from '../reminder.worker';
+import { DispatchNotificationService } from '../../application/dispatch-notification.service';
+
+/**
+ * Notifications (TONG-QUAN.md §17). Every notification is produced from a domain
+ * event via the outbox (at-least-once → the dispatcher is idempotent), rendered in
+ * the recipient's locale, and sent by email (mailpit in dev; ZNS is Phase 2).
+ *
+ * Deferred (their producing event isn't emitted yet): PayoutPaid, BalancePaymentDue,
+ * SubscriptionExpiring (T−7d), and OTP — wire a handler when the producer emits.
+ */
+@Module({
+  imports: [PrismaModule, TenantContextModule],
+  providers: [
+    { provide: EMAIL_SENDER, useClass: SmtpEmailSender },
+    { provide: NOTIFICATION_LOG_REPOSITORY, useClass: PrismaNotificationLogRepository },
+    { provide: NOTIFICATION_READER, useClass: PrismaNotificationReader },
+    DispatchNotificationService,
+    ReminderWorker,
+  ],
+})
+export class NotificationModule implements OnModuleInit {
+  constructor(
+    private readonly registry: OutboxHandlerRegistry,
+    private readonly dispatcher: DispatchNotificationService,
+  ) {}
+
+  onModuleInit(): void {
+    for (const eventType of BOOKING_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) =>
+        this.dispatcher.dispatchBookingEvent(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
+      );
+    }
+    for (const eventType of LISTING_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) =>
+        this.dispatcher.dispatchListingEvent(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
+      );
+    }
+    for (const eventType of PARTNER_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) =>
+        this.dispatcher.dispatchPartnerEvent(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
+      );
+    }
+  }
+}
+
+function payloadOf(payload: unknown): {
+  bookingId: string;
+  listingId: string;
+  partnerId: string;
+  status?: string;
+  refundAmount?: string;
+  reason?: string;
+} {
+  return (payload ?? {}) as {
+    bookingId: string;
+    listingId: string;
+    partnerId: string;
+    status?: string;
+    refundAmount?: string;
+    reason?: string;
+  };
+}

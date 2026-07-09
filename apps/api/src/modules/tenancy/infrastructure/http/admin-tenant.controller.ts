@@ -12,6 +12,7 @@ import {
   type DomainResponse,
   type Paginated,
   type PaginationQuery,
+  type PlanResponse,
   type SubscriptionResponse,
   type TenantResponse,
   type UpdateTenantInput,
@@ -23,11 +24,13 @@ import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use
 import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
 import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
 import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
+import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import {
   toDomainResponse,
+  toPlanResponse,
   toSubscriptionResponse,
   toTenantResponse,
 } from '../../application/tenancy.mapper';
@@ -41,6 +44,7 @@ export class AdminTenantController {
     private readonly getTenant: GetTenantUseCase,
     private readonly updateTenant: UpdateTenantUseCase,
     private readonly assignSubscription: AssignSubscriptionUseCase,
+    private readonly getCurrentSubscription: GetCurrentSubscriptionUseCase,
     private readonly addDomain: AddDomainUseCase,
     private readonly verifyDomain: VerifyDomainUseCase,
     private readonly listDomains: ListDomainsUseCase,
@@ -88,6 +92,19 @@ export class AdminTenantController {
     @Body(new ZodValidationPipe(assignSubscriptionInputSchema)) input: AssignSubscriptionInput,
   ): Promise<SubscriptionResponse> {
     return toSubscriptionResponse(await this.assignSubscription.execute(id, input));
+  }
+
+  @RequirePermissions('platform.tenants.read')
+  @Get(':id/subscription')
+  async subscription(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<{ subscription: SubscriptionResponse; plan: PlanResponse | null } | null> {
+    const current = await this.getCurrentSubscription.execute(id);
+    if (!current) return null;
+    return {
+      subscription: toSubscriptionResponse(current.subscription),
+      plan: current.plan ? toPlanResponse(current.plan) : null,
+    };
   }
 
   @RequirePermissions('platform.tenants.read')

@@ -7,6 +7,8 @@ import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { FindOrCreateGuestUseCase } from '../../../identity-access/application/use-cases/find-or-create-guest.use-case';
 import { PricingService } from '../../../listing/application/services/pricing.service';
+import { ApplyPromotionService, type PreparedPromotion } from '../../../promotions/application/apply-promotion.service';
+import { ResolveCommissionService } from '../../../finance/application/resolve-commission.service';
 import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../../listing/domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY, type IResourceRepository } from '../../../listing/domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY, type IPricingRuleRepository } from '../../../listing/domain/ports/pricing-rule-repository.port';
@@ -40,6 +42,8 @@ export class CreateBookingUseCase {
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly guests: FindOrCreateGuestUseCase,
     private readonly pricing: PricingService,
+    private readonly promotions: ApplyPromotionService, // Task 1.11 — in-tx promo reservation
+    private readonly commissions: ResolveCommissionService, // Task 1.10 — in-tx commission snapshot
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -187,6 +191,41 @@ export class CreateBookingUseCase {
       securityDeposit: bigint;
     },
   ): Promise<BookingRecord> {
+    // ── Task 1.11 (Basic promotions) ─────────────────────────────────────────
+    // A supplied code is validated + priced BEFORE the insert (so the booking
+    // carries discount_amount/final_amount + an immutable promotion_snapshot),
+    // and the usage is atomically CLAIMED after the insert — all inside this one
+    // tx, so a lost race for the last use rolls the booking back too. When no
+    // code is present this is a no-op and the booking is unchanged.
+    // NOTE (finance wave): deposit is still computed on the pre-discount subtotal
+    // — deposit-on-final and commission snapshotting are layered on separately.
+    const subtotal = BigInt(args.quote.subtotal);
+    let promo: PreparedPromotion | undefined;
+    if (args.input.promoCode) {
+      promo = await this.promotions.prepare(tx, {
+        code: args.input.promoCode,
+        listingId: args.listing.id,
+        amount: subtotal,
+      });
+    }
+    const discountAmount = promo?.discountAmount ?? 0n;
+    const finalAmount = promo ? promo.finalAmount : subtotal;
+
+    // ── Task 1.10 (Finance) ───────────────────────────────────────────────────
+    // Freeze the applicable commission rule onto the booking so a later rule
+    // change never touches this booking (§13.1). The ledger journal at completion
+    // replays this snapshot, never the live rule.
+    const partner = await tx.partner.findUnique({
+      where: { id: args.listing.partnerId },
+      select: { isHouse: true },
+    });
+    const commissionSnapshot = await this.commissions.snapshot(tx, {
+      partnerId: args.listing.partnerId,
+      listingTypeId: args.listing.listingTypeId,
+      categoryId: args.listing.categoryId,
+      isHouse: partner?.isHouse ?? false,
+    });
+
     const draft = await this.bookings.insertDraft(tx, tenantId, {
       listingId: args.listing.id,
       partnerId: args.listing.partnerId,
@@ -199,16 +238,28 @@ export class CreateBookingUseCase {
       blockedPeriod: args.blocked,
       guestCount: args.input.guestCount,
       quantity: args.quantity,
-      totalAmount: BigInt(args.quote.subtotal),
-      discountAmount: 0n, // promotions are Task 1.11
-      finalAmount: BigInt(args.quote.subtotal),
+      totalAmount: subtotal,
+      discountAmount,
+      finalAmount,
       depositAmount: BigInt(args.quote.depositAmount),
       securityDeposit: args.securityDeposit,
+      promotionId: promo?.promotionId ?? null,
+      promoCode: promo?.promoCode ?? null,
+      promotionSnapshot: promo?.snapshot ?? null,
+      commissionSnapshot,
       cancellationPolicyId: args.listing.cancellationPolicyId,
       cancellationPolicySnapshot: args.policyRules,
       pricingSnapshot: args.quote,
       customerNote: args.input.customerNote ?? null,
     });
+    if (promo) {
+      await this.promotions.reserve(tx, tenantId, {
+        promotionId: promo.promotionId,
+        bookingId: draft.id,
+        customerId: args.customerId,
+        discountAmount: promo.discountAmount,
+      });
+    }
     const toStatus = args.listing.approvalRequired ? 'pending_approval' : 'pending_payment';
     const expiresAt = args.listing.approvalRequired ? addMinutes(utcNow(), 24 * 60) : addMinutes(utcNow(), 15);
     const booking = await this.bookings.applyTransition(tx, {

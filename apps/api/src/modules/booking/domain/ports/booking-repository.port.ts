@@ -35,6 +35,27 @@ export interface BookingRecord {
   createdAt: Date;
 }
 
+/**
+ * A booking joined with the listing context the partner master calendar needs
+ * (Task 1.14 / §21 item 8) — title + listing type for display and filtering.
+ */
+export interface PartnerCalendarBooking {
+  id: string;
+  code: string;
+  status: BookingStatus;
+  listingId: string;
+  listingTitle: string;
+  listingTypeId: string;
+  listingTypeName: string;
+  resourceId: string;
+  bookingMode: string;
+  startUtc: Date;
+  endUtc: Date;
+  guestCount: number;
+  quantity: number;
+  finalAmount: bigint;
+}
+
 export interface InsertBookingData {
   listingId: string;
   partnerId: string;
@@ -56,6 +77,12 @@ export interface InsertBookingData {
   cancellationPolicySnapshot: unknown;
   pricingSnapshot: unknown;
   customerNote: string | null;
+  /** Promotion applied at checkout (Task 1.11) — all null when no code was used. */
+  promotionId?: string | null;
+  promoCode?: string | null;
+  promotionSnapshot?: unknown;
+  /** Immutable commission config resolved at booking time (Task 1.10, §13.1). */
+  commissionSnapshot?: unknown;
 }
 
 /** Inventory fulfillment patch (§9.4) — pickup / return / damage. */
@@ -64,6 +91,27 @@ export interface FulfillmentPatch {
   returnedAt?: Date;
   damageAmount?: bigint;
   additionalCharges?: unknown;
+}
+
+/** Filters for the tenant-side booking overview (Task 1.13). */
+export interface TenantBookingFilters {
+  status?: BookingStatus;
+  partnerId?: string;
+  /** Row cap for the overview list (defaults applied in the repository). */
+  limit?: number;
+}
+
+/**
+ * Per-partner booking health for the tenant dashboard (Task 1.13, §7.3): counts
+ * used to surface a partner's cancellation / no-show rates.
+ */
+export interface PartnerBookingStat {
+  partnerId: string;
+  total: number;
+  cancelled: number;
+  noShow: number;
+  completed: number;
+  confirmed: number;
 }
 
 export interface TransitionParams {
@@ -91,6 +139,21 @@ export interface IBookingRepository {
   findByCode(tx: PrismaTx, code: string): Promise<BookingRecord | null>;
   findByIdempotencyKey(tx: PrismaTx, key: string): Promise<BookingRecord | null>;
   listByCustomer(tx: PrismaTx, customerId: string): Promise<BookingRecord[]>;
+  /**
+   * All of a partner's bookings whose timeslot overlaps `[from,to)`, joined with
+   * listing title + type — the master-calendar feed (Task 1.14). Excludes draft
+   * and expired holds (never occupied a slot).
+   */
+  listForPartnerCalendar(
+    tx: PrismaTx,
+    partnerId: string,
+    from: Date,
+    to: Date,
+  ): Promise<PartnerCalendarBooking[]>;
+  /** Tenant-wide booking list (RLS-scoped by `forTenant`) for the dashboard. */
+  listByTenant(tx: PrismaTx, filters: TenantBookingFilters): Promise<BookingRecord[]>;
+  /** Aggregate booking counts per partner (RLS-scoped) for cancel/no-show rates. */
+  partnerBookingStats(tx: PrismaTx): Promise<PartnerBookingStat[]>;
   /**
    * Take a per-listing advisory lock (serialising concurrent inventory bookings)
    * and return the quantity currently committed for `[from,to)` — active +

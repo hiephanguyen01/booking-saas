@@ -8,6 +8,9 @@ import type {
   FulfillmentPatch,
   IBookingRepository,
   InsertBookingData,
+  PartnerBookingStat,
+  PartnerCalendarBooking,
+  TenantBookingFilters,
   TransitionParams,
 } from '../../domain/ports/booking-repository.port';
 import { IdempotencyConflictError, SlotTakenError } from '../../domain/booking-errors';
@@ -93,6 +96,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         id, tenant_id, listing_id, partner_id, resource_id, customer_id, code, idempotency_key,
         booking_mode, status, timeslot, blocked_period,
         guest_count, quantity, total_amount, discount_amount, final_amount, deposit_amount, security_deposit,
+        promotion_id, promo_code, promotion_snapshot, commission_snapshot,
         cancellation_policy_id, cancellation_policy_snapshot, pricing_snapshot, customer_note, updated_at
       ) VALUES (
         ${id}::uuid, ${tenantId}::uuid, ${data.listingId}::uuid, ${data.partnerId}::uuid,
@@ -102,6 +106,9 @@ export class PrismaBookingRepository implements IBookingRepository {
         tstzrange(${data.blockedPeriod.start}, ${data.blockedPeriod.end}, '[)'),
         ${data.guestCount}, ${data.quantity}, ${data.totalAmount}, ${data.discountAmount},
         ${data.finalAmount}, ${data.depositAmount}, ${data.securityDeposit},
+        ${data.promotionId ?? null}::uuid, ${data.promoCode ?? null},
+        ${JSON.stringify(data.promotionSnapshot ?? null)}::jsonb,
+        ${JSON.stringify(data.commissionSnapshot ?? null)}::jsonb,
         ${data.cancellationPolicyId}::uuid,
         ${JSON.stringify(data.cancellationPolicySnapshot ?? null)}::jsonb,
         ${JSON.stringify(data.pricingSnapshot ?? null)}::jsonb, ${data.customerNote}, now()
@@ -170,6 +177,82 @@ export class PrismaBookingRepository implements IBookingRepository {
       Prisma.sql`${SELECT} WHERE customer_id = ${customerId}::uuid ORDER BY created_at DESC`,
     );
     return rows.map(toRecord);
+  }
+
+  async listForPartnerCalendar(
+    tx: PrismaTx,
+    partnerId: string,
+    from: Date,
+    to: Date,
+  ): Promise<PartnerCalendarBooking[]> {
+    const rows = await tx.$queryRaw<
+      {
+        id: string;
+        code: string;
+        status: string;
+        listingId: string;
+        listingTitle: string;
+        listingTypeId: string;
+        listingTypeName: string;
+        resourceId: string;
+        bookingMode: string;
+        startUtc: Date;
+        endUtc: Date;
+        guestCount: number;
+        quantity: number;
+        finalAmount: bigint;
+      }[]
+    >(Prisma.sql`
+      SELECT b.id,
+             b.code,
+             b.status::text AS "status",
+             b.listing_id AS "listingId",
+             l.title AS "listingTitle",
+             l.listing_type_id AS "listingTypeId",
+             lt.name AS "listingTypeName",
+             b.resource_id AS "resourceId",
+             b.booking_mode::text AS "bookingMode",
+             lower(b.timeslot) AS "startUtc",
+             upper(b.timeslot) AS "endUtc",
+             b.guest_count AS "guestCount",
+             b.quantity,
+             b.final_amount AS "finalAmount"
+      FROM bookings b
+      JOIN listings l ON l.id = b.listing_id
+      JOIN listing_types lt ON lt.id = l.listing_type_id
+      WHERE b.partner_id = ${partnerId}::uuid
+        AND b.status NOT IN ('draft', 'expired')
+        AND b.timeslot && tstzrange(${from}, ${to}, '[)')
+      ORDER BY lower(b.timeslot) ASC`);
+    return rows.map((r) => ({ ...r, status: r.status as BookingStatus }));
+  }
+
+  async listByTenant(tx: PrismaTx, filters: TenantBookingFilters): Promise<BookingRecord[]> {
+    const conds: Prisma.Sql[] = [];
+    if (filters.status) conds.push(Prisma.sql`status = ${filters.status}::booking_status`);
+    if (filters.partnerId) conds.push(Prisma.sql`partner_id = ${filters.partnerId}::uuid`);
+    const where = conds.length ? Prisma.sql`WHERE ${Prisma.join(conds, ' AND ')}` : Prisma.empty;
+    const limit = Math.min(Math.max(filters.limit ?? 100, 1), 200);
+    const rows = await tx.$queryRaw<Row[]>(
+      Prisma.sql`${SELECT} ${where} ORDER BY created_at DESC LIMIT ${limit}`,
+    );
+    return rows.map(toRecord);
+  }
+
+  async partnerBookingStats(tx: PrismaTx): Promise<PartnerBookingStat[]> {
+    const rows = await tx.$queryRaw<
+      { partnerId: string; total: number; cancelled: number; noShow: number; completed: number; confirmed: number }[]
+    >(Prisma.sql`
+      SELECT partner_id AS "partnerId",
+             COUNT(*)::int AS "total",
+             COUNT(*) FILTER (WHERE status = 'cancelled')::int AS "cancelled",
+             COUNT(*) FILTER (WHERE status = 'no_show')::int AS "noShow",
+             COUNT(*) FILTER (WHERE status = 'completed')::int AS "completed",
+             COUNT(*) FILTER (WHERE status IN ('confirmed', 'completed'))::int AS "confirmed"
+      FROM bookings
+      GROUP BY partner_id
+      ORDER BY COUNT(*) DESC`);
+    return rows;
   }
 
   async lockAndCountInventory(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number> {

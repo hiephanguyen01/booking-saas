@@ -40,6 +40,8 @@ export const createBookingInputSchema = z.object({
   customerNote: z.string().max(1000).optional(),
   /** Required when the caller is not a logged-in customer. */
   guest: guestInfoSchema.optional(),
+  /** Optional promotion code entered at checkout (§12.3) — normalised uppercase server-side. */
+  promoCode: z.string().min(1).max(50).optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingInputSchema>;
 

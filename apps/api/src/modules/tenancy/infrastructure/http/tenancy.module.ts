@@ -21,20 +21,30 @@ import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.u
 import { CreatePlanUseCase } from '../../application/use-cases/create-plan.use-case';
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
 import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
+import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
+import { GetPlatformHealthUseCase } from '../../application/use-cases/get-platform-health.use-case';
 import { PlanLimitService } from '../../application/services/plan-limit.service';
 import { PlanLimitGuard } from './guards/plan-limit.guard';
 import { RequireActiveSubscriptionGuard } from './guards/require-active-subscription.guard';
 import { AdminTenantController } from './admin-tenant.controller';
 import { AdminPlanController } from './admin-plan.controller';
+import { PlatformHealthController } from './platform-health.controller';
 import { PublicTenantController } from './public-tenant.controller';
+import { TenantSettingsController } from './tenant-settings.controller';
 
 @Module({
   imports: [PrismaModule, TenantContextModule],
-  controllers: [AdminTenantController, AdminPlanController, PublicTenantController],
+  controllers: [
+    AdminTenantController,
+    AdminPlanController,
+    PlatformHealthController,
+    PublicTenantController,
+    TenantSettingsController,
+  ],
   providers: [
     { provide: TENANT_REPOSITORY, useClass: PrismaTenantRepository },
     { provide: PLAN_REPOSITORY, useClass: PrismaPlanRepository },
@@ -53,10 +63,12 @@ import { PublicTenantController } from './public-tenant.controller';
     CreatePlanUseCase,
     ListPlansUseCase,
     AssignSubscriptionUseCase,
+    GetCurrentSubscriptionUseCase,
     AddDomainUseCase,
     VerifyDomainUseCase,
     ListDomainsUseCase,
     ResolveTenantByHostUseCase,
+    GetPlatformHealthUseCase,
     PlanLimitService,
     PlanLimitGuard,
     RequireActiveSubscriptionGuard,

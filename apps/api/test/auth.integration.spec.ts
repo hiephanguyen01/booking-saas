@@ -1,5 +1,6 @@
 import { Controller, Get, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ThrottlerStorage } from '@nestjs/throttler';
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import cookieParser from 'cookie-parser';
 import { execFileSync } from 'node:child_process';
@@ -47,7 +48,19 @@ describe('auth & RBAC end-to-end', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [ProbeController],
-    }).compile();
+    })
+      // Rate limiting isn't under test here; a no-op storage keeps the many
+      // logins this spec performs from tripping the per-route throttle.
+      .overrideProvider(ThrottlerStorage)
+      .useValue({
+        increment: async () => ({
+          totalHits: 1,
+          timeToExpire: 60,
+          isBlocked: false,
+          timeToBlockExpire: 0,
+        }),
+      })
+      .compile();
     app = moduleRef.createNestApplication();
     app.use(cookieParser());
     await app.init();
@@ -170,5 +183,46 @@ describe('auth & RBAC end-to-end', () => {
     const keys = assignments.flatMap((a) => a.role.rolePermissions.map((rp) => rp.permissionKey));
     expect(keys).toContain('platform.tenants.write');
     expect(keys).toContain('platform.roles.manage');
+  });
+
+  it('GET /auth/session returns identity + resolved platform scope for the admin', async () => {
+    const login = await request(http)
+      .post('/auth/login')
+      .send({ email: 'admin@bookify.local', password: 'admin-dev-password' })
+      .expect(200);
+    const res = await request(http)
+      .get('/auth/session')
+      .set('Cookie', cookiesOf(login))
+      .expect(200);
+
+    expect(res.body.user.email).toBe('admin@bookify.local');
+    const platform = res.body.scopes.find((s: { scope: string }) => s.scope === 'platform');
+    expect(platform).toBeDefined();
+    expect(platform.tenantId).toBeNull();
+    expect(platform.partnerId).toBeNull();
+    expect(platform.roles).toContain('Super Admin');
+    expect(platform.permissions).toContain('platform.tenants.write');
+  });
+
+  it('GET /auth/session groups a partner membership with its tenant + partner', async () => {
+    const login = await request(http)
+      .post('/auth/login')
+      .send({ email: 'giang@giangstudio.vn', password: 'demo-password' })
+      .expect(200);
+    const res = await request(http)
+      .get('/auth/session')
+      .set('Cookie', cookiesOf(login))
+      .expect(200);
+
+    const partner = res.body.scopes.find((s: { scope: string }) => s.scope === 'partner');
+    expect(partner).toBeDefined();
+    expect(partner.tenantId).toBeTruthy();
+    expect(partner.partnerId).toBeTruthy();
+    expect(partner.partnerName).toBeTruthy();
+    expect(partner.permissions).toContain('partner.availability.manage');
+  });
+
+  it('GET /auth/session requires authentication', async () => {
+    await request(http).get('/auth/session').expect(401);
   });
 });

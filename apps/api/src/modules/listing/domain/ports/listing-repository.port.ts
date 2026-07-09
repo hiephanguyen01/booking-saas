@@ -82,7 +82,7 @@ export interface IListingRepository {
   findById(tx: PrismaTx, id: string): Promise<ListingRecord | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingRecord | null>;
   findPublicBySlug(tx: PrismaTx, slug: string): Promise<PublicListingRecord | null>;
-  list(tx: PrismaTx, filter: { groupId?: string }): Promise<ListingRecord[]>;
+  list(tx: PrismaTx, filter: { groupId?: string; partnerId?: string }): Promise<ListingRecord[]>;
   update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord>;
   moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;

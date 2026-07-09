@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [tailwindcss(), reactRouter()],
+    resolve: {
+      alias: { '~': fileURLToPath(new URL('./app', import.meta.url)) },
+    },
     server: { port },
     preview: { port },
     // @booking/ui ships raw TSX — let Vite compile it for SSR instead of externalizing.
