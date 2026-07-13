@@ -6,6 +6,7 @@ import { ListingModule } from '../../../listing/infrastructure/http/listing.modu
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { PromotionsModule } from '../../../promotions/infrastructure/http/promotions.module';
 import { FinanceModule } from '../../../finance/infrastructure/http/finance.module';
+import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
 import { BOOKING_REPOSITORY } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE } from '../../domain/ports/hold-store.port';
 import { OTP_STORE } from '../../domain/ports/otp-store.port';
@@ -28,7 +29,16 @@ import { PartnerBookingController } from './partner-booking.controller';
 import { TenantBookingController } from './tenant-booking.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule, ListingModule, IdentityAccessModule, PromotionsModule, FinanceModule],
+  imports: [
+    PrismaModule,
+    TenantContextModule,
+    TenancyModule,
+    ListingModule,
+    IdentityAccessModule,
+    PromotionsModule,
+    FinanceModule,
+    NotificationModule,
+  ],
   controllers: [PublicBookingController, PartnerBookingController, TenantBookingController],
   providers: [
     { provide: BOOKING_REPOSITORY, useClass: PrismaBookingRepository },

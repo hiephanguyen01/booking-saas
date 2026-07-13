@@ -9,6 +9,7 @@ import {
   BOOKING_NOTIFICATION_EVENTS,
   LISTING_NOTIFICATION_EVENTS,
   PARTNER_NOTIFICATION_EVENTS,
+  PAYOUT_NOTIFICATION_EVENTS,
 } from '../../domain/notification-plan';
 import { SmtpEmailSender } from '../smtp-email-sender';
 import { PrismaNotificationLogRepository } from '../repositories/prisma-notification-log.repository';
@@ -33,6 +34,8 @@ import { DispatchNotificationService } from '../../application/dispatch-notifica
     DispatchNotificationService,
     ReminderWorker,
   ],
+  // Exported so the booking module can send the guest-lookup OTP synchronously (§8.6).
+  exports: [DispatchNotificationService],
 })
 export class NotificationModule implements OnModuleInit {
   constructor(
@@ -56,7 +59,21 @@ export class NotificationModule implements OnModuleInit {
         this.dispatcher.dispatchPartnerEvent(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
       );
     }
+    for (const eventType of PAYOUT_NOTIFICATION_EVENTS) {
+      this.registry.register(eventType, (event) =>
+        this.dispatcher.dispatchPayoutEvent(event.tenantId ?? '', payoutPayloadOf(event.payload)),
+      );
+    }
   }
+}
+
+function payoutPayloadOf(payload: unknown): {
+  payoutId: string;
+  payeeType: string;
+  payeeId: string;
+  amount: string;
+} {
+  return (payload ?? {}) as { payoutId: string; payeeType: string; payeeId: string; amount: string };
 }
 
 function payloadOf(payload: unknown): {
