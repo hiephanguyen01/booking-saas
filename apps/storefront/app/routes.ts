@@ -7,6 +7,7 @@ export default [
   route('checkout', 'routes/checkout.tsx'),
   route('bookings', 'routes/bookings.tsx'),
   route('bookings/:code', 'routes/booking-detail.tsx'),
+  route('become-partner', 'routes/become-partner.tsx'),
   route('set-locale', 'routes/set-locale.tsx'),
   route('sitemap.xml', 'routes/sitemap[.]xml.tsx'),
   route('robots.txt', 'routes/robots[.]txt.tsx'),

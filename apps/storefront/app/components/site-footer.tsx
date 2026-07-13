@@ -1,4 +1,5 @@
 import { ExternalLink } from 'lucide-react';
+import { Link } from 'react-router';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { useT } from '../lib/i18n';
 
@@ -20,6 +21,9 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
           <span className="block">{t('common.currencyNote')}</span>
           {tenant.contact.phone ? <span className="block">{tenant.contact.phone}</span> : null}
           {tenant.contact.address ? <span className="block">{tenant.contact.address}</span> : null}
+          <Link to="/become-partner" className="block pt-1 font-medium text-gray-700 hover:text-(--sf-primary)">
+            {t('becomePartner.title')}
+          </Link>
         </div>
         {socials.length > 0 ? (
           <div className="flex items-center gap-3">
