@@ -387,7 +387,7 @@ async function seedDemo(): Promise<void> {
     bufferAfter: 30,
     depositPercent: 50,
   });
-  await upsertRoomListing(tenant.id, partner.id, studioType.id, {
+  const studioB = await upsertRoomListing(tenant.id, partner.id, studioType.id, {
     title: 'Studio B — Vintage',
     slug: 'studio-b-vintage',
     photos: [
@@ -415,6 +415,10 @@ async function seedDemo(): Promise<void> {
     bufferAfter: 30,
     depositPercent: 100,
   });
+
+  // Weekly opening hours so the hourly slot picker has bookable slots (§9.1).
+  await ensureWeeklyRules(tenant.id, studioA.id);
+  await ensureWeeklyRules(tenant.id, studioB.id);
 
   // ── Golden-hour pricing rule on Studio A (18:00–22:00 costs more) ───────────
   if (!(await prisma.pricingRule.findFirst({ where: { listingId: studioA.id, ruleType: 'time_range' } }))) {
@@ -600,14 +604,26 @@ async function seedDemo(): Promise<void> {
 
   // A second, small tenant whose trial subscription is about to lapse feeds the
   // "expiring soon" queue — the primary demo tenant keeps a healthy 1-year plan.
+  const apertureTheme = {
+    colors: { primary: '#7C3AED', accent: '#F59E0B', background: '#FAFAF9' },
+    hero: {
+      title: 'Thuê homestay theo ngày',
+      subtitle: 'Không gian nghỉ dưỡng chọn lọc, đặt phòng chỉ trong vài phút.',
+    },
+    seo: {
+      title: 'Aperture Rentals — Homestay theo ngày',
+      description: 'Đặt homestay đẹp theo ngày với Aperture Rentals.',
+    },
+  };
   const trialTenant = await prisma.tenant.upsert({
     where: { slug: 'aperture-rentals' },
-    update: {},
+    update: { themeConfig: apertureTheme },
     create: {
       name: 'Aperture Rentals',
       slug: 'aperture-rentals',
       vertical: 'rental',
       createdAt: daysAgo(20),
+      themeConfig: apertureTheme,
     },
   });
   if (!(await prisma.tenantSubscription.findFirst({ where: { tenantId: trialTenant.id } }))) {
@@ -623,8 +639,77 @@ async function seedDemo(): Promise<void> {
     });
   }
 
+  // Make the second tenant a fully resolvable, themeable storefront (DoD 1.15:
+  // the journey must be clickable on two tenants with different themes/domains).
+  // `aperture.localhost` resolves to loopback in every browser.
+  for (const [hostname, isPrimary] of [
+    ['aperture.bookify.vn', true],
+    ['aperture.localhost', false],
+  ] as const) {
+    await prisma.tenantDomain.upsert({
+      where: { hostname },
+      update: {},
+      create: { tenantId: trialTenant.id, hostname, isPrimary, verifiedAt: new Date() },
+    });
+  }
+  await ensureRoleAssignment(owner.id, tenantOwnerRole.id, trialTenant.id, null);
+  const aperturePartner = await prisma.partner.upsert({
+    where: { tenantId_slug: { tenantId: trialTenant.id, slug: 'aperture-house' } },
+    update: {},
+    create: {
+      tenantId: trialTenant.id,
+      name: 'Aperture House',
+      slug: 'aperture-house',
+      partnerType: 'company',
+      isHouse: true,
+      status: 'approved',
+      verifiedAt: new Date(),
+    },
+  });
+  const homestayType = await upsertListingType(trialTenant.id, {
+    name: 'Homestay',
+    slug: 'homestay',
+    allowedModes: ['daily'],
+    defaultModes: ['daily'],
+    unitLabel: 'đêm',
+    sortOrder: 1,
+    attributeSchema: [
+      { key: 'bedrooms', label: 'Số phòng ngủ', type: 'number', filterable: true },
+      { key: 'view', label: 'Hướng nhìn', type: 'select', filterable: true, options: ['Biển', 'Thành phố', 'Núi'] },
+    ],
+  });
+  const homestay = await upsertRoomListing(trialTenant.id, aperturePartner.id, homestayType.id, {
+    title: 'Villa Aperture — Homestay ven biển',
+    slug: 'villa-aperture-ven-bien',
+    photos: [
+      'https://picsum.photos/seed/aperture-1/1200/900',
+      'https://picsum.photos/seed/aperture-2/1200/900',
+      'https://picsum.photos/seed/aperture-3/1200/900',
+    ],
+    groupId: null,
+    categoryId: null,
+    cancellationPolicyId: null,
+    bookingModes: ['daily'],
+    attributes: { bedrooms: 3, view: 'Biển' },
+    modeConfig: {
+      daily: {
+        basePricePerNight: 2_500_000,
+        minNights: 1,
+        maxNights: 14,
+        checkinTime: '14:00',
+        checkoutTime: '12:00',
+        leadTimeMin: 0,
+      },
+    },
+    bufferBefore: 0,
+    bufferAfter: 0,
+    depositPercent: 50,
+  });
+  // Daily mode is open by default without rules, but seed them so the calendar is explicit.
+  await ensureWeeklyRules(trialTenant.id, homestay.id, '00:00', '23:59');
+
   console.log(
-    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings, commission rules, WELCOME10) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure, "Aperture Rentals" trial expiring soon).`,
+    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings + weekly hours, commission rules, WELCOME10) + a second themed storefront "Aperture Rentals" (aperture.localhost, 1 homestay/daily listing, trial expiring soon) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure).`,
   );
 }
 
@@ -685,6 +770,30 @@ async function seedBooking(input: {
            blocked_period = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)')
      WHERE id = ${booking.id}::uuid`;
   return booking;
+}
+
+/**
+ * Weekly opening hours (§7.4). Hourly slot generation needs open windows — with
+ * no rules a listing has NO bookable hourly slots (open-windows.ts). Daily mode
+ * defaults to open when no rules exist, so this is only required for hourly.
+ * Idempotent per listing.
+ */
+async function ensureWeeklyRules(
+  tenantId: string,
+  listingId: string,
+  openTime = '08:00',
+  closeTime = '20:00',
+): Promise<void> {
+  if (await prisma.availabilityRule.findFirst({ where: { listingId } })) return;
+  await prisma.availabilityRule.createMany({
+    data: Array.from({ length: 7 }, (_, dayOfWeek) => ({
+      tenantId,
+      listingId,
+      dayOfWeek,
+      openTime,
+      closeTime,
+    })),
+  });
 }
 
 async function ensureRoleAssignment(

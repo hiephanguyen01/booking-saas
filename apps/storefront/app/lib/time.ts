@@ -1,0 +1,102 @@
+/**
+ * Timezone helpers (§18) — the DB/API speak UTC ISO; the storefront shows and
+ * accepts wall-clock times in the resource/tenant zone. Uses `Intl` only (no tz
+ * lib). Correct for fixed-offset zones like `Asia/Ho_Chi_Minh`; DST zones have a
+ * rare ambiguous-hour edge we accept for Phase 1 (VN has no DST).
+ */
+export const DEFAULT_TZ = 'Asia/Ho_Chi_Minh';
+
+/** ms to add to a UTC instant to get the given zone's wall time (e.g. +7h for ICT). */
+function tzOffsetMs(tz: string, at: Date): number {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const parts = Object.fromEntries(dtf.formatToParts(at).map((p) => [p.type, p.value]));
+  const asUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return asUtc - at.getTime();
+}
+
+/** Convert a wall-clock `YYYY-MM-DD` + `HH:MM` in `tz` to a UTC ISO instant. */
+export function zonedToUtcIso(dateStr: string, timeStr: string, tz: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = timeStr.split(':').map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  const offset = tzOffsetMs(tz, new Date(guess));
+  return new Date(guess - offset).toISOString();
+}
+
+/** `HH:MM` wall time of a UTC instant in `tz`. */
+export function timeInTz(utcIso: string, tz: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(utcIso));
+}
+
+/** e.g. "T4, 20 thg 7" — a short date label in `tz`. */
+export function dateLabelInTz(utcIsoOrDate: string, tz: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
+    timeZone: tz,
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date(utcIsoOrDate));
+}
+
+/** Today's `YYYY-MM-DD` in `tz`. */
+export function todayInTz(tz: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(new Date())
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/** `YYYY-MM-DD` → local `Date` at noon (avoids off-by-one from tz when feeding a calendar). */
+export function dateOnlyToLocal(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0, 0);
+}
+
+/** Local `Date` → `YYYY-MM-DD` (calendar-day components, no tz shift). */
+export function localToDateOnly(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Whole nights between two `YYYY-MM-DD` dates. */
+export function nightsBetween(from: string, to: string): number {
+  const a = Date.parse(`${from}T00:00:00Z`);
+  const b = Date.parse(`${to}T00:00:00Z`);
+  return Math.max(0, Math.round((b - a) / 86_400_000));
+}
+
+/** Add days to a `YYYY-MM-DD` string, returning `YYYY-MM-DD`. */
+export function addDays(dateStr: string, days: number): string {
+  const ms = Date.parse(`${dateStr}T00:00:00Z`) + days * 86_400_000;
+  return new Date(ms).toISOString().slice(0, 10);
+}

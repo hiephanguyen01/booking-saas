@@ -1,34 +1,67 @@
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
+import {
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useRouteLoaderData,
+} from 'react-router';
 import type { PublicListingTypeResponse } from '@booking/shared';
 import type { Route } from './+types/root';
 import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
 import { fetchListingTypes } from './lib/catalog.server';
+import { resolveLocale, messagesFor } from './lib/i18n.server';
+import { createTranslator, I18nProvider, type Locale } from './lib/i18n';
+import type { Messages } from './lib/messages';
 import { SiteHeader } from './components/site-header';
+import { SiteFooter } from './components/site-footer';
 import { themeStyle } from './theme/theme';
 import './app.css';
 
-/** Shared route context: the resolved tenant + its auto-generated menu. */
+/** Shared route context: the resolved tenant + its auto-generated menu + locale. */
 export interface StorefrontContext {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
+  locale: Locale;
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
+  const locale = resolveLocale(request, tenant.defaultLocale);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
-  return { tenant, listingTypes };
+  return { tenant, listingTypes, locale, messages: messagesFor(locale) };
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: loaderData?.tenant.name ?? 'Booking' }];
+  const tenant = loaderData?.tenant;
+  if (!tenant) return [{ title: 'Booking' }];
+  const title = tenant.seo.title ?? tenant.name;
+  const description = tenant.seo.description ?? undefined;
+  const tags: Array<Record<string, string>> = [
+    { title },
+    { property: 'og:title', content: title },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:site_name', content: tenant.name },
+  ];
+  if (description) {
+    tags.push({ name: 'description', content: description });
+    tags.push({ property: 'og:description', content: description });
+  }
+  if (tenant.hero.imageUrl) tags.push({ property: 'og:image', content: tenant.hero.imageUrl });
+  return tags;
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const data = useRouteLoaderData<typeof loader>('root');
+  const lang = data?.locale ?? 'vi';
+  const favicon = data?.tenant?.logoUrl;
   return (
-    <html lang="vi">
+    <html lang={lang}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {favicon ? <link rel="icon" href={favicon} /> : null}
         <Meta />
         <Links />
       </head>
@@ -42,7 +75,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { tenant, listingTypes } = loaderData;
+  const { tenant, listingTypes, locale, messages } = loaderData;
+  const i18n = createTranslator(locale, messages as Messages);
+
   if (!tenant.live) {
     return (
       <div style={themeStyle(tenant.theme)} className="min-h-screen bg-(--sf-background)">
@@ -51,21 +86,18 @@ export default function App({ loaderData }: Route.ComponentProps) {
     );
   }
   return (
-    <div
-      style={themeStyle(tenant.theme)}
-      className="flex min-h-[100dvh] flex-col bg-(--sf-background) text-gray-900"
-    >
-      <SiteHeader tenant={tenant} listingTypes={listingTypes} />
-      <main className="flex-1">
-        <Outlet context={{ tenant, listingTypes } satisfies StorefrontContext} />
-      </main>
-      <footer className="mt-16 border-t border-black/5">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-8 text-sm text-(--sf-muted) sm:flex-row sm:items-center sm:justify-between">
-          <span className="font-semibold text-gray-900">{tenant.name}</span>
-          <span>Nền tảng đặt chỗ · thanh toán an toàn · VND</span>
-        </div>
-      </footer>
-    </div>
+    <I18nProvider value={i18n}>
+      <div
+        style={themeStyle(tenant.theme)}
+        className="flex min-h-dvh flex-col bg-(--sf-background) text-gray-900"
+      >
+        <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
+        <main className="flex-1">
+          <Outlet context={{ tenant, listingTypes, locale } satisfies StorefrontContext} />
+        </main>
+        <SiteFooter tenant={tenant} />
+      </div>
+    </I18nProvider>
   );
 }
 
