@@ -76,6 +76,20 @@ export const verifyIdentityInputSchema = z.object({
 });
 export type VerifyIdentityInput = z.infer<typeof verifyIdentityInputSchema>;
 
+/**
+ * Post-registration document upload (§7.3). A partner registers with plain fields,
+ * then — once authenticated — uploads a logo + license/business documents on the
+ * dashboard. Persisted into `Partner.businessInfo` JSON (partners have no image
+ * column). Free of `.transform()`/`.default()` so it can drive a GenericForm.
+ */
+export const updatePartnerDocumentsInputSchema = z.object({
+  /** Public URL of the uploaded logo (via /uploads/presign, target `partners`). */
+  logoUrl: z.string().url().or(z.literal('')).optional(),
+  /** Public URLs of uploaded license/business documents. */
+  licenseDocs: z.array(z.string().url()).max(20).optional(),
+});
+export type UpdatePartnerDocumentsInput = z.infer<typeof updatePartnerDocumentsInputSchema>;
+
 export const listPartnersQuerySchema = paginationQuerySchema.extend({
   status: partnerStatusSchema.optional(),
 });

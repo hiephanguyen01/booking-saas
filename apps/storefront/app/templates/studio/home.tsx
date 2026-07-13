@@ -4,6 +4,7 @@ import type { StorefrontTenant } from '../../lib/tenant.server';
 import { useT } from '../../lib/i18n';
 import { ListingCard } from '../../components/listing-card';
 import { StudioHero } from './hero';
+import { StudioCarousel } from './carousel';
 
 /**
  * Studio-vertical home (§16.1): a hero + one featured section per active listing
@@ -24,6 +25,7 @@ export function StudioHome({
   return (
     <>
       <StudioHero tenant={tenant} listingTypes={listingTypes} />
+      <StudioCarousel images={tenant.carousel} />
       <div className="mx-auto max-w-7xl space-y-14 px-6 py-14">
         {listingTypes.map((type) => {
           const items = listings.filter((l) => l.listingTypeSlug === type.slug);

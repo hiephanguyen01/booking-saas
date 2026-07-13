@@ -7,6 +7,7 @@ import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Switch } from '@booking/ui/components/ui/switch';
+import { ImageUpload, FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
 import {
   Select,
   SelectContent,
@@ -154,7 +155,13 @@ export function ListingTypeForm({
             <Input value={state.slug} onChange={(e) => set('slug', e.target.value)} placeholder="studio" />
           </Field>
           <Field label="Biểu tượng (tuỳ chọn)">
-            <Input value={state.icon} onChange={(e) => set('icon', e.target.value)} placeholder="camera" />
+            <ImageUpload
+              value={state.icon}
+              onChange={(v) => set('icon', typeof v === 'string' ? v : (v[0] ?? ''))}
+              target="tenants"
+              accept={FAVICON_ACCEPT}
+              maxSizeMb={2}
+            />
           </Field>
           <Field label="Đơn vị giá (tuỳ chọn)">
             <Input value={state.unitLabel} onChange={(e) => set('unitLabel', e.target.value)} placeholder="giờ" />

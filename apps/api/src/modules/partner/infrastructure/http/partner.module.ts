@@ -15,6 +15,7 @@ import { ApprovePartnerUseCase } from '../../application/use-cases/approve-partn
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
 import { VerifyIdentityUseCase } from '../../application/use-cases/verify-identity.use-case';
 import { UpdatePayoutInfoUseCase } from '../../application/use-cases/update-payout-info.use-case';
+import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
 import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partner.use-case';
 import { ListPartnersUseCase } from '../../application/use-cases/list-partners.use-case';
 import { GetPartnerUseCase } from '../../application/use-cases/get-partner.use-case';
@@ -36,6 +37,7 @@ import { PartnerProfileController } from './partner-profile.controller';
     SubmitIdentityUseCase,
     VerifyIdentityUseCase,
     UpdatePayoutInfoUseCase,
+    UpdatePartnerDocumentsUseCase,
     SuspendPartnerUseCase,
     ListPartnersUseCase,
     GetPartnerUseCase,

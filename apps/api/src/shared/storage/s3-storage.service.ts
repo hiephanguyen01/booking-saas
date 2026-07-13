@@ -22,6 +22,9 @@ const IMAGE_EXT: Record<string, string> = {
   'image/webp': 'webp',
   'image/avif': 'avif',
   'image/gif': 'gif',
+  // .ico is used for tenant favicons (§16.2 theme_config.faviconUrl).
+  'image/x-icon': 'ico',
+  'image/vnd.microsoft.icon': 'ico',
 };
 
 export function s3ConfigFromEnv(): S3StorageConfig {

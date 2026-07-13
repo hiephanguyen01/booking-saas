@@ -23,6 +23,8 @@ export interface StorefrontTenant {
   };
   /** Optional branding pulled from theme_config (§16.2) — all may be empty. */
   logoUrl: string | null;
+  /** Homepage carousel image URLs (§16.2) — empty when the tenant set none. */
+  carousel: string[];
   hero: { title: string | null; subtitle: string | null; imageUrl: string | null };
   seo: { title: string | null; description: string | null };
   contact: { email: string | null; phone: string | null; address: string | null };
@@ -57,6 +59,9 @@ function readStr(config: Record<string, unknown>, group: string, key: string): s
 function toStorefrontTenant(dto: PublicTenantResponse): StorefrontTenant {
   const config = dto.themeConfig ?? {};
   const logo = typeof config.logoUrl === 'string' && config.logoUrl !== '' ? config.logoUrl : null;
+  const carousel = Array.isArray(config.carousel)
+    ? config.carousel.filter((x): x is string => typeof x === 'string' && x !== '')
+    : [];
   return {
     id: dto.id,
     name: dto.name,
@@ -66,6 +71,7 @@ function toStorefrontTenant(dto: PublicTenantResponse): StorefrontTenant {
     live: dto.live,
     theme: readTheme(config),
     logoUrl: logo,
+    carousel,
     hero: {
       title: readStr(config, 'hero', 'title'),
       subtitle: readStr(config, 'hero', 'subtitle'),

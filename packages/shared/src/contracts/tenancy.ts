@@ -126,6 +126,13 @@ export const themeConfigSchema = z.object({
       imageUrl: themeUrl.optional(),
     })
     .optional(),
+  /**
+   * Homepage carousel images (§16.2) — an ordered list of image URLs shown as
+   * rotating slides on the storefront home. Capped at 10 to keep the hero light.
+   * A plain URL array (not captioned objects) so it maps to a single multi-file
+   * upload field in the tenant settings GenericForm.
+   */
+  carousel: z.array(themeUrl).max(10).optional(),
   contact: z
     .object({
       email: themeEmail.optional(),

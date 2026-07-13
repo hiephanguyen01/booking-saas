@@ -1,10 +1,12 @@
 import { Body, Controller, Get, HttpCode, Ip, Param, Post, UseGuards } from '@nestjs/common';
 import {
   moderationReasonInputSchema,
+  publishListingInputSchema,
   uuidSchema,
   type ListingResponse,
   type ListingReviewResponse,
   type ModerationReasonInput,
+  type PublishListingInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -43,12 +45,17 @@ export class TenantListingModerationController {
   @HttpCode(200)
   async publish(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body(new ZodValidationPipe(publishListingInputSchema)) body: PublishListingInput,
     @CurrentPrincipal() principal: SessionPrincipal,
     @Ip() ip: string,
   ): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return toListingResponse(
-      await this.publishListing.execute({ tenantId, actorUserId: principal.userId, ip }, id),
+      await this.publishListing.execute(
+        { tenantId, actorUserId: principal.userId, ip },
+        id,
+        body.force,
+      ),
     );
   }
 

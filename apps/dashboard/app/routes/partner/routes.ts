@@ -13,4 +13,5 @@ export const partnerChildren: RouteConfigEntry[] = [
   route('listings/new', 'routes/partner/listings.new.tsx'),
   route('listings/:listingId/edit', 'routes/partner/listings.$listingId.edit.tsx'),
   route('revenue', 'routes/partner/revenue.tsx'),
+  route('profile', 'routes/partner/profile.tsx'),
 ];

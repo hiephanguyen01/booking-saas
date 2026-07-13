@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useNavigation, useSubmit } from 'react-router';
-import { Plus, X } from 'lucide-react';
 import type {
   AttributeField,
   BookingMode,
@@ -13,6 +12,7 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Switch } from '@booking/ui/components/ui/switch';
 import { Textarea } from '@booking/ui/components/ui/textarea';
+import { ImageUpload } from '@booking/ui/components/form/image-upload';
 import {
   Select,
   SelectContent,
@@ -239,8 +239,15 @@ export function ListingForm({
         </Field>
       </Section>
 
-      <Section title="Ảnh (URL)">
-        <PhotoList photos={state.photos} onChange={(p) => set('photos', p)} />
+      <Section title="Ảnh">
+        <ImageUpload
+          value={state.photos}
+          onChange={(v) => set('photos', Array.isArray(v) ? v : v ? [v] : [])}
+          multiple
+          target="listings"
+          maxFiles={12}
+        />
+        {fieldErrors?.photos ? <p className="text-xs text-destructive">{fieldErrors.photos[0]}</p> : null}
       </Section>
 
       <Section title="Hình thức đặt">
@@ -454,39 +461,6 @@ function AttributeInput({
         onChange={(e) => onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)}
       />
     </Field>
-  );
-}
-
-function PhotoList({ photos, onChange }: { photos: string[]; onChange: (photos: string[]) => void }) {
-  const rows = photos.length > 0 ? photos : [''];
-  return (
-    <div className="space-y-2">
-      {rows.map((p, i) => (
-        <div key={i} className="flex gap-2">
-          <Input
-            value={p}
-            placeholder="https://…"
-            onChange={(e) => {
-              const next = [...rows];
-              next[i] = e.target.value;
-              onChange(next);
-            }}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
-            aria-label="Xoá ảnh"
-          >
-            <X className="size-4" aria-hidden />
-          </Button>
-        </div>
-      ))}
-      <Button type="button" variant="outline" size="sm" onClick={() => onChange([...rows, ''])}>
-        <Plus className="size-4" aria-hidden /> Thêm ảnh
-      </Button>
-    </div>
   );
 }
 

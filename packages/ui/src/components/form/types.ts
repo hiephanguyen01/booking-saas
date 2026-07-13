@@ -50,8 +50,29 @@ export interface DateFieldConfig<T extends FieldValues> extends BaseFieldConfig<
   type: "date"
 }
 
+/**
+ * `file` — an image uploader (direct-to-storage presign, §4.2). The value is a URL
+ * `string` (single) or `string[]` (multiple) — never a `File` — so the form still
+ * submits plain JSON. `target` is the storage album passed to the presign endpoint.
+ */
+export interface FileFieldConfig<T extends FieldValues> extends BaseFieldConfig<T> {
+  type: "file"
+  /** Multiple → value is `string[]`; single (default) → a `string`. */
+  multiple?: boolean
+  /** Storage album/target for the presign endpoint. */
+  target: "listings" | "groups" | "partners" | "tenants"
+  /** Accepted MIME types (defaults to the image allowlist). */
+  accept?: readonly string[]
+  maxSizeMb?: number
+  /** Cap on total images in multiple mode. */
+  maxFiles?: number
+  /** Same-origin resource route proxying `POST /uploads/presign`. */
+  presignEndpoint?: string
+}
+
 export type FieldConfig<T extends FieldValues> =
   | TextFieldConfig<T>
   | ChoiceFieldConfig<T>
   | BooleanFieldConfig<T>
   | DateFieldConfig<T>
+  | FileFieldConfig<T>

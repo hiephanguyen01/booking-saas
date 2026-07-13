@@ -110,6 +110,7 @@ export class PrismaPartnerRepository implements IPartnerRepository {
           dateOfBirth: data.dateOfBirth,
           payoutInfo: data.payoutInfo as Prisma.InputJsonValue | undefined,
           identityInfo: data.identityInfo as Prisma.InputJsonValue | undefined,
+          businessInfo: data.businessInfo as Prisma.InputJsonValue | undefined,
         },
       }),
     );

@@ -18,7 +18,8 @@ import {
 /**
  * A tenant reviewer publishes a listing (pending_review → published, actor
  * `admin`). Publishing is BLOCKED when the listing still leaks contact info
- * (§7.3) — the reviewer must have the partner remove it first.
+ * (§7.3) — the reviewer must have the partner remove it first — UNLESS the
+ * reviewer explicitly passes `force` to override the gate (recorded in the audit).
  */
 @Injectable()
 export class PublishListingUseCase {
@@ -28,13 +29,14 @@ export class PublishListingUseCase {
     private readonly outbox: OutboxService,
   ) {}
 
-  async execute(ctx: ModerationContext, listingId: string): Promise<ListingRecord> {
+  async execute(ctx: ModerationContext, listingId: string, force = false): Promise<ListingRecord> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       const listing = await this.listings.findById(tx, listingId);
       if (!listing) listingNotFound();
 
       const review = buildListingReview(listing);
-      if (review.contactFlags.length > 0) {
+      const overrode = review.contactFlags.length > 0 || !review.checklistPassed;
+      if (!force && review.contactFlags.length > 0) {
         throw new BadRequestException({
           statusCode: 400,
           code: 'LISTING_HAS_CONTACT_INFO',
@@ -51,6 +53,7 @@ export class PublishListingUseCase {
         entityId: listing.id,
         fromStatus: listing.status,
         toStatus: outcome.status,
+        reason: force && overrode ? 'force-published: review gate bypassed' : undefined,
       });
       await this.outbox.emit(tx, {
         tenantId: ctx.tenantId,

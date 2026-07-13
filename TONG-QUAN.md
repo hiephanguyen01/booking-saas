@@ -130,7 +130,7 @@ Configuration: tenant takes 15% from the partner; platform fee 2% (on the total 
                     └───────────────────────┬──────────────────────┘
                                             │
                     ┌───────────────────────▼──────────────────────┐
-                    │  apps/backend (NestJS — clean/hexagonal)      │
+                    │  apps/api (NestJS — clean/hexagonal)      │
                     │  modules: identity-access · tenancy · catalog │
                     │  scheduling · booking · payments · finance    │
                     │  affiliate · notification                     │
@@ -160,12 +160,12 @@ Configuration: tenant takes 15% from the partner; platform fee 2% (on the total 
 | Monorepo               | pnpm workspaces + Turborepo                                   |                                                                                                            |
 | Testing                | Vitest (unit), Testcontainers (integration), Playwright (E2E) |                                                                                                            |
 
-**File storage** (listing photos, tenant logos, payout evidence): S3-compatible via a `StoragePort` — **MinIO** in docker-compose for dev, Cloudflare R2 / S3 for production; uploaded directly from the browser using a **presigned URL** (restricted by file type + size), with the key stored in the DB. Images served on the storefront go through a **CDN + size variants** (resize/webp — Cloudflare Images or a custom worker); `photos` stores the original key + variants, and a multi-MB original image is never served directly on an SSR page.
+**File storage** (listing photos, tenant logo/favicon/hero/carousel, partner logo/license docs) — **implemented**: S3-compatible via a `StoragePort` (`apps/api/src/shared/storage/`, `S3StorageService`) — **MinIO** in docker-compose for dev (`pnpm --filter=api storage:init` creates the bucket), Cloudflare R2 / S3 for production. The browser uploads **directly** via a presigned PUT URL from `POST /uploads/presign` (`@AuthenticatedOnly`; input `{ target: 'listings'|'groups'|'partners'|'tenants', contentType }` → `{ uploadUrl, key, publicUrl }`); the API never proxies file bytes. Content types are an **image-only allowlist** (jpeg/png/webp/avif/gif, plus `.ico` for favicons); the S3 service generates a random UUID key (never trusts the client filename). There is **no** dedicated Media/Asset model — the returned URL is stored inline: `Listing.photos` / `ListingGroup.photos` (Json arrays), `Tenant.themeConfig` (logo/favicon/hero/carousel), `ListingType.icon` (String), `Partner.businessInfo` (logo/licenseDocs). On the frontend, each app needing uploads exposes a same-origin presign proxy resource route (e.g. `apps/dashboard/app/routes/uploads.presign.tsx`) that replays the auth cookie; the reusable `ImageUpload` / GenericForm `file` field then PUTs directly to storage. _Not yet implemented: server-side resize / CDN size-variants, and a delete/GC endpoint — originals are served as-is in dev._
 
-### 4.3. Hexagonal Principles in `apps/backend`
+### 4.3. Hexagonal Principles in `apps/api`
 
 Each module (bounded context) has 3 layers, following this codebase's existing convention
-(`apps/backend/src/modules/*` and CLAUDE.md §5):
+(`apps/api/src/modules/*` and CLAUDE.md §5):
 
 ```
 modules/booking/
@@ -225,8 +225,13 @@ booking-saas/
 │   │   │   │   ├── affiliate/           # (Phase 2)
 │   │   │   │   └── notification/        # email, ZNS
 │   │   │   ├── shared/
-│   │   │   │   ├── tenant-context/      # middleware + AsyncLocalStorage + Prisma forTenant()
+│   │   │   │   ├── tenant-context/      # AsyncLocalStorage + Prisma forTenant()
+│   │   │   │   ├── prisma/              # PrismaService (RLS app_user pool)
+│   │   │   │   ├── redis/               # shared ioredis client
+│   │   │   │   ├── storage/             # S3/MinIO adapter + POST /uploads/presign
 │   │   │   │   ├── outbox/              # outbox pattern + relay worker
+│   │   │   │   ├── validation/          # ZodValidationPipe
+│   │   │   │   ├── health/              # /health, /health/ready
 │   │   │   │   ├── money/               # VND integer, format/parse
 │   │   │   │   └── time/                # timezone helpers (always UTC in the DB)
 │   │   │   └── main.ts
@@ -248,9 +253,8 @@ booking-saas/
 │           ├── partner.*                # partner
 │           └── affiliate.*              # affiliate
 ├── packages/
-│   ├── contracts/                       # zod schemas + types for the whole API (request/response)
-│   ├── ui/                              # shared components (Button, Calendar, SlotPicker, DataTable...)
-│   └── config/                          # eslint, tsconfig, i18n resources (vi.json, en.json)
+│   ├── shared/  (@booking/shared)       # zod schemas in src/contracts/*.ts + types + money/time + i18n
+│   └── ui/      (@booking/ui)           # shared components (GenericForm, ImageUpload, DataTable, shadcn…)
 ├── docker-compose.yml                   # postgres:16, redis:7, mailpit, minio
 ├── turbo.json
 └── pnpm-workspace.yaml
@@ -319,7 +323,7 @@ async function forTenant<T>(
 
 > General convention: PK `id uuid` (v7), with `created_at`, `updated_at`; money is `bigint` (VND); time is `timestamptz` (UTC). The columns listed below are the main business columns.
 >
-> **ORM locked in: Prisma.** The entire model below will be implemented in `apps/backend/prisma/schema.prisma` (the single source of truth); anything Prisma cannot express — RLS policies, exclusion constraints (`btree_gist`), partial indexes, journal-balancing triggers — is written as **hand-written SQL inside a Prisma migration file**. _Status: still at the design stage, not yet implemented in code._
+> **ORM locked in: Prisma.** The entire model below will be implemented in `apps/api/prisma/schema.prisma` (the single source of truth); anything Prisma cannot express — RLS policies, exclusion constraints (`btree_gist`), partial indexes, journal-balancing triggers — is written as **hand-written SQL inside a Prisma migration file**. _Status: implemented in `apps/api/prisma/schema.prisma` + migrations (the models below reflect the live schema; field names are camelCase in Prisma, snake_case in the DB via `@map`)._
 
 ### 7.1. Identity & Access Group
 
@@ -373,7 +377,7 @@ async function forTenant<T>(
 
 ### 7.3. Catalog Group
 
-**partners**: tenant_id, name, slug, description, **partner_type** (`individual` — freelancer / `company`), business_info (jsonb — tax ID, business registration if a company), status (`pending/approved/suspended` — the tenant approves the partner), contact info, payout_info (jsonb — bank account for receiving payouts).
+**partners**: tenant_id, name, slug, description, **partner_type** (`individual` — freelancer / `company`), business_info (jsonb — tax ID, business registration if a company, plus **`logoUrl` + `licenseDocs[]`** uploaded images — partners have no dedicated image column), status (`pending/approved/suspended` — the tenant approves the partner), contact info, payout_info (jsonb — bank account for receiving payouts). Registration is anonymous (storefront `become-partner`); the logo + license documents are uploaded **after** account creation on the authenticated dashboard partner-profile page (`PATCH /partner/profile/documents`), since the presign endpoint requires a logged-in user.
 
 A partner offers **multiple services across multiple listing types** — e.g. on StudioHub, company X might have 10 "Studio" listings + 10 "Model" listings + several "Equipment rental" listings; each listing belongs to one listing_type, and either has its own calendar or **shares a calendar** via `resources` below.
 
@@ -1081,13 +1085,14 @@ A template is a set of route components + its own layout, sharing `packages/ui` 
     "subtitle": "...",
     "imageUrl": "..."
   },
+  "carousel": ["https://cdn/.../slide-1.jpg", "https://cdn/.../slide-2.jpg"],
   "contact": { "phone": "...", "zalo": "...", "address": "..." },
   "seo": { "title": "...", "description": "..." },
   "socialLinks": { "facebook": "...", "instagram": "..." }
 }
 ```
 
-Rendered as CSS variables at SSR time (`<style>:root{--color-primary:...}</style>`) — no rebuild needed when a tenant changes its theme. The tenant dashboard has a theme editor with live preview.
+`logoUrl`, `faviconUrl`, `hero.imageUrl`, and every `carousel` entry are **uploaded images** — the tenant settings form (`apps/dashboard/app/routes/tenant/settings/_index.tsx`) uses the GenericForm `file` field (favicon accepts `.ico`); the storefront renders `carousel` as a homepage slideshow (`apps/storefront/app/templates/studio/carousel.tsx`) above the hero, and hides it when empty. Rendered as CSS variables at SSR time (`<style>:root{--color-primary:...}</style>`) — no rebuild needed when a tenant changes its theme. The tenant dashboard has a theme editor with live preview.
 
 **Storefront SEO**: each domain auto-generates a `sitemap.xml` (homepage + published `listing_groups` + published standalone listings) and `robots.txt`; meta title/description + Open Graph come from `theme_config.seo` and listing data; RR7's SSR ensures crawlers can read the content.
 
