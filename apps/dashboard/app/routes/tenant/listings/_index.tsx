@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import type { ListingResponse, PublishStatus } from '@booking/shared';
+import type { ListingResponse, Paginated, PartnerResponse, PublishStatus } from '@booking/shared';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
@@ -20,9 +20,17 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
-  const res = await apiGet<ListingResponse[]>('/tenant/listings', auth);
+  const [res, partnersRes] = await Promise.all([
+    apiGet<ListingResponse[]>('/tenant/listings', auth),
+    can('tenant.partners.read')
+      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
+      : Promise.resolve(null),
+  ]);
+  const partnerNames: Record<string, string> = {};
+  if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
   return {
     listings: res.ok ? (res.data ?? []) : [],
+    partnerNames,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách listing.'),
     canModerate: can('tenant.listings.publish'),
   };
@@ -39,7 +47,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 export default function TenantListings({ loaderData }: Route.ComponentProps) {
-  const { listings, error, canModerate } = loaderData;
+  const { listings, partnerNames, error, canModerate } = loaderData;
   const [filter, setFilter] = useState<Filter>('all');
 
   const counts = useMemo(() => {
@@ -62,6 +70,16 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
           <div className="truncate text-xs text-muted-foreground">/{l.slug}</div>
         </div>
       ),
+    },
+    {
+      header: 'Đối tác',
+      cell: (l) => (
+        <span className="text-sm text-muted-foreground">
+          {partnerNames[l.partnerId] ?? l.partnerId.slice(0, 8)}
+        </span>
+      ),
+      className: 'hidden sm:table-cell',
+      headClassName: 'hidden sm:table-cell',
     },
     {
       header: 'Hình thức',

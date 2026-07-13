@@ -28,6 +28,7 @@ import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-su
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
+import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
 import { GetPlatformHealthUseCase } from '../../application/use-cases/get-platform-health.use-case';
 import { PlanLimitService } from '../../application/services/plan-limit.service';
@@ -73,6 +74,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     AddDomainUseCase,
     VerifyDomainUseCase,
     ListDomainsUseCase,
+    DeleteDomainUseCase,
     ResolveTenantByHostUseCase,
     GetPlatformHealthUseCase,
     PlanLimitService,

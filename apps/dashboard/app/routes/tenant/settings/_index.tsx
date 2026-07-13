@@ -12,9 +12,9 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { CheckCircle2, CircleAlert, Clock, Globe } from 'lucide-react';
+import { CheckCircle2, CircleAlert, Clock, Globe, Trash2 } from 'lucide-react';
 import type { Route } from './+types/_index';
-import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
 import { useTenantArea } from '../area-context';
 import { formatDate } from '../format';
@@ -80,6 +80,13 @@ export async function action({ request }: Route.ActionArgs) {
     const id = String(formData.get('domainId'));
     const res = await apiPost<DomainResponse>(`/tenant/domains/${id}/verify`, {}, auth);
     if (!res.ok) return routeData({ form: 'verify', error: res.error ?? 'Xác minh thất bại. Kiểm tra bản ghi TXT.' }, { status: 400 });
+    return { form: 'verify', ok: true };
+  }
+
+  if (intent === 'delete-domain') {
+    const id = String(formData.get('domainId'));
+    const res = await apiDelete(`/tenant/domains/${id}`, auth);
+    if (!res.ok) return routeData({ form: 'verify', error: res.error ?? 'Không xoá được tên miền.' }, { status: 400 });
     return { form: 'verify', ok: true };
   }
 
@@ -248,13 +255,34 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                         <p className="mt-1 break-all font-mono text-xs text-muted-foreground">TXT: {d.verificationToken}</p>
                       ) : null}
                     </div>
-                    {!d.verifiedAt ? (
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="verify-domain" />
+                    <div className="flex items-center gap-2">
+                      {!d.verifiedAt ? (
+                        <Form method="post">
+                          <input type="hidden" name="intent" value="verify-domain" />
+                          <input type="hidden" name="domainId" value={d.id} />
+                          <Button type="submit" variant="outline" size="sm" disabled={busy || readOnly}>Xác minh</Button>
+                        </Form>
+                      ) : null}
+                      <Form
+                        method="post"
+                        onSubmit={(e) => {
+                          if (!confirm(`Xoá tên miền ${d.hostname}?`)) e.preventDefault();
+                        }}
+                      >
+                        <input type="hidden" name="intent" value="delete-domain" />
                         <input type="hidden" name="domainId" value={d.id} />
-                        <Button type="submit" variant="outline" size="sm" disabled={busy || readOnly}>Xác minh</Button>
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={busy || readOnly}
+                          aria-label={`Xoá ${d.hostname}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
                       </Form>
-                    ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>

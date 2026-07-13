@@ -652,7 +652,22 @@ async function seedDemo(): Promise<void> {
       create: { tenantId: trialTenant.id, hostname, isPrimary, verifiedAt: new Date() },
     });
   }
-  await ensureRoleAssignment(owner.id, tenantOwnerRole.id, trialTenant.id, null);
+  // Aperture gets its OWN owner — never reuse StudioHub's `owner`, or that account
+  // would belong to two tenants and the dashboard (one tenant scope per session)
+  // would resolve the wrong one. Repair any earlier seed that made that mistake.
+  await prisma.roleAssignment.deleteMany({ where: { userId: owner.id, tenantId: trialTenant.id } });
+  const apertureOwner = await prisma.user.upsert({
+    where: { email: 'owner@aperture.vn' },
+    update: {},
+    create: {
+      email: 'owner@aperture.vn',
+      passwordHash: password,
+      fullName: 'Aperture Owner',
+      phone: '0900000010',
+      emailVerifiedAt: new Date(),
+    },
+  });
+  await ensureRoleAssignment(apertureOwner.id, tenantOwnerRole.id, trialTenant.id, null);
   const aperturePartner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: trialTenant.id, slug: 'aperture-house' } },
     update: {},

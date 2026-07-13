@@ -20,6 +20,7 @@ import { PartnerBookingUseCase } from '../../application/use-cases/partner-booki
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
 import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
+import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { toBookingResponse, toCancelResponse, toReturnResponse } from '../../application/booking.mapper';
 import {
   toPartnerCalendarResponse,
@@ -49,8 +50,21 @@ export class PartnerBookingController {
     private readonly cancelBooking: CancelBookingUseCase,
     private readonly fulfillment: InventoryFulfillmentUseCase,
     private readonly calendar: PartnerCalendarUseCase,
+    private readonly getBooking: GetBookingUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  /** Single booking (Task 1.14 detail view) — 404 unless it's this partner's. */
+  @RequirePermissions('partner.bookings.read')
+  @Get(':id')
+  async detail(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<BookingResponse> {
+    const booking = await this.getBooking.execute(this.tenantContext.tenantIdOrThrow(), id, {
+      partnerId: this.tenantContext.partnerIdOrThrow(),
+    });
+    return toBookingResponse(booking);
+  }
 
   private ctx(principal: SessionPrincipal) {
     return {

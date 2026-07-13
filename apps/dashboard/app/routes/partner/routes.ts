@@ -7,6 +7,7 @@ export const partnerChildren: RouteConfigEntry[] = [
   index('routes/partner/_index.tsx'),
   route('calendar', 'routes/partner/calendar.tsx'),
   route('bookings', 'routes/partner/bookings.tsx'),
+  route('bookings/:bookingId', 'routes/partner/bookings.$bookingId.tsx'),
   route('listings', 'routes/partner/listings.tsx'),
   route('listings/:listingId/hours', 'routes/partner/listings.$listingId.hours.tsx'),
   route('listings/new', 'routes/partner/listings.new.tsx'),

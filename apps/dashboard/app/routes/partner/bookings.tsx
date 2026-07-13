@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { data, useFetcher } from 'react-router';
+import { data, Link, useFetcher } from 'react-router';
 import { Ban, Check, PackageCheck, Undo2, UserX, X } from 'lucide-react';
 import {
   markReturnedInputSchema,
@@ -171,7 +171,11 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
   const columns: DataTableColumn<PartnerCalendarBookingResponse>[] = [
     {
       header: 'Mã',
-      cell: (b) => <span className="font-mono text-xs text-muted-foreground">{b.code}</span>,
+      cell: (b) => (
+        <Link to={`/partner/bookings/${b.id}`} className="font-mono text-xs font-medium text-primary hover:underline">
+          {b.code}
+        </Link>
+      ),
     },
     {
       header: 'Tin đăng',
