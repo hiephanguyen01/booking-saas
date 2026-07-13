@@ -1,18 +1,11 @@
 import type { ReactNode } from 'react';
 import type { BookingResponse } from '@booking/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
-import { Badge } from '@booking/ui/components/ui/badge';
 import { Separator } from '@booking/ui/components/ui/separator';
+import { formatVnd as vnd } from '~/routes/tenant/format';
+import { BookingStatusBadge } from '~/routes/tenant/components/status';
 
 const TZ = 'Asia/Ho_Chi_Minh';
-
-/** VND đồng digit string → "1.200.000 ₫" (signed strings allowed). */
-function vnd(digits: string): string {
-  const neg = digits.startsWith('-');
-  const n = Number(neg ? digits.slice(1) : digits);
-  if (!Number.isFinite(n)) return `${digits} ₫`;
-  return `${neg ? '-' : ''}${new Intl.NumberFormat('vi-VN').format(n)} ₫`;
-}
 
 function dateTime(iso: string): string {
   return new Intl.DateTimeFormat('vi-VN', {
@@ -25,19 +18,6 @@ function dateTime(iso: string): string {
     hour12: false,
   }).format(new Date(iso));
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Nháp',
-  pending_approval: 'Chờ duyệt',
-  pending_payment: 'Chờ thanh toán',
-  confirmed: 'Đã xác nhận',
-  completed: 'Hoàn tất',
-  cancelled: 'Đã huỷ',
-  no_show: 'Vắng mặt',
-  rejected: 'Từ chối',
-  expired: 'Hết hạn',
-  refunded: 'Đã hoàn tiền',
-};
 
 const MODE_LABEL: Record<string, string> = {
   hourly: 'Theo giờ',
@@ -66,7 +46,7 @@ export function BookingDetailCard({
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2">
             <span className="font-mono">{booking.code}</span>
-            <Badge variant="secondary">{STATUS_LABEL[booking.status] ?? booking.status}</Badge>
+            <BookingStatusBadge status={booking.status} />
           </CardTitle>
           {title ? <p className="text-sm text-muted-foreground">{title}</p> : null}
         </div>

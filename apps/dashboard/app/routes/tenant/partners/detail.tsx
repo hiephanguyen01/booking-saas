@@ -9,7 +9,7 @@ import { ArrowLeft, CircleAlert, Check, BadgeCheck, Ban } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDate, formatDateTime } from '../format';
+import { formatDate, formatDateTime, PARTNER_TYPE_LABEL as TYPE_LABEL } from '../format';
 import { PageHeader } from '../components/page';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '../components/status';
 
@@ -49,8 +49,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!res.ok) return routeData({ error: res.error ?? 'Thao tác không thành công.' }, { status: 400 });
   return { ok: true };
 }
-
-const TYPE_LABEL: Record<string, string> = { individual: 'Cá nhân', company: 'Doanh nghiệp' };
 
 export default function PartnerDetail({ loaderData, actionData }: Route.ComponentProps) {
   const { partner, canApprove, canManage } = loaderData;

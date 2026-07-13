@@ -9,10 +9,10 @@ import type {
 import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
-import { Label } from '@booking/ui/components/ui/label';
 import { Switch } from '@booking/ui/components/ui/switch';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { ImageUpload } from '@booking/ui/components/form/image-upload';
+import { Section, Grid, Field } from '~/components/form-layout';
 import {
   Select,
   SelectContent,
@@ -464,25 +464,3 @@ function AttributeInput({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="space-y-3 rounded-lg border p-4">
-      <h2 className="text-sm font-semibold">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Grid({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
-}
-
-function Field({ label, error, children }: { label: string; error?: string[]; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-      {error?.length ? <p className="text-xs text-destructive">{error[0]}</p> : null}
-    </div>
-  );
-}

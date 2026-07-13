@@ -13,5 +13,5 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const { tenant, listingTypes } = useOutletContext<StorefrontContext>();
   const { listings } = loaderData;
   const Template = homeTemplateFor(tenant.vertical);
-  return <>{Template({ tenant, listingTypes, listings })}</>;
+  return <Template tenant={tenant} listingTypes={listingTypes} listings={listings} />;
 }

@@ -10,7 +10,7 @@ import { Check, Eye, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDate } from '../format';
+import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '../format';
 import { PageHeader } from '../components/page';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '../components/status';
 
@@ -49,8 +49,6 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'approved', label: 'Đã duyệt' },
   { value: 'suspended', label: 'Tạm ngưng' },
 ];
-
-const TYPE_LABEL: Record<string, string> = { individual: 'Cá nhân', company: 'Doanh nghiệp' };
 
 export default function TenantPartners({ loaderData }: Route.ComponentProps) {
   const { partners, error, canApprove, canManage } = loaderData;

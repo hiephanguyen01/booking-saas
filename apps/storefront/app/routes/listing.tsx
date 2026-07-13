@@ -48,14 +48,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const tz = DEFAULT_TZ; // resource tz is echoed back on the availability response
   const today = todayInTz(tz);
 
-  let availability = null;
+  let availabilityP: ReturnType<typeof fetchAvailability>;
   if (mode === 'hourly') {
     const day = sp.get('day') || today;
-    availability = await fetchAvailability(request, params.listingSlug, { mode, from: day, to: day });
+    availabilityP = fetchAvailability(request, params.listingSlug, { mode, from: day, to: day });
   } else if (mode === 'daily') {
     // A 31-day window from the anchor day powers the range calendar.
     const anchor = sp.get('from') || today;
-    availability = await fetchAvailability(request, params.listingSlug, {
+    availabilityP = fetchAvailability(request, params.listingSlug, {
       mode,
       from: anchor,
       to: addDays(anchor, 30),
@@ -63,21 +63,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   } else {
     const from = (sp.get('from') || today).slice(0, 10);
     const to = (sp.get('to') || from).slice(0, 10);
-    availability = await fetchAvailability(request, params.listingSlug, { mode, from, to });
+    availabilityP = fetchAvailability(request, params.listingSlug, { mode, from, to });
   }
 
   // Live quote once a concrete slot is chosen (start/end are UTC ISO instants).
+  // Independent of availability, so the two run concurrently.
   const start = sp.get('start');
   const end = sp.get('end');
   const quantity = sp.get('qty') || '1';
-  let quote = null;
-  if (start && end) {
-    quote = await fetchQuote(
-      request,
-      params.listingSlug,
-      new URLSearchParams({ mode, from: start, to: end, quantity }),
-    );
-  }
+  const quoteP =
+    start && end
+      ? fetchQuote(request, params.listingSlug, new URLSearchParams({ mode, from: start, to: end, quantity }))
+      : Promise.resolve(null);
+
+  const [availability, quote] = await Promise.all([availabilityP, quoteP]);
 
   return { listing, mode, availability, quote };
 }

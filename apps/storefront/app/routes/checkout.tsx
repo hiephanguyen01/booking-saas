@@ -26,14 +26,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   const promoCode = sp.get('promo')?.trim().toUpperCase() || null;
 
   if (!slug || !mode || !start || !end) throw redirect(slug ? `/l/${slug}` : '/');
-  const listing = await fetchListing(request, slug);
+  // Independent fetches — the quote is keyed by slug + params, not the listing result.
+  const [listing, quote] = await Promise.all([
+    fetchListing(request, slug),
+    fetchQuote(request, slug, new URLSearchParams({ mode, from: start, to: end, quantity: qty })),
+  ]);
   if (!listing) throw redirect('/');
-
-  const quote = await fetchQuote(
-    request,
-    slug,
-    new URLSearchParams({ mode, from: start, to: end, quantity: qty }),
-  );
   if (!quote) throw redirect(`/l/${slug}`);
 
   let promo: ValidatePromoResponse | null = null;
