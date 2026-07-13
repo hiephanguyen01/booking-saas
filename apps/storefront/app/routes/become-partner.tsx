@@ -136,9 +136,9 @@ export default function BecomePartner({ loaderData, actionData }: Route.Componen
   if (actionData?.ok) {
     return (
       <div className="mx-auto max-w-lg px-6 py-16 text-center">
-        <CheckCircle2 className="mx-auto mb-4 size-12 text-(--sf-primary)" />
+        <CheckCircle2 className="mx-auto mb-4 size-12 text-primary" />
         <h1 className="text-2xl font-bold tracking-tight">{t('becomePartner.successTitle')}</h1>
-        <p className="mt-2 text-(--sf-muted)">{t('becomePartner.successBody', { tenant: tenantName })}</p>
+        <p className="mt-2 text-muted-foreground">{t('becomePartner.successBody', { tenant: tenantName })}</p>
         <Button asChild className="mt-6 h-11">
           <a href={`${dashboardUrl}/auth/login`}>{t('becomePartner.goToDashboard')}</a>
         </Button>
@@ -151,11 +151,11 @@ export default function BecomePartner({ loaderData, actionData }: Route.Componen
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
       <div className="mb-6">
-        <Link to="/" className="text-sm text-(--sf-muted) hover:underline">
+        <Link to="/" className="text-sm text-muted-foreground hover:underline">
           ← {tenantName}
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('becomePartner.title')}</h1>
-        <p className="mt-1 text-(--sf-muted)">{t('becomePartner.subtitle', { tenant: tenantName })}</p>
+        <p className="mt-1 text-muted-foreground">{t('becomePartner.subtitle', { tenant: tenantName })}</p>
       </div>
 
       <GenericForm

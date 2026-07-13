@@ -38,7 +38,7 @@ export function StudioHero({
                 <Link
                   key={type.id}
                   to={`/t/${type.slug}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-white"
+                  className="inline-flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                 >
                   <Icon className="size-4" />
                   {type.name}

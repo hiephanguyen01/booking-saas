@@ -87,7 +87,7 @@ export default function ListingDetail({ loaderData, params }: Route.ComponentPro
 
   if (!listing) {
     return (
-      <div className="mx-auto max-w-6xl px-6 py-24 text-center text-gray-500">
+      <div className="mx-auto max-w-6xl px-6 py-24 text-center text-muted-foreground">
         {t('listing.notFound', { slug: params.listingSlug })}
       </div>
     );
@@ -102,7 +102,7 @@ export default function ListingDetail({ loaderData, params }: Route.ComponentPro
       <div className="mb-4">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{listing.title}</h1>
         {attrs.length > 0 ? (
-          <p className="mt-1 text-sm text-(--sf-muted)">
+          <p className="mt-1 text-sm text-muted-foreground">
             {attrs.map(([, v]) => String(v)).join(' · ')}
           </p>
         ) : null}
@@ -114,7 +114,7 @@ export default function ListingDetail({ loaderData, params }: Route.ComponentPro
       <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">
         <div>
           {listing.description ? (
-            <p className="text-[15px] leading-relaxed text-gray-700">{listing.description}</p>
+            <p className="text-[15px] leading-relaxed text-foreground">{listing.description}</p>
           ) : null}
           {attrs.length > 0 ? (
             <ListingAttributes attrs={attrs} />
@@ -149,7 +149,7 @@ function TrustSignals({ trust }: { trust: PublicListingDetailResponse['trust'] }
   const since = activeSinceLabel(trust.partnerActiveSince);
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-      <span className="font-medium text-gray-700">{t('listing.providedBy', { name: trust.partnerName })}</span>
+      <span className="font-medium text-foreground">{t('listing.providedBy', { name: trust.partnerName })}</span>
       {trust.identityVerified ? (
         <Badge className="gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-white hover:bg-emerald-600">
           <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2.5}>
@@ -181,7 +181,7 @@ function activeSinceLabel(iso: string): string | null {
 function Gallery({ photos, title }: { photos: string[]; title: string }) {
   if (photos.length === 0) {
     return (
-      <div className="flex aspect-[16/9] w-full items-center justify-center rounded-3xl bg-gray-100 text-gray-400">
+      <div className="flex aspect-[16/9] w-full items-center justify-center rounded-3xl bg-muted text-muted-foreground">
         {title}
       </div>
     );

@@ -610,6 +610,36 @@ Rules:
 - Theme tokens (CSS variables, dark mode, radius) live in `packages/ui/src/styles/globals.css`;
   apps import it and never redefine tokens locally.
 
+### Color & Theming (semantic tokens only)
+
+**Style every UI surface with shadcn semantic tokens — never hardcoded palette colors.** This keeps
+the look consistent and, on the storefront, lets each tenant's `theme_config` re-tint the whole app.
+
+- **Use the tokens, always:**
+  - Text: `text-foreground` (primary), `text-muted-foreground` (secondary).
+  - Surfaces: `bg-background` (page), `bg-card` (panels), `bg-muted` (subtle fills); lines: `border-border`.
+  - Brand (tenant-driven): `text-primary` / `bg-primary` / `border-primary` (+ `-foreground` pairs), and
+    `ring-ring` for focus. Errors: the `destructive` token (`text-destructive`, `bg-destructive/10`).
+- **Never for a themed surface:** `text-gray-*` / `bg-gray-*` / `border-black/*` / `bg-black/*` /
+  `bg-white` / `text-white`, or app-local color CSS vars. A change that adds one is wrong — reach for a
+  token. (The legacy storefront `--sf-*` vars are being retired; only `--sf-background` remains, for the
+  page canvas.)
+- **Interactive elements** that aren't shadcn primitives must carry a visible focus ring
+  (`focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`).
+- **Narrow exceptions (literal colors OK):** text/scrims that sit *on a photo/video* (e.g. a hero
+  overlay: `text-white`, `from-black/70`), and universal status semantics with no token (success
+  green/emerald). Everything else uses tokens.
+
+**Storefront tenant branding.** `theme_config.colors` drive the shadcn base tokens via a single
+SSR-injected `<style>:root{…}</style>` — see `apps/storefront/app/theme/theme.ts` (`themeCss`) +
+`root.tsx`. Rules when touching this:
+
+- Tokens are wired with Tailwind v4 `@theme inline { --color-primary: var(--primary) }`, so utilities
+  inline `var(--primary)` — override the **base `--primary`** (never `--color-primary`).
+- Tenant color strings are **untrusted** (tenant jsonb): always pass them through `sanitizeColor()`
+  before they enter CSS (defeats `</style>`/CSS injection). Derive readable text with `contrastToken()`;
+  never hardcode a foreground.
+
 ### Loader Pattern (Data Fetching)
 
 ```typescript

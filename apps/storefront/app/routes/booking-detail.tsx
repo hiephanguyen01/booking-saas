@@ -71,7 +71,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
 
   return (
     <div className="mx-auto max-w-xl px-6 py-12">
-      <Card className="rounded-2xl border-black/10">
+      <Card className="rounded-2xl border-border">
         <CardContent className="space-y-5 p-6">
           <StatusHeader status={bookingStatus} isSuccess={isSuccess} isPending={isPending} t={t} />
 
@@ -86,7 +86,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
           {booking ? <BookingDetails booking={booking} t={t} /> : null}
 
           {actionData && !actionData.ok && actionData.error ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{actionData.error}</p>
+            <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{actionData.error}</p>
           ) : null}
 
           {isPending ? (
@@ -98,7 +98,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
           ) : null}
 
           <div className="pt-2 text-center">
-            <Link to="/bookings" className="text-sm text-(--sf-muted) hover:underline">
+            <Link to="/bookings" className="text-sm text-muted-foreground hover:underline">
               {t('nav.lookup')}
             </Link>
           </div>
@@ -128,7 +128,7 @@ function StatusHeader({
           </svg>
         </div>
         <h1 className="text-xl font-bold">{t('payment.succeeded')}</h1>
-        <p className="mt-1 text-sm text-(--sf-muted)">{t('payment.confirmedNote')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('payment.confirmedNote')}</p>
       </div>
     );
   }
@@ -136,7 +136,7 @@ function StatusHeader({
     return (
       <div className="text-center">
         <h1 className="text-xl font-bold">{t('payment.title')}</h1>
-        <p className="mt-1 text-sm text-(--sf-muted)">{t('payment.pending')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('payment.pending')}</p>
       </div>
     );
   }
@@ -144,7 +144,7 @@ function StatusHeader({
   return (
     <div className="text-center">
       <h1 className="text-xl font-bold">{t(`booking.statusLabels.${status}`)}</h1>
-      {failed ? <p className="mt-1 text-sm text-red-600">{t('payment.failed')}</p> : null}
+      {failed ? <p className="mt-1 text-sm text-destructive">{t('payment.failed')}</p> : null}
     </div>
   );
 }
@@ -161,7 +161,7 @@ function PendingActions({
   // Only offer the mock button while awaiting payment (not while awaiting partner approval).
   const awaitingPayment = status?.bookingStatus === 'pending_payment';
   if (!mockEnabled || !awaitingPayment) {
-    return <p className="text-center text-sm text-(--sf-muted)">{t('payment.checking')}</p>;
+    return <p className="text-center text-sm text-muted-foreground">{t('payment.checking')}</p>;
   }
   return (
     <Form method="post" className="space-y-2">
@@ -169,7 +169,7 @@ function PendingActions({
       <Button type="submit" className="h-11 w-full">
         {t('payment.mockPay')}
       </Button>
-      <p className="text-center text-xs text-(--sf-muted)">{t('payment.mockHint')}</p>
+      <p className="text-center text-xs text-muted-foreground">{t('payment.mockHint')}</p>
     </Form>
   );
 }
@@ -196,8 +196,8 @@ function BookingDetails({ booking, t }: { booking: BookingResponse; t: I18n['t']
 
 function CancelSection({ otp, t }: { otp: string | null; t: I18n['t'] }) {
   return (
-    <details className="rounded-lg border border-black/10 p-3">
-      <summary className="cursor-pointer text-sm font-medium text-gray-700">{t('booking.cancel')}</summary>
+    <details className="rounded-lg border border-border p-3">
+      <summary className="cursor-pointer text-sm font-medium text-foreground">{t('booking.cancel')}</summary>
       <Form method="post" className="mt-3 space-y-2">
         <input type="hidden" name="intent" value="cancel" />
         {otp ? <input type="hidden" name="otp" value={otp} /> : null}
@@ -213,8 +213,8 @@ function CancelSection({ otp, t }: { otp: string | null; t: I18n['t'] }) {
 function Row({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
   return (
     <div className="flex justify-between gap-4">
-      <span className="text-(--sf-muted)">{label}</span>
-      <span className={mono ? 'font-mono font-semibold' : 'font-medium text-gray-900'}>{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className={mono ? 'font-mono font-semibold' : 'font-medium text-foreground'}>{value}</span>
     </div>
   );
 }

@@ -16,7 +16,7 @@ import { createTranslator, I18nProvider, type Locale } from './lib/i18n';
 import type { Messages } from './lib/messages';
 import { SiteHeader } from './components/site-header';
 import { SiteFooter } from './components/site-footer';
-import { themeStyle } from './theme/theme';
+import { themeCss } from './theme/theme';
 import './app.css';
 
 /** Shared route context: the resolved tenant + its auto-generated menu + locale. */
@@ -74,23 +74,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Per-tenant brand tokens, injected once at SSR so every UI component re-tints. */
+function ThemeStyle({ theme }: { theme: StorefrontTenant['theme'] }) {
+  return <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
+}
+
 export default function App({ loaderData }: Route.ComponentProps) {
   const { tenant, listingTypes, locale, messages } = loaderData;
   const i18n = createTranslator(locale, messages as Messages);
 
   if (!tenant.live) {
     return (
-      <div style={themeStyle(tenant.theme)} className="min-h-screen bg-(--sf-background)">
+      <div className="min-h-screen bg-(--sf-background)">
+        <ThemeStyle theme={tenant.theme} />
         <SuspendedNotice name={tenant.name} />
       </div>
     );
   }
   return (
     <I18nProvider value={i18n}>
-      <div
-        style={themeStyle(tenant.theme)}
-        className="flex min-h-dvh flex-col bg-(--sf-background) text-gray-900"
-      >
+      <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
+        <ThemeStyle theme={tenant.theme} />
         <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
         <main className="flex-1">
           <Outlet context={{ tenant, listingTypes, locale } satisfies StorefrontContext} />

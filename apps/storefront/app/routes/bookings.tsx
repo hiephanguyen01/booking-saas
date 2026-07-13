@@ -35,9 +35,9 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
   return (
     <div className="mx-auto max-w-lg px-6 py-12">
       <h1 className="text-2xl font-bold tracking-tight">{t('lookup.title')}</h1>
-      <p className="mt-1 text-sm text-(--sf-muted)">{t('lookup.subtitle')}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{t('lookup.subtitle')}</p>
 
-      <Card className="mt-6 rounded-2xl border-black/10">
+      <Card className="mt-6 rounded-2xl border-border">
         <CardContent className="p-6">
           {sent ? (
             <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} />
@@ -57,10 +57,10 @@ function RequestForm({ error }: { error: string | null }) {
   return (
     <Form method="post" className="space-y-3">
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-gray-700">{t('lookup.codeLabel')}</span>
+        <span className="text-sm font-medium text-foreground">{t('lookup.codeLabel')}</span>
         <Input name="code" placeholder={t('lookup.codePlaceholder')} className="uppercase" autoFocus />
       </label>
-      {error ? <p className="text-sm text-red-600">{t('lookup.invalidCode')}</p> : null}
+      {error ? <p className="text-sm text-destructive">{t('lookup.invalidCode')}</p> : null}
       <Button type="submit" className="h-11 w-full">
         {t('lookup.sendOtp')}
       </Button>
@@ -75,11 +75,11 @@ function VerifyForm({ code, devOtp }: { code: string; devOtp: string | null }) {
     <div className="space-y-3">
       <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{t('lookup.otpSent')}</p>
       {devOtp ? (
-        <p className="text-xs text-(--sf-muted)">{t('lookup.otpHintDev', { otp: devOtp })}</p>
+        <p className="text-xs text-muted-foreground">{t('lookup.otpHintDev', { otp: devOtp })}</p>
       ) : null}
       <Form method="get" action={`/bookings/${encodeURIComponent(code)}`} className="space-y-3">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-gray-700">{t('lookup.otpLabel')}</span>
+          <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
         </label>
         <Button type="submit" className="h-11 w-full">
@@ -94,19 +94,19 @@ function RecentList({ recent }: { recent: string[] }) {
   const { t } = useT();
   return (
     <div className="mt-8">
-      <h2 className="mb-2 text-sm font-semibold text-gray-700">{t('lookup.recentTitle')}</h2>
+      <h2 className="mb-2 text-sm font-semibold text-foreground">{t('lookup.recentTitle')}</h2>
       {recent.length === 0 ? (
-        <p className="text-sm text-(--sf-muted)">{t('lookup.recentEmpty')}</p>
+        <p className="text-sm text-muted-foreground">{t('lookup.recentEmpty')}</p>
       ) : (
-        <ul className="divide-y divide-black/5 rounded-xl border border-black/10">
+        <ul className="divide-y divide-border rounded-xl border border-border">
           {recent.map((code) => (
             <li key={code}>
               <Link
                 to={`/bookings/${encodeURIComponent(code)}`}
-                className="flex items-center justify-between px-4 py-3 text-sm hover:bg-black/5"
+                className="flex items-center justify-between px-4 py-3 text-sm hover:bg-muted"
               >
                 <span className="font-mono font-semibold">{code}</span>
-                <span className="text-(--sf-muted)">{t('booking.viewDetails')} →</span>
+                <span className="text-muted-foreground">{t('booking.viewDetails')} →</span>
               </Link>
             </li>
           ))}

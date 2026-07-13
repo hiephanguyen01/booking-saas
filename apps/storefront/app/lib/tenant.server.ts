@@ -1,4 +1,5 @@
 import type { PublicTenantResponse } from '@booking/shared';
+import { sanitizeColor } from '../theme/theme';
 
 /**
  * Tenant resolution by Host header (TONG-QUAN.md §6.1). The storefront acts as a
@@ -42,7 +43,7 @@ function readTheme(themeConfig: Record<string, unknown>): StorefrontTenant['them
       ? (themeConfig.colors as Record<string, unknown>)
       : {};
   const pick = (key: keyof typeof DEFAULT_THEME): string =>
-    typeof colors[key] === 'string' ? (colors[key] as string) : DEFAULT_THEME[key];
+    sanitizeColor(colors[key]) ?? DEFAULT_THEME[key];
   return { primary: pick('primary'), accent: pick('accent'), background: pick('background') };
 }
 

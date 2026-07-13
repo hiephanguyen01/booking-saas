@@ -33,10 +33,10 @@ export function StudioHome({
           return (
             <section key={type.id}>
               <div className="mb-5 flex items-end justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">{type.name}</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">{type.name}</h2>
                 <Link
                   to={`/t/${type.slug}`}
-                  className="text-sm font-semibold text-gray-900 underline-offset-4 hover:underline"
+                  className="rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   {t('home.viewAll')}
                 </Link>

@@ -19,10 +19,13 @@ export function SiteHeader({
 }) {
   const { t } = useT();
   return (
-    <header className="sticky top-0 z-40 border-b border-black/5 bg-(--sf-background)/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border bg-(--sf-background)/85 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-(--sf-primary)">
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-md text-xl font-extrabold tracking-tight text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
             {tenant.logoUrl ? (
               <img src={tenant.logoUrl} alt={tenant.name} className="h-8 w-auto max-w-40 object-contain" />
             ) : (
@@ -32,7 +35,7 @@ export function SiteHeader({
           <div className="flex items-center gap-2">
             <Link
               to="/bookings"
-              className="hidden items-center gap-2 rounded-full border border-black/10 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-black/5 sm:flex"
+              className="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:flex"
             >
               <Search className="size-4" />
               {t('nav.lookup')}
@@ -63,7 +66,7 @@ function LocaleSwitcher({ current }: { current: Locale }) {
       <input type="hidden" name="redirectTo" value={redirectTo} />
       <button
         type="submit"
-        className="rounded-full border border-black/10 px-3 py-1.5 text-sm font-semibold text-gray-700 uppercase transition-colors hover:bg-black/5"
+        className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold text-muted-foreground uppercase transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         aria-label={`Switch language to ${next}`}
       >
         {current}
@@ -89,8 +92,10 @@ function CategoryLink({
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors',
-          isActive ? 'bg-(--sf-primary)/10 text-gray-900' : 'text-gray-600 hover:bg-black/5',
+          'flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          isActive
+            ? 'bg-primary/10 text-primary'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
         )
       }
     >

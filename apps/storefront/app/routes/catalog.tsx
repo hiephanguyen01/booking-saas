@@ -33,7 +33,7 @@ export default function Catalog({ loaderData, params }: Route.ComponentProps) {
 
   if (!type) {
     return (
-      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-gray-500">
+      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-muted-foreground">
         {t('catalog.typeNotFound', { slug: params.typeSlug })}
       </div>
     );
@@ -44,12 +44,12 @@ export default function Catalog({ loaderData, params }: Route.ComponentProps) {
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">
       <div className="mb-6 flex items-center gap-3">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-(--sf-primary)/10 text-(--sf-primary)">
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Icon className="size-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{type.name}</h1>
-          <p className="text-sm text-(--sf-muted)">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{type.name}</h1>
+          <p className="text-sm text-muted-foreground">
             {t('catalog.resultsCount', { count: listings.length })}
           </p>
         </div>
@@ -60,7 +60,7 @@ export default function Catalog({ loaderData, params }: Route.ComponentProps) {
       ) : null}
 
       {listings.length === 0 ? (
-        <div className="mt-16 rounded-2xl border border-dashed border-black/10 py-16 text-center text-(--sf-muted)">
+        <div className="mt-16 rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
           {t('catalog.empty')}
         </div>
       ) : (
@@ -87,7 +87,7 @@ function FilterBar({
   return (
     <Form
       method="get"
-      className="flex flex-wrap items-end gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
+      className="flex flex-wrap items-end gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm"
     >
       {fields.map((field) => (
         <FilterField
@@ -146,7 +146,7 @@ function FilterField({ field, value, i18n }: { field: AttributeField; value: str
 
   return (
     <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium text-gray-700">{field.label}</span>
+      <span className="font-medium text-muted-foreground">{field.label}</span>
       {control}
     </label>
   );

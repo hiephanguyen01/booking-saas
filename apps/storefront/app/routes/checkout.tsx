@@ -136,7 +136,7 @@ export default function Checkout({ loaderData, actionData }: Route.ComponentProp
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-6">
-        <Link to={`/l/${listing.slug}`} className="text-sm text-(--sf-muted) hover:underline">
+        <Link to={`/l/${listing.slug}`} className="text-sm text-muted-foreground hover:underline">
           ← {listing.title}
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('checkout.title')}</h1>
@@ -227,10 +227,10 @@ function SummaryCard({
   t: I18n['t'];
 }) {
   return (
-    <Card className="rounded-2xl border-black/10">
+    <Card className="rounded-2xl border-border">
       <CardContent className="space-y-3 p-5 text-sm">
-        <div className="font-semibold text-gray-900">{listing.title}</div>
-        <div className="text-(--sf-muted)">{scheduleLabel(mode, start, end, qty, t)}</div>
+        <div className="font-semibold text-foreground">{listing.title}</div>
+        <div className="text-muted-foreground">{scheduleLabel(mode, start, end, qty, t)}</div>
         <Separator />
         <Row label={t('listing.subtotal')} value={formatVnd(quote.subtotal)} />
         {discount !== '0' ? (
@@ -249,7 +249,7 @@ function SummaryCard({
 
 function Row({ label, value, bold, accent }: { label: string; value: string | null; bold?: boolean; accent?: boolean }) {
   return (
-    <div className={`flex justify-between ${bold ? 'font-semibold text-gray-900' : 'text-gray-600'} ${accent ? 'text-(--sf-primary)' : ''}`}>
+    <div className={`flex justify-between ${bold ? 'font-semibold text-foreground' : 'text-muted-foreground'} ${accent ? 'text-primary' : ''}`}>
       <span>{label}</span>
       <span>{value}</span>
     </div>
@@ -273,17 +273,17 @@ function PromoForm({
   const errorCode = promo && !promo.valid ? promo.error : undefined;
 
   return (
-    <Card className="rounded-2xl border-black/10">
+    <Card className="rounded-2xl border-border">
       <CardContent className="space-y-2 p-5">
         <div className="text-sm font-semibold">{t('checkout.promoSection')}</div>
         {applied ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-(--sf-primary)/10 px-3 py-2 text-sm">
-            <span className="font-medium text-(--sf-primary)">
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm">
+            <span className="font-medium text-primary">
               {t('checkout.promoApplied', { code: promoCode ?? '', amount: formatVnd(promo!.discountAmount) ?? '' })}
             </span>
             <Link
               to={promoRemoveUrl(hidden)}
-              className="text-xs font-semibold text-gray-500 hover:underline"
+              className="text-xs font-semibold text-muted-foreground hover:underline"
             >
               {t('checkout.promoRemove')}
             </Link>
@@ -305,7 +305,7 @@ function PromoForm({
           </Form>
         )}
         {errorCode ? (
-          <p className="text-sm text-red-600">{t(`promoErrors.${errorCode}`)}</p>
+          <p className="text-sm text-destructive">{t(`promoErrors.${errorCode}`)}</p>
         ) : null}
       </CardContent>
     </Card>
@@ -349,7 +349,7 @@ function GuestForm({
 
       <h2 className="text-lg font-semibold">{t('checkout.guestSection')}</h2>
       {serverError ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {serverError}
         </div>
       ) : null}
@@ -383,9 +383,9 @@ function GuestField({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <span className="text-sm font-medium text-foreground">{label}</span>
       <Input name={name} type={type} autoComplete={autoComplete} aria-invalid={errors ? true : undefined} />
-      {errors?.length ? <span className="text-xs text-red-600">{errors[0]}</span> : null}
+      {errors?.length ? <span className="text-xs text-destructive">{errors[0]}</span> : null}
     </label>
   );
 }

@@ -67,7 +67,7 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
   const canBook = Boolean(start && end);
 
   return (
-    <Card className="sticky top-28 rounded-2xl border-black/10 shadow-xl">
+    <Card className="sticky top-28 rounded-2xl border-border shadow-lg">
       <CardContent className="space-y-5 p-6">
         <QuoteHeader quote={quote} listing={listing} i18n={i18n} />
 
@@ -130,13 +130,13 @@ function QuoteHeader({
     <div className="flex items-baseline gap-2">
       {quote ? (
         <>
-          <span className="text-2xl font-bold">{formatVnd(quote.subtotal)}</span>
-          <span className="text-sm text-(--sf-muted)">{i18n.t('listing.subtotalEstimate')}</span>
+          <span className="text-2xl font-bold text-foreground">{formatVnd(quote.subtotal)}</span>
+          <span className="text-sm text-muted-foreground">{i18n.t('listing.subtotalEstimate')}</span>
         </>
       ) : from ? (
         <>
-          <span className="text-2xl font-bold">{from}</span>
-          <span className="text-sm text-(--sf-muted)">{i18n.t('listing.fromPrice')}</span>
+          <span className="text-2xl font-bold text-foreground">{from}</span>
+          <span className="text-sm text-muted-foreground">{i18n.t('listing.fromPrice')}</span>
         </>
       ) : (
         <span className="text-lg font-semibold">{i18n.t('listing.pickScheduleForPrice')}</span>
@@ -162,15 +162,17 @@ function ModeToggle({
     inventory: i18n.t('listing.modeInventory'),
   };
   return (
-    <div className="grid grid-cols-3 gap-1 rounded-xl bg-black/5 p-1">
+    <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
       {modes.map((m) => (
         <button
           key={m}
           type="button"
           onClick={() => onSelect(m)}
           className={cn(
-            'rounded-lg px-2 py-2 text-sm font-medium transition-colors',
-            m === active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+            'rounded-lg px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            m === active
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {label[m]}
@@ -236,7 +238,7 @@ function HourlyPicker({
 
       <FieldLabel>{i18n.t('listing.pickSlot')}</FieldLabel>
       {available.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-black/10 py-6 text-center text-sm text-(--sf-muted)">
+        <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
           {i18n.t('listing.noSlots')}
         </p>
       ) : (
@@ -249,14 +251,14 @@ function HourlyPicker({
                 type="button"
                 onClick={() => pickSlot(slot)}
                 className={cn(
-                  'flex flex-col items-center rounded-lg border px-1 py-2 text-sm transition-colors',
+                  'flex flex-col items-center rounded-lg border px-1 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isSelected
-                    ? 'border-(--sf-primary) bg-(--sf-primary)/10 font-semibold text-gray-900'
-                    : 'border-black/10 hover:border-(--sf-primary)/50',
+                    ? 'border-primary bg-primary/10 font-semibold text-primary'
+                    : 'border-border hover:border-primary/50',
                 )}
               >
                 <span>{timeInTz(slot.startUtc, tz)}</span>
-                <span className="text-[11px] text-(--sf-muted)">{formatVnd(slot.price)}</span>
+                <span className="text-[11px] text-muted-foreground">{formatVnd(slot.price)}</span>
               </button>
             );
           })}
@@ -346,15 +348,15 @@ function DailyPicker({
         onSelect={onSelect}
         disabled={isDisabled}
         min={minNights + 1}
-        className="rounded-lg border border-black/10 p-2"
+        className="rounded-lg border border-border p-2"
       />
       {nights > 0 ? (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           {i18n.t('listing.nights', { count: nights })}
           {nights < minNights ? ` · ${i18n.t('listing.minNights', { count: minNights })}` : ''}
         </p>
       ) : (
-        <p className="text-sm text-(--sf-muted)">{i18n.t('listing.selectRange')}</p>
+        <p className="text-sm text-muted-foreground">{i18n.t('listing.selectRange')}</p>
       )}
     </div>
   );
@@ -453,7 +455,7 @@ function InventoryPicker({
           </Button>
         </div>
       </div>
-      <p className="text-sm text-(--sf-muted)">{i18n.t('listing.remaining', { count: remaining })}</p>
+      <p className="text-sm text-muted-foreground">{i18n.t('listing.remaining', { count: remaining })}</p>
     </div>
   );
 }
@@ -464,7 +466,7 @@ function Breakdown({ quote, i18n }: { quote: QuoteResponse; i18n: I18n }) {
   return (
     <dl className="space-y-1.5 text-sm">
       {quote.lineItems.map((line, idx) => (
-        <div key={idx} className="flex justify-between text-gray-600">
+        <div key={idx} className="flex justify-between text-muted-foreground">
           <dt>
             {line.label}
             {line.block ? ` (${i18n.t('listing.package')})` : ''}
@@ -473,16 +475,16 @@ function Breakdown({ quote, i18n }: { quote: QuoteResponse; i18n: I18n }) {
         </div>
       ))}
       <Separator className="my-2" />
-      <div className="flex justify-between font-semibold">
+      <div className="flex justify-between font-semibold text-foreground">
         <dt>{i18n.t('listing.subtotal')}</dt>
         <dd>{formatVnd(quote.subtotal)}</dd>
       </div>
-      <div className="flex justify-between text-gray-500">
+      <div className="flex justify-between text-muted-foreground">
         <dt>{i18n.t('listing.deposit')}</dt>
         <dd>{formatVnd(quote.depositAmount)}</dd>
       </div>
       {quote.securityDeposit !== '0' ? (
-        <div className="flex justify-between text-gray-500">
+        <div className="flex justify-between text-muted-foreground">
           <dt>{i18n.t('listing.securityDeposit')}</dt>
           <dd>{formatVnd(quote.securityDeposit)}</dd>
         </div>
@@ -492,7 +494,7 @@ function Breakdown({ quote, i18n }: { quote: QuoteResponse; i18n: I18n }) {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">{children}</span>;
+  return <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{children}</span>;
 }
 
 /** Cheapest configured base price across modes (for the "from" price). */
