@@ -1,6 +1,9 @@
 import {
   LayoutDashboard,
   Store,
+  Files,
+  Tags,
+  Users,
   CalendarCheck,
   Wallet,
   BookText,
@@ -15,6 +18,9 @@ import type { DashboardNavItem } from '~/lib/navigation-types';
 export const tenantNavItems: DashboardNavItem[] = [
   { title: 'Tổng quan', to: '/tenant', icon: LayoutDashboard },
   { title: 'Listing', to: '/tenant/listings', icon: Store, permission: 'tenant.listings.read' },
+  { title: 'Bài đăng', to: '/tenant/listing-groups', icon: Files, permission: 'tenant.listings.read' },
+  { title: 'Loại dịch vụ', to: '/tenant/listing-types', icon: Tags, permission: 'tenant.listings.read' },
+  { title: 'Đối tác', to: '/tenant/partners', icon: Users, permission: 'tenant.partners.read' },
   { title: 'Đặt chỗ', to: '/tenant/bookings', icon: CalendarCheck, permission: 'tenant.bookings.read' },
   { title: 'Tài chính', to: '/tenant/finance', icon: Wallet, permission: 'tenant.finance.read' },
   { title: 'Sổ cái', to: '/tenant/finance/ledger', icon: BookText, permission: 'tenant.finance.read' },

@@ -21,7 +21,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/calendar';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { MasterCalendar } from './components/master-calendar';
 import { PageHeader } from './components/page-header';
 import { dayKey, formatDate } from './components/format';

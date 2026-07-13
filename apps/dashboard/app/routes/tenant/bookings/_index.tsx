@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import type { BookingResponse, PartnerResponse, Paginated } from '@booking/shared';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
@@ -70,7 +71,11 @@ export default function TenantBookings({ loaderData }: Route.ComponentProps) {
   const bookingColumns: DataTableColumn<BookingResponse>[] = [
     {
       header: 'Mã',
-      cell: (b) => <span className="font-mono text-sm font-medium">{b.code}</span>,
+      cell: (b) => (
+        <Link to={`/tenant/bookings/${b.id}`} className="font-mono text-sm font-medium text-primary hover:underline">
+          {b.code}
+        </Link>
+      ),
     },
     { header: 'Đối tác', cell: (b) => <span className="text-sm">{partnerNames[b.partnerId] ?? '—'}</span>, className: 'hidden md:table-cell', headClassName: 'hidden md:table-cell' },
     { header: 'Hình thức', cell: (b) => <span className="text-sm text-muted-foreground">{MODE_LABEL[b.bookingMode] ?? b.bookingMode}</span> },

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Form, Link, useNavigation, data as routeData } from 'react-router';
 import {
   createPayoutInputSchema,
+  failPayoutInputSchema,
   markPayoutPaidInputSchema,
   type OwnerBalanceResponse,
   type PartnerResponse,
@@ -91,6 +92,18 @@ export async function action({ request }: Route.ActionArgs) {
     return { ok: true };
   }
 
+  if (intent === 'mark-failed') {
+    const id = String(form.get('payoutId'));
+    const reason = String(form.get('reason') ?? '').trim();
+    const parsed = failPayoutInputSchema.safeParse({ reason: reason || undefined });
+    if (!parsed.success) {
+      return routeData({ error: 'Lý do không hợp lệ.' }, { status: 400 });
+    }
+    const res = await apiPost(`/tenant/finance/payouts/${id}/fail`, parsed.data, auth);
+    if (!res.ok) return routeData({ error: res.error ?? 'Không cập nhật được lệnh chi.' }, { status: 400 });
+    return { ok: true };
+  }
+
   return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
 }
 
@@ -120,14 +133,18 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
       className: 'text-right',
       cell: (p) =>
         p.status === 'pending' || p.status === 'processing' ? (
-          <MarkPaidDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <MarkPaidDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
+            <MarkFailedDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
+          </div>
         ) : p.reference ? (
           <span className="text-xs text-muted-foreground">Ref: {p.reference}</span>
         ) : null,
     },
   ];
 
-  const payeeOptions = partnerBalances.filter((b) => b.ownerId);
+  const partnerPayees = partnerBalances.filter((b) => b.ownerId);
+  const affiliatePayees = affiliateBalances.filter((b) => b.ownerId);
 
   return (
     <div className="space-y-6">
@@ -142,7 +159,12 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
               </Link>
             </Button>
             {canPayouts ? (
-              <CreatePayoutDialog payees={payeeOptions} partnerNames={partnerNames} readOnly={readOnly} />
+              <CreatePayoutDialog
+                partnerPayees={partnerPayees}
+                affiliatePayees={affiliatePayees}
+                partnerNames={partnerNames}
+                readOnly={readOnly}
+              />
             ) : null}
           </>
         }
@@ -222,15 +244,21 @@ function BalanceCard({
 }
 
 function CreatePayoutDialog({
-  payees, partnerNames, readOnly,
+  partnerPayees, affiliatePayees, partnerNames, readOnly,
 }: {
-  payees: OwnerBalanceResponse[];
+  partnerPayees: OwnerBalanceResponse[];
+  affiliatePayees: OwnerBalanceResponse[];
   partnerNames: Record<string, string>;
   readOnly: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [payeeType, setPayeeType] = useState<'partner' | 'affiliate'>('partner');
   const nav = useNavigation();
   const busy = nav.state !== 'idle';
+
+  const payees = payeeType === 'partner' ? partnerPayees : affiliatePayees;
+  const nameOf = (id: string): string =>
+    payeeType === 'partner' ? partnerNames[id] ?? id.slice(0, 8) : id.slice(0, 8);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -240,33 +268,81 @@ function CreatePayoutDialog({
       <DialogContent>
         <Form method="post" onSubmit={() => setOpen(false)}>
           <input type="hidden" name="intent" value="create-payout" />
-          <input type="hidden" name="payeeType" value="partner" />
+          <input type="hidden" name="payeeType" value={payeeType} />
           <DialogHeader>
-            <DialogTitle>Tạo lệnh chi cho đối tác</DialogTitle>
-            <DialogDescription>Chi toàn bộ số dư đang nợ của đối tác được chọn.</DialogDescription>
+            <DialogTitle>Tạo lệnh chi</DialogTitle>
+            <DialogDescription>Chi toàn bộ số dư đang nợ của bên nhận được chọn.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 py-4">
-            <Label htmlFor="payeeId">Đối tác</Label>
-            <Select name="payeeId" required>
-              <SelectTrigger id="payeeId"><SelectValue placeholder="Chọn đối tác…" /></SelectTrigger>
-              <SelectContent>
-                {payees.length === 0 ? (
-                  <SelectItem value="none" disabled>Không có số dư phải chi</SelectItem>
-                ) : (
-                  payees.map((b) => (
-                    <SelectItem key={b.ownerId} value={b.ownerId as string}>
-                      {(b.ownerId && partnerNames[b.ownerId]) || b.ownerId?.slice(0, 8)} · {formatVnd(b.balance)}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Loại người nhận</Label>
+              <Select value={payeeType} onValueChange={(v) => setPayeeType(v as 'partner' | 'affiliate')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="partner">Đối tác</SelectItem>
+                  <SelectItem value="affiliate">Affiliate</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="payeeId">Người nhận</Label>
+              <Select name="payeeId" required key={payeeType}>
+                <SelectTrigger id="payeeId"><SelectValue placeholder="Chọn người nhận…" /></SelectTrigger>
+                <SelectContent>
+                  {payees.length === 0 ? (
+                    <SelectItem value="none" disabled>Không có số dư phải chi</SelectItem>
+                  ) : (
+                    payees.map((b) => (
+                      <SelectItem key={b.ownerId} value={b.ownerId as string}>
+                        {nameOf(b.ownerId as string)} · {formatVnd(b.balance)}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="ghost">Huỷ</Button></DialogClose>
             <Button type="submit" disabled={busy || payees.length === 0}>
               <Banknote className="size-4" /> Tạo lệnh chi
             </Button>
+          </DialogFooter>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MarkFailedDialog({ payout, name, readOnly }: { payout: PayoutResponse; name: string; readOnly: boolean }) {
+  const [open, setOpen] = useState(false);
+  const nav = useNavigation();
+  const busy = nav.state !== 'idle';
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={readOnly}>
+          Đánh dấu thất bại
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <Form method="post" onSubmit={() => setOpen(false)}>
+          <input type="hidden" name="intent" value="mark-failed" />
+          <input type="hidden" name="payoutId" value={payout.id} />
+          <DialogHeader>
+            <DialogTitle>Đánh dấu lệnh chi thất bại</DialogTitle>
+            <DialogDescription>
+              {name} · {formatVnd(payout.amount)}. Công nợ sẽ được đưa lại vào chu kỳ chi trả kế tiếp.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            <Label htmlFor={`fail-${payout.id}`}>Lý do (tuỳ chọn)</Label>
+            <Input id={`fail-${payout.id}`} name="reason" maxLength={500} placeholder="VD: sai số tài khoản" />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button type="button" variant="ghost">Huỷ</Button></DialogClose>
+            <Button type="submit" variant="destructive" disabled={busy}>Xác nhận thất bại</Button>
           </DialogFooter>
         </Form>
       </DialogContent>

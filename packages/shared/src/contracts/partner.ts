@@ -76,10 +76,80 @@ export const verifyIdentityInputSchema = z.object({
 });
 export type VerifyIdentityInput = z.infer<typeof verifyIdentityInputSchema>;
 
+/**
+ * Post-registration document upload (§7.3). A partner registers with plain fields,
+ * then — once authenticated — uploads a logo + license/business documents on the
+ * dashboard. Persisted into `Partner.businessInfo` JSON (partners have no image
+ * column). Free of `.transform()`/`.default()` so it can drive a GenericForm.
+ */
+export const updatePartnerDocumentsInputSchema = z.object({
+  /** Public URL of the uploaded logo (via /uploads/presign, target `partners`). */
+  logoUrl: z.string().url().or(z.literal('')).optional(),
+  /** Public URLs of uploaded license/business documents. */
+  licenseDocs: z.array(z.string().url()).max(20).optional(),
+});
+export type UpdatePartnerDocumentsInput = z.infer<typeof updatePartnerDocumentsInputSchema>;
+
 export const listPartnersQuerySchema = paginationQuerySchema.extend({
   status: partnerStatusSchema.optional(),
 });
 export type ListPartnersQuery = z.infer<typeof listPartnersQuerySchema>;
+
+/**
+ * Storefront partner self-registration form (§7.3) — one schema covering the new
+ * account, the partner record, and the licenses/business documents. Drives the
+ * `become-partner` GenericForm on the client and is re-validated in its action.
+ * Deliberately free of `.transform()`/`.default()` so input === output (a
+ * GenericForm requirement); messages are Vietnamese (the storefront's market).
+ */
+export const partnerRegistrationSchema = z
+  .object({
+    // Account — mirrors registerInputSchema.
+    fullName: z.string().min(1, 'Vui lòng nhập họ và tên').max(200),
+    email: z.string().email('Email không hợp lệ'),
+    password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
+    phone: z.string().max(20).optional(),
+    // Partner — mirrors partnerApplyInputSchema.
+    name: z.string().min(1, 'Vui lòng nhập tên đối tác').max(200),
+    slug: slugSchema,
+    partnerType: partnerTypeSchema,
+    description: z.string().max(1000, 'Giới thiệu tối đa 1000 ký tự').optional(),
+    // Licenses & business documents (§7.3 business_info).
+    legalName: z.string().max(200).optional(),
+    taxId: z.string().max(64).optional(),
+    businessRegistrationNo: z.string().max(64).optional(),
+    licenseNo: z.string().max(120).optional(),
+    /** One URL per line; parsed into `businessInfo.licenseDocs` server-side. */
+    licenseDocs: z.string().max(2000).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.partnerType === 'company') {
+      if (!val.taxId?.trim())
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['taxId'], message: 'Doanh nghiệp cần mã số thuế' });
+      if (!val.businessRegistrationNo?.trim())
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['businessRegistrationNo'],
+          message: 'Doanh nghiệp cần số giấy phép kinh doanh',
+        });
+    }
+    if (val.phone && val.phone.trim().length > 0 && val.phone.trim().length < 5)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['phone'], message: 'Số điện thoại không hợp lệ' });
+    if (val.licenseDocs) {
+      const invalid = val.licenseDocs
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .some((u) => !/^https?:\/\/.+/i.test(u));
+      if (invalid)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['licenseDocs'],
+          message: 'Đường dẫn không hợp lệ (phải bắt đầu bằng http:// hoặc https://)',
+        });
+    }
+  });
+export type PartnerRegistrationInput = z.infer<typeof partnerRegistrationSchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 

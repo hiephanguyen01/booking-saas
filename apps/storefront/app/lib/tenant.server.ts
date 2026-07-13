@@ -1,4 +1,5 @@
 import type { PublicTenantResponse } from '@booking/shared';
+import { sanitizeColor } from '../theme/theme';
 
 /**
  * Tenant resolution by Host header (TONG-QUAN.md §6.1). The storefront acts as a
@@ -21,6 +22,14 @@ export interface StorefrontTenant {
     accent: string;
     background: string;
   };
+  /** Optional branding pulled from theme_config (§16.2) — all may be empty. */
+  logoUrl: string | null;
+  /** Homepage carousel image URLs (§16.2) — empty when the tenant set none. */
+  carousel: string[];
+  hero: { title: string | null; subtitle: string | null; imageUrl: string | null };
+  seo: { title: string | null; description: string | null };
+  contact: { email: string | null; phone: string | null; address: string | null };
+  social: { facebook: string | null; instagram: string | null; tiktok: string | null; youtube: string | null };
 }
 
 const DEFAULT_THEME = { primary: '#0EA5E9', accent: '#F97316', background: '#FFFFFF' } as const;
@@ -34,11 +43,26 @@ function readTheme(themeConfig: Record<string, unknown>): StorefrontTenant['them
       ? (themeConfig.colors as Record<string, unknown>)
       : {};
   const pick = (key: keyof typeof DEFAULT_THEME): string =>
-    typeof colors[key] === 'string' ? (colors[key] as string) : DEFAULT_THEME[key];
+    sanitizeColor(colors[key]) ?? DEFAULT_THEME[key];
   return { primary: pick('primary'), accent: pick('accent'), background: pick('background') };
 }
 
+/** Read a nested `{group: {key: string}}` value out of themeConfig, or null. */
+function readStr(config: Record<string, unknown>, group: string, key: string): string | null {
+  const g = config[group];
+  if (g && typeof g === 'object') {
+    const v = (g as Record<string, unknown>)[key];
+    if (typeof v === 'string' && v !== '') return v;
+  }
+  return null;
+}
+
 function toStorefrontTenant(dto: PublicTenantResponse): StorefrontTenant {
+  const config = dto.themeConfig ?? {};
+  const logo = typeof config.logoUrl === 'string' && config.logoUrl !== '' ? config.logoUrl : null;
+  const carousel = Array.isArray(config.carousel)
+    ? config.carousel.filter((x): x is string => typeof x === 'string' && x !== '')
+    : [];
   return {
     id: dto.id,
     name: dto.name,
@@ -46,7 +70,29 @@ function toStorefrontTenant(dto: PublicTenantResponse): StorefrontTenant {
     defaultLocale: dto.defaultLocale,
     vertical: dto.vertical as StorefrontTenant['vertical'],
     live: dto.live,
-    theme: readTheme(dto.themeConfig),
+    theme: readTheme(config),
+    logoUrl: logo,
+    carousel,
+    hero: {
+      title: readStr(config, 'hero', 'title'),
+      subtitle: readStr(config, 'hero', 'subtitle'),
+      imageUrl: readStr(config, 'hero', 'imageUrl'),
+    },
+    seo: {
+      title: readStr(config, 'seo', 'title'),
+      description: readStr(config, 'seo', 'description'),
+    },
+    contact: {
+      email: readStr(config, 'contact', 'email'),
+      phone: readStr(config, 'contact', 'phone'),
+      address: readStr(config, 'contact', 'address'),
+    },
+    social: {
+      facebook: readStr(config, 'socialLinks', 'facebook'),
+      instagram: readStr(config, 'socialLinks', 'instagram'),
+      tiktok: readStr(config, 'socialLinks', 'tiktok'),
+      youtube: readStr(config, 'socialLinks', 'youtube'),
+    },
   };
 }
 

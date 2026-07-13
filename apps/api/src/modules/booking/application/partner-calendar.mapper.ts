@@ -21,5 +21,8 @@ export function toPartnerCalendarResponse(
     guestCount: b.guestCount,
     quantity: b.quantity,
     finalAmount: b.finalAmount.toString(),
+    securityDeposit: b.securityDeposit.toString(),
+    pickedUpAt: b.pickedUpAt ? b.pickedUpAt.toISOString() : null,
+    returnedAt: b.returnedAt ? b.returnedAt.toISOString() : null,
   };
 }

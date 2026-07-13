@@ -57,6 +57,9 @@ export function formatDate(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? '—' : dateFmt.format(d);
 }
 
+/** Partner legal-type → Vietnamese label. */
+export const PARTNER_TYPE_LABEL: Record<string, string> = { individual: 'Cá nhân', company: 'Doanh nghiệp' };
+
 /** A 0–1 fraction as a whole-percent string, e.g. `0.1234 → "12%"`. */
 export function formatRate(fraction: number): string {
   return `${Math.round(fraction * 100)}%`;

@@ -7,6 +7,7 @@ import type { Route } from './+types/catalog';
 import { fetchListings, fetchListingTypes } from '../lib/catalog.server';
 import { ListingCard } from '../components/listing-card';
 import { typeIcon } from '../lib/ui';
+import { useT, type I18n } from '../lib/i18n';
 
 export function meta({ params }: Route.MetaArgs) {
   return [{ title: params.typeSlug }];
@@ -27,11 +28,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function Catalog({ loaderData, params }: Route.ComponentProps) {
   const { type, listings } = loaderData;
   const [searchParams] = useSearchParams();
+  const i18n = useT();
+  const { t } = i18n;
 
   if (!type) {
     return (
-      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-gray-500">
-        Không tìm thấy loại “{params.typeSlug}”.
+      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-muted-foreground">
+        {t('catalog.typeNotFound', { slug: params.typeSlug })}
       </div>
     );
   }
@@ -41,22 +44,24 @@ export default function Catalog({ loaderData, params }: Route.ComponentProps) {
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">
       <div className="mb-6 flex items-center gap-3">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-(--sf-primary)/10 text-(--sf-primary)">
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Icon className="size-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{type.name}</h1>
-          <p className="text-sm text-(--sf-muted)">{listings.length} kết quả</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{type.name}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t('catalog.resultsCount', { count: listings.length })}
+          </p>
         </div>
       </div>
 
       {type.attributeSchema.length > 0 ? (
-        <FilterBar fields={type.attributeSchema} searchParams={searchParams} />
+        <FilterBar fields={type.attributeSchema} searchParams={searchParams} i18n={i18n} />
       ) : null}
 
       {listings.length === 0 ? (
-        <div className="mt-16 rounded-2xl border border-dashed border-black/10 py-16 text-center text-(--sf-muted)">
-          Không có kết quả phù hợp bộ lọc.
+        <div className="mt-16 rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+          {t('catalog.empty')}
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
@@ -72,31 +77,40 @@ export default function Catalog({ loaderData, params }: Route.ComponentProps) {
 function FilterBar({
   fields,
   searchParams,
+  i18n,
 }: {
   fields: AttributeField[];
   searchParams: URLSearchParams;
+  i18n: I18n;
 }) {
+  const { t } = i18n;
   return (
     <Form
       method="get"
-      className="flex flex-wrap items-end gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
+      className="flex flex-wrap items-end gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm"
     >
       {fields.map((field) => (
-        <FilterField key={field.key} field={field} value={searchParams.get(`attr.${field.key}`) ?? ''} />
+        <FilterField
+          key={field.key}
+          field={field}
+          value={searchParams.get(`attr.${field.key}`) ?? ''}
+          i18n={i18n}
+        />
       ))}
       <div className="ml-auto flex gap-2">
         <Button type="submit" size="sm">
-          Lọc
+          {t('catalog.filter')}
         </Button>
         <Button asChild variant="ghost" size="sm">
-          <a href="?">Xóa</a>
+          <a href="?">{t('catalog.clear')}</a>
         </Button>
       </div>
     </Form>
   );
 }
 
-function FilterField({ field, value }: { field: AttributeField; value: string }) {
+function FilterField({ field, value, i18n }: { field: AttributeField; value: string; i18n: I18n }) {
+  const { t } = i18n;
   const name = `attr.${field.key}`;
   let control: React.ReactNode;
 
@@ -105,7 +119,7 @@ function FilterField({ field, value }: { field: AttributeField; value: string })
     case 'multiselect':
       control = (
         <NativeSelect name={name} defaultValue={value} size="sm">
-          <NativeSelectOption value="">Tất cả</NativeSelectOption>
+          <NativeSelectOption value="">{t('catalog.allOption')}</NativeSelectOption>
           {(field.options ?? []).map((option) => (
             <NativeSelectOption key={option} value={option}>
               {option}
@@ -117,9 +131,9 @@ function FilterField({ field, value }: { field: AttributeField; value: string })
     case 'boolean':
       control = (
         <NativeSelect name={name} defaultValue={value} size="sm">
-          <NativeSelectOption value="">Tất cả</NativeSelectOption>
-          <NativeSelectOption value="true">Có</NativeSelectOption>
-          <NativeSelectOption value="false">Không</NativeSelectOption>
+          <NativeSelectOption value="">{t('catalog.allOption')}</NativeSelectOption>
+          <NativeSelectOption value="true">{t('catalog.yes')}</NativeSelectOption>
+          <NativeSelectOption value="false">{t('catalog.no')}</NativeSelectOption>
         </NativeSelect>
       );
       break;
@@ -132,7 +146,7 @@ function FilterField({ field, value }: { field: AttributeField; value: string })
 
   return (
     <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium text-gray-700">{field.label}</span>
+      <span className="font-medium text-muted-foreground">{field.label}</span>
       {control}
     </label>
   );

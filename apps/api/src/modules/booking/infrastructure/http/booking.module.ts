@@ -6,6 +6,7 @@ import { ListingModule } from '../../../listing/infrastructure/http/listing.modu
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { PromotionsModule } from '../../../promotions/infrastructure/http/promotions.module';
 import { FinanceModule } from '../../../finance/infrastructure/http/finance.module';
+import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
 import { BOOKING_REPOSITORY } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE } from '../../domain/ports/hold-store.port';
 import { OTP_STORE } from '../../domain/ports/otp-store.port';
@@ -22,12 +23,22 @@ import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup
 import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
 import { ListTenantBookingsUseCase } from '../../application/use-cases/list-tenant-bookings.use-case';
 import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-booking-stats.use-case';
+import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { PublicBookingController } from './public-booking.controller';
 import { PartnerBookingController } from './partner-booking.controller';
 import { TenantBookingController } from './tenant-booking.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule, ListingModule, IdentityAccessModule, PromotionsModule, FinanceModule],
+  imports: [
+    PrismaModule,
+    TenantContextModule,
+    TenancyModule,
+    ListingModule,
+    IdentityAccessModule,
+    PromotionsModule,
+    FinanceModule,
+    NotificationModule,
+  ],
   controllers: [PublicBookingController, PartnerBookingController, TenantBookingController],
   providers: [
     { provide: BOOKING_REPOSITORY, useClass: PrismaBookingRepository },
@@ -42,6 +53,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     PartnerCalendarUseCase,
     ListTenantBookingsUseCase,
     PartnerBookingStatsUseCase,
+    GetBookingUseCase,
     BookingSchedulerWorker,
   ],
   // Exported so Task 1.9 (payments) can confirm a booking + read it for checkout/status.

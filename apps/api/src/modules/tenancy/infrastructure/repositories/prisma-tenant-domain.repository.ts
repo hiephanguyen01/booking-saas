@@ -56,4 +56,8 @@ export class PrismaTenantDomainRepository implements ITenantDomainRepository {
       }),
     );
   }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.admin.tenantDomain.delete({ where: { id } });
+  }
 }

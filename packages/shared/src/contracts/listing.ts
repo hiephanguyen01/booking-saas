@@ -319,6 +319,16 @@ export const moderationReasonInputSchema = z.object({
 });
 export type ModerationReasonInput = z.infer<typeof moderationReasonInputSchema>;
 
+/**
+ * Publish input (§7.3). `force` lets a tenant reviewer **override the review gate**
+ * (the failing checklist and the contact-info scan) and publish anyway — the
+ * decision is recorded in the moderation audit log.
+ */
+export const publishListingInputSchema = z.object({
+  force: z.boolean().default(false),
+});
+export type PublishListingInput = z.infer<typeof publishListingInputSchema>;
+
 /** A piece of contact info detected in a listing's text at review time (§7.3). */
 export interface ContactFlag {
   type: 'phone' | 'zalo' | 'url' | 'email';

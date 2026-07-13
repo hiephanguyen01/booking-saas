@@ -8,13 +8,14 @@ import {
 } from '@booking/shared';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import { FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { CheckCircle2, CircleAlert, Clock, Globe } from 'lucide-react';
+import { CheckCircle2, CircleAlert, Clock, Globe, Trash2 } from 'lucide-react';
 import type { Route } from './+types/_index';
-import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
 import { useTenantArea } from '../area-context';
 import { formatDate } from '../format';
@@ -83,6 +84,13 @@ export async function action({ request }: Route.ActionArgs) {
     return { form: 'verify', ok: true };
   }
 
+  if (intent === 'delete-domain') {
+    const id = String(formData.get('domainId'));
+    const res = await apiDelete(`/tenant/domains/${id}`, auth);
+    if (!res.ok) return routeData({ form: 'verify', error: res.error ?? 'Không xoá được tên miền.' }, { status: 400 });
+    return { form: 'verify', ok: true };
+  }
+
   return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
 }
 
@@ -92,15 +100,16 @@ const domainFields: FieldConfig<AddDomainInput>[] = [
 ];
 
 const themeFields: FieldConfig<ThemeConfigInput>[] = [
-  { name: 'logoUrl', type: 'url', label: 'URL logo', placeholder: 'https://cdn.cuahang.vn/logo.png', colSpan: 2 },
-  { name: 'faviconUrl', type: 'url', label: 'URL favicon', placeholder: 'https://cdn.cuahang.vn/favicon.ico', colSpan: 2 },
+  { name: 'logoUrl', type: 'file', target: 'tenants', label: 'Logo', description: 'PNG/WebP nền trong suốt hoạt động tốt nhất.', colSpan: 2 },
+  { name: 'faviconUrl', type: 'file', target: 'tenants', accept: FAVICON_ACCEPT, label: 'Favicon', description: 'Chấp nhận .ico, .png hoặc .webp.', colSpan: 2 },
   { name: 'colors.primary', type: 'text', label: 'Màu chủ đạo', placeholder: '#0f172a' },
   { name: 'colors.accent', type: 'text', label: 'Màu nhấn', placeholder: '#f59e0b' },
   { name: 'colors.background', type: 'text', label: 'Màu nền', placeholder: '#ffffff' },
   { name: 'font', type: 'text', label: 'Phông chữ', placeholder: 'Inter' },
   { name: 'hero.title', type: 'text', label: 'Hero — Tiêu đề', placeholder: 'Đặt chỗ nhanh chóng', colSpan: 2 },
   { name: 'hero.subtitle', type: 'textarea', label: 'Hero — Mô tả', rows: 2, colSpan: 2 },
-  { name: 'hero.imageUrl', type: 'url', label: 'Hero — Ảnh nền', placeholder: 'https://cdn.cuahang.vn/hero.jpg', colSpan: 2 },
+  { name: 'hero.imageUrl', type: 'file', target: 'tenants', label: 'Hero — Ảnh nền', colSpan: 2 },
+  { name: 'carousel', type: 'file', target: 'tenants', multiple: true, maxFiles: 10, label: 'Carousel trang chủ', description: 'Tối đa 10 ảnh — hiển thị dạng băng chuyền trên trang chủ.', colSpan: 2 },
   { name: 'contact.email', type: 'email', label: 'Email liên hệ', placeholder: 'lienhe@cuahang.vn' },
   { name: 'contact.phone', type: 'text', label: 'Số điện thoại', placeholder: '0900000000' },
   { name: 'contact.address', type: 'text', label: 'Địa chỉ', colSpan: 2 },
@@ -122,12 +131,16 @@ function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
   const contact = obj(tc.contact);
   const seo = obj(tc.seo);
   const social = obj(tc.socialLinks);
+  const carousel = Array.isArray(tc.carousel)
+    ? tc.carousel.filter((x): x is string => typeof x === 'string')
+    : [];
   return {
     logoUrl: s(tc.logoUrl),
     faviconUrl: s(tc.faviconUrl),
     colors: { primary: s(colors.primary), accent: s(colors.accent), background: s(colors.background) },
     font: s(tc.font),
     hero: { title: s(hero.title), subtitle: s(hero.subtitle), imageUrl: s(hero.imageUrl) },
+    carousel,
     contact: { email: s(contact.email), phone: s(contact.phone), address: s(contact.address) },
     seo: { title: s(seo.title), description: s(seo.description) },
     socialLinks: {
@@ -248,13 +261,34 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                         <p className="mt-1 break-all font-mono text-xs text-muted-foreground">TXT: {d.verificationToken}</p>
                       ) : null}
                     </div>
-                    {!d.verifiedAt ? (
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="verify-domain" />
+                    <div className="flex items-center gap-2">
+                      {!d.verifiedAt ? (
+                        <Form method="post">
+                          <input type="hidden" name="intent" value="verify-domain" />
+                          <input type="hidden" name="domainId" value={d.id} />
+                          <Button type="submit" variant="outline" size="sm" disabled={busy || readOnly}>Xác minh</Button>
+                        </Form>
+                      ) : null}
+                      <Form
+                        method="post"
+                        onSubmit={(e) => {
+                          if (!confirm(`Xoá tên miền ${d.hostname}?`)) e.preventDefault();
+                        }}
+                      >
+                        <input type="hidden" name="intent" value="delete-domain" />
                         <input type="hidden" name="domainId" value={d.id} />
-                        <Button type="submit" variant="outline" size="sm" disabled={busy || readOnly}>Xác minh</Button>
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={busy || readOnly}
+                          aria-label={`Xoá ${d.hostname}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
                       </Form>
-                    ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>

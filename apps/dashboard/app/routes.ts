@@ -17,6 +17,9 @@ export default [
   route('auth/login', 'routes/auth/login.tsx'),
   route('auth/logout', 'routes/auth/logout.tsx'),
 
+  // Presign proxy for direct-to-storage image uploads (§4.2) — any logged-in user.
+  route('uploads/presign', 'routes/uploads.presign.tsx'),
+
   route('admin', 'routes/admin/_layout.tsx', adminChildren),
   route('tenant', 'routes/tenant/_layout.tsx', tenantChildren),
   route('partner', 'routes/partner/_layout.tsx', partnerChildren),

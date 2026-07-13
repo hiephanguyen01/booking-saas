@@ -41,11 +41,13 @@ import {
 } from "@booking/ui/components/ui/select"
 import { Switch } from "@booking/ui/components/ui/switch"
 import { Textarea } from "@booking/ui/components/ui/textarea"
+import { ImageUpload } from "@booking/ui/components/form/image-upload"
 import type {
   BooleanFieldConfig,
   ChoiceFieldConfig,
   DateFieldConfig,
   FieldConfig,
+  FileFieldConfig,
   TextFieldConfig,
 } from "@booking/ui/components/form/types"
 
@@ -108,6 +110,8 @@ function renderControl<T extends FieldValues>(
       return <RadioControl field={field} rhf={rhf} />
     case "date":
       return <DateControl field={field} rhf={rhf} />
+    case "file":
+      return <FileControl field={field} rhf={rhf} />
     case "number":
       return (
         <Input
@@ -287,6 +291,28 @@ function DateControl<T extends FieldValues>({
         />
       </PopoverContent>
     </Popover>
+  )
+}
+
+function FileControl<T extends FieldValues>({
+  field,
+  rhf,
+}: {
+  field: FileFieldConfig<T>
+  rhf: RhfField
+}) {
+  return (
+    <ImageUpload
+      value={rhf.value as string | string[] | undefined}
+      onChange={rhf.onChange}
+      multiple={field.multiple}
+      target={field.target}
+      accept={field.accept}
+      maxSizeMb={field.maxSizeMb}
+      maxFiles={field.maxFiles}
+      presignEndpoint={field.presignEndpoint}
+      disabled={field.disabled}
+    />
   )
 }
 

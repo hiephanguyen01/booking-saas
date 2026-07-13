@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import {
   addDomainInputSchema,
@@ -17,6 +17,7 @@ import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.u
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
+import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
 import { toDomainResponse, toSubscriptionStatusResponse } from '../../application/tenancy.mapper';
 
@@ -47,6 +48,7 @@ export class TenantSettingsController {
     private readonly addDomain: AddDomainUseCase,
     private readonly listDomains: ListDomainsUseCase,
     private readonly verifyDomain: VerifyDomainUseCase,
+    private readonly deleteDomain: DeleteDomainUseCase,
     private readonly getSubscriptionStatus: GetSubscriptionStatusUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -130,5 +132,13 @@ export class TenantSettingsController {
       id,
     );
     return { status, domain: toDomainResponse(domain) };
+  }
+
+  @RequirePermissions('tenant.settings.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Delete('domains/:id')
+  @HttpCode(204)
+  async removeDomain(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<void> {
+    await this.deleteDomain.execute(this.tenantContext.tenantIdOrThrow(), id);
   }
 }

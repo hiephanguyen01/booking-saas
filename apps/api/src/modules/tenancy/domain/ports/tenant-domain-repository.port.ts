@@ -25,4 +25,5 @@ export interface ITenantDomainRepository {
   findById(id: string): Promise<DomainRecord | null>;
   listByTenant(tenantId: string): Promise<DomainRecord[]>;
   markVerified(id: string): Promise<DomainRecord>;
+  delete(id: string): Promise<void>;
 }

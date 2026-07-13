@@ -5,7 +5,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/revenue';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 import { KpiCard } from './components/kpi-card';
 import { formatDate, formatVnd } from './components/format';

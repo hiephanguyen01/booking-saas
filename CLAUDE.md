@@ -126,27 +126,31 @@ checks, seed). Copy these patterns — do not reinvent them.
 ### Apps & packages (actual, current)
 
 ```
-apps/backend        NestJS API (port 3001), hexagonal, RLS-aware
-apps/storefront     React Router 7 SSR — customer-facing (port 3000)
-apps/dashboard      React Router 7 SSR — /admin /tenant /partner /affiliate (port 3002)
-packages/shared     @project/shared — zod contracts, types, money/time helpers, i18n
-packages/ui         @project/ui — shadcn components, GenericForm, Tailwind preset
+apps/api            NestJS API (port 3000 by default; PORT env), hexagonal, RLS-aware
+apps/storefront     React Router 7 SSR — customer-facing
+apps/dashboard      React Router 7 SSR — /admin /tenant /partner /affiliate
+packages/shared     @booking/shared — zod contracts (src/contracts/*.ts), types, money/time helpers, i18n
+packages/ui         @booking/ui — shadcn components, GenericForm, ImageUpload, Tailwind preset
 ```
 
 ### Backend building blocks (where things live)
 
+> Cross-cutting infrastructure lives under `apps/api/src/shared/*`; bounded contexts
+> under `apps/api/src/modules/*` (each with `domain/ · application/ · infrastructure/`).
+> There is no `src/infrastructure/` or `src/common/` folder.
+
 | Concern                    | Location                                                             | Notes                                                                                                                      |
 | -------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Tenant context**         | `src/infrastructure/tenant-context/`                                 | `TenantDbService.forTenant(tenantId, fn)`, AsyncLocalStorage, `TenantContextInterceptor`                                   |
-| **Dual DB pools**          | `src/infrastructure/database/`                                       | `PrismaService` = RLS-bound `app_user` (`APP_DATABASE_URL`); `PrismaAdminService` = BYPASSRLS `app_admin` (`DATABASE_URL`) |
-| **Redis**                  | `src/infrastructure/redis/`                                          | shared `ioredis` client (holds, BullMQ, permissions cache)                                                                 |
+| **Tenant context**         | `src/shared/tenant-context/`                                         | `TenantDbService.forTenant(tenantId, fn)`, AsyncLocalStorage, `TenantContextService`                                       |
+| **DB pool(s)**             | `src/shared/prisma/`                                                 | `PrismaService` (RLS-bound `app_user`, `APP_DATABASE_URL`); admin/BYPASSRLS access where needed (`DATABASE_URL`)          |
+| **Redis**                  | `src/shared/redis/`                                                  | shared `ioredis` client (holds, BullMQ, permissions cache)                                                                 |
+| **Object storage (uploads)** | `src/shared/storage/`                                              | `S3StorageService` + `POST /uploads/presign` (`@AuthenticatedOnly`); presigned PUT direct to MinIO/S3, image-only + `.ico` |
 | **Auth (identity-access)** | `src/modules/identity-access/`                                       | Argon2id, `Session` rotation, 5-attempt lockout, register/login/refresh/logout                                             |
-| **Permissions**            | `src/common/permissions/` + `src/common/guards/permissions.guard.ts` | `@RequirePermissions(...)`, Redis-cached, **deny-by-default**                                                              |
-| **Outbox**                 | `src/modules/outbox/`                                                | `OutboxService.enqueue(tx, event)` + BullMQ relay (`forTenant` per event, retry/dead-letter)                               |
-| **Ping (example module)**  | `src/modules/ping/`                                                  | the canonical hexagonal template to copy                                                                                   |
-| **Health**                 | `src/modules/health/`                                                | `GET /health` (liveness), `GET /health/ready` (DB+Redis)                                                                   |
-| **RLS migration**          | `prisma/migrations/*_rls_policies_and_roles/`                        | hand-written SQL: FORCE RLS + policy per tenant table, `app_user`/`app_admin` roles                                        |
-| **RLS CI checks**          | `prisma/check-rls.ts`, `prisma/check-rls-isolation.ts`               | `pnpm --filter=backend db:check-rls[:isolation]`                                                                           |
+| **Permissions**            | `src/modules/identity-access/infrastructure/http/{guards/permissions.guard.ts,decorators/require-permissions.decorator.ts}` + `services/permission-resolver.service.ts` | `@RequirePermissions(...)`, Redis-cached, **deny-by-default** |
+| **Outbox**                 | `src/shared/outbox/`                                                 | `OutboxService.emit(tx, event)` + BullMQ relay (`forTenant` per event, retry/dead-letter)                                  |
+| **Example module to copy** | `src/modules/tenancy/`, `src/modules/partner/`                       | canonical hexagonal modules (`domain/ · application/ · infrastructure/`)                                                    |
+| **Health**                 | `src/shared/health/`                                                 | `GET /health` (liveness), `GET /health/ready` (DB+Redis)                                                                   |
+| **RLS migration**          | `prisma/migrations/*_rls_*/`                                         | hand-written SQL: FORCE RLS + policy per tenant table, `app_user`/`app_admin` roles                                        |
 
 ### The five load-bearing rules (violating these breaks tenancy/security)
 
@@ -158,7 +162,7 @@ packages/ui         @project/ui — shadcn components, GenericForm, Tailwind pre
 3. **Every protected endpoint declares `@RequirePermissions('scope.resource.action')`.** The global
    guard is deny-by-default: a non-`@Public()` endpoint with no permission fails closed.
 4. **Money is `bigint` VND, percents are integer basis points; time is `timestamptz` UTC.** Use the
-   `@project/shared` money/time helpers — never a JS float for money.
+   `@booking/shared` money/time helpers — never a JS float for money.
 5. **Modules never call each other's services.** They communicate via the **outbox** (write an event in
    the same `forTenant` tx; register a handler). See the cookbook.
 
@@ -178,10 +182,10 @@ packages/ui         @project/ui — shadcn components, GenericForm, Tailwind pre
 | Frontend          | React Router 7 (framework mode)                      | Two SSR apps: storefront + dashboard (BFF pattern)                       |
 | Auth              | Argon2id + session/refresh (rotating)                | Per-account lockout; refresh tokens stored hashed in `Session`           |
 | AuthZ             | 3-tier dynamic RBAC                                  | `@RequirePermissions` + `PermissionsGuard`, deny-by-default              |
-| Money / Time      | `bigint` VND / `timestamptz` UTC                     | Never floats for money; helpers in `@project/shared`                     |
+| Money / Time      | `bigint` VND / `timestamptz` UTC                     | Never floats for money; helpers in `@booking/shared`                     |
 | UI primitives     | shadcn/ui + Tailwind CSS                             | Accessible, unstyled-first, copy-own-code model                          |
-| Shared contracts  | `@project/shared`                                    | zod schemas + types + money/time/i18n, framework-free                    |
-| Shared UI         | `@project/ui`                                        | One component library + Tailwind theme for every frontend                |
+| Shared contracts  | `@booking/shared`                                    | zod schemas + types + money/time/i18n, framework-free                    |
+| Shared UI         | `@booking/ui`                                        | One component library + Tailwind theme for every frontend                |
 | Package manager   | pnpm                                                 | Fast, disk-efficient, strict dependency resolution                       |
 
 ---
@@ -197,8 +201,8 @@ bookify/
 │   ├── storefront/       # React Router 7 SSR — customer-facing (port 3000)
 │   └── dashboard/        # React Router 7 SSR — role-based areas (port 3002)
 ├── packages/
-│   ├── shared/           # @project/shared — types + DTOs + Zod + money/time + i18n
-│   └── ui/               # @project/ui — shadcn components, GenericForm, Tailwind preset, theme CSS
+│   ├── shared/           # @booking/shared — types + DTOs + Zod + money/time + i18n
+│   └── ui/               # @booking/ui — shadcn components, GenericForm, Tailwind preset, theme CSS
 ├── infra/postgres-init/  # SQL run on first Postgres init (btree_gist/citext/pgcrypto)
 ├── phases/               # core.md / core.vi.md — the product/design spec
 ├── docs/superpowers/plans/booking-saas-tasks/  # phase-by-phase implementation tickets
@@ -226,10 +230,10 @@ This project uses **pnpm** with pnpm workspaces. Never use npm or yarn directly.
     "test": "turbo run test",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
-    "db:migrate": "turbo run db:migrate --filter=backend",
-    "db:generate": "turbo run db:generate --filter=backend",
-    "db:seed": "turbo run db:seed --filter=backend",
-    "db:studio": "turbo run db:studio --filter=backend"
+    "db:migrate": "turbo run db:migrate --filter=api",
+    "db:generate": "turbo run db:generate --filter=api",
+    "db:seed": "turbo run db:seed --filter=api",
+    "db:studio": "turbo run db:studio --filter=api"
   }
 }
 ```
@@ -238,7 +242,7 @@ This project uses **pnpm** with pnpm workspaces. Never use npm or yarn directly.
 
 ```bash
 # Run only backend in dev mode
-pnpm turbo run dev --filter=backend
+pnpm turbo run dev --filter=api
 
 # Run only a frontend
 pnpm turbo run dev --filter=storefront
@@ -248,7 +252,7 @@ pnpm turbo run dev --filter=dashboard
 pnpm turbo run build
 
 # Run Prisma Studio
-pnpm --filter=backend exec prisma studio
+pnpm --filter=api exec prisma studio
 ```
 
 ### Turborepo Pipeline (turbo.json)
@@ -294,7 +298,7 @@ Dependencies always point **inward**: `Infrastructure → Application → Domain
 ### Directory Layout
 
 ```
-apps/backend/src/
+apps/api/src/
 ├── main.ts                          # NestJS bootstrap
 ├── app.module.ts                    # Root module wiring
 ├── common/
@@ -406,7 +410,7 @@ export class GetUserUseCase {
 ```typescript
 // modules/users/infrastructure/repositories/prisma-user.repository.ts
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../../infrastructure/database/prisma.service';
+import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import { IUserRepository } from '../../domain/ports/user-repository.port';
 import { UserEntity } from '../../domain/entities/user.entity';
 import { UserMapper } from '../mappers/user.mapper';
@@ -428,7 +432,7 @@ export class PrismaUserRepository implements IUserRepository {
 ```typescript
 // modules/users/infrastructure/http/users.module.ts
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '../../../../infrastructure/database/prisma.module';
+import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { USER_REPOSITORY } from '../../domain/ports/user-repository.port';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';
 import { GetUserUseCase } from '../../application/use-cases/get-user.use-case';
@@ -509,8 +513,8 @@ Modules never import each other's services. Producer writes an event inside its 
 
 ### Prisma Schema Location
 
-`apps/backend/prisma/schema.prisma` — single file for all models.
-Migrations live in `apps/backend/prisma/migrations/`.
+`apps/api/prisma/schema.prisma` — single file for all models.
+Migrations live in `apps/api/prisma/migrations/`.
 
 ### Error Handling
 
@@ -526,12 +530,13 @@ HTTP exceptions thrown from use cases. Never leak Prisma errors to the HTTP laye
 > **Always invoke `/tailwind-css-patterns` for layout and styling work.**
 > **Always invoke `/web-design-guidelines` after any visual change.**
 
-> **Current state:** `apps/storefront` and `apps/dashboard` are Phase-0 **skeletons** — each has a
-> landing page rendering `@project/ui`, distinct ports, and full Vite/Tailwind/tsconfig wiring, but no
-> real routes yet. The patterns below (loaders/actions, `lib/*.server.ts`, `GenericForm`) are the
-> conventions to follow when building Phase-1 routes; the example file paths (e.g.
-> `routes/dashboard/items/*`) are illustrative — they come from the removed template, not the repo.
-> The storefront resolves its tenant from the `Host` header; the dashboard from the login session.
+> **Current state:** `apps/storefront` and `apps/dashboard` have **real Phase-1 routes** — the
+> storefront (home, catalog `t/:typeSlug`, listing `l/:listingSlug`, checkout, bookings,
+> become-partner) and the dashboard (`/admin`, `/tenant`, `/partner`, `/affiliate` areas, config-based
+> routing in `app/routes.ts` + per-area `routes.ts`/`nav.ts`). The patterns below (loaders/actions,
+> `lib/*.server.ts`, `GenericForm`) are the live conventions. The storefront resolves its tenant from
+> the `Host` header; the dashboard from the login session. Some example file paths in older snippets
+> (e.g. `routes/dashboard/items/*`) are illustrative placeholders from the removed template.
 
 ### Philosophy
 
@@ -565,7 +570,7 @@ apps/storefront/   # (and apps/dashboard/ — same shape; layout below is the Ph
 │   │           ├── _index.tsx        # Items list with pagination
 │   │           ├── new.tsx           # Create item form
 │   │           └── $itemId.tsx       # Item detail + edit + delete
-│   ├── globals.css                   # Thin: @import '@project/ui/globals.css' + app-only styles
+│   ├── globals.css                   # Thin: @import '@booking/ui/globals.css' + app-only styles
 │   ├── components/                   # APP-SPECIFIC components only (layout, one-off widgets).
 │   │                                 # Reusable UI lives in packages/ui — see below.
 │   └── lib/
@@ -573,24 +578,24 @@ apps/storefront/   # (and apps/dashboard/ — same shape; layout below is the Ph
 │       ├── session.server.ts         # Cookie session: get/set/destroy JWT tokens
 │       └── auth.server.ts            # requireUser, requireRole helpers
 ├── react-router.config.ts
-├── vite.config.ts                    # ssr.noExternal: ['@project/ui'] — ui ships raw TSX
-├── tailwind.config.ts                # Thin: presets: [@project/ui/tailwind-preset] + content globs
-├── components.json                   # shadcn/ui CLI config (ui/utils aliases → @project/ui)
+├── vite.config.ts                    # ssr.noExternal: ['@booking/ui'] — ui ships raw TSX
+├── tailwind.config.ts                # Thin: presets: [@booking/ui/tailwind-preset] + content globs
+├── components.json                   # shadcn/ui CLI config (ui/utils aliases → @booking/ui)
 ├── postcss.config.js
 └── package.json
 ```
 
-### Shared UI Package (`@project/ui`)
+### Shared UI Package (`@booking/ui`)
 
 **All reusable UI lives in `packages/ui`, not in the app** — the monorepo hosts multiple
 frontend apps and they must share one component library and one theme. See
 [Section 8](#8-shared-packages) for the package layout and import paths. In app code:
 
 ```typescript
-import { Button } from '@project/ui/components/ui/button';
-import { GenericForm } from '@project/ui/components/form/generic-form';
-import type { FieldConfig } from '@project/ui/components/form/types';
-import { cn } from '@project/ui/lib/utils';
+import { Button } from '@booking/ui/components/ui/button';
+import { GenericForm } from '@booking/ui/components/form/generic-form';
+import type { FieldConfig } from '@booking/ui/components/form/types';
+import { cn } from '@booking/ui/lib/utils';
 ```
 
 Rules:
@@ -604,6 +609,36 @@ Rules:
   components' classes won't be generated.
 - Theme tokens (CSS variables, dark mode, radius) live in `packages/ui/src/styles/globals.css`;
   apps import it and never redefine tokens locally.
+
+### Color & Theming (semantic tokens only)
+
+**Style every UI surface with shadcn semantic tokens — never hardcoded palette colors.** This keeps
+the look consistent and, on the storefront, lets each tenant's `theme_config` re-tint the whole app.
+
+- **Use the tokens, always:**
+  - Text: `text-foreground` (primary), `text-muted-foreground` (secondary).
+  - Surfaces: `bg-background` (page), `bg-card` (panels), `bg-muted` (subtle fills); lines: `border-border`.
+  - Brand (tenant-driven): `text-primary` / `bg-primary` / `border-primary` (+ `-foreground` pairs), and
+    `ring-ring` for focus. Errors: the `destructive` token (`text-destructive`, `bg-destructive/10`).
+- **Never for a themed surface:** `text-gray-*` / `bg-gray-*` / `border-black/*` / `bg-black/*` /
+  `bg-white` / `text-white`, or app-local color CSS vars. A change that adds one is wrong — reach for a
+  token. (The legacy storefront `--sf-*` vars are being retired; only `--sf-background` remains, for the
+  page canvas.)
+- **Interactive elements** that aren't shadcn primitives must carry a visible focus ring
+  (`focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`).
+- **Narrow exceptions (literal colors OK):** text/scrims that sit *on a photo/video* (e.g. a hero
+  overlay: `text-white`, `from-black/70`), and universal status semantics with no token (success
+  green/emerald). Everything else uses tokens.
+
+**Storefront tenant branding.** `theme_config.colors` drive the shadcn base tokens via a single
+SSR-injected `<style>:root{…}</style>` — see `apps/storefront/app/theme/theme.ts` (`themeCss`) +
+`root.tsx`. Rules when touching this:
+
+- Tokens are wired with Tailwind v4 `@theme inline { --color-primary: var(--primary) }`, so utilities
+  inline `var(--primary)` — override the **base `--primary`** (never `--color-primary`).
+- Tenant color strings are **untrusted** (tenant jsonb): always pass them through `sanitizeColor()`
+  before they enter CSS (defeats `</style>`/CSS injection). Derive readable text with `contrastToken()`;
+  never hardcode a foreground.
 
 ### Loader Pattern (Data Fetching)
 
@@ -657,7 +692,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 ### Forms — use `GenericForm` (schema-driven)
 
-**All data-entry forms must use the generic form** from `@project/ui/components/form/` rather
+**All data-entry forms must use the generic form** from `@booking/ui/components/form/` rather
 than hand-rolled `<Form>` + inputs. It is built on **react-hook-form + zod + shadcn** and is the
 canonical pattern for every validated form (auth, profile, item CRUD, and all future features).
 
@@ -671,13 +706,13 @@ canonical pattern for every validated form (auth, profile, item CRUD, and all fu
 
 **Rules (do not deviate):**
 
-1. **Validation comes from a zod schema in `@project/shared`.** The form's value type is always
-   `z.infer<typeof schema>`. Add a schema to `packages/shared/src/utils/validation.ts` first; never
+1. **Validation comes from a zod schema in `@booking/shared`.** The form's value type is always
+   `z.infer<typeof schema>`. Add a schema to `packages/shared/src/contracts/*.ts` first; never
    define a form's schema inline in a route. This keeps frontend + backend validation identical.
 2. **Field config lives in the consuming app's route** (it carries labels/widgets/layout —
    presentation), typed as `FieldConfig<z.infer<typeof schema>>[]` (import the type from
-   `@project/ui/components/form/types`). The `name` of each field is type-checked against the
-   schema, so a wrong name is a compile error. Keep `@project/shared` framework-free.
+   `@booking/ui/components/form/types`). The `name` of each field is type-checked against the
+   schema, so a wrong name is a compile error. Keep `@booking/shared` framework-free.
 3. **Submission flows through the route's server `action`.** `GenericForm` validates on the client,
    then submits the values as JSON via `useSubmit`. The `action` re-validates with the **same shared
    schema** (`schema.safeParse(await request.json())`) before calling the backend — JWT stays in the
@@ -687,9 +722,21 @@ canonical pattern for every validated form (auth, profile, item CRUD, and all fu
    return `data({ error }, { status: 400 })`. Pass `actionData` straight into `serverError` /
    `fieldErrors` props — `GenericForm` renders the form-level alert and maps field errors onto inputs.
 5. **Supported field types:** `text | email | password | url | number | textarea | select | combobox
-| radio | checkbox | switch | date`. Dynamic layout via `columns`, per-field `colSpan`, and a
+| radio | checkbox | switch | date | file`. Dynamic layout via `columns`, per-field `colSpan`, and a
    `hidden(values)` predicate. Optional text fields submit blank as `undefined` automatically (the
    form reads the schema's `.isOptional()`), so optional rules like `url()`/`min(1)` don't misfire.
+6. **Image upload (`type: 'file'`):** uploads directly to object storage and submits the resulting
+   **URL string(s)** — never a `File` — so the JSON submission model is unchanged. Config:
+   `{ type: 'file', target: 'listings'|'groups'|'partners'|'tenants', multiple?, accept?, maxSizeMb?,
+   maxFiles? }`; the field value is a `string` (single) or `string[]` (multiple), so the shared schema
+   uses `z.string().url()` / `z.array(z.string().url())`. Mechanics: the browser POSTs a same-origin
+   **presign proxy** resource route (`/uploads/presign` — see `apps/dashboard/app/routes/uploads.presign.tsx`)
+   which replays the auth cookie to the backend `POST /uploads/presign` (`@AuthenticatedOnly`), then the
+   browser PUTs the bytes straight to MinIO/S3. The reusable `ImageUpload`
+   (`@booking/ui/components/form/image-upload`) also works **outside** GenericForm (see the hand-rolled
+   listing + listing-type forms). Favicons accept `.ico` via `FAVICON_ACCEPT`. An app that uploads must
+   define its own `/uploads/presign` resource route (the storefront has none — partner uploads happen
+   post-registration in the dashboard).
 
 **TS note:** schemas with `.transform()`/`.default()` have differing input/output types; for those,
 build a dedicated form with the 3-arg `useForm<In, Ctx, Out>` instead of `GenericForm`.
@@ -813,10 +860,10 @@ Two workspace packages are shared across apps:
 
 | Package           | Consumed by             | Contents                                                                                                         |
 | ----------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `@project/shared` | backend + all frontends | Types, DTOs, Zod schemas — framework-free, built to `dist/`                                                      |
-| `@project/ui`     | all frontends           | shadcn components, GenericForm, `cn()`, Tailwind preset, theme CSS — raw TSX source, compiled by each app's Vite |
+| `@booking/shared` | backend + all frontends | Types, DTOs, Zod schemas — framework-free, built to `dist/`                                                      |
+| `@booking/ui`     | all frontends           | shadcn components, GenericForm, `cn()`, Tailwind preset, theme CSS — raw TSX source, compiled by each app's Vite |
 
-### `@project/shared` — Structure
+### `@booking/shared` — Structure
 
 ```
 packages/shared/
@@ -838,10 +885,10 @@ packages/shared/
 
 ```typescript
 // In backend
-import { CreateItemDto, UserRole } from '@project/shared';
+import { CreateItemDto, UserRole } from '@booking/shared';
 
 // In frontend
-import type { ItemDto, PaginatedResponse } from '@project/shared';
+import type { ItemDto, PaginatedResponse } from '@booking/shared';
 ```
 
 ### Convention
@@ -851,7 +898,7 @@ import type { ItemDto, PaginatedResponse } from '@project/shared';
 - DTOs in `packages/shared` are the transport layer contract. Domain entities map to/from these.
 - The only allowed barrel file: `packages/shared/src/index.ts`.
 
-### `@project/ui` — Structure
+### `@booking/ui` — Structure
 
 ```
 packages/ui/
@@ -869,20 +916,20 @@ packages/ui/
 └── tsconfig.json
 ```
 
-### `@project/ui` — Usage
+### `@booking/ui` — Usage
 
 ```typescript
 // Components & utils (subpath imports — no barrel file, no deep relative paths)
-import { Button } from '@project/ui/components/ui/button';
-import { GenericForm } from '@project/ui/components/form/generic-form';
-import type { FieldConfig } from '@project/ui/components/form/types';
-import { cn } from '@project/ui/lib/utils';
+import { Button } from '@booking/ui/components/ui/button';
+import { GenericForm } from '@booking/ui/components/form/generic-form';
+import type { FieldConfig } from '@booking/ui/components/form/types';
+import { cn } from '@booking/ui/lib/utils';
 ```
 
 ```typescript
 // apps/{app}/tailwind.config.ts
 import type { Config } from 'tailwindcss';
-import uiPreset from '@project/ui/tailwind-preset';
+import uiPreset from '@booking/ui/tailwind-preset';
 
 export default {
   presets: [uiPreset],
@@ -892,15 +939,15 @@ export default {
 
 ```css
 /* apps/{app}/app/globals.css */
-@import '@project/ui/globals.css';
+@import '@booking/ui/globals.css';
 ```
 
-### `@project/ui` — Convention
+### `@booking/ui` — Convention
 
 - **No build step.** The package exports raw `.tsx`/`.ts` source via `package.json` subpath
   `exports`; each app's Vite compiles it. Every consuming app must therefore add
-  `ssr: { noExternal: ['@project/ui'] }` in its `vite.config.ts`.
-- **No barrel file.** Import via subpaths (`@project/ui/components/ui/button`) — matches how the
+  `ssr: { noExternal: ['@booking/ui'] }` in its `vite.config.ts`.
+- **No barrel file.** Import via subpaths (`@booking/ui/components/ui/button`) — matches how the
   shadcn CLI generates imports and keeps tree-shaking trivial.
 - `react`, `react-dom`, `react-router`, and `zod` are **peerDependencies** — apps own those
   versions. Radix, cva, cmdk, lucide, react-hook-form, etc. are regular dependencies of the
@@ -968,7 +1015,7 @@ next milestone; work through `phase-1-studio-mvp/` in ticket order.
 ### Testing Conventions
 
 - Unit tests: `*.spec.ts` co-located next to the source file
-- E2E tests: `apps/backend/test/` directory, named `*.e2e-spec.ts`
+- E2E tests: `apps/api/test/` directory, named `*.e2e-spec.ts`
 - Test use cases in isolation using mocked port interfaces (no DB required)
 - Test repositories against a real test database (`DATABASE_URL_TEST`)
 - Frontend: Playwright for E2E, Vitest for component/unit tests
@@ -977,8 +1024,8 @@ next milestone; work through `phase-1-studio-mvp/` in ticket order.
 
 - `~/` → `app/` in frontend
 - `@/` → `src/` in backend
-- `@project/shared` → `packages/shared` in both apps
-- `@project/ui/*` → `packages/ui/src/*` in frontends (subpath exports; e.g. `@project/ui/components/ui/button`)
+- `@booking/shared` → `packages/shared` in both apps
+- `@booking/ui/*` → `packages/ui/src/*` in frontends (subpath exports; e.g. `@booking/ui/components/ui/button`)
 - Never use relative imports that go up more than 2 levels
 
 ### Git Conventions
@@ -993,8 +1040,8 @@ next milestone; work through `phase-1-studio-mvp/` in ticket order.
 ## 11. Environment Variables
 
 Copy `.env.example` to `.env` at the root. **The Prisma CLI and the backend also read
-`apps/backend/.env`** (Prisma only loads an `.env` from the directory it runs in), so the backend's
-DB/Redis/JWT vars must be present there — see `apps/backend/.env`.
+`apps/api/.env`** (Prisma only loads an `.env` from the directory it runs in), so the backend's
+DB/Redis/JWT vars must be present there — see `apps/api/.env`.
 
 ```dotenv
 # ──────────────────────────────────────────────
@@ -1104,7 +1151,7 @@ pnpm dev
 
 ```bash
 pnpm dev                                     # All apps in parallel
-pnpm turbo run dev --filter=backend          # Backend only (port 3001)
+pnpm turbo run dev --filter=api          # Backend only (port 3001)
 pnpm turbo run dev --filter=storefront       # Storefront only (port 3000)
 pnpm turbo run dev --filter=dashboard        # Dashboard only (port 3002)
 ```
@@ -1116,11 +1163,11 @@ pnpm db:migrate                              # Run pending migrations
 pnpm db:generate                             # Regenerate Prisma client after schema changes
 pnpm db:seed                                 # Seed permissions + system roles + demo tenant
 pnpm db:studio                               # Open Prisma Studio GUI
-pnpm --filter=backend db:check-rls           # CI: every tenant_id table has FORCE RLS + policy
-pnpm --filter=backend db:check-rls:isolation # CI: prove tenant A can't read tenant B
+pnpm --filter=api db:check-rls           # CI: every tenant_id table has FORCE RLS + policy
+pnpm --filter=api db:check-rls:isolation # CI: prove tenant A can't read tenant B
 
 # Create a new migration after editing schema.prisma:
-pnpm --filter=backend exec prisma migrate dev --name add-listings-table
+pnpm --filter=api exec prisma migrate dev --name add-listings-table
 # Tenant-scoped tables ALSO need a hand-written RLS migration (see the cookbook).
 ```
 
@@ -1128,11 +1175,11 @@ pnpm --filter=backend exec prisma migrate dev --name add-listings-table
 
 ```bash
 pnpm test                                   # All unit tests
-pnpm turbo run test --filter=backend        # Backend unit tests (jest)
-pnpm turbo run test --filter=@project/shared # Shared unit tests (vitest — money/time)
+pnpm turbo run test --filter=api        # Backend unit tests (jest)
+pnpm turbo run test --filter=@booking/shared # Shared unit tests (vitest — money/time)
 
 # E2E (requires running apps + test DB):
-pnpm --filter=backend run test:e2e
+pnpm --filter=api run test:e2e
 pnpm --filter=storefront run test:e2e       # Playwright
 ```
 
@@ -1149,7 +1196,7 @@ pnpm type-check                             # tsc --noEmit across all packages
 pnpm build                                  # Build all (shared → apps)
 
 # Production start:
-node apps/backend/dist/main.js
+node apps/api/dist/main.js
 pnpm --filter=storefront start
 pnpm --filter=dashboard start
 ```
@@ -1175,13 +1222,13 @@ pnpm --filter=dashboard start
    route, `@RequirePermissions('scope.resource.action')` (deny-by-default: a protected route with no
    permission fails closed)
 4. Map domain entity → DTO via a Mapper before returning
-5. Add request/response schemas + types to `@project/shared` (`utils/validation.ts`)
+5. Add request/response schemas + types to `@booking/shared` (`src/contracts/*.ts`)
 6. Invoke `/designing-apis` to verify naming and status codes
 
 ### How to Add a Tenant-Scoped Feature (RLS)
 
 1. Add the Prisma model with `tenantId String @map("tenant_id") @db.Uuid` + `@@index([tenantId])`.
-   Run `pnpm --filter=backend exec prisma migrate dev --name add-{feature}`.
+   Run `pnpm --filter=api exec prisma migrate dev --name add-{feature}`.
 2. **Add a hand-written RLS migration** (Prisma can't express RLS). Create a new migration folder and
    `migration.sql` with (copy the shape from `*_rls_policies_and_roles/migration.sql`):
    ```sql
@@ -1191,14 +1238,14 @@ pnpm --filter=dashboard start
      USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
      WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
    ```
-   Apply with `pnpm --filter=backend exec prisma migrate deploy`.
+   Apply with `pnpm --filter=api exec prisma migrate deploy`.
 3. In the repository, methods take a `PrismaTx` (never the raw client). In the use case, wrap the whole
    operation in `this.tenantDb.forTenant(tenantId, async (tx) => { ... })`.
-4. Verify: `pnpm --filter=backend db:check-rls` (policy present) and `db:check-rls:isolation` (it works).
+4. Verify: `pnpm --filter=api db:check-rls` (policy present) and `db:check-rls:isolation` (it works).
 
 ### How to Add a Permission
 
-1. Add the key (`scope.resource.action`) to the catalog in `apps/backend/prisma/seed.ts` and, if it
+1. Add the key (`scope.resource.action`) to the catalog in `apps/api/prisma/seed.ts` and, if it
    belongs to a system role, to that role's list. Re-run `pnpm db:seed` (idempotent).
 2. Guard the endpoint with `@RequirePermissions('scope.resource.action')`.
 3. When you build role-management endpoints, call `PermissionsService.invalidate(userId, scope)` on any
@@ -1233,7 +1280,7 @@ pnpm --filter=dashboard start
 4. Call backend via `apiGet(path, accessToken, session)` etc. — passing `session` enables auto-refresh on 401
 5. Default export the React component with typed props
 6. For any data-entry form, use `GenericForm` (see [How to Add a Form](#how-to-add-a-form)); use
-   shadcn primitives from `@project/ui/components/ui/*` only for non-form UI
+   shadcn primitives from `@booking/ui/components/ui/*` only for non-form UI
 7. Invoke `/shadcn` if you need a primitive not yet in `packages/ui/src/components/ui/` — add it
    to the ui package, not the app (see [How to Add a shadcn/ui Component](#how-to-add-a-shadcnui-component))
 8. Invoke `/web-design-guidelines` after layout is complete
@@ -1242,11 +1289,11 @@ pnpm --filter=dashboard start
 
 Use `GenericForm` for every validated data-entry form (see [Forms](#forms--use-genericform-schema-driven)).
 
-1. Add (or reuse) a zod schema in `packages/shared/src/utils/validation.ts`; export its
-   `z.infer` type. Run `pnpm build --filter=@project/shared`.
+1. Add (or reuse) a zod schema in `packages/shared/src/contracts/*.ts`; export its
+   `z.infer` type. Run `pnpm build --filter=@booking/shared`.
 2. In the route, define the field config: `const fields: FieldConfig<MyInput>[] = [...]`
-   (`FieldConfig` from `@project/ui/components/form/types`, `GenericForm` from
-   `@project/ui/components/form/generic-form`) — `name`s are type-checked against the schema;
+   (`FieldConfig` from `@booking/ui/components/form/types`, `GenericForm` from
+   `@booking/ui/components/form/generic-form`) — `name`s are type-checked against the schema;
    set `type`, `label`, `placeholder`, `colSpan`, `autoComplete`.
 3. Render `<GenericForm schema={mySchema} fields={fields} submitLabel="…" serverError={…} fieldErrors={…} />`.
    Pass `defaultValues` for edit forms, `columns`/`colSpan` for multi-column layout.
@@ -1261,18 +1308,18 @@ All shadcn primitives live in `packages/ui` so every frontend shares them. Never
 
 1. Invoke `/shadcn` first — confirm the component exists in the registry.
 2. Run the CLI **from the ui package**: `cd packages/ui && pnpm dlx shadcn@latest add <component>`
-   — its `components.json` writes the file to `src/components/ui/` with `@project/ui/*` imports.
+   — its `components.json` writes the file to `src/components/ui/` with `@booking/ui/*` imports.
 3. If the component pulls in a new Radix (or similar) dependency, it belongs in
    `packages/ui/package.json` — the CLI installs it there; never add it to an app.
-4. Verify the generated imports use `@project/ui/lib/utils` / `@project/ui/components/ui/*`
+4. Verify the generated imports use `@booking/ui/lib/utils` / `@booking/ui/components/ui/*`
    (not `~/`); fix if the CLI guessed wrong.
-5. Import it in apps via `@project/ui/components/ui/<component>`.
+5. Import it in apps via `@booking/ui/components/ui/<component>`.
 
 ### How to Add a Custom Shared Component
 
 1. If it composes shadcn primitives for reuse across apps, create it under
    `packages/ui/src/components/{domain}/` (see `src/components/form/` as the model).
-2. Import siblings via `@project/ui/...` aliases or same-folder relative imports.
+2. Import siblings via `@booking/ui/...` aliases or same-folder relative imports.
 3. If it needs a new subpath pattern, extend `exports` in `packages/ui/package.json`
    (`./components/*` already covers `.tsx` files; plain `.ts` files need an explicit entry —
    see `./components/form/types`).
@@ -1282,13 +1329,13 @@ All shadcn primitives live in `packages/ui` so every frontend shares them. Never
 ### How to Add a New Frontend App
 
 1. Scaffold `apps/{name}` (React Router 7 framework mode, same as `apps/storefront`).
-2. `package.json`: depend on `"@project/shared": "workspace:*"` and `"@project/ui": "workspace:*"`;
-   do **not** add Radix/cva/clsx/lucide/react-hook-form — they come with `@project/ui`.
-3. `vite.config.ts`: add `ssr: { noExternal: ['@project/ui'] }` and a distinct dev port.
+2. `package.json`: depend on `"@booking/shared": "workspace:*"` and `"@booking/ui": "workspace:*"`;
+   do **not** add Radix/cva/clsx/lucide/react-hook-form — they come with `@booking/ui`.
+3. `vite.config.ts`: add `ssr: { noExternal: ['@booking/ui'] }` and a distinct dev port.
 4. `tailwind.config.ts`: `presets: [uiPreset]` + `content` globs including
    `'../../packages/ui/src/**/*.{ts,tsx}'` (copy from `apps/storefront`).
-5. `app/globals.css`: `@import '@project/ui/globals.css';` and import it in `root.tsx`.
-6. `components.json`: copy from `apps/storefront` (aliases `ui`/`utils` point at `@project/ui`).
+5. `app/globals.css`: `@import '@booking/ui/globals.css';` and import it in `root.tsx`.
+6. `components.json`: copy from `apps/storefront` (aliases `ui`/`utils` point at `@booking/ui`).
 7. Copy `app/lib/{api,session,auth}.server.ts` patterns for backend access, add the app's URL to
    the backend `FRONTEND_URL` allowlist, and set a port env var.
 8. Turborepo picks the app up automatically via `pnpm-workspace.yaml` (`apps/*`) — verify with
@@ -1299,14 +1346,14 @@ All shadcn primitives live in `packages/ui` so every frontend shares them. Never
 1. Create or update `packages/shared/src/types/{domain}.types.ts`
 2. Export the type/interface/enum
 3. Re-export from `packages/shared/src/index.ts`
-4. Run `pnpm build --filter=@project/shared` (the filter is the package name, not `shared`;
+4. Run `pnpm build --filter=@booking/shared` (the filter is the package name, not `shared`;
    the frontend imports schema **values** from the built `dist`, so rebuild after changes)
-5. Import: `import { MyDto } from '@project/shared'`
+5. Import: `import { MyDto } from '@booking/shared'`
 
 ### How to Add a Prisma Model
 
-1. Add model to `apps/backend/prisma/schema.prisma`
-2. Run: `pnpm --filter=backend exec prisma migrate dev --name your-migration-name`
+1. Add model to `apps/api/prisma/schema.prisma`
+2. Run: `pnpm --filter=api exec prisma migrate dev --name your-migration-name`
 3. Run: `pnpm db:generate` to update the client
 4. Follow the full feature module checklist (section 5)
 

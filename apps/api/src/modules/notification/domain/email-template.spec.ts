@@ -42,4 +42,21 @@ describe('renderEmail', () => {
     expect(email.html).toContain('&lt;script&gt;');
     expect(email.html).not.toContain('<script>');
   });
+
+  it('renders the OTP email with the code + expiry (vi/en)', () => {
+    const otpData = { tenantName: 'StudioHub', recipientName: 'An', bookingCode: 'BK-1', otp: '123456', expiresInMin: 10 };
+    const vi = renderEmail('booking_otp_customer', 'vi', otpData);
+    expect(vi.subject).toBe('Mã xác thực đơn BK-1');
+    expect(vi.text).toContain('123456');
+    expect(vi.text).toContain('10 phút');
+    const en = renderEmail('booking_otp_customer', 'en', otpData);
+    expect(en.text).toContain('123456');
+    expect(en.text).toContain('10 minutes');
+  });
+
+  it('renders the payout-paid email with the amount (vi/en)', () => {
+    const payoutData = { tenantName: 'StudioHub', recipientName: 'An', amount: '1.500.000 ₫' };
+    expect(renderEmail('payout_paid_partner', 'vi', payoutData).subject).toBe('Đã chi trả 1.500.000 ₫');
+    expect(renderEmail('payout_paid_partner', 'en', payoutData).subject).toBe('Payout of 1.500.000 ₫ sent');
+  });
 });

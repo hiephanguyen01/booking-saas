@@ -18,9 +18,11 @@ export type NotificationTemplateId =
   | 'booking_no_show_customer'
   | 'booking_rejected_customer'
   | 'booking_reminder_customer'
+  | 'booking_otp_customer'
   | 'listing_published_partner'
   | 'listing_hidden_partner'
-  | 'partner_approved';
+  | 'partner_approved'
+  | 'payout_paid_partner';
 
 export interface NotificationPlanItem {
   audience: Audience;
@@ -39,17 +41,29 @@ export const BOOKING_NOTIFICATION_EVENTS: readonly string[] = [
 ];
 
 /** Events routed by listing context. */
-export const LISTING_NOTIFICATION_EVENTS: readonly string[] = ['listing.published', 'listing.hidden'];
+export const LISTING_NOTIFICATION_EVENTS: readonly string[] = [
+  'listing.published',
+  'listing.hidden',
+];
 
 /** Events routed by partner context. */
 export const PARTNER_NOTIFICATION_EVENTS: readonly string[] = ['partner.approved'];
+
+/**
+ * Events routed by payout context. Rendered with a dedicated dispatcher (needs the
+ * amount), not `planForEvent`. OTP is not an event — it is sent synchronously.
+ */
+export const PAYOUT_NOTIFICATION_EVENTS: readonly string[] = ['payout.paid'];
 
 /**
  * The audiences + templates for an event. `booking.created` branches on the draft
  * outcome: an approval-gated booking pings the partner to review; a pay-now booking
  * pings the customer with the payment link.
  */
-export function planForEvent(eventType: string, payload: { status?: string }): NotificationPlanItem[] {
+export function planForEvent(
+  eventType: string,
+  payload: { status?: string },
+): NotificationPlanItem[] {
   switch (eventType) {
     case 'booking.created':
       return payload.status === 'pending_approval'

@@ -40,6 +40,8 @@ export interface UpdatePartnerData {
   dateOfBirth?: Date | null;
   payoutInfo?: Record<string, unknown>;
   identityInfo?: Record<string, unknown>;
+  /** Logo + license/business documents live here (§7.3 — partners have no image column). */
+  businessInfo?: Record<string, unknown>;
 }
 
 export interface ListPartnersFilter {
