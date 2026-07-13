@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import {
   CreateBucketCommand,
   HeadBucketCommand,
   PutBucketPolicyCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { s3ConfigFromEnv } from '../src/shared/storage/s3-storage.service';
 
 /**

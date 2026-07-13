@@ -1,8 +1,8 @@
 import { useOutletContext } from 'react-router';
-import type { Route } from './+types/home';
-import type { StorefrontContext } from '../root';
 import { fetchListings } from '../lib/catalog.server';
+import type { StorefrontContext } from '../root';
 import { homeTemplateFor } from '../templates';
+import type { Route } from './+types/home';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const listings = await fetchListings(request, new URLSearchParams());

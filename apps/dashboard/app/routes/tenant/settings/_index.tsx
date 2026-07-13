@@ -1,4 +1,3 @@
-import { Form, useNavigation, data as routeData } from 'react-router';
 import {
   addDomainInputSchema,
   themeConfigSchema,
@@ -7,19 +6,26 @@ import {
   type ThemeConfigInput,
 } from '@booking/shared';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
-import type { FieldConfig } from '@booking/ui/components/form/types';
 import { FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
-import { Button } from '@booking/ui/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
-import { Badge } from '@booking/ui/components/ui/badge';
+import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
+import { Badge } from '@booking/ui/components/ui/badge';
+import { Button } from '@booking/ui/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@booking/ui/components/ui/card';
 import { CheckCircle2, CircleAlert, Clock, Globe, Trash2 } from 'lucide-react';
-import type { Route } from './+types/_index';
+import { Form, data as routeData, useNavigation } from 'react-router';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
 import { useTenantArea } from '../area-context';
-import { formatDate } from '../format';
 import { PageHeader } from '../components/page';
+import { formatDate } from '../format';
+import { requireTenant } from '../tenant.server';
+import type { Route } from './+types/_index';
 
 interface TenantThemeResponse {
   name: string;
@@ -35,8 +41,12 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request);
   const [themeRes, domainsRes] = await Promise.all([
-    can('tenant.theme.manage') ? apiGet<TenantThemeResponse>('/tenant/theme', auth) : Promise.resolve(null),
-    can('tenant.settings.manage') ? apiGet<DomainResponse[]>('/tenant/domains', auth) : Promise.resolve(null),
+    can('tenant.theme.manage')
+      ? apiGet<TenantThemeResponse>('/tenant/theme', auth)
+      : Promise.resolve(null),
+    can('tenant.settings.manage')
+      ? apiGet<DomainResponse[]>('/tenant/domains', auth)
+      : Promise.resolve(null),
   ]);
   return {
     theme: themeRes?.ok ? themeRes.data : null,
@@ -58,19 +68,37 @@ export async function action({ request }: Route.ActionArgs) {
     if (body && typeof body === 'object' && 'hostname' in body) {
       const parsed = addDomainInputSchema.safeParse(body);
       if (!parsed.success) {
-        return routeData({ form: 'domain', fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
+        return routeData(
+          { form: 'domain', fieldErrors: parsed.error.flatten().fieldErrors },
+          { status: 400 },
+        );
       }
       const res = await apiPost<DomainResponse>('/tenant/domains', parsed.data, auth);
-      if (!res.ok) return routeData({ form: 'domain', error: res.error ?? 'Không thêm được tên miền.' }, { status: 400 });
+      if (!res.ok)
+        return routeData(
+          { form: 'domain', error: res.error ?? 'Không thêm được tên miền.' },
+          { status: 400 },
+        );
       return { form: 'domain', ok: true };
     }
 
     const parsed = themeConfigSchema.safeParse(body);
     if (!parsed.success) {
-      return routeData({ form: 'theme', fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
+      return routeData(
+        { form: 'theme', fieldErrors: parsed.error.flatten().fieldErrors },
+        { status: 400 },
+      );
     }
-    const res = await apiPatch<TenantThemeResponse>('/tenant/theme', { themeConfig: parsed.data }, auth);
-    if (!res.ok) return routeData({ form: 'theme', error: res.error ?? 'Không lưu được giao diện.' }, { status: 400 });
+    const res = await apiPatch<TenantThemeResponse>(
+      '/tenant/theme',
+      { themeConfig: parsed.data },
+      auth,
+    );
+    if (!res.ok)
+      return routeData(
+        { form: 'theme', error: res.error ?? 'Không lưu được giao diện.' },
+        { status: 400 },
+      );
     return { form: 'theme', ok: true };
   }
 
@@ -80,14 +108,22 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === 'verify-domain') {
     const id = String(formData.get('domainId'));
     const res = await apiPost<DomainResponse>(`/tenant/domains/${id}/verify`, {}, auth);
-    if (!res.ok) return routeData({ form: 'verify', error: res.error ?? 'Xác minh thất bại. Kiểm tra bản ghi TXT.' }, { status: 400 });
+    if (!res.ok)
+      return routeData(
+        { form: 'verify', error: res.error ?? 'Xác minh thất bại. Kiểm tra bản ghi TXT.' },
+        { status: 400 },
+      );
     return { form: 'verify', ok: true };
   }
 
   if (intent === 'delete-domain') {
     const id = String(formData.get('domainId'));
     const res = await apiDelete(`/tenant/domains/${id}`, auth);
-    if (!res.ok) return routeData({ form: 'verify', error: res.error ?? 'Không xoá được tên miền.' }, { status: 400 });
+    if (!res.ok)
+      return routeData(
+        { form: 'verify', error: res.error ?? 'Không xoá được tên miền.' },
+        { status: 400 },
+      );
     return { form: 'verify', ok: true };
   }
 
@@ -95,30 +131,91 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 const domainFields: FieldConfig<AddDomainInput>[] = [
-  { name: 'hostname', type: 'text', label: 'Tên miền', placeholder: 'booking.cuahang.vn', colSpan: 2 },
+  {
+    name: 'hostname',
+    type: 'text',
+    label: 'Tên miền',
+    placeholder: 'booking.cuahang.vn',
+    colSpan: 2,
+  },
   { name: 'isPrimary', type: 'switch', label: 'Đặt làm tên miền chính' },
 ];
 
 const themeFields: FieldConfig<ThemeConfigInput>[] = [
-  { name: 'logoUrl', type: 'file', target: 'tenants', label: 'Logo', description: 'PNG/WebP nền trong suốt hoạt động tốt nhất.', colSpan: 2 },
-  { name: 'faviconUrl', type: 'file', target: 'tenants', accept: FAVICON_ACCEPT, label: 'Favicon', description: 'Chấp nhận .ico, .png hoặc .webp.', colSpan: 2 },
+  {
+    name: 'logoUrl',
+    type: 'file',
+    target: 'tenants',
+    label: 'Logo',
+    description: 'PNG/WebP nền trong suốt hoạt động tốt nhất.',
+    colSpan: 2,
+  },
+  {
+    name: 'faviconUrl',
+    type: 'file',
+    target: 'tenants',
+    accept: FAVICON_ACCEPT,
+    label: 'Favicon',
+    description: 'Chấp nhận .ico, .png hoặc .webp.',
+    colSpan: 2,
+  },
   { name: 'colors.primary', type: 'text', label: 'Màu chủ đạo', placeholder: '#0f172a' },
   { name: 'colors.accent', type: 'text', label: 'Màu nhấn', placeholder: '#f59e0b' },
   { name: 'colors.background', type: 'text', label: 'Màu nền', placeholder: '#ffffff' },
   { name: 'font', type: 'text', label: 'Phông chữ', placeholder: 'Inter' },
-  { name: 'hero.title', type: 'text', label: 'Hero — Tiêu đề', placeholder: 'Đặt chỗ nhanh chóng', colSpan: 2 },
+  {
+    name: 'hero.title',
+    type: 'text',
+    label: 'Hero — Tiêu đề',
+    placeholder: 'Đặt chỗ nhanh chóng',
+    colSpan: 2,
+  },
   { name: 'hero.subtitle', type: 'textarea', label: 'Hero — Mô tả', rows: 2, colSpan: 2 },
   { name: 'hero.imageUrl', type: 'file', target: 'tenants', label: 'Hero — Ảnh nền', colSpan: 2 },
-  { name: 'carousel', type: 'file', target: 'tenants', multiple: true, maxFiles: 10, label: 'Carousel trang chủ', description: 'Tối đa 10 ảnh — hiển thị dạng băng chuyền trên trang chủ.', colSpan: 2 },
-  { name: 'contact.email', type: 'email', label: 'Email liên hệ', placeholder: 'lienhe@cuahang.vn' },
+  {
+    name: 'carousel',
+    type: 'file',
+    target: 'tenants',
+    multiple: true,
+    maxFiles: 10,
+    label: 'Carousel trang chủ',
+    description: 'Tối đa 10 ảnh — hiển thị dạng băng chuyền trên trang chủ.',
+    colSpan: 2,
+  },
+  {
+    name: 'contact.email',
+    type: 'email',
+    label: 'Email liên hệ',
+    placeholder: 'lienhe@cuahang.vn',
+  },
   { name: 'contact.phone', type: 'text', label: 'Số điện thoại', placeholder: '0900000000' },
   { name: 'contact.address', type: 'text', label: 'Địa chỉ', colSpan: 2 },
   { name: 'seo.title', type: 'text', label: 'SEO — Tiêu đề', colSpan: 2 },
   { name: 'seo.description', type: 'textarea', label: 'SEO — Mô tả', rows: 2, colSpan: 2 },
-  { name: 'socialLinks.facebook', type: 'url', label: 'Facebook', placeholder: 'https://facebook.com/…' },
-  { name: 'socialLinks.instagram', type: 'url', label: 'Instagram', placeholder: 'https://instagram.com/…' },
-  { name: 'socialLinks.tiktok', type: 'url', label: 'TikTok', placeholder: 'https://tiktok.com/@…' },
-  { name: 'socialLinks.youtube', type: 'url', label: 'YouTube', placeholder: 'https://youtube.com/@…' },
+  {
+    name: 'socialLinks.facebook',
+    type: 'url',
+    label: 'Facebook',
+    placeholder: 'https://facebook.com/…',
+  },
+  {
+    name: 'socialLinks.instagram',
+    type: 'url',
+    label: 'Instagram',
+    placeholder: 'https://instagram.com/…',
+  },
+  {
+    name: 'socialLinks.tiktok',
+    type: 'url',
+    label: 'TikTok',
+    placeholder: 'https://tiktok.com/@…',
+  },
+  {
+    name: 'socialLinks.youtube',
+    type: 'url',
+    label: 'YouTube',
+    placeholder: 'https://youtube.com/@…',
+  },
 ];
 
 /** Reads `theme_config` (a free-form JSON blob) into typed form defaults. */
@@ -137,7 +234,11 @@ function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
   return {
     logoUrl: s(tc.logoUrl),
     faviconUrl: s(tc.faviconUrl),
-    colors: { primary: s(colors.primary), accent: s(colors.accent), background: s(colors.background) },
+    colors: {
+      primary: s(colors.primary),
+      accent: s(colors.accent),
+      background: s(colors.background),
+    },
     font: s(tc.font),
     hero: { title: s(hero.title), subtitle: s(hero.subtitle), imageUrl: s(hero.imageUrl) },
     carousel,
@@ -153,6 +254,7 @@ function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
 }
 
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
+  console.log("🚀 ~ TenantSettings ~ loaderData:", loaderData)
   const { theme, domains, canTheme, canDomains } = loaderData;
   const { readOnly } = useTenantArea();
   const nav = useNavigation();
@@ -175,7 +277,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
 
   const fieldErrorsFor = (form: string): Record<string, string[]> | null =>
     actionData && 'form' in actionData && actionData.form === form && 'fieldErrors' in actionData
-      ? (actionData.fieldErrors as Record<string, string[]> | undefined) ?? null
+      ? ((actionData.fieldErrors as Record<string, string[]> | undefined) ?? null)
       : null;
 
   const themeError = errFor('theme');
@@ -189,7 +291,10 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Cài đặt" description="Tuỳ chỉnh giao diện storefront và tên miền của cửa hàng." />
+      <PageHeader
+        title="Cài đặt"
+        description="Tuỳ chỉnh giao diện storefront và tên miền của cửa hàng."
+      />
 
       {canTheme && theme ? (
         <Card>
@@ -209,7 +314,9 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
             {readOnly ? (
               <Alert className="mb-4 border-amber-500/40 text-amber-700 dark:text-amber-300">
                 <CircleAlert className="size-4" />
-                <AlertDescription>Chế độ chỉ đọc — gia hạn gói dịch vụ để chỉnh sửa giao diện.</AlertDescription>
+                <AlertDescription>
+                  Chế độ chỉ đọc — gia hạn gói dịch vụ để chỉnh sửa giao diện.
+                </AlertDescription>
               </Alert>
             ) : null}
             <fieldset disabled={readOnly} className="min-w-0 disabled:opacity-60">
@@ -231,12 +338,17 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
       {canDomains ? (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Globe className="size-4" /> Tên miền</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="size-4" /> Tên miền
+            </CardTitle>
             <CardDescription>Ánh xạ tên miền riêng tới storefront của bạn (§6.1).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {verifyError ? (
-              <Alert variant="destructive"><CircleAlert className="size-4" /><AlertDescription>{verifyError}</AlertDescription></Alert>
+              <Alert variant="destructive">
+                <CircleAlert className="size-4" />
+                <AlertDescription>{verifyError}</AlertDescription>
+              </Alert>
             ) : null}
 
             {domains && domains.length > 0 ? (
@@ -250,7 +362,8 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                       </div>
                       {d.verifiedAt ? (
                         <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 className="size-3.5" /> Đã xác minh · {formatDate(d.verifiedAt)}
+                          <CheckCircle2 className="size-3.5" /> Đã xác minh ·{' '}
+                          {formatDate(d.verifiedAt)}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
@@ -258,7 +371,9 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                         </span>
                       )}
                       {!d.verifiedAt && d.verificationToken ? (
-                        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">TXT: {d.verificationToken}</p>
+                        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                          TXT: {d.verificationToken}
+                        </p>
                       ) : null}
                     </div>
                     <div className="flex items-center gap-2">
@@ -266,7 +381,14 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                         <Form method="post">
                           <input type="hidden" name="intent" value="verify-domain" />
                           <input type="hidden" name="domainId" value={d.id} />
-                          <Button type="submit" variant="outline" size="sm" disabled={busy || readOnly}>Xác minh</Button>
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            disabled={busy || readOnly}
+                          >
+                            Xác minh
+                          </Button>
                         </Form>
                       ) : null}
                       <Form
@@ -296,7 +418,10 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               <p className="text-sm text-muted-foreground">Chưa có tên miền riêng nào.</p>
             )}
 
-            <fieldset disabled={readOnly} className="min-w-0 space-y-3 rounded-md border border-dashed p-4 disabled:opacity-60">
+            <fieldset
+              disabled={readOnly}
+              className="min-w-0 space-y-3 rounded-md border border-dashed p-4 disabled:opacity-60"
+            >
               <h3 className="text-sm font-medium">Thêm tên miền</h3>
               <GenericForm
                 schema={addDomainInputSchema}
@@ -313,7 +438,11 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
       ) : null}
 
       {!canTheme && !canDomains ? (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">Bạn không có quyền chỉnh sửa cài đặt.</CardContent></Card>
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Bạn không có quyền chỉnh sửa cài đặt.
+          </CardContent>
+        </Card>
       ) : null}
     </div>
   );

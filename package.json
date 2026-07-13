@@ -4,7 +4,7 @@
   "packageManager": "pnpm@10.13.1",
   "engines": { "node": ">=20" },
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --ui=tui",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

@@ -28,6 +28,7 @@ export interface StorefrontContext {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
+  console.log("🚀 ~ loader ~ tenant:", tenant)
   const locale = resolveLocale(request, tenant.defaultLocale);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
   return { tenant, listingTypes, locale, messages: messagesFor(locale) };
@@ -55,7 +56,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const data = useRouteLoaderData<typeof loader>('root');
   const lang = data?.locale ?? 'vi';
-  const favicon = data?.tenant?.logoUrl;
+  const favicon = data?.tenant?.faviconUrl ?? null;
   return (
     <html lang={lang}>
       <head>

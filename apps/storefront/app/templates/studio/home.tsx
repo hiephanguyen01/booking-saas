@@ -1,16 +1,19 @@
-import { Link } from 'react-router';
 import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/shared';
 import type { StorefrontTenant } from '../../lib/tenant.server';
-import { useT } from '../../lib/i18n';
-import { ListingCard } from '../../components/listing-card';
 import { StudioHero } from './hero';
 import { StudioCarousel } from './carousel';
+import { StudioPromoBanner } from './promo-banner';
+import { TopListingsSection } from './top-listings-section';
+import { RecommendedSection } from './recommended-section';
+
+const TOP_LISTINGS_COUNT = 10;
 
 /**
- * Studio-vertical home (§16.1): a hero + one featured section per active listing
- * type (each with a "view all" link). The whole page is generated from the
- * tenant's data, so adding a listing type surfaces a new section with no code
- * change.
+ * Studio-vertical home (§16.1): hero + search, a promo banner, a "Top 10"
+ * row, and a flat "recommended" grid — generated from the tenant's data.
+ * `Top 10` / `Recommended` split the same already-loaded `listings` array
+ * (no extra fetch); see `top-listings-section.tsx` for why "Top 10" isn't a
+ * real popularity ranking.
  */
 export function StudioHome({
   tenant,
@@ -21,34 +24,14 @@ export function StudioHome({
   listingTypes: PublicListingTypeResponse[];
   listings: PublicListingResponse[];
 }) {
-  const { t } = useT();
   return (
     <>
       <StudioHero tenant={tenant} listingTypes={listingTypes} />
       <StudioCarousel images={tenant.carousel} />
-      <div className="mx-auto max-w-7xl space-y-14 px-6 py-14">
-        {listingTypes.map((type) => {
-          const items = listings.filter((l) => l.listingTypeSlug === type.slug);
-          if (items.length === 0) return null;
-          return (
-            <section key={type.id}>
-              <div className="mb-5 flex items-end justify-between">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">{type.name}</h2>
-                <Link
-                  to={`/t/${type.slug}`}
-                  className="rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  {t('home.viewAll')}
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
-                {items.slice(0, 4).map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+      <div className="mx-auto max-w-7xl space-y-10 px-6 py-10">
+        <StudioPromoBanner tenant={tenant} />
+        <TopListingsSection listings={listings.slice(0, TOP_LISTINGS_COUNT)} />
+        <RecommendedSection listings={listings.slice(TOP_LISTINGS_COUNT)} />
       </div>
     </>
   );

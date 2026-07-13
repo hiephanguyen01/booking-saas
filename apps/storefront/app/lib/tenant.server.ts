@@ -14,6 +14,7 @@ export interface StorefrontTenant {
   name: string;
   slug: string;
   defaultLocale: 'vi' | 'en';
+
   vertical: 'studio' | 'rental' | 'classes';
   /** Whether the storefront is open — false when tenant suspended or subscription expired. */
   live: boolean;
@@ -24,12 +25,19 @@ export interface StorefrontTenant {
   };
   /** Optional branding pulled from theme_config (§16.2) — all may be empty. */
   logoUrl: string | null;
+  /** Favicon URL (§16.2) — empty when the tenant set none. */
+  faviconUrl: string | null;
   /** Homepage carousel image URLs (§16.2) — empty when the tenant set none. */
   carousel: string[];
   hero: { title: string | null; subtitle: string | null; imageUrl: string | null };
   seo: { title: string | null; description: string | null };
   contact: { email: string | null; phone: string | null; address: string | null };
-  social: { facebook: string | null; instagram: string | null; tiktok: string | null; youtube: string | null };
+  social: {
+    facebook: string | null;
+    instagram: string | null;
+    tiktok: string | null;
+    youtube: string | null;
+  };
 }
 
 const DEFAULT_THEME = { primary: '#0EA5E9', accent: '#F97316', background: '#FFFFFF' } as const;
@@ -58,6 +66,7 @@ function readStr(config: Record<string, unknown>, group: string, key: string): s
 }
 
 function toStorefrontTenant(dto: PublicTenantResponse): StorefrontTenant {
+  console.log('🚀 ~ toStorefrontTenant ~ dto:', dto);
   const config = dto.themeConfig ?? {};
   const logo = typeof config.logoUrl === 'string' && config.logoUrl !== '' ? config.logoUrl : null;
   const carousel = Array.isArray(config.carousel)
@@ -72,6 +81,7 @@ function toStorefrontTenant(dto: PublicTenantResponse): StorefrontTenant {
     live: dto.live,
     theme: readTheme(config),
     logoUrl: logo,
+    faviconUrl: readStr(config, 'themeConfig', 'faviconUrl'),
     carousel,
     hero: {
       title: readStr(config, 'hero', 'title'),
