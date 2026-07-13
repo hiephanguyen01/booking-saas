@@ -1,6 +1,7 @@
 import type {
   BookingStatus,
   PartnerStatus,
+  PartnerVerificationStatus,
   PayoutStatusDto,
   PromotionStatusDto,
   PublishStatus,
@@ -60,6 +61,18 @@ const PARTNER: Record<PartnerStatus, { label: string; tone: keyof typeof TONE }>
 
 export function PartnerStatusBadge({ status }: { status: PartnerStatus }) {
   const s = PARTNER[status] ?? { label: status, tone: 'slate' as const };
+  return <Pill tone={s.tone}>{s.label}</Pill>;
+}
+
+const VERIFICATION: Record<PartnerVerificationStatus, { label: string; tone: keyof typeof TONE }> = {
+  unsubmitted: { label: 'Chưa gửi', tone: 'slate' },
+  pending: { label: 'Chờ xác minh', tone: 'amber' },
+  verified: { label: 'Đã xác minh', tone: 'green' },
+  rejected: { label: 'Bị từ chối', tone: 'rose' },
+};
+
+export function PartnerVerificationBadge({ status }: { status: PartnerVerificationStatus }) {
+  const s = VERIFICATION[status] ?? { label: status, tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
