@@ -263,7 +263,6 @@ function ListingDetails({ listing }: { listing: ListingResponse }) {
         <CardDescription>Nội dung đối tác gửi lên để kiểm duyệt.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Photos */}
         {listing.photos.length > 0 ? (
           <div className="flex flex-wrap gap-3">
             {listing.photos.map((src, i) => (
@@ -281,7 +280,6 @@ function ListingDetails({ listing }: { listing: ListingResponse }) {
           </div>
         )}
 
-        {/* Description */}
         <Detail label="Mô tả">
           {listing.description ? (
             <p className="whitespace-pre-wrap text-sm">{listing.description}</p>
@@ -290,7 +288,6 @@ function ListingDetails({ listing }: { listing: ListingResponse }) {
           )}
         </Detail>
 
-        {/* Booking modes + prices */}
         <Detail label="Hình thức đặt & giá">
           {listing.bookingModes.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -309,7 +306,6 @@ function ListingDetails({ listing }: { listing: ListingResponse }) {
           )}
         </Detail>
 
-        {/* Settings grid */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Stat label="Đặt cọc">{listing.depositPercent}%</Stat>
           <Stat label="Thanh toán còn lại">{BALANCE_LABEL[listing.balanceDue]}</Stat>
@@ -322,7 +318,6 @@ function ListingDetails({ listing }: { listing: ListingResponse }) {
           <Stat label="Chính sách huỷ">{listing.cancellationPolicyId ? 'Có' : 'Chưa đặt'}</Stat>
         </div>
 
-        {/* Custom attributes */}
         {attributes.length > 0 ? (
           <Detail label="Thuộc tính">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-3">

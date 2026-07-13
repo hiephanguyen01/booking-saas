@@ -14,7 +14,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import type { Route } from './+types/listings';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 import { formatDate } from './components/format';
 

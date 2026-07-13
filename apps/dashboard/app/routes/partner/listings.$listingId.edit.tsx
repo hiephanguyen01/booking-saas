@@ -8,7 +8,7 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/listings.$listingId.edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 import { ListingForm } from './components/listing-form';
 

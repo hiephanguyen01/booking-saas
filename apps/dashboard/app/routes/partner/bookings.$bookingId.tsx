@@ -4,7 +4,7 @@ import type { BookingResponse, ListingResponse } from '@booking/shared';
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/bookings.$bookingId';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 import { BookingDetailCard } from '~/components/booking-detail-card';
 

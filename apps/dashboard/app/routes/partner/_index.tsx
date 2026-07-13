@@ -11,7 +11,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 import { KpiCard } from './components/kpi-card';
 import { MiniBarChart, type BarDatum } from './components/mini-bar-chart';

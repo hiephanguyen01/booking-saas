@@ -30,7 +30,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import type { Route } from './+types/bookings';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 import { BookingStatusBadge } from './components/booking-status-badge';
 import { formatDate, formatTime, formatVnd, BOOKING_STATUS } from './components/format';

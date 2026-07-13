@@ -11,7 +11,7 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Switch } from '@booking/ui/components/ui/switch';
 import type { Route } from './+types/listings.$listingId.hours';
 import { apiGet, apiPut } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 
 export function meta(): Route.MetaDescriptors {

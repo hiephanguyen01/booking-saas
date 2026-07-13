@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@book
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import type { Route } from './+types/profile';
 import { apiPatch } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 
 export function meta(): Route.MetaDescriptors {

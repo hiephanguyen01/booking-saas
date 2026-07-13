@@ -4,7 +4,7 @@ import { createListingInputSchema, type ListingTypeResponse } from '@booking/sha
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from './lib.server';
+import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from './components/page-header';
 import { ListingForm } from './components/listing-form';
 
