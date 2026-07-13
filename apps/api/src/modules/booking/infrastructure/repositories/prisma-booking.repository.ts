@@ -203,6 +203,9 @@ export class PrismaBookingRepository implements IBookingRepository {
         guestCount: number;
         quantity: number;
         finalAmount: bigint;
+        securityDeposit: bigint;
+        pickedUpAt: Date | null;
+        returnedAt: Date | null;
       }[]
     >(Prisma.sql`
       SELECT b.id,
@@ -218,7 +221,10 @@ export class PrismaBookingRepository implements IBookingRepository {
              upper(b.timeslot) AS "endUtc",
              b.guest_count AS "guestCount",
              b.quantity,
-             b.final_amount AS "finalAmount"
+             b.final_amount AS "finalAmount",
+             b.security_deposit AS "securityDeposit",
+             b.picked_up_at AS "pickedUpAt",
+             b.returned_at AS "returnedAt"
       FROM bookings b
       JOIN listings l ON l.id = b.listing_id
       JOIN listing_types lt ON lt.id = l.listing_type_id

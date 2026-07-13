@@ -56,6 +56,9 @@ export interface PartnerCalendarBooking {
   guestCount: number;
   quantity: number;
   finalAmount: bigint;
+  securityDeposit: bigint;
+  pickedUpAt: Date | null;
+  returnedAt: Date | null;
 }
 
 export interface InsertBookingData {

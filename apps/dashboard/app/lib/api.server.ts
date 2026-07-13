@@ -228,6 +228,10 @@ export function apiPatch<T>(path: string, body: unknown, auth: Auth): Promise<Ap
   return request<T>('PATCH', path, auth, body);
 }
 
+export function apiPut<T>(path: string, body: unknown, auth: Auth): Promise<ApiResult<T>> {
+  return request<T>('PUT', path, auth, body);
+}
+
 export function apiDelete<T>(path: string, auth: Auth): Promise<ApiResult<T>> {
   return request<T>('DELETE', path, auth);
 }

@@ -153,4 +153,8 @@ export interface PartnerCalendarBookingResponse {
   guestCount: number;
   quantity: number;
   finalAmount: string;
+  /** Inventory (§9.4) fulfillment state — drives the partner pick-up/return actions. */
+  securityDeposit: string;
+  pickedUpAt: string | null;
+  returnedAt: string | null;
 }

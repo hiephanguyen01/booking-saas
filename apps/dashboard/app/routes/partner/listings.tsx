@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { data, useFetcher } from 'react-router';
-import { EyeOff, Lock, Send, Undo2 } from 'lucide-react';
+import { data, Link, useFetcher } from 'react-router';
+import { Clock, EyeOff, Lock, Pencil, Plus, Send, Undo2 } from 'lucide-react';
 import type { ListingResponse, PublishStatus } from '@booking/shared';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
@@ -41,8 +41,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     listings: res.ok && res.data ? res.data : [],
     canWrite: canPartner(membership, 'partner.listings.write'),
     canPublish: canPartner(membership, 'partner.listings.publish'),
+    canAvailability: canPartner(membership, 'partner.availability.manage'),
     loadError: res.ok ? null : (res.error ?? 'Không tải được tin đăng.'),
   };
+}
+
+/** A listing whose calendar is time-window based (opening hours apply). */
+function usesOpeningHours(listing: ListingResponse): boolean {
+  return listing.bookingModes.some((m) => m === 'hourly' || m === 'daily');
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -82,7 +88,7 @@ const FILTERS: { value: string; label: string }[] = [
 ];
 
 export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
-  const { listings, canWrite, canPublish, loadError } = loaderData;
+  const { listings, canWrite, canPublish, canAvailability, loadError } = loaderData;
   const [filter, setFilter] = useState<string>('all');
 
   const rows = useMemo(
@@ -137,13 +143,32 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
       header: '',
       headClassName: 'text-right',
       className: 'text-right',
-      cell: (l) => <RowActions listing={l} canWrite={canWrite} canPublish={canPublish} />,
+      cell: (l) => (
+        <RowActions
+          listing={l}
+          canWrite={canWrite}
+          canPublish={canPublish}
+          canAvailability={canAvailability}
+        />
+      ),
     },
   ];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Tin đăng" description="Gửi duyệt, hiển thị hoặc ẩn các tin đăng của bạn." />
+      <PageHeader
+        title="Tin đăng"
+        description="Tạo, gửi duyệt, hiển thị hoặc ẩn các tin đăng của bạn."
+        actions={
+          canWrite ? (
+            <Button asChild size="sm">
+              <Link to="/partner/listings/new">
+                <Plus className="size-4" aria-hidden /> Thêm tin đăng
+              </Link>
+            </Button>
+          ) : null
+        }
+      />
 
       <div className="w-full max-w-xs">
         <Select value={filter} onValueChange={setFilter}>
@@ -180,10 +205,12 @@ function RowActions({
   listing,
   canWrite,
   canPublish,
+  canAvailability,
 }: {
   listing: ListingResponse;
   canWrite: boolean;
   canPublish: boolean;
+  canAvailability: boolean;
 }) {
   const fetcher = useFetcher<typeof action>();
   const busy = fetcher.state !== 'idle';
@@ -193,33 +220,45 @@ function RowActions({
     fetcher.submit({ id: listing.id, intent }, { method: 'post' });
   };
 
-  if (listing.status === 'draft' && canWrite) {
-    return (
-      <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('submit')}>
-        <Send className="size-3.5" aria-hidden /> Gửi duyệt
-      </Button>
-    );
-  }
-  if (listing.status === 'published' && canPublish) {
-    return (
-      <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('hide')}>
-        <EyeOff className="size-3.5" aria-hidden /> Ẩn
-      </Button>
-    );
-  }
-  if (listing.status === 'archived' && canPublish) {
-    if (adminLocked) {
-      return (
-        <Button size="xs" variant="outline" disabled title="Chỉ quản trị viên mới bỏ ẩn được">
-          <Lock className="size-3.5" aria-hidden /> Bị khoá
+  return (
+    <div className="flex flex-wrap justify-end gap-1.5">
+      {canAvailability && usesOpeningHours(listing) ? (
+        <Button asChild size="xs" variant="ghost" title="Giờ mở cửa">
+          <Link to={`/partner/listings/${listing.id}/hours`}>
+            <Clock className="size-3.5" aria-hidden /> Giờ mở cửa
+          </Link>
         </Button>
-      );
-    }
-    return (
-      <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('republish')}>
-        <Undo2 className="size-3.5" aria-hidden /> Đăng lại
-      </Button>
-    );
-  }
-  return <span className="text-xs text-muted-foreground">-</span>;
+      ) : null}
+
+      {canWrite && !adminLocked ? (
+        <Button asChild size="xs" variant="ghost" title="Sửa tin đăng">
+          <Link to={`/partner/listings/${listing.id}/edit`}>
+            <Pencil className="size-3.5" aria-hidden /> Sửa
+          </Link>
+        </Button>
+      ) : null}
+
+      {listing.status === 'draft' && canWrite ? (
+        <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('submit')}>
+          <Send className="size-3.5" aria-hidden /> Gửi duyệt
+        </Button>
+      ) : null}
+      {listing.status === 'published' && canPublish ? (
+        <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('hide')}>
+          <EyeOff className="size-3.5" aria-hidden /> Ẩn
+        </Button>
+      ) : null}
+      {listing.status === 'archived' && canPublish ? (
+        adminLocked ? (
+          <Button size="xs" variant="outline" disabled title="Chỉ quản trị viên mới bỏ ẩn được">
+            <Lock className="size-3.5" aria-hidden /> Bị khoá
+          </Button>
+        ) : (
+          <Button size="xs" variant="outline" disabled={busy} onClick={() => submit('republish')}>
+            <Undo2 className="size-3.5" aria-hidden /> Đăng lại
+          </Button>
+        )
+      ) : null}
+    </div>
+  );
 }

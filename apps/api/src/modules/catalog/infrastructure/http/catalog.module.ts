@@ -15,11 +15,12 @@ import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-
 import { ListPublicListingsUseCase } from '../../application/use-cases/list-public-listings.use-case';
 import { AttributeValidatorService } from '../../application/services/attribute-validator.service';
 import { TenantListingTypeController } from './tenant-listing-type.controller';
+import { PartnerListingTypeController } from './partner-listing-type.controller';
 import { PublicCatalogController } from './public-catalog.controller';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule],
-  controllers: [TenantListingTypeController, PublicCatalogController],
+  controllers: [TenantListingTypeController, PartnerListingTypeController, PublicCatalogController],
   providers: [
     { provide: LISTING_TYPE_REPOSITORY, useClass: PrismaListingTypeRepository },
     { provide: LISTING_READ_REPOSITORY, useClass: PrismaListingReadRepository },
