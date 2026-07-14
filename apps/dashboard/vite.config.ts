@@ -8,6 +8,9 @@ const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
+  for (const [key, value] of Object.entries(env)) {
+    process.env[key] ??= value;
+  }
   const port = Number(process.env.DASHBOARD_PORT ?? env.DASHBOARD_PORT ?? 5174);
 
   return {
