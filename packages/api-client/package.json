@@ -14,12 +14,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.esm.json && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({ type: 'module' }))\"",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@booking/contracts": "workspace:*"
+    "@booking/contracts": "workspace:*",
+    "axios": "1.18.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "vitest": "^3.2.7"
   }
 }

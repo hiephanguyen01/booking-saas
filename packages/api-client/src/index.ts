@@ -1,5 +1,15 @@
 export { createApiClient } from './client';
 export type { ApiClient } from './client';
-export type { ApiResult, ApiAuth, Auth, RefreshedTokens, BackendLoginResult } from './types';
-export { toResult, networkError } from './errors';
-export { parseSetCookies, refreshTokens, normalizeAuth, scopeHeaders } from './interceptor';
+export type {
+  ApiClientOptions,
+  ApiFailure,
+  ApiRequestOptions,
+  ApiResult,
+  ApiAuth,
+  Auth,
+  RefreshedTokens,
+  BackendLoginResult,
+  BackendRefreshResult,
+} from './types';
+export { toResult, networkError, transportError } from './errors';
+export { parseSetCookies, normalizeAuth, scopeHeaders } from './interceptor';

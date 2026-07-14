@@ -1,146 +1,176 @@
-/**
- * Generic BFF HTTP client (server-only).
- *
- * Every call runs on the React Router / NestJS server — NEVER from the browser.
- * The backend authenticates via httpOnly cookies (`sid` access, `rid` refresh).
- * On a 401 the interceptor transparently refreshes once and retries.
- *
- * Usage:
- *   const client = createApiClient(process.env.BACKEND_URL ?? 'http://localhost:3000');
- *   const result = await client.get<User>('/users/me', auth);
- */
-
-import type { ApiResult, Auth, BackendLoginResult, RefreshedTokens } from './types';
+import axios, { type AxiosInstance, type Method } from 'axios';
 import type { SessionInfoResponse } from '@booking/contracts';
-import { toResult, networkError } from './errors';
-import { normalizeAuth, scopeHeaders, refreshTokens, parseSetCookies } from './interceptor';
+import { toResult, transportError } from './errors';
+import { normalizeAuth, parseSetCookies, scopeHeaders } from './interceptor';
+import type {
+  ApiClientOptions,
+  ApiRequestOptions,
+  ApiResult,
+  Auth,
+  BackendLoginResult,
+  BackendRefreshResult,
+} from './types';
 
 export interface ApiClient {
-  get<T>(path: string, auth: Auth): Promise<ApiResult<T>>;
-  post<T>(path: string, body: unknown, auth: Auth): Promise<ApiResult<T>>;
-  patch<T>(path: string, body: unknown, auth: Auth): Promise<ApiResult<T>>;
-  put<T>(path: string, body: unknown, auth: Auth): Promise<ApiResult<T>>;
-  delete<T>(path: string, auth: Auth): Promise<ApiResult<T>>;
-  /** Authenticate with email+password; returns session tokens from Set-Cookie. */
+  get<T>(path: string, auth: Auth, options?: ApiRequestOptions<T>): Promise<ApiResult<T>>;
+  post<T>(
+    path: string,
+    body: unknown,
+    auth: Auth,
+    options?: ApiRequestOptions<T>,
+  ): Promise<ApiResult<T>>;
+  patch<T>(
+    path: string,
+    body: unknown,
+    auth: Auth,
+    options?: ApiRequestOptions<T>,
+  ): Promise<ApiResult<T>>;
+  put<T>(
+    path: string,
+    body: unknown,
+    auth: Auth,
+    options?: ApiRequestOptions<T>,
+  ): Promise<ApiResult<T>>;
+  delete<T>(path: string, auth: Auth, options?: ApiRequestOptions<T>): Promise<ApiResult<T>>;
   login(credentials: { email: string; password: string }): Promise<BackendLoginResult>;
-  /** Load scope memberships for a valid access token. */
+  refresh(
+    refreshToken: string,
+    options?: Pick<ApiRequestOptions<never>, 'signal' | 'timeoutMs' | 'requestId'>,
+  ): Promise<BackendRefreshResult>;
   sessionInfo(accessToken: string): Promise<SessionInfoResponse | null>;
-  /** Best-effort server-side logout. */
   logout(accessToken: string): Promise<void>;
 }
 
-function buildHeaders(
-  token: string,
-  extraHeaders: Record<string, string>,
-  body?: unknown,
-): Record<string, string> {
-  const headers: Record<string, string> = {
-    accept: 'application/json',
-    cookie: `sid=${token}`,
-    ...extraHeaders,
-  };
-  if (body !== undefined) headers['content-type'] = 'application/json';
-  return headers;
+function factoryOptions(input: string | ApiClientOptions): ApiClientOptions {
+  return typeof input === 'string' ? { baseURL: input } : input;
 }
 
-async function doFetch(
-  baseUrl: string,
-  method: string,
-  path: string,
-  accessToken: string,
-  extraHeaders: Record<string, string>,
-  body?: unknown,
-): Promise<Response> {
-  return fetch(`${baseUrl}${path}`, {
-    method,
-    headers: buildHeaders(accessToken, extraHeaders, body),
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+function createAxiosInstance(options: ApiClientOptions): AxiosInstance {
+  return axios.create({
+    baseURL: options.baseURL,
+    timeout: options.timeoutMs ?? 10_000,
+    adapter: options.adapter,
+    validateStatus: () => true,
+    headers: { accept: 'application/json' },
   });
 }
 
-async function request<T>(
-  baseUrl: string,
-  method: string,
-  path: string,
-  auth: Auth,
-  body?: unknown,
-): Promise<ApiResult<T>> {
-  const a = normalizeAuth(auth);
-  const extra = scopeHeaders(a);
-
-  let res: Response;
-  try {
-    res = await doFetch(baseUrl, method, path, a.token, extra, body);
-  } catch {
-    return networkError<T>();
-  }
-
-  if (res.status === 401 && a.refreshToken) {
-    const rotated = await refreshTokens(baseUrl, a.refreshToken);
-    if (rotated) {
-      a.onRefreshed?.(rotated);
-      try {
-        res = await doFetch(baseUrl, method, path, rotated.accessToken, extra, body);
-      } catch {
-        return networkError<T>();
-      }
-    }
-  }
-
-  return toResult<T>(res);
+function authHeaders(auth: Auth, options?: ApiRequestOptions<unknown>): Record<string, string> {
+  const normalized = normalizeAuth(auth);
+  return {
+    cookie: `sid=${normalized.token}`,
+    ...scopeHeaders(normalized),
+    ...options?.headers,
+    ...(options?.requestId ? { 'x-request-id': options.requestId } : {}),
+  };
 }
 
-/** Factory: creates an ApiClient bound to a specific backend URL. */
-export function createApiClient(baseUrl: string): ApiClient {
-  return {
-    get: (path, auth) => request(baseUrl, 'GET', path, auth),
-    post: (path, body, auth) => request(baseUrl, 'POST', path, auth, body),
-    patch: (path, body, auth) => request(baseUrl, 'PATCH', path, auth, body),
-    put: (path, body, auth) => request(baseUrl, 'PUT', path, auth, body),
-    delete: (path, auth) => request(baseUrl, 'DELETE', path, auth),
+async function request<T>(
+  instance: AxiosInstance,
+  method: Method,
+  path: string,
+  auth: Auth,
+  body: unknown,
+  options?: ApiRequestOptions<T>,
+): Promise<ApiResult<T>> {
+  try {
+    const response = await instance.request({
+      method,
+      url: path,
+      data: body,
+      params: options?.query,
+      signal: options?.signal,
+      timeout: options?.timeoutMs,
+      headers: authHeaders(auth, options),
+    });
+    return toResult<T>(response, options?.schema);
+  } catch (error) {
+    return transportError<T>(error);
+  }
+}
 
-    async login({ email, password }) {
-      let res: Response;
+export function createApiClient(input: string | ApiClientOptions): ApiClient {
+  const instance = createAxiosInstance(factoryOptions(input));
+
+  return {
+    get: (path, auth, options) => request(instance, 'GET', path, auth, undefined, options),
+    post: (path, body, auth, options) => request(instance, 'POST', path, auth, body, options),
+    patch: (path, body, auth, options) => request(instance, 'PATCH', path, auth, body, options),
+    put: (path, body, auth, options) => request(instance, 'PUT', path, auth, body, options),
+    delete: (path, auth, options) => request(instance, 'DELETE', path, auth, undefined, options),
+
+    async login(credentials) {
       try {
-        res = await fetch(`${baseUrl}/auth/login`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', accept: 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-      } catch {
-        return { ok: false, status: 503 };
+        const response = await instance.post('/auth/login', credentials);
+        if (response.status < 200 || response.status >= 300) {
+          const body =
+            response.data && typeof response.data === 'object'
+              ? (response.data as { code?: string })
+              : {};
+          return { ok: false, status: response.status, code: body.code, failure: 'http' };
+        }
+        const cookies = parseSetCookies(response);
+        const body = response.data as { user?: { id: string } } | null;
+        if (!cookies.sid || !cookies.rid || !body?.user) {
+          return { ok: false, status: 502, failure: 'invalid-response' };
+        }
+        return {
+          ok: true,
+          status: response.status,
+          tokens: { accessToken: cookies.sid, refreshToken: cookies.rid },
+          user: body.user,
+        };
+      } catch (error) {
+        const result = transportError<never>(error);
+        return { ok: false, status: result.status, failure: result.failure };
       }
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { code?: string };
-        return { ok: false, status: res.status, code: body.code };
+    },
+
+    async refresh(refreshToken, options) {
+      try {
+        const response = await instance.post(
+          '/auth/refresh',
+          undefined,
+          {
+            signal: options?.signal,
+            timeout: options?.timeoutMs,
+            headers: {
+              cookie: `rid=${refreshToken}`,
+              ...(options?.requestId ? { 'x-request-id': options.requestId } : {}),
+            },
+          },
+        );
+        if (response.status < 200 || response.status >= 300) {
+          return { ok: false, status: response.status, failure: 'http' };
+        }
+        const cookies = parseSetCookies(response);
+        if (!cookies.sid || !cookies.rid) {
+          return { ok: false, status: 502, failure: 'invalid-response' };
+        }
+        return {
+          ok: true,
+          status: response.status,
+          tokens: { accessToken: cookies.sid, refreshToken: cookies.rid },
+        };
+      } catch (error) {
+        const result = transportError<never>(error);
+        return { ok: false, status: result.status, failure: result.failure };
       }
-      const cookies = parseSetCookies(res);
-      const body = (await res.json().catch(() => null)) as { user?: { id: string } } | null;
-      if (!cookies.sid || !cookies.rid || !body?.user) {
-        return { ok: false, status: 502 };
-      }
-      return {
-        ok: true,
-        status: res.status,
-        tokens: { accessToken: cookies.sid, refreshToken: cookies.rid } satisfies RefreshedTokens,
-        user: body.user,
-      };
     },
 
     async sessionInfo(accessToken) {
-      const res = await request<SessionInfoResponse>(baseUrl, 'GET', '/auth/session', accessToken);
-      return res.ok ? res.data : null;
+      const result = await request<SessionInfoResponse>(
+        instance,
+        'GET',
+        '/auth/session',
+        accessToken,
+        undefined,
+      );
+      return result.ok ? result.data : null;
     },
 
     async logout(accessToken) {
-      try {
-        await fetch(`${baseUrl}/auth/logout`, {
-          method: 'POST',
-          headers: { accept: 'application/json', cookie: `sid=${accessToken}` },
-        });
-      } catch {
-        // ignore — the caller destroys the local session cookie regardless
-      }
+      await request(instance, 'POST', '/auth/logout', accessToken, undefined);
     },
   };
 }
