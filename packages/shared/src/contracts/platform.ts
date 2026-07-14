@@ -1,48 +1,55 @@
+import { z } from 'zod';
+
 /**
  * Platform-admin health board (`GET /platform/health`, Task 1.12). Shared so the
  * backend controller and the dashboard type the same contract instead of each
  * hand-mirroring it. Money crosses the wire as VND đồng digit strings; timestamps
  * as UTC ISO strings.
  */
-export interface PlatformHealthTenant {
-  tenantId: string;
-  name: string;
-  slug: string;
-  status: string;
-  createdAt: string;
+export const platformHealthTenantSchema = z.object({
+  tenantId: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  status: z.string(),
+  createdAt: z.string(),
   /** VND đồng digit strings. */
-  gmv: string;
-  gmv30d: string;
-  bookings30d: number;
+  gmv: z.string(),
+  gmv30d: z.string(),
+  bookings30d: z.number(),
   /** Hours from tenant creation to first realized booking; null = none yet. */
-  firstBookingHours: number | null;
-  publishedListings: number;
-  webhookFailures: number;
-  overduePayouts: number;
-  subscription: { status: string; expiresAt: string; planName: string } | null;
-}
+  firstBookingHours: z.number().nullable(),
+  publishedListings: z.number(),
+  webhookFailures: z.number(),
+  overduePayouts: z.number(),
+  subscription: z
+    .object({ status: z.string(), expiresAt: z.string(), planName: z.string() })
+    .nullable(),
+});
+export type PlatformHealthTenant = z.infer<typeof platformHealthTenantSchema>;
 
-export interface PlatformHealthExpiring {
-  tenantId: string;
-  tenantName: string;
-  planName: string;
-  status: string;
-  expiresAt: string;
-  daysLeft: number;
-}
+export const platformHealthExpiringSchema = z.object({
+  tenantId: z.string(),
+  tenantName: z.string(),
+  planName: z.string(),
+  status: z.string(),
+  expiresAt: z.string(),
+  daysLeft: z.number(),
+});
+export type PlatformHealthExpiring = z.infer<typeof platformHealthExpiringSchema>;
 
-export interface PlatformHealthResponse {
-  kpis: {
-    tenantCount: number;
-    activeTenantCount: number;
-    gmvAllTime: string;
-    gmv30d: string;
-    publishedListings: number;
-    bookings30d: number;
-    webhookFailures: number;
-    overduePayouts: number;
-  };
-  gmvTrend: Array<{ date: string; gmv: string }>;
-  tenants: PlatformHealthTenant[];
-  expiring: PlatformHealthExpiring[];
-}
+export const platformHealthResponseSchema = z.object({
+  kpis: z.object({
+    tenantCount: z.number(),
+    activeTenantCount: z.number(),
+    gmvAllTime: z.string(),
+    gmv30d: z.string(),
+    publishedListings: z.number(),
+    bookings30d: z.number(),
+    webhookFailures: z.number(),
+    overduePayouts: z.number(),
+  }),
+  gmvTrend: z.array(z.object({ date: z.string(), gmv: z.string() })),
+  tenants: z.array(platformHealthTenantSchema),
+  expiring: z.array(platformHealthExpiringSchema),
+});
+export type PlatformHealthResponse = z.infer<typeof platformHealthResponseSchema>;

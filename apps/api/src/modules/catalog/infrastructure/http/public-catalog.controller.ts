@@ -1,4 +1,5 @@
 import { BadRequestException, Controller, Get, Headers, Query } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   listPublicListingsQuerySchema,
   type PublicListingResponse,
@@ -8,8 +9,14 @@ import { Public } from '../../../identity-access/infrastructure/http/decorators/
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { ListPublicListingsUseCase } from '../../application/use-cases/list-public-listings.use-case';
 import { toPublicListingResponse, toPublicListingTypeResponse } from '../../application/catalog.mapper';
+import {
+  ListPublicListingsQueryDto,
+  PublicListingResponseDto,
+  PublicListingTypeResponseDto,
+} from './dto/catalog.dto';
 
 /** Storefront-facing catalog (§16, §17). Tenant resolved from Host (BFF proxy). */
+@ApiTags('public-catalog')
 @Controller('public')
 export class PublicCatalogController {
   constructor(
@@ -19,6 +26,8 @@ export class PublicCatalogController {
 
   @Public()
   @Get('listing-types')
+  @ApiOperation({ summary: 'Storefront menu of active listing types for the resolved tenant' })
+  @ApiOkResponse({ type: [PublicListingTypeResponseDto] })
   async listingTypes(
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
@@ -29,6 +38,9 @@ export class PublicCatalogController {
 
   @Public()
   @Get('listings')
+  @ApiOperation({ summary: 'Storefront listing search (supports dynamic attr.* equality filters)' })
+  @ApiQuery({ type: ListPublicListingsQueryDto })
+  @ApiOkResponse({ type: [PublicListingResponseDto] })
   async listings(
     @Query() query: Record<string, string>,
     @Headers('x-forwarded-host') forwardedHost?: string,

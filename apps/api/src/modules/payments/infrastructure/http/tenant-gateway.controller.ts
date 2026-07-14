@@ -1,16 +1,14 @@
 import { Body, Controller, Put, UseGuards } from '@nestjs/common';
-import {
-  upsertGatewayConfigInputSchema,
-  type GatewayConfigResponse,
-  type UpsertGatewayConfigInput,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { type GatewayConfigResponse } from '@booking/shared';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
+import { GatewayConfigResponseDto, UpsertGatewayConfigDto } from './dto/payments.dto';
 
 /** Tenant-side gateway credential management (§11.1). Scope via x-tenant-id. */
+@ApiTags('tenant-gateway')
 @Controller('tenant/gateway-config')
 export class TenantGatewayController {
   constructor(
@@ -21,9 +19,9 @@ export class TenantGatewayController {
   @RequirePermissions('tenant.settings.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Put()
-  async put(
-    @Body(new ZodValidationPipe(upsertGatewayConfigInputSchema)) input: UpsertGatewayConfigInput,
-  ): Promise<GatewayConfigResponse> {
+  @ApiOperation({ summary: 'Create or update the tenant payment gateway credentials' })
+  @ApiOkResponse({ type: GatewayConfigResponseDto })
+  async put(@Body() input: UpsertGatewayConfigDto): Promise<GatewayConfigResponse> {
     const config = await this.upsert.execute(this.tenantContext.tenantIdOrThrow(), input);
     return { gateway: config.gateway, environment: config.environment, isActive: true };
   }

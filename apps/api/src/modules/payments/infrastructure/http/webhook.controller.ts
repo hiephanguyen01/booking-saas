@@ -1,12 +1,15 @@
 import { BadRequestException, Controller, HttpCode, Param, Post, Req } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { gatewayKeySchema } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import type { GatewayKey } from '../../domain/ports/payment-gateway.port';
 import { HandleWebhookUseCase } from '../../application/use-cases/handle-webhook.use-case';
+import { WebhookReceivedDto } from './dto/payments.dto';
 
 /** Gateway webhooks (§11.2) — the source of truth for payment. Needs the RAW body. */
+@ApiTags('webhooks')
 @Controller('webhooks')
 export class WebhookController {
   constructor(private readonly handle: HandleWebhookUseCase) {}
@@ -14,6 +17,9 @@ export class WebhookController {
   @Public()
   @Post(':gateway')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Receive a gateway webhook (raw body) and reconcile payment' })
+  @ApiParam({ name: 'gateway', type: 'string' })
+  @ApiOkResponse({ type: WebhookReceivedDto })
   async receive(
     @Param('gateway', new ZodValidationPipe(gatewayKeySchema)) gateway: GatewayKey,
     @Req() req: Request & { rawBody?: Buffer },

@@ -184,75 +184,79 @@ export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
 
 // ── Responses ──────────────────────────────────────────────────────────────
 
-export interface ListingGroupResponse {
-  id: string;
-  tenantId: string;
-  partnerId: string;
-  listingTypeId: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  address: string | null;
-  workingArea: string | null;
-  amenities: string[];
-  photos: string[];
-  status: PublishStatus;
-  publishedBy: ModerationActor | null;
-  hiddenBy: ModerationActor | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export const listingGroupResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  partnerId: z.string(),
+  listingTypeId: z.string(),
+  title: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  address: z.string().nullable(),
+  workingArea: z.string().nullable(),
+  amenities: z.array(z.string()),
+  photos: z.array(z.string()),
+  status: publishStatusSchema,
+  publishedBy: moderationActorSchema.nullable(),
+  hiddenBy: moderationActorSchema.nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ListingGroupResponse = z.infer<typeof listingGroupResponseSchema>;
 
-export interface ListingResponse {
-  id: string;
-  tenantId: string;
-  partnerId: string;
-  listingTypeId: string;
-  resourceId: string;
-  groupId: string | null;
-  categoryId: string | null;
-  title: string;
-  slug: string;
-  description: string | null;
-  photos: string[];
-  attributes: Record<string, unknown>;
-  bookingModes: BookingMode[];
-  modeConfig: Record<string, unknown>;
-  stockQuantity: number | null;
-  capacity: number | null;
-  bufferBefore: number;
-  bufferAfter: number;
-  approvalRequired: boolean;
-  depositPercent: number;
-  balanceDue: BalanceDue;
-  cancellationPolicyId: string | null;
-  status: PublishStatus;
-  publishedBy: ModerationActor | null;
-  hiddenBy: ModerationActor | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export const listingResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  partnerId: z.string(),
+  listingTypeId: z.string(),
+  resourceId: z.string(),
+  groupId: z.string().nullable(),
+  categoryId: z.string().nullable(),
+  title: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  photos: z.array(z.string()),
+  attributes: z.record(z.unknown()),
+  bookingModes: z.array(bookingModeSchema),
+  modeConfig: z.record(z.unknown()),
+  stockQuantity: z.number().nullable(),
+  capacity: z.number().nullable(),
+  bufferBefore: z.number(),
+  bufferAfter: z.number(),
+  approvalRequired: z.boolean(),
+  depositPercent: z.number(),
+  balanceDue: balanceDueSchema,
+  cancellationPolicyId: z.string().nullable(),
+  status: publishStatusSchema,
+  publishedBy: moderationActorSchema.nullable(),
+  hiddenBy: moderationActorSchema.nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ListingResponse = z.infer<typeof listingResponseSchema>;
 
-export interface ResourceResponse {
-  id: string;
-  tenantId: string;
-  partnerId: string;
-  name: string;
-  timezone: string;
-  createdAt: string;
-}
+export const resourceResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  partnerId: z.string(),
+  name: z.string(),
+  timezone: z.string(),
+  createdAt: z.string(),
+});
+export type ResourceResponse = z.infer<typeof resourceResponseSchema>;
 
-export interface PricingRuleResponse {
-  id: string;
-  tenantId: string;
-  listingId: string;
-  bookingMode: BookingMode;
-  ruleType: PricingRuleType;
-  params: Record<string, unknown>;
-  price: string;
-  priority: number;
-  createdAt: string;
-}
+export const pricingRuleResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  listingId: z.string(),
+  bookingMode: bookingModeSchema,
+  ruleType: pricingRuleTypeSchema,
+  params: z.record(z.unknown()),
+  price: z.string(),
+  priority: z.number(),
+  createdAt: z.string(),
+});
+export type PricingRuleResponse = z.infer<typeof pricingRuleResponseSchema>;
 
 /**
  * Trust signals shown on the storefront before ratings exist (§16.1) — all
@@ -260,56 +264,60 @@ export interface PricingRuleResponse {
  * part of this: they are revealed to a customer only after a booking is
  * confirmed (§7.3 anti-disintermediation).
  */
-export interface TrustSignals {
+export const trustSignalsSchema = z.object({
   /** Partner passed manual identity verification (drives the "verified" badge). */
-  identityVerified: boolean;
+  identityVerified: z.boolean(),
   /** ISO date the partner started on the tenant → "active since". */
-  partnerActiveSince: string;
+  partnerActiveSince: z.string(),
   /** Public partner display name (never phone/email). */
-  partnerName: string;
+  partnerName: z.string(),
   /** Count of completed bookings for this listing (0 until the booking module lands). */
-  completedBookings: number;
+  completedBookings: z.number(),
   /**
    * Average seconds a partner takes to approve a request-to-book booking on this
    * listing — the time from the booking's creation to its pending_approval →
    * pending_payment transition (§16.1). `null` when no approvals exist yet.
    */
-  avgApprovalResponseSeconds: number | null;
-}
+  avgApprovalResponseSeconds: z.number().nullable(),
+});
+export type TrustSignals = z.infer<typeof trustSignalsSchema>;
 
 /** Storefront listing detail (public) — enough to render the page + a quote form. */
-export interface PublicListingDetailResponse {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  photos: string[];
-  attributes: Record<string, unknown>;
-  bookingModes: BookingMode[];
-  modeConfig: Record<string, unknown>;
-  depositPercent: number;
-  listingTypeSlug: string;
-  trust: TrustSignals;
-}
+export const publicListingDetailResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  photos: z.array(z.string()),
+  attributes: z.record(z.unknown()),
+  bookingModes: z.array(bookingModeSchema),
+  modeConfig: z.record(z.unknown()),
+  depositPercent: z.number(),
+  listingTypeSlug: z.string(),
+  trust: trustSignalsSchema,
+});
+export type PublicListingDetailResponse = z.infer<typeof publicListingDetailResponseSchema>;
 
-export interface QuoteLineItem {
-  label: string;
-  quantity: number;
+export const quoteLineItemSchema = z.object({
+  label: z.string(),
+  quantity: z.number(),
   /** VND đồng digit strings. */
-  unitPrice: string;
-  amount: string;
-  appliedRuleId?: string;
-  block?: boolean;
-}
+  unitPrice: z.string(),
+  amount: z.string(),
+  appliedRuleId: z.string().optional(),
+  block: z.boolean().optional(),
+});
+export type QuoteLineItem = z.infer<typeof quoteLineItemSchema>;
 
-export interface QuoteResponse {
-  currency: 'VND';
-  mode: BookingMode;
-  subtotal: string;
-  depositAmount: string;
-  securityDeposit: string;
-  lineItems: QuoteLineItem[];
-}
+export const quoteResponseSchema = z.object({
+  currency: z.literal('VND'),
+  mode: bookingModeSchema,
+  subtotal: z.string(),
+  depositAmount: z.string(),
+  securityDeposit: z.string(),
+  lineItems: z.array(quoteLineItemSchema),
+});
+export type QuoteResponse = z.infer<typeof quoteResponseSchema>;
 
 // ── Moderation (Task 1.5) ────────────────────────────────────────────────────
 
@@ -330,26 +338,29 @@ export const publishListingInputSchema = z.object({
 export type PublishListingInput = z.infer<typeof publishListingInputSchema>;
 
 /** A piece of contact info detected in a listing's text at review time (§7.3). */
-export interface ContactFlag {
-  type: 'phone' | 'zalo' | 'url' | 'email';
+export const contactFlagSchema = z.object({
+  type: z.enum(['phone', 'zalo', 'url', 'email']),
   /** The field it was found in, e.g. "description" or "title". */
-  field: string;
+  field: z.string(),
   /** The offending substring (for the reviewer to locate it). */
-  match: string;
-}
+  match: z.string(),
+});
+export type ContactFlag = z.infer<typeof contactFlagSchema>;
 
-export interface ChecklistItem {
-  key: string;
-  label: string;
-  passed: boolean;
-}
+export const checklistItemSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  passed: z.boolean(),
+});
+export type ChecklistItem = z.infer<typeof checklistItemSchema>;
 
 /** What a tenant reviewer sees for a listing awaiting moderation. */
-export interface ListingReviewResponse {
-  listingId: string;
-  status: PublishStatus;
-  checklist: ChecklistItem[];
-  checklistPassed: boolean;
+export const listingReviewResponseSchema = z.object({
+  listingId: z.string(),
+  status: publishStatusSchema,
+  checklist: z.array(checklistItemSchema),
+  checklistPassed: z.boolean(),
   /** Non-empty when the listing leaks contact info — publishing is blocked by policy. */
-  contactFlags: ContactFlag[];
-}
+  contactFlags: z.array(contactFlagSchema),
+});
+export type ListingReviewResponse = z.infer<typeof listingReviewResponseSchema>;

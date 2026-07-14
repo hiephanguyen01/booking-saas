@@ -11,13 +11,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  createListingTypeInputSchema,
-  updateListingTypeInputSchema,
-  uuidSchema,
-  type CreateListingTypeInput,
-  type ListingTypeResponse,
-  type UpdateListingTypeInput,
-} from '@booking/shared';
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import { uuidSchema, type ListingTypeResponse } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -28,8 +29,15 @@ import { GetListingTypeUseCase } from '../../application/use-cases/get-listing-t
 import { UpdateListingTypeUseCase } from '../../application/use-cases/update-listing-type.use-case';
 import { DeleteListingTypeUseCase } from '../../application/use-cases/delete-listing-type.use-case';
 import { toListingTypeResponse } from '../../application/catalog.mapper';
+import { UuidParam } from '../../../../shared/openapi/decorators';
+import {
+  CreateListingTypeDto,
+  ListingTypeResponseDto,
+  UpdateListingTypeDto,
+} from './dto/catalog.dto';
 
 /** Tenant-admin listing-type CRUD (§7.3), scope via x-tenant-id. */
+@ApiTags('tenant-listing-types')
 @Controller('tenant/listing-types')
 export class TenantListingTypeController {
   constructor(
@@ -43,6 +51,9 @@ export class TenantListingTypeController {
 
   @RequirePermissions('tenant.listings.read')
   @Get()
+  @ApiOperation({ summary: "List the tenant's listing types" })
+  @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
+  @ApiOkResponse({ type: [ListingTypeResponseDto] })
   async list(
     @Query('includeInactive') includeInactive?: string,
   ): Promise<ListingTypeResponse[]> {
@@ -56,8 +67,10 @@ export class TenantListingTypeController {
   @RequirePermissions('tenant.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post()
+  @ApiOperation({ summary: 'Create a listing type' })
+  @ApiCreatedResponse({ type: ListingTypeResponseDto })
   async create(
-    @Body(new ZodValidationPipe(createListingTypeInputSchema)) input: CreateListingTypeInput,
+    @Body() input: CreateListingTypeDto,
   ): Promise<ListingTypeResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return toListingTypeResponse(await this.createListingType.execute(tenantId, input));
@@ -65,6 +78,9 @@ export class TenantListingTypeController {
 
   @RequirePermissions('tenant.listings.read')
   @Get(':id')
+  @ApiOperation({ summary: 'Get a listing type by id' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingTypeResponseDto })
   async get(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<ListingTypeResponse> {
@@ -76,9 +92,12 @@ export class TenantListingTypeController {
   @RequirePermissions('tenant.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a listing type' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingTypeResponseDto })
   async update(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(updateListingTypeInputSchema)) input: UpdateListingTypeInput,
+    @Body() input: UpdateListingTypeDto,
   ): Promise<ListingTypeResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return toListingTypeResponse(await this.updateListingType.execute(tenantId, id, input));
@@ -88,6 +107,9 @@ export class TenantListingTypeController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Delete(':id')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a listing type' })
+  @UuidParam()
+  @ApiNoContentResponse()
   async remove(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<void> {
     await this.deleteListingType.execute(this.tenantContext.tenantIdOrThrow(), id);
   }

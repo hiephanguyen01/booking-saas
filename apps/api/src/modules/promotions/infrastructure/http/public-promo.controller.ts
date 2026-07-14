@@ -1,11 +1,13 @@
 import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { validatePromoInputSchema, type ValidatePromoInput, type ValidatePromoResponse } from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { type ValidatePromoResponse } from '@booking/shared';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';
+import { ValidatePromoDto, ValidatePromoResponseDto } from './dto/promotions.dto';
 
 /** Storefront promo validation (§12.3). Tenant resolved from Host (BFF). */
+@ApiTags('public-checkout')
 @Controller('public/checkout')
 export class PublicPromoController {
   constructor(private readonly validatePromo: ValidatePromoUseCase) {}
@@ -13,8 +15,10 @@ export class PublicPromoController {
   @Public()
   @Post('validate-promo')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Validate a promo code against a storefront checkout' })
+  @ApiOkResponse({ type: ValidatePromoResponseDto })
   async validate(
-    @Body(new ZodValidationPipe(validatePromoInputSchema)) input: ValidatePromoInput,
+    @Body() input: ValidatePromoDto,
     @Req() req: Request,
   ): Promise<ValidatePromoResponse> {
     return this.validatePromo.execute(hostOf(req), input);

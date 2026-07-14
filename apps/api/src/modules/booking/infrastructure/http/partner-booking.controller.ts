@@ -1,16 +1,13 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { z } from 'zod';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-  reasonInputSchema,
-  markReturnedInputSchema,
   uuidSchema,
   type BookingResponse,
   type CancelBookingResponse,
-  type ReasonInput,
-  type MarkReturnedInput,
   type ReturnBookingResponse,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -26,23 +23,18 @@ import {
   toPartnerCalendarResponse,
   type PartnerCalendarBookingResponse,
 } from '../../application/partner-calendar.mapper';
-
-/** Window query for the master calendar feed — UTC ISO instants, max 62 days. */
-const calendarRangeSchema = z
-  .object({
-    from: z.string().datetime(),
-    to: z.string().datetime(),
-  })
-  .refine((q) => Date.parse(q.from) < Date.parse(q.to), {
-    path: ['to'],
-    message: 'to must be after from',
-  })
-  .refine((q) => Date.parse(q.to) - Date.parse(q.from) <= 62 * 86_400_000, {
-    path: ['to'],
-    message: 'Range must be at most 62 days',
-  });
+import {
+  BookingResponseDto,
+  CalendarRangeQueryDto,
+  CancelBookingResponseDto,
+  MarkReturnedDto,
+  PartnerCalendarBookingResponseDto,
+  ReasonDto,
+  ReturnBookingResponseDto,
+} from './dto/booking.dto';
 
 /** Partner-side booking management (§8.2). Scope via x-partner-id. */
+@ApiTags('partner-bookings')
 @Controller('partner/bookings')
 export class PartnerBookingController {
   constructor(
@@ -57,6 +49,9 @@ export class PartnerBookingController {
   /** Single booking (Task 1.14 detail view) — 404 unless it's this partner's. */
   @RequirePermissions('partner.bookings.read')
   @Get(':id')
+  @ApiOperation({ summary: "Get one of the partner's bookings by id" })
+  @UuidParam()
+  @ApiOkResponse({ type: BookingResponseDto })
   async detail(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<BookingResponse> {
@@ -81,8 +76,10 @@ export class PartnerBookingController {
    */
   @RequirePermissions('partner.bookings.read')
   @Get()
+  @ApiOperation({ summary: "Partner master-calendar feed across the partner's resources" })
+  @ApiOkResponse({ type: [PartnerCalendarBookingResponseDto] })
   async calendarFeed(
-    @Query(new ZodValidationPipe(calendarRangeSchema)) query: { from: string; to: string },
+    @Query() query: CalendarRangeQueryDto,
   ): Promise<PartnerCalendarBookingResponse[]> {
     const bookings = await this.calendar.execute({
       tenantId: this.tenantContext.tenantIdOrThrow(),
@@ -97,6 +94,9 @@ export class PartnerBookingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/approve')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Approve a pending booking' })
+  @UuidParam()
+  @ApiOkResponse({ type: BookingResponseDto })
   async approve(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
@@ -108,9 +108,12 @@ export class PartnerBookingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/reject')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Reject a pending booking' })
+  @UuidParam()
+  @ApiOkResponse({ type: BookingResponseDto })
   async reject(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(reasonInputSchema)) body: ReasonInput,
+    @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<BookingResponse> {
     return toBookingResponse(await this.partnerBooking.reject(this.ctx(principal), id, body.reason));
@@ -120,9 +123,12 @@ export class PartnerBookingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/no-show')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Mark a confirmed booking as a no-show' })
+  @UuidParam()
+  @ApiOkResponse({ type: BookingResponseDto })
   async noShow(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(reasonInputSchema)) body: ReasonInput,
+    @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<BookingResponse> {
     return toBookingResponse(await this.partnerBooking.markNoShow(this.ctx(principal), id, body.reason));
@@ -132,9 +138,12 @@ export class PartnerBookingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/cancel')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Partner cancels a booking (computes the refund)' })
+  @UuidParam()
+  @ApiOkResponse({ type: CancelBookingResponseDto })
   async cancel(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(reasonInputSchema)) body: ReasonInput,
+    @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<CancelBookingResponse> {
     const ctx = this.ctx(principal);
@@ -149,6 +158,9 @@ export class PartnerBookingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/pick-up')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Mark an inventory rental as picked up' })
+  @UuidParam()
+  @ApiOkResponse({ type: BookingResponseDto })
   async pickUp(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
@@ -160,9 +172,12 @@ export class PartnerBookingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/return')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Mark an inventory rental returned + inspected' })
+  @UuidParam()
+  @ApiOkResponse({ type: ReturnBookingResponseDto })
   async return(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(markReturnedInputSchema)) body: MarkReturnedInput,
+    @Body() body: MarkReturnedDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ReturnBookingResponse> {
     return toReturnResponse(await this.fulfillment.markReturned(this.ctx(principal), id, BigInt(body.damageAmount)));

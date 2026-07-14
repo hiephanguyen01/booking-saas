@@ -1,14 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import {
-  createPromotionInputSchema,
-  updatePromotionInputSchema,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
   uuidSchema,
-  type CreatePromotionInput,
   type PromotionResponse,
   type PromoUsageStatsResponse,
-  type UpdatePromotionInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
@@ -18,8 +21,15 @@ import { EndPromotionUseCase } from '../../application/use-cases/end-promotion.u
 import { ListPromotionsUseCase } from '../../application/use-cases/list-promotions.use-case';
 import { PromoUsageStatsUseCase } from '../../application/use-cases/promo-usage-stats.use-case';
 import { toPromotionResponse, toUsageStatsResponse } from '../../application/promotion.mapper';
+import {
+  CreatePromotionDto,
+  PromotionResponseDto,
+  PromoUsageStatsResponseDto,
+  UpdatePromotionDto,
+} from './dto/promotions.dto';
 
 /** Tenant-side promotion management (§12.2). Scope via x-tenant-id. */
+@ApiTags('tenant-promotions')
 @Controller('tenant/promotions')
 export class TenantPromotionController {
   constructor(
@@ -33,6 +43,8 @@ export class TenantPromotionController {
 
   @RequirePermissions('tenant.promotions.manage')
   @Get()
+  @ApiOperation({ summary: 'List all promotions for the tenant' })
+  @ApiOkResponse({ type: [PromotionResponseDto] })
   async list(): Promise<PromotionResponse[]> {
     const items = await this.listPromotions.execute(this.tenantContext.tenantIdOrThrow());
     return items.map(toPromotionResponse);
@@ -41,14 +53,19 @@ export class TenantPromotionController {
   @RequirePermissions('tenant.promotions.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post()
+  @ApiOperation({ summary: 'Create a promotion' })
+  @ApiCreatedResponse({ type: PromotionResponseDto })
   async create(
-    @Body(new ZodValidationPipe(createPromotionInputSchema)) input: CreatePromotionInput,
+    @Body() input: CreatePromotionDto,
   ): Promise<PromotionResponse> {
     return toPromotionResponse(await this.createPromotion.execute(this.tenantContext.tenantIdOrThrow(), input));
   }
 
   @RequirePermissions('tenant.promotions.manage')
   @Get(':id/usage-stats')
+  @UuidParam()
+  @ApiOperation({ summary: 'Usage statistics for a promotion' })
+  @ApiOkResponse({ type: PromoUsageStatsResponseDto })
   async stats(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<PromoUsageStatsResponse> {
@@ -59,9 +76,12 @@ export class TenantPromotionController {
   @RequirePermissions('tenant.promotions.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':id')
+  @UuidParam()
+  @ApiOperation({ summary: 'Update a promotion' })
+  @ApiOkResponse({ type: PromotionResponseDto })
   async update(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(updatePromotionInputSchema)) input: UpdatePromotionInput,
+    @Body() input: UpdatePromotionDto,
   ): Promise<PromotionResponse> {
     return toPromotionResponse(await this.updatePromotion.execute(this.tenantContext.tenantIdOrThrow(), id, input));
   }
@@ -69,6 +89,9 @@ export class TenantPromotionController {
   @RequirePermissions('tenant.promotions.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/end')
+  @UuidParam()
+  @ApiOperation({ summary: 'End a promotion' })
+  @ApiCreatedResponse({ type: PromotionResponseDto })
   async end(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<PromotionResponse> {

@@ -1,14 +1,12 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { z } from 'zod';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-  bookingStatusSchema,
-  reasonInputSchema,
   uuidSchema,
   type BookingResponse,
   type CancelBookingResponse,
-  type ReasonInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -19,13 +17,13 @@ import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
-
-/** Query filters for the tenant booking overview (Task 1.13). */
-const tenantBookingsQuerySchema = z.object({
-  status: bookingStatusSchema.optional(),
-  partnerId: uuidSchema.optional(),
-});
-type TenantBookingsQuery = z.infer<typeof tenantBookingsQuerySchema>;
+import {
+  BookingResponseDto,
+  CancelBookingResponseDto,
+  PartnerBookingStatsResponseDto,
+  ReasonDto,
+  TenantBookingsQueryDto,
+} from './dto/booking.dto';
 
 /** Partner booking health for the tenant dashboard — counts plus derived rates. */
 interface PartnerBookingStatsResponse {
@@ -46,6 +44,7 @@ interface PartnerBookingStatsResponse {
  * cancellation / no-show rates (§7.3), and can cancel a booking (a tenant cancel
  * is always a 100% refund, §8.2). Scope via x-tenant-id.
  */
+@ApiTags('tenant-bookings')
 @Controller('tenant/bookings')
 export class TenantBookingController {
   constructor(
@@ -58,8 +57,10 @@ export class TenantBookingController {
 
   @RequirePermissions('tenant.bookings.read')
   @Get()
+  @ApiOperation({ summary: 'List bookings across the tenant' })
+  @ApiOkResponse({ type: [BookingResponseDto] })
   async list(
-    @Query(new ZodValidationPipe(tenantBookingsQuerySchema)) query: TenantBookingsQuery,
+    @Query() query: TenantBookingsQueryDto,
   ): Promise<BookingResponse[]> {
     const items = await this.listBookings.execute(this.tenantContext.tenantIdOrThrow(), {
       status: query.status,
@@ -70,6 +71,8 @@ export class TenantBookingController {
 
   @RequirePermissions('tenant.bookings.read')
   @Get('partner-stats')
+  @ApiOperation({ summary: 'Per-partner booking health (cancellation / no-show rates)' })
+  @ApiOkResponse({ type: [PartnerBookingStatsResponseDto] })
   async partnerBookingStats(): Promise<PartnerBookingStatsResponse[]> {
     const stats = await this.partnerStats.execute(this.tenantContext.tenantIdOrThrow());
     return stats.map((s) => ({
@@ -82,6 +85,9 @@ export class TenantBookingController {
   /** Single booking for the tenant detail view (Task 1.13). */
   @RequirePermissions('tenant.bookings.read')
   @Get(':id')
+  @ApiOperation({ summary: 'Get a tenant booking by id' })
+  @UuidParam()
+  @ApiOkResponse({ type: BookingResponseDto })
   async detail(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<BookingResponse> {
@@ -93,9 +99,12 @@ export class TenantBookingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/cancel')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Tenant cancels a booking (always a 100% refund)' })
+  @UuidParam()
+  @ApiOkResponse({ type: CancelBookingResponseDto })
   async cancel(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(reasonInputSchema)) body: ReasonInput,
+    @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<CancelBookingResponse> {
     const result = await this.cancelBooking.execute(this.tenantContext.tenantIdOrThrow(), id, 'tenant', {

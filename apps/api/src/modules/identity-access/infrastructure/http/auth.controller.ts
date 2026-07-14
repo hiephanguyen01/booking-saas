@@ -1,19 +1,19 @@
 import { Body, Controller, Get, HttpCode, Ip, Post, Req, Res } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
-import {
-  loginInputSchema,
-  registerInputSchema,
-  upgradeGuestInputSchema,
-  type AuthSessionResponse,
-  type LoginInput,
-  type RegisterInput,
-  type SessionInfoResponse,
-  type UpgradeGuestInput,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { type AuthSessionResponse, type SessionInfoResponse } from '@booking/shared';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
+import {
+  AuthSessionResponseDto,
+  CurrentUserDto,
+  LoginDto,
+  RefreshResponseDto,
+  RegisterDto,
+  SessionInfoResponseDto,
+  UpgradeGuestDto,
+} from './dto/auth.dto';
 import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
@@ -39,6 +39,7 @@ function toResponse(user: UserRecord, tokens: SessionTokens): AuthSessionRespons
   };
 }
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -52,8 +53,10 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @ApiOperation({ summary: 'Register a new account and start a session' })
+  @ApiOkResponse({ type: AuthSessionResponseDto })
   async register(
-    @Body(new ZodValidationPipe(registerInputSchema)) input: RegisterInput,
+    @Body() input: RegisterDto,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
     @Ip() ip: string,
@@ -75,8 +78,10 @@ export class AuthController {
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('upgrade-guest')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Set a password on a guest account and sign in' })
+  @ApiOkResponse({ type: AuthSessionResponseDto })
   async upgradeGuest(
-    @Body(new ZodValidationPipe(upgradeGuestInputSchema)) input: UpgradeGuestInput,
+    @Body() input: UpgradeGuestDto,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
     @Ip() ip: string,
@@ -93,8 +98,10 @@ export class AuthController {
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('login')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Log in with email + password' })
+  @ApiOkResponse({ type: AuthSessionResponseDto })
   async login(
-    @Body(new ZodValidationPipe(loginInputSchema)) input: LoginInput,
+    @Body() input: LoginDto,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
     @Ip() ip: string,
@@ -110,6 +117,8 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Rotate the session using the refresh cookie' })
+  @ApiOkResponse({ type: RefreshResponseDto })
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -132,6 +141,8 @@ export class AuthController {
 
   @AuthenticatedOnly()
   @Get('me')
+  @ApiOperation({ summary: 'Current user identity' })
+  @ApiOkResponse({ type: CurrentUserDto })
   me(@CurrentPrincipal() principal: SessionPrincipal) {
     return {
       id: principal.userId,
@@ -146,6 +157,8 @@ export class AuthController {
   /** Identity + every scope membership with resolved permissions (dashboard shell gating). */
   @AuthenticatedOnly()
   @Get('session')
+  @ApiOperation({ summary: 'Identity + every scope membership with resolved permissions' })
+  @ApiOkResponse({ type: SessionInfoResponseDto })
   async session(@CurrentPrincipal() principal: SessionPrincipal): Promise<SessionInfoResponse> {
     const scopes = await this.getSessionInfoUseCase.execute(principal.userId);
     return {

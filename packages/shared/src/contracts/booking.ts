@@ -86,75 +86,80 @@ export type MarkReturnedInput = z.infer<typeof markReturnedInputSchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
-export interface BookingResponse {
-  id: string;
-  code: string;
-  status: BookingStatus;
-  listingId: string;
-  resourceId: string;
-  partnerId: string;
-  bookingMode: string;
-  startUtc: string;
-  endUtc: string;
-  guestCount: number;
-  quantity: number;
+export const bookingResponseSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  status: bookingStatusSchema,
+  listingId: z.string(),
+  resourceId: z.string(),
+  partnerId: z.string(),
+  bookingMode: z.string(),
+  startUtc: z.string(),
+  endUtc: z.string(),
+  guestCount: z.number(),
+  quantity: z.number(),
   /** VND đồng digit strings. */
-  totalAmount: string;
-  discountAmount: string;
-  finalAmount: string;
-  depositAmount: string;
-  paidAmount: string;
+  totalAmount: z.string(),
+  discountAmount: z.string(),
+  finalAmount: z.string(),
+  depositAmount: z.string(),
+  paidAmount: z.string(),
   /** Inventory (§9.4): refundable deposit + fulfillment state. */
-  securityDeposit: string;
-  pickedUpAt: string | null;
-  returnedAt: string | null;
-  damageAmount: string;
-  customerNote: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-}
+  securityDeposit: z.string(),
+  pickedUpAt: z.string().nullable(),
+  returnedAt: z.string().nullable(),
+  damageAmount: z.string(),
+  customerNote: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type BookingResponse = z.infer<typeof bookingResponseSchema>;
 
 /** Returned when cancelling — includes the computed (not yet executed) refund. */
-export interface CancelBookingResponse extends BookingResponse {
-  refundAmount: string;
-  refundPercent: number;
-}
+export const cancelBookingResponseSchema = bookingResponseSchema.extend({
+  refundAmount: z.string(),
+  refundPercent: z.number(),
+});
+export type CancelBookingResponse = z.infer<typeof cancelBookingResponseSchema>;
 
 /** Returned when an inventory rental is returned — the deposit settlement (§9.4). */
-export interface ReturnBookingResponse extends BookingResponse {
-  lateFee: string;
-  depositRefund: string;
-  depositShortfall: string;
-}
+export const returnBookingResponseSchema = bookingResponseSchema.extend({
+  lateFee: z.string(),
+  depositRefund: z.string(),
+  depositShortfall: z.string(),
+});
+export type ReturnBookingResponse = z.infer<typeof returnBookingResponseSchema>;
 
 /** OTP issuance — `devOtp` is only populated outside production for testing. */
-export interface BookingOtpResponse {
-  code: string;
-  expiresInSec: number;
-  devOtp?: string;
-}
+export const bookingOtpResponseSchema = z.object({
+  code: z.string(),
+  expiresInSec: z.number(),
+  devOtp: z.string().optional(),
+});
+export type BookingOtpResponse = z.infer<typeof bookingOtpResponseSchema>;
 
 /**
  * Wire shape of the partner master-calendar feed (`GET /partner/bookings`, Task
  * 1.14). Amounts are VND đồng digit strings; instants are UTC ISO strings.
  */
-export interface PartnerCalendarBookingResponse {
-  id: string;
-  code: string;
-  status: BookingStatus;
-  listingId: string;
-  listingTitle: string;
-  listingTypeId: string;
-  listingTypeName: string;
-  resourceId: string;
-  bookingMode: string;
-  startUtc: string;
-  endUtc: string;
-  guestCount: number;
-  quantity: number;
-  finalAmount: string;
+export const partnerCalendarBookingResponseSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  status: bookingStatusSchema,
+  listingId: z.string(),
+  listingTitle: z.string(),
+  listingTypeId: z.string(),
+  listingTypeName: z.string(),
+  resourceId: z.string(),
+  bookingMode: z.string(),
+  startUtc: z.string(),
+  endUtc: z.string(),
+  guestCount: z.number(),
+  quantity: z.number(),
+  finalAmount: z.string(),
   /** Inventory (§9.4) fulfillment state — drives the partner pick-up/return actions. */
-  securityDeposit: string;
-  pickedUpAt: string | null;
-  returnedAt: string | null;
-}
+  securityDeposit: z.string(),
+  pickedUpAt: z.string().nullable(),
+  returnedAt: z.string().nullable(),
+});
+export type PartnerCalendarBookingResponse = z.infer<typeof partnerCalendarBookingResponseSchema>;

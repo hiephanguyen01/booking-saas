@@ -1,24 +1,22 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import {
-  addDomainInputSchema,
-  assignSubscriptionInputSchema,
-  createTenantInputSchema,
-  paginationQuerySchema,
-  updateTenantInputSchema,
+  ApiAcceptedResponse,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
   uuidSchema,
-  type AddDomainInput,
-  type AssignSubscriptionInput,
-  type CreateTenantInput,
   type DomainResponse,
   type DomainVerificationResult,
   type Paginated,
-  type PaginationQuery,
   type PlanResponse,
   type SubscriptionResponse,
   type TenantResponse,
-  type UpdateTenantInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
 import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use-case';
@@ -35,8 +33,22 @@ import {
   toSubscriptionResponse,
   toTenantResponse,
 } from '../../application/tenancy.mapper';
+import {
+  AddDomainDto,
+  AssignSubscriptionDto,
+  CreatedTenantDto,
+  CreateTenantDto,
+  CurrentSubscriptionDto,
+  DomainResponseDto,
+  DomainVerificationResultDto,
+  PaginationQueryDto,
+  SubscriptionResponseDto,
+  TenantResponseDto,
+  UpdateTenantDto,
+} from './dto/tenancy.dto';
 
 /** Platform-admin tenant management (§19 `/admin/tenants`). */
+@ApiTags('admin: tenants')
 @Controller('admin/tenants')
 export class AdminTenantController {
   constructor(
@@ -53,8 +65,10 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.write')
   @Post()
+  @ApiOperation({ summary: 'Create a tenant and its primary domain' })
+  @ApiCreatedResponse({ type: CreatedTenantDto })
   async create(
-    @Body(new ZodValidationPipe(createTenantInputSchema)) input: CreateTenantInput,
+    @Body() input: CreateTenantDto,
   ): Promise<TenantResponse & { primaryDomain: DomainResponse }> {
     const { tenant, primaryDomain } = await this.createTenant.execute(input);
     return { ...toTenantResponse(tenant), primaryDomain: toDomainResponse(primaryDomain) };
@@ -62,15 +76,18 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.read')
   @Get()
-  async list(
-    @Query(new ZodValidationPipe(paginationQuerySchema)) query: PaginationQuery,
-  ): Promise<Paginated<TenantResponse>> {
+  @ApiOperation({ summary: 'List tenants (paginated)' })
+  @ApiPaginatedResponse(TenantResponseDto)
+  async list(@Query() query: PaginationQueryDto): Promise<Paginated<TenantResponse>> {
     const { items, total } = await this.listTenants.execute(query);
     return { items: items.map(toTenantResponse), page: query.page, pageSize: query.pageSize, total };
   }
 
   @RequirePermissions('platform.tenants.read')
   @Get(':id')
+  @ApiOperation({ summary: 'Get a tenant by id' })
+  @UuidParam()
+  @ApiOkResponse({ type: TenantResponseDto })
   async get(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<TenantResponse> {
@@ -79,24 +96,33 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.write')
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a tenant' })
+  @UuidParam()
+  @ApiOkResponse({ type: TenantResponseDto })
   async update(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(updateTenantInputSchema)) input: UpdateTenantInput,
+    @Body() input: UpdateTenantDto,
   ): Promise<TenantResponse> {
     return toTenantResponse(await this.updateTenant.execute(id, input));
   }
 
   @RequirePermissions('platform.subscriptions.manage')
   @Post(':id/subscription')
+  @ApiOperation({ summary: 'Assign a subscription to a tenant' })
+  @UuidParam()
+  @ApiCreatedResponse({ type: SubscriptionResponseDto })
   async subscribe(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(assignSubscriptionInputSchema)) input: AssignSubscriptionInput,
+    @Body() input: AssignSubscriptionDto,
   ): Promise<SubscriptionResponse> {
     return toSubscriptionResponse(await this.assignSubscription.execute(id, input));
   }
 
   @RequirePermissions('platform.tenants.read')
   @Get(':id/subscription')
+  @ApiOperation({ summary: "Get a tenant's current subscription and plan" })
+  @UuidParam()
+  @ApiOkResponse({ type: CurrentSubscriptionDto })
   async subscription(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<{ subscription: SubscriptionResponse; plan: PlanResponse | null } | null> {
@@ -110,6 +136,9 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.read')
   @Get(':id/domains')
+  @ApiOperation({ summary: "List a tenant's custom domains" })
+  @UuidParam()
+  @ApiOkResponse({ type: [DomainResponseDto] })
   async domains(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<DomainResponse[]> {
@@ -118,9 +147,12 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.write')
   @Post(':id/domains')
+  @ApiOperation({ summary: 'Add a custom domain to a tenant' })
+  @UuidParam()
+  @ApiCreatedResponse({ type: DomainResponseDto })
   async createDomain(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(addDomainInputSchema)) input: AddDomainInput,
+    @Body() input: AddDomainDto,
   ): Promise<DomainResponse> {
     return toDomainResponse(await this.addDomain.execute(id, input));
   }
@@ -128,6 +160,10 @@ export class AdminTenantController {
   @RequirePermissions('platform.tenants.write')
   @Post(':id/domains/:domainId/verify')
   @HttpCode(202)
+  @ApiOperation({ summary: 'Trigger custom-domain verification' })
+  @UuidParam()
+  @UuidParam('domainId')
+  @ApiAcceptedResponse({ type: DomainVerificationResultDto })
   async verify(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Param('domainId', new ZodValidationPipe(uuidSchema)) domainId: string,

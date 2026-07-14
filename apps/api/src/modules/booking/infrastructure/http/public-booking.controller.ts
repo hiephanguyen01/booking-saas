@@ -13,17 +13,20 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
+import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import {
-  cancelBookingInputSchema,
-  createBookingInputSchema,
   type BookingOtpResponse,
   type BookingResponse,
-  type CancelBookingInput,
   type CancelBookingResponse,
-  type CreateBookingInput,
 } from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import {
+  BookingOtpResponseDto,
+  BookingResponseDto,
+  CancelBookingDto,
+  CancelBookingResponseDto,
+  CreateBookingDto,
+} from './dto/booking.dto';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -42,6 +45,7 @@ import { toBookingResponse, toCancelResponse } from '../../application/booking.m
 const MOCK_PAY_ENABLED = process.env.ALLOW_MOCK_PAYMENTS === 'true';
 
 /** Storefront booking (§8/§8.6). Tenant resolved from Host (BFF). */
+@ApiTags('public-bookings')
 @Controller('public')
 export class PublicBookingController {
   constructor(
@@ -55,8 +59,10 @@ export class PublicBookingController {
 
   @Public()
   @Post('bookings')
+  @ApiOperation({ summary: 'Create a booking from the storefront' })
+  @ApiCreatedResponse({ type: BookingResponseDto })
   async create(
-    @Body(new ZodValidationPipe(createBookingInputSchema)) input: CreateBookingInput,
+    @Body() input: CreateBookingDto,
     @Req() req: Request,
     @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<BookingResponse> {
@@ -69,6 +75,8 @@ export class PublicBookingController {
 
   @AuthenticatedOnly()
   @Get('my-bookings')
+  @ApiOperation({ summary: "The current customer's bookings for this tenant" })
+  @ApiOkResponse({ type: [BookingResponseDto] })
   async myBookings(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Req() req: Request,
@@ -81,6 +89,9 @@ export class PublicBookingController {
   @Public()
   @Post('bookings/:code/request-otp')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Request an email OTP to access a booking by code' })
+  @ApiParam({ name: 'code', type: 'string' })
+  @ApiOkResponse({ type: BookingOtpResponseDto })
   async requestOtp(@Param('code') code: string, @Req() req: Request): Promise<BookingOtpResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
     return this.lookup.requestOtp(tenant.id, code);
@@ -88,6 +99,9 @@ export class PublicBookingController {
 
   @Public()
   @Get('bookings/:code')
+  @ApiOperation({ summary: 'View a booking by code (session or OTP)' })
+  @ApiParam({ name: 'code', type: 'string' })
+  @ApiOkResponse({ type: BookingResponseDto })
   async view(
     @Param('code') code: string,
     @Req() req: Request,
@@ -104,9 +118,12 @@ export class PublicBookingController {
   @Public()
   @Post('bookings/:code/cancel')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Customer cancels a booking by code (session or OTP)' })
+  @ApiParam({ name: 'code', type: 'string' })
+  @ApiOkResponse({ type: CancelBookingResponseDto })
   async cancel(
     @Param('code') code: string,
-    @Body(new ZodValidationPipe(cancelBookingInputSchema)) body: CancelBookingInput,
+    @Body() body: CancelBookingDto,
     @Req() req: Request,
   ): Promise<CancelBookingResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
@@ -123,6 +140,9 @@ export class PublicBookingController {
   @Public()
   @Post('bookings/:code/mock-pay')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Dev-only: simulate a successful payment for a booking' })
+  @ApiParam({ name: 'code', type: 'string' })
+  @ApiOkResponse({ type: BookingResponseDto })
   async mockPay(@Param('code') code: string, @Req() req: Request): Promise<BookingResponse> {
     if (!MOCK_PAY_ENABLED) {
       throw new NotFoundException({ statusCode: 404, code: 'NOT_FOUND', message: 'Not found' });
