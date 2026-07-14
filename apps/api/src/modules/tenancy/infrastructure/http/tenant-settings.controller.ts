@@ -11,6 +11,7 @@ import {
   uuidSchema,
   type DomainResponse,
   type DomainVerificationResult,
+  type PartnerPromotionsToggle,
   type SubscriptionStatusResponse,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
@@ -30,6 +31,7 @@ import {
   AddDomainDto,
   DomainResponseDto,
   DomainVerificationResultDto,
+  PartnerPromotionsToggleDto,
   SubscriptionStatusResponseDto,
   TenantThemeResponseDto,
   UpdateThemeDto,
@@ -78,6 +80,30 @@ export class TenantSettingsController {
       new Date(),
     );
     return toSubscriptionStatusResponse(view);
+  }
+
+  // ── Feature flags ─────────────────────────────────────────────────────────────
+
+  @RequirePermissions('tenant.settings.manage')
+  @Get('flags')
+  @ApiOperation({ summary: 'Read tenant feature flags (e.g. partner promotions)' })
+  @ApiOkResponse({ type: PartnerPromotionsToggleDto })
+  async flags(): Promise<PartnerPromotionsToggle> {
+    const tenant = await this.getTenant.execute(this.tenantContext.tenantIdOrThrow());
+    return { partnerPromotionsEnabled: tenant.settings?.partnerPromotionsEnabled === true };
+  }
+
+  @RequirePermissions('tenant.settings.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Patch('flags')
+  @ApiOperation({ summary: 'Toggle whether partners may create their own promotions (§12.2)' })
+  @ApiOkResponse({ type: PartnerPromotionsToggleDto })
+  async updateFlags(@Body() input: PartnerPromotionsToggleDto): Promise<PartnerPromotionsToggle> {
+    const tenantId = this.tenantContext.tenantIdOrThrow();
+    const current = await this.getTenant.execute(tenantId);
+    const settings = { ...current.settings, partnerPromotionsEnabled: input.partnerPromotionsEnabled };
+    const updated = await this.updateTenant.execute(tenantId, { settings });
+    return { partnerPromotionsEnabled: updated.settings?.partnerPromotionsEnabled === true };
   }
 
   // ── Theme ───────────────────────────────────────────────────────────────────

@@ -70,6 +70,9 @@ export class ConfirmBookingUseCase {
           bookingId: booking.id,
           customerId: booking.customerId,
           discountAmount: booking.discountAmount,
+          // The discount was already granted at booking time — a late-webhook restore
+          // must not re-block on the per-customer cap (§8.2 accepts a temporary overshoot).
+          usageLimitPerCustomer: null,
         });
       } catch (err) {
         if (err instanceof ConflictException) {

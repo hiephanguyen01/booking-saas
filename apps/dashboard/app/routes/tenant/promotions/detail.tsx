@@ -15,6 +15,7 @@ import { formatVnd } from '../format';
 import { PageHeader, StatCard } from '../components/page';
 import { PromotionStatusBadge } from '../components/status';
 import { PromotionForm, readPromotionForm } from '../components/promotion-form';
+import { loadScopeOptions } from './scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Tenant · Bookify' }];
@@ -22,13 +23,14 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.promotions.manage');
-  const [listRes, statsRes] = await Promise.all([
+  const [listRes, statsRes, scopeOptions] = await Promise.all([
     apiGet<PromotionResponse[]>('/tenant/promotions', auth),
     apiGet<PromoUsageStatsResponse>(`/tenant/promotions/${params.promotionId}/usage-stats`, auth),
+    loadScopeOptions(auth),
   ]);
   const promotion = listRes.ok ? (listRes.data ?? []).find((p) => p.id === params.promotionId) : null;
   if (!promotion) throw new Response('Không tìm thấy khuyến mãi', { status: 404 });
-  return { promotion, stats: statsRes.ok ? statsRes.data : null };
+  return { promotion, stats: statsRes.ok ? statsRes.data : null, scopeOptions };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -54,10 +56,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function PromotionDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { promotion, stats } = loaderData;
+  const { promotion, stats, scopeOptions } = loaderData;
   const error = actionData && 'error' in actionData ? actionData.error : null;
   const nav = useNavigation();
   const ended = promotion.status === 'ended';
+  const partnerFundedPending = promotion.fundedBy === 'partner' && promotion.partnerOptInAt == null;
 
   return (
     <div className="space-y-6">
@@ -73,6 +76,15 @@ export default function PromotionDetail({ loaderData, actionData }: Route.Compon
 
       {error ? (
         <Alert variant="destructive"><CircleAlert className="size-4" /><AlertDescription>{error}</AlertDescription></Alert>
+      ) : null}
+
+      {partnerFundedPending ? (
+        <Alert>
+          <CircleAlert className="size-4" />
+          <AlertDescription>
+            Khuyến mãi do đối tác tài trợ — <strong>chưa có hiệu lực</strong> cho tới khi đối tác đồng ý (opt-in).
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       {stats ? (
@@ -95,7 +107,7 @@ export default function PromotionDetail({ loaderData, actionData }: Route.Compon
           {ended ? (
             <p className="text-sm text-muted-foreground">Không còn thao tác nào khả dụng.</p>
           ) : (
-            <PromotionForm mode="edit" promotion={promotion} submitLabel="Lưu thay đổi" />
+            <PromotionForm mode="edit" promotion={promotion} submitLabel="Lưu thay đổi" scopeOptions={scopeOptions} />
           )}
         </CardContent>
       </Card>

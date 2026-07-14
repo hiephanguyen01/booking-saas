@@ -517,6 +517,53 @@ async function seedDemo(): Promise<void> {
     },
   });
 
+  // ── Advanced promotions (Phase 2, §12) ───────────────────────────────────────
+  // Let partners create their own codes on this tenant (the per-tenant toggle).
+  await prisma.tenant.update({
+    where: { id: tenant.id },
+    data: { settings: { ...(tenant.settings as Record<string, unknown>), partnerPromotionsEnabled: true } },
+  });
+
+  // An auto-applied campaign (no code) — off-peak Fri/Sat evenings on Studio listings.
+  if (!(await prisma.promotion.findFirst({ where: { tenantId: tenant.id, name: 'Giờ vàng cuối tuần' } }))) {
+    await prisma.promotion.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Giờ vàng cuối tuần',
+        code: null, // auto-applied — no code needed
+        discountType: 'percent',
+        discountValue: 15n,
+        maxDiscount: 300_000n,
+        fundedBy: 'tenant',
+        appliesTo: 'listing_type',
+        appliesToId: studioType.id,
+        timeWindows: [{ days: [5, 6], from: '18:00', to: '23:00' }],
+        status: 'active',
+        startsAt: new Date(),
+      },
+    });
+  }
+
+  // A tenant-created partner-funded code, pending the partner's opt-in (gated until accepted).
+  await prisma.promotion.upsert({
+    where: { tenantId_code: { tenantId: tenant.id, code: 'PARTNER15' } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      name: 'Đối tác tài trợ 15%',
+      code: 'PARTNER15',
+      discountType: 'percent',
+      discountValue: 15n,
+      fundedBy: 'partner',
+      appliesTo: 'listing',
+      appliesToId: studioA.id,
+      fundingPartnerId: partner.id,
+      partnerOptInAt: null, // pending — will not apply until the partner opts in (§12.2)
+      status: 'active',
+      startsAt: new Date(),
+    },
+  });
+
   // ── Platform-health fixtures (Task 1.12 admin board) ────────────────────────
   // Without realized bookings/payouts/failures the health board renders all
   // zeros. Seed a small, idempotent scenario so GMV, gmv30d, bookings30d,

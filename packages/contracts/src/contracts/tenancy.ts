@@ -66,6 +66,10 @@ export const updateTenantInputSchema = z
   .partial();
 export type UpdateTenantInput = z.infer<typeof updateTenantInputSchema>;
 
+/** Tenant toggle for partner-created promotions (§12.2). */
+export const partnerPromotionsToggleSchema = z.object({ partnerPromotionsEnabled: z.boolean() });
+export type PartnerPromotionsToggle = z.infer<typeof partnerPromotionsToggleSchema>;
+
 export const createPlanInputSchema = z.object({
   name: z.string().min(1).max(120),
   /** VND đồng as a digit string (money never travels as a JS number). */

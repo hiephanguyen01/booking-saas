@@ -19,7 +19,8 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { CheckCircle2, CircleAlert, Clock, Globe, Trash2 } from 'lucide-react';
-import { Form, data as routeData, useNavigation } from 'react-router';
+import { Form, data as routeData, useNavigation, useSubmit } from 'react-router';
+import { Switch } from '@booking/ui/components/ui/switch';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { useTenantArea } from '../area-context';
 import { PageHeader } from '../components/page';
@@ -40,12 +41,15 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request);
-  const [themeRes, domainsRes] = await Promise.all([
+  const [themeRes, domainsRes, flagsRes] = await Promise.all([
     can('tenant.theme.manage')
       ? apiGet<TenantThemeResponse>('/tenant/theme', auth)
       : Promise.resolve(null),
     can('tenant.settings.manage')
       ? apiGet<DomainResponse[]>('/tenant/domains', auth)
+      : Promise.resolve(null),
+    can('tenant.settings.manage')
+      ? apiGet<{ partnerPromotionsEnabled: boolean }>('/tenant/settings/flags', auth)
       : Promise.resolve(null),
   ]);
   return {
@@ -53,6 +57,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     domains: domainsRes?.ok ? (domainsRes.data ?? []) : null,
     canTheme: can('tenant.theme.manage'),
     canDomains: can('tenant.settings.manage'),
+    partnerPromotionsEnabled: flagsRes?.ok ? (flagsRes.data?.partnerPromotionsEnabled ?? false) : false,
   };
 }
 
@@ -104,6 +109,14 @@ export async function action({ request }: Route.ActionArgs) {
 
   const formData = await request.formData();
   const intent = String(formData.get('intent'));
+
+  if (intent === 'toggle-partner-promos') {
+    const enabled = formData.get('partnerPromotionsEnabled') === 'true';
+    const res = await apiPatch('/tenant/settings/flags', { partnerPromotionsEnabled: enabled }, auth);
+    if (!res.ok)
+      return routeData({ form: 'flags', error: res.error ?? 'Không lưu được cài đặt.' }, { status: 400 });
+    return { form: 'flags', ok: true };
+  }
 
   if (intent === 'verify-domain') {
     const id = String(formData.get('domainId'));
@@ -254,10 +267,11 @@ function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
 }
 
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
-  const { theme, domains, canTheme, canDomains } = loaderData;
+  const { theme, domains, canTheme, canDomains, partnerPromotionsEnabled } = loaderData;
   const { readOnly } = useTenantArea();
   const nav = useNavigation();
   const busy = nav.state !== 'idle';
+  const submit = useSubmit();
 
   const errFor = (form: string): string | null => {
     if (
@@ -432,6 +446,41 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 fieldErrors={domainFieldErrors}
               />
             </fieldset>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canDomains ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Marketplace</CardTitle>
+            <CardDescription>
+              Cho phép đối tác tự tạo mã khuyến mãi cho listing của họ (đối tác chịu chi phí, §12.2).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {errFor('flags') ? (
+              <Alert variant="destructive" className="mb-4">
+                <CircleAlert className="size-4" />
+                <AlertDescription>{errFor('flags')}</AlertDescription>
+              </Alert>
+            ) : null}
+            <label className="flex items-center justify-between gap-4">
+              <span className="text-sm">
+                Đối tác được tạo khuyến mãi
+                <span className="block text-muted-foreground">{partnerPromotionsEnabled ? 'Đang bật' : 'Đang tắt'}</span>
+              </span>
+              <Switch
+                checked={partnerPromotionsEnabled}
+                disabled={readOnly || busy}
+                onCheckedChange={(checked) => {
+                  const fd = new FormData();
+                  fd.set('intent', 'toggle-partner-promos');
+                  fd.set('partnerPromotionsEnabled', checked ? 'true' : 'false');
+                  submit(fd, { method: 'post' });
+                }}
+              />
+            </label>
           </CardContent>
         </Card>
       ) : null}

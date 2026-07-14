@@ -1,12 +1,12 @@
 import { data, redirect, Form, Link, useSearchParams } from 'react-router';
-import type { CreateBookingInput, ValidatePromoResponse } from '@booking/contracts';
+import type { AutoCampaignResponse, CreateBookingInput, ValidatePromoResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Separator } from '@booking/ui/components/ui/separator';
 import type { Route } from '../../routes/+types/checkout';
 import { fetchListing, fetchQuote } from '../../lib/catalog.server';
-import { validatePromo, createBooking, checkoutBooking } from '../../lib/booking.server';
+import { validatePromo, resolveAutoCampaign, createBooking, checkoutBooking } from '../../lib/booking.server';
 import { appendRecentCookie } from '../../lib/recent.server';
 import { readRefCode } from '../../lib/affiliate.server';
 import { resolveTenant } from '../../lib/tenant.server';
@@ -36,17 +36,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!listing) throw redirect('/');
   if (!quote) throw redirect(`/l/${slug}`);
 
+  // A customer-entered code wins over auto-campaigns (§12.1). Only look up the best
+  // auto-campaign when no code is applied.
   let promo: ValidatePromoResponse | null = null;
+  let autoCampaign: AutoCampaignResponse = null;
   if (promoCode) {
     const result = await validatePromo(request, {
       code: promoCode,
       listingId: listing.id,
       amount: quote.subtotal,
+      start,
+      end,
     });
     promo = result.data;
+  } else {
+    const result = await resolveAutoCampaign(request, {
+      listingId: listing.id,
+      amount: quote.subtotal,
+      start,
+      end,
+    });
+    autoCampaign = result.data ?? null;
   }
 
-  return { listing, mode, start, end, qty, quote, promoCode, promo };
+  return { listing, mode, start, end, qty, quote, promoCode, promo, autoCampaign };
 }
 
 type GuestFields = { fullName: string; email: string; phone: string };
@@ -123,17 +136,19 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Checkout({ loaderData, actionData }: Route.ComponentProps) {
-  const { listing, mode, start, end, qty, quote, promoCode, promo } = loaderData;
+  const { listing, mode, start, end, qty, quote, promoCode, promo, autoCampaign } = loaderData;
   const { t } = useT();
   const [sp] = useSearchParams();
   const fieldErrors = actionData?.fieldErrors ?? null;
   const serverError = actionData?.error ?? null;
 
-  const discount = promo?.valid ? promo.discountAmount : '0';
-  const finalAmount = promo?.valid ? promo.finalAmount : quote.subtotal;
-  const dueNow = promo?.valid
-    ? subtractDeposit(quote, promo)
-    : quote.depositAmount;
+  // A valid code wins; otherwise an auto-campaign applies (§12.1).
+  const applied: { discountAmount: string; finalAmount: string } | null = promo?.valid
+    ? promo
+    : autoCampaign;
+  const discount = applied ? applied.discountAmount : '0';
+  const finalAmount = applied ? applied.finalAmount : quote.subtotal;
+  const dueNow = applied ? subtractDeposit(quote, applied) : quote.depositAmount;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
@@ -176,6 +191,7 @@ export default function Checkout({ loaderData, actionData }: Route.ComponentProp
             searchParams={sp}
             promoCode={promoCode}
             promo={promo}
+            autoCampaign={autoCampaign}
             t={t}
           />
         </div>
@@ -184,10 +200,10 @@ export default function Checkout({ loaderData, actionData }: Route.ComponentProp
   );
 }
 
-function subtractDeposit(quote: { subtotal: string; depositAmount: string }, promo: ValidatePromoResponse): string {
+function subtractDeposit(quote: { subtotal: string; depositAmount: string }, applied: { finalAmount: string }): string {
   const subtotal = Number(quote.subtotal);
   const deposit = Number(quote.depositAmount);
-  const final = Number(promo.finalAmount);
+  const final = Number(applied.finalAmount);
   if (subtotal <= 0) return quote.depositAmount;
   const ratio = deposit / subtotal;
   return String(Math.round(final * ratio));
@@ -261,11 +277,13 @@ function PromoForm({
   searchParams,
   promoCode,
   promo,
+  autoCampaign,
   t,
 }: {
   searchParams: URLSearchParams;
   promoCode: string | null;
   promo: ValidatePromoResponse | null;
+  autoCampaign: AutoCampaignResponse;
   t: I18n['t'];
 }) {
   const hidden = ['listing', 'mode', 'start', 'end', 'qty'].map((k) => [k, searchParams.get(k) ?? ''] as const);
@@ -276,6 +294,11 @@ function PromoForm({
     <Card className="rounded-2xl border-border">
       <CardContent className="space-y-2 p-5">
         <div className="text-sm font-semibold">{t('checkout.promoSection')}</div>
+        {!applied && autoCampaign ? (
+          <div className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
+            {t('checkout.autoCampaign', { name: autoCampaign.name, amount: formatVnd(autoCampaign.discountAmount) ?? '' })}
+          </div>
+        ) : null}
         {applied ? (
           <div className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm">
             <span className="font-medium text-primary">

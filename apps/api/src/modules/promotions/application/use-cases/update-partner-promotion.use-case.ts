@@ -1,5 +1,5 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { UpdatePromotionInput } from '@booking/contracts';
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { UpdatePartnerPromotionInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { vnd } from '../../../../shared/money/money';
 import {
@@ -9,41 +9,33 @@ import {
   type UpdatePromotionData,
 } from '../../domain/ports/promotion-repository.port';
 import { normalizeCode } from '../apply-promotion.service';
-import { assertTenantShareRisk } from '../assert-tenant-share-risk';
-import { resolveFundingPartnerId } from '../resolve-funding-partner';
+import { assertPartnerOwnsScope } from '../assert-partner-owns-scope';
 
-/** Edit a promotion (§12.2). Historic bookings keep their immutable snapshot. */
+/** A partner edits one of its own promotions (§12.2). Scope stays within its inventory. */
 @Injectable()
-export class UpdatePromotionUseCase {
-  private readonly logger = new Logger(UpdatePromotionUseCase.name);
-
+export class UpdatePartnerPromotionUseCase {
   constructor(
     @Inject(PROMOTION_REPOSITORY) private readonly promotions: IPromotionRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async execute(tenantId: string, id: string, input: UpdatePromotionInput): Promise<PromotionRecord> {
+  async execute(
+    tenantId: string,
+    partnerId: string,
+    id: string,
+    input: UpdatePartnerPromotionInput,
+  ): Promise<PromotionRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.promotions.findById(tx, id);
       if (!existing) {
         throw new NotFoundException({ statusCode: 404, code: 'PROMO_NOT_FOUND', message: 'Promotion not found' });
       }
+      if (existing.createdByPartnerId !== partnerId) {
+        throw new ForbiddenException({ statusCode: 403, code: 'PROMO_NOT_OWNED', message: 'Not your promotion' });
+      }
       if (existing.status === 'ended') {
         throw new ConflictException({ statusCode: 409, code: 'PROMO_ENDED', message: 'An ended promotion cannot be edited' });
       }
-
-      const fundedBy = input.fundedBy ?? existing.fundedBy;
-
-      // §12.4: re-check the tenant-share risk against the merged discount details.
-      await assertTenantShareRisk(
-        tx,
-        {
-          fundedBy,
-          discountType: input.discountType ?? existing.discountType,
-          discountValue: input.discountValue !== undefined ? Number(input.discountValue) : Number(existing.discountValue),
-        },
-        this.logger,
-      );
 
       const data: UpdatePromotionData = {};
       if (input.name !== undefined) data.name = input.name;
@@ -59,29 +51,22 @@ export class UpdatePromotionUseCase {
       if (input.endsAt !== undefined) data.endsAt = new Date(input.endsAt);
       if (input.status !== undefined) data.status = input.status;
 
-      // Scope / funding changes re-resolve the funding partner and may reset the opt-in gate (§12.2).
-      const scopeTouched = input.fundedBy !== undefined || input.appliesTo !== undefined || input.appliesToId !== undefined;
-      const appliesTo = input.appliesTo ?? existing.appliesTo;
-      const appliesToId = appliesTo === 'all' ? null : (input.appliesToId ?? existing.appliesToId);
-      if (input.appliesTo !== undefined) data.appliesTo = appliesTo;
-      if (input.appliesTo !== undefined || input.appliesToId !== undefined) data.appliesToId = appliesToId;
-      if (scopeTouched) {
-        if (fundedBy === 'partner') {
-          data.fundedBy = 'partner';
-          const fundingPartnerId = await resolveFundingPartnerId(tx, appliesTo, appliesToId);
-          data.fundingPartnerId = fundingPartnerId;
-          // A different funding partner must opt in again before the promo applies to them.
-          if (fundingPartnerId !== existing.fundingPartnerId) data.partnerOptInAt = null;
-        } else {
-          data.fundedBy = 'tenant';
-          data.fundingPartnerId = null;
-          data.partnerOptInAt = null;
-        }
+      if (input.appliesTo !== undefined || input.appliesToId !== undefined) {
+        const appliesTo = input.appliesTo ?? existing.appliesTo;
+        const appliesToId = await assertPartnerOwnsScope(
+          tx,
+          partnerId,
+          appliesTo,
+          input.appliesToId ?? existing.appliesToId,
+        );
+        data.appliesTo = appliesTo;
+        data.appliesToId = appliesToId;
+        data.fundingPartnerId = partnerId; // still the partner's own inventory
       }
 
       if (input.code !== undefined) {
         if (input.code === null) {
-          data.code = null; // becomes a code-less auto-campaign
+          data.code = null;
         } else {
           const code = normalizeCode(input.code);
           if (code !== existing.code) {

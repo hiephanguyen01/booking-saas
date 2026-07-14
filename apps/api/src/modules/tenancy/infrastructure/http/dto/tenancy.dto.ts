@@ -8,6 +8,7 @@ import {
   domainResponseSchema,
   domainVerificationResultSchema,
   paginationQuerySchema,
+  partnerPromotionsToggleSchema,
   planResponseSchema,
   platformHealthResponseSchema,
   publicTenantResponseSchema,
@@ -28,6 +29,7 @@ export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
 /** Free-form storefront theme config body (§16.1). Stored as `tenants.theme_config`. */
 const updateThemeInputSchema = z.object({ themeConfig: z.record(z.unknown()) });
 export class UpdateThemeDto extends createZodDto(updateThemeInputSchema) {}
+export class PartnerPromotionsToggleDto extends createZodDto(partnerPromotionsToggleSchema) {}
 
 // ── Responses ────────────────────────────────────────────────────────────────
 export class PlanResponseDto extends createZodDto(planResponseSchema) {}

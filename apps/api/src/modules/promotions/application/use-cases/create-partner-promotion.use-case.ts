@@ -1,7 +1,8 @@
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
-import type { CreatePromotionInput } from '@booking/contracts';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import type { CreatePartnerPromotionInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { vnd } from '../../../../shared/money/money';
+import { utcNow } from '../../../../shared/time/time';
 import {
   PROMOTION_REPOSITORY,
   type CreatePromotionData,
@@ -9,25 +10,21 @@ import {
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
 import { normalizeCode } from '../apply-promotion.service';
-import { assertTenantShareRisk } from '../assert-tenant-share-risk';
-import { resolveFundingPartnerId } from '../resolve-funding-partner';
+import { assertPartnerOwnsScope } from '../assert-partner-owns-scope';
 
 /**
- * Create a promotion (§12.2). Phase 2: any scope, `funded_by = tenant|partner`,
- * per-customer / first-booking limits, off-peak windows, and code-less auto
- * campaigns. A tenant-created partner-funded promo is gated (`partnerOptInAt`
- * null) until the funding partner opts in (§12.2).
+ * A partner creates its own promotion (§12.2 Phase 2). Always partner-funded and
+ * auto-opted-in (the partner willingly bears the cost), scoped to the partner's own
+ * inventory. Gated by `PartnerPromotionsEnabledGuard` (the tenant toggle).
  */
 @Injectable()
-export class CreatePromotionUseCase {
-  private readonly logger = new Logger(CreatePromotionUseCase.name);
-
+export class CreatePartnerPromotionUseCase {
   constructor(
     @Inject(PROMOTION_REPOSITORY) private readonly promotions: IPromotionRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async execute(tenantId: string, input: CreatePromotionInput): Promise<PromotionRecord> {
+  async execute(tenantId: string, partnerId: string, input: CreatePartnerPromotionInput): Promise<PromotionRecord> {
     const code = input.code ? normalizeCode(input.code) : null;
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       if (code) {
@@ -36,19 +33,7 @@ export class CreatePromotionUseCase {
           throw new ConflictException({ statusCode: 409, code: 'PROMO_CODE_TAKEN', message: `Code "${code}" is already in use` });
         }
       }
-
-      // §12.4: block a tenant-funded discount certain to drive the tenant share negative; warn otherwise.
-      // (A partner-funded discount comes out of the partner's revenue — the guard no-ops for it.)
-      await assertTenantShareRisk(
-        tx,
-        { fundedBy: input.fundedBy, discountType: input.discountType, discountValue: Number(input.discountValue) },
-        this.logger,
-      );
-
-      const appliesToId = input.appliesTo === 'all' ? null : (input.appliesToId ?? null);
-      // A tenant-created partner-funded promo must resolve a single partner and starts un-opted-in.
-      const fundingPartnerId =
-        input.fundedBy === 'partner' ? await resolveFundingPartnerId(tx, input.appliesTo, appliesToId) : null;
+      const appliesToId = await assertPartnerOwnsScope(tx, partnerId, input.appliesTo, input.appliesToId ?? null);
 
       const data: CreatePromotionData = {
         name: input.name,
@@ -56,7 +41,7 @@ export class CreatePromotionUseCase {
         discountType: input.discountType,
         discountValue: vnd(input.discountValue),
         maxDiscount: input.maxDiscount !== undefined ? vnd(input.maxDiscount) : null,
-        fundedBy: input.fundedBy,
+        fundedBy: 'partner',
         appliesTo: input.appliesTo,
         appliesToId,
         minOrderAmount: input.minOrderAmount !== undefined ? vnd(input.minOrderAmount) : null,
@@ -67,9 +52,9 @@ export class CreatePromotionUseCase {
         startsAt: input.startsAt ? new Date(input.startsAt) : null,
         endsAt: input.endsAt ? new Date(input.endsAt) : null,
         status: input.status,
-        createdByPartnerId: null,
-        fundingPartnerId,
-        partnerOptInAt: null,
+        createdByPartnerId: partnerId,
+        fundingPartnerId: partnerId,
+        partnerOptInAt: utcNow(), // the partner created it → already opted in
       };
       return this.promotions.create(tx, tenantId, data);
     });

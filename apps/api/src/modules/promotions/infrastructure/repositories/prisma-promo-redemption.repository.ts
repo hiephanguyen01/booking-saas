@@ -64,4 +64,10 @@ export class PrismaPromoRedemptionRepository implements IPromoRedemptionReposito
       totalDiscount: r?.total_discount ?? 0n,
     };
   }
+
+  async countActiveByCustomer(tx: PrismaTx, promotionId: string, customerId: string): Promise<number> {
+    return tx.promoRedemption.count({
+      where: { promotionId, customerId, status: { not: 'released' } },
+    });
+  }
 }

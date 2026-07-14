@@ -620,6 +620,7 @@ model Partner {
   commissionRules      CommissionRule[]
   staff                Staff[]
   promotions           Promotion[]           @relation("PartnerCreatedPromotions")
+  fundedPromotions     Promotion[]           @relation("PartnerFundedPromotions")
   agreementAcceptances AgreementAcceptance[]
 
   @@unique([tenantId, slug])
@@ -1207,16 +1208,24 @@ model Promotion {
   endsAt                DateTime?             @map("ends_at") @db.Timestamptz(6)
   status                PromotionStatus       @default(draft)
   createdByPartnerId    String?               @map("created_by_partner_id") @db.Uuid
+  /// off-peak windows: `[{ days:[6,0], from:"18:00", to:"22:00" }]` (§12.1 Phase 2). null = always.
+  timeWindows           Json?                 @map("time_windows")
+  /// the partner bearing the cost for a `funded_by = partner` promo (resolved from scope, §12.2).
+  fundingPartnerId      String?               @map("funding_partner_id") @db.Uuid
+  /// gate for a tenant-created partner-funded promo: null = pending the partner's opt-in (§12.2).
+  partnerOptInAt        DateTime?             @map("partner_opt_in_at") @db.Timestamptz(6)
   createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdByPartner Partner?          @relation("PartnerCreatedPromotions", fields: [createdByPartnerId], references: [id], onDelete: SetNull)
+  fundingPartner   Partner?          @relation("PartnerFundedPromotions", fields: [fundingPartnerId], references: [id], onDelete: SetNull)
   redemptions      PromoRedemption[]
   bookings         Booking[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
+  @@index([fundingPartnerId])
   @@map("promotions")
 }
 

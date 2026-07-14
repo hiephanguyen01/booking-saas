@@ -1,4 +1,5 @@
 import type {
+  AutoCampaignResponse,
   AvailabilityMode,
   AvailabilityResponse,
   BookingOtpResponse,
@@ -103,9 +104,17 @@ export function fetchAvailability(
 
 export function validatePromo(
   request: Request,
-  input: { code: string; listingId: string; amount: string },
+  input: { code: string; listingId: string; amount: string; start?: string; end?: string },
 ): Promise<ApiResult<ValidatePromoResponse>> {
   return postJson<ValidatePromoResponse>(request, '/public/checkout/validate-promo', input);
+}
+
+/** The best auto-applied campaign for a slot (§12.1), or null when none applies. */
+export function resolveAutoCampaign(
+  request: Request,
+  input: { listingId: string; amount: string; start?: string; end?: string },
+): Promise<ApiResult<AutoCampaignResponse>> {
+  return postJson<AutoCampaignResponse>(request, '/public/checkout/auto-campaigns', input);
 }
 
 // ── Bookings (§8) ───────────────────────────────────────────────────────────────

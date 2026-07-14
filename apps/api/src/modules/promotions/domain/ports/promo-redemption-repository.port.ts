@@ -30,4 +30,10 @@ export interface IPromoRedemptionRepository {
    */
   release(tx: PrismaTx, bookingId: string): Promise<string | null>;
   usageStats(tx: PrismaTx, promotionId: string): Promise<RedemptionUsageStats>;
+  /**
+   * Count a customer's active (non-`released`) redemptions of a promotion, for the
+   * per-customer limit (§12.3). Must run inside the reservation tx so two tabs
+   * cannot both slip past the cap.
+   */
+  countActiveByCustomer(tx: PrismaTx, promotionId: string, customerId: string): Promise<number>;
 }
