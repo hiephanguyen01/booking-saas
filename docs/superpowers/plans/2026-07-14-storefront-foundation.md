@@ -8,6 +8,12 @@
 
 **Tech Stack:** React Router Framework Mode 7.18.1 for this compatibility milestone, React 19.2.7 as currently locked, TypeScript, Vitest 3.2, native fetch temporarily (replaced by Axios in the later API-client milestone), pnpm, Turborepo.
 
+**Execution status (2026-07-14): COMPLETE.** Verified with 18 passing tests,
+Storefront typecheck, ESLint, and a production SSR build. The build still reports
+pre-existing `@booking/ui` sourcemap diagnostics, and Vitest reports host-level
+`EMFILE` watcher warnings; both commands exit successfully and these warnings are
+tracked for the tooling/React Router 8 milestone.
+
 ## Global Constraints
 
 - Do not modify `apps/api`.
