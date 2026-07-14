@@ -17,6 +17,36 @@ signatures stay compatible during incremental migration of 108 call sites.
 
 **Tech Stack:** Axios 1.18.1, Zod 3.25, TypeScript, Vitest.
 
+## Execution Status
+
+**Transport foundation complete — 2026-07-14.** `@booking/api-client` now uses
+isolated Axios instances and has no automatic 401 interceptor. It supports
+request-local auth/scope headers, query data, JSON/FormData, timeout overrides,
+`AbortSignal`, request ids, 204 responses, explicit failure categories, Zod
+validation, cancellation propagation, and explicit login/refresh/logout auth
+methods.
+
+Dashboard authentication now performs the only permitted sequence:
+`/auth/session` once, explicit refresh once only after 401, then one session
+retry. Both session calls and refresh receive the navigation abort signal.
+`/auth/session` and upload-presign responses are the first runtime-validated
+endpoints.
+
+Fresh verification:
+
+- `@booking/api-client`: 1 test file / 5 tests; typecheck, lint, and dual CJS/ESM
+  build passed.
+- Dashboard: 4 test files / 17 tests; typecheck, lint, and production build
+  passed.
+- Storefront: 5 test files / 19 tests; typecheck, lint, and production build
+  passed.
+- `@booking/ui` typecheck and frozen-lockfile install passed.
+
+The remaining endpoint groups intentionally retain the compatibility verb
+surface. Their response schemas and request signals must be migrated feature by
+feature; this is tracked work, not claimed as complete runtime validation.
+Existing non-failing Vitest `EMFILE` and UI sourcemap diagnostics remain.
+
 ## Constraints
 
 - No Axios singleton with mutable auth defaults.
