@@ -20,6 +20,30 @@ signatures remain temporarily compatible, allowing migration without editing
 **Tech Stack:** React Router 8 middleware, Node `AsyncLocalStorage`, signed
 cookies, Redis, Vitest, TypeScript.
 
+## Execution Status
+
+**Complete — 2026-07-14.** The Dashboard now stores only a signed opaque id in
+`__dashboard_session`; Redis holds the backend session tokens with a seven-day
+TTL. Root middleware authenticates once per request, shares the result through
+`AsyncLocalStorage`, owns the only refresh callback, persists rotation after
+downstream work, and suppresses that persistence during logout. Invalid tokens
+clear the record; authentication or Redis outages return 503 without logging
+the user out.
+
+Fresh verification:
+
+- Dashboard: 4 test files / 15 tests passed; typecheck, lint, and production
+  build passed.
+- Storefront regression: 5 test files / 19 tests passed; typecheck and
+  production build passed.
+- `@booking/ui` typecheck passed.
+- Local Docker Redis 7 reported healthy.
+- Scans find refresh-token ownership only in the session record and root auth
+  middleware; no nested route helper can refresh.
+
+Known non-failing diagnostics remain the existing macOS Vitest `EMFILE`
+watcher warnings and Vite sourcemap warnings for raw `@booking/ui` TSX.
+
 ## Constraints
 
 - Preserve `apps/dashboard/app/routes/affiliate/_index.tsx` exactly as found.
