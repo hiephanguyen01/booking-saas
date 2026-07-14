@@ -17,13 +17,18 @@ export default [
 
   route('auth/login', 'routes/auth/login.tsx'),
   route('auth/logout', 'routes/auth/logout.tsx'),
+  route('workspaces', 'routes/workspaces.tsx'),
 
   // Presign proxy for direct-to-storage image uploads (§4.2) — any logged-in user.
   route('uploads/presign', 'routes/uploads.presign.tsx'),
 
   route('admin', 'routes/admin/_layout.tsx', adminChildren),
-  route('tenant', 'routes/tenant/_layout.tsx', tenantChildren),
-  route('partner', 'routes/partner/_layout.tsx', partnerChildren),
+  route('tenant/:tenantId', 'routes/tenant/_layout.tsx', tenantChildren),
+  route('partner/:partnerId', 'routes/partner/_layout.tsx', partnerChildren),
+  route('tenant', 'routes/legacy-tenant.tsx'),
+  route('tenant/*', 'routes/legacy-tenant-splat.tsx'),
+  route('partner', 'routes/legacy-partner.tsx'),
+  route('partner/*', 'routes/legacy-partner-splat.tsx'),
 
   // Affiliate self-service portal (§15.3) — membership-gated (not RBAC-scoped);
   // the layout resolves the user's approved `affiliates` row(s).

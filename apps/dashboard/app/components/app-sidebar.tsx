@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { CalendarCheck2 } from 'lucide-react';
+import { CalendarCheck2, PanelsTopLeft } from 'lucide-react';
 import type { SessionInfoResponse } from '@booking/contracts';
 import {
   Sidebar,
@@ -13,24 +13,12 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@booking/ui/components/ui/sidebar';
-import { DASHBOARD_AREAS } from '~/lib/navigation';
+import { dashboardAreasFor } from '~/lib/navigation';
 import { NavUser } from './nav-user';
-
-/** Set of all permission keys the user holds in a given scope level. */
-function permissionsForScope(info: SessionInfoResponse, scope: string): Set<string> {
-  const keys = new Set<string>();
-  for (const membership of info.scopes) {
-    if (membership.scope === scope) {
-      for (const key of membership.permissions) keys.add(key);
-    }
-  }
-  return keys;
-}
 
 export function AppSidebar({ info }: { info: SessionInfoResponse }) {
   const location = useLocation();
-  const scopes = new Set(info.scopes.map((s) => s.scope));
-  const areas = DASHBOARD_AREAS.filter((area) => scopes.has(area.scope));
+  const areas = dashboardAreasFor(info, location.pathname);
 
   return (
     <Sidebar>
@@ -47,14 +35,26 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
       </SidebarHeader>
 
       <SidebarContent>
+        {info.scopes.filter((scope) => scope.scope === 'tenant' || scope.scope === 'partner').length > 1 ? (
+          <SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Đổi không gian làm việc">
+                  <Link to="/workspaces">
+                    <PanelsTopLeft />
+                    <span>Đổi workspace</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        ) : null}
         {areas.map((area) => {
-          const held = permissionsForScope(info, area.scope);
-          const items = area.items.filter((item) => !item.permission || held.has(item.permission));
           return (
             <SidebarGroup key={area.scope}>
               <SidebarGroupLabel>{area.title}</SidebarGroupLabel>
               <SidebarMenu>
-                {items.map((item) => {
+                {area.items.map((item) => {
                   const isActive =
                     location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                   return (

@@ -1,6 +1,7 @@
 import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
-import { requirePermission, requireScope, type AuthContext } from '~/lib/auth.server';
+import { requireScope, type AuthContext } from '~/lib/auth.server';
+import { findTenantMembership, workspaceIdFromPath } from '~/lib/workspace';
 
 /**
  * Resolved tenant request context for a loader/action. The access token has just
@@ -18,8 +19,8 @@ export interface TenantContext {
   can: (permission: string) => boolean;
 }
 
-function tenantForbidden(): Response {
-  return new Response('Không tìm thấy tenant cho tài khoản này.', { status: 403 });
+function tenantNotFound(): Response {
+  return new Response('Không tìm thấy tenant.', { status: 404 });
 }
 
 /**
@@ -27,14 +28,15 @@ function tenantForbidden(): Response {
  * mirrors the backend guard); omit it to only require tenant-scope membership.
  */
 export async function requireTenant(request: Request, permission?: string): Promise<TenantContext> {
-  const ctx = permission
-    ? await requirePermission(request, permission)
-    : await requireScope(request, 'tenant');
+  const ctx = await requireScope(request, 'tenant');
+  const tenantId = workspaceIdFromPath(new URL(request.url).pathname, 'tenant');
+  if (!tenantId) throw tenantNotFound();
+  const membership = findTenantMembership(ctx.info, tenantId);
+  if (!membership) throw tenantNotFound();
+  if (permission && !membership.permissions.includes(permission)) {
+    throw new Response(`Bạn không có quyền truy cập (${permission}).`, { status: 403 });
+  }
 
-  const membership = ctx.info.scopes.find((scope) => scope.scope === 'tenant');
-  if (!membership || !membership.tenantId) throw tenantForbidden();
-
-  const tenantId = membership.tenantId;
   return {
     ctx,
     membership,

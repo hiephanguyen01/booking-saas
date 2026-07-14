@@ -1,6 +1,7 @@
 import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { requireScope } from '~/lib/auth.server';
+import { findPartnerMembership, workspaceIdFromPath } from '~/lib/workspace';
 
 /** The resolved partner context every partner loader/action needs. */
 export interface PartnerContext {
@@ -18,10 +19,10 @@ export interface PartnerContext {
  */
 export async function requirePartner(request: Request): Promise<PartnerContext> {
   const { user, info } = await requireScope(request, 'partner');
-  const membership = info.scopes.find((scope) => scope.scope === 'partner');
-  if (!membership || !membership.tenantId || !membership.partnerId) {
-    throw new Response('Thiếu ngữ cảnh đối tác.', { status: 403 });
-  }
+  const partnerId = workspaceIdFromPath(new URL(request.url).pathname, 'partner');
+  if (!partnerId) throw new Response('Không tìm thấy partner.', { status: 404 });
+  const membership = findPartnerMembership(info, partnerId);
+  if (!membership) throw new Response('Không tìm thấy partner.', { status: 404 });
   const auth: ApiAuth = {
     token: user.accessToken,
     tenantId: membership.tenantId,

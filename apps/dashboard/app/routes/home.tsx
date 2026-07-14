@@ -1,6 +1,7 @@
 import { redirect } from 'react-router';
 import type { Route } from './+types/home';
-import { defaultAreaFor, requireSessionInfo } from '~/lib/auth.server';
+import { requireSessionInfo } from '~/lib/auth.server';
+import { defaultDashboardPath } from '~/lib/workspace';
 
 /**
  * Dashboard entrypoint: send the user to their highest-privilege area. A logged-in
@@ -8,7 +9,7 @@ import { defaultAreaFor, requireSessionInfo } from '~/lib/auth.server';
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const { info } = await requireSessionInfo(request);
-  const area = defaultAreaFor(info);
+  const area = defaultDashboardPath(info);
   if (area !== '/') throw redirect(area);
   return { fullName: info.user.fullName };
 }

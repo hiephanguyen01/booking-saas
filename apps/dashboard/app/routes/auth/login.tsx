@@ -4,8 +4,9 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/login';
 import { backendLogin, backendSessionInfo } from '~/lib/api.server';
-import { defaultAreaFor, getOptionalUser, loadSessionInfo } from '~/lib/auth.server';
+import { getOptionalUser, loadSessionInfo } from '~/lib/auth.server';
 import { createUserSession } from '~/lib/session.server';
+import { defaultDashboardPath } from '~/lib/workspace';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đăng nhập · Bookify Dashboard' }];
@@ -15,7 +16,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const user = await getOptionalUser(request);
   if (user) {
     const info = await loadSessionInfo(request);
-    if (info) throw redirect(defaultAreaFor(info));
+    if (info) throw redirect(defaultDashboardPath(info));
   }
   return null;
 }
@@ -38,7 +39,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const info = await backendSessionInfo(result.tokens.accessToken);
-  const area = info ? defaultAreaFor(info) : '/';
+  const area = info ? defaultDashboardPath(info) : '/';
   return createUserSession(request, { ...result.tokens, userId: result.user.id }, area);
 }
 
