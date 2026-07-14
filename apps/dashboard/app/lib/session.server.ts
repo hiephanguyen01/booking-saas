@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { createCookie, createCookieSessionStorage, redirect } from 'react-router';
-import type { DashboardSessionRecord, DashboardSessionStore } from './session-store.server';
+import { createCookie, redirect } from 'react-router';
+import {
+  getDashboardSessionStore,
+  type DashboardSessionRecord,
+  type DashboardSessionStore,
+} from './session-store.server';
 
 const DASHBOARD_SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
@@ -94,15 +98,9 @@ function toDashboardSessionData(record: DashboardSessionRecord | null): Dashboar
 }
 
 /**
- * Dashboard BFF session cookie. The backend issues opaque `sid`/`rid` tokens as
- * httpOnly cookies on login; the dashboard captures their VALUES and stores them
- * here, then replays them to the API server-side (Cookie: sid=… / rid=…). The
- * browser never sees a token — this cookie is httpOnly too.
+ * Backend `sid`/`rid` values are persisted in Redis. The browser receives only
+ * a signed random id that resolves to this server-side record.
  */
-const secure = process.env.SESSION_COOKIE_SECURE
-  ? process.env.SESSION_COOKIE_SECURE !== 'false'
-  : process.env.NODE_ENV === 'production';
-
 export interface DashboardSessionData {
   /** Backend access-session token (was the `sid` cookie value). */
   accessToken: string;
@@ -111,19 +109,21 @@ export interface DashboardSessionData {
   userId: string;
 }
 
-export const sessionStorage = createCookieSessionStorage<DashboardSessionData>({
-  cookie: {
-    name: '__session',
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    secure,
-    secrets: [process.env.SESSION_SECRET ?? 'dev-dashboard-session-secret-change-me'],
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  },
-});
+let dashboardSessionService: DashboardSessionService | undefined;
 
-export const { getSession, commitSession, destroySession } = sessionStorage;
+export function getDashboardSessionService(): DashboardSessionService {
+  if (!dashboardSessionService) {
+    const secure = process.env.SESSION_COOKIE_SECURE
+      ? process.env.SESSION_COOKIE_SECURE !== 'false'
+      : process.env.NODE_ENV === 'production';
+    dashboardSessionService = createDashboardSessionService({
+      store: getDashboardSessionStore(),
+      secrets: readSessionSecrets(process.env),
+      secure,
+    });
+  }
+  return dashboardSessionService;
+}
 
 /** Stores the backend tokens in a fresh cookie and redirects to `redirectTo`. */
 export async function createUserSession(
@@ -131,15 +131,14 @@ export async function createUserSession(
   data: DashboardSessionData,
   redirectTo: string,
 ): Promise<Response> {
-  const session = await getSession(request.headers.get('Cookie'));
-  session.set('accessToken', data.accessToken);
-  session.set('refreshToken', data.refreshToken);
-  session.set('userId', data.userId);
-  return redirect(redirectTo, { headers: { 'Set-Cookie': await commitSession(session) } });
+  const service = getDashboardSessionService();
+  await service.destroy(request);
+  return redirect(redirectTo, { headers: { 'Set-Cookie': await service.create(data) } });
 }
 
 /** Destroys the dashboard cookie and redirects (used by logout). */
 export async function destroyUserSession(request: Request, redirectTo: string): Promise<Response> {
-  const session = await getSession(request.headers.get('Cookie'));
-  return redirect(redirectTo, { headers: { 'Set-Cookie': await destroySession(session) } });
+  return redirect(redirectTo, {
+    headers: { 'Set-Cookie': await getDashboardSessionService().destroy(request) },
+  });
 }

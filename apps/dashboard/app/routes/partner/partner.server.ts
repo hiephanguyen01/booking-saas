@@ -24,7 +24,6 @@ export async function requirePartner(request: Request): Promise<PartnerContext> 
   }
   const auth: ApiAuth = {
     token: user.accessToken,
-    refreshToken: user.refreshToken,
     tenantId: membership.tenantId,
     partnerId: membership.partnerId,
   };

@@ -20,7 +20,7 @@ export interface AffiliateAreaContext {
 
 export async function requireAffiliate(request: Request): Promise<AffiliateAreaContext> {
   const ctx = await requireSessionInfo(request);
-  const baseAuth: ApiAuth = { token: ctx.user.accessToken, refreshToken: ctx.user.refreshToken };
+  const baseAuth: ApiAuth = { token: ctx.user.accessToken };
 
   const res = await apiGet<AffiliateResponse[]>('/affiliate/me', baseAuth);
   const memberships = res.ok ? (res.data ?? []) : [];

@@ -1,97 +1,47 @@
 import { redirect } from 'react-router';
 import type { ScopeLevel, SessionInfoResponse } from '@booking/contracts';
-import { hasScope, hasPermission, defaultAreaFor } from '@booking/auth';
-import { type ApiAuth, type RefreshedTokens, apiGet } from './api.server';
-import { commitSession, getSession } from './session.server';
-import { normalizedRequestLocation } from './navigation.server';
+import { defaultAreaFor, hasPermission, hasScope } from '@booking/auth';
+import {
+  getCurrentDashboardAuth,
+  type DashboardAuthContext as AuthContext,
+} from './request-auth.server';
+import type { DashboardSessionData as AuthedUser } from './session.server';
 
-export { hasScope, hasPermission, defaultAreaFor };
+export { defaultAreaFor, hasPermission, hasScope };
+export type { AuthContext, AuthedUser };
 
-export interface AuthedUser {
-  accessToken: string;
-  refreshToken: string;
-  userId: string;
+export async function getOptionalUser(_request?: Request): Promise<AuthedUser | null> {
+  return getCurrentDashboardAuth()?.user ?? null;
 }
 
-/** The full authed context most guards return: raw tokens + resolved memberships. */
-export interface AuthContext {
-  user: AuthedUser;
-  info: SessionInfoResponse;
-}
-
-/** Reads stored tokens; returns null when there is no (complete) session. */
-export async function getOptionalUser(request: Request): Promise<AuthedUser | null> {
-  const session = await getSession(request.headers.get('Cookie'));
-  const accessToken = session.get('accessToken');
-  const refreshToken = session.get('refreshToken');
-  const userId = session.get('userId');
-  if (!accessToken || !refreshToken || !userId) return null;
-  return { accessToken, refreshToken, userId };
-}
-
-/** Guards a route: redirects to /auth/login when unauthenticated. */
-export async function requireUser(request: Request): Promise<AuthedUser> {
+export async function requireUser(request?: Request): Promise<AuthedUser> {
   const user = await getOptionalUser(request);
   if (!user) throw redirect('/auth/login');
   return user;
 }
 
-/**
- * Fetches `/auth/session` (identity + scopes + permissions). On a silent token
- * refresh it re-commits the dashboard cookie and replays the request so the
- * loader re-runs with a valid session. Returns null when there is no usable
- * session (caller decides whether to redirect).
- */
-export async function loadSessionInfo(request: Request): Promise<SessionInfoResponse | null> {
-  const session = await getSession(request.headers.get('Cookie'));
-  const accessToken = session.get('accessToken');
-  const refreshToken = session.get('refreshToken');
-  if (!accessToken || !refreshToken) return null;
-
-  let rotated: RefreshedTokens | null = null;
-  const auth: ApiAuth = {
-    token: accessToken,
-    refreshToken,
-    onRefreshed: (tokens) => {
-      rotated = tokens;
-    },
-  };
-  const res = await apiGet<SessionInfoResponse>('/auth/session', auth);
-
-  if (rotated) {
-    const next: RefreshedTokens = rotated;
-    session.set('accessToken', next.accessToken);
-    session.set('refreshToken', next.refreshToken);
-    throw redirect(normalizedRequestLocation(request), {
-      headers: { 'Set-Cookie': await commitSession(session) },
-    });
-  }
-  if (!res.ok) return null;
-  return res.data;
+export async function loadSessionInfo(_request?: Request): Promise<SessionInfoResponse | null> {
+  return getCurrentDashboardAuth()?.info ?? null;
 }
 
-/** requireUser + loadSessionInfo; redirects to login if the session is dead. */
-export async function requireSessionInfo(request: Request): Promise<AuthContext> {
-  const user = await requireUser(request);
-  const info = await loadSessionInfo(request);
-  if (!info) throw redirect('/auth/login');
-  return { user, info };
+export async function requireSessionInfo(_request?: Request): Promise<AuthContext> {
+  const auth = getCurrentDashboardAuth();
+  if (!auth) throw redirect('/auth/login');
+  return auth;
 }
 
 function forbidden(what: string): Response {
   return new Response(`Bạn không có quyền truy cập (${what}).`, { status: 403 });
 }
 
-/** Guards an area by scope level (used by area `_layout.tsx` loaders). */
-export async function requireScope(request: Request, scope: ScopeLevel): Promise<AuthContext> {
-  const ctx = await requireSessionInfo(request);
+export async function requireScope(_request: Request, scope: ScopeLevel): Promise<AuthContext> {
+  const ctx = await requireSessionInfo();
   if (!hasScope(ctx.info, scope)) throw forbidden(scope);
   return ctx;
 }
 
-/** Guards a route by a single permission key (`scope.resource.action`). */
-export async function requirePermission(request: Request, key: string): Promise<AuthContext> {
-  const ctx = await requireSessionInfo(request);
+export async function requirePermission(_request: Request, key: string): Promise<AuthContext> {
+  const ctx = await requireSessionInfo();
   if (!hasPermission(ctx.info, key)) throw forbidden(key);
   return ctx;
 }

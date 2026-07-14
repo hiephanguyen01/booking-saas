@@ -4,9 +4,12 @@ import { Toaster } from '@booking/ui/components/ui/sonner';
 import { ThemeProvider } from '@booking/ui/components/theme/theme-provider';
 import type { Route } from './+types/root';
 import { loadSessionInfo } from './lib/auth.server';
+import { dashboardAuthMiddleware } from './lib/auth-middleware.server';
 import { AppSidebar } from './components/app-sidebar';
 import { DashboardHeader } from './components/dashboard-header';
 import './app.css';
+
+export const middleware: Route.MiddlewareFunction[] = [dashboardAuthMiddleware];
 
 export function meta() {
   return [{ title: 'Bookify Dashboard' }];
