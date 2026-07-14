@@ -1,7 +1,7 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { format } from "date-fns"
+import * as React from 'react';
+import { format } from 'date-fns';
 import {
   AlertCircle,
   CalendarIcon,
@@ -9,13 +9,13 @@ import {
   ChevronsUpDownIcon,
   Eye,
   EyeOff,
-} from "lucide-react"
-import { useFormContext, type FieldValues } from "react-hook-form"
+} from 'lucide-react';
+import { useFormContext, type FieldValues } from 'react-hook-form';
 
-import { cn } from "@booking/ui/lib/utils"
-import { Button } from "@booking/ui/components/ui/button"
-import { Calendar } from "@booking/ui/components/ui/calendar"
-import { Checkbox } from "@booking/ui/components/ui/checkbox"
+import { cn } from '@booking/ui/lib/utils';
+import { Button } from '@booking/ui/components/ui/button';
+import { Calendar } from '@booking/ui/components/ui/calendar';
+import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import {
   Command,
   CommandEmpty,
@@ -23,7 +23,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@booking/ui/components/ui/command"
+} from '@booking/ui/components/ui/command';
 import {
   FormControl,
   FormDescription,
@@ -31,24 +31,20 @@ import {
   FormItem,
   FormLabel,
   useFormField,
-} from "@booking/ui/components/ui/form"
-import { Input } from "@booking/ui/components/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@booking/ui/components/ui/popover"
-import { RadioGroup, RadioGroupItem } from "@booking/ui/components/ui/radio-group"
+} from '@booking/ui/components/ui/form';
+import { Input } from '@booking/ui/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@booking/ui/components/ui/select"
-import { Switch } from "@booking/ui/components/ui/switch"
-import { Textarea } from "@booking/ui/components/ui/textarea"
-import { ImageUpload } from "@booking/ui/components/form/image-upload"
+} from '@booking/ui/components/ui/select';
+import { Switch } from '@booking/ui/components/ui/switch';
+import { Textarea } from '@booking/ui/components/ui/textarea';
+import { ImageUpload } from '@booking/ui/components/form/image-upload';
 import type {
   BooleanFieldConfig,
   ChoiceFieldConfig,
@@ -56,7 +52,7 @@ import type {
   FieldConfig,
   FileFieldConfig,
   TextFieldConfig,
-} from "@booking/ui/components/form/types"
+} from '@booking/ui/components/form/types';
 
 /**
  * Premium control styling (the "register partner" design system, expressed in
@@ -65,15 +61,15 @@ import type {
  * baseline height/radius/focus-ring.
  */
 const PREMIUM_CONTROL =
-  "h-14 rounded-lg px-4 text-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0"
+  'rounded-lg px-4 text-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0';
 const PREMIUM_TEXTAREA =
-  "min-h-28 rounded-lg px-4 py-3 text-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0"
-const PREMIUM_TRIGGER = "!h-14 w-full rounded-lg px-4 text-sm"
+  'min-h-28 rounded-lg px-4 py-3 text-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0';
+const PREMIUM_TRIGGER = 'w-full rounded-lg px-4 text-sm';
 const SEGMENTED_BASE =
-  "flex h-14 flex-1 items-center justify-center rounded-lg border text-sm font-semibold transition-all"
-const SEGMENTED_ON = "border-primary bg-primary text-primary-foreground shadow-sm"
+  'flex flex-1 items-center justify-center rounded-lg border text-sm font-semibold transition-all';
+const SEGMENTED_ON = 'border-primary bg-primary text-primary-foreground shadow-sm';
 const SEGMENTED_OFF =
-  "border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+  'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground';
 
 /**
  * Renders a single field from its config, bound to react-hook-form. Boolean and
@@ -81,10 +77,10 @@ const SEGMENTED_OFF =
  * label / control / message stack.
  */
 export function FieldRenderer<T extends FieldValues>({ field }: { field: FieldConfig<T> }) {
-  const { control } = useFormContext<T>()
+  const { control } = useFormContext<T>();
 
-  if (field.type === "checkbox" || field.type === "switch") {
-    return <BooleanField field={field} control={control} />
+  if (field.type === 'checkbox' || field.type === 'switch') {
+    return <BooleanField field={field} control={control} />;
   }
 
   return (
@@ -100,37 +96,37 @@ export function FieldRenderer<T extends FieldValues>({ field }: { field: FieldCo
         </FormItem>
       )}
     />
-  )
+  );
 }
 
 /** Premium inline error row (AlertCircle + destructive text), matching the register page. */
 function FieldMessage() {
-  const { error, formMessageId } = useFormField()
-  const message = error?.message ? String(error.message) : null
-  if (!message) return null
+  const { error, formMessageId } = useFormField();
+  const message = error?.message ? String(error.message) : null;
+  if (!message) return null;
   return (
     <p id={formMessageId} className="flex items-center gap-1 text-xs text-destructive">
       <AlertCircle className="size-3 shrink-0" />
       {message}
     </p>
-  )
+  );
 }
 
 type RhfField = {
-  value: unknown
-  onChange: (value: unknown) => void
-  onBlur: () => void
-  name: string
-  ref: React.Ref<unknown>
-  disabled?: boolean
-}
+  value: unknown;
+  onChange: (value: unknown) => void;
+  onBlur: () => void;
+  name: string;
+  ref: React.Ref<unknown>;
+  disabled?: boolean;
+};
 
 function renderControl<T extends FieldValues>(
   field: FieldConfig<T>,
   rhf: RhfField,
 ): React.ReactElement {
   switch (field.type) {
-    case "textarea":
+    case 'textarea':
       return (
         <Textarea
           placeholder={field.placeholder}
@@ -139,20 +135,20 @@ function renderControl<T extends FieldValues>(
           className={PREMIUM_TEXTAREA}
           {...textBinding(rhf)}
         />
-      )
-    case "password":
-      return <PasswordControl field={field} rhf={rhf} />
-    case "select":
-      return <SelectControl field={field} rhf={rhf} />
-    case "combobox":
-      return <ComboboxControl field={field} rhf={rhf} />
-    case "radio":
-      return <RadioControl field={field} rhf={rhf} />
-    case "date":
-      return <DateControl field={field} rhf={rhf} />
-    case "file":
-      return <FileControl field={field} rhf={rhf} />
-    case "number":
+      );
+    case 'password':
+      return <PasswordControl field={field} rhf={rhf} />;
+    case 'select':
+      return <SelectControl field={field} rhf={rhf} />;
+    case 'combobox':
+      return <ComboboxControl field={field} rhf={rhf} />;
+    case 'radio':
+      return <RadioControl field={field} rhf={rhf} />;
+    case 'date':
+      return <DateControl field={field} rhf={rhf} />;
+    case 'file':
+      return <FileControl field={field} rhf={rhf} />;
+    case 'number':
       return (
         <Input
           type="number"
@@ -163,10 +159,10 @@ function renderControl<T extends FieldValues>(
           className={PREMIUM_CONTROL}
           name={rhf.name}
           onBlur={rhf.onBlur}
-          value={rhf.value === undefined || rhf.value === null ? "" : String(rhf.value)}
-          onChange={(e) => rhf.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)}
+          value={rhf.value === undefined || rhf.value === null ? '' : String(rhf.value)}
+          onChange={(e) => rhf.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)}
         />
-      )
+      );
     default:
       return (
         <Input
@@ -177,7 +173,7 @@ function renderControl<T extends FieldValues>(
           className={PREMIUM_CONTROL}
           {...textBinding(rhf)}
         />
-      )
+      );
   }
 }
 
@@ -186,29 +182,29 @@ function textBinding(rhf: RhfField) {
   return {
     name: rhf.name,
     onBlur: rhf.onBlur,
-    value: rhf.value === undefined || rhf.value === null ? "" : String(rhf.value),
+    value: rhf.value === undefined || rhf.value === null ? '' : String(rhf.value),
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       rhf.onChange(e.target.value),
-  }
+  };
 }
 
 function PasswordControl<T extends FieldValues>({
   field,
   rhf,
 }: {
-  field: TextFieldConfig<T>
-  rhf: RhfField
+  field: TextFieldConfig<T>;
+  rhf: RhfField;
 }) {
-  const [show, setShow] = React.useState(false)
-  const withToggle = field.showToggle !== false
+  const [show, setShow] = React.useState(false);
+  const withToggle = field.showToggle !== false;
   return (
     <div className="relative">
       <Input
-        type={show ? "text" : "password"}
+        type={show ? 'text' : 'password'}
         placeholder={field.placeholder}
         autoComplete={field.autoComplete}
         disabled={field.disabled}
-        className={cn(PREMIUM_CONTROL, withToggle && "pr-11")}
+        className={cn(PREMIUM_CONTROL, withToggle && 'pr-11')}
         {...textBinding(rhf)}
       />
       {withToggle ? (
@@ -216,22 +212,22 @@ function PasswordControl<T extends FieldValues>({
           type="button"
           tabIndex={-1}
           onClick={() => setShow((s) => !s)}
-          aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+          aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
       ) : null}
     </div>
-  )
+  );
 }
 
 function SelectControl<T extends FieldValues>({
   field,
   rhf,
 }: {
-  field: ChoiceFieldConfig<T>
-  rhf: RhfField
+  field: ChoiceFieldConfig<T>;
+  rhf: RhfField;
 }) {
   return (
     <Select
@@ -240,7 +236,7 @@ function SelectControl<T extends FieldValues>({
       disabled={field.disabled}
     >
       <SelectTrigger className={PREMIUM_TRIGGER}>
-        <SelectValue placeholder={field.placeholder ?? "Chọn..."} />
+        <SelectValue placeholder={field.placeholder ?? 'Chọn...'} />
       </SelectTrigger>
       <SelectContent>
         {field.options.map((opt) => (
@@ -250,22 +246,22 @@ function SelectControl<T extends FieldValues>({
         ))}
       </SelectContent>
     </Select>
-  )
+  );
 }
 
 function RadioControl<T extends FieldValues>({
   field,
   rhf,
 }: {
-  field: ChoiceFieldConfig<T>
-  rhf: RhfField
+  field: ChoiceFieldConfig<T>;
+  rhf: RhfField;
 }) {
   // Segmented: a horizontal button group (register-partner partner-type toggle).
-  if (field.variant === "segmented") {
+  if (field.variant === 'segmented') {
     return (
       <div className="flex gap-3">
         {field.options.map((opt) => {
-          const selected = String(rhf.value) === opt.value
+          const selected = String(rhf.value) === opt.value;
           return (
             <button
               key={opt.value}
@@ -276,10 +272,10 @@ function RadioControl<T extends FieldValues>({
             >
               {opt.label}
             </button>
-          )
+          );
         })}
       </div>
-    )
+    );
   }
 
   return (
@@ -296,18 +292,18 @@ function RadioControl<T extends FieldValues>({
         </label>
       ))}
     </RadioGroup>
-  )
+  );
 }
 
 function ComboboxControl<T extends FieldValues>({
   field,
   rhf,
 }: {
-  field: ChoiceFieldConfig<T>
-  rhf: RhfField
+  field: ChoiceFieldConfig<T>;
+  rhf: RhfField;
 }) {
-  const [open, setOpen] = React.useState(false)
-  const current = field.options.find((o) => o.value === rhf.value)
+  const [open, setOpen] = React.useState(false);
+  const current = field.options.find((o) => o.value === rhf.value);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -317,15 +313,19 @@ function ComboboxControl<T extends FieldValues>({
           role="combobox"
           aria-expanded={open}
           disabled={field.disabled}
-          className={cn(PREMIUM_TRIGGER, "justify-between font-normal", !current && "text-muted-foreground")}
+          className={cn(
+            PREMIUM_TRIGGER,
+            'justify-between font-normal',
+            !current && 'text-muted-foreground',
+          )}
         >
-          {current?.label ?? field.placeholder ?? "Chọn..."}
+          {current?.label ?? field.placeholder ?? 'Chọn...'}
           <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput placeholder={field.searchPlaceholder ?? "Tìm kiếm..."} />
+          <CommandInput placeholder={field.searchPlaceholder ?? 'Tìm kiếm...'} />
           <CommandList>
             <CommandEmpty>Không có kết quả.</CommandEmpty>
             <CommandGroup>
@@ -334,14 +334,14 @@ function ComboboxControl<T extends FieldValues>({
                   key={opt.value}
                   value={opt.label}
                   onSelect={() => {
-                    rhf.onChange(opt.value)
-                    setOpen(false)
+                    rhf.onChange(opt.value);
+                    setOpen(false);
                   }}
                 >
                   <CheckIcon
                     className={cn(
-                      "mr-2 size-4",
-                      opt.value === rhf.value ? "opacity-100" : "opacity-0",
+                      'mr-2 size-4',
+                      opt.value === rhf.value ? 'opacity-100' : 'opacity-0',
                     )}
                   />
                   {opt.label}
@@ -352,18 +352,19 @@ function ComboboxControl<T extends FieldValues>({
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 function DateControl<T extends FieldValues>({
   field,
   rhf,
 }: {
-  field: DateFieldConfig<T>
-  rhf: RhfField
+  field: DateFieldConfig<T>;
+  rhf: RhfField;
 }) {
-  const [open, setOpen] = React.useState(false)
-  const value = rhf.value instanceof Date ? rhf.value : rhf.value ? new Date(String(rhf.value)) : undefined
+  const [open, setOpen] = React.useState(false);
+  const value =
+    rhf.value instanceof Date ? rhf.value : rhf.value ? new Date(String(rhf.value)) : undefined;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -371,10 +372,14 @@ function DateControl<T extends FieldValues>({
           type="button"
           variant="outline"
           disabled={field.disabled}
-          className={cn(PREMIUM_TRIGGER, "justify-start font-normal", !value && "text-muted-foreground")}
+          className={cn(
+            PREMIUM_TRIGGER,
+            'justify-start font-normal',
+            !value && 'text-muted-foreground',
+          )}
         >
           <CalendarIcon className="mr-2 size-4" />
-          {value ? format(value, "dd/MM/yyyy") : (field.placeholder ?? "Chọn ngày")}
+          {value ? format(value, 'dd/MM/yyyy') : (field.placeholder ?? 'Chọn ngày')}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -382,22 +387,22 @@ function DateControl<T extends FieldValues>({
           mode="single"
           selected={value}
           onSelect={(d) => {
-            rhf.onChange(d)
-            setOpen(false)
+            rhf.onChange(d);
+            setOpen(false);
           }}
           autoFocus
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 function FileControl<T extends FieldValues>({
   field,
   rhf,
 }: {
-  field: FileFieldConfig<T>
-  rhf: RhfField
+  field: FileFieldConfig<T>;
+  rhf: RhfField;
 }) {
   return (
     <ImageUpload
@@ -411,15 +416,15 @@ function FileControl<T extends FieldValues>({
       presignEndpoint={field.presignEndpoint}
       disabled={field.disabled}
     />
-  )
+  );
 }
 
 function BooleanField<T extends FieldValues>({
   field,
   control,
 }: {
-  field: BooleanFieldConfig<T>
-  control: ReturnType<typeof useFormContext<T>>["control"]
+  field: BooleanFieldConfig<T>;
+  control: ReturnType<typeof useFormContext<T>>['control'];
 }) {
   return (
     <FormField
@@ -428,7 +433,7 @@ function BooleanField<T extends FieldValues>({
       render={({ field: rhf }) => (
         <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-lg border p-4">
           <FormControl>
-            {field.type === "switch" ? (
+            {field.type === 'switch' ? (
               <Switch
                 checked={!!rhf.value}
                 onCheckedChange={rhf.onChange}
@@ -450,5 +455,5 @@ function BooleanField<T extends FieldValues>({
         </FormItem>
       )}
     />
-  )
+  );
 }

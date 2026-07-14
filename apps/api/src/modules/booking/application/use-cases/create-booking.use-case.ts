@@ -7,7 +7,7 @@ import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { FindOrCreateGuestUseCase } from '../../../identity-access/application/use-cases/find-or-create-guest.use-case';
 import { PricingService } from '../../../listing/application/services/pricing.service';
-import { ApplyPromotionService, type PreparedPromotion } from '../../../promotions/application/apply-promotion.service';
+import { ApplyPromotionService } from '../../../promotions/application/apply-promotion.service';
 import { ResolveCommissionService } from '../../../finance/application/resolve-commission.service';
 import { ResolveAttributionService } from '../../../affiliate/application/resolve-attribution.service';
 import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../../listing/domain/ports/listing-repository.port';
@@ -193,23 +193,25 @@ export class CreateBookingUseCase {
       securityDeposit: bigint;
     },
   ): Promise<BookingRecord> {
-    // ── Task 1.11 (Basic promotions) ─────────────────────────────────────────
-    // A supplied code is validated + priced BEFORE the insert (so the booking
-    // carries discount_amount/final_amount + an immutable promotion_snapshot),
-    // and the usage is atomically CLAIMED after the insert — all inside this one
-    // tx, so a lost race for the last use rolls the booking back too. When no
-    // code is present this is a no-op and the booking is unchanged.
+    // ── Task 1.11 + 2.2 (Promotions) ─────────────────────────────────────────
+    // Resolve the promotion to apply (§12.1 no-stacking, code-wins): a supplied
+    // code always wins; otherwise the best auto-applied campaign is chosen. The
+    // winner is validated + priced BEFORE the insert (so the booking carries
+    // discount_amount/final_amount + an immutable promotion_snapshot), and the
+    // usage is atomically CLAIMED after the insert — all inside this one tx, so a
+    // lost race for the last use (total or per-customer) rolls the booking back.
     // NOTE (finance wave): deposit is still computed on the pre-discount subtotal
     // — deposit-on-final and commission snapshotting are layered on separately.
     const subtotal = BigInt(args.quote.subtotal);
-    let promo: PreparedPromotion | undefined;
-    if (args.input.promoCode) {
-      promo = await this.promotions.prepare(tx, {
-        code: args.input.promoCode,
-        listingId: args.listing.id,
-        amount: subtotal,
-      });
-    }
+    const promo = await this.promotions.prepare(tx, {
+      code: args.input.promoCode ?? null,
+      listingId: args.listing.id,
+      amount: subtotal,
+      slotStart: args.timeslot.start,
+      customerId: args.customerId,
+      customerEmail: args.input.guest?.email ?? null,
+      customerPhone: args.input.guest?.phone ?? null,
+    });
     const discountAmount = promo?.discountAmount ?? 0n;
     const finalAmount = promo ? promo.finalAmount : subtotal;
 
@@ -280,6 +282,7 @@ export class CreateBookingUseCase {
         bookingId: draft.id,
         customerId: args.customerId,
         discountAmount: promo.discountAmount,
+        usageLimitPerCustomer: promo.usageLimitPerCustomer,
       });
     }
     const toStatus = args.listing.approvalRequired ? 'pending_approval' : 'pending_payment';

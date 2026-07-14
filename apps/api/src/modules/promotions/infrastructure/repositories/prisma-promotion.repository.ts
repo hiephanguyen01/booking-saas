@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { PromoTimeWindow } from '../../domain/promotion-discount';
 import type {
   CreatePromotionData,
   IPromotionRepository,
@@ -9,6 +10,11 @@ import type {
 } from '../../domain/ports/promotion-repository.port';
 
 type Row = Prisma.PromotionGetPayload<Record<string, never>>;
+
+function parseTimeWindows(value: Prisma.JsonValue | null): PromoTimeWindow[] | null {
+  if (value === null || !Array.isArray(value)) return null;
+  return value as unknown as PromoTimeWindow[];
+}
 
 function toRecord(p: Row): PromotionRecord {
   return {
@@ -23,12 +29,48 @@ function toRecord(p: Row): PromotionRecord {
     appliesTo: p.appliesTo,
     appliesToId: p.appliesToId,
     minOrderAmount: p.minOrderAmount,
+    firstBookingOnly: p.firstBookingOnly,
     usageLimitTotal: p.usageLimitTotal,
+    usageLimitPerCustomer: p.usageLimitPerCustomer,
+    timeWindows: parseTimeWindows(p.timeWindows),
     redeemedCount: p.redeemedCount,
     startsAt: p.startsAt,
     endsAt: p.endsAt,
     status: p.status,
+    createdByPartnerId: p.createdByPartnerId,
+    fundingPartnerId: p.fundingPartnerId,
+    partnerOptInAt: p.partnerOptInAt,
     createdAt: p.createdAt,
+  };
+}
+
+/** Prisma write payload shared by create/update — `timeWindows` serialised to JSON. */
+function toWriteData(data: UpdatePromotionData): Omit<Prisma.PromotionUncheckedUpdateInput, 'tenantId' | 'id'> {
+  return {
+    name: data.name,
+    code: data.code,
+    discountType: data.discountType,
+    discountValue: data.discountValue,
+    maxDiscount: data.maxDiscount,
+    fundedBy: data.fundedBy,
+    appliesTo: data.appliesTo,
+    appliesToId: data.appliesToId,
+    minOrderAmount: data.minOrderAmount,
+    firstBookingOnly: data.firstBookingOnly,
+    usageLimitTotal: data.usageLimitTotal,
+    usageLimitPerCustomer: data.usageLimitPerCustomer,
+    timeWindows:
+      data.timeWindows === undefined
+        ? undefined
+        : data.timeWindows === null
+          ? Prisma.DbNull
+          : (data.timeWindows as unknown as Prisma.InputJsonValue),
+    startsAt: data.startsAt,
+    endsAt: data.endsAt,
+    status: data.status,
+    createdByPartnerId: data.createdByPartnerId,
+    fundingPartnerId: data.fundingPartnerId,
+    partnerOptInAt: data.partnerOptInAt,
   };
 }
 
@@ -37,45 +79,13 @@ export class PrismaPromotionRepository implements IPromotionRepository {
   async create(tx: PrismaTx, tenantId: string, data: CreatePromotionData): Promise<PromotionRecord> {
     return toRecord(
       await tx.promotion.create({
-        data: {
-          tenantId,
-          name: data.name,
-          code: data.code,
-          discountType: data.discountType,
-          discountValue: data.discountValue,
-          maxDiscount: data.maxDiscount,
-          appliesTo: data.appliesTo,
-          appliesToId: data.appliesToId,
-          minOrderAmount: data.minOrderAmount,
-          usageLimitTotal: data.usageLimitTotal,
-          startsAt: data.startsAt,
-          endsAt: data.endsAt,
-          status: data.status,
-        },
+        data: { tenantId, ...toWriteData(data) } as Prisma.PromotionUncheckedCreateInput,
       }),
     );
   }
 
   async update(tx: PrismaTx, id: string, data: UpdatePromotionData): Promise<PromotionRecord> {
-    return toRecord(
-      await tx.promotion.update({
-        where: { id },
-        data: {
-          name: data.name,
-          code: data.code,
-          discountType: data.discountType,
-          discountValue: data.discountValue,
-          maxDiscount: data.maxDiscount,
-          appliesTo: data.appliesTo,
-          appliesToId: data.appliesToId,
-          minOrderAmount: data.minOrderAmount,
-          usageLimitTotal: data.usageLimitTotal,
-          startsAt: data.startsAt,
-          endsAt: data.endsAt,
-          status: data.status,
-        },
-      }),
-    );
+    return toRecord(await tx.promotion.update({ where: { id }, data: toWriteData(data) }));
   }
 
   async findById(tx: PrismaTx, id: string): Promise<PromotionRecord | null> {
@@ -94,8 +104,36 @@ export class PrismaPromotionRepository implements IPromotionRepository {
     return rows.map(toRecord);
   }
 
+  async listByPartner(tx: PrismaTx, partnerId: string): Promise<PromotionRecord[]> {
+    const rows = await tx.promotion.findMany({
+      where: { createdByPartnerId: partnerId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map(toRecord);
+  }
+
+  async listActiveAutoCampaigns(tx: PrismaTx): Promise<PromotionRecord[]> {
+    const rows = await tx.promotion.findMany({
+      where: { code: null, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map(toRecord);
+  }
+
+  async listPendingOptIn(tx: PrismaTx, partnerId: string): Promise<PromotionRecord[]> {
+    const rows = await tx.promotion.findMany({
+      where: { fundedBy: 'partner', fundingPartnerId: partnerId, partnerOptInAt: null, createdByPartnerId: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map(toRecord);
+  }
+
   async end(tx: PrismaTx, id: string): Promise<PromotionRecord> {
     return toRecord(await tx.promotion.update({ where: { id }, data: { status: 'ended' } }));
+  }
+
+  async setPartnerOptIn(tx: PrismaTx, id: string, at: Date): Promise<PromotionRecord> {
+    return toRecord(await tx.promotion.update({ where: { id }, data: { partnerOptInAt: at } }));
   }
 
   /**

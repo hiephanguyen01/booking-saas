@@ -14,11 +14,17 @@ export function toPromotionResponse(p: PromotionRecord): PromotionResponse {
     appliesTo: p.appliesTo,
     appliesToId: p.appliesToId,
     minOrderAmount: p.minOrderAmount?.toString() ?? null,
+    firstBookingOnly: p.firstBookingOnly,
     usageLimitTotal: p.usageLimitTotal,
+    usageLimitPerCustomer: p.usageLimitPerCustomer,
+    timeWindows: p.timeWindows,
     redeemedCount: p.redeemedCount,
     startsAt: p.startsAt?.toISOString() ?? null,
     endsAt: p.endsAt?.toISOString() ?? null,
     status: p.status,
+    createdByPartnerId: p.createdByPartnerId,
+    fundingPartnerId: p.fundingPartnerId,
+    partnerOptInAt: p.partnerOptInAt?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
   };
 }

@@ -14,17 +14,8 @@
  *     index.ts
  */
 
-export {
-  fetchBookingByCode,
-  requestBookingOtp,
-  cancelBooking,
-  fetchPaymentStatus,
-  mockPay,
-  mockPaymentsEnabled,
-  createBooking,
-  checkoutBooking,
-  validatePromo,
-  fetchAvailability,
-} from '../../lib/booking.server';
-
+// NOTE: server-only helpers live in `app/lib/booking.server.ts` and must be
+// imported directly from there by loaders/actions — re-exporting them through a
+// client-reachable feature barrel pulls server code into the client bundle
+// (React Router: "Server-only module referenced by client"). Types are safe:
 export type { ApiResult } from '../../lib/booking.server';

@@ -120,6 +120,7 @@ export const vi = {
     invalidSlot: 'Lịch đã chọn không hợp lệ. Vui lòng chọn lại.',
     creating: 'Đang tạo đặt chỗ…',
     dueNow: 'Thanh toán ngay',
+    autoCampaign: 'Tự động áp dụng: {name} — giảm {amount}',
   },
   promoErrors: {
     PROMO_NOT_FOUND: 'Mã không tồn tại.',
@@ -128,6 +129,8 @@ export const vi = {
     PROMO_MIN_ORDER: 'Chưa đạt giá trị tối thiểu để dùng mã.',
     PROMO_NOT_APPLICABLE: 'Mã không áp dụng cho mục này.',
     PROMO_FIRST_BOOKING_ONLY: 'Mã chỉ dành cho lần đặt đầu tiên.',
+    PROMO_TIME_WINDOW: 'Mã chỉ áp dụng trong khung giờ ưu đãi.',
+    PROMO_NOT_OPTED_IN: 'Mã chưa có hiệu lực.',
     generic: 'Không áp dụng được mã.',
   },
   payment: {
@@ -368,6 +371,7 @@ export const en = {
     invalidSlot: 'The selected schedule is invalid. Please pick again.',
     creating: 'Creating booking…',
     dueNow: 'Due now',
+    autoCampaign: 'Auto-applied: {name} — {amount} off',
   },
   promoErrors: {
     PROMO_NOT_FOUND: 'Code not found.',
@@ -376,6 +380,8 @@ export const en = {
     PROMO_MIN_ORDER: 'Order value is below the minimum for this code.',
     PROMO_NOT_APPLICABLE: 'This code does not apply to this item.',
     PROMO_FIRST_BOOKING_ONLY: 'This code is for first-time bookings only.',
+    PROMO_TIME_WINDOW: 'This code only applies during off-peak hours.',
+    PROMO_NOT_OPTED_IN: 'This code is not yet active.',
     generic: 'Could not apply the code.',
   },
   payment: {

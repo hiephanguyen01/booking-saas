@@ -3,33 +3,56 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
+import { AGREEMENT_REPOSITORY } from '../../../partner/domain/ports/agreement-repository.port';
+import { PrismaAgreementRepository } from '../../../partner/infrastructure/repositories/prisma-agreement.repository';
 import { PROMOTION_REPOSITORY } from '../../domain/ports/promotion-repository.port';
 import { PROMO_REDEMPTION_REPOSITORY } from '../../domain/ports/promo-redemption-repository.port';
+import { PROMO_CONTEXT_LOOKUP } from '../../domain/ports/promo-context-lookup.port';
 import { PrismaPromotionRepository } from '../repositories/prisma-promotion.repository';
 import { PrismaPromoRedemptionRepository } from '../repositories/prisma-promo-redemption.repository';
+import { PrismaPromoContextLookup } from '../repositories/prisma-promo-context-lookup';
 import { ApplyPromotionService } from '../../application/apply-promotion.service';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';
+import { ResolveAutoCampaignUseCase } from '../../application/use-cases/resolve-auto-campaign.use-case';
 import { CreatePromotionUseCase } from '../../application/use-cases/create-promotion.use-case';
 import { UpdatePromotionUseCase } from '../../application/use-cases/update-promotion.use-case';
 import { EndPromotionUseCase } from '../../application/use-cases/end-promotion.use-case';
 import { ListPromotionsUseCase } from '../../application/use-cases/list-promotions.use-case';
 import { PromoUsageStatsUseCase } from '../../application/use-cases/promo-usage-stats.use-case';
+import { CreatePartnerPromotionUseCase } from '../../application/use-cases/create-partner-promotion.use-case';
+import { UpdatePartnerPromotionUseCase } from '../../application/use-cases/update-partner-promotion.use-case';
+import { EndPartnerPromotionUseCase } from '../../application/use-cases/end-partner-promotion.use-case';
+import { ListPartnerPromotionsUseCase } from '../../application/use-cases/list-partner-promotions.use-case';
+import { ListPendingOptInUseCase } from '../../application/use-cases/list-pending-optin.use-case';
+import { OptInPromotionUseCase } from '../../application/use-cases/opt-in-promotion.use-case';
 import { PublicPromoController } from './public-promo.controller';
 import { TenantPromotionController } from './tenant-promotion.controller';
+import { PartnerPromotionController } from './partner-promotion.controller';
+import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabled.guard';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule],
-  controllers: [PublicPromoController, TenantPromotionController],
+  controllers: [PublicPromoController, TenantPromotionController, PartnerPromotionController],
   providers: [
     { provide: PROMOTION_REPOSITORY, useClass: PrismaPromotionRepository },
     { provide: PROMO_REDEMPTION_REPOSITORY, useClass: PrismaPromoRedemptionRepository },
+    { provide: PROMO_CONTEXT_LOOKUP, useClass: PrismaPromoContextLookup },
+    { provide: AGREEMENT_REPOSITORY, useClass: PrismaAgreementRepository },
     ApplyPromotionService,
     ValidatePromoUseCase,
+    ResolveAutoCampaignUseCase,
     CreatePromotionUseCase,
     UpdatePromotionUseCase,
     EndPromotionUseCase,
     ListPromotionsUseCase,
     PromoUsageStatsUseCase,
+    CreatePartnerPromotionUseCase,
+    UpdatePartnerPromotionUseCase,
+    EndPartnerPromotionUseCase,
+    ListPartnerPromotionsUseCase,
+    ListPendingOptInUseCase,
+    OptInPromotionUseCase,
+    PartnerPromotionsEnabledGuard,
   ],
   // Exported so the booking module can reserve a redemption in-tx at booking creation.
   exports: [ApplyPromotionService],
