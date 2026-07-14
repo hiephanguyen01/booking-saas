@@ -1,17 +1,36 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { i18n } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
-import { createBookingI18n, type Locale } from './instance';
+import { createBookingI18n, type Locale } from './create-i18n';
+import type { Messages, Namespace } from './resources';
+
+type NestedKey<T> = T extends string
+  ? never
+  : {
+      [Key in keyof T & string]: T[Key] extends string
+        ? Key
+        : `${Key}.${NestedKey<T[Key]>}`;
+    }[keyof T & string];
+
+export type TranslationKey = {
+  [Key in Namespace]: `${Key}.${NestedKey<Messages[Key]>}`;
+}[Namespace];
+
+type NamespacedTranslationKey = {
+  [Key in Namespace]: `${Key}:${NestedKey<Messages[Key]>}`;
+}[Namespace];
 
 export interface I18n {
   locale: Locale;
   instance: i18n;
-  t: (key: string, vars?: Record<string, string | number>) => string;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 }
 
-function namespacedKey(key: string): string {
+function namespacedKey(key: TranslationKey): NamespacedTranslationKey {
   const separator = key.indexOf('.');
-  return separator === -1 ? key : `${key.slice(0, separator)}:${key.slice(separator + 1)}`;
+  return (separator === -1
+    ? key
+    : `${key.slice(0, separator)}:${key.slice(separator + 1)}`) as NamespacedTranslationKey;
 }
 
 export function createTranslator(locale: Locale): I18n {

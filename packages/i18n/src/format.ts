@@ -1,4 +1,4 @@
-import type { Locale } from './instance';
+import type { Locale } from './create-i18n';
 
 const intlLocale: Record<Locale, string> = { vi: 'vi-VN', en: 'en-US' };
 

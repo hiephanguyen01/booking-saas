@@ -40,7 +40,7 @@ export interface PartnerApplyPayload {
   businessInfo?: Record<string, unknown>;
 }
 
-/** A message code the route maps to `t('becomePartner.errors.<code>')`. */
+/** A message code the route maps to `t('common.becomePartner.errors.<code>')`. */
 type ErrorCode = string;
 type TokenResult = { ok: true; token: string } | { ok: false; code: ErrorCode };
 

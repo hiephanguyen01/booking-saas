@@ -59,7 +59,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
                 : 'border-border text-muted-foreground',
             )}
           >
-            {t('home.bookHourly')}
+            {t('common.home.bookHourly')}
           </button>
           <button
             type="button"
@@ -71,24 +71,24 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
                 : 'border-border text-muted-foreground',
             )}
           >
-            {t('home.bookDaily')}
+            {t('common.home.bookDaily')}
           </button>
         </div>
         {mode === 'hourly' ? (
-          <p className="text-xs font-medium text-emerald-600">{t('home.bookHourlyHint')}</p>
+          <p className="text-xs font-medium text-emerald-600">{t('common.home.bookHourlyHint')}</p>
         ) : null}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end sm:gap-4">
           <label className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3">
             <Search className="size-5 text-muted-foreground" />
-            <span className="truncate text-sm text-muted-foreground">{t('home.searchPlaceholder')}</span>
+            <span className="truncate text-sm text-muted-foreground">{t('common.home.searchPlaceholder')}</span>
           </label>
           <button
             type="button"
             className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3 text-left"
           >
             <MapPin className="size-5 text-muted-foreground" />
-            <span className="flex-1 truncate text-sm text-muted-foreground">{t('home.locationPlaceholder')}</span>
+            <span className="flex-1 truncate text-sm text-muted-foreground">{t('common.home.locationPlaceholder')}</span>
             <ChevronDown className="size-4 text-muted-foreground" />
           </button>
           <label className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3">
@@ -102,7 +102,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
             className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3 text-left"
           >
             <Users className="size-5 text-muted-foreground" />
-            <span className="flex-1 truncate text-sm text-foreground">{t('home.guestsPlaceholder')}</span>
+            <span className="flex-1 truncate text-sm text-foreground">{t('common.home.guestsPlaceholder')}</span>
             <ChevronDown className="size-4 text-muted-foreground" />
           </button>
         </div>
@@ -112,7 +112,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
             type="button"
             className="w-full rounded-sm bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:w-60"
           >
-            {t('home.search')}
+            {t('common.home.search')}
           </button>
         </div>
       </div>

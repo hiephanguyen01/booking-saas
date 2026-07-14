@@ -20,7 +20,7 @@ export function TopListingsSection({ listings }: { listings: PublicListingRespon
 
   return (
     <section className="rounded-2xl border border-border bg-card p-6">
-      <h2 className="mb-6 text-lg font-semibold text-foreground">{t('home.topListings')}</h2>
+      <h2 className="mb-6 text-lg font-semibold text-foreground">{t('common.home.topListings')}</h2>
       <Carousel opts={{ align: 'start' }} className="px-1">
         <CarouselContent>
           {listings.map((listing) => (

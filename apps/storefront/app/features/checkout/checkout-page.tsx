@@ -208,7 +208,7 @@ function PromoForm({
           </Form>
         )}
         {errorCode ? (
-          <p className="text-sm text-destructive">{t(`promoErrors.${errorCode}`)}</p>
+          <p className="text-sm text-destructive">{t(`checkout.promoErrors.${errorCode}`)}</p>
         ) : null}
       </CardContent>
     </Card>

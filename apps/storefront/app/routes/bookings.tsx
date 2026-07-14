@@ -37,8 +37,8 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
 
   return (
     <div className="mx-auto max-w-lg px-6 py-12">
-      <h1 className="text-2xl font-bold tracking-tight">{t('lookup.title')}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{t('lookup.subtitle')}</p>
+      <h1 className="text-2xl font-bold tracking-tight">{t('booking.lookup.title')}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t('booking.lookup.subtitle')}</p>
 
       <Card className="mt-6 rounded-2xl border-border">
         <CardContent className="p-6">
@@ -60,12 +60,12 @@ function RequestForm({ error }: { error: string | null }) {
   return (
     <Form method="post" className="space-y-3">
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-foreground">{t('lookup.codeLabel')}</span>
-        <Input name="code" placeholder={t('lookup.codePlaceholder')} className="uppercase" autoFocus />
+        <span className="text-sm font-medium text-foreground">{t('booking.lookup.codeLabel')}</span>
+        <Input name="code" placeholder={t('booking.lookup.codePlaceholder')} className="uppercase" autoFocus />
       </label>
-      {error ? <p className="text-sm text-destructive">{t('lookup.invalidCode')}</p> : null}
+      {error ? <p className="text-sm text-destructive">{t('booking.lookup.invalidCode')}</p> : null}
       <Button type="submit" className="h-11 w-full">
-        {t('lookup.sendOtp')}
+        {t('booking.lookup.sendOtp')}
       </Button>
     </Form>
   );
@@ -76,17 +76,17 @@ function VerifyForm({ code, devOtp, locale }: { code: string; devOtp: string | n
   const { t } = useT();
   return (
     <div className="space-y-3">
-      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{t('lookup.otpSent')}</p>
+      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{t('booking.lookup.otpSent')}</p>
       {devOtp ? (
-        <p className="text-xs text-muted-foreground">{t('lookup.otpHintDev', { otp: devOtp })}</p>
+        <p className="text-xs text-muted-foreground">{t('booking.lookup.otpHintDev', { otp: devOtp })}</p>
       ) : null}
       <Form method="get" action={storefrontPaths.booking(locale, code)} className="space-y-3">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
+          <span className="text-sm font-medium text-foreground">{t('booking.lookup.otpLabel')}</span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
         </label>
         <Button type="submit" className="h-11 w-full">
-          {t('lookup.verify')}
+          {t('booking.lookup.verify')}
         </Button>
       </Form>
     </div>
@@ -97,9 +97,9 @@ function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' 
   const { t } = useT();
   return (
     <div className="mt-8">
-      <h2 className="mb-2 text-sm font-semibold text-foreground">{t('lookup.recentTitle')}</h2>
+      <h2 className="mb-2 text-sm font-semibold text-foreground">{t('booking.lookup.recentTitle')}</h2>
       {recent.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('lookup.recentEmpty')}</p>
+        <p className="text-sm text-muted-foreground">{t('booking.lookup.recentEmpty')}</p>
       ) : (
         <ul className="divide-y divide-border rounded-xl border border-border">
           {recent.map((code) => (

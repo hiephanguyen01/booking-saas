@@ -83,7 +83,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
             <Row label={t('booking.code')} value={code} mono />
             <Row label={t('booking.status')} value={t(`booking.statusLabels.${bookingStatus}`)} />
             {status && status.paidAmount !== '0' ? (
-              <Row label={t('payment.paid')} value={formatVnd(status.paidAmount)} />
+              <Row label={t('booking.payment.paid')} value={formatVnd(status.paidAmount)} />
             ) : null}
           </div>
 
@@ -103,7 +103,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
 
           <div className="pt-2 text-center">
             <Link to={storefrontPaths.bookings(locale)} className="text-sm text-muted-foreground hover:underline">
-              {t('nav.lookup')}
+              {t('navigation.lookup')}
             </Link>
           </div>
         </CardContent>
@@ -136,16 +136,16 @@ function StatusHeader({
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-xl font-bold">{t('payment.succeeded')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('payment.confirmedNote')}</p>
+        <h1 className="text-xl font-bold">{t('booking.payment.succeeded')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('booking.payment.confirmedNote')}</p>
       </div>
     );
   }
   if (isPending) {
     return (
       <div className="text-center">
-        <h1 className="text-xl font-bold">{t('payment.title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('payment.pending')}</p>
+        <h1 className="text-xl font-bold">{t('booking.payment.title')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('booking.payment.pending')}</p>
       </div>
     );
   }
@@ -153,7 +153,7 @@ function StatusHeader({
   return (
     <div className="text-center">
       <h1 className="text-xl font-bold">{t(`booking.statusLabels.${status}`)}</h1>
-      {failed ? <p className="mt-1 text-sm text-destructive">{t('payment.failed')}</p> : null}
+      {failed ? <p className="mt-1 text-sm text-destructive">{t('booking.payment.failed')}</p> : null}
     </div>
   );
 }
@@ -170,15 +170,15 @@ function PendingActions({
   // Only offer the mock button while awaiting payment (not while awaiting partner approval).
   const awaitingPayment = status?.bookingStatus === 'pending_payment';
   if (!mockEnabled || !awaitingPayment) {
-    return <p className="text-center text-sm text-muted-foreground">{t('payment.checking')}</p>;
+    return <p className="text-center text-sm text-muted-foreground">{t('booking.payment.checking')}</p>;
   }
   return (
     <Form method="post" className="space-y-2">
       <input type="hidden" name="intent" value="mock-pay" />
       <Button type="submit" className="h-11 w-full">
-        {t('payment.mockPay')}
+        {t('booking.payment.mockPay')}
       </Button>
-      <p className="text-center text-xs text-muted-foreground">{t('payment.mockHint')}</p>
+      <p className="text-center text-xs text-muted-foreground">{t('booking.payment.mockHint')}</p>
     </Form>
   );
 }

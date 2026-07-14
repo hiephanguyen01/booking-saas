@@ -16,8 +16,8 @@ export function StudioHero({
   listingTypes: PublicListingTypeResponse[];
 }) {
   const { t } = useT();
-  const title = tenant.hero.title ?? t('home.heroTitleFallback', { name: tenant.name });
-  const subtitle = tenant.hero.subtitle ?? t('home.heroSubtitleFallback');
+  const title = tenant.hero.title ?? t('common.home.heroTitleFallback', { name: tenant.name });
+  const subtitle = tenant.hero.subtitle ?? t('common.home.heroSubtitleFallback');
   const image = tenant.hero.imageUrl ?? `https://picsum.photos/seed/${tenant.slug}-hero/1600/700`;
 
   return (

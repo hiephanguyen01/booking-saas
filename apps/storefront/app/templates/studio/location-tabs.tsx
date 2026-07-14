@@ -10,11 +10,11 @@ import { useT } from '../../lib/i18n';
 export function LocationTabs() {
   const { t } = useT();
   const locations = [
-    { key: 'hcm', label: t('home.locations.hcm') },
-    { key: 'hanoi', label: t('home.locations.hanoi') },
-    { key: 'danang', label: t('home.locations.danang') },
-    { key: 'sapa', label: t('home.locations.sapa') },
-    { key: 'dalat', label: t('home.locations.dalat') },
+    { key: 'hcm', label: t('common.home.locations.hcm') },
+    { key: 'hanoi', label: t('common.home.locations.hanoi') },
+    { key: 'danang', label: t('common.home.locations.danang') },
+    { key: 'sapa', label: t('common.home.locations.sapa') },
+    { key: 'dalat', label: t('common.home.locations.dalat') },
   ];
   const [active, setActive] = useState(locations[0].key);
 

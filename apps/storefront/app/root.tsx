@@ -1,5 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
-import { createTranslator, I18nProvider, type Locale } from '@booking/i18n';
+import { BookingI18nProvider, type Locale } from '@booking/i18n';
 import { QueryProvider } from '@booking/query';
 import {
   data,
@@ -122,8 +122,6 @@ export default function App({ loaderData }: Route.ComponentProps) {
 
   const matches = useMatches();
   
-  const i18n = createTranslator(locale);
-
    const isStandalone = matches.some(
     (match) =>
       (match.handle as { standalone?: boolean } | undefined)?.standalone,
@@ -139,7 +137,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
   }
   
   return (
-    <I18nProvider value={i18n}>
+    <BookingI18nProvider locale={locale}>
       <QueryProvider>
         <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
           <ThemeStyle theme={tenant.theme} />
@@ -152,7 +150,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
           {!isStandalone && <SiteFooter tenant={tenant} />}
         </div>
       </QueryProvider>
-    </I18nProvider>
+    </BookingI18nProvider>
   );
 }
 

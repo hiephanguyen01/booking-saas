@@ -4,10 +4,25 @@ import {
   createTranslator,
   en,
   flattenTranslationKeys,
+  namespaces,
   vi,
 } from './index';
 
 describe('@booking/i18n', () => {
+  it('exposes only the seven feature namespaces', () => {
+    expect(namespaces).toEqual([
+      'common',
+      'navigation',
+      'catalog',
+      'listing',
+      'checkout',
+      'booking',
+      'errors',
+    ]);
+    expect(Object.keys(vi)).toEqual(namespaces);
+    expect(Object.keys(en)).toEqual(namespaces);
+  });
+
   it('keeps Vietnamese and English translation keys identical', () => {
     expect(flattenTranslationKeys(en)).toEqual(flattenTranslationKeys(vi));
   });
@@ -18,16 +33,21 @@ describe('@booking/i18n', () => {
 
     expect(vietnamese.t('common:save')).toBe('Lưu');
     expect(english.t('common:save')).toBe('Save');
+    expect(english.t('navigation:lookup')).toBe('Find a booking');
     expect(vietnamese.language).toBe('vi');
     expect(english.language).toBe('en');
   });
 
-  it('supports the existing dot-key and interpolation API during migration', () => {
+  it('supports the typed dot-key and interpolation API', () => {
     const translator = createTranslator('en');
 
     expect(translator.t('listing.providedBy', { name: 'Studio One' })).toBe(
       'Offered by Studio One',
     );
-    expect(translator.t('missing.key')).toBe('missing.key');
+    expect(translator.t('common.home.search')).toBe('Search');
+    expect(translator.t('checkout.promoErrors.PROMO_EXPIRED')).toBe(
+      'This code has expired.',
+    );
+    expect(translator.t('booking.lookup.title')).toBe('Find a booking');
   });
 });

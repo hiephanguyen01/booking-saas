@@ -1,19 +1,25 @@
-import { createInstance, type i18n } from 'i18next';
+import { createInstance, type i18n, type TFunction } from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { en, vi } from './resources';
+import type { TranslationShape } from './locales/translation-shape';
+import {
+  defaultLocale,
+  defaultNS,
+  namespaces,
+  resources,
+  supportedLocales,
+} from './resources';
+import type { Locale, Messages, Namespace } from './resources';
 
 export { en, vi } from './resources';
-export const supportedLocales = ['vi', 'en'] as const;
-export type Locale = (typeof supportedLocales)[number];
-export type Messages = typeof vi;
-export type Namespace = keyof Messages;
-
-export const defaultLocale: Locale = 'vi';
-export const resources = { vi, en } as const;
-
-export function isLocale(value: unknown): value is Locale {
-  return typeof value === 'string' && supportedLocales.includes(value as Locale);
-}
+export {
+  defaultLocale,
+  defaultNS,
+  isLocale,
+  namespaces,
+  resources,
+  supportedLocales,
+} from './resources';
+export type { Locale, Messages, Namespace } from './resources';
 
 export function createBookingI18n(locale: Locale): i18n {
   const instance = createInstance();
@@ -23,7 +29,7 @@ export function createBookingI18n(locale: Locale): i18n {
     fallbackLng: defaultLocale,
     supportedLngs: [...supportedLocales],
     resources,
-    ns: Object.keys(vi),
+    ns: [...namespaces],
     defaultNS: 'common',
     fallbackNS: 'common',
     initAsync: false,
@@ -38,7 +44,14 @@ export function createBookingI18n(locale: Locale): i18n {
   return instance;
 }
 
-export function flattenTranslationKeys(messages: Messages): string[] {
+export function getServerTranslator(
+  locale: Locale,
+  namespace: Namespace | Namespace[] = defaultNS,
+): TFunction {
+  return createBookingI18n(locale).getFixedT(locale, namespace);
+}
+
+export function flattenTranslationKeys(messages: TranslationShape<Messages>): string[] {
   const keys: string[] = [];
 
   function visit(value: unknown, prefix: string): void {
