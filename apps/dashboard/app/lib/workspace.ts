@@ -52,39 +52,13 @@ export function firstPartnerMembership(info: SessionInfoResponse): PartnerMember
   return partner ?? null;
 }
 
-export function preferredTenantMembership(
-  info: SessionInfoResponse,
-  currentPath?: string | null,
-): TenantMembership | null {
-  const tenantId = currentPath ? workspaceIdFromPath(currentPath, 'tenant') : null;
-  return (tenantId ? findTenantMembership(info, tenantId) : null) ?? firstTenantMembership(info);
-}
-
-export function preferredPartnerMembership(
-  info: SessionInfoResponse,
-  currentPath?: string | null,
-): PartnerMembership | null {
-  const partnerId = currentPath ? workspaceIdFromPath(currentPath, 'partner') : null;
-  return (partnerId ? findPartnerMembership(info, partnerId) : null) ?? firstPartnerMembership(info);
-}
-
 export function defaultDashboardPath(info: SessionInfoResponse): string {
   if (info.scopes.some((membership) => membership.scope === 'platform')) {
     return dashboardPaths.admin.home;
   }
   const tenant = firstTenantMembership(info);
-  if (tenant) return dashboardPaths.tenant.home(tenant.tenantId);
+  if (tenant) return dashboardPaths.tenant.home;
   const partner = firstPartnerMembership(info);
-  if (partner) return dashboardPaths.partner.home(partner.partnerId);
+  if (partner) return dashboardPaths.partner.home;
   return dashboardPaths.home;
-}
-
-export function workspaceIdFromPath(pathname: string, scope: 'tenant' | 'partner'): string | null {
-  const match = pathname.match(new RegExp(`^/${scope}/([^/]+)(?:/|$)`));
-  if (!match?.[1]) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return null;
-  }
 }

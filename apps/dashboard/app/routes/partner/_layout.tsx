@@ -13,9 +13,6 @@ export default function PartnerLayout() {
   return <Outlet />;
 }
 
-export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const homeHref = params.partnerId
-    ? `/partner/${encodeURIComponent(params.partnerId)}`
-    : '/workspaces';
-  return <RouteErrorState error={error} homeHref={homeHref} homeLabel="Về partner" />;
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <RouteErrorState error={error} homeHref="/partner" homeLabel="Về partner" />;
 }

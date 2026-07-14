@@ -1,8 +1,8 @@
 import { index, route, type RouteConfig } from '@react-router/dev/routes';
 import { adminChildren } from './routes/admin/routes';
-import { tenantChildren } from './routes/tenant/routes';
-import { partnerChildren } from './routes/partner/routes';
 import { affiliateChildren } from './routes/affiliate/routes';
+import { partnerChildren } from './routes/partner/routes';
+import { tenantChildren } from './routes/tenant/routes';
 
 // The dashboard shell (sidebar + header) lives in root.tsx and gates areas by the
 // user's scopes. Each area is a permission-guarded nested layout: its `_layout.tsx`
@@ -24,12 +24,8 @@ export default [
   route('uploads/presign', 'routes/uploads.presign.tsx'),
 
   route('admin', 'routes/admin/_layout.tsx', adminChildren),
-  route('tenant/:tenantId', 'routes/tenant/_layout.tsx', tenantChildren),
-  route('partner/:partnerId', 'routes/partner/_layout.tsx', partnerChildren),
-  route('tenant', 'routes/legacy-tenant.tsx'),
-  route('tenant/*', 'routes/legacy-tenant-splat.tsx'),
-  route('partner', 'routes/legacy-partner.tsx'),
-  route('partner/*', 'routes/legacy-partner-splat.tsx'),
+  route('tenant', 'routes/tenant/_layout.tsx', tenantChildren),
+  route('partner', 'routes/partner/_layout.tsx', partnerChildren),
 
   // Affiliate self-service portal (§15.3) — membership-gated (not RBAC-scoped);
   // the layout resolves the user's approved `affiliates` row(s).

@@ -3,19 +3,9 @@ import { Building2, ShieldCheck, Store } from 'lucide-react';
 import { adminNavSections } from '~/routes/admin/nav';
 import { partnerNavSections } from '~/routes/partner/nav';
 import { tenantNavSections } from '~/routes/tenant/nav';
-import type {
-  DashboardArea,
-  DashboardNavItem,
-  DashboardNavSection,
-} from './navigation-types';
+import type { DashboardArea, DashboardNavItem, DashboardNavSection } from './navigation-types';
 import { dashboardPaths } from './paths';
-import {
-  findPartnerMembership,
-  findTenantMembership,
-  firstPartnerMembership,
-  firstTenantMembership,
-  workspaceIdFromPath,
-} from './workspace';
+import { firstPartnerMembership, firstTenantMembership } from './workspace';
 
 export type { DashboardArea, DashboardNavItem, DashboardNavSection } from './navigation-types';
 
@@ -63,9 +53,7 @@ function visibleSections(
   const held = new Set(permissions);
 
   return sections.flatMap((section) => {
-    const items = section.items.filter(
-      (item) => !item.permission || held.has(item.permission),
-    );
+    const items = section.items.filter((item) => !item.permission || held.has(item.permission));
     return items.length > 0 ? [{ ...section, items }] : [];
   });
 }
@@ -85,10 +73,7 @@ function scopedArea(
   };
 }
 
-export function dashboardAreasFor(
-  info: SessionInfoResponse,
-  pathname: string,
-): DashboardArea[] {
+export function dashboardAreasFor(info: SessionInfoResponse, _pathname: string): DashboardArea[] {
   const areas: DashboardArea[] = [];
   const platform = info.scopes.find((membership) => membership.scope === 'platform');
   if (platform) {
@@ -100,34 +85,23 @@ export function dashboardAreasFor(
     );
   }
 
-  const requestedTenantId = workspaceIdFromPath(pathname, 'tenant');
-  const tenant = requestedTenantId
-    ? findTenantMembership(info, requestedTenantId)
-    : firstTenantMembership(info);
+  const tenant = firstTenantMembership(info);
   if (tenant) {
     areas.push(
-      scopedArea(DASHBOARD_AREAS[1]!, tenantNavSections(tenant.tenantId), tenant.permissions, {
+      scopedArea(DASHBOARD_AREAS[1]!, tenantNavSections, tenant.permissions, {
         title: tenant.tenantName ?? 'Tenant',
-        basePath: dashboardPaths.tenant.home(tenant.tenantId),
+        basePath: dashboardPaths.tenant.home,
       }),
     );
   }
 
-  const requestedPartnerId = workspaceIdFromPath(pathname, 'partner');
-  const partner = requestedPartnerId
-    ? findPartnerMembership(info, requestedPartnerId)
-    : firstPartnerMembership(info);
+  const partner = firstPartnerMembership(info);
   if (partner) {
     areas.push(
-      scopedArea(
-        DASHBOARD_AREAS[2]!,
-        partnerNavSections(partner.partnerId),
-        partner.permissions,
-        {
-          title: partner.partnerName ?? 'Partner',
-          basePath: dashboardPaths.partner.home(partner.partnerId),
-        },
-      ),
+      scopedArea(DASHBOARD_AREAS[2]!, partnerNavSections, partner.permissions, {
+        title: partner.partnerName ?? 'Partner',
+        basePath: dashboardPaths.partner.home,
+      }),
     );
   }
 

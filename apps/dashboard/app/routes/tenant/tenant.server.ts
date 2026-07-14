@@ -1,7 +1,7 @@
 import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { requireScope, type AuthContext } from '~/lib/auth.server';
-import { findTenantMembership, workspaceIdFromPath } from '~/lib/workspace';
+import { firstTenantMembership } from '~/lib/workspace';
 
 /**
  * Resolved tenant request context for a loader/action. The access token has just
@@ -29,10 +29,9 @@ function tenantNotFound(): Response {
  */
 export async function requireTenant(request: Request, permission?: string): Promise<TenantContext> {
   const ctx = await requireScope(request, 'tenant');
-  const tenantId = workspaceIdFromPath(new URL(request.url).pathname, 'tenant');
-  if (!tenantId) throw tenantNotFound();
-  const membership = findTenantMembership(ctx.info, tenantId);
+  const membership = firstTenantMembership(ctx.info);
   if (!membership) throw tenantNotFound();
+  const tenantId = membership.tenantId;
   if (permission && !membership.permissions.includes(permission)) {
     throw new Response(`Bạn không có quyền truy cập (${permission}).`, { status: 403 });
   }

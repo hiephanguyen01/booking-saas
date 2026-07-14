@@ -18,13 +18,12 @@ import { dashboardPaths } from '~/lib/paths';
 // the 11 screens stay scannable. OWNED by the tenant agent — add a screen to the
 // section it belongs to. Keep the overview cluster (no label) first. Items with a
 // `permission` are hidden by the shell unless the user holds it in tenant scope.
-export function tenantNavSections(tenantId: string): DashboardNavSection[] {
-  return [
+export const tenantNavSections: DashboardNavSection[] = [
   {
     items: [
       {
         title: 'Tổng quan',
-        to: dashboardPaths.tenant.home(tenantId),
+        to: dashboardPaths.tenant.home,
         icon: LayoutDashboard,
       },
     ],
@@ -34,19 +33,19 @@ export function tenantNavSections(tenantId: string): DashboardNavSection[] {
     items: [
       {
         title: 'Listing',
-        to: dashboardPaths.tenant.listings(tenantId),
+        to: dashboardPaths.tenant.listings,
         icon: Store,
         permission: 'tenant.listings.read',
       },
       {
         title: 'Bài đăng',
-        to: dashboardPaths.tenant.listingGroups(tenantId),
+        to: dashboardPaths.tenant.listingGroups,
         icon: Files,
         permission: 'tenant.listings.read',
       },
       {
         title: 'Loại dịch vụ',
-        to: dashboardPaths.tenant.listingTypes(tenantId),
+        to: dashboardPaths.tenant.listingTypes,
         icon: Tags,
         permission: 'tenant.listings.read',
       },
@@ -57,13 +56,13 @@ export function tenantNavSections(tenantId: string): DashboardNavSection[] {
     items: [
       {
         title: 'Đặt chỗ',
-        to: dashboardPaths.tenant.bookings(tenantId),
+        to: dashboardPaths.tenant.bookings,
         icon: CalendarCheck,
         permission: 'tenant.bookings.read',
       },
       {
         title: 'Đối tác',
-        to: dashboardPaths.tenant.partners(tenantId),
+        to: dashboardPaths.tenant.partners,
         icon: Users,
         permission: 'tenant.partners.read',
       },
@@ -74,13 +73,13 @@ export function tenantNavSections(tenantId: string): DashboardNavSection[] {
     items: [
       {
         title: 'Tài chính',
-        to: dashboardPaths.tenant.finance(tenantId),
+        to: dashboardPaths.tenant.finance,
         icon: Wallet,
         permission: 'tenant.finance.read',
       },
       {
         title: 'Sổ cái',
-        to: dashboardPaths.tenant.ledger(tenantId),
+        to: dashboardPaths.tenant.ledger,
         icon: BookText,
         permission: 'tenant.finance.read',
       },
@@ -91,13 +90,13 @@ export function tenantNavSections(tenantId: string): DashboardNavSection[] {
     items: [
       {
         title: 'Khuyến mãi',
-        to: dashboardPaths.tenant.promotions(tenantId),
+        to: dashboardPaths.tenant.promotions,
         icon: Ticket,
         permission: 'tenant.promotions.manage',
       },
       {
         title: 'Cộng tác viên',
-        to: dashboardPaths.tenant.affiliates(tenantId),
+        to: dashboardPaths.tenant.affiliates,
         icon: Share2,
         permission: 'tenant.affiliates.manage',
       },
@@ -108,11 +107,10 @@ export function tenantNavSections(tenantId: string): DashboardNavSection[] {
     items: [
       {
         title: 'Cài đặt',
-        to: dashboardPaths.tenant.settings(tenantId),
+        to: dashboardPaths.tenant.settings,
         icon: Settings,
         permission: 'tenant.theme.manage',
       },
     ],
   },
-  ];
-}
+];

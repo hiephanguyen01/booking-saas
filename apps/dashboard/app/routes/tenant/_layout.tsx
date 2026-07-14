@@ -45,8 +45,8 @@ export default function TenantLayout({ loaderData }: Route.ComponentProps) {
           <AlertTitle>Gói dịch vụ đã hết hạn — bảng điều khiển ở chế độ chỉ đọc</AlertTitle>
           <AlertDescription>
             Storefront đã tạm ngưng và mọi thao tác chỉnh sửa bị khoá
-            {expiresAt ? ` (hết hạn ${formatDate(expiresAt)})` : ''}. Vui lòng gia hạn gói dịch
-            vụ để tiếp tục vận hành.
+            {expiresAt ? ` (hết hạn ${formatDate(expiresAt)})` : ''}. Vui lòng gia hạn gói dịch vụ
+            để tiếp tục vận hành.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -56,9 +56,7 @@ export default function TenantLayout({ loaderData }: Route.ComponentProps) {
           <TriangleAlert className="size-4" />
           <AlertTitle>Vượt hạn mức đặt chỗ tháng này</AlertTitle>
           <AlertDescription>
-            {quota
-              ? `Đã dùng ${quota.used}/${quota.limit} lượt đặt chỗ. `
-              : ''}
+            {quota ? `Đã dùng ${quota.used}/${quota.limit} lượt đặt chỗ. ` : ''}
             Đơn đặt mới vẫn được nhận, nhưng hãy cân nhắc nâng cấp gói để tránh gián đoạn.
           </AlertDescription>
         </Alert>
@@ -69,7 +67,6 @@ export default function TenantLayout({ loaderData }: Route.ComponentProps) {
   );
 }
 
-export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const homeHref = params.tenantId ? `/tenant/${encodeURIComponent(params.tenantId)}` : '/workspaces';
-  return <RouteErrorState error={error} homeHref={homeHref} homeLabel="Về tenant" />;
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <RouteErrorState error={error} homeHref="/tenant" homeLabel="Về tenant" />;
 }

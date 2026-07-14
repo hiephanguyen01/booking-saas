@@ -36,18 +36,18 @@ export function bookingListKey(tenantId: string, status: BookingStatusFilter) {
   return ['bookings', 'tenant', tenantId, 'list', { status }] as const;
 }
 
-export function bookingListResourcePath(tenantId: string, status: BookingStatusFilter): string {
+export function bookingListResourcePath(status: BookingStatusFilter): string {
   const params = new URLSearchParams();
   if (status !== 'all') params.set('status', status);
   const search = params.toString();
-  return `/tenant/${encodeURIComponent(tenantId)}/resources/bookings${search ? `?${search}` : ''}`;
+  return `/tenant/resources/bookings${search ? `?${search}` : ''}`;
 }
 
 export function bookingListQueryOptions(tenantId: string, status: BookingStatusFilter) {
   return queryOptions({
     queryKey: bookingListKey(tenantId, status),
     queryFn: async ({ signal }) => {
-      const response = await axios.get<BookingListData>(bookingListResourcePath(tenantId, status), {
+      const response = await axios.get<BookingListData>(bookingListResourcePath(status), {
         signal,
         headers: { accept: 'application/json' },
         withCredentials: true,

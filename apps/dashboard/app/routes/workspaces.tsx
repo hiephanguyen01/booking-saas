@@ -4,23 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components
 import type { Route } from './+types/workspaces';
 import { requireSessionInfo } from '~/lib/auth.server';
 import { dashboardPaths } from '~/lib/paths';
-import {
-  findPartnerMembership,
-  findTenantMembership,
-} from '~/lib/workspace';
+import { firstPartnerMembership, firstTenantMembership } from '~/lib/workspace';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { info } = await requireSessionInfo(request);
-  const tenants = info.scopes.flatMap((membership) => {
-    if (membership.scope !== 'tenant' || !membership.tenantId) return [];
-    const tenant = findTenantMembership(info, membership.tenantId);
-    return tenant ? [tenant] : [];
-  });
-  const partners = info.scopes.flatMap((membership) => {
-    if (membership.scope !== 'partner' || !membership.partnerId) return [];
-    const partner = findPartnerMembership(info, membership.partnerId);
-    return partner ? [partner] : [];
-  });
+  const tenants = [firstTenantMembership(info)].filter((membership) => membership !== null);
+  const partners = [firstPartnerMembership(info)].filter((membership) => membership !== null);
   return { tenants, partners };
 }
 
@@ -29,13 +18,11 @@ export default function Workspaces({ loaderData }: Route.ComponentProps) {
     <section className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Chọn không gian làm việc</h1>
-        <p className="text-muted-foreground">
-          Mỗi đường dẫn sử dụng đúng quyền của tenant hoặc partner đã chọn.
-        </p>
+        <p className="text-muted-foreground">Chọn khu vực tenant hoặc partner bạn muốn truy cập.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {loaderData.tenants.map((membership) => (
-          <Link key={`tenant:${membership.tenantId}`} to={dashboardPaths.tenant.home(membership.tenantId)}>
+          <Link key={`tenant:${membership.tenantId}`} to={dashboardPaths.tenant.home}>
             <Card className="h-full transition-colors hover:border-primary/50">
               <CardHeader className="flex-row items-center gap-3">
                 <Building2 className="size-5" />
@@ -46,7 +33,7 @@ export default function Workspaces({ loaderData }: Route.ComponentProps) {
           </Link>
         ))}
         {loaderData.partners.map((membership) => (
-          <Link key={`partner:${membership.partnerId}`} to={dashboardPaths.partner.home(membership.partnerId)}>
+          <Link key={`partner:${membership.partnerId}`} to={dashboardPaths.partner.home}>
             <Card className="h-full transition-colors hover:border-primary/50">
               <CardHeader className="flex-row items-center gap-3">
                 <Store className="size-5" />

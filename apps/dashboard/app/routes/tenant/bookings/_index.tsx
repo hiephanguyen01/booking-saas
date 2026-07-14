@@ -105,7 +105,7 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
     {
       header: 'Mã',
       cell: (b) => (
-        <Link to={dashboardPaths.tenant.booking(tenantId, b.id)} className="font-mono text-sm font-medium text-primary hover:underline">
+        <Link to={dashboardPaths.tenant.booking(b.id)} className="font-mono text-sm font-medium text-primary hover:underline">
           {b.code}
         </Link>
       ),
