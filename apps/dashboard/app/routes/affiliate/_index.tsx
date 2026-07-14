@@ -1,10 +1,11 @@
 import type { AffiliateStatsResponse } from '@booking/contracts';
+import { cn } from '@booking/ui';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { MousePointerClick, ShoppingBag, Percent, Wallet } from 'lucide-react';
-import type { Route } from './+types/_index';
+import { MousePointerClick, Percent, ShoppingBag, Wallet } from 'lucide-react';
 import { apiGet } from '~/lib/api.server';
-import { requireAffiliate } from './affiliate.server';
 import { formatVnd } from '../tenant/format';
+import type { Route } from './+types/_index';
+import { requireAffiliate } from './affiliate.server';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
@@ -24,9 +25,21 @@ export default function AffiliateOverview({ loaderData }: Route.ComponentProps) 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={<MousePointerClick className="size-4" />} label="Lượt click" value={String(stats.clicks)} />
-        <StatCard icon={<ShoppingBag className="size-4" />} label="Đơn đặt" value={String(stats.bookings)} />
-        <StatCard icon={<Percent className="size-4" />} label="Tỷ lệ chuyển đổi" value={`${conversionPct}%`} />
+        <StatCard
+          icon={<MousePointerClick className="size-4" />}
+          label="Lượt click"
+          value={String(stats.clicks)}
+        />
+        <StatCard
+          icon={<ShoppingBag className="size-4" />}
+          label="Đơn đặt"
+          value={String(stats.bookings)}
+        />
+        <StatCard
+          icon={<Percent className="size-4" />}
+          label="Tỷ lệ chuyển đổi"
+          value={`${conversionPct}%`}
+        />
         <StatCard
           icon={<Wallet className="size-4" />}
           label="Đã nhận"
@@ -35,8 +48,16 @@ export default function AffiliateOverview({ loaderData }: Route.ComponentProps) 
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <CommissionCard label="Chờ xác nhận" value={formatVnd(stats.pendingCommission)} tone="muted" />
-        <CommissionCard label="Đã xác nhận (sẽ trả)" value={formatVnd(stats.confirmedCommission)} tone="positive" />
+        <CommissionCard
+          label="Chờ xác nhận"
+          value={formatVnd(stats.pendingCommission)}
+          tone="muted"
+        />
+        <CommissionCard
+          label="Đã xác nhận (sẽ trả)"
+          value={formatVnd(stats.confirmedCommission)}
+          tone="positive"
+        />
         <CommissionCard label="Đã trả" value={formatVnd(stats.paidCommission)} tone="default" />
       </div>
     </div>
@@ -57,14 +78,28 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function CommissionCard({ label, value, tone }: { label: string; value: string; tone: 'muted' | 'positive' | 'default' }) {
-  const toneClass =
-    tone === 'positive' ? 'text-emerald-600 dark:text-emerald-400' : tone === 'muted' ? 'text-muted-foreground' : 'text-foreground';
+function CommissionCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'muted' | 'positive' | 'default';
+}) {
   return (
     <Card>
       <CardContent className="space-y-1 p-4">
         <div className="text-xs font-medium text-muted-foreground">{label}</div>
-        <div className={`text-xl font-semibold tabular-nums ${toneClass}`}>{value}</div>
+        <div
+          className={cn(`text-xl font-semibold tabular-nums`, {
+            'text-emerald-600 dark:text-emerald-400': tone === 'positive',
+            'text-muted-foreground': tone === 'muted',
+            'text-foreground': tone === 'default',
+          })}
+        >
+          {value}
+        </div>
       </CardContent>
     </Card>
   );

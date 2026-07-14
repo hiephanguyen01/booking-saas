@@ -88,11 +88,6 @@ export function BookingI18nProvider({ locale, children }: { locale: Locale; chil
   return <I18nProvider value={value}>{children}</I18nProvider>;
 }
 
-/**
- * Accepts one namespace or an inferred namespace tuple.
- * Unqualified keys are resolved in array order; use `namespace:key` when a
- * key exists in more than one selected namespace.
- */
 export function useTranslation<const TNamespaces extends NamespaceInput>(
   namespaces: TNamespaces,
 ): ScopedI18n<TNamespaces> {
@@ -107,7 +102,7 @@ export function useTranslation<const TNamespaces extends NamespaceInput>(
   return useMemo(() => {
     // i18next's augmented overloads cannot represent a generic namespace at
     // runtime, so keep the cast at this adapter boundary. Call sites remain
-    // fully typed by ScopedTranslationKey<TNamespaces>.
+    // fully typed by NamespaceTranslationKey<TNamespace>.
     const runtime = context.instance as unknown as RuntimeI18n;
 
     return {

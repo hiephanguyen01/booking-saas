@@ -208,7 +208,7 @@ Remove the imports of `fetchListings` and `fetchListingTypes`, and remove the `m
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, listings } = loaderData;
   const [searchParams] = useSearchParams();
-  const i18n = useT();
+  const i18n = useTranslation();
   const { t } = i18n;
 
   if (!type) {
@@ -303,7 +303,7 @@ Remove imports of `fetchListing`, `fetchQuote`, `fetchAvailability`, `addDays`,
 ```tsx
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote } = loaderData;
-  const { t } = useT();
+  const { t } = useTranslation();
 
   if (!listing) {
     return (
