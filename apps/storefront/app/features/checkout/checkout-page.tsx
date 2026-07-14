@@ -1,128 +1,15 @@
-import { data, redirect, Form, Link, useSearchParams } from 'react-router';
-import type { CreateBookingInput, ValidatePromoResponse } from '@booking/contracts';
+import { Form, Link, useSearchParams } from 'react-router';
+import type { ValidatePromoResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Separator } from '@booking/ui/components/ui/separator';
 import type { Route } from '../../routes/+types/checkout';
-import { fetchListing, fetchQuote } from '../../lib/catalog.server';
-import { validatePromo, createBooking, checkoutBooking } from '../../lib/booking.server';
-import { appendRecentCookie } from '../../lib/recent.server';
-import { readRefCode } from '../../lib/affiliate.server';
-import { resolveTenant } from '../../lib/tenant.server';
 import { useT, type I18n } from '../../lib/i18n';
 import { formatVnd } from '../../lib/ui';
 import { DEFAULT_TZ, timeInTz, dateLabelInTz } from '../../lib/time';
 
-export function meta() {
-  return [{ title: 'Checkout' }, { name: 'robots', content: 'noindex' }];
-}
-
-export async function loader({ request }: Route.LoaderArgs) {
-  const sp = new URL(request.url).searchParams;
-  const slug = sp.get('listing');
-  const mode = sp.get('mode');
-  const start = sp.get('start');
-  const end = sp.get('end');
-  const qty = sp.get('qty') || '1';
-  const promoCode = sp.get('promo')?.trim().toUpperCase() || null;
-
-  if (!slug || !mode || !start || !end) throw redirect(slug ? `/l/${slug}` : '/');
-  // Independent fetches — the quote is keyed by slug + params, not the listing result.
-  const [listing, quote] = await Promise.all([
-    fetchListing(request, slug),
-    fetchQuote(request, slug, new URLSearchParams({ mode, from: start, to: end, quantity: qty })),
-  ]);
-  if (!listing) throw redirect('/');
-  if (!quote) throw redirect(`/l/${slug}`);
-
-  let promo: ValidatePromoResponse | null = null;
-  if (promoCode) {
-    const result = await validatePromo(request, {
-      code: promoCode,
-      listingId: listing.id,
-      amount: quote.subtotal,
-    });
-    promo = result.data;
-  }
-
-  return { listing, mode, start, end, qty, quote, promoCode, promo };
-}
-
-type GuestFields = { fullName: string; email: string; phone: string };
-
-function validateGuest(
-  fullNameRaw: FormDataEntryValue | null,
-  emailRaw: FormDataEntryValue | null,
-  phoneRaw: FormDataEntryValue | null,
-): { ok: true; data: GuestFields } | { ok: false; fieldErrors: Record<string, string[]> } {
-  const fullName = String(fullNameRaw ?? '').trim();
-  const email = String(emailRaw ?? '').trim();
-  const phone = String(phoneRaw ?? '').trim();
-  const fieldErrors: Record<string, string[]> = {};
-  if (fullName.length < 1 || fullName.length > 200) fieldErrors.fullName = ['Required'];
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fieldErrors.email = ['Invalid email'];
-  if (phone.length < 5 || phone.length > 20) fieldErrors.phone = ['Invalid phone'];
-  if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
-  return { ok: true, data: { fullName, email, phone } };
-}
-
-export async function action({ request }: Route.ActionArgs) {
-  const form = await request.formData();
-  const listingId = String(form.get('listingId') ?? '');
-  const mode = String(form.get('mode') ?? '');
-  const start = String(form.get('start') ?? '');
-  const end = String(form.get('end') ?? '');
-  const qty = Number(form.get('qty') ?? '1') || 1;
-  const promoCode = String(form.get('promoCode') ?? '').trim().toUpperCase() || undefined;
-  const note = String(form.get('customerNote') ?? '').trim() || undefined;
-
-  const guest = validateGuest(form.get('fullName'), form.get('email'), form.get('phone'));
-  if (!guest.ok) {
-    return data({ fieldErrors: guest.fieldErrors, error: null }, { status: 400 });
-  }
-
-  // Replay the affiliate last-click cookie (§15.1) into the booking. The backend
-  // validates + drops self-referral/self-dealing, so an invalid code is harmless.
-  const tenant = await resolveTenant(request);
-  const refCode = readRefCode(request, tenant.id) ?? undefined;
-
-  const input: CreateBookingInput = {
-    listingId,
-    mode: mode as CreateBookingInput['mode'],
-    from: start,
-    to: end,
-    quantity: qty,
-    guestCount: 1,
-    customerNote: note,
-    guest: guest.data,
-    promoCode,
-    refCode,
-  };
-
-  // Deterministic idempotency key: a resubmit (double-click / validation retry)
-  // for the same slot + guest returns the existing booking, never a duplicate.
-  const idem = `co:${listingId}:${start}:${guest.data.email}`;
-  const created = await createBooking(request, input, idem);
-  if (!created.ok || !created.data) {
-    return data({ fieldErrors: null, error: created.error ?? 'BOOKING_FAILED', code: created.code }, { status: 400 });
-  }
-
-  const booking = created.data;
-  const setCookie = appendRecentCookie(request, booking.code);
-
-  if (booking.status === 'pending_payment') {
-    const checkout = await checkoutBooking(request, booking.id);
-    if (checkout.ok && checkout.data && /^https?:/i.test(checkout.data.paymentUrl)) {
-      // Real gateway (PayOS): hand off to its hosted page; it returns to /bookings/:code.
-      return redirect(checkout.data.paymentUrl, { headers: { 'Set-Cookie': setCookie } });
-    }
-  }
-  // Mock gateway or pending approval → our own confirmation page.
-  return redirect(`/bookings/${booking.code}`, { headers: { 'Set-Cookie': setCookie } });
-}
-
-export default function Checkout({ loaderData, actionData }: Route.ComponentProps) {
+export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const { listing, mode, start, end, qty, quote, promoCode, promo } = loaderData;
   const { t } = useT();
   const [sp] = useSearchParams();

@@ -4,28 +4,11 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import type { Route } from '../../routes/+types/catalog';
-import { fetchListings, fetchListingTypes } from '../../lib/catalog.server';
 import { ListingCard } from './components/listing-card';
 import { typeIcon } from '../../lib/ui';
 import { useT, type I18n } from '../../lib/i18n';
 
-export function meta({ params }: Route.MetaArgs) {
-  return [{ title: params.typeSlug }];
-}
-
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const search = new URLSearchParams(new URL(request.url).search);
-  search.set('type', params.typeSlug);
-
-  const [types, listings] = await Promise.all([
-    fetchListingTypes(request),
-    fetchListings(request, search),
-  ]);
-  const type = types.find((t) => t.slug === params.typeSlug) ?? null;
-  return { type, listings };
-}
-
-export default function Catalog({ loaderData, params }: Route.ComponentProps) {
+export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, listings } = loaderData;
   const [searchParams] = useSearchParams();
   const i18n = useT();

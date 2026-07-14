@@ -1,87 +1,11 @@
-import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
+import type { PublicListingDetailResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Separator } from '@booking/ui/components/ui/separator';
 import type { Route } from '../../routes/+types/listing';
-import { fetchListing, fetchQuote } from '../../lib/catalog.server';
-import { fetchAvailability } from '../../lib/booking.server';
-import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 import { useT } from '../../lib/i18n';
 import { BookingPanel } from '../../templates/studio/booking-panel';
 
-const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
-
-export function meta({ data }: Route.MetaArgs) {
-  const listing = data?.listing;
-  if (!listing) return [{ title: 'Listing' }];
-  const description = listing.description?.slice(0, 200) ?? undefined;
-  const image = listing.photos[0];
-  const tags: Array<Record<string, string>> = [
-    { title: listing.title },
-    { property: 'og:title', content: listing.title },
-    { property: 'og:type', content: 'product' },
-  ];
-  if (description) {
-    tags.push({ name: 'description', content: description });
-    tags.push({ property: 'og:description', content: description });
-  }
-  if (image) tags.push({ property: 'og:image', content: image });
-  return tags;
-}
-
-/** Pick the active booking mode from the query, constrained to the listing's enabled bookable modes. */
-function pickMode(requested: string | null, listing: PublicListingDetailResponse): AvailabilityMode {
-  const enabled = listing.bookingModes.filter((m): m is AvailabilityMode =>
-    (BOOKABLE_MODES as string[]).includes(m),
-  );
-  if (requested && enabled.includes(requested as AvailabilityMode)) return requested as AvailabilityMode;
-  return enabled[0] ?? 'hourly';
-}
-
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const sp = new URL(request.url).searchParams;
-  const listing = await fetchListing(request, params.listingSlug);
-  if (!listing) {
-    return { listing: null, mode: 'hourly' as AvailabilityMode, availability: null, quote: null };
-  }
-
-  const mode = pickMode(sp.get('mode'), listing);
-  const tz = DEFAULT_TZ; // resource tz is echoed back on the availability response
-  const today = todayInTz(tz);
-
-  let availabilityP: ReturnType<typeof fetchAvailability>;
-  if (mode === 'hourly') {
-    const day = sp.get('day') || today;
-    availabilityP = fetchAvailability(request, params.listingSlug, { mode, from: day, to: day });
-  } else if (mode === 'daily') {
-    // A 31-day window from the anchor day powers the range calendar.
-    const anchor = sp.get('from') || today;
-    availabilityP = fetchAvailability(request, params.listingSlug, {
-      mode,
-      from: anchor,
-      to: addDays(anchor, 30),
-    });
-  } else {
-    const from = (sp.get('from') || today).slice(0, 10);
-    const to = (sp.get('to') || from).slice(0, 10);
-    availabilityP = fetchAvailability(request, params.listingSlug, { mode, from, to });
-  }
-
-  // Live quote once a concrete slot is chosen (start/end are UTC ISO instants).
-  // Independent of availability, so the two run concurrently.
-  const start = sp.get('start');
-  const end = sp.get('end');
-  const quantity = sp.get('qty') || '1';
-  const quoteP =
-    start && end
-      ? fetchQuote(request, params.listingSlug, new URLSearchParams({ mode, from: start, to: end, quantity }))
-      : Promise.resolve(null);
-
-  const [availability, quote] = await Promise.all([availabilityP, quoteP]);
-
-  return { listing, mode, availability, quote };
-}
-
-export default function ListingDetail({ loaderData, params }: Route.ComponentProps) {
+export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote } = loaderData;
   const { t } = useT();
 
