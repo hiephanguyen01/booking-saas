@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import type { ListingResponse, Paginated, PartnerResponse, PublishStatus } from '@booking/shared';
+import type { ListingResponse, Paginated, PartnerResponse, PublishStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';

@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { PartnerApplyInput } from '@booking/shared';
+import type { PartnerApplyInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {

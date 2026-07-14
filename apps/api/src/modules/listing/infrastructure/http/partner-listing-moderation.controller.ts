@@ -1,3 +1,4 @@
+import { uuidSchema, type ListingResponse, type ListingReviewResponse } from '@booking/contracts';
 import {
   Body,
   Controller,
@@ -10,34 +11,24 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
-import {
-  uuidSchema,
-  type ListingResponse,
-  type ListingReviewResponse,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
-import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
-import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { PlanLimitGuard } from '../../../tenancy/infrastructure/http/guards/plan-limit.guard';
+import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { EnforcePlanLimit } from '../../../tenancy/infrastructure/http/decorators/enforce-plan-limit.decorator';
-import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
-import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
-import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
-import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
+import { PlanLimitGuard } from '../../../tenancy/infrastructure/http/guards/plan-limit.guard';
+import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
+import { toListingResponse } from '../../application/listing.mapper';
 import { CreateListingUseCase } from '../../application/use-cases/create-listing.use-case';
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
+import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
+import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
+import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
+import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
-import { toListingResponse } from '../../application/listing.mapper';
-import { UuidParam } from '../../../../shared/openapi/decorators';
 import {
   CreateListingDto,
   ListingResponseDto,
@@ -68,7 +59,7 @@ export class PartnerListingModerationController {
   /** The partner's own listings (§7.3) — read-only, scoped to x-partner-id. */
   @RequirePermissions('partner.listings.read')
   @Get()
-  @ApiOperation({ summary: 'List the calling partner\'s listings' })
+  @ApiOperation({ summary: "List the calling partner's listings" })
   @ApiOkResponse({ type: [ListingResponseDto] })
   async list(): Promise<ListingResponse[]> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
@@ -89,9 +80,7 @@ export class PartnerListingModerationController {
   @Post()
   @ApiOperation({ summary: 'Create a listing for the calling partner' })
   @ApiCreatedResponse({ type: ListingResponseDto })
-  async create(
-    @Body() input: CreateListingDto,
-  ): Promise<ListingResponse> {
+  async create(@Body() input: CreateListingDto): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
     return toListingResponse(await this.createListing.execute(tenantId, { ...input, partnerId }));
@@ -100,7 +89,7 @@ export class PartnerListingModerationController {
   /** A single own listing — for the edit-form prefill. 404 if not the partner's. */
   @RequirePermissions('partner.listings.read')
   @Get(':id')
-  @ApiOperation({ summary: 'Get one of the partner\'s own listings' })
+  @ApiOperation({ summary: "Get one of the partner's own listings" })
   @UuidParam()
   @ApiOkResponse({ type: ListingResponseDto })
   async getOne(
@@ -112,7 +101,7 @@ export class PartnerListingModerationController {
   @RequirePermissions('partner.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':id')
-  @ApiOperation({ summary: 'Update one of the partner\'s own listings' })
+  @ApiOperation({ summary: "Update one of the partner's own listings" })
   @UuidParam()
   @ApiOkResponse({ type: ListingResponseDto })
   async update(
@@ -168,7 +157,7 @@ export class PartnerListingModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/hide')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Hide the partner\'s own published listing' })
+  @ApiOperation({ summary: "Hide the partner's own published listing" })
   @UuidParam()
   @ApiOkResponse({ type: ListingResponseDto })
   async hide(
@@ -186,7 +175,7 @@ export class PartnerListingModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/republish')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Republish the partner\'s own hidden listing' })
+  @ApiOperation({ summary: "Republish the partner's own hidden listing" })
   @UuidParam()
   @ApiOkResponse({ type: ListingResponseDto })
   async republish(

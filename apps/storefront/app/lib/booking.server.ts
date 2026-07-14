@@ -8,7 +8,7 @@ import type {
   CreateBookingInput,
   PaymentStatusResponse,
   ValidatePromoResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 /**
  * Server-only booking BFF (§20): the storefront never calls the API from the

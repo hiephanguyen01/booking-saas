@@ -7,7 +7,7 @@ import type {
   HourlySlot,
   PublicListingDetailResponse,
   QuoteResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Card, CardContent } from '@booking/ui/components/ui/card';

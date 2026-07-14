@@ -1,6 +1,8 @@
+import {
+  type GatewayConfigResponse
+} from '@booking/contracts';
 import { Body, Controller, Put, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { type GatewayConfigResponse } from '@booking/shared';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';

@@ -1,10 +1,20 @@
+import { type AuthSessionResponse, type SessionInfoResponse } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Ip, Post, Req, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
-import { type AuthSessionResponse, type SessionInfoResponse } from '@booking/shared';
+import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
+import { LoginUseCase } from '../../application/use-cases/login.use-case';
+import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
+import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
+import { RegisterUseCase } from '../../application/use-cases/register.use-case';
+import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
+import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './cookies';
+import { AuthenticatedOnly } from './decorators/authenticated-only.decorator';
+import { CurrentPrincipal } from './decorators/current-principal.decorator';
+import { Public } from './decorators/public.decorator';
 import {
   AuthSessionResponseDto,
   CurrentUserDto,
@@ -14,16 +24,6 @@ import {
   SessionInfoResponseDto,
   UpgradeGuestDto,
 } from './dto/auth.dto';
-import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
-import { LoginUseCase } from '../../application/use-cases/login.use-case';
-import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
-import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
-import { RegisterUseCase } from '../../application/use-cases/register.use-case';
-import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
-import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './cookies';
-import { AuthenticatedOnly } from './decorators/authenticated-only.decorator';
-import { CurrentPrincipal } from './decorators/current-principal.decorator';
-import { Public } from './decorators/public.decorator';
 
 function toResponse(user: UserRecord, tokens: SessionTokens): AuthSessionResponse {
   return {

@@ -6,7 +6,7 @@ import {
   availabilityResponseSchema,
   availabilityRuleResponseSchema,
   setAvailabilityRulesInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // Request bodies / queries
 export class SetAvailabilityRulesDto extends createZodDto(setAvailabilityRulesInputSchema) {}

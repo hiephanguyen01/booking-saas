@@ -5,7 +5,7 @@ import type {
   BookingMode,
   ListingResponse,
   ListingTypeResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';

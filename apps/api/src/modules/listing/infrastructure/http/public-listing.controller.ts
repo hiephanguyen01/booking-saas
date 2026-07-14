@@ -1,13 +1,10 @@
+import { type PublicListingDetailResponse, type QuoteResponse } from '@booking/contracts';
 import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
-import {
-  type PublicListingDetailResponse,
-  type QuoteResponse,
-} from '@booking/shared';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
+import { toPublicListingDetailResponse } from '../../application/listing.mapper';
 import { GetPublicListingUseCase } from '../../application/use-cases/get-public-listing.use-case';
 import { GetPublicQuoteUseCase } from '../../application/use-cases/get-public-quote.use-case';
-import { toPublicListingDetailResponse } from '../../application/listing.mapper';
 import { PublicListingDetailResponseDto, QuoteQueryDto, QuoteResponseDto } from './dto/listing.dto';
 
 /** Storefront listing detail + quote (§16/§17). Tenant resolved from Host (BFF). */

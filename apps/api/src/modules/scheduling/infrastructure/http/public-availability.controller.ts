@@ -1,6 +1,8 @@
+import {
+  type AvailabilityResponse
+} from '@booking/contracts';
 import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { type AvailabilityResponse } from '@booking/shared';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { GetAvailabilityUseCase } from '../../application/use-cases/get-availability.use-case';
 import { AvailabilityQueryDto, AvailabilityResponseDto } from './dto/scheduling.dto';

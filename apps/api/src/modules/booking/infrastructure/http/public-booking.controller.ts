@@ -1,4 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import {
+  type BookingOtpResponse,
+  type BookingResponse,
+  type CancelBookingResponse
+} from '@booking/contracts';
 import {
   BadRequestException,
   Body,
@@ -13,32 +17,37 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
+import { randomUUID } from 'node:crypto';
+import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import {
-  type BookingOtpResponse,
-  type BookingResponse,
-  type CancelBookingResponse,
-} from '@booking/shared';
-import {
-  BookingOtpResponseDto,
-  BookingResponseDto,
-  CancelBookingDto,
-  CancelBookingResponseDto,
-  CreateBookingDto,
-} from './dto/booking.dto';
-import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
+  SESSION_STORE,
+  type ISessionStore,
+} from '../../../identity-access/domain/ports/session-store.port';
+import { ACCESS_COOKIE } from '../../../identity-access/infrastructure/http/cookies';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
-import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
-import { SESSION_STORE, type ISessionStore } from '../../../identity-access/domain/ports/session-store.port';
-import { ACCESS_COOKIE } from '../../../identity-access/infrastructure/http/cookies';
+import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
-import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
-import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
-import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
-import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
 import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
+import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
+import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
+import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
+import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
+import {
+  BookingResponseDto,
+  CreateBookingDto,
+  BookingOtpResponseDto,
+  CancelBookingResponseDto,
+  CancelBookingDto,
+} from './dto/booking.dto';
 
 // Fail CLOSED: an explicit opt-in only — never inferred from NODE_ENV (which is
 // unset in many shared/preview envs, which would expose free confirmations).
@@ -128,7 +137,10 @@ export class PublicBookingController {
   ): Promise<CancelBookingResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const sessionUserId = await this.optionalUserId(req);
-    const booking = await this.lookup.resolveForAccess(tenant.id, code, { otp: body.otp, sessionUserId });
+    const booking = await this.lookup.resolveForAccess(tenant.id, code, {
+      otp: body.otp,
+      sessionUserId,
+    });
     const result = await this.cancelBooking.execute(tenant.id, booking.id, 'customer', {
       actorId: sessionUserId,
       reason: body.reason,
@@ -162,9 +174,15 @@ export class PublicBookingController {
 
 function hostOf(req: Request): string {
   const forwarded = req.headers['x-forwarded-host'];
-  const raw = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() || req.headers.host;
+  const raw =
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() ||
+    req.headers.host;
   if (!raw) {
-    throw new BadRequestException({ statusCode: 400, code: 'MISSING_HOST', message: 'Host header is required' });
+    throw new BadRequestException({
+      statusCode: 400,
+      code: 'MISSING_HOST',
+      message: 'Host header is required',
+    });
   }
   return raw;
 }

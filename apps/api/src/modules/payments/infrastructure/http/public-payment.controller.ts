@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { uuidSchema, type CheckoutResponse, type PaymentStatusResponse } from '@booking/shared';
+import { uuidSchema, type CheckoutResponse, type PaymentStatusResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';

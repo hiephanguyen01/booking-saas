@@ -6,7 +6,7 @@ import {
   updatePromotionInputSchema,
   validatePromoInputSchema,
   validatePromoResponseSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // Request bodies
 export class CreatePromotionDto extends createZodDto(createPromotionInputSchema) {}

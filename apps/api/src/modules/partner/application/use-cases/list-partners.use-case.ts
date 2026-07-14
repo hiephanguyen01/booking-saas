@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { ListPartnersQuery } from '@booking/shared';
+import type { ListPartnersQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PARTNER_REPOSITORY,

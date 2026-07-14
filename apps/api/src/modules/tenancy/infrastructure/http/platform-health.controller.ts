@@ -1,6 +1,6 @@
+import type { PlatformHealthResponse } from '@booking/contracts';
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { PlatformHealthResponse } from '@booking/shared';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import {
   GetPlatformHealthUseCase,

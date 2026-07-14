@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { CalendarCheck2 } from 'lucide-react';
-import type { SessionInfoResponse } from '@booking/shared';
+import type { SessionInfoResponse } from '@booking/contracts';
 import {
   Sidebar,
   SidebarContent,

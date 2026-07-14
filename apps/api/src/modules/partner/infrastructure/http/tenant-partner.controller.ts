@@ -19,7 +19,8 @@ import {
   uuidSchema,
   type Paginated,
   type PartnerResponse,
-} from '@booking/shared';
+  type VerifyIdentityInput,
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import {

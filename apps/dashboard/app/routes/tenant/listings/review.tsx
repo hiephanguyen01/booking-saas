@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Form, Link, redirect, useNavigation } from 'react-router';
-import type { BalanceDue, BookingMode, ListingResponse, ListingReviewResponse } from '@booking/shared';
+import type { BalanceDue, BookingMode, ListingResponse, ListingReviewResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,

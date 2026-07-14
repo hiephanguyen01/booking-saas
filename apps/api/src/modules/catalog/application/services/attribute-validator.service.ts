@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import type { AttributeField } from '@booking/shared';
+import type { AttributeField } from '@booking/contracts';
 import { validateAttributes } from '../../domain/attribute-schema';
 
 /**

@@ -1,4 +1,9 @@
 import {
+  uuidSchema,
+  type AvailabilityExceptionResponse,
+  type AvailabilityRuleResponse
+} from '@booking/contracts';
+import {
   Body,
   Controller,
   Delete,
@@ -16,18 +21,13 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import {
-  uuidSchema,
-  type AvailabilityExceptionResponse,
-  type AvailabilityRuleResponse,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
-import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { UuidParam } from '../../../../shared/openapi/decorators';
+import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { ManageAvailabilityUseCase } from '../../application/use-cases/manage-availability.use-case';
 import { toExceptionResponse, toRuleResponse } from '../../application/scheduling.mapper';
+import { ManageAvailabilityUseCase } from '../../application/use-cases/manage-availability.use-case';
 import {
   AvailabilityExceptionDto,
   AvailabilityExceptionResponseDto,

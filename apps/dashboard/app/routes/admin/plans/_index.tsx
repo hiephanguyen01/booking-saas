@@ -1,6 +1,6 @@
 import { data } from 'react-router';
 import { Check, Minus } from 'lucide-react';
-import { createPlanInputSchema, type CreatePlanInput, type PlanResponse } from '@booking/shared';
+import { createPlanInputSchema, type CreatePlanInput, type PlanResponse } from '@booking/contracts';
 import {
   Card,
   CardContent,

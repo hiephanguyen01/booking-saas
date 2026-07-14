@@ -1,5 +1,5 @@
 import { Form, Link, useNavigation, data as routeData } from 'react-router';
-import type { PartnerResponse } from '@booking/shared';
+import type { PartnerResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';

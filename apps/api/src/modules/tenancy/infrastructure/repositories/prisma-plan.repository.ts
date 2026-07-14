@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { PlanLimits } from '@booking/shared';
+import type { PlanLimits } from '@booking/contracts';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type {
   CreatePlanData,

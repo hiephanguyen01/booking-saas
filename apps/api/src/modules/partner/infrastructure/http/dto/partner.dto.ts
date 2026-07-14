@@ -9,7 +9,7 @@ import {
   updatePartnerDocumentsInputSchema,
   updatePayoutInfoInputSchema,
   verifyIdentityInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // Request bodies
 export class PartnerApplyDto extends createZodDto(partnerApplyInputSchema) {}

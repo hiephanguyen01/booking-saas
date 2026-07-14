@@ -12,7 +12,7 @@ import {
   platformFinanceResponseSchema,
   tenantFinanceSummaryResponseSchema,
   updateCommissionRuleInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // Request bodies
 export class CreateCommissionRuleDto extends createZodDto(createCommissionRuleInputSchema) {}

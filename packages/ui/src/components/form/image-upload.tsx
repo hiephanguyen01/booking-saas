@@ -17,7 +17,7 @@ import {
 } from "@booking/ui/components/ui/attachment"
 import { presignAndPut, type UploadTarget } from "@booking/ui/lib/upload"
 
-/** Raster images the presign endpoint accepts (kept in sync with `@booking/shared`). */
+/** Raster images the presign endpoint accepts (kept in sync with `@booking/contracts`). */
 export const DEFAULT_IMAGE_ACCEPT = [
   "image/jpeg",
   "image/png",

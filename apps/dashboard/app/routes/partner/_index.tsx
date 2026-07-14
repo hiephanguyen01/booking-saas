@@ -6,7 +6,7 @@ import type {
   ListingResponse,
   PartnerCalendarBookingResponse,
   PartnerFinanceResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/_index';

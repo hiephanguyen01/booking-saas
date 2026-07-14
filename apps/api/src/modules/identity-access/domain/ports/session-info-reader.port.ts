@@ -1,4 +1,4 @@
-import type { ScopeMembership } from '@booking/shared';
+import type { ScopeMembership } from '@booking/contracts';
 
 export const SESSION_INFO_READER = Symbol('SESSION_INFO_READER');
 

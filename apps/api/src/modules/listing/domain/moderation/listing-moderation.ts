@@ -1,4 +1,4 @@
-import type { ModerationActor, PublishStatus } from '@booking/shared';
+import type { ModerationActor, PublishStatus } from '@booking/contracts';
 
 /**
  * Post moderation state machine (TONG-QUAN.md §7.3). A post/standalone listing

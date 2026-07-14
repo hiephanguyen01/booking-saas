@@ -1,6 +1,6 @@
 import { data, Link, redirect } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import { createListingInputSchema, type ListingTypeResponse } from '@booking/shared';
+import { createListingInputSchema, type ListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';

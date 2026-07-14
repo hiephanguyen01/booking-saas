@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CreateListingInput } from '@booking/shared';
+import type { CreateListingInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveTenantTimezone } from '../../../../shared/tenant-context/tenant-timezone';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';

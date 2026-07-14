@@ -17,7 +17,7 @@ import {
   resourceResponseSchema,
   updateListingGroupInputSchema,
   updateListingInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // ── Request bodies / query ────────────────────────────────────────────────────
 export class CreateListingGroupDto extends createZodDto(createListingGroupInputSchema) {}

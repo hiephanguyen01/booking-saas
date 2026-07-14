@@ -7,7 +7,7 @@ import {
   registerInputSchema,
   sessionInfoResponseSchema,
   upgradeGuestInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // Request bodies
 export class RegisterDto extends createZodDto(registerInputSchema) {}

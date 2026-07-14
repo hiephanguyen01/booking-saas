@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { Plus } from 'lucide-react';
-import type { Paginated, TenantResponse } from '@booking/shared';
+import type { Paginated, TenantResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';

@@ -1,4 +1,4 @@
-import type { BookingResponse, CancelBookingResponse, ReturnBookingResponse } from '@booking/shared';
+import type { BookingResponse, CancelBookingResponse, ReturnBookingResponse } from '@booking/contracts';
 import type { BookingRecord } from '../domain/ports/booking-repository.port';
 import type { CancelResult } from './use-cases/cancel-booking.use-case';
 import type { ReturnResult } from './use-cases/inventory-fulfillment.use-case';

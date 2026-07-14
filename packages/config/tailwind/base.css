@@ -1,0 +1,9 @@
+/**
+ * Base Tailwind CSS design tokens.
+ *
+ * @import this file in each app's global CSS via:
+ *   @import '@booking/config/tailwind/base';
+ *
+ * Add app-specific overrides after the import in each app's CSS file.
+ */
+@import "tailwindcss";

@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 
 /**
  * Booking state machine (TONG-QUAN.md §8.2 — the single source of truth). Every

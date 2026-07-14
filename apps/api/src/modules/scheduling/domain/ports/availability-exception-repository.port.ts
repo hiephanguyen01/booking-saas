@@ -1,4 +1,4 @@
-import type { AvailabilityExceptionType } from '@booking/shared';
+import type { AvailabilityExceptionType } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const AVAILABILITY_EXCEPTION_REPOSITORY = Symbol('AVAILABILITY_EXCEPTION_REPOSITORY');

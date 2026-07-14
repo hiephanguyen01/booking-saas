@@ -1,10 +1,10 @@
+import { type PlanResponse } from '@booking/contracts';
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { type PlanResponse } from '@booking/shared';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { toPlanResponse } from '../../application/tenancy.mapper';
 import { CreatePlanUseCase } from '../../application/use-cases/create-plan.use-case';
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
-import { toPlanResponse } from '../../application/tenancy.mapper';
 import { CreatePlanDto, PlanResponseDto } from './dto/tenancy.dto';
 
 /** Platform-admin subscription plans (§19 `/admin/plans`). */

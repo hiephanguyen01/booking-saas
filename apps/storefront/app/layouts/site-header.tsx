@@ -1,4 +1,4 @@
-import type { PublicListingTypeResponse } from '@booking/shared';
+import type { PublicListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Sheet,

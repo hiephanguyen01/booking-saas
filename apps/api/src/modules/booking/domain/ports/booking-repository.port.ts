@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { TransitionActor } from '../booking-state-machine';
 

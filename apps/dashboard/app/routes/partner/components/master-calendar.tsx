@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@booking/ui/components/ui/empty';
-import type { PartnerCalendarBookingResponse } from '@booking/shared';
+import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import { dayKey, formatTime, formatVnd, minutesOfDay, statusMeta } from './format';
 import { parseDay } from './calendar-dates';
 

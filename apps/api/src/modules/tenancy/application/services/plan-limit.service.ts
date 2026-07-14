@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import type { PlanLimits } from '@booking/shared';
+import type { PlanLimits } from '@booking/contracts';
 import {
   SUBSCRIPTION_REPOSITORY,
   type ISubscriptionRepository,

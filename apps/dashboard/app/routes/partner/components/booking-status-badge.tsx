@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
 import { statusMeta } from './format';

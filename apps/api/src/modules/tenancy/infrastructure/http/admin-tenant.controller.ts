@@ -1,3 +1,12 @@
+import {
+  uuidSchema,
+  type DomainResponse,
+  type DomainVerificationResult,
+  type Paginated,
+  type PlanResponse,
+  type SubscriptionResponse,
+  type TenantResponse
+} from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
@@ -6,33 +15,24 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import {
-  uuidSchema,
-  type DomainResponse,
-  type DomainVerificationResult,
-  type Paginated,
-  type PlanResponse,
-  type SubscriptionResponse,
-  type TenantResponse,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
-import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use-case';
-import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
-import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
-import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
-import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
-import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
-import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
-import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import {
   toDomainResponse,
   toPlanResponse,
   toSubscriptionResponse,
   toTenantResponse,
 } from '../../application/tenancy.mapper';
+import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
+import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
+import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
+import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
+import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
+import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
+import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use-case';
+import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
+import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import {
   AddDomainDto,
   AssignSubscriptionDto,
@@ -80,7 +80,12 @@ export class AdminTenantController {
   @ApiPaginatedResponse(TenantResponseDto)
   async list(@Query() query: PaginationQueryDto): Promise<Paginated<TenantResponse>> {
     const { items, total } = await this.listTenants.execute(query);
-    return { items: items.map(toTenantResponse), page: query.page, pageSize: query.pageSize, total };
+    return {
+      items: items.map(toTenantResponse),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
   }
 
   @RequirePermissions('platform.tenants.read')
@@ -88,9 +93,7 @@ export class AdminTenantController {
   @ApiOperation({ summary: 'Get a tenant by id' })
   @UuidParam()
   @ApiOkResponse({ type: TenantResponseDto })
-  async get(
-    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<TenantResponse> {
+  async get(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<TenantResponse> {
     return toTenantResponse(await this.getTenant.execute(id));
   }
 

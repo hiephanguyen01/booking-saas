@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import type { BookingResponse, PartnerResponse, Paginated } from '@booking/shared';
+import type { BookingResponse, PartnerResponse, Paginated } from '@booking/contracts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';

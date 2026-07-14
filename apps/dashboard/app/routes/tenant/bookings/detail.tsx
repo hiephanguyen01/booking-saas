@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { data as routeData, Form, Link, useNavigation } from 'react-router';
 import { ArrowLeft, Ban } from 'lucide-react';
-import { reasonInputSchema, type BookingResponse, type ListingResponse } from '@booking/shared';
+import { reasonInputSchema, type BookingResponse, type ListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Dialog,

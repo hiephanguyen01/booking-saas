@@ -7,7 +7,7 @@ import {
   type CreateBlockExceptionInput,
   type ListingResponse,
   type PartnerCalendarBookingResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import {

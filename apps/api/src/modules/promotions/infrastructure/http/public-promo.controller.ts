@@ -1,7 +1,7 @@
+import { type ValidatePromoResponse } from '@booking/contracts';
 import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { type ValidatePromoResponse } from '@booking/shared';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';
 import { ValidatePromoDto, ValidatePromoResponseDto } from './dto/promotions.dto';
@@ -27,7 +27,14 @@ export class PublicPromoController {
 
 function hostOf(req: Request): string {
   const forwarded = req.headers['x-forwarded-host'];
-  const raw = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() || req.headers.host;
-  if (!raw) throw new BadRequestException({ statusCode: 400, code: 'MISSING_HOST', message: 'Host header is required' });
+  const raw =
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() ||
+    req.headers.host;
+  if (!raw)
+    throw new BadRequestException({
+      statusCode: 400,
+      code: 'MISSING_HOST',
+      message: 'Host header is required',
+    });
   return raw;
 }

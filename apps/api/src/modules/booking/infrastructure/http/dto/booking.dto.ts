@@ -12,7 +12,7 @@ import {
   reasonInputSchema,
   returnBookingResponseSchema,
   uuidSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // ── Request bodies ───────────────────────────────────────────────────────────
 export class CreateBookingDto extends createZodDto(createBookingInputSchema) {}

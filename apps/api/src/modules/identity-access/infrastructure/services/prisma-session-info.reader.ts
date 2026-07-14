@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ScopeLevel, ScopeMembership } from '@booking/shared';
+import type { ScopeLevel, ScopeMembership } from '@booking/contracts';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { ISessionInfoReader } from '../../domain/ports/session-info-reader.port';
 

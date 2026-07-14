@@ -1,4 +1,4 @@
-import type { AttributeField } from '@booking/shared';
+import type { AttributeField } from '@booking/contracts';
 
 export interface AttributeError {
   key: string;

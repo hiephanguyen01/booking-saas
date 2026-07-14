@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { VerifyIdentityInput } from '@booking/shared';
+import type { VerifyIdentityInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { isAdult, nameMatches } from '../../domain/partner-verification';

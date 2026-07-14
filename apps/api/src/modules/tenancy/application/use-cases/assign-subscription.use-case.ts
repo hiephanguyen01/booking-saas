@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AssignSubscriptionInput } from '@booking/shared';
+import type { AssignSubscriptionInput } from '@booking/contracts';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,

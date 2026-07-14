@@ -1,4 +1,4 @@
-import type { PartnerVerificationStatus } from '@booking/shared';
+import type { PartnerVerificationStatus } from '@booking/contracts';
 
 /** Whole years between a date of birth and `now` (UTC calendar). */
 export function ageInYears(dob: Date, now: Date): number {

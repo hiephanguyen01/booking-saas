@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { ModeConfig } from '@booking/shared';
+import type { ModeConfig } from '@booking/contracts';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { utcNow } from '../../../../shared/time/time';
 import { vnd } from '../../../../shared/money/money';

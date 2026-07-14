@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { ScopeMembership } from '@booking/shared';
+import type { ScopeMembership } from '@booking/contracts';
 import {
   SESSION_INFO_READER,
   type ISessionInfoReader,

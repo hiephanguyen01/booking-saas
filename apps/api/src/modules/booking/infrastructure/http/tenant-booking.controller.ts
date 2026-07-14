@@ -1,22 +1,18 @@
+import { uuidSchema, type BookingResponse, type CancelBookingResponse } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import {
-  uuidSchema,
-  type BookingResponse,
-  type CancelBookingResponse,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
-import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
+import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
+import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
+import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { ListTenantBookingsUseCase } from '../../application/use-cases/list-tenant-bookings.use-case';
 import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-booking-stats.use-case';
-import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
-import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
-import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
 import {
   BookingResponseDto,
   CancelBookingResponseDto,
@@ -59,9 +55,7 @@ export class TenantBookingController {
   @Get()
   @ApiOperation({ summary: 'List bookings across the tenant' })
   @ApiOkResponse({ type: [BookingResponseDto] })
-  async list(
-    @Query() query: TenantBookingsQueryDto,
-  ): Promise<BookingResponse[]> {
+  async list(@Query() query: TenantBookingsQueryDto): Promise<BookingResponse[]> {
     const items = await this.listBookings.execute(this.tenantContext.tenantIdOrThrow(), {
       status: query.status,
       partnerId: query.partnerId,
@@ -91,7 +85,9 @@ export class TenantBookingController {
   async detail(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<BookingResponse> {
-    return toBookingResponse(await this.getBooking.execute(this.tenantContext.tenantIdOrThrow(), id));
+    return toBookingResponse(
+      await this.getBooking.execute(this.tenantContext.tenantIdOrThrow(), id),
+    );
   }
 
   /** Tenant cancels a booking — always a 100% refund regardless of policy (§8.2). */
@@ -107,10 +103,15 @@ export class TenantBookingController {
     @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<CancelBookingResponse> {
-    const result = await this.cancelBooking.execute(this.tenantContext.tenantIdOrThrow(), id, 'tenant', {
-      actorId: principal.userId,
-      reason: body.reason,
-    });
+    const result = await this.cancelBooking.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      'tenant',
+      {
+        actorId: principal.userId,
+        reason: body.reason,
+      },
+    );
     return toCancelResponse(result);
   }
 }

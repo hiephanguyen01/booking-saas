@@ -1,4 +1,4 @@
-import type { PartnerResponse } from '@booking/shared';
+import type { PartnerResponse } from '@booking/contracts';
 import type { PartnerRecord } from '../domain/ports/partner-repository.port';
 
 export function toPartnerResponse(p: PartnerRecord): PartnerResponse {

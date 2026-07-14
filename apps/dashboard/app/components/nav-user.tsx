@@ -1,6 +1,6 @@
 import { useSubmit } from 'react-router';
 import { ChevronsUpDown, LogOut } from 'lucide-react';
-import type { CurrentUser } from '@booking/shared';
+import type { CurrentUser } from '@booking/contracts';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import {
   DropdownMenu,

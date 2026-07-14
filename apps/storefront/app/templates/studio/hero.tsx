@@ -1,4 +1,4 @@
-import type { PublicListingTypeResponse } from '@booking/shared';
+import type { PublicListingTypeResponse } from '@booking/contracts';
 import type { StorefrontTenant } from '../../lib/tenant.server';
 import { useT } from '../../lib/i18n';
 import { HeroSearchCard } from './hero-search-card';

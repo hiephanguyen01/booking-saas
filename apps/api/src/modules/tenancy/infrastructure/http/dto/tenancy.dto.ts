@@ -15,7 +15,7 @@ import {
   subscriptionStatusResponseSchema,
   tenantResponseSchema,
   updateTenantInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // ── Request bodies / queries ─────────────────────────────────────────────────
 export class CreatePlanDto extends createZodDto(createPlanInputSchema) {}

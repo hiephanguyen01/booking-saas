@@ -1,7 +1,10 @@
 import { redirect } from 'react-router';
-import type { ScopeLevel, SessionInfoResponse } from '@booking/shared';
-import { apiGet, type ApiAuth, type RefreshedTokens } from './api.server';
+import type { ScopeLevel, SessionInfoResponse } from '@booking/contracts';
+import { hasScope, hasPermission, defaultAreaFor } from '@booking/auth';
+import { type ApiAuth, type RefreshedTokens, apiGet } from './api.server';
 import { commitSession, getSession } from './session.server';
+
+export { hasScope, hasPermission, defaultAreaFor };
 
 export interface AuthedUser {
   accessToken: string;
@@ -74,14 +77,6 @@ export async function requireSessionInfo(request: Request): Promise<AuthContext>
   return { user, info };
 }
 
-export function hasPermission(info: SessionInfoResponse, key: string): boolean {
-  return info.scopes.some((scope) => scope.permissions.includes(key));
-}
-
-export function hasScope(info: SessionInfoResponse, scope: ScopeLevel): boolean {
-  return info.scopes.some((membership) => membership.scope === scope);
-}
-
 function forbidden(what: string): Response {
   return new Response(`Bạn không có quyền truy cập (${what}).`, { status: 403 });
 }
@@ -98,12 +93,4 @@ export async function requirePermission(request: Request, key: string): Promise<
   const ctx = await requireSessionInfo(request);
   if (!hasPermission(ctx.info, key)) throw forbidden(key);
   return ctx;
-}
-
-/** The landing area for a user, by highest-privilege scope they hold. */
-export function defaultAreaFor(info: SessionInfoResponse): string {
-  if (hasScope(info, 'platform')) return '/admin';
-  if (hasScope(info, 'tenant')) return '/tenant';
-  if (hasScope(info, 'partner')) return '/partner';
-  return '/';
 }

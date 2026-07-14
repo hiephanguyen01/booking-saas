@@ -1,4 +1,4 @@
-import type { AttributeField, BookingMode } from '@booking/shared';
+import type { AttributeField, BookingMode } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const LISTING_TYPE_REPOSITORY = Symbol('LISTING_TYPE_REPOSITORY');

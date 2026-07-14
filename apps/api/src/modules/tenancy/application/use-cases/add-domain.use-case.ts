@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AddDomainInput } from '@booking/shared';
+import type { AddDomainInput } from '@booking/contracts';
 import { normalizeHostname } from '../../domain/hostname';
 import {
   TENANT_REPOSITORY,

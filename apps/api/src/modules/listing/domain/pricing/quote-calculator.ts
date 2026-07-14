@@ -1,4 +1,4 @@
-import type { BookingMode, ModeConfig } from '@booking/shared';
+import type { BookingMode, ModeConfig } from '@booking/contracts';
 import { percentOfBps, vnd, type Vnd } from '../../../../shared/money/money';
 import { wallClockInZone } from '../../../../shared/time/time';
 

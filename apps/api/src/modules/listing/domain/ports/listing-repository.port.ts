@@ -1,4 +1,4 @@
-import type { BalanceDue, BookingMode, ModerationActor, PublishStatus } from '@booking/shared';
+import type { BalanceDue, BookingMode, ModerationActor, PublishStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const LISTING_REPOSITORY = Symbol('LISTING_REPOSITORY');

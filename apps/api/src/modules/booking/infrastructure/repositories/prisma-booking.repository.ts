@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   BookingRecord,

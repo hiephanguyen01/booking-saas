@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { data, Link, useFetcher } from 'react-router';
 import { Clock, EyeOff, Lock, Pencil, Plus, Send, Undo2 } from 'lucide-react';
-import type { ListingResponse, PublishStatus } from '@booking/shared';
+import type { ListingResponse, PublishStatus } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';

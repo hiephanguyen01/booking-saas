@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigation, useSubmit } from 'react-router';
 import { Plus, X } from 'lucide-react';
-import type { AttributeFieldType, BookingMode, ListingTypeResponse } from '@booking/shared';
+import type { AttributeFieldType, BookingMode, ListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';

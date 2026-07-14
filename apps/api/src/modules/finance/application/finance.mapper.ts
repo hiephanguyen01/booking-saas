@@ -6,7 +6,7 @@ import type {
   PayoutResponse,
   PlatformFinanceResponse,
   TenantFinanceSummaryResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import type { CommissionRuleRecord } from '../domain/ports/commission-rule-repository.port';
 import type { LedgerEntryRecord, OwnerBalance } from '../domain/ports/ledger-repository.port';
 import type { PayoutRecord } from '../domain/ports/payout-repository.port';

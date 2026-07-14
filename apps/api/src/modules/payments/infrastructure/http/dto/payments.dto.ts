@@ -5,7 +5,7 @@ import {
   gatewayConfigResponseSchema,
   paymentStatusResponseSchema,
   upsertGatewayConfigInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // Request bodies
 export class UpsertGatewayConfigDto extends createZodDto(upsertGatewayConfigInputSchema) {}

@@ -1,6 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { CreateListingInput } from '@booking/shared';
+import type { CreateListingInput } from '@booking/contracts';
 import type { PrismaTx, TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import type { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { IListingTypeRepository } from '../../../catalog/domain/ports/listing-type-repository.port';

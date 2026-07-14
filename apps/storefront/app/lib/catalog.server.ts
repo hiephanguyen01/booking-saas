@@ -3,7 +3,7 @@ import type {
   PublicListingResponse,
   PublicListingTypeResponse,
   QuoteResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 /**
  * Server-only catalog fetches (BFF). The storefront menu + filters are generated

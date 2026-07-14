@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { AvailabilityExceptionType } from '@booking/shared';
+import type { AvailabilityExceptionType } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   AvailabilityExceptionInputData,

@@ -4,7 +4,7 @@ import {
   listPublicListingsQuerySchema,
   type PublicListingResponse,
   type PublicListingTypeResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { ListPublicListingsUseCase } from '../../application/use-cases/list-public-listings.use-case';

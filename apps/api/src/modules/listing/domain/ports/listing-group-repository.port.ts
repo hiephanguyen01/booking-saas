@@ -1,4 +1,4 @@
-import type { ModerationActor, PublishStatus } from '@booking/shared';
+import type { ModerationActor, PublishStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { ModerationUpdate } from './listing-repository.port';
 

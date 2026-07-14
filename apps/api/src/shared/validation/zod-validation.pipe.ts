@@ -4,7 +4,7 @@ import type { ZodSchema } from 'zod';
 
 /**
  * Per-route zod validation: `@Body(new ZodValidationPipe(schema))`.
- * Contracts live in @booking/shared so FE and BE validate with the same schema.
+ * Contracts live in @booking/contracts so FE and BE validate with the same schema.
  */
 @Injectable()
 export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {

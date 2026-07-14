@@ -1,6 +1,6 @@
 /**
  * Storefront UI copy (vi/en) — §18. Kept local to the storefront (not routed
- * through `@booking/shared`'s i18n JSON) so it is bundled by Vite and can't hit
+ * through `@booking/contracts`'s i18n JSON) so it is bundled by Vite and can't hit
  * Node's assertion-less JSON-import pitfall in SSR; tenant-entered content
  * (listing titles, descriptions) stays single-language per §18.
  *

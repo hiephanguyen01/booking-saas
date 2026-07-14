@@ -1,6 +1,6 @@
 import { data, Link, redirect } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import { createTenantInputSchema, type CreateTenantInput, type TenantResponse } from '@booking/shared';
+import { createTenantInputSchema, type CreateTenantInput, type TenantResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';

@@ -1,7 +1,7 @@
 import { Heart } from 'lucide-react';
 import { Link } from 'react-router';
-import type { PublicListingResponse } from '@booking/shared';
-import { attributeSummary, formatVnd } from '../lib/ui';
+import type { PublicListingResponse } from '@booking/contracts';
+import { attributeSummary, formatVnd } from '../../../lib/ui';
 
 /**
  * Image-forward listing card used on the home + catalog pages. Visual chrome

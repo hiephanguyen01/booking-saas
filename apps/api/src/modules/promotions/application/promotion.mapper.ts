@@ -1,4 +1,4 @@
-import type { PromotionResponse, PromoUsageStatsResponse } from '@booking/shared';
+import type { PromotionResponse, PromoUsageStatsResponse } from '@booking/contracts';
 import type { PromotionRecord } from '../domain/ports/promotion-repository.port';
 import type { RedemptionUsageStats } from '../domain/ports/promo-redemption-repository.port';
 

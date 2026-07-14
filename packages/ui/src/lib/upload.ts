@@ -7,14 +7,14 @@
  * server-side. This helper POSTs that proxy for a presigned PUT URL, then PUTs the
  * bytes straight to MinIO/S3 — the API never proxies file bytes.
  *
- * Kept dependency-free of `@booking/shared` so `@booking/ui` stays self-contained;
+ * Kept dependency-free of `@booking/contracts` so `@booking/ui` stays self-contained;
  * the response shape mirrors `PresignUploadResponse` in that package.
  */
 
 /** Storage album the object belongs to (mirrors `PresignUploadInput['target']`). */
 export type UploadTarget = "listings" | "groups" | "partners" | "tenants"
 
-/** Mirrors `PresignUploadResponse` from `@booking/shared`. */
+/** Mirrors `PresignUploadResponse` from `@booking/contracts`. */
 export interface PresignGrant {
   uploadUrl: string
   key: string

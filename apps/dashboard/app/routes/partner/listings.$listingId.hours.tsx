@@ -5,7 +5,7 @@ import {
   setAvailabilityRulesInputSchema,
   type AvailabilityRuleResponse,
   type ListingResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Switch } from '@booking/ui/components/ui/switch';

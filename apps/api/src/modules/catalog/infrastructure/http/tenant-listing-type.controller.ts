@@ -1,3 +1,4 @@
+import { uuidSchema, type ListingTypeResponse } from '@booking/contracts';
 import {
   Body,
   Controller,
@@ -18,18 +19,17 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { uuidSchema, type ListingTypeResponse } from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { CreateListingTypeUseCase } from '../../application/use-cases/create-listing-type.use-case';
-import { ListListingTypesUseCase } from '../../application/use-cases/list-listing-types.use-case';
-import { GetListingTypeUseCase } from '../../application/use-cases/get-listing-type.use-case';
-import { UpdateListingTypeUseCase } from '../../application/use-cases/update-listing-type.use-case';
-import { DeleteListingTypeUseCase } from '../../application/use-cases/delete-listing-type.use-case';
 import { toListingTypeResponse } from '../../application/catalog.mapper';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { CreateListingTypeUseCase } from '../../application/use-cases/create-listing-type.use-case';
+import { DeleteListingTypeUseCase } from '../../application/use-cases/delete-listing-type.use-case';
+import { GetListingTypeUseCase } from '../../application/use-cases/get-listing-type.use-case';
+import { ListListingTypesUseCase } from '../../application/use-cases/list-listing-types.use-case';
+import { UpdateListingTypeUseCase } from '../../application/use-cases/update-listing-type.use-case';
 import {
   CreateListingTypeDto,
   ListingTypeResponseDto,
@@ -54,9 +54,7 @@ export class TenantListingTypeController {
   @ApiOperation({ summary: "List the tenant's listing types" })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
   @ApiOkResponse({ type: [ListingTypeResponseDto] })
-  async list(
-    @Query('includeInactive') includeInactive?: string,
-  ): Promise<ListingTypeResponse[]> {
+  async list(@Query('includeInactive') includeInactive?: string): Promise<ListingTypeResponse[]> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const items = await this.listListingTypes.execute(tenantId, {
       includeInactive: includeInactive === 'true',
@@ -69,9 +67,7 @@ export class TenantListingTypeController {
   @Post()
   @ApiOperation({ summary: 'Create a listing type' })
   @ApiCreatedResponse({ type: ListingTypeResponseDto })
-  async create(
-    @Body() input: CreateListingTypeDto,
-  ): Promise<ListingTypeResponse> {
+  async create(@Body() input: CreateListingTypeDto): Promise<ListingTypeResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return toListingTypeResponse(await this.createListingType.execute(tenantId, input));
   }

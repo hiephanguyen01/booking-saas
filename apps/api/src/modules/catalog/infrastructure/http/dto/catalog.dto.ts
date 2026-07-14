@@ -6,7 +6,7 @@ import {
   publicListingResponseSchema,
   publicListingTypeResponseSchema,
   updateListingTypeInputSchema,
-} from '@booking/shared';
+} from '@booking/contracts';
 
 // Request bodies
 export class CreateListingTypeDto extends createZodDto(createListingTypeInputSchema) {}

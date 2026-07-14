@@ -1,22 +1,18 @@
+import { uuidSchema, type ListingResponse, type ListingReviewResponse } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Ip, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import {
-  uuidSchema,
-  type ListingResponse,
-  type ListingReviewResponse,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
-import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
-import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
-import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
-import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { ReviewListingUseCase } from '../../application/use-cases/moderation/review-listing.use-case';
-import { PublishListingUseCase } from '../../application/use-cases/moderation/publish-listing.use-case';
-import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
-import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
-import { toListingResponse } from '../../application/listing.mapper';
 import { UuidParam } from '../../../../shared/openapi/decorators';
+import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
+import { toListingResponse } from '../../application/listing.mapper';
+import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
+import { PublishListingUseCase } from '../../application/use-cases/moderation/publish-listing.use-case';
+import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
+import { ReviewListingUseCase } from '../../application/use-cases/moderation/review-listing.use-case';
 import {
   ListingResponseDto,
   ListingReviewResponseDto,
@@ -38,7 +34,7 @@ export class TenantListingModerationController {
 
   @RequirePermissions('tenant.listings.publish')
   @Get(':id/review')
-  @ApiOperation({ summary: 'Get a listing\'s moderation review checklist' })
+  @ApiOperation({ summary: "Get a listing's moderation review checklist" })
   @UuidParam()
   @ApiOkResponse({ type: ListingReviewResponseDto })
   async review(
@@ -108,7 +104,11 @@ export class TenantListingModerationController {
   ): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return toListingResponse(
-      await this.republishListing.execute({ tenantId, actorUserId: principal.userId, ip }, id, 'admin'),
+      await this.republishListing.execute(
+        { tenantId, actorUserId: principal.userId, ip },
+        id,
+        'admin',
+      ),
     );
   }
 }

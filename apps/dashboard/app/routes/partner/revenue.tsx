@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Banknote, TrendingUp, Wallet } from 'lucide-react';
-import type { LedgerEntryResponse, LedgerEntryTypeDto, PartnerFinanceResponse } from '@booking/shared';
+import type { LedgerEntryResponse, LedgerEntryTypeDto, PartnerFinanceResponse } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/revenue';

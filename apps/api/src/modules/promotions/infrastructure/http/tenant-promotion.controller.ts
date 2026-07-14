@@ -1,26 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import {
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
 import {
   uuidSchema,
   type PromotionResponse,
   type PromoUsageStatsResponse,
-} from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+} from '@booking/contracts';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
+import { toPromotionResponse, toUsageStatsResponse } from '../../application/promotion.mapper';
 import { CreatePromotionUseCase } from '../../application/use-cases/create-promotion.use-case';
-import { UpdatePromotionUseCase } from '../../application/use-cases/update-promotion.use-case';
 import { EndPromotionUseCase } from '../../application/use-cases/end-promotion.use-case';
 import { ListPromotionsUseCase } from '../../application/use-cases/list-promotions.use-case';
 import { PromoUsageStatsUseCase } from '../../application/use-cases/promo-usage-stats.use-case';
-import { toPromotionResponse, toUsageStatsResponse } from '../../application/promotion.mapper';
+import { UpdatePromotionUseCase } from '../../application/use-cases/update-promotion.use-case';
 import {
   CreatePromotionDto,
   PromotionResponseDto,
@@ -55,10 +50,10 @@ export class TenantPromotionController {
   @Post()
   @ApiOperation({ summary: 'Create a promotion' })
   @ApiCreatedResponse({ type: PromotionResponseDto })
-  async create(
-    @Body() input: CreatePromotionDto,
-  ): Promise<PromotionResponse> {
-    return toPromotionResponse(await this.createPromotion.execute(this.tenantContext.tenantIdOrThrow(), input));
+  async create(@Body() input: CreatePromotionDto): Promise<PromotionResponse> {
+    return toPromotionResponse(
+      await this.createPromotion.execute(this.tenantContext.tenantIdOrThrow(), input),
+    );
   }
 
   @RequirePermissions('tenant.promotions.manage')
@@ -69,7 +64,10 @@ export class TenantPromotionController {
   async stats(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<PromoUsageStatsResponse> {
-    const { promotion, stats } = await this.usageStats.execute(this.tenantContext.tenantIdOrThrow(), id);
+    const { promotion, stats } = await this.usageStats.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+    );
     return toUsageStatsResponse(promotion, stats);
   }
 
@@ -83,7 +81,9 @@ export class TenantPromotionController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() input: UpdatePromotionDto,
   ): Promise<PromotionResponse> {
-    return toPromotionResponse(await this.updatePromotion.execute(this.tenantContext.tenantIdOrThrow(), id, input));
+    return toPromotionResponse(
+      await this.updatePromotion.execute(this.tenantContext.tenantIdOrThrow(), id, input),
+    );
   }
 
   @RequirePermissions('tenant.promotions.manage')
@@ -95,6 +95,8 @@ export class TenantPromotionController {
   async end(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<PromotionResponse> {
-    return toPromotionResponse(await this.endPromotion.execute(this.tenantContext.tenantIdOrThrow(), id));
+    return toPromotionResponse(
+      await this.endPromotion.execute(this.tenantContext.tenantIdOrThrow(), id),
+    );
   }
 }

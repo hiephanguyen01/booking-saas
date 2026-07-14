@@ -5,7 +5,7 @@ import type {
   PayoutStatusDto,
   PromotionStatusDto,
   PublishStatus,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';

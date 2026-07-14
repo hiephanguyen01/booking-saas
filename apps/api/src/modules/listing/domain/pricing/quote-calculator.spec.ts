@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ModeConfig } from '@booking/shared';
+import type { ModeConfig } from '@booking/contracts';
 import { wallClockInZone } from '../../../../shared/time/time';
 import { computeQuote, type PricingRuleView, type QuoteRequest } from './quote-calculator';
 

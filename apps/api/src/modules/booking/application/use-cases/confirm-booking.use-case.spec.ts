@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 import type { BookingRecord, IBookingRepository, TransitionParams } from '../../domain/ports/booking-repository.port';
 import { SlotTakenError } from '../../domain/booking-errors';
 import { ConfirmBookingUseCase } from './confirm-booking.use-case';

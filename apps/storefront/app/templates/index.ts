@@ -1,4 +1,4 @@
-import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/shared';
+import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { StudioHome } from './studio/home';
 

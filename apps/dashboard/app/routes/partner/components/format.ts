@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 
 /** VN market timezone - the calendar buckets and clocks render in this zone. */
 export const TZ = 'Asia/Ho_Chi_Minh';

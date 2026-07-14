@@ -1,10 +1,10 @@
+import type { PartnerFinanceResponse } from '@booking/contracts';
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { PartnerFinanceResponse } from '@booking/shared';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
 import { toPartnerFinanceResponse } from '../../application/finance.mapper';
+import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
 import { PartnerFinanceResponseDto } from './dto/finance.dto';
 
 /** Partner self-service finance (§13.3): current balance + ledger history. */

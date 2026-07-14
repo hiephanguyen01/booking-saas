@@ -3,7 +3,7 @@ import {
   updatePromotionInputSchema,
   type PromotionResponse,
   type PromoUsageStatsResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
