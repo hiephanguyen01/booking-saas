@@ -6,9 +6,9 @@ import { fetchListings, fetchListingTypes } from '../lib/catalog.server';
  * listings for the tenant resolved from this Host. Absolute URLs use the public
  * host the crawler requested.
  */
-export async function loader({ request }: Route.LoaderArgs) {
-  const host = request.headers.get('host') ?? new URL(request.url).host;
-  const proto = request.headers.get('x-forwarded-proto') ?? new URL(request.url).protocol.replace(':', '');
+export async function loader({ request, url }: Route.LoaderArgs) {
+  const host = request.headers.get('host') ?? url.host;
+  const proto = request.headers.get('x-forwarded-proto') ?? url.protocol.replace(':', '');
   const origin = `${proto}://${host}`;
 
   const [types, listings] = await Promise.all([

@@ -24,8 +24,8 @@ export function meta() {
 const PENDING = new Set(['pending_payment', 'pending_approval', 'draft']);
 const SUCCESS = new Set(['confirmed', 'completed']);
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const otp = new URL(request.url).searchParams.get('otp') ?? undefined;
+export async function loader({ request, params, url }: Route.LoaderArgs) {
+  const otp = url.searchParams.get('otp') ?? undefined;
   const status = await fetchPaymentStatus(request, params.code);
   // Full details (schedule/amounts + cancel) are only accessible with the OTP
   // (or a logged-in session) — §8.6. Right after checkout we show status only.

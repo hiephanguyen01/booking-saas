@@ -6,8 +6,8 @@ export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
   return [{ title: params.typeSlug }];
 }
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const search = new URLSearchParams(new URL(request.url).searchParams);
+export async function loader({ request, params, url }: Route.LoaderArgs) {
+  const search = new URLSearchParams(url.searchParams);
   search.set('type', params.typeSlug);
 
   const [types, listings] = await Promise.all([

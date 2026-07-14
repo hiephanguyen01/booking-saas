@@ -22,9 +22,8 @@ export function meta(): Route.MetaDescriptors {
 
 const PAGE_SIZE = 25;
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.finance.read');
-  const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
 
   const res = await apiGet<Paginated<LedgerEntryResponse>>(

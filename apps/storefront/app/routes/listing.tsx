@@ -43,8 +43,8 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   return tags;
 }
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const searchParams = new URL(request.url).searchParams;
+export async function loader({ request, params, url }: Route.LoaderArgs) {
+  const searchParams = url.searchParams;
   const listing = await fetchListing(request, params.listingSlug);
 
   if (!listing) {

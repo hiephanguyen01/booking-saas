@@ -34,7 +34,7 @@ export interface StorefrontContext {
   locale: Locale;
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
   const locale = resolveLocale(request, tenant.defaultLocale);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
@@ -43,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Affiliate attribution (§15.1): capture `?ref=CODE` once per new code and set
   // the last-click cookie. Only track when the code differs from what's already
   // attributed, so repeat page views don't re-hit the backend.
-  const ref = new URL(request.url).searchParams.get('ref')?.trim().toUpperCase();
+  const ref = url.searchParams.get('ref')?.trim().toUpperCase();
   if (!ref || ref.length > 50 || readRefCode(request, tenant.id) === ref) {
     return payload;
   }

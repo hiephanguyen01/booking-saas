@@ -45,13 +45,12 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Lịch tổng · Đối tác · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);
   if (!canPartner(membership, 'partner.bookings.read')) {
     throw new Response('Không có quyền xem lịch đặt.', { status: 403 });
   }
 
-  const url = new URL(request.url);
   const view = url.searchParams.get('view') === 'day' ? 'day' : 'week';
   const today = todayString();
   const anchorParam = url.searchParams.get(view === 'day' ? 'day' : 'week');

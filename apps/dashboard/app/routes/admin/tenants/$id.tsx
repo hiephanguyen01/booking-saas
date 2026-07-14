@@ -46,8 +46,8 @@ interface CurrentSubscription {
   plan: PlanResponse | null;
 }
 
-export function meta({ data: d }: Route.MetaArgs): Route.MetaDescriptors {
-  return [{ title: `${d?.tenant?.name ?? 'Tenant'} · Bookify Admin` }];
+export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
+  return [{ title: `${loaderData?.tenant?.name ?? 'Tenant'} · Bookify Admin` }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

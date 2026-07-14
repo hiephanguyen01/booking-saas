@@ -13,8 +13,8 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Checkout' }, { name: 'robots', content: 'noindex' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const searchParams = new URL(request.url).searchParams;
+export async function loader({ request, url }: Route.LoaderArgs) {
+  const searchParams = url.searchParams;
   const slug = searchParams.get('listing');
   const mode = searchParams.get('mode');
   const start = searchParams.get('start');

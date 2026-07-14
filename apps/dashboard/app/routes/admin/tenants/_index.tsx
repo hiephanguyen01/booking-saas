@@ -16,8 +16,7 @@ export function meta(): Route.MetaDescriptors {
 
 const PAGE_SIZE = 20;
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const url = new URL(request.url);
+export async function loader({ request, url }: Route.LoaderArgs) {
   const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
   return platformLoader(
     request,

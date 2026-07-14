@@ -3,6 +3,7 @@ import type { ScopeLevel, SessionInfoResponse } from '@booking/contracts';
 import { hasScope, hasPermission, defaultAreaFor } from '@booking/auth';
 import { type ApiAuth, type RefreshedTokens, apiGet } from './api.server';
 import { commitSession, getSession } from './session.server';
+import { normalizedRequestLocation } from './navigation.server';
 
 export { hasScope, hasPermission, defaultAreaFor };
 
@@ -61,7 +62,7 @@ export async function loadSessionInfo(request: Request): Promise<SessionInfoResp
     const next: RefreshedTokens = rotated;
     session.set('accessToken', next.accessToken);
     session.set('refreshToken', next.refreshToken);
-    throw redirect(request.url, {
+    throw redirect(normalizedRequestLocation(request), {
       headers: { 'Set-Cookie': await commitSession(session) },
     });
   }

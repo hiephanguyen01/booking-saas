@@ -1,9 +1,9 @@
 import type { Route } from './+types/robots[.]txt';
 
 /** robots.txt (§16.2): allow crawling + point at this domain's sitemap. */
-export function loader({ request }: Route.LoaderArgs) {
-  const host = request.headers.get('host') ?? new URL(request.url).host;
-  const proto = request.headers.get('x-forwarded-proto') ?? new URL(request.url).protocol.replace(':', '');
+export function loader({ request, url }: Route.LoaderArgs) {
+  const host = request.headers.get('host') ?? url.host;
+  const proto = request.headers.get('x-forwarded-proto') ?? url.protocol.replace(':', '');
   const origin = `${proto}://${host}`;
   const body = [
     'User-agent: *',
