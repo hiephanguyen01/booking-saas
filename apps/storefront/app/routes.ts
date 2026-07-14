@@ -1,6 +1,7 @@
 import { index, layout, route, type RouteConfig } from '@react-router/dev/routes';
 
 export default [
+  route('healthz', 'routes/healthz.ts'),
   route(':locale', 'routes/locale-layout.tsx', [
     index('routes/home.tsx'),
     route('t/:typeSlug', 'routes/catalog.tsx'),

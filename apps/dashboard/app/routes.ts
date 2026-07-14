@@ -13,6 +13,7 @@ import { affiliateChildren } from './routes/affiliate/routes';
 // three area agents never edit a shared file. To add a screen, edit that area's
 // routes.ts + nav.ts only.
 export default [
+  route('healthz', 'routes/healthz.ts'),
   index('routes/home.tsx'),
 
   route('auth/login', 'routes/auth/login.tsx'),
