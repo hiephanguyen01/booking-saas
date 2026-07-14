@@ -120,6 +120,20 @@ describe('Dashboard auth middleware', () => {
     expect(unavailable.destroy).not.toHaveBeenCalled();
   });
 
+  it('returns 503 without mutating cookies when the session store is unavailable', async () => {
+    const failing = makeSessionService();
+    failing.read.mockRejectedValueOnce(new Error('redis unavailable'));
+    const middleware = createDashboardAuthMiddleware({
+      sessionService: failing.service,
+      authenticate: async () => ({ kind: 'invalid' }),
+    });
+
+    await expect(
+      middleware({ request: request() }, async () => new Response('never')),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(failing.destroy).not.toHaveBeenCalled();
+  });
+
   it('bypasses stale-session processing for a login mutation', async () => {
     const { service, read } = makeSessionService();
     const authenticate = vi.fn<() => Promise<DashboardAuthenticationResult>>();

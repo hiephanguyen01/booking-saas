@@ -40,6 +40,13 @@ function isLoginMutation(request: Request, url: URL): boolean {
   return url.pathname === '/auth/login' && request.method !== 'GET';
 }
 
+function sessionServiceUnavailable(): Response {
+  return new Response('Dịch vụ phiên đăng nhập đang tạm thời không khả dụng.', {
+    status: 503,
+    statusText: 'Session service unavailable',
+  });
+}
+
 export function createDashboardAuthMiddleware({
   sessionService,
   authenticate,
@@ -52,7 +59,12 @@ export function createDashboardAuthMiddleware({
       );
     }
 
-    const stored = await sessionService.read(request);
+    let stored: Awaited<ReturnType<DashboardSessionService['read']>>;
+    try {
+      stored = await sessionService.read(request);
+    } catch {
+      throw sessionServiceUnavailable();
+    }
     if (!stored) {
       return runWithDashboardRequestAuth(
         { auth: null, suppressSessionCommit: false },
