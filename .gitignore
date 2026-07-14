@@ -9,3 +9,5 @@ coverage/
 .react-router/
 build/
 .agents/skills/*/node_modules/
+/.agents
+/.claude
