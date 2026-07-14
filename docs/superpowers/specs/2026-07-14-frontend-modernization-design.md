@@ -58,6 +58,7 @@ The target baseline is:
 - React and React DOM `>=19.2.7`
 - React Router Framework Mode v8
 - Vite 7+
+- Axios v1 as the shared HTTP transport
 - ESM-only frontend packages
 - pnpm `10.13.1`
 
@@ -135,7 +136,10 @@ different tenant or partner.
 
 ### Milestone 5: Typed API Client and Runtime Contracts
 
-- Replace refresh-aware per-call helpers with a transport-only API client
+- Replace refresh-aware per-call helpers with an Axios-based transport-only API
+  client
+- Create isolated Axios instances from explicit request options; never mutate a
+  process-wide instance with request-specific access tokens or workspace headers
 - Support `AbortSignal`, a bounded timeout, query serialization, JSON/FormData,
   request IDs, scope headers, and typed failure categories
 - Validate successful endpoint responses with Zod schemas from contracts
@@ -146,7 +150,8 @@ different tenant or partner.
   consumers move
 
 Success: empty success responses are distinct from 404/5xx failures, invalid
-backend shapes become 502 failures, and cancelled navigations cancel fetches.
+backend shapes become 502 failures, and cancelled navigations cancel Axios
+requests through `AbortSignal`.
 
 ### Milestone 6: Error Recovery and Reporting
 
@@ -239,7 +244,8 @@ from server-only route exports, middleware, or other server modules.
 ### Shared Packages
 
 - `@booking/contracts`: framework-free Zod transport schemas and inferred types
-- `@booking/api-client`: framework-free HTTP transport and failure modeling
+- `@booking/api-client`: framework-free Axios transport, isolated client
+  factories, and failure modeling
 - `@booking/auth`: pure permission and membership predicates
 - `@booking/query`: QueryClient construction and React provider only
 - `@booking/i18n`: typed resources, formatting, and per-render i18n factories
@@ -254,7 +260,8 @@ from server-only route exports, middleware, or other server modules.
 4. A 401 may trigger exactly one refresh, followed by one session retry.
 5. Valid session data and current tokens are stored in request context.
 6. Nested middleware validates active tenant/partner membership from route params.
-7. Loaders and actions use only the context's access token and scoped IDs.
+7. Loaders and actions create scoped Axios request options from only the
+   context's access token and scoped IDs.
 8. After downstream handlers finish, the root middleware appends a rotated cookie
    unless logout/session effects suppress the commit.
 
