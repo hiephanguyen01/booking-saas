@@ -1,7 +1,4 @@
-import type { Locale } from './i18n';
-import { vi, en, type Messages } from './messages';
-
-const DICTS: Record<Locale, Messages> = { vi, en };
+import type { Locale } from '@booking/i18n';
 const COOKIE = 'sf_locale';
 
 /**
@@ -11,10 +8,6 @@ const COOKIE = 'sf_locale';
 export function resolveLocale(request: Request, fallback: Locale): Locale {
   const match = (request.headers.get('cookie') ?? '').match(/(?:^|;\s*)sf_locale=(vi|en)\b/);
   return match ? (match[1] as Locale) : fallback;
-}
-
-export function messagesFor(locale: Locale): Messages {
-  return DICTS[locale];
 }
 
 /** `Set-Cookie` value for the language switcher (1 year, lax, path=/). */

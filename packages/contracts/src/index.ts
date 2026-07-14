@@ -12,5 +12,3 @@ export * from './contracts/finance';
 export * from './contracts/affiliate';
 export * from './contracts/platform';
 export * from './contracts/storage';
-export { default as viMessages } from './i18n/vi.json';
-export { default as enMessages } from './i18n/en.json';

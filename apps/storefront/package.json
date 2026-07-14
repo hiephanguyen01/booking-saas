@@ -15,6 +15,7 @@
     "@booking/api-client": "workspace:*",
     "@booking/auth": "workspace:*",
     "@booking/contracts": "workspace:*",
+    "@booking/i18n": "workspace:*",
     "@booking/ui": "workspace:*",
     "@react-router/node": "8.0.1",
     "@react-router/serve": "8.0.1",

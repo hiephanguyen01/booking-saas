@@ -14,8 +14,7 @@ export default defineConfig(({ mode }) => {
     plugins: [tailwindcss(), reactRouter()],
     server: { port },
     preview: { port },
-    // @booking/ui ships raw TSX; bundle @booking/contracts too so its JSON re-exports
-    // are handled by Vite (Node's dev-SSR loader rejects assertion-less JSON imports).
-    ssr: { noExternal: ['@booking/ui', '@booking/contracts'] },
+    // @booking/ui ships raw TSX and is compiled by the consuming app.
+    ssr: { noExternal: ['@booking/ui'] },
   };
 });

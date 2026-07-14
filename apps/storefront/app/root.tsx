@@ -1,4 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
+import { createTranslator, I18nProvider, type Locale } from '@booking/i18n';
 import {
   data,
   isRouteErrorResponse,
@@ -21,9 +22,7 @@ import {
   trackReferral,
 } from './lib/affiliate.server';
 import { fetchListingTypes } from './lib/catalog.server';
-import { createTranslator, I18nProvider, type Locale } from './lib/i18n';
-import { messagesFor, resolveLocale } from './lib/i18n.server';
-import type { Messages } from './lib/messages';
+import { resolveLocale } from './lib/i18n.server';
 import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
 import { themeCss } from './theme/theme';
 
@@ -38,7 +37,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
   const locale = resolveLocale(request, tenant.defaultLocale);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
-  const payload = { tenant, listingTypes, locale, messages: messagesFor(locale) };
+  const payload = { tenant, listingTypes, locale };
 
   // Affiliate attribution (§15.1): capture `?ref=CODE` once per new code and set
   // the last-click cookie. Only track when the code differs from what's already
@@ -108,11 +107,11 @@ function ThemeStyle({ theme }: { theme: StorefrontTenant['theme'] }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { tenant, listingTypes, locale, messages } = loaderData;
+  const { tenant, listingTypes, locale } = loaderData;
 
   const matches = useMatches();
   
-  const i18n = createTranslator(locale, messages as Messages);
+  const i18n = createTranslator(locale);
 
    const isStandalone = matches.some(
     (match) =>

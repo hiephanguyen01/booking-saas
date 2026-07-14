@@ -1,13 +1,4 @@
-/**
- * Storefront UI copy (vi/en) — §18. Kept local to the storefront (not routed
- * through `@booking/contracts`'s i18n JSON) so it is bundled by Vite and can't hit
- * Node's assertion-less JSON-import pitfall in SSR; tenant-entered content
- * (listing titles, descriptions) stays single-language per §18.
- *
- * The two dictionaries share the exact same shape; `Messages` is inferred from
- * `vi` and the `en` object is type-checked against it, so a missing key is a
- * compile error.
- */
+/** Typed in-memory resources shared by SSR and browser renders. */
 export const vi = {
   nav: {
     all: 'Tất cả',
