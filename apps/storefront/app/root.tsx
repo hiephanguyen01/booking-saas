@@ -1,5 +1,6 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import { createTranslator, I18nProvider, type Locale } from '@booking/i18n';
+import { QueryProvider } from '@booking/query';
 import {
   data,
   isRouteErrorResponse,
@@ -129,16 +130,18 @@ export default function App({ loaderData }: Route.ComponentProps) {
   
   return (
     <I18nProvider value={i18n}>
-      <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
-        <ThemeStyle theme={tenant.theme} />
-        {!isStandalone && (
-          <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
-        )}
-        <main className="flex-1">
-          <Outlet context={{ tenant, listingTypes, locale } satisfies StorefrontContext} />
-        </main>
-        {!isStandalone && <SiteFooter tenant={tenant} />}
-      </div>
+      <QueryProvider>
+        <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
+          <ThemeStyle theme={tenant.theme} />
+          {!isStandalone && (
+            <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
+          )}
+          <main className="flex-1">
+            <Outlet context={{ tenant, listingTypes, locale } satisfies StorefrontContext} />
+          </main>
+          {!isStandalone && <SiteFooter tenant={tenant} />}
+        </div>
+      </QueryProvider>
     </I18nProvider>
   );
 }

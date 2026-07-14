@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
+import { dehydrate, HydrationBoundary, useQuery } from '@tanstack/react-query';
+import { makeQueryClient } from '@booking/query';
 import type { BookingResponse, PartnerResponse, Paginated } from '@booking/contracts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
@@ -12,6 +13,13 @@ import { requireTenant } from '../tenant.server';
 import { formatVnd, formatDateTime, formatRate } from '../format';
 import { PageHeader, StatCard } from '../components/page';
 import { BookingStatusBadge } from '../components/status';
+import {
+  bookingListQueryOptions,
+  parseBookingStatus,
+  type BookingStatusFilter,
+} from '~/features/bookings/booking-list.query';
+import { fetchBookingList } from '~/features/bookings/booking-list.server';
+import { dashboardPaths } from '~/lib/paths';
 
 interface PartnerStat {
   partnerId: string;
@@ -28,13 +36,21 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đặt chỗ · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const { auth, can } = await requireTenant(request, 'tenant.bookings.read');
-  const [bookingsRes, statsRes, partnersRes] = await Promise.all([
-    apiGet<BookingResponse[]>('/tenant/bookings', auth),
-    apiGet<PartnerStat[]>('/tenant/bookings/partner-stats', auth),
+export async function loader({ request, url }: Route.LoaderArgs) {
+  const { auth, can, tenantId } = await requireTenant(request, 'tenant.bookings.read');
+  const status = parseBookingStatus(url.searchParams.get('status'));
+  const queryClient = makeQueryClient();
+  const [, statsRes, partnersRes] = await Promise.all([
+    queryClient.fetchQuery({
+      ...bookingListQueryOptions(tenantId, status),
+      queryFn: ({ signal }) =>
+        fetchBookingList(auth, status, AbortSignal.any([request.signal, signal])),
+    }),
+    apiGet<PartnerStat[]>('/tenant/bookings/partner-stats', auth, { signal: request.signal }),
     can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
+      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth, {
+          signal: request.signal,
+        })
       : Promise.resolve(null),
   ]);
 
@@ -43,36 +59,53 @@ export async function loader({ request }: Route.LoaderArgs) {
   for (const p of partners) partnerNames[p.id] = p.name;
 
   return {
-    bookings: bookingsRes.ok ? (bookingsRes.data ?? []) : [],
+    tenantId,
+    status,
+    dehydratedState: dehydrate(queryClient),
     stats: statsRes.ok ? (statsRes.data ?? []) : [],
     partnerNames,
-    error: bookingsRes.ok ? null : (bookingsRes.error ?? 'Không tải được đặt chỗ.'),
   };
 }
 
 export default function TenantBookings({ loaderData }: Route.ComponentProps) {
-  const { bookings, stats, partnerNames, error } = loaderData;
-  const [status, setStatus] = useState<string>('all');
-
-  const filtered = useMemo(
-    () => (status === 'all' ? bookings : bookings.filter((b) => b.status === status)),
-    [status, bookings],
+  return (
+    <HydrationBoundary state={loaderData.dehydratedState}>
+      <TenantBookingsPage
+        tenantId={loaderData.tenantId}
+        status={loaderData.status}
+        stats={loaderData.stats}
+        partnerNames={loaderData.partnerNames}
+      />
+    </HydrationBoundary>
   );
+}
 
-  const kpis = useMemo(() => {
-    const active = bookings.filter((b) => b.status === 'confirmed' || b.status === 'pending_approval').length;
-    const completed = bookings.filter((b) => b.status === 'completed').length;
-    const revenue = bookings
-      .filter((b) => b.status === 'confirmed' || b.status === 'completed')
-      .reduce((sum, b) => sum + BigInt(b.finalAmount || '0'), 0n);
-    return { total: bookings.length, active, completed, revenue: revenue.toString() };
-  }, [bookings]);
+interface TenantBookingsPageProps {
+  tenantId: string;
+  status: BookingStatusFilter;
+  stats: PartnerStat[];
+  partnerNames: Record<string, string>;
+}
+
+function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBookingsPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = useQuery(bookingListQueryOptions(tenantId, status));
+  const bookings = query.data?.items ?? [];
+  const kpis = query.data?.summary ?? { total: 0, active: 0, completed: 0, revenue: '0' };
+
+  function setStatus(nextStatus: string) {
+    const next = new URLSearchParams(searchParams);
+    const parsed = parseBookingStatus(nextStatus);
+    if (parsed === 'all') next.delete('status');
+    else next.set('status', parsed);
+    setSearchParams(next, { preventScrollReset: true });
+  }
 
   const bookingColumns: DataTableColumn<BookingResponse>[] = [
     {
       header: 'Mã',
       cell: (b) => (
-        <Link to={`/tenant/bookings/${b.id}`} className="font-mono text-sm font-medium text-primary hover:underline">
+        <Link to={dashboardPaths.tenant.booking(tenantId, b.id)} className="font-mono text-sm font-medium text-primary hover:underline">
           {b.code}
         </Link>
       ),
@@ -101,8 +134,8 @@ export default function TenantBookings({ loaderData }: Route.ComponentProps) {
     <div className="space-y-6">
       <PageHeader title="Đặt chỗ" description="Theo dõi đơn đặt và sức khoẻ vận hành của từng đối tác." />
 
-      {error ? (
-        <Card><CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">{error}</CardContent></Card>
+      {query.error ? (
+        <Card><CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">Không thể cập nhật danh sách đặt chỗ.</CardContent></Card>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -133,7 +166,7 @@ export default function TenantBookings({ loaderData }: Route.ComponentProps) {
               </SelectContent>
             </Select>
           </div>
-          <DataTable columns={bookingColumns} data={filtered} getRowKey={(b) => b.id} emptyMessage="Không có đơn nào." />
+          <DataTable columns={bookingColumns} data={bookings} getRowKey={(b) => b.id} emptyMessage="Không có đơn nào." />
         </TabsContent>
 
         <TabsContent value="partners" className="space-y-4">

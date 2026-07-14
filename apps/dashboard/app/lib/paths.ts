@@ -22,6 +22,8 @@ export const dashboardPaths = {
     listingTypes: (tenantId: string) => tenantPath(tenantId, '/listing-types'),
     partners: (tenantId: string) => tenantPath(tenantId, '/partners'),
     bookings: (tenantId: string) => tenantPath(tenantId, '/bookings'),
+    booking: (tenantId: string, bookingId: string) =>
+      tenantPath(tenantId, `/bookings/${segment(bookingId)}`),
     finance: (tenantId: string) => tenantPath(tenantId, '/finance'),
     ledger: (tenantId: string) => tenantPath(tenantId, '/finance/ledger'),
     promotions: (tenantId: string) => tenantPath(tenantId, '/promotions'),
