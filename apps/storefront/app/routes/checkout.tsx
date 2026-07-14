@@ -1,6 +1,7 @@
 import type { CreateBookingInput, ValidatePromoResponse } from '@booking/contracts';
 import { data, redirect } from 'react-router';
 import type { Route } from './+types/checkout';
+import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CheckoutPage } from '../features/checkout/checkout-page';
 import { readRefCode } from '../lib/affiliate.server';
 import { checkoutBooking, createBooking, validatePromo } from '../lib/booking.server';
@@ -133,4 +134,8 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function CheckoutRoute(props: Route.ComponentProps) {
   return <CheckoutPage {...props} />;
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <RouteErrorState error={error} homeHref="/" homeLabel="Về trang chủ" />;
 }

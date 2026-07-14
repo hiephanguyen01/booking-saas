@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { data, Form, Link, useRevalidator, useSearchParams } from 'react-router';
 import type { BookingResponse, PaymentStatusResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
+import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { Textarea } from '@booking/ui/components/ui/textarea';
@@ -106,6 +107,10 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
       </Card>
     </div>
   );
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <RouteErrorState error={error} homeHref="/bookings" homeLabel="Tra cứu đặt chỗ" />;
 }
 
 function StatusHeader({

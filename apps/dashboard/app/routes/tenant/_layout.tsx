@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router';
 import type { SubscriptionStatusResponse } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
+import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { Lock, TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_layout';
 import { apiGet } from '~/lib/api.server';
@@ -66,4 +67,9 @@ export default function TenantLayout({ loaderData }: Route.ComponentProps) {
       <Outlet context={context} />
     </div>
   );
+}
+
+export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
+  const homeHref = params.tenantId ? `/tenant/${encodeURIComponent(params.tenantId)}` : '/workspaces';
+  return <RouteErrorState error={error} homeHref={homeHref} homeLabel="Về tenant" />;
 }

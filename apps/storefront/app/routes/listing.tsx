@@ -1,5 +1,6 @@
 import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
 import type { Route } from './+types/listing';
+import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { ListingPage } from '../features/listing/listing-page';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
@@ -92,4 +93,8 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
 
 export default function ListingRoute(props: Route.ComponentProps) {
   return <ListingPage {...props} />;
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <RouteErrorState error={error} homeHref="/" homeLabel="Về trang chủ" />;
 }
