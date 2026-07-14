@@ -7,8 +7,10 @@
  * Future: extract action.ts, BecomePartnerForm component, form schema here.
  */
 
-export { registerOrLogin, applyAsPartner } from '../../lib/partner.server';
-
+// NOTE: server-only helpers live in `app/lib/partner.server.ts` and are imported
+// directly from there by the onboarding routes — re-exporting them through this
+// client-reachable barrel would pull server code into the client bundle. Types
+// are safe to re-export:
 export type {
   RegisterCredentials,
   PartnerApplyPayload,
