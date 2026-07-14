@@ -126,11 +126,48 @@ checks, seed). Copy these patterns — do not reinvent them.
 ### Apps & packages (actual, current)
 
 ```
-apps/api            NestJS API (port 3000 by default; PORT env), hexagonal, RLS-aware
-apps/storefront     React Router 7 SSR — customer-facing
-apps/dashboard      React Router 7 SSR — /admin /tenant /partner /affiliate
-packages/shared     @booking/shared — zod contracts (src/contracts/*.ts), types, money/time helpers, i18n
-packages/ui         @booking/ui — shadcn components, GenericForm, ImageUpload, Tailwind preset
+apps/api            NestJS API (PORT env, default 3001), hexagonal, RLS-aware
+apps/storefront     React Router 7 SSR — customer-facing (port 3000)
+apps/dashboard      React Router 7 SSR — /admin /tenant /partner /affiliate (port 3002)
+packages/contracts  @booking/contracts — zod schemas (src/contracts/*.ts) + inferred types + i18n (vi/en). FE+BE contract.
+packages/ui         @booking/ui — shadcn components, GenericForm, ImageUpload, Tailwind preset, theme CSS
+packages/api-client @booking/api-client — typed server-side HTTP client + interceptor + error types (loaders/actions)
+packages/auth       @booking/auth — shared token + permission helpers
+packages/config     @booking/config — shared tsconfig / eslint / prettier / tailwind / vite presets
+```
+
+> **Naming note:** contracts moved from `@booking/shared` → **`@booking/contracts`**. `packages/shared`
+> is a deprecated leftover (no `package.json`/`src`). Older sections below may still say `@booking/shared`
+> or `packages/shared/src/contracts/*` — read those as `@booking/contracts` / `packages/contracts/src/contracts/*`.
+
+### API bounded contexts & shared concerns (`apps/api/src`)
+
+```
+modules/  (12 bounded contexts, each = domain/ · application/ · infrastructure/)
+  identity-access   Argon2id auth, rotating sessions, PermissionsGuard + resolver
+  tenancy           tenants, custom domains, plans, subscriptions, theme, settings/flags
+  partner           partner applications, approval, identity verification, payout info
+  catalog           listing-types (dynamic attribute schema) + public catalog search
+  listing           listings, groups, resources, pricing rules, moderation workflow
+  scheduling        availability rules/exceptions, slot generation
+  booking           booking lifecycle, holds, cancellation, inventory, partner calendar
+  payments          checkout, gateway configs, webhooks, refunds
+  promotions        promo codes, partner promotions, auto-campaigns
+  finance           commission rules, double-entry ledger, payouts
+  affiliate         referral links, last-click attribution, commissions
+  notification      email (+ Zalo ZNS) dispatch + templates
+shared/   (11 cross-cutting concerns — no business logic)
+  tenant-context    AsyncLocalStorage + TenantDbService.forTenant()
+  prisma            PrismaService (RLS app_user) + PrismaAdminService (BYPASSRLS)
+  redis             shared ioredis client (holds, BullMQ, permissions cache)
+  outbox            transactional outbox + BullMQ relay
+  audit             AUDIT_WRITER port — the single audit_logs write path
+  storage           S3/MinIO presign adapter + POST /uploads/presign
+  validation        Zod validation pipe(s)
+  openapi           Swagger decorators/helpers
+  health            /health, /health/ready (Terminus)
+  money             VND bigint format/parse
+  time              UTC timezone helpers
 ```
 
 ### Backend building blocks (where things live)
@@ -195,26 +232,31 @@ packages/ui         @booking/ui — shadcn components, GenericForm, ImageUpload,
 ### Structure
 
 ```
-bookify/
+booking-saas/
 ├── apps/
-│   ├── backend/          # NestJS + Prisma (port 3001)
-│   ├── storefront/       # React Router 7 SSR — customer-facing (port 3000)
-│   └── dashboard/        # React Router 7 SSR — role-based areas (port 3002)
+│   ├── api/              # NestJS + Prisma (PORT env, default 3001) — hexagonal, RLS-aware
+│   ├── storefront/       # React Router 7 SSR — customer-facing, tenant from Host (port 3000)
+│   └── dashboard/        # React Router 7 SSR — /admin /tenant /partner /affiliate (port 3002)
 ├── packages/
-│   ├── shared/           # @booking/shared — types + DTOs + Zod + money/time + i18n
-│   └── ui/               # @booking/ui — shadcn components, GenericForm, Tailwind preset, theme CSS
-├── infra/postgres-init/  # SQL run on first Postgres init (btree_gist/citext/pgcrypto)
-├── phases/               # core.md / core.vi.md — the product/design spec
-├── docs/superpowers/plans/booking-saas-tasks/  # phase-by-phase implementation tickets
+│   ├── contracts/        # @booking/contracts — zod schemas (src/contracts/*.ts) + types + i18n (vi/en)
+│   ├── ui/               # @booking/ui — shadcn components, GenericForm, ImageUpload, Tailwind preset, theme CSS
+│   ├── api-client/       # @booking/api-client — typed server-side HTTP client + interceptor + errors
+│   ├── auth/             # @booking/auth — shared token + permission helpers
+│   └── config/           # @booking/config — shared tsconfig / eslint / prettier / tailwind / vite presets
+│                         #   (packages/shared is a deprecated artifact — superseded by @booking/contracts)
+├── TONG-QUAN.md          # the authoritative design spec (English) — see also its §5 for this same tree
 ├── turbo.json            # Turborepo pipeline config
 ├── package.json          # Root workspace (pnpm workspaces)
 ├── pnpm-workspace.yaml   # Workspace glob config
 ├── tsconfig.base.json    # Shared strict TypeScript config
 ├── .env.example          # Template for environment variables
 ├── .env                  # NOT committed — copy from .env.example
-├── docker-compose.yml    # Local postgres + redis
+├── docker-compose.yml    # Local postgres:16, redis:7, mailpit, minio
 └── CLAUDE.md             # This file
 ```
+
+> The API's internal layout (12 modules + 11 `shared/` concerns) is detailed in
+> [§2.1](#21-phase-0--what-is-implemented-read-this-first) and [§5](#5-backend-architecture-nestjs--hexagonal).
 
 ### Package Manager
 
@@ -297,58 +339,63 @@ Dependencies always point **inward**: `Infrastructure → Application → Domain
 
 ### Directory Layout
 
+> Cross-cutting infrastructure lives under `src/shared/*` (NOT `src/common/` or `src/infrastructure/`);
+> bounded contexts under `src/modules/*`. See [§2.1](#21-phase-0--what-is-implemented-read-this-first)
+> for the full list of the 12 modules and 11 shared concerns.
+
 ```
 apps/api/src/
-├── main.ts                          # NestJS bootstrap
-├── app.module.ts                    # Root module wiring
-├── common/
-│   ├── decorators/                  # public, current-user, roles, require-permissions
-│   ├── filters/                     # all-exceptions.filter.ts
-│   ├── guards/                      # jwt-auth.guard, permissions.guard, roles.guard
-│   ├── permissions/                 # permissions.service (resolve + Redis cache) + module
-│   ├── interceptors/                # transform.interceptor.ts
-│   └── pipes/                       # zod-validation.pipe.ts
-├── config/                          # configuration.ts + config.module.ts
-├── infrastructure/
-│   ├── database/                    # prisma.service (app_user/RLS), prisma-admin.service (BYPASSRLS), prisma.module
+├── main.ts                          # NestJS bootstrap (Helmet, CORS allowlist, throttling, global guards/pipe/filter)
+├── app.module.ts                    # Root module wiring — imports every shared + feature module
+├── shared/                          # cross-cutting infrastructure (no business logic)
+│   ├── tenant-context/              # tenant-context (ALS), tenant-db.service (forTenant), interceptor
+│   ├── prisma/                      # PrismaService (app_user/RLS) + PrismaAdminService (BYPASSRLS) + module
 │   ├── redis/                       # redis.service + module (ioredis)
-│   └── tenant-context/              # tenant-context (ALS), tenant-db.service (forTenant), interceptor
-└── modules/
-    ├── health/                      # /health, /health/ready
-    ├── ping/                        # example hexagonal module — copy this shape
-    ├── identity-access/             # auth: register/login/refresh/logout (Argon2id, sessions)
-    └── outbox/                      # outbox.service + BullMQ relay
+│   ├── outbox/                      # outbox.service + BullMQ relay
+│   ├── audit/                       # AUDIT_WRITER port + PrismaAuditWriter — the one audit_logs write path
+│   ├── storage/                     # S3/MinIO presign adapter + POST /uploads/presign
+│   ├── validation/                  # zod validation pipe(s)
+│   ├── openapi/                     # Swagger decorators/helpers
+│   ├── health/                      # /health, /health/ready (Terminus)
+│   ├── money/                       # VND bigint format/parse
+│   └── time/                        # UTC timezone helpers
+└── modules/                         # 12 bounded contexts (identity-access, tenancy, partner, catalog,
+                                     #   listing, scheduling, booking, payments, promotions, finance,
+                                     #   affiliate, notification) — each domain/ · application/ · infrastructure/
 ```
 
-### Feature Module Layout (canonical shape — copy `modules/ping/` or `modules/identity-access/`)
+Guards/decorators/filters are NOT global folders — auth lives in
+`modules/identity-access/infrastructure/http/{guards,decorators}` and the global
+`AllExceptionsFilter` is registered in `main.ts`.
+
+### Feature Module Layout (canonical shape — copy `modules/partner/` or `modules/booking/`)
 
 ```
 modules/users/
 ├── domain/
-│   ├── entities/
-│   │   └── user.entity.ts           # Pure domain entity, zero framework imports
-│   ├── value-objects/
-│   │   └── email.value-object.ts
+│   ├── user.entity.ts (+ user.entity.spec.ts)   # pure domain + co-located spec; zero framework imports
+│   ├── <sub>/                                    # optional grouping, e.g. listing/domain/moderation/
 │   └── ports/
-│       └── user-repository.port.ts  # Interface: IUserRepository + injection token
+│       └── user-repository.port.ts  # interface IUserRepository + USER_REPOSITORY token (methods take a PrismaTx)
 ├── application/
 │   ├── use-cases/
-│   │   ├── create-user.use-case.ts  # One file per use case
-│   │   ├── get-user.use-case.ts
-│   │   ├── update-user.use-case.ts
-│   │   └── delete-user.use-case.ts
-│   └── dtos/
-│       ├── create-user.dto.ts
-│       └── update-user.dto.ts
+│   │   ├── create-user.use-case.ts  # one class per file; inject ports only; one forTenant() per operation
+│   │   └── ...                       # optional sub-folder, e.g. use-cases/moderation/
+│   ├── users.mapper.ts              # domain → response DTO — the ONLY place mapping lives
+│   └── services/                    # optional app-layer helpers (validators, pricing)
 └── infrastructure/
     ├── repositories/
-    │   └── prisma-user.repository.ts  # Implements IUserRepository using Prisma
-    ├── http/
-    │   ├── users.controller.ts
-    │   └── users.module.ts            # NestJS module — binds port → impl
-    └── mappers/
-        └── user.mapper.ts             # Domain entity ↔ Prisma model ↔ DTO
+    │   └── prisma-user.repository.ts # implements IUserRepository; every method takes a PrismaTx
+    └── http/
+        ├── public-user.controller.ts # controllers SPLIT BY AUDIENCE: public- / tenant- / partner- / admin-/platform-
+        ├── tenant-user.controller.ts
+        ├── dto/user.dto.ts           # createZodDto(<schema from @booking/contracts>)
+        └── users.module.ts           # NestJS module — binds port → impl, registers use-cases + controllers
 ```
+
+> **Reality vs. the boilerplate above:** the response **mapper lives in `application/<module>.mapper.ts`**
+> (not `infrastructure/mappers/`), DTOs live in `infrastructure/http/dto/` (schemas come from
+> `@booking/contracts`), and each module usually has **several audience-scoped controllers**, not one.
 
 ### Domain Entity Convention
 
@@ -856,39 +903,40 @@ modules/identity-access/
 
 ## 8. Shared Packages
 
-Two workspace packages are shared across apps:
+Five workspace packages are shared across apps (`packages/shared` is a **deprecated** leftover —
+contracts moved to `@booking/contracts`):
 
-| Package           | Consumed by             | Contents                                                                                                         |
-| ----------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `@booking/shared` | backend + all frontends | Types, DTOs, Zod schemas — framework-free, built to `dist/`                                                      |
-| `@booking/ui`     | all frontends           | shadcn components, GenericForm, `cn()`, Tailwind preset, theme CSS — raw TSX source, compiled by each app's Vite |
+| Package              | Consumed by             | Contents                                                                                                         |
+| -------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `@booking/contracts` | backend + all frontends | zod schemas (`src/contracts/*.ts`) + inferred types + i18n (vi/en) — framework-free, built to `dist/`. The FE↔BE contract. |
+| `@booking/ui`        | all frontends           | shadcn components, GenericForm, ImageUpload, `cn()`, Tailwind preset, theme CSS — raw TSX, compiled by each app's Vite |
+| `@booking/api-client`| all frontends (server)  | typed server-side HTTP client + interceptor + error types — used in RR7 loaders/actions                          |
+| `@booking/auth`      | all frontends (server)  | shared token + permission helpers                                                                                |
+| `@booking/config`    | every package/app       | shared presets: `tsconfig` · `eslint` · `prettier` · `tailwind` · `vite`                                         |
 
-### `@booking/shared` — Structure
+### `@booking/contracts` — Structure
 
 ```
-packages/shared/
+packages/contracts/
 ├── src/
-│   ├── index.ts                       # Barrel: re-exports everything
-│   ├── types/
-│   │   ├── user.types.ts              # UserDto, UserRole enum, UpdateProfileDto
-│   │   ├── auth.types.ts              # LoginRequest, RegisterRequest, AuthResponse
-│   │   ├── item.types.ts              # ItemDto, CreateItemDto, UpdateItemDto
-│   │   ├── pagination.types.ts        # PaginatedResponse<T>, PaginationQuery
-│   │   └── organization.types.ts      # OrganizationDto, MemberDto (Phase 3)
-│   └── utils/
-│       └── validation.ts              # Zod schemas shared between FE and BE
-├── package.json
+│   ├── index.ts                       # Barrel: re-exports every contracts/*.ts + i18n messages
+│   ├── contracts/                     # one file per bounded context, zod schema + z.infer type
+│   │   ├── common.ts   auth.ts   tenancy.ts   partner.ts   listing-type.ts   listing.ts
+│   │   ├── availability.ts   booking.ts   payment.ts   promotion.ts   finance.ts
+│   │   ├── affiliate.ts   platform.ts   storage.ts
+│   │   └── *.spec.ts                   # co-located schema specs
+│   └── i18n/
+│       ├── vi.json                     # Vietnamese messages (default locale)
+│       └── en.json
+├── package.json                        # dual ESM/CJS build → dist/
 └── tsconfig.json
 ```
 
 ### Usage
 
 ```typescript
-// In backend
-import { CreateItemDto, UserRole } from '@booking/shared';
-
-// In frontend
-import type { ItemDto, PaginatedResponse } from '@booking/shared';
+// Backend (schemas + types) and frontend both import from the built package
+import { createBookingInputSchema, type BookingResponse } from '@booking/contracts';
 ```
 
 ### Convention

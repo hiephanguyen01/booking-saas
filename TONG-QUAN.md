@@ -169,29 +169,30 @@ Each module (bounded context) has 3 layers, following this codebase's existing c
 
 ```
 modules/booking/
-├── domain/           # Entity, Value Object, State machine, Domain Event, PORTs — NO Nest/Prisma imports
-│   ├── entities/booking.entity.ts
-│   ├── value-objects/booking-status.ts
-│   ├── events/booking-confirmed.event.ts
+├── domain/           # State machine, value objects, PORTs — NO Nest/Prisma imports
+│   ├── booking-state-machine.ts (+ .spec.ts), cancellation-policy.ts, …   # pure domain (+ co-located specs)
 │   └── ports/                              # interfaces + injection tokens
-│       ├── booking-repository.port.ts      # IBookingRepository + BOOKING_REPOSITORY
-│       └── payment-gateway.port.ts         # IPaymentGateway + PAYMENT_GATEWAY
-├── application/      # Use case (command/query handler) + DTOs; depends only on domain ports
-│   ├── use-cases/create-booking.use-case.ts
-│   └── dtos/
-└── infrastructure/   # ADAPTER implementing the port: Prisma repository, PayOS client, Redis hold store
+│       └── booking-repository.port.ts      # IBookingRepository + BOOKING_REPOSITORY (methods take a PrismaTx)
+├── application/      # Use cases + the mapper; depends only on domain ports
+│   ├── use-cases/create-booking.use-case.ts   # one class per file
+│   └── booking.mapper.ts                       # domain → response DTO (the only place mapping lives)
+└── infrastructure/   # ADAPTERs implementing the ports: Prisma repository, gateway clients, Redis hold store
     ├── repositories/prisma-booking.repository.ts
-    ├── services/redis-hold.store.ts
-    ├── mappers/booking.mapper.ts
-    └── http/                               # HTTP controller (DTO mapped from packages/shared), guard, NestJS module
-        ├── booking.controller.ts
-        └── booking.module.ts
+    └── http/                               # controllers split by audience + DTOs + NestJS module
+        ├── public-booking.controller.ts    # storefront (tenant from Host)
+        ├── tenant-booking.controller.ts    # dashboard (tenant scope)
+        ├── partner-booking.controller.ts   # partner scope
+        ├── dto/booking.dto.ts              # createZodDto(<schema from @booking/contracts>)
+        └── booking.module.ts               # binds port → impl, registers use-cases + controllers
 ```
 
 Dependency rule: `infrastructure → application → domain`. Ports (interfaces + their injection
-tokens) are defined under `domain/ports/`; `infrastructure` only implements them, and the HTTP
-controller/module live under `infrastructure/http/` (there is no separate `interface/` layer).
-Domain is pure TypeScript, testable without a DB.
+tokens) live under `domain/ports/`; `infrastructure` only implements them (repository methods take a
+`PrismaTx`, never the raw client), and the HTTP controllers/module live under `infrastructure/http/`
+(no separate `interface/` layer). The **response mapper lives in `application/<context>.mapper.ts`**;
+controllers are thin orchestrators that never build response objects inline. Controllers are split by
+audience (`public-`/`tenant-`/`partner-`/`admin-`/`platform-`). Domain is pure TypeScript, testable
+without a DB (specs are co-located as `*.spec.ts`).
 
 Modules communicate via **domain events + the outbox pattern** (an `outbox_events` table, relayed by BullMQ) — e.g. `BookingCompleted` → the finance module records the commission ledger entries, the notification module sends an email. Modules never call each other's services directly.
 
@@ -209,56 +210,93 @@ Modules communicate via **domain events + the outbox pattern** (an `outbox_event
 
 ## 5. Detailed Monorepo Structure
 
+> **This tree reflects the actual codebase as built** (12 API bounded contexts, 11 shared
+> concerns, 5 workspace packages). Kept in sync with CLAUDE.md §2.1/§5 — update both together.
+
 ```
 booking-saas/
 ├── apps/
-│   ├── api/
+│   ├── api/                                 # NestJS + Prisma — hexagonal, RLS-aware (PORT, default 3001)
 │   │   ├── src/
-│   │   │   ├── modules/
-│   │   │   │   ├── identity-access/     # auth, users, roles, permissions
-│   │   │   │   ├── tenancy/             # tenants, domains, plans, subscriptions, theme
-│   │   │   │   ├── catalog/             # partners, listing-types (dynamic), listings, pricing
-│   │   │   │   ├── scheduling/          # availability, slots, blackouts
-│   │   │   │   ├── booking/             # bookings, holds, cancellation
-│   │   │   │   ├── payments/            # payments, refunds, gateway adapters
-│   │   │   │   ├── finance/             # commission rules, ledger, payouts
-│   │   │   │   ├── affiliate/           # (Phase 2)
-│   │   │   │   └── notification/        # email, ZNS
-│   │   │   ├── shared/
-│   │   │   │   ├── tenant-context/      # AsyncLocalStorage + Prisma forTenant()
-│   │   │   │   ├── prisma/              # PrismaService (RLS app_user pool)
-│   │   │   │   ├── redis/               # shared ioredis client
-│   │   │   │   ├── storage/             # S3/MinIO adapter + POST /uploads/presign
-│   │   │   │   ├── outbox/              # outbox pattern + relay worker
-│   │   │   │   ├── validation/          # ZodValidationPipe
-│   │   │   │   ├── health/              # /health, /health/ready
-│   │   │   │   ├── money/               # VND integer, format/parse
-│   │   │   │   └── time/                # timezone helpers (always UTC in the DB)
-│   │   │   └── main.ts
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma
-│   │   │   ├── migrations/              # includes hand-written SQL: RLS policies, exclusion constraints
-│   │   │   └── seed.ts                  # demo data: 1 studio tenant, 2 partners, listings, roles
-│   │   └── test/                        # integration tests (Testcontainers)
-│   ├── storefront/                      # RR7 — customer-facing site, multi-tenant by Host
+│   │   │   ├── main.ts                       # bootstrap: Helmet, CORS allowlist, throttling, global guards/pipe/filter
+│   │   │   ├── app.module.ts                 # root wiring — imports every shared + feature module
+│   │   │   ├── modules/                      # 12 bounded contexts; EACH = domain/ · application/ · infrastructure/
+│   │   │   │   ├── identity-access/          # Argon2id auth, rotating sessions, PermissionsGuard + resolver
+│   │   │   │   ├── tenancy/                  # tenants, custom domains, plans, subscriptions, theme, settings/flags
+│   │   │   │   ├── partner/                  # partner applications, approval, identity verification, payout info
+│   │   │   │   ├── catalog/                  # listing-types (dynamic attribute schema) + public catalog search
+│   │   │   │   ├── listing/                  # listings, groups, resources, pricing rules, moderation workflow
+│   │   │   │   ├── scheduling/               # availability rules/exceptions, slot generation
+│   │   │   │   ├── booking/                  # booking lifecycle, holds, cancellation, inventory, partner calendar
+│   │   │   │   ├── payments/                 # checkout, gateway configs, webhooks, refunds
+│   │   │   │   ├── promotions/               # promo codes, partner promotions, auto-campaigns
+│   │   │   │   ├── finance/                  # commission rules, double-entry ledger, payouts
+│   │   │   │   ├── affiliate/                # referral links, last-click attribution, commissions
+│   │   │   │   └── notification/             # email (+ Zalo ZNS) dispatch + templates
+│   │   │   └── shared/                       # cross-cutting infrastructure (no business logic)
+│   │   │       ├── tenant-context/           # AsyncLocalStorage + TenantDbService.forTenant()
+│   │   │       ├── prisma/                   # PrismaService (RLS app_user) + PrismaAdminService (BYPASSRLS)
+│   │   │       ├── redis/                    # shared ioredis client (holds, BullMQ, permissions cache)
+│   │   │       ├── outbox/                   # transactional outbox + BullMQ relay worker
+│   │   │       ├── audit/                    # AUDIT_WRITER port — the single audit_logs write path
+│   │   │       ├── storage/                  # S3/MinIO presign adapter + POST /uploads/presign
+│   │   │       ├── validation/               # Zod validation pipe(s)
+│   │   │       ├── openapi/                  # Swagger decorators/helpers (@ApiPaginatedResponse, @UuidParam…)
+│   │   │       ├── health/                   # /health, /health/ready (Terminus: DB + Redis)
+│   │   │       ├── money/                    # VND bigint format/parse
+│   │   │       └── time/                     # UTC timezone helpers (DB is always UTC)
+│   │   ├── prisma/{ schema.prisma · migrations/ (incl. hand-written RLS + tstzrange exclusion SQL) · seed.ts }
+│   │   └── test/                             # e2e / integration (Testcontainers)
+│   ├── storefront/                          # RR7 SSR — customer site, tenant resolved from Host (port 3000)
 │   │   └── app/
-│   │       ├── routes/                  # _index, listings.$slug, book.$listingId, checkout, my-bookings
-│   │       ├── templates/               # studio/, rental/, classes/  (vertical-specific templates)
-│   │       ├── theme/                   # ThemeProvider reads tenant config → CSS variables
-│   │       └── lib/tenant.server.ts     # resolve tenant from the Host header (root loader)
-│   └── dashboard/                       # RR7 — 4 areas, one per role
-│       └── app/routes/
-│           ├── admin.*                  # platform admin
-│           ├── tenant.*                 # tenant admin/staff
-│           ├── partner.*                # partner
-│           └── affiliate.*              # affiliate
+│   │       ├── routes/                       # home, catalog t/:typeSlug, listing l/:listingSlug, checkout, bookings
+│   │       ├── features/                     # catalog/ · listing/ · booking/ · checkout/ · partner/ (feature-based)
+│   │       ├── templates/studio/             # vertical-specific storefront templates
+│   │       ├── theme/                        # tenant theme_config → SSR-injected CSS variables
+│   │       ├── layouts/
+│   │       └── lib/*.server.ts               # api/session/auth server helpers; tenant from Host header
+│   └── dashboard/                           # RR7 SSR — /admin /tenant /partner /affiliate (port 3002)
+│       └── app/
+│           ├── routes/{ admin · tenant · partner · affiliate · auth }/   # config-based routing
+│           ├── features/{ admin · tenant · partner }/
+│           ├── components/                   # app-specific layout/widgets (shared UI → packages/ui)
+│           └── lib/*.server.ts               # api/session/auth; tenant from the login session
 ├── packages/
-│   ├── shared/  (@booking/shared)       # zod schemas in src/contracts/*.ts + types + money/time + i18n
-│   └── ui/      (@booking/ui)           # shared components (GenericForm, ImageUpload, DataTable, shadcn…)
-├── docker-compose.yml                   # postgres:16, redis:7, mailpit, minio
-├── turbo.json
-└── pnpm-workspace.yaml
+│   ├── contracts/  (@booking/contracts)     # zod schemas src/contracts/*.ts + inferred types + i18n (vi/en) — the FE+BE contract
+│   ├── ui/         (@booking/ui)            # shadcn primitives, GenericForm, ImageUpload, Tailwind preset, theme CSS
+│   ├── api-client/ (@booking/api-client)    # typed server-side HTTP client + interceptor + error types (used in loaders/actions)
+│   ├── auth/       (@booking/auth)          # shared token + permission helpers
+│   └── config/     (@booking/config)        # shared tsconfig · eslint · prettier · tailwind · vite presets
+│                                            # (packages/shared is a deprecated artifact — contracts moved to @booking/contracts)
+├── docker-compose.yml                       # postgres:16, redis:7, mailpit, minio
+├── turbo.json · pnpm-workspace.yaml · tsconfig.base.json
+└── CLAUDE.md · TONG-QUAN.md · README.md
 ```
+
+**Module internal layout** (canonical hexagonal shape — `modules/listing/` is the richest example):
+
+```
+modules/<context>/
+├── domain/
+│   ├── ports/*.port.ts               # interface (IXxxRepository) + SCREAMING_SNAKE injection token
+│   ├── <pure-domain>.ts (+ .spec.ts) # entities / value objects / state machines — zero framework imports
+│   └── <sub>/                        # e.g. listing/domain/{moderation,pricing}/
+├── application/
+│   ├── use-cases/*.use-case.ts       # one class per file; inject ports only; one forTenant() per operation
+│   │   └── <sub>/                    # e.g. listing/application/use-cases/moderation/
+│   ├── <context>.mapper.ts           # domain → response conversion (the ONLY place mapping lives)
+│   └── services/                     # app-layer helpers (validators, pricing) where needed
+└── infrastructure/
+    ├── repositories/prisma-*.repository.ts   # implement the ports; methods take a PrismaTx (never raw client)
+    └── http/
+        ├── <audience>-<context>.controller.ts # split by audience: public- / tenant- / partner- / admin-/platform-
+        ├── dto/<context>.dto.ts               # createZodDto(<schema from @booking/contracts>)
+        └── <context>.module.ts                # binds port → impl, registers use-cases + controllers
+```
+
+> Controllers are **thin orchestrators only** (validate input → resolve tenant/scope → call one
+> use-case → map via `application/*.mapper.ts`). See `apps/api/docs/api-review-and-conventions.md`
+> for the boundary rules and the next-module checklist.
 
 ---
 
