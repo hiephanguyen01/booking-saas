@@ -1,5 +1,6 @@
-import { Outlet } from 'react-router';
+import { Outlet, useOutletContext } from 'react-router';
 import type { Route } from './+types/locale-layout';
+import type { StorefrontContext } from '../root';
 
 export function loader({ params }: Route.LoaderArgs) {
   if (params.locale !== 'vi' && params.locale !== 'en') {
@@ -9,5 +10,6 @@ export function loader({ params }: Route.LoaderArgs) {
 }
 
 export default function LocaleLayout() {
-  return <Outlet />;
+  const context = useOutletContext<StorefrontContext>();
+  return <Outlet context={context} />;
 }

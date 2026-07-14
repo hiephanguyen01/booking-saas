@@ -8,14 +8,14 @@ const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
-  const port = Number(env.DASHBOARD_PORT ?? 5174);
+  const port = Number(process.env.DASHBOARD_PORT ?? env.DASHBOARD_PORT ?? 5174);
 
   return {
     plugins: [tailwindcss(), reactRouter()],
     resolve: {
       alias: { '~': fileURLToPath(new URL('./app', import.meta.url)) },
     },
-    server: { port },
+    server: { host: process.env.HOST, port },
     preview: { port },
     // @booking/ui ships raw TSX — let Vite compile it for SSR instead of externalizing.
     ssr: { noExternal: ['@booking/ui'] },

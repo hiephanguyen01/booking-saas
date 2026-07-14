@@ -8,11 +8,11 @@ const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
-  const port = Number(env.STOREFRONT_PORT ?? 5173);
+  const port = Number(process.env.STOREFRONT_PORT ?? env.STOREFRONT_PORT ?? 5173);
 
   return {
     plugins: [tailwindcss(), reactRouter()],
-    server: { port },
+    server: { host: process.env.HOST, port },
     preview: { port },
     // @booking/ui ships raw TSX and is compiled by the consuming app.
     ssr: { noExternal: ['@booking/ui'] },
