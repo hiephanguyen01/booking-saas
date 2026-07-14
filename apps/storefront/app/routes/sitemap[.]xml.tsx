@@ -18,7 +18,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const paths = [
     '',
     ...types.map((type) => `/t/${encodeURIComponent(type.slug)}`),
-    ...listings.map((listing) => `/l/${encodeURIComponent(listing.slug)}`),
+    ...listings.map((listing) => `/${listing.kind === 'group' ? 'g' : 'l'}/${encodeURIComponent(listing.slug)}`),
   ];
   const entries = paths.flatMap((path) =>
     (['vi', 'en'] as const).map((locale) => ({ locale, path })),

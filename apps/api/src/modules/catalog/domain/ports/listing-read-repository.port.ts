@@ -10,6 +10,7 @@ export interface PublicListingRecord {
   attributes: Record<string, unknown>;
   photos: unknown[];
   modeConfig: Record<string, unknown>;
+  group: { id: string; title: string; slug: string; photos: unknown[]; itemLabel: string | null } | null;
 }
 
 export interface PublicListingFilter {

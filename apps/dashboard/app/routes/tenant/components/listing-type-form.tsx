@@ -64,6 +64,26 @@ const fields: FieldConfig<CreateListingTypeInput>[] = [
     label: 'Yêu cầu xác minh danh tính',
     colSpan: 1,
   },
+  {
+    name: 'structure',
+    type: 'select',
+    label: 'Cấu trúc bài đăng',
+    colSpan: 1,
+    options: [
+      { value: 'standalone', label: 'Một hạng mục độc lập' },
+      { value: 'grouped', label: 'Một bài đăng chứa nhiều hạng mục' },
+      { value: 'flexible', label: 'Cho đối tác lựa chọn' },
+    ],
+  },
+  {
+    name: 'itemLabel',
+    type: 'text',
+    label: 'Tên gọi hạng mục',
+    description: 'Ví dụ: phòng, gói dịch vụ, sân. Mặc định là “hạng mục”.',
+    placeholder: 'hạng mục',
+    colSpan: 1,
+    hidden: (values) => values.structure === 'standalone',
+  },
 ];
 
 function defaultValues(t?: ListingTypeResponse): CreateListingTypeInput {
@@ -77,6 +97,8 @@ function defaultValues(t?: ListingTypeResponse): CreateListingTypeInput {
     sortOrder: t?.sortOrder ?? 0,
     isActive: t?.isActive ?? true,
     requiresIdentityVerification: t?.requiresIdentityVerification ?? false,
+    structure: t?.structure ?? 'standalone',
+    itemLabel: t?.itemLabel ?? '',
     attributeSchema: t?.attributeSchema ?? [],
   };
 }
@@ -112,6 +134,8 @@ export function ListingTypeForm({
         sortOrder: Math.max(0, Math.round(Number(d.sortOrder) || 0)),
         isActive: d.isActive,
         requiresIdentityVerification: d.requiresIdentityVerification,
+        structure: d.structure,
+        itemLabel: d.structure === 'standalone' ? undefined : d.itemLabel?.trim() || undefined,
         // Drop `options` for non-choice types so it doesn't linger on the payload.
         attributeSchema: d.attributeSchema.map((a) =>
           isChoice(a.type) ? a : { ...a, options: undefined },

@@ -49,7 +49,18 @@ export class PublicCatalogController {
     const resolvedHost = resolveHost(forwardedHost, host);
     const filters = publicListingsFilterSchema.parse(query);
     const listings = await this.listListings.execute(resolvedHost, filters);
-    return listings.map(toPublicListingResponse);
+    const items = listings.map(toPublicListingResponse);
+    const deduped = new Map<string, PublicListingResponse>();
+    for (const item of items) {
+      const existing = deduped.get(item.id);
+      if (!existing) {
+        deduped.set(item.id, item);
+        continue;
+      }
+      const prices = [existing.priceFrom, item.priceFrom].filter((price): price is string => price !== null).map(Number);
+      if (prices.length) existing.priceFrom = String(Math.min(...prices));
+    }
+    return [...deduped.values()];
   }
 }
 

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { ModerationActor } from '@booking/contracts';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
@@ -40,6 +40,9 @@ export class RepublishListingUseCase {
       const listing = await this.listings.findById(tx, listingId);
       if (!listing) listingNotFound();
       assertOwnership(listing, ctx.partnerId);
+      if (listing.groupId) {
+        throw new BadRequestException({ statusCode: 400, code: 'GROUP_MANAGED_LISTING', message: 'Republish the parent listing group instead' });
+      }
 
       const outcome = runModeration(() => transitionRepublish(listing, actor));
       const updated = await this.listings.moderate(tx, listingId, outcome);

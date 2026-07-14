@@ -1,9 +1,6 @@
 import { Body, Controller, HttpCode, Ip, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import {
-  uuidSchema,
-  type ListingGroupResponse,
-} from '@booking/contracts';
+import { uuidSchema, type ListingGroupResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -13,7 +10,7 @@ import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/
 import { GroupModerationUseCase } from '../../application/use-cases/moderation/group-moderation.use-case';
 import { toListingGroupResponse } from '../../application/listing.mapper';
 import { UuidParam } from '../../../../shared/openapi/decorators';
-import { ListingGroupResponseDto, ModerationReasonDto } from './dto/listing.dto';
+import { ListingGroupResponseDto, ModerationReasonDto, PublishListingDto } from './dto/listing.dto';
 
 /** Tenant-side post (listing_group) moderation (§7.3); the reviewer acts as `admin`. */
 @ApiTags('tenant-listing-group-moderation')
@@ -37,10 +34,13 @@ export class TenantListingGroupModerationController {
   @ApiOkResponse({ type: ListingGroupResponseDto })
   async publish(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() body: PublishListingDto,
     @CurrentPrincipal() principal: SessionPrincipal,
     @Ip() ip: string,
   ): Promise<ListingGroupResponse> {
-    return toListingGroupResponse(await this.moderation.publish(this.ctx(principal, ip), id));
+    return toListingGroupResponse(
+      await this.moderation.publish(this.ctx(principal, ip), id, body.force),
+    );
   }
 
   @RequirePermissions('tenant.listings.publish')
@@ -116,7 +116,7 @@ export class PartnerListingGroupModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/hide')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Hide the partner\'s own listing group' })
+  @ApiOperation({ summary: "Hide the partner's own listing group" })
   @UuidParam()
   @ApiOkResponse({ type: ListingGroupResponseDto })
   async hide(
@@ -134,7 +134,7 @@ export class PartnerListingGroupModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/republish')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Republish the partner\'s own listing group' })
+  @ApiOperation({ summary: "Republish the partner's own listing group" })
   @UuidParam()
   @ApiOkResponse({ type: ListingGroupResponseDto })
   async republish(

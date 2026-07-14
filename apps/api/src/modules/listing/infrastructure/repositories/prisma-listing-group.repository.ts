@@ -68,8 +68,11 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
     return g ? toRecord(g) : null;
   }
 
-  async list(tx: PrismaTx): Promise<ListingGroupRecord[]> {
-    const items = await tx.listingGroup.findMany({ orderBy: { createdAt: 'desc' } });
+  async list(tx: PrismaTx, filter: { partnerId?: string } = {}): Promise<ListingGroupRecord[]> {
+    const items = await tx.listingGroup.findMany({
+      where: filter.partnerId ? { partnerId: filter.partnerId } : {},
+      orderBy: { createdAt: 'desc' },
+    });
     return items.map(toRecord);
   }
 

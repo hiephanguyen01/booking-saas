@@ -1,10 +1,11 @@
-import { type PublicListingDetailResponse, type QuoteResponse } from '@booking/contracts';
+import { type PublicListingDetailResponse, type PublicListingGroupDetailResponse, type QuoteResponse } from '@booking/contracts';
 import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { toPublicListingDetailResponse } from '../../application/listing.mapper';
 import { GetPublicListingUseCase } from '../../application/use-cases/get-public-listing.use-case';
 import { GetPublicQuoteUseCase } from '../../application/use-cases/get-public-quote.use-case';
+import { GetPublicListingGroupUseCase } from '../../application/use-cases/get-public-listing-group.use-case';
 import { PublicListingDetailResponseDto, QuoteQueryDto, QuoteResponseDto } from './dto/listing.dto';
 
 /** Storefront listing detail + quote (§16/§17). Tenant resolved from Host (BFF). */
@@ -14,7 +15,18 @@ export class PublicListingController {
   constructor(
     private readonly getListing: GetPublicListingUseCase,
     private readonly getQuote: GetPublicQuoteUseCase,
+    private readonly getGroup: GetPublicListingGroupUseCase,
   ) {}
+
+  @Public()
+  @Get('/groups/:slug')
+  async groupDetail(
+    @Param('slug') slug: string,
+    @Headers('x-forwarded-host') forwardedHost?: string,
+    @Headers('host') host?: string,
+  ): Promise<PublicListingGroupDetailResponse> {
+    return this.getGroup.execute(resolveHost(forwardedHost, host), slug);
+  }
 
   @Public()
   @Get(':slug')

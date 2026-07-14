@@ -20,6 +20,8 @@ export function toListingTypeResponse(t: ListingTypeRecord): ListingTypeResponse
     sortOrder: t.sortOrder,
     isActive: t.isActive,
     requiresIdentityVerification: t.requiresIdentityVerification,
+    structure: t.structure,
+    itemLabel: t.itemLabel,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };
@@ -35,6 +37,8 @@ export function toPublicListingTypeResponse(t: ListingTypeRecord): PublicListing
     unitLabel: t.unitLabel,
     sortOrder: t.sortOrder,
     requiresIdentityVerification: t.requiresIdentityVerification,
+    structure: t.structure,
+    itemLabel: t.itemLabel,
     attributeSchema: t.attributeSchema.filter((f) => f.filterable),
   };
 }
@@ -55,12 +59,14 @@ function priceFrom(modeConfig: Record<string, unknown>): string | null {
 
 export function toPublicListingResponse(l: PublicListingRecord): PublicListingResponse {
   return {
-    id: l.id,
-    title: l.title,
-    slug: l.slug,
+    id: l.group?.id ?? l.id,
+    kind: l.group ? 'group' : 'listing',
+    title: l.group?.title ?? l.title,
+    slug: l.group?.slug ?? l.slug,
     listingTypeSlug: l.listingTypeSlug,
     attributes: l.attributes,
-    photos: l.photos,
+    photos: l.group?.photos ?? l.photos,
     priceFrom: priceFrom(l.modeConfig),
+    itemLabel: l.group?.itemLabel ?? null,
   };
 }

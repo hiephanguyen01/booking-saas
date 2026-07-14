@@ -5,6 +5,7 @@ import {
   createListingInputSchema,
   createResourceInputSchema,
   listingGroupResponseSchema,
+  listingGroupDetailResponseSchema,
   listingResponseSchema,
   listingReviewResponseSchema,
   moderationReasonInputSchema,
@@ -32,6 +33,7 @@ export class PublishListingDto extends createZodDto(publishListingInputSchema) {
 
 // ── Responses ─────────────────────────────────────────────────────────────────
 export class ListingGroupResponseDto extends createZodDto(listingGroupResponseSchema) {}
+export class ListingGroupDetailResponseDto extends createZodDto(listingGroupDetailResponseSchema) {}
 export class ListingResponseDto extends createZodDto(listingResponseSchema) {}
 export class ResourceResponseDto extends createZodDto(resourceResponseSchema) {}
 export class PricingRuleResponseDto extends createZodDto(pricingRuleResponseSchema) {}

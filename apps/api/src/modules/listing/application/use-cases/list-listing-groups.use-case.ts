@@ -13,7 +13,7 @@ export class ListListingGroupsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string): Promise<ListingGroupRecord[]> {
-    return this.tenantDb.forTenant(tenantId, (tx) => this.repo.list(tx));
+  execute(tenantId: string, filter: { partnerId?: string } = {}): Promise<ListingGroupRecord[]> {
+    return this.tenantDb.forTenant(tenantId, (tx) => this.repo.list(tx, filter));
   }
 }

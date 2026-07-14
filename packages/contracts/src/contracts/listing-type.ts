@@ -5,6 +5,9 @@ import { slugSchema } from './tenancy';
 export const bookingModeSchema = z.enum(['hourly', 'daily', 'appointment', 'class', 'inventory']);
 export type BookingMode = z.infer<typeof bookingModeSchema>;
 
+export const listingStructureSchema = z.enum(['standalone', 'grouped', 'flexible']);
+export type ListingStructure = z.infer<typeof listingStructureSchema>;
+
 /** An attribute key is an identifier (e.g. `area`, `style`, `naturalLight`). */
 export const attributeKeySchema = z
   .string()
@@ -66,6 +69,8 @@ const listingTypeBaseSchema = z.object({
   sortOrder: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
   requiresIdentityVerification: z.boolean().default(false),
+  structure: listingStructureSchema.default('standalone'),
+  itemLabel: z.string().trim().min(1).max(60).optional(),
 });
 
 /** `defaultModes` must be a subset of `allowedModes` (only checked when both present). */
@@ -142,6 +147,8 @@ export const listingTypeResponseSchema = z.object({
   sortOrder: z.number(),
   isActive: z.boolean(),
   requiresIdentityVerification: z.boolean(),
+  structure: listingStructureSchema,
+  itemLabel: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -156,12 +163,15 @@ export const publicListingTypeResponseSchema = z.object({
   unitLabel: z.string().nullable(),
   sortOrder: z.number(),
   requiresIdentityVerification: z.boolean(),
+  structure: listingStructureSchema,
+  itemLabel: z.string().nullable(),
   attributeSchema: z.array(attributeFieldSchema),
 });
 export type PublicListingTypeResponse = z.infer<typeof publicListingTypeResponseSchema>;
 
 export const publicListingResponseSchema = z.object({
   id: z.string(),
+  kind: z.enum(['listing', 'group']),
   title: z.string(),
   slug: z.string(),
   listingTypeSlug: z.string(),
@@ -169,5 +179,6 @@ export const publicListingResponseSchema = z.object({
   photos: z.array(z.unknown()),
   /** Lowest configured price in VND đồng as a digit string, or null. */
   priceFrom: z.string().nullable(),
+  itemLabel: z.string().nullable(),
 });
 export type PublicListingResponse = z.infer<typeof publicListingResponseSchema>;

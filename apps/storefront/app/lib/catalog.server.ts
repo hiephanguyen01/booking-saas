@@ -2,6 +2,7 @@ import type {
   PublicListingDetailResponse,
   PublicListingResponse,
   PublicListingTypeResponse,
+  PublicListingGroupDetailResponse,
   QuoteResponse,
 } from '@booking/contracts';
 import { requestPublicJson } from './public-api.server';
@@ -15,6 +16,17 @@ import { requestPublicJson } from './public-api.server';
 export async function fetchListingTypes(request: Request): Promise<PublicListingTypeResponse[]> {
   return (
     (await requestPublicJson<PublicListingTypeResponse[]>(request, '/public/listing-types')) ?? []
+  );
+}
+
+export function fetchListingGroup(
+  request: Request,
+  slug: string,
+): Promise<PublicListingGroupDetailResponse | null> {
+  return requestPublicJson<PublicListingGroupDetailResponse>(
+    request,
+    `/public/listings/groups/${encodeURIComponent(slug)}`,
+    { allowNotFound: true },
   );
 }
 

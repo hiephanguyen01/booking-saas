@@ -1,13 +1,17 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
+import { Link } from 'react-router';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { Route } from '../../routes/+types/listing';
 import { BookingPanel } from '../../templates/studio/booking-panel';
+import { storefrontPaths } from '../../lib/locale-paths';
+import { useLocale } from '../../lib/use-locale';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote } = loaderData;
   const { t } = useTranslation(NsI18n.Listing);
+  const locale = useLocale();
 
   if (!listing) {
     return (
@@ -24,6 +28,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-4">
+        {listing.group ? <Link to={storefrontPaths.listingGroup(locale, listing.group.slug)} className="mb-2 inline-flex text-sm text-muted-foreground hover:text-foreground">← {listing.group.title}</Link> : null}
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{listing.title}</h1>
         {attrs.length > 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">

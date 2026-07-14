@@ -24,6 +24,8 @@ export const viCheckout = {
     PROMO_MIN_ORDER: 'Chưa đạt giá trị tối thiểu để dùng mã.',
     PROMO_NOT_APPLICABLE: 'Mã không áp dụng cho mục này.',
     PROMO_FIRST_BOOKING_ONLY: 'Mã chỉ dành cho lần đặt đầu tiên.',
+    PROMO_TIME_WINDOW: 'Mã không áp dụng trong khung thời gian này.',
+    PROMO_NOT_OPTED_IN: 'Đối tác chưa tham gia chương trình khuyến mãi này.',
     generic: 'Không áp dụng được mã.',
   },
 } as const;

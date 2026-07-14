@@ -25,12 +25,16 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       ...(filter.category ? { category: { slug: filter.category } } : {}),
       ...(filter.q ? { title: { contains: filter.q, mode: 'insensitive' } } : {}),
       ...(attrConditions.length > 0 ? { AND: attrConditions } : {}),
+      OR: [{ groupId: null }, { group: { status: 'published' } }],
     };
 
     const items = await tx.listing.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { listingType: { select: { slug: true } } },
+      include: {
+        listingType: { select: { slug: true, itemLabel: true } },
+        group: { select: { id: true, title: true, slug: true, photos: true } },
+      },
       take: 100,
     });
 
@@ -42,6 +46,13 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       attributes: (l.attributes ?? {}) as Record<string, unknown>,
       photos: (l.photos ?? []) as unknown[],
       modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
+      group: l.group ? {
+        id: l.group.id,
+        title: l.group.title,
+        slug: l.group.slug,
+        photos: (l.group.photos ?? []) as unknown[],
+        itemLabel: l.listingType.itemLabel,
+      } : null,
     }));
   }
 }

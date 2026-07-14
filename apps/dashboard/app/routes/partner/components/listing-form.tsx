@@ -4,6 +4,7 @@ import {
   type AttributeField,
   type BookingMode,
   type CreateListingInput,
+  type CancellationPolicySummary,
   type ListingResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
@@ -125,12 +126,18 @@ export function ListingForm({
   listing,
   serverError,
   fieldErrors,
+  groupId,
+  lockedListingTypeId,
+  cancellationPolicies = [],
 }: {
   listingTypes: ListingTypeResponse[];
   partnerId: string;
   listing?: ListingResponse;
   serverError?: string | null;
   fieldErrors?: Record<string, string[]> | null;
+  groupId?: string;
+  lockedListingTypeId?: string;
+  cancellationPolicies?: CancellationPolicySummary[];
 }) {
   const isEdit = Boolean(listing);
 
@@ -140,7 +147,7 @@ export function ListingForm({
       type: 'select',
       label: 'Loại dịch vụ',
       placeholder: 'Chọn loại dịch vụ',
-      disabled: isEdit,
+      disabled: isEdit || Boolean(lockedListingTypeId),
       colSpan: 2,
       options: listingTypes.map((t) => ({ label: t.name, value: t.id })),
     },
@@ -162,11 +169,20 @@ export function ListingForm({
       ],
     },
     { name: 'approvalRequired', type: 'switch', label: 'Yêu cầu duyệt trước khi thanh toán', colSpan: 2 },
+    ...(cancellationPolicies.length ? [{
+      name: 'cancellationPolicyId' as const,
+      type: 'select' as const,
+      label: 'Chính sách hủy',
+      colSpan: 2,
+      placeholder: 'Chọn chính sách hủy',
+      options: cancellationPolicies.map((policy) => ({ label: policy.name, value: policy.id })),
+    }] : []),
   ];
 
   const defaults: CreateListingInput = {
     partnerId,
-    listingTypeId: listing?.listingTypeId ?? listingTypes[0]?.id ?? '',
+    listingTypeId: listing?.listingTypeId ?? lockedListingTypeId ?? listingTypes[0]?.id ?? '',
+    groupId: listing?.groupId ?? groupId,
     title: listing?.title ?? '',
     slug: listing?.slug ?? '',
     description: listing?.description ?? '',

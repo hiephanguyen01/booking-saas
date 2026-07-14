@@ -27,6 +27,8 @@ export const enCheckout = {
     PROMO_MIN_ORDER: 'Order value is below the minimum for this code.',
     PROMO_NOT_APPLICABLE: 'This code does not apply to this item.',
     PROMO_FIRST_BOOKING_ONLY: 'This code is for first-time bookings only.',
+    PROMO_TIME_WINDOW: 'This code is not valid for the selected time.',
+    PROMO_NOT_OPTED_IN: 'The partner has not opted into this promotion.',
     generic: 'Could not apply the code.',
   },
 } satisfies TranslationShape<typeof viCheckout>;

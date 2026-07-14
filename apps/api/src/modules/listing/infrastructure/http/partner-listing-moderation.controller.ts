@@ -3,11 +3,13 @@ import {
   Body,
   Controller,
   Get,
+  Delete,
   HttpCode,
   Ip,
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -28,6 +30,7 @@ import { HideListingUseCase } from '../../application/use-cases/moderation/hide-
 import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
 import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
+import { DeleteListingUseCase } from '../../application/use-cases/delete-listing.use-case';
 import {
   CreateListingDto,
   ListingResponseDto,
@@ -52,6 +55,7 @@ export class PartnerListingModerationController {
     private readonly createListing: CreateListingUseCase,
     private readonly getListing: GetListingUseCase,
     private readonly updateListing: UpdateListingUseCase,
+    private readonly deleteListing: DeleteListingUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -60,10 +64,10 @@ export class PartnerListingModerationController {
   @Get()
   @ApiOperation({ summary: "List the calling partner's listings" })
   @ApiOkResponse({ type: [ListingResponseDto] })
-  async list(): Promise<ListingResponse[]> {
+  async list(@Query('groupId') groupId?: string): Promise<ListingResponse[]> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
-    const listings = await this.listListings.execute(tenantId, { partnerId });
+    const listings = await this.listListings.execute(tenantId, { partnerId, ...(groupId ? { groupId } : {}) });
     return listings.map(toListingResponse);
   }
 
@@ -114,6 +118,14 @@ export class PartnerListingModerationController {
     return toListingResponse(
       await this.updateListing.execute(tenantId, id, input, { requirePartnerId: partnerId }),
     );
+  }
+
+  @RequirePermissions('partner.listings.write')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<void> {
+    await this.deleteListing.execute(this.tenantContext.tenantIdOrThrow(), id, { requirePartnerId: this.tenantContext.partnerIdOrThrow() });
   }
 
   private ctx(principal: SessionPrincipal, ip: string) {

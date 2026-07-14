@@ -48,7 +48,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     auth,
   );
   return {
-    listing: { id: listing.id, title: listing.title },
+    listing: { id: listing.id, title: listing.title, groupId: listing.groupId },
     rules: rulesRes.ok && rulesRes.data ? rulesRes.data : [],
   };
 }
@@ -110,7 +110,7 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
     <div className="space-y-5">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/partner/listings">
+          <Link to={listing.groupId ? `/partner/listing-groups/${listing.groupId}` : '/partner/listings'}>
             <ArrowLeft className="size-4" aria-hidden /> Tin đăng
           </Link>
         </Button>

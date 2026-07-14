@@ -35,6 +35,9 @@ export class PublishListingUseCase {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       const listing = await this.listings.findById(tx, listingId);
       if (!listing) listingNotFound();
+      if (listing.groupId) {
+        throw new BadRequestException({ statusCode: 400, code: 'GROUP_MANAGED_LISTING', message: 'Publish the parent listing group instead' });
+      }
 
       const review = buildListingReview(listing);
       const overrode = review.contactFlags.length > 0 || !review.checklistPassed;

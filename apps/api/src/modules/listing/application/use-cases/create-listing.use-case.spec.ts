@@ -37,7 +37,7 @@ function input(overrides: Partial<CreateListingInput> = {}): CreateListingInput 
 
 function build(opts: {
   resource?: { partnerId: string } | null;
-  group?: { partnerId: string } | null;
+  group?: { partnerId: string; listingTypeId?: string; status?: 'draft' } | null;
 }) {
   const listings = {
     findBySlug: vi.fn().mockResolvedValue(null),
@@ -48,7 +48,9 @@ function build(opts: {
     create: vi.fn().mockResolvedValue({ id: 'resource-new' }),
   } as unknown as IResourceRepository;
   const groups = {
-    findById: vi.fn().mockResolvedValue(opts.group ?? null),
+    findById: vi.fn().mockResolvedValue(
+      opts.group ? { listingTypeId: 'type-1', status: 'draft', ...opts.group } : null,
+    ),
   } as unknown as IListingGroupRepository;
   const listingTypes = {
     findById: vi.fn().mockResolvedValue({

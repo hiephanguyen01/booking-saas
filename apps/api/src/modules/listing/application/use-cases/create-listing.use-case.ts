@@ -113,6 +113,16 @@ export class CreateListingUseCase {
             message: 'The listing group belongs to another partner',
           });
         }
+        if (group.listingTypeId !== input.listingTypeId) {
+          throw new BadRequestException({ statusCode: 400, code: 'LISTING_GROUP_TYPE_MISMATCH', message: 'The listing and its group must use the same listing type' });
+        }
+        if (group.status !== 'draft') {
+          throw new ConflictException({
+            statusCode: 409,
+            code: 'LISTING_GROUP_READ_ONLY',
+            message: 'Hide the listing group before changing its items',
+          });
+        }
       }
 
       // Reuse a shared resource, or auto-create a dedicated 1:1 one.

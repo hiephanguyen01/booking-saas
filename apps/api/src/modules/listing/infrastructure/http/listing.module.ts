@@ -47,6 +47,11 @@ import {
 import { TenantResourceController } from './tenant-resource.controller';
 import { TenantPricingRuleController } from './tenant-pricing-rule.controller';
 import { PublicListingController } from './public-listing.controller';
+import { PartnerListingGroupController } from './partner-listing-group.controller';
+import { GetListingGroupDetailUseCase } from '../../application/use-cases/get-listing-group-detail.use-case';
+import { GetPublicListingGroupUseCase } from '../../application/use-cases/get-public-listing-group.use-case';
+import { ListCancellationPoliciesUseCase } from '../../application/use-cases/list-cancellation-policies.use-case';
+import { PartnerCancellationPolicyController } from './partner-cancellation-policy.controller';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule, CatalogModule, PartnerModule],
@@ -57,9 +62,11 @@ import { PublicListingController } from './public-listing.controller';
     PartnerListingModerationController,
     TenantListingGroupModerationController,
     PartnerListingGroupModerationController,
+    PartnerListingGroupController,
     TenantResourceController,
     TenantPricingRuleController,
     PublicListingController,
+    PartnerCancellationPolicyController,
   ],
   providers: [
     { provide: LISTING_GROUP_REPOSITORY, useClass: PrismaListingGroupRepository },
@@ -70,6 +77,7 @@ import { PublicListingController } from './public-listing.controller';
     CreateListingGroupUseCase,
     ListListingGroupsUseCase,
     GetListingGroupUseCase,
+    GetListingGroupDetailUseCase,
     UpdateListingGroupUseCase,
     DeleteListingGroupUseCase,
     CreateResourceUseCase,
@@ -83,6 +91,8 @@ import { PublicListingController } from './public-listing.controller';
     ListPricingRulesUseCase,
     DeletePricingRuleUseCase,
     GetPublicListingUseCase,
+    GetPublicListingGroupUseCase,
+    ListCancellationPoliciesUseCase,
     GetPublicQuoteUseCase,
     ReviewListingUseCase,
     SubmitListingUseCase,

@@ -20,7 +20,7 @@ export function ListingCard({ listing }: { listing: PublicListingResponse }) {
 
   return (
     <Link
-      to={storefrontPaths.listing(locale, listing.slug)}
+      to={listing.kind === 'group' ? storefrontPaths.listingGroup(locale, listing.slug) : storefrontPaths.listing(locale, listing.slug)}
       className="group block overflow-hidden rounded-lg border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="relative aspect-3/2 overflow-hidden bg-muted">

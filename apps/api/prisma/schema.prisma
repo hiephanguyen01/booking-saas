@@ -110,6 +110,14 @@ enum BookingMode {
   @@map("booking_mode")
 }
 
+enum ListingStructure {
+  standalone
+  grouped
+  flexible
+
+  @@map("listing_structure")
+}
+
 /// Post-level moderation state shared by listing_groups + standalone listings.
 enum PublishStatus {
   draft
@@ -661,6 +669,8 @@ model ListingType {
   unitLabel       String?       @map("unit_label")
   /// people-booking type (models, makeup): the partner must be identity-verified to serve it (§7.3, Task 1.2/1.3).
   requiresIdentityVerification Boolean @default(false) @map("requires_identity_verification")
+  structure       ListingStructure @default(standalone)
+  itemLabel       String?          @map("item_label")
   sortOrder       Int           @default(0) @map("sort_order")
   isActive        Boolean       @default(true) @map("is_active")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { data, Link, useFetcher } from 'react-router';
 import { Clock, EyeOff, Lock, Pencil, Plus, Send, Undo2 } from 'lucide-react';
-import type { ListingResponse, PublishStatus } from '@booking/contracts';
+import type { ListingGroupResponse, ListingResponse, ListingTypeResponse, PublishStatus } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -36,9 +37,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!canPartner(membership, 'partner.listings.read')) {
     throw new Response('Không có quyền xem tin đăng.', { status: 403 });
   }
-  const res = await apiGet<ListingResponse[]>('/partner/listings', auth);
+  const [res, groupsRes, typesRes] = await Promise.all([
+    apiGet<ListingResponse[]>('/partner/listings', auth),
+    apiGet<ListingGroupResponse[]>('/partner/listing-groups', auth),
+    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+  ]);
   return {
     listings: res.ok && res.data ? res.data : [],
+    groups: groupsRes.data ?? [],
+    listingTypes: typesRes.data ?? [],
     canWrite: canPartner(membership, 'partner.listings.write'),
     canPublish: canPartner(membership, 'partner.listings.publish'),
     canAvailability: canPartner(membership, 'partner.availability.manage'),
@@ -88,7 +95,7 @@ const FILTERS: { value: string; label: string }[] = [
 ];
 
 export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
-  const { listings, canWrite, canPublish, canAvailability, loadError } = loaderData;
+  const { listings, groups, listingTypes, canWrite, canPublish, canAvailability, loadError } = loaderData;
   const [filter, setFilter] = useState<string>('all');
 
   const rows = useMemo(
@@ -191,9 +198,15 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
         </div>
       ) : null}
 
+      {groups.length > 0 ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{groups.map((group) => {
+        const type = listingTypes.find((item) => item.id === group.listingTypeId);
+        const count = listings.filter((listing) => listing.groupId === group.id).length;
+        return <Link key={group.id} to={`/partner/listing-groups/${group.id}`} className="block"><Card className="h-full"><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>{group.title}</CardTitle><CardDescription>{type?.name ?? 'Bài đăng'} · {count} {type?.itemLabel || 'hạng mục'}</CardDescription></div><Badge variant="outline">{STATUS_META[group.status].label}</Badge></div></CardHeader><CardContent><p className="line-clamp-2 text-sm text-muted-foreground">{group.description || 'Chưa có mô tả.'}</p></CardContent></Card></Link>;
+      })}</div> : null}
+
       <DataTable
         columns={columns}
-        data={rows}
+        data={rows.filter((listing) => !listing.groupId)}
         getRowKey={(l) => l.id}
         emptyMessage="Bạn chưa có tin đăng nào ở nhóm này."
       />

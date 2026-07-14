@@ -14,8 +14,6 @@
  *     index.ts
  */
 
-// NOTE: server-only helpers live in `app/lib/booking.server.ts` and must be
-// imported directly from there by loaders/actions — re-exporting them through a
-// client-reachable feature barrel pulls server code into the client bundle
-// (React Router: "Server-only module referenced by client"). Types are safe:
-export type { ApiResult } from '../../lib/booking.server';
+// Server-only helpers and their request result types live in
+// `app/lib/booking.server.ts`; loaders/actions import them directly so this
+// browser-reachable barrel never points at a server module.

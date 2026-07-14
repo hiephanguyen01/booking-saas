@@ -37,6 +37,8 @@ export class CreateListingTypeUseCase {
         sortOrder: input.sortOrder,
         isActive: input.isActive,
         requiresIdentityVerification: input.requiresIdentityVerification,
+        structure: input.structure,
+        itemLabel: input.itemLabel ?? null,
       });
       await this.outbox.emit(tx, {
         tenantId,

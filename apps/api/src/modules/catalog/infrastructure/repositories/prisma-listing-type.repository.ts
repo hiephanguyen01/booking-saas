@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { AttributeField, BookingMode } from '@booking/contracts';
+import type { AttributeField, BookingMode, ListingStructure } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateListingTypeData,
@@ -25,6 +25,8 @@ function toRecord(t: PrismaListingType): ListingTypeRecord {
     sortOrder: t.sortOrder,
     isActive: t.isActive,
     requiresIdentityVerification: t.requiresIdentityVerification,
+    structure: t.structure as ListingStructure,
+    itemLabel: t.itemLabel,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
   };
@@ -57,6 +59,8 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
           sortOrder: data.sortOrder,
           isActive: data.isActive,
           requiresIdentityVerification: data.requiresIdentityVerification,
+          structure: data.structure,
+          itemLabel: data.itemLabel,
         },
       }),
     );
@@ -107,6 +111,8 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
           sortOrder: data.sortOrder,
           isActive: data.isActive,
           requiresIdentityVerification: data.requiresIdentityVerification,
+          structure: data.structure,
+          itemLabel: data.itemLabel,
         },
       }),
     );

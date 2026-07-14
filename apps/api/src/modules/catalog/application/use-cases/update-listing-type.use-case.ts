@@ -70,6 +70,8 @@ export class UpdateListingTypeUseCase {
         sortOrder: input.sortOrder,
         isActive: input.isActive,
         requiresIdentityVerification: input.requiresIdentityVerification,
+        structure: input.structure,
+        itemLabel: input.itemLabel,
       });
       await this.outbox.emit(tx, {
         tenantId,

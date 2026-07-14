@@ -58,6 +58,23 @@ export class UpdateListingUseCase {
           message: 'This listing belongs to another partner',
         });
       }
+
+      const effectiveGroupId = input.groupId === undefined ? existing.groupId : input.groupId;
+      const effectiveGroup = effectiveGroupId ? await this.groups.findById(tx, effectiveGroupId) : null;
+      if (effectiveGroupId && !effectiveGroup) {
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'LISTING_GROUP_NOT_FOUND',
+          message: 'Listing group not found',
+        });
+      }
+      if (effectiveGroup && effectiveGroup.status !== 'draft') {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'LISTING_GROUP_READ_ONLY',
+          message: 'Hide the listing group before changing its items',
+        });
+      }
       if (input.slug && input.slug !== existing.slug) {
         const other = await this.listings.findBySlug(tx, input.slug);
         if (other && other.id !== id) {
@@ -72,7 +89,7 @@ export class UpdateListingUseCase {
       // A re-bound group must belong to the listing's own partner (§7.3) — a
       // partner cannot move a listing under another partner's post.
       if (input.groupId !== undefined && input.groupId !== null) {
-        const group = await this.groups.findById(tx, input.groupId);
+        const group = effectiveGroup;
         if (!group) {
           throw new NotFoundException({
             statusCode: 404,
@@ -86,6 +103,9 @@ export class UpdateListingUseCase {
             code: 'LISTING_GROUP_NOT_OWNED',
             message: 'The listing group belongs to another partner',
           });
+        }
+        if (group.listingTypeId !== existing.listingTypeId) {
+          throw new BadRequestException({ statusCode: 400, code: 'LISTING_GROUP_TYPE_MISMATCH', message: 'The listing and its group must use the same listing type' });
         }
       }
 

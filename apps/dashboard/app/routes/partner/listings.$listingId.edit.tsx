@@ -2,6 +2,7 @@ import { data, Link, redirect } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import {
   updateListingInputSchema,
+  type CancellationPolicySummary,
   type ListingResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
@@ -21,14 +22,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!canPartner(membership, 'partner.listings.write')) {
     throw new Response('Không có quyền sửa tin đăng.', { status: 403 });
   }
-  const [listingRes, typesRes] = await Promise.all([
+  const [listingRes, typesRes, policiesRes] = await Promise.all([
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    apiGet<CancellationPolicySummary[]>('/partner/cancellation-policies', auth),
   ]);
   if (!listingRes.ok || !listingRes.data) {
     throw new Response('Không tìm thấy tin đăng.', { status: listingRes.status === 403 ? 403 : 404 });
   }
-  return { listing: listingRes.data, listingTypes: typesRes.data ?? [], partnerId: membership.partnerId };
+  return { listing: listingRes.data, listingTypes: typesRes.data ?? [], cancellationPolicies: policiesRes.data ?? [], partnerId: membership.partnerId };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -62,6 +64,7 @@ export default function EditListingPage({ loaderData, actionData }: Route.Compon
         listingTypes={loaderData.listingTypes}
         partnerId={loaderData.partnerId}
         listing={loaderData.listing}
+        cancellationPolicies={loaderData.cancellationPolicies}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />

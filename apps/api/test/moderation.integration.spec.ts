@@ -15,7 +15,10 @@ async function login(
   http: ReturnType<INestApplication['getHttpServer']>,
   email: string,
 ): Promise<string[]> {
-  const res = await request(http).post('/auth/login').send({ email, password: 'demo-password' }).expect(200);
+  const res = await request(http)
+    .post('/auth/login')
+    .send({ email, password: 'demo-password' })
+    .expect(200);
   const raw = res.headers['set-cookie'];
   return Array.isArray(raw) ? raw : raw ? [raw] : [];
 }
@@ -75,7 +78,9 @@ describe('listing moderation & trust signals', () => {
 
     tenantId = (await db.admin.tenant.findFirstOrThrow({ where: { slug: 'studiohub' } })).id;
     partnerId = (await db.admin.partner.findFirstOrThrow({ where: { slug: 'giang-studio' } })).id;
-    studioTypeId = (await db.admin.listingType.findFirstOrThrow({ where: { tenantId, slug: 'studio' } })).id;
+    studioTypeId = (
+      await db.admin.listingType.findFirstOrThrow({ where: { tenantId, slug: 'studio' } })
+    ).id;
     ownerCookies = await login(http, 'owner@studiohub.vn');
     partnerCookies = await login(http, 'giang@giangstudio.vn');
   }, 180_000);
@@ -89,7 +94,8 @@ describe('listing moderation & trust signals', () => {
   const tenant = (m: 'post' | 'get' | 'patch', url: string) =>
     request(http)[m](url).set('Cookie', ownerCookies).set('x-tenant-id', tenantId);
   const partner = (m: 'post', url: string) =>
-    request(http)[m](url)
+    request(http)
+      [m](url)
       .set('Cookie', partnerCookies)
       .set('x-tenant-id', tenantId)
       .set('x-partner-id', partnerId);
@@ -120,7 +126,9 @@ describe('listing moderation & trust signals', () => {
     // Partner submits for review (draft → pending_review).
     const submitted = await partner('post', `/partner/listings/${listingId}/submit`).expect(200);
     expect(submitted.body.listing.status).toBe('pending_review');
-    expect(submitted.body.review.contactFlags.some((f: { type: string }) => f.type === 'phone')).toBe(true);
+    expect(
+      submitted.body.review.contactFlags.some((f: { type: string }) => f.type === 'phone'),
+    ).toBe(true);
 
     // Reviewer sees the same flags.
     const review = await tenant('get', `/tenant/listings/${listingId}/review`).expect(200);
@@ -167,7 +175,7 @@ describe('listing moderation & trust signals', () => {
     expect(republished.body.status).toBe('published');
   });
 
-  it('moderates a post (listing_group) with the same contact-info gate', async () => {
+  it('blocks group contact info by default and records an explicit force-publish override', async () => {
     const group = await tenant('post', '/tenant/listing-groups')
       .send({
         partnerId,
@@ -183,11 +191,21 @@ describe('listing moderation & trust signals', () => {
     const blocked = await tenant('post', `/tenant/listing-groups/${groupId}/publish`).expect(400);
     expect(blocked.body.code).toBe('LISTING_HAS_CONTACT_INFO');
 
-    await tenant('patch', `/tenant/listing-groups/${groupId}`)
-      .send({ description: 'Studio 3 phòng, khu vực trung tâm Quận 3.' })
+    const published = await tenant('post', `/tenant/listing-groups/${groupId}/publish`)
+      .send({ force: true })
       .expect(200);
-    const published = await tenant('post', `/tenant/listing-groups/${groupId}/publish`).expect(200);
     expect(published.body.status).toBe('published');
     expect(published.body.publishedBy).toBe('admin');
+
+    const audit = await db.admin.auditLog.findFirstOrThrow({
+      where: {
+        tenantId,
+        entityType: 'listing_group',
+        entityId: groupId,
+        action: 'listing_group.published',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(audit.data).toMatchObject({ reason: 'force-published: contact-info gate bypassed' });
   });
 });

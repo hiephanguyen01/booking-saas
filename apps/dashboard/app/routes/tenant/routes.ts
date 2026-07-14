@@ -8,6 +8,7 @@ export const tenantChildren: RouteConfigEntry[] = [
   route('listings', 'routes/tenant/listings/_index.tsx'),
   route('listings/:listingId/review', 'routes/tenant/listings/review.tsx'),
   route('listing-groups', 'routes/tenant/listing-groups/_index.tsx'),
+  route('listing-groups/:groupId/review', 'routes/tenant/listing-groups/review.tsx'),
   route('listing-types', 'routes/tenant/listing-types/_index.tsx'),
   route('listing-types/new', 'routes/tenant/listing-types/new.tsx'),
   route('listing-types/:listingTypeId/edit', 'routes/tenant/listing-types/edit.tsx'),

@@ -37,6 +37,7 @@ export interface ListingRecord {
 export interface PublicListingRecord extends ListingRecord {
   resourceTimezone: string;
   listingTypeSlug: string;
+  group: { title: string; slug: string } | null;
   partnerName: string;
   partnerVerifiedAt: Date | null;
   partnerActiveSince: Date;

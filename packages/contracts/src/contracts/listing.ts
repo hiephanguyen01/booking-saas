@@ -235,6 +235,22 @@ export const listingResponseSchema = z.object({
 });
 export type ListingResponse = z.infer<typeof listingResponseSchema>;
 
+export const cancellationPolicySummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  rules: z.unknown(),
+});
+export type CancellationPolicySummary = z.infer<typeof cancellationPolicySummarySchema>;
+
+export const listingGroupDetailResponseSchema = listingGroupResponseSchema.extend({
+  listings: z.array(listingResponseSchema),
+  listingCount: z.number().int().nonnegative(),
+  readyListingCount: z.number().int().nonnegative(),
+  priceFrom: z.string().nullable(),
+  itemLabel: z.string(),
+});
+export type ListingGroupDetailResponse = z.infer<typeof listingGroupDetailResponseSchema>;
+
 export const resourceResponseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -294,9 +310,34 @@ export const publicListingDetailResponseSchema = z.object({
   modeConfig: z.record(z.unknown()),
   depositPercent: z.number(),
   listingTypeSlug: z.string(),
+  group: z.object({ title: z.string(), slug: z.string() }).nullable(),
   trust: trustSignalsSchema,
 });
 export type PublicListingDetailResponse = z.infer<typeof publicListingDetailResponseSchema>;
+
+export const publicListingGroupDetailResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  address: z.string().nullable(),
+  workingArea: z.string().nullable(),
+  amenities: z.array(z.string()),
+  photos: z.array(z.string()),
+  listingTypeSlug: z.string(),
+  itemLabel: z.string(),
+  listings: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    slug: z.string(),
+    description: z.string().nullable(),
+    photos: z.array(z.string()),
+    attributes: z.record(z.unknown()),
+    bookingModes: z.array(bookingModeSchema),
+    priceFrom: z.string().nullable(),
+  })),
+});
+export type PublicListingGroupDetailResponse = z.infer<typeof publicListingGroupDetailResponseSchema>;
 
 export const quoteLineItemSchema = z.object({
   label: z.string(),

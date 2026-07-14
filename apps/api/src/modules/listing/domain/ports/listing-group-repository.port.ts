@@ -41,7 +41,7 @@ export interface IListingGroupRepository {
   create(tx: PrismaTx, tenantId: string, data: CreateListingGroupData): Promise<ListingGroupRecord>;
   findById(tx: PrismaTx, id: string): Promise<ListingGroupRecord | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingGroupRecord | null>;
-  list(tx: PrismaTx): Promise<ListingGroupRecord[]>;
+  list(tx: PrismaTx, filter?: { partnerId?: string }): Promise<ListingGroupRecord[]>;
   update(tx: PrismaTx, id: string, data: UpdateListingGroupData): Promise<ListingGroupRecord>;
   moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingGroupRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;

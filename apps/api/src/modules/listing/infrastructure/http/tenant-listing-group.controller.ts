@@ -1,4 +1,4 @@
-import { uuidSchema, type ListingGroupResponse } from '@booking/contracts';
+import { uuidSchema, type ListingGroupDetailResponse, type ListingGroupResponse } from '@booking/contracts';
 import {
   Body,
   Controller,
@@ -26,11 +26,13 @@ import { toListingGroupResponse } from '../../application/listing.mapper';
 import { CreateListingGroupUseCase } from '../../application/use-cases/create-listing-group.use-case';
 import { DeleteListingGroupUseCase } from '../../application/use-cases/delete-listing-group.use-case';
 import { GetListingGroupUseCase } from '../../application/use-cases/get-listing-group.use-case';
+import { GetListingGroupDetailUseCase } from '../../application/use-cases/get-listing-group-detail.use-case';
 import { ListListingGroupsUseCase } from '../../application/use-cases/list-listing-groups.use-case';
 import { UpdateListingGroupUseCase } from '../../application/use-cases/update-listing-group.use-case';
 import {
   CreateListingGroupDto,
   ListingGroupResponseDto,
+  ListingGroupDetailResponseDto,
   UpdateListingGroupDto,
 } from './dto/listing.dto';
 
@@ -41,6 +43,7 @@ export class TenantListingGroupController {
     private readonly createGroup: CreateListingGroupUseCase,
     private readonly listGroups: ListListingGroupsUseCase,
     private readonly getGroup: GetListingGroupUseCase,
+    private readonly getGroupDetail: GetListingGroupDetailUseCase,
     private readonly updateGroup: UpdateListingGroupUseCase,
     private readonly deleteGroup: DeleteListingGroupUseCase,
     private readonly tenantContext: TenantContextService,
@@ -64,6 +67,13 @@ export class TenantListingGroupController {
     return toListingGroupResponse(
       await this.createGroup.execute(this.tenantContext.tenantIdOrThrow(), input),
     );
+  }
+
+  @RequirePermissions('tenant.listings.read')
+  @Get(':id/detail')
+  @ApiOkResponse({ type: ListingGroupDetailResponseDto })
+  detail(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<ListingGroupDetailResponse> {
+    return this.getGroupDetail.execute(this.tenantContext.tenantIdOrThrow(), id);
   }
 
   @RequirePermissions('tenant.listings.read')
