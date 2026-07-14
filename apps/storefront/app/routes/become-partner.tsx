@@ -25,14 +25,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-/** Split the newline-separated license URLs into a clean list. */
-function parseLicenseDocs(raw: string | undefined): string[] {
-  return (raw ?? '')
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 export async function action({ request }: Route.ActionArgs) {
   const tenant = await resolveTenant(request);
 
@@ -53,8 +45,20 @@ export async function action({ request }: Route.ActionArgs) {
   } else if (v.licenseNo?.trim()) {
     businessInfo.licenseNo = v.licenseNo.trim();
   }
-  const licenseDocs = parseLicenseDocs(v.licenseDocs);
-  if (licenseDocs.length > 0) businessInfo.licenseDocs = licenseDocs;
+  businessInfo.identityCardFrontUrl = v.identityCardFrontUrl;
+  businessInfo.identityCardBackUrl = v.identityCardBackUrl;
+
+  const licenseDocs = [v.identityCardFrontUrl, v.identityCardBackUrl];
+  if (v.partnerType === 'company') {
+    const businessLicenseFrontUrl = v.businessLicenseFrontUrl;
+    const businessLicenseBackUrl = v.businessLicenseBackUrl;
+    if (businessLicenseFrontUrl && businessLicenseBackUrl) {
+      businessInfo.businessLicenseFrontUrl = businessLicenseFrontUrl;
+      businessInfo.businessLicenseBackUrl = businessLicenseBackUrl;
+      licenseDocs.unshift(businessLicenseFrontUrl, businessLicenseBackUrl);
+    }
+  }
+  businessInfo.licenseDocs = licenseDocs;
 
   const auth = await registerOrLogin({
     email: v.email.trim(),
@@ -81,9 +85,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 const isCompany = (v: PartnerRegistrationInput) => v.partnerType === 'company';
 
-function buildFields(
-  t: ScopedI18n<NsI18n.Common>['t'],
-): FieldConfig<PartnerRegistrationInput>[] {
+function buildFields(t: ScopedI18n<NsI18n.Common>['t']): FieldConfig<PartnerRegistrationInput>[] {
   return [
     {
       name: 'fullName',
@@ -159,11 +161,30 @@ function buildFields(
       hidden: (v) => isCompany(v),
     },
     {
-      name: 'licenseDocs',
-      type: 'textarea',
-      label: t('becomePartner.licenseDoc'),
-      description: t('becomePartner.licenseDocHint'),
-      colSpan: 2,
+      name: 'businessLicenseFrontUrl',
+      type: 'file',
+      target: 'partners',
+      label: t('becomePartner.businessLicenseFront'),
+      hidden: (v) => !isCompany(v),
+    },
+    {
+      name: 'businessLicenseBackUrl',
+      type: 'file',
+      target: 'partners',
+      label: t('becomePartner.businessLicenseBack'),
+      hidden: (v) => !isCompany(v),
+    },
+    {
+      name: 'identityCardFrontUrl',
+      type: 'file',
+      target: 'partners',
+      label: t('becomePartner.identityCardFront'),
+    },
+    {
+      name: 'identityCardBackUrl',
+      type: 'file',
+      target: 'partners',
+      label: t('becomePartner.identityCardBack'),
     },
   ];
 }
@@ -181,7 +202,10 @@ const DEFAULTS: PartnerRegistrationInput = {
   taxId: '',
   businessRegistrationNo: '',
   licenseNo: '',
-  licenseDocs: '',
+  businessLicenseFrontUrl: '',
+  businessLicenseBackUrl: '',
+  identityCardFrontUrl: '',
+  identityCardBackUrl: '',
 };
 
 export default function BecomePartner({ loaderData, actionData }: Route.ComponentProps) {
@@ -190,9 +214,7 @@ export default function BecomePartner({ loaderData, actionData }: Route.Componen
   const rootData = useRouteLoaderData<typeof rootLoader>('root');
   const logoUrl = tenantLogoUrl ?? rootData?.tenant?.logoUrl ?? null;
 
-  const serverError = actionData?.error
-    ? t(`becomePartner.errors.${actionData.error}`)
-    : null;
+  const serverError = actionData?.error ? t(`becomePartner.errors.${actionData.error}`) : null;
 
   const Nav = (
     <nav className="flex h-[72px] items-center justify-between border-b border-gray-100 px-6 lg:px-10">

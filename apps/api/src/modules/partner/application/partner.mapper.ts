@@ -15,6 +15,7 @@ export function toPartnerResponse(p: PartnerRecord): PartnerResponse {
     verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
     dateOfBirth: p.dateOfBirth ? p.dateOfBirth.toISOString().slice(0, 10) : null,
     payoutInfo: p.payoutInfo,
+    businessInfo: p.businessInfo,
     createdAt: p.createdAt.toISOString(),
   };
 }

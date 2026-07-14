@@ -119,35 +119,65 @@ export const partnerRegistrationSchema = z
     taxId: z.string().max(64).optional(),
     businessRegistrationNo: z.string().max(64).optional(),
     licenseNo: z.string().max(120).optional(),
-    /** One URL per line; parsed into `businessInfo.licenseDocs` server-side. */
-    licenseDocs: z.string().max(2000).optional(),
+    /** Uploaded identity/business document URLs (one image per side). */
+    businessLicenseFrontUrl: z
+      .string()
+      .url('Vui lòng tải ảnh GPKD mặt trước')
+      .or(z.literal(''))
+      .optional(),
+    businessLicenseBackUrl: z
+      .string()
+      .url('Vui lòng tải ảnh GPKD mặt sau')
+      .or(z.literal(''))
+      .optional(),
+    identityCardFrontUrl: z.string().url('Vui lòng tải ảnh CCCD mặt trước').or(z.literal('')),
+    identityCardBackUrl: z.string().url('Vui lòng tải ảnh CCCD mặt sau').or(z.literal('')),
   })
   .superRefine((val, ctx) => {
     if (val.partnerType === 'company') {
       if (!val.taxId?.trim())
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['taxId'], message: 'Doanh nghiệp cần mã số thuế' });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['taxId'],
+          message: 'Doanh nghiệp cần mã số thuế',
+        });
       if (!val.businessRegistrationNo?.trim())
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['businessRegistrationNo'],
           message: 'Doanh nghiệp cần số giấy phép kinh doanh',
         });
-    }
-    if (val.phone && val.phone.trim().length > 0 && val.phone.trim().length < 5)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['phone'], message: 'Số điện thoại không hợp lệ' });
-    if (val.licenseDocs) {
-      const invalid = val.licenseDocs
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .some((u) => !/^https?:\/\/.+/i.test(u));
-      if (invalid)
+      if (!val.businessLicenseFrontUrl)
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['licenseDocs'],
-          message: 'Đường dẫn không hợp lệ (phải bắt đầu bằng http:// hoặc https://)',
+          path: ['businessLicenseFrontUrl'],
+          message: 'Vui lòng tải ảnh GPKD mặt trước',
+        });
+      if (!val.businessLicenseBackUrl)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['businessLicenseBackUrl'],
+          message: 'Vui lòng tải ảnh GPKD mặt sau',
         });
     }
+    if (!val.identityCardFrontUrl)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['identityCardFrontUrl'],
+        message: 'Vui lòng tải ảnh CCCD mặt trước',
+      });
+    if (!val.identityCardBackUrl)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['identityCardBackUrl'],
+        message: 'Vui lòng tải ảnh CCCD mặt sau',
+      });
+    if (val.phone && val.phone.trim().length > 0 && val.phone.trim().length < 5)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['phone'],
+        message: 'Số điện thoại không hợp lệ',
+      });
   });
 export type PartnerRegistrationInput = z.infer<typeof partnerRegistrationSchema>;
 
@@ -166,6 +196,7 @@ export const partnerResponseSchema = z.object({
   verifiedAt: z.string().nullable(),
   dateOfBirth: z.string().nullable(),
   payoutInfo: z.record(z.unknown()),
+  businessInfo: z.record(z.unknown()),
   createdAt: z.string(),
 });
 export type PartnerResponse = z.infer<typeof partnerResponseSchema>;
