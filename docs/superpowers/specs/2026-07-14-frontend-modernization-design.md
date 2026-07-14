@@ -21,6 +21,7 @@ query hydration, multilingual SEO, deployment containers, and automated tests.
 - `packages/ui`
 - New focused packages such as `packages/query` and `packages/i18n`
 - Frontend-facing Turborepo, Docker, test, and CI configuration
+- Frontend BFF session persistence in Redis
 
 ### Excluded
 
@@ -29,6 +30,9 @@ query hydration, multilingual SEO, deployment containers, and automated tests.
 - Dark mode work
 - Product redesign unrelated to the modernization
 - Rewriting working route UI solely for style consistency
+
+Existing Dashboard dark-mode components and behavior are preserved, but this
+project does not expand, redesign, or port dark mode to additional surfaces.
 
 If a frontend contract does not match the current API, the implementation will
 adapt the frontend contract or client first. Changes to `apps/api` require a
@@ -103,13 +107,22 @@ module imports a `.server` module.
 - Remove obsolete v8 future flags because v8 behavior is the default
 - Adopt `loaderData`, normalized loader URLs, ESM-only imports, and current route
   module types
+- Remove `react-router-dom` imports, deprecated `meta.data` access, and redirects
+  that replay raw `request.url` data-request URLs
+- Align `@booking/ui` React/React DOM/React Router peer dependencies, preserve
+  subpath imports, and keep raw TSX consumers in `ssr.noExternal`
+- Audit direct workspace dependencies so `turbo prune --docker` includes every
+  package imported by each frontend
 - Update Turborepo outputs for React Router build and generated artifacts
+- Update maintained repository documentation from the React Router 7 baseline to
+  React Router 8
 
 Success: both apps typecheck and build using React Router v8.
 
 ### Milestone 3: Request-Scoped Dashboard Authentication
 
 - Fail startup when `SESSION_SECRET` is absent or shorter than 32 characters
+- Support cookie-signing secret rotation through current and previous secrets
 - Add one root server middleware that reads the cookie, validates the backend
   session, refreshes at most once, and commits rotated tokens after `next()`
 - Store authenticated session info in typed React Router contexts
@@ -117,6 +130,11 @@ Success: both apps typecheck and build using React Router v8.
   consume the context instead of independently loading or refreshing tokens
 - Prevent logout from being overwritten by a middleware post-response commit
 - Treat network/5xx auth failures as service failures, not invalid credentials
+- Replace token-bearing cookie payloads with a random opaque session ID and keep
+  access tokens, refresh tokens, user ID, and active workspace preferences in
+  Redis-backed BFF session storage
+- Use distinct Dashboard and Storefront cookie names; cookies are HttpOnly,
+  SameSite=Lax, Secure in production, bounded by an explicit TTL, and revocable
 
 Success: one `/auth/session` flow and at most one refresh occur per dashboard
 request, including requests with parallel nested loaders.
@@ -125,9 +143,13 @@ request, including requests with parallel nested loaders.
 
 - Add locale-safe Storefront path builders and scoped Dashboard path builders
 - Scope Dashboard URLs with `tenant/:tenantId` and `partner/:partnerId`
+- Scope Affiliate membership selection explicitly by tenant-aware URL rather than
+  `?tenant=` fallback or the first approved membership
 - Validate URL IDs against the authenticated memberships in layout middleware
 - Check permissions only on the active membership
 - Add a workspace chooser and compatibility redirects for old unscoped URLs
+- Add protected-layout and focused `requireUser`, `requireSessionInfo`,
+  `requireScope`, and active-membership helpers that consume request context
 - Keep global navigation workspace-neutral; render scoped menus from the scoped
   layout's membership
 
@@ -142,6 +164,8 @@ different tenant or partner.
   process-wide instance with request-specific access tokens or workspace headers
 - Support `AbortSignal`, a bounded timeout, query serialization, JSON/FormData,
   request IDs, scope headers, and typed failure categories
+- Use Axios for both server-to-server API calls and browser-to-same-origin resource
+  calls; browser code never calls an internal Docker API hostname directly
 - Validate successful endpoint responses with Zod schemas from contracts
 - Distinguish HTTP, network, timeout, and invalid-response failures
 - Keep React Router response mapping inside each app instead of coupling the
@@ -162,6 +186,10 @@ requests through `AbortSignal`.
 - Keep ordinary form validation in action data instead of ErrorBoundary
 - Add server and client reporting hooks that ignore expected 4xx responses and
   aborted requests and redact credentials
+- Split the largest Dashboard route modules into capability-focused feature
+  modules so route files retain only loader/action/meta/boundary/adapter concerns
+- Normalize shared UI consumption through `@booking/ui` subpath exports; reusable
+  components remain in the package and feature-specific UI remains in its app
 
 Success: route failures produce correct status-specific UI without exposing
 stack traces or removing unrelated navigation.
@@ -172,27 +200,48 @@ stack traces or removing unrelated navigation.
 - Create a new QueryClient per server prefetch and one stable browser client
 - Introduce feature query keys containing active workspace and normalized URL
   filters
+- Parse, validate, and normalize pagination, search, sort, and filter URL params
+  with Zod; the URL remains the source of truth and filter changes reset page 1
 - Use same-origin resource routes for browser refetches so HttpOnly tokens remain
   server-side
 - Prefetch required queries in loaders, dehydrate successful non-sensitive data,
   and hydrate with identical server/client keys
+- Audit `clientLoader` hydration separately and add React Router
+  `HydrateFallback` only where `clientLoader.hydrate` participates in initial
+  hydration; do not confuse it with TanStack `HydrationBoundary`
 - Retain React Router actions for navigational and progressively enhanced forms;
   use mutations only for inline/optimistic behavior
+- Adopt queries first for booking lists/details, Storefront catalog, availability,
+  quotes, and payment-status polling; ordinary one-shot route data stays in
+  React Router loaders
+- Load React Query Devtools only in development builds
 
 Success: initial SSR data does not immediately refetch, tenant caches cannot
 collide, and sensitive auth/payment data is never dehydrated.
 
-### Milestone 8: Storefront SEO and i18n
+### Milestone 8: Storefront SEO and Application i18n
 
 - Introduce `/vi` and `/en` URL prefixes with URL locale as source of truth
 - Create a typed `@booking/i18n` package with feature namespaces and per-render
   i18next instances
+- Remove translation JSON and message exports from `@booking/contracts`, leaving
+  contracts framework-free and transport-only, then remove related SSR
+  externalization workarounds that are no longer necessary
+- Require Vietnamese and English namespaces to have matching typed key shapes,
+  locale-aware pluralization, and shared date/number/currency formatters
+- Remove hard-coded locale arguments and avoid sentence construction from
+  separately translated fragments
 - Keep locale cookies as a preference only for the legacy root redirect
 - Add locale-aware language switching that supports translated slugs
+- Add vi/en Dashboard namespaces and initialize Dashboard locale from the user
+  preference/session while keeping its non-indexed URLs unprefixed
 - Add canonical, reciprocal hreflang, x-default, Open Graph, robots, safe JSON-LD,
   tenant favicon, true 404 responses, tenant sitemap, and robots resources
 - Mark checkout, account, verification, and generated search/filter pages with
   appropriate noindex rules
+- Use permanent 301 redirects for genuinely replaced public URLs and temporary
+  redirects only for preference-based navigation
+- Generate sitemap indexes when a tenant exceeds 50,000 canonical URLs
 
 Success: initial HTML contains the correct locale and SEO metadata with no
 hydration mismatch or soft-404 response.
@@ -200,23 +249,31 @@ hydration mismatch or soft-404 response.
 ### Milestone 9: Frontend Containers
 
 - Add root `.dockerignore`
+- Add a safe source-packaging command based on `git archive` so `.env`, `.git`,
+  caches, build outputs, and local stores cannot enter shared source archives
 - Add multi-stage Storefront and Dashboard Dockerfiles using `turbo prune --docker`
 - Run production servers as a non-root user with runtime-only secrets
 - Add liveness resource routes
 - Add a frontend Compose definition and reverse-proxy sample that preserves
   `Host` and forwarding headers
+- Pass `API_BASE_URL`, Redis/session settings, and secrets only at container
+  runtime; never bake them into build arguments or image layers
 
 Success: both images build, start, return 200 from `/healthz`, and serve SSR HTML.
 
 ### Milestone 10: Automated Verification and CI
 
 - Add Vitest unit tests for paths, redirect safety, memberships, API transport,
-  runtime parsing, query keys, SEO helpers, and i18n structure
+  runtime parsing, query keys, URL filter normalization, SEO helpers, i18n
+  structure, and session storage
 - Add route/auth integration tests for refresh rotation and scoped permissions
 - Add Playwright smoke flows for Storefront SSR/booking and Dashboard auth/workspace
   navigation
 - Add GitHub Actions jobs for install, typecheck, lint, unit tests, production
   build, and focused browser smoke tests
+- Add static architecture checks for browser-reachable `.server` imports,
+  deprecated router imports/APIs, translation exports in contracts, and missing
+  direct workspace dependencies
 - Use package-level scripts registered through Turborepo
 
 Success: the full verification pipeline is repeatable locally and in CI.
@@ -251,14 +308,19 @@ from server-only route exports, middleware, or other server modules.
 - `@booking/i18n`: typed resources, formatting, and per-render i18n factories
 - `@booking/ui`: reusable visual primitives and composed shared UI
 
+`@booking/contracts` must not export translations. `@booking/ui` continues to
+ship raw source via subpath exports and must not grow a catch-all component barrel.
+
 ## Authentication Data Flow
 
-1. Root Dashboard middleware reads the signed Dashboard cookie.
+1. Root Dashboard middleware reads the signed opaque Dashboard session ID cookie
+   and loads its session record from Redis.
 2. Missing credentials set the auth context to `null` and continue for public
    routes.
 3. Existing credentials call `/auth/session` once.
 4. A 401 may trigger exactly one refresh, followed by one session retry.
-5. Valid session data and current tokens are stored in request context.
+5. Valid session data and current tokens are stored in Redis and request context;
+   they are never serialized into the browser cookie payload.
 6. Nested middleware validates active tenant/partner membership from route params.
 7. Loaders and actions create scoped Axios request options from only the
    context's access token and scoped IDs.
@@ -275,6 +337,8 @@ from server-only route exports, middleware, or other server modules.
 - Navigation cancellation propagates as cancellation and is not reported.
 - Server reporters may log request method, normalized path, route params, status,
   and request ID, but never Cookie, Authorization, password, OTP, or tokens.
+- OTP lookup cookies use a dedicated signed name, a short TTL, and are removed
+  when consumed or expired; OTP values never appear in browser URLs.
 
 ## Test Strategy
 
@@ -297,6 +361,7 @@ pnpm build
 docker compose -f docker-compose.frontend.yml build
 Playwright Storefront smoke
 Playwright Dashboard smoke
+source archive content audit
 ```
 
 ## Migration and Compatibility Policy
@@ -309,6 +374,9 @@ Playwright Dashboard smoke
 - The implementation will not stage or commit unrelated files.
 - Dependency upgrades are committed separately from behavioral refactors where
   practical, making failures and rollback boundaries clear.
+- Credentials previously distributed in a source archive are treated as exposed;
+  rotation is an operational prerequisite performed by the credential owner and
+  is never automated by this repository change.
 
 ## Completion Criteria
 
