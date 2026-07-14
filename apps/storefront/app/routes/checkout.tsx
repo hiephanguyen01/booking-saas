@@ -5,6 +5,7 @@ import { CheckoutPage } from '../features/checkout/checkout-page';
 import { readRefCode } from '../lib/affiliate.server';
 import { checkoutBooking, createBooking, validatePromo } from '../lib/booking.server';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
+import { buildCheckoutIdempotencyKey } from '../lib/checkout-idempotency.server';
 import { appendRecentCookie } from '../lib/recent.server';
 import { resolveTenant } from '../lib/tenant.server';
 
@@ -97,7 +98,17 @@ export async function action({ request }: Route.ActionArgs) {
     refCode,
   };
 
-  const idempotencyKey = `co:${listingId}:${start}:${guest.data.email}`;
+  const idempotencyKey = buildCheckoutIdempotencyKey({
+    tenantId: tenant.id,
+    listingId,
+    mode,
+    start,
+    end,
+    quantity: qty,
+    promoCode: promoCode ?? null,
+    email: guest.data.email,
+    phone: guest.data.phone,
+  });
   const created = await createBooking(request, input, idempotencyKey);
 
   if (!created.ok || !created.data) {
