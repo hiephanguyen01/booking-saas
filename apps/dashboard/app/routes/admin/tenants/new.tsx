@@ -80,7 +80,7 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
   const fieldErrors = actionData && 'fieldErrors' in actionData ? actionData.fieldErrors : null;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div className="space-y-4">
         <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
           <Link to="/admin/tenants">

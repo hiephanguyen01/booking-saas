@@ -1,17 +1,18 @@
-import { useMemo, useState } from 'react';
-import { useNavigation, useSubmit } from 'react-router';
-import type {
-  AttributeField,
-  BookingMode,
-  ListingResponse,
-  ListingTypeResponse,
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createListingInputSchema,
+  type AttributeField,
+  type BookingMode,
+  type CreateListingInput,
+  type ListingResponse,
+  type ListingTypeResponse,
 } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
 import { Switch } from '@booking/ui/components/ui/switch';
-import { Textarea } from '@booking/ui/components/ui/textarea';
-import { ImageUpload } from '@booking/ui/components/form/image-upload';
+import { GenericForm } from '@booking/ui/components/form/generic-form';
+import type { UseFormReturn } from '@booking/ui/components/form/rhf';
+import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Section, Grid, Field } from '~/components/form-layout';
 import {
   Select,
@@ -32,39 +33,31 @@ const MODE_LABEL: Record<BookingMode, string> = {
 /** Only these modes are bookable in Phase 1 and have a config panel here. */
 const CONFIGURABLE: BookingMode[] = ['hourly', 'daily', 'inventory'];
 
-interface FormState {
-  listingTypeId: string;
-  title: string;
-  slug: string;
-  description: string;
-  photos: string[];
+/** Integer VND đồng string ("12000") from a numeric input value. */
+const vnd = (v: string): string => String(Math.max(0, Math.round(Number(v) || 0)));
+const int = (v: string, fallback: number): number => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? n : fallback;
+};
+const num = (v: unknown, fallback = ''): string =>
+  v === undefined || v === null ? fallback : String(v);
+
+/** Local state for the dynamic (mode config + attribute) block, kept as strings. */
+interface DynamicState {
   bookingModes: BookingMode[];
   hourly: { basePrice: string; minDuration: string; maxDuration: string; granularity: string; leadTimeMin: string };
   daily: { basePricePerNight: string; minNights: string; maxNights: string; checkinTime: string; checkoutTime: string; leadTimeMin: string };
   inventory: { unit: 'hour' | 'day'; basePrice: string; securityDeposit: string };
   stockQuantity: string;
   attributes: Record<string, unknown>;
-  bufferBefore: string;
-  bufferAfter: string;
-  approvalRequired: boolean;
-  depositPercent: string;
-  balanceDue: 'online_before' | 'on_arrival';
 }
 
-const num = (v: unknown, fallback = ''): string =>
-  v === undefined || v === null ? fallback : String(v);
-
-function initialState(partnerTypes: ListingTypeResponse[], listing?: ListingResponse): FormState {
+function initialDynamic(listing?: ListingResponse): DynamicState {
   const mc = (listing?.modeConfig ?? {}) as Record<string, Record<string, unknown>>;
   const h = mc.hourly ?? {};
   const d = mc.daily ?? {};
   const inv = mc.inventory ?? {};
   return {
-    listingTypeId: listing?.listingTypeId ?? partnerTypes[0]?.id ?? '',
-    title: listing?.title ?? '',
-    slug: listing?.slug ?? '',
-    description: listing?.description ?? '',
-    photos: listing?.photos ?? [],
     bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
     hourly: {
       basePrice: num(h.basePrice, '0'),
@@ -88,20 +81,43 @@ function initialState(partnerTypes: ListingTypeResponse[], listing?: ListingResp
     },
     stockQuantity: num(listing?.stockQuantity, '1'),
     attributes: listing?.attributes ?? {},
-    bufferBefore: num(listing?.bufferBefore, '0'),
-    bufferAfter: num(listing?.bufferAfter, '0'),
-    approvalRequired: listing?.approvalRequired ?? false,
-    depositPercent: num(listing?.depositPercent, '100'),
-    balanceDue: (listing?.balanceDue as 'online_before' | 'on_arrival') ?? 'online_before',
   };
 }
 
-/** Integer VND đồng string ("12000") from a numeric input value. */
-const vnd = (v: string): string => String(Math.max(0, Math.round(Number(v) || 0)));
-const int = (v: string, fallback: number): number => {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? n : fallback;
-};
+/** Assemble the typed `modeConfig` the schema expects from the string editor state. */
+function buildModeConfig(s: DynamicState): Record<string, unknown> {
+  const modes = s.bookingModes;
+  const modeConfig: Record<string, unknown> = {};
+  if (modes.includes('hourly')) {
+    modeConfig.hourly = {
+      basePrice: vnd(s.hourly.basePrice),
+      blocks: [],
+      minDuration: int(s.hourly.minDuration, 1),
+      maxDuration: int(s.hourly.maxDuration, 8),
+      granularity: int(s.hourly.granularity, 60),
+      leadTimeMin: int(s.hourly.leadTimeMin, 0),
+    };
+  }
+  if (modes.includes('daily')) {
+    modeConfig.daily = {
+      basePricePerNight: vnd(s.daily.basePricePerNight),
+      blocks: [],
+      minNights: int(s.daily.minNights, 1),
+      maxNights: int(s.daily.maxNights, 30),
+      checkinTime: s.daily.checkinTime,
+      checkoutTime: s.daily.checkoutTime,
+      leadTimeMin: int(s.daily.leadTimeMin, 0),
+    };
+  }
+  if (modes.includes('inventory')) {
+    modeConfig.inventory = {
+      unit: s.inventory.unit,
+      basePrice: vnd(s.inventory.basePrice),
+      securityDeposit: vnd(s.inventory.securityDeposit),
+    };
+  }
+  return modeConfig;
+}
 
 export function ListingForm({
   listingTypes,
@@ -116,140 +132,135 @@ export function ListingForm({
   serverError?: string | null;
   fieldErrors?: Record<string, string[]> | null;
 }) {
-  const submit = useSubmit();
-  const navigation = useNavigation();
-  const saving = navigation.state !== 'idle';
   const isEdit = Boolean(listing);
-  const [state, setState] = useState<FormState>(() => initialState(listingTypes, listing));
 
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]): void =>
-    setState((s) => ({ ...s, [key]: value }));
+  const fields: FieldConfig<CreateListingInput>[] = [
+    {
+      name: 'listingTypeId',
+      type: 'select',
+      label: 'Loại dịch vụ',
+      placeholder: 'Chọn loại dịch vụ',
+      disabled: isEdit,
+      colSpan: 2,
+      options: listingTypes.map((t) => ({ label: t.name, value: t.id })),
+    },
+    { name: 'title', type: 'text', label: 'Tiêu đề', colSpan: 1 },
+    { name: 'slug', type: 'text', label: 'Slug (đường dẫn)', placeholder: 'vd: studio-a-han-quoc', colSpan: 1 },
+    { name: 'description', type: 'textarea', label: 'Mô tả', colSpan: 2 },
+    { name: 'photos', type: 'file', label: 'Ảnh', target: 'listings', multiple: true, maxFiles: 12, colSpan: 2 },
+    { name: 'bufferBefore', type: 'number', label: 'Đệm trước (phút)', colSpan: 1 },
+    { name: 'bufferAfter', type: 'number', label: 'Đệm sau (phút)', colSpan: 1 },
+    { name: 'depositPercent', type: 'number', label: 'Đặt cọc (%)', colSpan: 1 },
+    {
+      name: 'balanceDue',
+      type: 'select',
+      label: 'Thanh toán phần còn lại',
+      colSpan: 1,
+      options: [
+        { label: 'Trực tuyến trước', value: 'online_before' },
+        { label: 'Tại chỗ', value: 'on_arrival' },
+      ],
+    },
+    { name: 'approvalRequired', type: 'switch', label: 'Yêu cầu duyệt trước khi thanh toán', colSpan: 2 },
+  ];
 
+  const defaults: CreateListingInput = {
+    partnerId,
+    listingTypeId: listing?.listingTypeId ?? listingTypes[0]?.id ?? '',
+    title: listing?.title ?? '',
+    slug: listing?.slug ?? '',
+    description: listing?.description ?? '',
+    photos: listing?.photos ?? [],
+    bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
+    modeConfig: {},
+    attributes: listing?.attributes ?? {},
+    stockQuantity: listing?.stockQuantity ?? undefined,
+    bufferBefore: listing?.bufferBefore ?? 0,
+    bufferAfter: listing?.bufferAfter ?? 0,
+    approvalRequired: listing?.approvalRequired ?? false,
+    depositPercent: listing?.depositPercent ?? 100,
+    balanceDue: (listing?.balanceDue as 'online_before' | 'on_arrival') ?? 'online_before',
+  };
+
+  return (
+    <GenericForm
+      schema={createListingInputSchema}
+      fields={fields}
+      columns={2}
+      defaultValues={defaults}
+      submitLabel={isEdit ? 'Lưu thay đổi' : 'Tạo tin đăng'}
+      serverError={serverError}
+      fieldErrors={fieldErrors}
+      extraFields={(form) => (
+        <ListingConfig form={form} listingTypes={listingTypes} listing={listing} />
+      )}
+      transform={(d) => ({
+        ...d,
+        description: d.description?.trim() || undefined,
+        photos: (d.photos ?? []).filter(Boolean),
+      })}
+    />
+  );
+}
+
+/**
+ * The dynamic block: booking-mode selection, per-mode config panels, and type
+ * attributes. Kept in local string state (for controlled number inputs) and
+ * mirrored into react-hook-form via `setValue`, so the shared schema validates
+ * `bookingModes`/`modeConfig`/`stockQuantity`/`attributes` on the client too.
+ */
+function ListingConfig({
+  form,
+  listingTypes,
+  listing,
+}: {
+  form: UseFormReturn<CreateListingInput>;
+  listingTypes: ListingTypeResponse[];
+  listing?: ListingResponse;
+}) {
+  const listingTypeId = form.watch('listingTypeId');
   const selectedType = useMemo(
-    () => listingTypes.find((t) => t.id === state.listingTypeId),
-    [listingTypes, state.listingTypeId],
+    () => listingTypes.find((t) => t.id === listingTypeId),
+    [listingTypes, listingTypeId],
   );
   const allowedModes = (selectedType?.allowedModes ?? []).filter((m) => CONFIGURABLE.includes(m));
 
-  function onTypeChange(id: string): void {
-    const type = listingTypes.find((t) => t.id === id);
-    const modes = (type?.defaultModes ?? []).filter((m) => CONFIGURABLE.includes(m));
-    setState((s) => ({ ...s, listingTypeId: id, bookingModes: modes, attributes: {} }));
-  }
+  const [state, setState] = useState<DynamicState>(() => initialDynamic(listing));
+  const set = <K extends keyof DynamicState>(key: K, value: DynamicState[K]): void =>
+    setState((s) => ({ ...s, [key]: value }));
 
-  function toggleMode(mode: BookingMode, on: boolean): void {
-    setState((s) => ({
-      ...s,
-      bookingModes: on ? [...s.bookingModes, mode] : s.bookingModes.filter((m) => m !== mode),
-    }));
-  }
+  // Reset modes/attributes when the user switches type (skip the initial mount so
+  // an edit form keeps the listing's saved values).
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    const modes = (selectedType?.defaultModes ?? []).filter((m) => CONFIGURABLE.includes(m));
+    setState((s) => ({ ...s, bookingModes: modes, attributes: {} }));
+  }, [listingTypeId, selectedType]);
 
-  function handleSubmit(): void {
-    const modes = state.bookingModes;
-    const modeConfig: Record<string, unknown> = {};
-    if (modes.includes('hourly')) {
-      modeConfig.hourly = {
-        basePrice: vnd(state.hourly.basePrice),
-        blocks: [],
-        minDuration: int(state.hourly.minDuration, 1),
-        maxDuration: int(state.hourly.maxDuration, 8),
-        granularity: int(state.hourly.granularity, 60),
-        leadTimeMin: int(state.hourly.leadTimeMin, 0),
-      };
-    }
-    if (modes.includes('daily')) {
-      modeConfig.daily = {
-        basePricePerNight: vnd(state.daily.basePricePerNight),
-        blocks: [],
-        minNights: int(state.daily.minNights, 1),
-        maxNights: int(state.daily.maxNights, 30),
-        checkinTime: state.daily.checkinTime,
-        checkoutTime: state.daily.checkoutTime,
-        leadTimeMin: int(state.daily.leadTimeMin, 0),
-      };
-    }
-    if (modes.includes('inventory')) {
-      modeConfig.inventory = {
-        unit: state.inventory.unit,
-        basePrice: vnd(state.inventory.basePrice),
-        securityDeposit: vnd(state.inventory.securityDeposit),
-      };
-    }
+  // Mirror the dynamic values into RHF so the schema can validate them.
+  useEffect(() => {
+    form.setValue('bookingModes', state.bookingModes);
+    form.setValue('modeConfig', buildModeConfig(state) as CreateListingInput['modeConfig']);
+    form.setValue('attributes', state.attributes);
+    form.setValue(
+      'stockQuantity',
+      state.bookingModes.includes('inventory') ? int(state.stockQuantity, 1) : undefined,
+    );
+  }, [state, form]);
 
-    const payload: Record<string, unknown> = {
-      partnerId,
-      listingTypeId: state.listingTypeId,
-      title: state.title.trim(),
-      slug: state.slug.trim(),
-      description: state.description.trim() || undefined,
-      photos: state.photos.map((p) => p.trim()).filter(Boolean),
-      attributes: state.attributes,
-      bookingModes: modes,
-      modeConfig,
-      stockQuantity: modes.includes('inventory') ? int(state.stockQuantity, 1) : undefined,
-      bufferBefore: int(state.bufferBefore, 0),
-      bufferAfter: int(state.bufferAfter, 0),
-      approvalRequired: state.approvalRequired,
-      depositPercent: int(state.depositPercent, 100),
-      balanceDue: state.balanceDue,
-    };
-    // JSON body — the route action reads it with `request.json()` and re-validates.
-    submit(payload as never, { method: 'post', encType: 'application/json' });
-  }
+  const errors = form.formState.errors;
+  const toggleMode = (mode: BookingMode, on: boolean): void =>
+    set(
+      'bookingModes',
+      on ? [...state.bookingModes, mode] : state.bookingModes.filter((m) => m !== mode),
+    );
 
   return (
-    <div className="max-w-2xl space-y-6">
-      {serverError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {serverError}
-        </div>
-      ) : null}
-
-      <Section title="Loại dịch vụ">
-        <Field label="Loại" error={fieldErrors?.listingTypeId}>
-          <Select value={state.listingTypeId} onValueChange={onTypeChange} disabled={isEdit}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Chọn loại dịch vụ" />
-            </SelectTrigger>
-            <SelectContent>
-              {listingTypes.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {isEdit ? <p className="text-xs text-muted-foreground">Không thể đổi loại sau khi tạo.</p> : null}
-        </Field>
-      </Section>
-
-      <Section title="Thông tin cơ bản">
-        <Field label="Tiêu đề" error={fieldErrors?.title}>
-          <Input value={state.title} onChange={(e) => set('title', e.target.value)} />
-        </Field>
-        <Field label="Slug (đường dẫn)" error={fieldErrors?.slug}>
-          <Input
-            value={state.slug}
-            onChange={(e) => set('slug', e.target.value)}
-            placeholder="vd: studio-a-han-quoc"
-          />
-        </Field>
-        <Field label="Mô tả" error={fieldErrors?.description}>
-          <Textarea rows={4} value={state.description} onChange={(e) => set('description', e.target.value)} />
-        </Field>
-      </Section>
-
-      <Section title="Ảnh">
-        <ImageUpload
-          value={state.photos}
-          onChange={(v) => set('photos', Array.isArray(v) ? v : v ? [v] : [])}
-          multiple
-          target="listings"
-          maxFiles={12}
-        />
-        {fieldErrors?.photos ? <p className="text-xs text-destructive">{fieldErrors.photos[0]}</p> : null}
-      </Section>
-
+    <div className="space-y-6">
       <Section title="Hình thức đặt">
         {allowedModes.length === 0 ? (
           <p className="text-sm text-muted-foreground">Chọn loại dịch vụ để xem hình thức khả dụng.</p>
@@ -266,11 +277,11 @@ export function ListingForm({
             ))}
           </div>
         )}
-        {fieldErrors?.bookingModes ? (
-          <p className="text-xs text-destructive">{fieldErrors.bookingModes[0]}</p>
+        {errors.bookingModes ? (
+          <p className="text-xs text-destructive">{String(errors.bookingModes.message)}</p>
         ) : null}
-        {fieldErrors?.modeConfig ? (
-          <p className="text-xs text-destructive">{fieldErrors.modeConfig[0]}</p>
+        {errors.modeConfig ? (
+          <p className="text-xs text-destructive">{String(errors.modeConfig.message)}</p>
         ) : null}
       </Section>
 
@@ -338,7 +349,7 @@ export function ListingForm({
             <Field label="Tiền cọc thiết bị (VND)">
               <Input type="number" min={0} value={state.inventory.securityDeposit} onChange={(e) => set('inventory', { ...state.inventory, securityDeposit: e.target.value })} />
             </Field>
-            <Field label="Số lượng trong kho" error={fieldErrors?.stockQuantity}>
+            <Field label="Số lượng trong kho" error={errors.stockQuantity ? [String(errors.stockQuantity.message)] : undefined}>
               <Input type="number" min={1} value={state.stockQuantity} onChange={(e) => set('stockQuantity', e.target.value)} />
             </Field>
           </Grid>
@@ -359,41 +370,6 @@ export function ListingForm({
           </div>
         </Section>
       ) : null}
-
-      <Section title="Cài đặt">
-        <Grid>
-          <Field label="Đệm trước (phút)">
-            <Input type="number" min={0} value={state.bufferBefore} onChange={(e) => set('bufferBefore', e.target.value)} />
-          </Field>
-          <Field label="Đệm sau (phút)">
-            <Input type="number" min={0} value={state.bufferAfter} onChange={(e) => set('bufferAfter', e.target.value)} />
-          </Field>
-          <Field label="Đặt cọc (%)" error={fieldErrors?.depositPercent}>
-            <Input type="number" min={0} max={100} value={state.depositPercent} onChange={(e) => set('depositPercent', e.target.value)} />
-          </Field>
-          <Field label="Thanh toán phần còn lại">
-            <Select value={state.balanceDue} onValueChange={(v) => set('balanceDue', v as FormState['balanceDue'])}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="online_before">Trực tuyến trước</SelectItem>
-                <SelectItem value="on_arrival">Tại chỗ</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-        </Grid>
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <Switch checked={state.approvalRequired} onCheckedChange={(v) => set('approvalRequired', v)} />
-          Yêu cầu duyệt trước khi thanh toán
-        </label>
-      </Section>
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" onClick={handleSubmit} disabled={saving}>
-          {saving ? 'Đang lưu…' : isEdit ? 'Lưu thay đổi' : 'Tạo tin đăng'}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -463,4 +439,3 @@ function AttributeInput({
     </Field>
   );
 }
-

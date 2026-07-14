@@ -49,28 +49,36 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
       <SidebarContent>
         {areas.map((area) => {
           const held = permissionsForScope(info, area.scope);
-          const items = area.items.filter((item) => !item.permission || held.has(item.permission));
-          return (
-            <SidebarGroup key={area.scope}>
-              <SidebarGroupLabel>{area.title}</SidebarGroupLabel>
-              <SidebarMenu>
-                {items.map((item) => {
-                  const isActive =
-                    location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-                  return (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                        <Link to={item.to}>
-                          {item.icon ? <item.icon /> : null}
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroup>
-          );
+          return area.sections.map((section, index) => {
+            const items = section.items.filter(
+              (item) => !item.permission || held.has(item.permission),
+            );
+            if (items.length === 0) return null;
+            // The leading unlabelled cluster (overview) borrows the area title so
+            // multi-area users can still tell the areas apart.
+            const label = section.label ?? (index === 0 ? area.title : undefined);
+            return (
+              <SidebarGroup key={`${area.scope}-${index}`}>
+                {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
+                <SidebarMenu>
+                  {items.map((item) => {
+                    const isActive =
+                      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+                    return (
+                      <SidebarMenuItem key={item.to}>
+                        <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                          <Link to={item.to}>
+                            {item.icon ? <item.icon /> : null}
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroup>
+            );
+          });
         })}
       </SidebarContent>
 

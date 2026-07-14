@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useForm, type DefaultValues, type FieldValues, type Path } from "react-hook-form"
+import { useForm, type DefaultValues, type FieldValues, type Path, type UseFormReturn } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigation, useSubmit } from "react-router"
 import { AlertCircle } from "lucide-react"
@@ -32,6 +32,20 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   action?: string
   /** Stretch the submit button to full width (onboarding pages). */
   submitFullWidth?: boolean
+  /**
+   * Custom controls rendered inside the form, below the config-driven grid. Use
+   * this for fields the `fields` config can't express (dynamic repeaters, mode
+   * pickers): bind them to the passed `form` with `Controller`/`form.setValue`
+   * and they register into the same react-hook-form instance, so their values
+   * are validated by the schema and flow into the submitted payload.
+   */
+  extraFields?: (form: UseFormReturn<z.infer<TSchema>>) => React.ReactNode
+  /**
+   * Final mapping of the validated form values into the JSON payload, applied
+   * after blank-optional/hidden cleanup. Use it to coerce or assemble nested
+   * shapes (e.g. build `modeConfig` from flat inputs) before submit.
+   */
+  transform?: (values: z.infer<TSchema>) => Record<string, unknown>
   /** Extra content rendered below the fields (e.g. a secondary button). */
   children?: React.ReactNode
   className?: string
@@ -66,6 +80,8 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   method = "post",
   action,
   submitFullWidth,
+  extraFields,
+  transform,
   children,
   className,
 }: GenericFormProps<TSchema>) {
@@ -96,7 +112,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   const optionalNames = React.useMemo(() => optionalKeys(schema), [schema])
 
   const onValid = (data: Values) => {
-    const payload: Record<string, unknown> = { ...data }
+    let payload: Record<string, unknown> = { ...data }
     // Drop hidden fields and coerce blank optionals to undefined.
     for (const field of fields) {
       if (field.hidden?.(data)) {
@@ -107,6 +123,8 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
         payload[field.name] = undefined
       }
     }
+    // Let the caller assemble/coerce nested shapes (e.g. modeConfig) last.
+    if (transform) payload = transform(data)
     submit(payload as never, {
       method,
       action,
@@ -138,6 +156,8 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
             )
           })}
         </div>
+
+        {extraFields ? extraFields(form) : null}
 
         <div className={cn("flex items-center gap-3", submitFullWidth && "flex-col")}>
           <Button
