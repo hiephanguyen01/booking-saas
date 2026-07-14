@@ -1,7 +1,4 @@
-import { Link, NavLink, useFetcher, useLocation } from 'react-router';
-import { LayoutGrid, Menu, Search, type LucideIcon } from 'lucide-react';
 import type { PublicListingTypeResponse } from '@booking/shared';
-import { cn } from '@booking/ui/lib/utils';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Sheet,
@@ -10,9 +7,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@booking/ui/components/ui/sheet';
-import type { StorefrontTenant } from '../lib/tenant.server';
+import { LayoutGrid, Menu, Search } from 'lucide-react';
+import { Link, NavLink, useFetcher, useLocation } from 'react-router';
 import type { Locale } from '../lib/i18n';
 import { useT } from '../lib/i18n';
+import type { StorefrontTenant } from '../lib/tenant.server';
 import { typeIcon } from '../lib/ui';
 
 /** Storefront navigation — logo + a category bar auto-generated from listing types. */
@@ -70,21 +69,21 @@ export function SiteHeader({
             <LocaleSwitcher current={locale} />
           </div>
         </div>
-        <nav className="-mx-1 hidden items-center gap-1 overflow-x-auto pb-3 md:flex">
+        {/* <nav className="-mx-1 hidden items-center gap-1 overflow-x-auto pb-3 md:flex">
           <CategoryLink to="/" label={t('nav.all')} icon={LayoutGrid} end />
           {listingTypes.map((type) => (
             <CategoryLink key={type.id} to={`/t/${type.slug}`} label={type.name} icon={typeIcon(type.slug)} />
           ))}
-        </nav>
+        </nav> */}
 
         {/* Mobile */}
         <Sheet>
           <div className="flex h-14 items-center justify-between md:hidden">
-            <SheetTrigger asChild>
+            {/* <SheetTrigger asChild>
               <Button type="button" variant="ghost" size="icon" aria-label={t('nav.openMenu')}>
                 <Menu className="size-5" />
               </Button>
-            </SheetTrigger>
+            </SheetTrigger> */}
             <Link to="/" className="flex items-center gap-2 text-lg font-extrabold text-primary">
               {logo}
             </Link>
@@ -178,32 +177,3 @@ function LocaleSwitcher({ current }: { current: Locale }) {
   );
 }
 
-function CategoryLink({
-  to,
-  label,
-  icon: Icon,
-  end,
-}: {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  end?: boolean;
-}) {
-  return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        cn(
-          'flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          isActive
-            ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-        )
-      }
-    >
-      <Icon className="size-4" />
-      {label}
-    </NavLink>
-  );
-}

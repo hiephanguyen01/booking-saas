@@ -66,9 +66,10 @@ function readStr(config: Record<string, unknown>, group: string, key: string): s
 }
 
 function toStorefrontTenant(dto: PublicTenantResponse): StorefrontTenant {
-  console.log('🚀 ~ toStorefrontTenant ~ dto:', dto);
   const config = dto.themeConfig ?? {};
+
   const logo = typeof config.logoUrl === 'string' && config.logoUrl !== '' ? config.logoUrl : null;
+  
   const carousel = Array.isArray(config.carousel)
     ? config.carousel.filter((x): x is string => typeof x === 'string' && x !== '')
     : [];

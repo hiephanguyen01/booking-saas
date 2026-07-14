@@ -1,3 +1,4 @@
+import type { PublicListingTypeResponse } from '@booking/shared';
 import {
   isRouteErrorResponse,
   Links,
@@ -5,19 +6,19 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useMatches,
   useRouteLoaderData,
 } from 'react-router';
-import type { PublicListingTypeResponse } from '@booking/shared';
 import type { Route } from './+types/root';
-import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
-import { fetchListingTypes } from './lib/catalog.server';
-import { resolveLocale, messagesFor } from './lib/i18n.server';
-import { createTranslator, I18nProvider, type Locale } from './lib/i18n';
-import type { Messages } from './lib/messages';
-import { SiteHeader } from './components/site-header';
-import { SiteFooter } from './components/site-footer';
-import { themeCss } from './theme/theme';
 import './app.css';
+import { SiteFooter } from './components/site-footer';
+import { SiteHeader } from './components/site-header';
+import { fetchListingTypes } from './lib/catalog.server';
+import { createTranslator, I18nProvider, type Locale } from './lib/i18n';
+import { messagesFor, resolveLocale } from './lib/i18n.server';
+import type { Messages } from './lib/messages';
+import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
+import { themeCss } from './theme/theme';
 
 /** Shared route context: the resolved tenant + its auto-generated menu + locale. */
 export interface StorefrontContext {
@@ -28,7 +29,7 @@ export interface StorefrontContext {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
-  console.log("🚀 ~ loader ~ tenant:", tenant)
+  console.log('🚀 ~ loader ~ tenant:', tenant);
   const locale = resolveLocale(request, tenant.defaultLocale);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
   return { tenant, listingTypes, locale, messages: messagesFor(locale) };
@@ -82,7 +83,15 @@ function ThemeStyle({ theme }: { theme: StorefrontTenant['theme'] }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const { tenant, listingTypes, locale, messages } = loaderData;
+
+  const matches = useMatches();
+  
   const i18n = createTranslator(locale, messages as Messages);
+
+   const isStandalone = matches.some(
+    (match) =>
+      (match.handle as { standalone?: boolean } | undefined)?.standalone,
+  );
 
   if (!tenant.live) {
     return (
@@ -92,15 +101,18 @@ export default function App({ loaderData }: Route.ComponentProps) {
       </div>
     );
   }
+  
   return (
     <I18nProvider value={i18n}>
       <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
         <ThemeStyle theme={tenant.theme} />
-        <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
+        {!isStandalone && (
+          <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
+        )}
         <main className="flex-1">
           <Outlet context={{ tenant, listingTypes, locale } satisfies StorefrontContext} />
         </main>
-        <SiteFooter tenant={tenant} />
+        {!isStandalone && <SiteFooter tenant={tenant} />}
       </div>
     </I18nProvider>
   );
