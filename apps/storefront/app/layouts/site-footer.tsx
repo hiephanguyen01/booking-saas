@@ -1,13 +1,13 @@
 import { ArrowUp, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router';
-import type { StorefrontTenant } from '../lib/tenant.server';
-import { useT } from '../lib/i18n';
+import { useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
+import type { StorefrontTenant } from '../lib/tenant.server';
 import { useLocale } from '../lib/use-locale';
 
 /** Storefront footer — brand, contact + social links from theme_config (§16.2). */
 export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   const locale = useLocale();
   const socials = [
     { href: tenant.social.facebook, label: 'Facebook' },
@@ -42,7 +42,9 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
   const aboutList = (
     <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
       <span className="font-semibold text-foreground">{t('common.footer.aboutUs')}</span>
-      <span className="text-sm text-muted-foreground">{t('common.footer.aboutLinks.intro', { tenant: tenant.name })}</span>
+      <span className="text-sm text-muted-foreground">
+        {t('common.footer.aboutLinks.intro', { tenant: tenant.name })}
+      </span>
       <span className="text-sm text-muted-foreground">{t('common.footer.aboutLinks.privacy')}</span>
       <span className="text-sm text-muted-foreground">{t('common.footer.aboutLinks.terms')}</span>
     </div>
@@ -56,7 +58,9 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
       {tenant.contact.phone ? (
         <span className="text-sm text-muted-foreground">{tenant.contact.phone}</span>
       ) : (
-        <span className="text-sm text-muted-foreground">{t('common.footer.supportLinks.contact')}</span>
+        <span className="text-sm text-muted-foreground">
+          {t('common.footer.supportLinks.contact')}
+        </span>
       )}
     </div>
   );
@@ -73,7 +77,11 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
         <div className="flex flex-col gap-3">
           <Link to={storefrontPaths.home(locale)} className="text-lg font-extrabold text-primary">
             {tenant.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} className="h-10 w-auto max-w-40 object-contain" />
+              <img
+                src={tenant.logoUrl}
+                alt={tenant.name}
+                className="h-10 w-auto max-w-40 object-contain"
+              />
             ) : (
               tenant.name
             )}
@@ -92,7 +100,9 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
         </div>
       </div>
       <div className="mx-auto hidden max-w-7xl items-center justify-between border-t border-border px-6 py-4 sm:flex">
-        <span className="text-sm text-muted-foreground">{t('common.footer.copyright', { year, tenant: tenant.name })}</span>
+        <span className="text-sm text-muted-foreground">
+          {t('common.footer.copyright', { year, tenant: tenant.name })}
+        </span>
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -107,7 +117,11 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-6 py-8 text-center sm:hidden">
         <Link to={storefrontPaths.home(locale)} className="text-lg font-extrabold text-primary">
           {tenant.logoUrl ? (
-            <img src={tenant.logoUrl} alt={tenant.name} className="h-10 w-auto max-w-40 object-contain" />
+            <img
+              src={tenant.logoUrl}
+              alt={tenant.name}
+              className="h-10 w-auto max-w-40 object-contain"
+            />
           ) : (
             tenant.name
           )}

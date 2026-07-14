@@ -5,8 +5,8 @@ import {
   CarouselItem,
   CarouselNext,
 } from '@booking/ui/components/ui/carousel';
-import { useT } from '../../lib/i18n';
 import { ListingCard } from '../../features/catalog/components/listing-card';
+import { useTranslation } from '../../lib/i18n';
 
 /**
  * "Top 10 Studio đặt nhiều nhất" row. NOTE: this is not a real popularity
@@ -15,7 +15,7 @@ import { ListingCard } from '../../features/catalog/components/listing-card';
  * popularity signal.
  */
 export function TopListingsSection({ listings }: { listings: PublicListingResponse[] }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   if (listings.length === 0) return null;
 
   return (

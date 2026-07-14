@@ -9,11 +9,10 @@ import {
 } from '@booking/ui/components/ui/sheet';
 import { LayoutGrid, Menu, Search } from 'lucide-react';
 import { Link, NavLink, useFetcher, useLocation } from 'react-router';
-import type { Locale } from '../lib/i18n';
-import { useT } from '../lib/i18n';
+import { type Locale, useTranslation } from '../lib/i18n';
+import { storefrontPaths, switchLocalePath } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { typeIcon } from '../lib/ui';
-import { storefrontPaths, switchLocalePath } from '../lib/locale-paths';
 
 /** Storefront navigation — logo + a category bar auto-generated from listing types. */
 export function SiteHeader({
@@ -25,7 +24,7 @@ export function SiteHeader({
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
 }) {
-  const { t } = useT();
+  const { t } = useTranslation();
 
   const logo = tenant.logoUrl ? (
     <img src={tenant.logoUrl} alt={tenant.name} className="h-8 w-auto max-w-40 object-contain" />
@@ -85,11 +84,19 @@ export function SiteHeader({
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger> */}
-            <Link to={storefrontPaths.home(locale)} className="flex items-center gap-2 text-lg font-extrabold text-primary">
+            <Link
+              to={storefrontPaths.home(locale)}
+              className="flex items-center gap-2 text-lg font-extrabold text-primary"
+            >
               {logo}
             </Link>
             <SheetTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" aria-label={t('navigation.openMenu')}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t('navigation.openMenu')}
+              >
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
@@ -143,7 +150,9 @@ export function SiteHeader({
               <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
                 {t('navigation.community')}
               </span>
-              <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">{t('navigation.login')}</span>
+              <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
+                {t('navigation.login')}
+              </span>
               <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
                 {t('navigation.register')}
               </span>
@@ -162,7 +171,10 @@ function LocaleSwitcher({ current }: { current: Locale }) {
   const fetcher = useFetcher();
   const location = useLocation();
   const next: Locale = current === 'vi' ? 'en' : 'vi';
-  const redirectTo = switchLocalePath(`${location.pathname}${location.search}${location.hash}`, next);
+  const redirectTo = switchLocalePath(
+    `${location.pathname}${location.search}${location.hash}`,
+    next,
+  );
   return (
     <fetcher.Form method="post" action="/set-locale">
       <input type="hidden" name="locale" value={next} />

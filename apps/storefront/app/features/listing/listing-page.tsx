@@ -1,13 +1,13 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Separator } from '@booking/ui/components/ui/separator';
+import { useTranslation } from '../../lib/i18n';
 import type { Route } from '../../routes/+types/listing';
-import { useT } from '../../lib/i18n';
 import { BookingPanel } from '../../templates/studio/booking-panel';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote } = loaderData;
-  const { t } = useT();
+  const { t } = useTranslation();
 
   if (!listing) {
     return (
@@ -40,9 +40,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
           {listing.description ? (
             <p className="text-[15px] leading-relaxed text-foreground">{listing.description}</p>
           ) : null}
-          {attrs.length > 0 ? (
-            <ListingAttributes attrs={attrs} />
-          ) : null}
+          {attrs.length > 0 ? <ListingAttributes attrs={attrs} /> : null}
         </div>
 
         <div>
@@ -69,15 +67,27 @@ function ListingAttributes({ attrs }: { attrs: [string, unknown][] }) {
 }
 
 function TrustSignals({ trust }: { trust: PublicListingDetailResponse['trust'] }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   const since = activeSinceLabel(trust.partnerActiveSince);
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-      <span className="font-medium text-foreground">{t('listing.providedBy', { name: trust.partnerName })}</span>
+      <span className="font-medium text-foreground">
+        {t('listing.providedBy', { name: trust.partnerName })}
+      </span>
       {trust.identityVerified ? (
         <Badge className="gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-white hover:bg-emerald-600">
-          <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
+          <svg
+            viewBox="0 0 24 24"
+            className="size-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 12l2 2 4-4M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"
+            />
           </svg>
           {t('listing.identityVerified')}
         </Badge>

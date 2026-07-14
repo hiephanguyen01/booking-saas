@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router';
 import type {
   AvailabilityMode,
   AvailabilityResponse,
@@ -13,10 +11,10 @@ import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
-import { useT, type I18n } from '../../lib/i18n';
-import { formatVnd } from '../../lib/ui';
+import { useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router';
+import { type I18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
-import { useLocale } from '../../lib/use-locale';
 import {
   DEFAULT_TZ,
   addDays,
@@ -27,6 +25,8 @@ import {
   todayInTz,
   zonedToUtcIso,
 } from '../../lib/time';
+import { formatVnd } from '../../lib/ui';
+import { useLocale } from '../../lib/use-locale';
 
 /** Local mirror of react-day-picker's DateRange (not a direct storefront dep). */
 type DateRange = { from: Date | undefined; to?: Date | undefined };
@@ -47,7 +47,7 @@ const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
  * availability + the quote on every change (SSR-safe, no client API calls).
  */
 export function BookingPanel({ listing, mode, availability, quote }: PanelProps) {
-  const i18n = useT();
+  const i18n = useTranslation();
   const locale = useLocale();
   const [sp, setSp] = useSearchParams();
   const tz = availability?.timezone ?? DEFAULT_TZ;
@@ -109,7 +109,9 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
 
         <Button asChild={canBook} className="h-11 w-full text-base" disabled={!canBook}>
           {canBook ? (
-            <Link to={`${storefrontPaths.checkout(locale)}?${checkoutParams.toString()}`}>{i18n.t('listing.bookNow')}</Link>
+            <Link to={`${storefrontPaths.checkout(locale)}?${checkoutParams.toString()}`}>
+              {i18n.t('listing.bookNow')}
+            </Link>
           ) : (
             <span>{i18n.t('listing.selectToContinue')}</span>
           )}
@@ -134,7 +136,9 @@ function QuoteHeader({
       {quote ? (
         <>
           <span className="text-2xl font-bold text-foreground">{formatVnd(quote.subtotal)}</span>
-          <span className="text-sm text-muted-foreground">{i18n.t('listing.subtotalEstimate')}</span>
+          <span className="text-sm text-muted-foreground">
+            {i18n.t('listing.subtotalEstimate')}
+          </span>
         </>
       ) : from ? (
         <>
@@ -458,7 +462,9 @@ function InventoryPicker({
           </Button>
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">{i18n.t('listing.remaining', { count: remaining })}</p>
+      <p className="text-sm text-muted-foreground">
+        {i18n.t('listing.remaining', { count: remaining })}
+      </p>
     </div>
   );
 }
@@ -497,7 +503,11 @@ function Breakdown({ quote, i18n }: { quote: QuoteResponse; i18n: I18n }) {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{children}</span>;
+  return (
+    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      {children}
+    </span>
+  );
 }
 
 /** Cheapest configured base price across modes (for the "from" price). */

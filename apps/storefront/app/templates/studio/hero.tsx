@@ -1,6 +1,6 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
+import { useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
-import { useT } from '../../lib/i18n';
 import { HeroSearchCard } from './hero-search-card';
 
 /**
@@ -15,7 +15,7 @@ export function StudioHero({
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
 }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   const title = tenant.hero.title ?? t('common.home.heroTitleFallback', { name: tenant.name });
   const subtitle = tenant.hero.subtitle ?? t('common.home.heroSubtitleFallback');
   const image = tenant.hero.imageUrl ?? `https://picsum.photos/seed/${tenant.slug}-hero/1600/700`;
@@ -23,10 +23,16 @@ export function StudioHero({
   return (
     <section className="mx-auto max-w-7xl px-6 pt-6 pb-24 sm:pb-32">
       <div className="relative overflow-hidden rounded-3xl bg-gray-900">
-        <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+        <img
+          src={image}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-70"
+        />
         <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/25 to-transparent" />
         <div className="relative flex min-h-64 flex-col justify-start gap-3 p-8 sm:min-h-72 md:p-12">
-          <h1 className="max-w-2xl text-2xl leading-tight font-extrabold text-white sm:text-4xl">{title}</h1>
+          <h1 className="max-w-2xl text-2xl leading-tight font-extrabold text-white sm:text-4xl">
+            {title}
+          </h1>
           <p className="max-w-xl text-sm text-white/85 sm:text-base">{subtitle}</p>
         </div>
       </div>

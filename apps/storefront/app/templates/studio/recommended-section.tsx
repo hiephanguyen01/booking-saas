@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import type { PublicListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { useT } from '../../lib/i18n';
+import { useState } from 'react';
+import { useTranslation } from '../../lib/i18n';
 import { ListingCard } from '../../features/catalog/components/listing-card';
 import { LocationTabs } from './location-tabs';
 
@@ -13,7 +13,7 @@ const PAGE_SIZE = 8;
  * pages through the array already loaded by the home route's SSR loader.
  */
 export function RecommendedSection({ listings }: { listings: PublicListingResponse[] }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(PAGE_SIZE);
   if (listings.length === 0) return null;
 

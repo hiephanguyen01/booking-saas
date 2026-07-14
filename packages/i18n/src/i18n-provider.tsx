@@ -1,5 +1,5 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { i18n } from 'i18next';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createBookingI18n, type Locale } from './create-i18n';
 import type { Messages, Namespace } from './resources';
@@ -7,9 +7,7 @@ import type { Messages, Namespace } from './resources';
 type NestedKey<T> = T extends string
   ? never
   : {
-      [Key in keyof T & string]: T[Key] extends string
-        ? Key
-        : `${Key}.${NestedKey<T[Key]>}`;
+      [Key in keyof T & string]: T[Key] extends string ? Key : `${Key}.${NestedKey<T[Key]>}`;
     }[keyof T & string];
 
 export type TranslationKey = {
@@ -28,9 +26,9 @@ export interface I18n {
 
 function namespacedKey(key: TranslationKey): NamespacedTranslationKey {
   const separator = key.indexOf('.');
-  return (separator === -1
-    ? key
-    : `${key.slice(0, separator)}:${key.slice(separator + 1)}`) as NamespacedTranslationKey;
+  return (
+    separator === -1 ? key : `${key.slice(0, separator)}:${key.slice(separator + 1)}`
+  ) as NamespacedTranslationKey;
 }
 
 export function createTranslator(locale: Locale): I18n {
@@ -61,8 +59,8 @@ export function BookingI18nProvider({ locale, children }: { locale: Locale; chil
   return <I18nProvider value={value}>{children}</I18nProvider>;
 }
 
-export function useT(): I18n {
+export function useTranslation(): I18n {
   const context = useContext(I18nContext);
-  if (!context) throw new Error('useT must be used within <I18nProvider>');
+  if (!context) throw new Error('useTranslation must be used within <I18nProvider>');
   return context;
 }

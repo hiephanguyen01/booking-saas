@@ -8,17 +8,17 @@ export {
   flattenTranslationKeys,
   getServerTranslator,
   isLocale,
-  resources,
   namespaces,
+  resources,
   supportedLocales,
   vi,
 } from './create-i18n';
 export type { Locale, Messages, Namespace } from './create-i18n';
+export { formatCurrency, formatDate, formatDateTime } from './format';
 export {
   BookingI18nProvider,
   createTranslator,
   I18nProvider,
-  useT,
+  useTranslation,
 } from './i18n-provider';
 export type { I18n, TranslationKey } from './i18n-provider';
-export { formatCurrency, formatDate, formatDateTime } from './format';

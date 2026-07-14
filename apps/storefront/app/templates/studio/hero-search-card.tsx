@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
-import { Calendar, ChevronDown, MapPin, Search, Users } from 'lucide-react';
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
-import { useT } from '../../lib/i18n';
-import { typeIcon } from '../../lib/ui';
+import { Calendar, ChevronDown, MapPin, Search, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router';
+import { useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
+import { typeIcon } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
 
 /**
@@ -16,7 +16,7 @@ import { useLocale } from '../../lib/use-locale';
  * support today, so wiring them up would just produce a dead form.
  */
 export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTypeResponse[] }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   const locale = useLocale();
   const [mode, setMode] = useState<'hourly' | 'daily'>('hourly');
   const types = listingTypes.slice(0, 6);
@@ -81,14 +81,18 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end sm:gap-4">
           <label className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3">
             <Search className="size-5 text-muted-foreground" />
-            <span className="truncate text-sm text-muted-foreground">{t('common.home.searchPlaceholder')}</span>
+            <span className="truncate text-sm text-muted-foreground">
+              {t('common.home.searchPlaceholder')}
+            </span>
           </label>
           <button
             type="button"
             className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3 text-left"
           >
             <MapPin className="size-5 text-muted-foreground" />
-            <span className="flex-1 truncate text-sm text-muted-foreground">{t('common.home.locationPlaceholder')}</span>
+            <span className="flex-1 truncate text-sm text-muted-foreground">
+              {t('common.home.locationPlaceholder')}
+            </span>
             <ChevronDown className="size-4 text-muted-foreground" />
           </button>
           <label className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3">
@@ -102,7 +106,9 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
             className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3 text-left"
           >
             <Users className="size-5 text-muted-foreground" />
-            <span className="flex-1 truncate text-sm text-foreground">{t('common.home.guestsPlaceholder')}</span>
+            <span className="flex-1 truncate text-sm text-foreground">
+              {t('common.home.guestsPlaceholder')}
+            </span>
             <ChevronDown className="size-4 text-muted-foreground" />
           </button>
         </div>

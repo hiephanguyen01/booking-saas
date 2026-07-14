@@ -41,7 +41,13 @@ export interface PartnerApplyPayload {
 }
 
 /** A message code the route maps to `t('common.becomePartner.errors.<code>')`. */
-type ErrorCode = string;
+export type PartnerErrorCode =
+  | 'emailTakenWrongPassword'
+  | 'slugTaken'
+  | 'planLimit'
+  | 'tenantInactive'
+  | 'generic';
+type ErrorCode = PartnerErrorCode;
 type TokenResult = { ok: true; token: string } | { ok: false; code: ErrorCode };
 
 /**
@@ -114,5 +120,6 @@ export async function applyAsPartner(
   }
   if (res.ok) return { ok: true };
   const body = (await res.json().catch(() => ({}))) as { code?: string };
-  return { ok: false, code: (body.code && APPLY_ERROR_CODES[body.code]) ?? 'generic' };
+  const code = body.code ? APPLY_ERROR_CODES[body.code] : undefined;
+  return { ok: false, code: code ?? 'generic' };
 }

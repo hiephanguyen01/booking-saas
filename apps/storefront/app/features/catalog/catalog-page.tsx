@@ -1,17 +1,17 @@
-import { Form, useSearchParams } from 'react-router';
 import type { AttributeField } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
+import { Form, useSearchParams } from 'react-router';
+import { type I18n, useTranslation } from '../../lib/i18n';
+import { typeIcon } from '../../lib/ui';
 import type { Route } from '../../routes/+types/catalog';
 import { ListingCard } from './components/listing-card';
-import { typeIcon } from '../../lib/ui';
-import { useT, type I18n } from '../../lib/i18n';
 
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, listings } = loaderData;
   const [searchParams] = useSearchParams();
-  const i18n = useT();
+  const i18n = useTranslation();
   const { t } = i18n;
 
   if (!type) {

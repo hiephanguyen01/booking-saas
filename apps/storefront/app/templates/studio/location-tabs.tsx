@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
-import { useT } from '../../lib/i18n';
+import { useState } from 'react';
+import { useTranslation } from '../../lib/i18n';
 
 /**
  * Static location filter tabs (§ home redesign). Purely visual — there's no
@@ -8,7 +8,7 @@ import { useT } from '../../lib/i18n';
  * anything. One tab is active by default, matching the Figma design.
  */
 export function LocationTabs() {
-  const { t } = useT();
+  const { t } = useTranslation();
   const locations = [
     { key: 'hcm', label: t('common.home.locations.hcm') },
     { key: 'hanoi', label: t('common.home.locations.hanoi') },

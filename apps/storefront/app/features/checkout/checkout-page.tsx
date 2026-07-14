@@ -1,19 +1,19 @@
-import { Form, Link, useSearchParams } from 'react-router';
 import type { ValidatePromoResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Separator } from '@booking/ui/components/ui/separator';
-import type { Route } from '../../routes/+types/checkout';
-import { useT, type I18n } from '../../lib/i18n';
-import { formatVnd } from '../../lib/ui';
-import { DEFAULT_TZ, timeInTz, dateLabelInTz } from '../../lib/time';
+import { Form, Link, useSearchParams } from 'react-router';
+import { type I18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
+import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../../lib/time';
+import { formatVnd } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
+import type { Route } from '../../routes/+types/checkout';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const { listing, mode, start, end, qty, quote, promoCode, promo } = loaderData;
-  const { t } = useT();
+  const { t } = useTranslation();
   const locale = useLocale();
   const [sp] = useSearchParams();
   const fieldErrors = actionData?.fieldErrors ?? null;
@@ -21,14 +21,15 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
 
   const discount = promo?.valid ? promo.discountAmount : '0';
   const finalAmount = promo?.valid ? promo.finalAmount : quote.subtotal;
-  const dueNow = promo?.valid
-    ? subtractDeposit(quote, promo)
-    : quote.depositAmount;
+  const dueNow = promo?.valid ? subtractDeposit(quote, promo) : quote.depositAmount;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-6">
-        <Link to={storefrontPaths.listing(locale, listing.slug)} className="text-sm text-muted-foreground hover:underline">
+        <Link
+          to={storefrontPaths.listing(locale, listing.slug)}
+          className="text-sm text-muted-foreground hover:underline"
+        >
           ← {listing.title}
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('checkout.title')}</h1>
@@ -63,20 +64,17 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
             locale={locale}
             t={t}
           />
-          <PromoForm
-            searchParams={sp}
-            promoCode={promoCode}
-            promo={promo}
-            locale={locale}
-            t={t}
-          />
+          <PromoForm searchParams={sp} promoCode={promoCode} promo={promo} locale={locale} t={t} />
         </div>
       </div>
     </div>
   );
 }
 
-function subtractDeposit(quote: { subtotal: string; depositAmount: string }, promo: ValidatePromoResponse): string {
+function subtractDeposit(
+  quote: { subtotal: string; depositAmount: string },
+  promo: ValidatePromoResponse,
+): string {
   const subtotal = Number(quote.subtotal);
   const deposit = Number(quote.depositAmount);
   const final = Number(promo.finalAmount);
@@ -132,7 +130,9 @@ function SummaryCard({
     <Card className="rounded-2xl border-border">
       <CardContent className="space-y-3 p-5 text-sm">
         <div className="font-semibold text-foreground">{listing.title}</div>
-        <div className="text-muted-foreground">{scheduleLabel(mode, start, end, qty, locale, t)}</div>
+        <div className="text-muted-foreground">
+          {scheduleLabel(mode, start, end, qty, locale, t)}
+        </div>
         <Separator />
         <Row label={t('listing.subtotal')} value={formatVnd(quote.subtotal)} />
         {discount !== '0' ? (
@@ -149,9 +149,21 @@ function SummaryCard({
   );
 }
 
-function Row({ label, value, bold, accent }: { label: string; value: string | null; bold?: boolean; accent?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  accent,
+}: {
+  label: string;
+  value: string | null;
+  bold?: boolean;
+  accent?: boolean;
+}) {
   return (
-    <div className={`flex justify-between ${bold ? 'font-semibold text-foreground' : 'text-muted-foreground'} ${accent ? 'text-primary' : ''}`}>
+    <div
+      className={`flex justify-between ${bold ? 'font-semibold text-foreground' : 'text-muted-foreground'} ${accent ? 'text-primary' : ''}`}
+    >
       <span>{label}</span>
       <span>{value}</span>
     </div>
@@ -171,7 +183,9 @@ function PromoForm({
   locale: 'vi' | 'en';
   t: I18n['t'];
 }) {
-  const hidden = ['listing', 'mode', 'start', 'end', 'qty'].map((k) => [k, searchParams.get(k) ?? ''] as const);
+  const hidden = ['listing', 'mode', 'start', 'end', 'qty'].map(
+    (k) => [k, searchParams.get(k) ?? ''] as const,
+  );
   const applied = promo?.valid ?? false;
   const errorCode = promo && !promo.valid ? promo.error : undefined;
 
@@ -182,7 +196,10 @@ function PromoForm({
         {applied ? (
           <div className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm">
             <span className="font-medium text-primary">
-              {t('checkout.promoApplied', { code: promoCode ?? '', amount: formatVnd(promo!.discountAmount) ?? '' })}
+              {t('checkout.promoApplied', {
+                code: promoCode ?? '',
+                amount: formatVnd(promo!.discountAmount) ?? '',
+              })}
             </span>
             <Link
               to={promoRemoveUrl(hidden, locale)}
@@ -215,7 +232,10 @@ function PromoForm({
   );
 }
 
-function promoRemoveUrl(hidden: readonly (readonly [string, string])[], locale: 'vi' | 'en'): string {
+function promoRemoveUrl(
+  hidden: readonly (readonly [string, string])[],
+  locale: 'vi' | 'en',
+): string {
   const params = new URLSearchParams(hidden.map(([k, v]) => [k, v]));
   return `${storefrontPaths.checkout(locale)}?${params.toString()}`;
 }
@@ -257,10 +277,26 @@ function GuestForm({
         </div>
       ) : null}
 
-      <GuestField name="fullName" label={t('checkout.fullName')} autoComplete="name" errors={fieldErrors?.fullName} />
+      <GuestField
+        name="fullName"
+        label={t('checkout.fullName')}
+        autoComplete="name"
+        errors={fieldErrors?.fullName}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <GuestField name="email" type="email" label={t('checkout.email')} autoComplete="email" errors={fieldErrors?.email} />
-        <GuestField name="phone" label={t('checkout.phone')} autoComplete="tel" errors={fieldErrors?.phone} />
+        <GuestField
+          name="email"
+          type="email"
+          label={t('checkout.email')}
+          autoComplete="email"
+          errors={fieldErrors?.email}
+        />
+        <GuestField
+          name="phone"
+          label={t('checkout.phone')}
+          autoComplete="tel"
+          errors={fieldErrors?.phone}
+        />
       </div>
       <GuestField name="customerNote" label={t('checkout.note')} errors={undefined} />
 
@@ -287,7 +323,12 @@ function GuestField({
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-sm font-medium text-foreground">{label}</span>
-      <Input name={name} type={type} autoComplete={autoComplete} aria-invalid={errors ? true : undefined} />
+      <Input
+        name={name}
+        type={type}
+        autoComplete={autoComplete}
+        aria-invalid={errors ? true : undefined}
+      />
       {errors?.length ? <span className="text-xs text-destructive">{errors[0]}</span> : null}
     </label>
   );

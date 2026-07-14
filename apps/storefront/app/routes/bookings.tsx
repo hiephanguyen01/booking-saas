@@ -1,13 +1,13 @@
-import { data, Form, Link } from 'react-router';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
-import type { Route } from './+types/bookings';
+import { data, Form, Link } from 'react-router';
 import { requestBookingOtp } from '../lib/booking.server';
-import { readRecentCodes } from '../lib/recent.server';
-import { useT } from '../lib/i18n';
+import { useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
+import { readRecentCodes } from '../lib/recent.server';
 import { useLocale } from '../lib/use-locale';
+import type { Route } from './+types/bookings';
 
 export function meta() {
   return [{ title: 'Bookings' }, { name: 'robots', content: 'noindex' }];
@@ -31,7 +31,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function Bookings({ loaderData, actionData }: Route.ComponentProps) {
   const { recent } = loaderData;
-  const { t } = useT();
+  const { t } = useTranslation();
   const locale = useLocale();
   const sent = actionData?.sent ?? false;
 
@@ -56,12 +56,17 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
 }
 
 function RequestForm({ error }: { error: string | null }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   return (
     <Form method="post" className="space-y-3">
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-foreground">{t('booking.lookup.codeLabel')}</span>
-        <Input name="code" placeholder={t('booking.lookup.codePlaceholder')} className="uppercase" autoFocus />
+        <Input
+          name="code"
+          placeholder={t('booking.lookup.codePlaceholder')}
+          className="uppercase"
+          autoFocus
+        />
       </label>
       {error ? <p className="text-sm text-destructive">{t('booking.lookup.invalidCode')}</p> : null}
       <Button type="submit" className="h-11 w-full">
@@ -72,17 +77,31 @@ function RequestForm({ error }: { error: string | null }) {
 }
 
 /** After the OTP email is sent, submit code+OTP as a GET to the detail page. */
-function VerifyForm({ code, devOtp, locale }: { code: string; devOtp: string | null; locale: 'vi' | 'en' }) {
-  const { t } = useT();
+function VerifyForm({
+  code,
+  devOtp,
+  locale,
+}: {
+  code: string;
+  devOtp: string | null;
+  locale: 'vi' | 'en';
+}) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-3">
-      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{t('booking.lookup.otpSent')}</p>
+      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        {t('booking.lookup.otpSent')}
+      </p>
       {devOtp ? (
-        <p className="text-xs text-muted-foreground">{t('booking.lookup.otpHintDev', { otp: devOtp })}</p>
+        <p className="text-xs text-muted-foreground">
+          {t('booking.lookup.otpHintDev', { otp: devOtp })}
+        </p>
       ) : null}
       <Form method="get" action={storefrontPaths.booking(locale, code)} className="space-y-3">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">{t('booking.lookup.otpLabel')}</span>
+          <span className="text-sm font-medium text-foreground">
+            {t('booking.lookup.otpLabel')}
+          </span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
         </label>
         <Button type="submit" className="h-11 w-full">
@@ -94,10 +113,12 @@ function VerifyForm({ code, devOtp, locale }: { code: string; devOtp: string | n
 }
 
 function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' }) {
-  const { t } = useT();
+  const { t } = useTranslation();
   return (
     <div className="mt-8">
-      <h2 className="mb-2 text-sm font-semibold text-foreground">{t('booking.lookup.recentTitle')}</h2>
+      <h2 className="mb-2 text-sm font-semibold text-foreground">
+        {t('booking.lookup.recentTitle')}
+      </h2>
       {recent.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('booking.lookup.recentEmpty')}</p>
       ) : (
