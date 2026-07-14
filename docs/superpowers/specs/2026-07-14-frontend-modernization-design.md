@@ -89,10 +89,6 @@ refactors from obscuring one another's failures.
 - Keep feature page components client-safe
 - Remove server exports from feature barrels
 - Fix locale open redirect, favicon lookup, and checkout idempotency
-- Replace browser-visible OTP query parameters with a Storefront POST action that
-  stores the verified lookup credential in a short-lived signed HttpOnly cookie;
-  the BFF may continue sending the OTP to the existing API query parameter, but
-  browser history, analytics, referrers, and rendered links must never contain it
 - Replace swallowed infrastructure failures with typed HTTP failures while
   preserving legitimate empty results
 - Remove sensitive debug logging
@@ -135,6 +131,12 @@ Success: both apps typecheck and build using React Router v8.
   Redis-backed BFF session storage
 - Use distinct Dashboard and Storefront cookie names; cookies are HttpOnly,
   SameSite=Lax, Secure in production, bounded by an explicit TTL, and revocable
+- Replace browser-visible booking OTP query parameters with a Storefront POST
+  action and an opaque short-lived BFF access record in Redis. The BFF submits the
+  single-use OTP to the existing API exactly once, stores only the resulting
+  authorized booking snapshot/access state server-side, and redirects to a clean
+  URL. Reloads use the BFF record; cancellation requests a fresh OTP because the
+  lookup OTP has already been consumed by the API
 
 Success: one `/auth/session` flow and at most one refresh occur per dashboard
 request, including requests with parallel nested loaders.
