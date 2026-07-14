@@ -4,7 +4,7 @@ import {
   type AddDomainInput,
   type DomainResponse,
   type ThemeConfigInput,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
 import type { FieldConfig } from '@booking/ui/components/form/types';

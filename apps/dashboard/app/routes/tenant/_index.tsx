@@ -3,7 +3,7 @@ import type {
   BookingResponse,
   ListingResponse,
   TenantFinanceSummaryResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,

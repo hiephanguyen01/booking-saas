@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import type { CreatePayoutInput, PayoutCycleDto } from '@booking/shared';
+import type { CreatePayoutInput, PayoutCycleDto } from '@booking/contracts';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { addDays, utcNow } from '../../../../shared/time/time';
 import {

@@ -1,4 +1,4 @@
-import type { PlanLimits } from '@booking/shared';
+import type { PlanLimits } from '@booking/contracts';
 
 /**
  * Plan-limit rules (TONG-QUAN.md §6.5). Hard limits (partners, listings) block

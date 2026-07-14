@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createListingTypeInputSchema, type AttributeField } from '@booking/shared';
+import { createListingTypeInputSchema, type AttributeField } from '@booking/contracts';
 import { validateAttributes } from './attribute-schema';
 
 const schema: AttributeField[] = [

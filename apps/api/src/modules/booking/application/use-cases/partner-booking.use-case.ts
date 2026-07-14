@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { addMinutes, utcNow } from '../../../../shared/time/time';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';

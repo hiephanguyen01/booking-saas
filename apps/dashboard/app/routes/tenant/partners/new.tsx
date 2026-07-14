@@ -4,7 +4,7 @@ import {
   createHousePartnerInputSchema,
   type CreateHousePartnerInput,
   type PartnerResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';

@@ -11,7 +11,7 @@ import {
   type SubscriptionResponse,
   type TenantResponse,
   type UpdateTenantInput,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,

@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import type { LoginInput } from '@booking/shared';
+import type { LoginInput } from '@booking/contracts';
 import { isLocked, recordFailure, recordSuccess } from '../../domain/login-lockout';
 import { PASSWORD_HASHER, type IPasswordHasher } from '../../domain/ports/password-hasher.port';
 import {

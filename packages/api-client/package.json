@@ -1,5 +1,5 @@
 {
-  "name": "@booking/shared",
+  "name": "@booking/api-client",
   "version": "0.0.1",
   "private": true,
   "main": "./dist/cjs/index.js",
@@ -14,13 +14,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.esm.json && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({ type: 'module' }))\"",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^3.25.0"
+    "@booking/contracts": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^3.2.0"
+    "@types/node": "^20.0.0"
   }
 }

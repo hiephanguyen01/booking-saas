@@ -1,4 +1,4 @@
-import type { PartnerStatus, PartnerType, PartnerVerificationStatus } from '@booking/shared';
+import type { PartnerStatus, PartnerType, PartnerVerificationStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const PARTNER_REPOSITORY = Symbol('PARTNER_REPOSITORY');

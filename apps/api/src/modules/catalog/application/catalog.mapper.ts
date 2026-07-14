@@ -2,7 +2,7 @@ import type {
   ListingTypeResponse,
   PublicListingResponse,
   PublicListingTypeResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import type { ListingTypeRecord } from '../domain/ports/listing-type-repository.port';
 import type { PublicListingRecord } from '../domain/ports/listing-read-repository.port';
 

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { ListingReviewResponse } from '@booking/shared';
+import type { ListingReviewResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
 import {

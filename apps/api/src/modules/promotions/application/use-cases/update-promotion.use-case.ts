@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { UpdatePromotionInput } from '@booking/shared';
+import type { UpdatePromotionInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { vnd } from '../../../../shared/money/money';
 import {

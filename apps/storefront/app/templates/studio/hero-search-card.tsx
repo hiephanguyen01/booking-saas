@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Calendar, ChevronDown, MapPin, Search, Users } from 'lucide-react';
-import type { PublicListingTypeResponse } from '@booking/shared';
+import type { PublicListingTypeResponse } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
 import { useT } from '../../lib/i18n';
 import { typeIcon } from '../../lib/ui';

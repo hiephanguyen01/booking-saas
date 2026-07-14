@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CreateBookingInput, ModeConfig, QuoteResponse } from '@booking/shared';
+import type { CreateBookingInput, ModeConfig, QuoteResponse } from '@booking/contracts';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { utcNow, addMinutes, DEFAULT_TIMEZONE } from '../../../../shared/time/time';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';

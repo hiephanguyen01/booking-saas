@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import type { BookingResponse, ListingResponse } from '@booking/shared';
+import type { BookingResponse, ListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/bookings.$bookingId';
 import { apiGet } from '~/lib/api.server';

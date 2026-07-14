@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { data, Form, Link, useRevalidator, useSearchParams } from 'react-router';
-import type { BookingResponse, PaymentStatusResponse } from '@booking/shared';
+import type { BookingResponse, PaymentStatusResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Separator } from '@booking/ui/components/ui/separator';

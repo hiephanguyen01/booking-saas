@@ -1,4 +1,4 @@
-import type { PublicTenantResponse } from '@booking/shared';
+import type { PublicTenantResponse } from '@booking/contracts';
 import { sanitizeColor } from '../theme/theme';
 
 /**

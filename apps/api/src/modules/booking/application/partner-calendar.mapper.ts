@@ -1,4 +1,4 @@
-import type { PartnerCalendarBookingResponse } from '@booking/shared';
+import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import type { PartnerCalendarBooking } from '../domain/ports/booking-repository.port';
 
 export type { PartnerCalendarBookingResponse };

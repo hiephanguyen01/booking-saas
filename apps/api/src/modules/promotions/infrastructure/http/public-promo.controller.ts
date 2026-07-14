@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
-import { validatePromoInputSchema, type ValidatePromoInput, type ValidatePromoResponse } from '@booking/shared';
+import { validatePromoInputSchema, type ValidatePromoInput, type ValidatePromoResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';

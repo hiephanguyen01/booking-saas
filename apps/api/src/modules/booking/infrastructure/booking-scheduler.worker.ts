@@ -1,7 +1,7 @@
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../shared/outbox/outbox.service';

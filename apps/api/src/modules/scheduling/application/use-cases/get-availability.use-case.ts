@@ -5,7 +5,7 @@ import type {
   DayAvailability,
   HourlyDay,
   ModeConfig,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { utcNow, zonedTimeToUtc } from '../../../../shared/time/time';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';

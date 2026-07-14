@@ -1,7 +1,7 @@
 import {
   partnerRegistrationSchema,
   type PartnerRegistrationInput,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { AlertCircle, Check, CheckCircle2, Eye, EyeOff, Upload } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { data, Link, useFetcher, useRouteLoaderData } from 'react-router';

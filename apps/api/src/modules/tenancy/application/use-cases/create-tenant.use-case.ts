@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
-import type { CreateTenantInput } from '@booking/shared';
+import type { CreateTenantInput } from '@booking/contracts';
 import { buildDefaultSubdomain } from '../../domain/hostname';
 import {
   TENANT_REPOSITORY,

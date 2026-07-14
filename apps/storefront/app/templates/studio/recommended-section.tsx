@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import type { PublicListingResponse } from '@booking/shared';
+import type { PublicListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { useT } from '../../lib/i18n';
-import { ListingCard } from '../../components/listing-card';
+import { ListingCard } from '../../features/catalog/components/listing-card';
 import { LocationTabs } from './location-tabs';
 
 const PAGE_SIZE = 8;

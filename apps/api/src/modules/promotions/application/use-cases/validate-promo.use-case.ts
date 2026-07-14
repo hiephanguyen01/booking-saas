@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { ValidatePromoInput, ValidatePromoResponse } from '@booking/shared';
+import type { ValidatePromoInput, ValidatePromoResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { vnd } from '../../../../shared/money/money';
 import { utcNow } from '../../../../shared/time/time';

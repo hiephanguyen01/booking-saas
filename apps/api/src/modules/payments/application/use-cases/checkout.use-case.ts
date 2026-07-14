@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CheckoutResponse } from '@booking/shared';
+import type { CheckoutResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { BOOKING_REPOSITORY, type IBookingRepository } from '../../../booking/domain/ports/booking-repository.port';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PlanLimits } from '@booking/shared';
+import type { PlanLimits } from '@booking/contracts';
 import { checkBookingSoftLimit, checkHardLimit, isModuleEnabled } from './plan-limits';
 
 describe('checkHardLimit', () => {

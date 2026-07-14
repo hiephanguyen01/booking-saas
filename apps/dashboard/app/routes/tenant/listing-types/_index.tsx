@@ -1,6 +1,6 @@
 import { data as routeData, Link, useFetcher } from 'react-router';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import type { BookingMode, ListingTypeResponse } from '@booking/shared';
+import type { BookingMode, ListingTypeResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';

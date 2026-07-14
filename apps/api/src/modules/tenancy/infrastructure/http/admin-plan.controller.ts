@@ -3,7 +3,7 @@ import {
   createPlanInputSchema,
   type CreatePlanInput,
   type PlanResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CreatePlanUseCase } from '../../application/use-cases/create-plan.use-case';

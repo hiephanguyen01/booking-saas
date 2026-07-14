@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
-import { uuidSchema, type CheckoutResponse, type PaymentStatusResponse } from '@booking/shared';
+import { uuidSchema, type CheckoutResponse, type PaymentStatusResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { CheckoutUseCase } from '../../application/use-cases/checkout.use-case';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Form, useNavigation } from 'react-router';
-import type { PromotionResponse } from '@booking/shared';
+import type { PromotionResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';

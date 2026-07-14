@@ -5,7 +5,7 @@
  * server-side, and returns the presigned grant. The browser then PUTs the bytes
  * straight to storage. Action-only: no default export, so it renders no UI.
  */
-import { presignUploadInputSchema, type PresignUploadResponse } from '@booking/shared';
+import { presignUploadInputSchema, type PresignUploadResponse } from '@booking/contracts';
 import type { Route } from './+types/uploads.presign';
 import { requireUser } from '~/lib/auth.server';
 import { apiPost, type ApiAuth, type RefreshedTokens } from '~/lib/api.server';

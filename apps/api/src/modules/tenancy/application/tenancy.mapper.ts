@@ -6,7 +6,7 @@ import type {
   SubscriptionStatusResponse,
   TenantResponse,
   Vertical,
-} from '@booking/shared';
+} from '@booking/contracts';
 import type { TenantRecord } from '../domain/ports/tenant-repository.port';
 import type { PlanRecord } from '../domain/ports/plan-repository.port';
 import type { SubscriptionRecord } from '../domain/ports/subscription-repository.port';

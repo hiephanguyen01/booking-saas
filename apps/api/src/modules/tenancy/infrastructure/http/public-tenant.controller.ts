@@ -1,5 +1,5 @@
 import { BadRequestException, Controller, Get, Headers } from '@nestjs/common';
-import type { PublicTenantResponse } from '@booking/shared';
+import type { PublicTenantResponse } from '@booking/contracts';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
 

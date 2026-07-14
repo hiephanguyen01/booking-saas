@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { UpdateTenantInput } from '@booking/shared';
+import type { UpdateTenantInput } from '@booking/contracts';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,

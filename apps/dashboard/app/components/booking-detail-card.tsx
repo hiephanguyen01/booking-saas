@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { BookingResponse } from '@booking/shared';
+import type { BookingResponse } from '@booking/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { formatVnd as vnd } from '~/routes/tenant/format';

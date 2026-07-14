@@ -13,7 +13,7 @@ import {
   uuidSchema,
   type PricingRuleInput,
   type PricingRuleResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';

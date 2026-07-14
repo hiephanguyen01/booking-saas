@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router';
-import type { SubscriptionStatusResponse } from '@booking/shared';
+import type { SubscriptionStatusResponse } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Lock, TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_layout';

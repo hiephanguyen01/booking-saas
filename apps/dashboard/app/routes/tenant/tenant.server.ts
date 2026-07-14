@@ -1,4 +1,4 @@
-import type { ScopeMembership } from '@booking/shared';
+import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { requirePermission, requireScope, type AuthContext } from '~/lib/auth.server';
 

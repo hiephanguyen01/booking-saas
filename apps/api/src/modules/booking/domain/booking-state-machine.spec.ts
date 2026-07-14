@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BookingStatus } from '@booking/shared';
+import type { BookingStatus } from '@booking/contracts';
 import {
   assertTransition,
   BookingTransitionError,

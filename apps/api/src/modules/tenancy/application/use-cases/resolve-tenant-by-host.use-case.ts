@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { PublicTenantResponse } from '@booking/shared';
+import type { PublicTenantResponse } from '@booking/contracts';
 import { normalizeHostname } from '../../domain/hostname';
 import { evaluateSubscription } from '../../domain/subscription-status';
 import {

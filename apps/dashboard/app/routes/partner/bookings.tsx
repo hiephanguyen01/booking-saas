@@ -7,7 +7,7 @@ import {
   type BookingStatus,
   type PartnerCalendarBookingResponse,
   type ReturnBookingResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import {

@@ -4,7 +4,7 @@ import type {
   PricingRuleResponse,
   PublicListingDetailResponse,
   ResourceResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import type { ListingGroupRecord } from '../domain/ports/listing-group-repository.port';
 import type { ListingRecord, PublicListingRecord } from '../domain/ports/listing-repository.port';
 import type { ResourceRecord } from '../domain/ports/resource-repository.port';

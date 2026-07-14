@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { CreateResourceInput } from '@booking/shared';
+import type { CreateResourceInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveTenantTimezone } from '../../../../shared/tenant-context/tenant-timezone';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';

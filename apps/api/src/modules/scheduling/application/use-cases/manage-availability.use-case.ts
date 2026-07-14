@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AvailabilityExceptionInput, AvailabilityRuleInput } from '@booking/shared';
+import type { AvailabilityExceptionInput, AvailabilityRuleInput } from '@booking/contracts';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { addDays, utcNow } from '../../../../shared/time/time';
 import {

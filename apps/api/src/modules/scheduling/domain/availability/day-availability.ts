@@ -1,4 +1,4 @@
-import type { DayStatus } from '@booking/shared';
+import type { DayStatus } from '@booking/contracts';
 import { overlapsAny, type Interval } from './interval';
 
 export interface DayAvailabilityInput {

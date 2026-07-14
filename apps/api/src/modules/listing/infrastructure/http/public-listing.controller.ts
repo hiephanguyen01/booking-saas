@@ -4,7 +4,7 @@ import {
   type PublicListingDetailResponse,
   type QuoteQuery,
   type QuoteResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { GetPublicListingUseCase } from '../../application/use-cases/get-public-listing.use-case';

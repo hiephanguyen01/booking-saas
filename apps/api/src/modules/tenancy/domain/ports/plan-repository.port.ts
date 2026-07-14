@@ -1,4 +1,4 @@
-import type { PlanLimits } from '@booking/shared';
+import type { PlanLimits } from '@booking/contracts';
 
 export const PLAN_REPOSITORY = Symbol('PLAN_REPOSITORY');
 

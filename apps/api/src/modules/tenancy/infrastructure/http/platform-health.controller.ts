@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { PlatformHealthResponse } from '@booking/shared';
+import type { PlatformHealthResponse } from '@booking/contracts';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import {
   GetPlatformHealthUseCase,

@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, HttpCode, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
-import { gatewayKeySchema } from '@booking/shared';
+import { gatewayKeySchema } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import type { GatewayKey } from '../../domain/ports/payment-gateway.port';

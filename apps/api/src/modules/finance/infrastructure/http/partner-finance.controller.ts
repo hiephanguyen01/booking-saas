@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { PartnerFinanceResponse } from '@booking/shared';
+import type { PartnerFinanceResponse } from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';

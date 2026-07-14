@@ -1,4 +1,4 @@
-import type { ScopeLevel } from '@booking/shared';
+import type { ScopeLevel } from '@booking/contracts';
 
 /**
  * Fixed permission catalog (TONG-QUAN.md §14.2) — seeded from code, never

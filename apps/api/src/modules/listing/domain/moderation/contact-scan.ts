@@ -1,4 +1,4 @@
-import type { ContactFlag } from '@booking/shared';
+import type { ContactFlag } from '@booking/contracts';
 
 /**
  * Contact-info scanner (TONG-QUAN.md §7.3 — anti-disintermediation). A partner

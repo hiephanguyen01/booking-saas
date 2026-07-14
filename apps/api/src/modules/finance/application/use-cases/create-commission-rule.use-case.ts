@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import type { CreateCommissionRuleInput } from '@booking/shared';
+import type { CreateCommissionRuleInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   COMMISSION_RULE_REPOSITORY,

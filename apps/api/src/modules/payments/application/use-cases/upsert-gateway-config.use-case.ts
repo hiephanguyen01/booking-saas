@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { UpsertGatewayConfigInput } from '@booking/shared';
+import type { UpsertGatewayConfigInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   GATEWAY_CONFIG_REPOSITORY,

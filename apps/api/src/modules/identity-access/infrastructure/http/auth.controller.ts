@@ -10,7 +10,7 @@ import {
   type RegisterInput,
   type SessionInfoResponse,
   type UpgradeGuestInput,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';

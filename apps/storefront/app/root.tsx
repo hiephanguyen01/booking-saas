@@ -1,4 +1,4 @@
-import type { PublicListingTypeResponse } from '@booking/shared';
+import type { PublicListingTypeResponse } from '@booking/contracts';
 import {
   isRouteErrorResponse,
   Links,
@@ -11,8 +11,8 @@ import {
 } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
-import { SiteFooter } from './components/site-footer';
-import { SiteHeader } from './components/site-header';
+import { SiteFooter } from './layouts/site-footer';
+import { SiteHeader } from './layouts/site-header';
 import { fetchListingTypes } from './lib/catalog.server';
 import { createTranslator, I18nProvider, type Locale } from './lib/i18n';
 import { messagesFor, resolveLocale } from './lib/i18n.server';

@@ -4,7 +4,7 @@ import {
   updateListingInputSchema,
   type ListingResponse,
   type ListingTypeResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/listings.$listingId.edit';
 import { apiGet, apiPatch } from '~/lib/api.server';

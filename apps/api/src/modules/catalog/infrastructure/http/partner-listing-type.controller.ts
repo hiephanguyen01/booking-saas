@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { ListingTypeResponse } from '@booking/shared';
+import type { ListingTypeResponse } from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { ListListingTypesUseCase } from '../../application/use-cases/list-listing-types.use-case';

@@ -1,4 +1,4 @@
-import type { PublicListingResponse } from '@booking/shared';
+import type { PublicListingResponse } from '@booking/contracts';
 import {
   Carousel,
   CarouselContent,
@@ -6,7 +6,7 @@ import {
   CarouselNext,
 } from '@booking/ui/components/ui/carousel';
 import { useT } from '../../lib/i18n';
-import { ListingCard } from '../../components/listing-card';
+import { ListingCard } from '../../features/catalog/components/listing-card';
 
 /**
  * "Top 10 Studio đặt nhiều nhất" row. NOTE: this is not a real popularity

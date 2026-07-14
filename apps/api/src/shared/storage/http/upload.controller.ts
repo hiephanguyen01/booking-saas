@@ -3,7 +3,7 @@ import {
   presignUploadInputSchema,
   type PresignUploadInput,
   type PresignUploadResponse,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../validation/zod-validation.pipe';
 import { AuthenticatedOnly } from '../../../modules/identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { STORAGE_PORT, type StoragePort } from '../storage.port';

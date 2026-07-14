@@ -1,4 +1,4 @@
-import type { ChecklistItem } from '@booking/shared';
+import type { ChecklistItem } from '@booking/contracts';
 
 /**
  * Minimum submission checklist a tenant reviewer sees before publishing a post

@@ -1,5 +1,5 @@
 import { data, redirect } from 'react-router';
-import { loginInputSchema, type LoginInput } from '@booking/shared';
+import { loginInputSchema, type LoginInput } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/login';

@@ -1,4 +1,4 @@
-import type { ScopeLevel } from '@booking/shared';
+import type { ScopeLevel } from '@booking/contracts';
 import type { LucideIcon } from 'lucide-react';
 
 export interface DashboardNavItem {

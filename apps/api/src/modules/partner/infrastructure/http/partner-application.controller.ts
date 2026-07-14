@@ -1,5 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { partnerApplyInputSchema, type PartnerApplyInput, type PartnerResponse } from '@booking/shared';
+import { partnerApplyInputSchema, type PartnerApplyInput, type PartnerResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';

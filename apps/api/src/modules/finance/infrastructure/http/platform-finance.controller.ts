@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { PlatformFinanceResponse } from '@booking/shared';
+import type { PlatformFinanceResponse } from '@booking/contracts';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { GetPlatformFinanceUseCase } from '../../application/use-cases/get-platform-finance.use-case';
 import { toPlatformFinanceResponse } from '../../application/finance.mapper';

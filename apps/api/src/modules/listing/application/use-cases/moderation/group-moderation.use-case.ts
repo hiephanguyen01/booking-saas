@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import type { ModerationActor } from '@booking/shared';
+import type { ModerationActor } from '@booking/contracts';
 import { TenantDbService, type PrismaTx } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
 import {

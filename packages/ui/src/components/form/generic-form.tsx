@@ -13,7 +13,7 @@ import { FieldRenderer } from "@booking/ui/components/form/field-renderer"
 import type { FieldConfig } from "@booking/ui/components/form/types"
 
 export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
-  /** Zod schema from `@booking/shared` — validates on the client and (again) in the action. */
+  /** Zod schema from `@booking/contracts` — validates on the client and (again) in the action. */
   schema: TSchema
   /** Field configs; `name`s are type-checked against the schema's inferred type. */
   fields: FieldConfig<z.infer<TSchema>>[]

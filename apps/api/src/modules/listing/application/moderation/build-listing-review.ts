@@ -1,4 +1,4 @@
-import type { BookingMode, ListingReviewResponse } from '@booking/shared';
+import type { BookingMode, ListingReviewResponse } from '@booking/contracts';
 import type { ListingRecord } from '../../domain/ports/listing-repository.port';
 import { photoScanFields, scanForContactInfo } from '../../domain/moderation/contact-scan';
 import {

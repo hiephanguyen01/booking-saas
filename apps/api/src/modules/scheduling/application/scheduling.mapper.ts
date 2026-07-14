@@ -1,4 +1,4 @@
-import type { AvailabilityExceptionResponse, AvailabilityRuleResponse } from '@booking/shared';
+import type { AvailabilityExceptionResponse, AvailabilityRuleResponse } from '@booking/contracts';
 import type { AvailabilityRuleRecord } from '../domain/ports/availability-rule-repository.port';
 import type { AvailabilityExceptionRecord } from '../domain/ports/availability-exception-repository.port';
 

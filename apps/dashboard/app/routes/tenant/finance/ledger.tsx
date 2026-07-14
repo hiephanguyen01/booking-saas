@@ -4,7 +4,7 @@ import {
   type LedgerEntryTypeDto,
   type LedgerOwnerTypeDto,
   type Paginated,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';

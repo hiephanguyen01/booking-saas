@@ -1,6 +1,6 @@
 import { data as routeData } from 'react-router';
 import { CheckCircle2 } from 'lucide-react';
-import { updatePartnerDocumentsInputSchema, type UpdatePartnerDocumentsInput } from '@booking/shared';
+import { updatePartnerDocumentsInputSchema, type UpdatePartnerDocumentsInput } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';

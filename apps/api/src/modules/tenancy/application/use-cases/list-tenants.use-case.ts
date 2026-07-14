@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PaginationQuery } from '@booking/shared';
+import type { PaginationQuery } from '@booking/contracts';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,

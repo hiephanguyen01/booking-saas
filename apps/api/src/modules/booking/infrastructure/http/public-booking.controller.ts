@@ -22,7 +22,7 @@ import {
   type CancelBookingInput,
   type CancelBookingResponse,
   type CreateBookingInput,
-} from '@booking/shared';
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';

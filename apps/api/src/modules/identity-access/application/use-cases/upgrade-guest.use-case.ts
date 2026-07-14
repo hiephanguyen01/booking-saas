@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { UpgradeGuestInput } from '@booking/shared';
+import type { UpgradeGuestInput } from '@booking/contracts';
 import { PASSWORD_HASHER, type IPasswordHasher } from '../../domain/ports/password-hasher.port';
 import {
   SESSION_STORE,

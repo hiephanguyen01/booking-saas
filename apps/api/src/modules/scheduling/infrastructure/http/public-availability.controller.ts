@@ -1,5 +1,5 @@
 import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
-import { availabilityQuerySchema, type AvailabilityQuery, type AvailabilityResponse } from '@booking/shared';
+import { availabilityQuerySchema, type AvailabilityQuery, type AvailabilityResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { GetAvailabilityUseCase } from '../../application/use-cases/get-availability.use-case';

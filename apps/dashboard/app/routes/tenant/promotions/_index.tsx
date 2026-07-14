@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import type { PromotionResponse } from '@booking/shared';
+import type { PromotionResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';

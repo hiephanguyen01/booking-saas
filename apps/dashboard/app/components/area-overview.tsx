@@ -1,4 +1,4 @@
-import type { ScopeLevel, ScopeMembership } from '@booking/shared';
+import type { ScopeLevel, ScopeMembership } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import {
   Card,
