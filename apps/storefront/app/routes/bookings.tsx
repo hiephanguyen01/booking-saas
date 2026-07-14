@@ -3,7 +3,7 @@ import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { data, Form, Link } from 'react-router';
 import { requestBookingOtp } from '../lib/booking.server';
-import { useTranslation } from '../lib/i18n';
+import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import { readRecentCodes } from '../lib/recent.server';
 import { useLocale } from '../lib/use-locale';
@@ -31,14 +31,14 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function Bookings({ loaderData, actionData }: Route.ComponentProps) {
   const { recent } = loaderData;
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Booking);
   const locale = useLocale();
   const sent = actionData?.sent ?? false;
 
   return (
     <div className="mx-auto max-w-lg px-6 py-12">
-      <h1 className="text-2xl font-bold tracking-tight">{t('booking.lookup.title')}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{t('booking.lookup.subtitle')}</p>
+      <h1 className="text-2xl font-bold tracking-tight">{t('lookup.title')}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t('lookup.subtitle')}</p>
 
       <Card className="mt-6 rounded-2xl border-border">
         <CardContent className="p-6">
@@ -56,21 +56,21 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
 }
 
 function RequestForm({ error }: { error: string | null }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Booking);
   return (
     <Form method="post" className="space-y-3">
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-foreground">{t('booking.lookup.codeLabel')}</span>
+        <span className="text-sm font-medium text-foreground">{t('lookup.codeLabel')}</span>
         <Input
           name="code"
-          placeholder={t('booking.lookup.codePlaceholder')}
+          placeholder={t('lookup.codePlaceholder')}
           className="uppercase"
           autoFocus
         />
       </label>
-      {error ? <p className="text-sm text-destructive">{t('booking.lookup.invalidCode')}</p> : null}
+      {error ? <p className="text-sm text-destructive">{t('lookup.invalidCode')}</p> : null}
       <Button type="submit" className="h-11 w-full">
-        {t('booking.lookup.sendOtp')}
+        {t('lookup.sendOtp')}
       </Button>
     </Form>
   );
@@ -86,26 +86,26 @@ function VerifyForm({
   devOtp: string | null;
   locale: 'vi' | 'en';
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Booking);
   return (
     <div className="space-y-3">
       <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-        {t('booking.lookup.otpSent')}
+        {t('lookup.otpSent')}
       </p>
       {devOtp ? (
         <p className="text-xs text-muted-foreground">
-          {t('booking.lookup.otpHintDev', { otp: devOtp })}
+          {t('lookup.otpHintDev', { otp: devOtp })}
         </p>
       ) : null}
       <Form method="get" action={storefrontPaths.booking(locale, code)} className="space-y-3">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">
-            {t('booking.lookup.otpLabel')}
+            {t('lookup.otpLabel')}
           </span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
         </label>
         <Button type="submit" className="h-11 w-full">
-          {t('booking.lookup.verify')}
+          {t('lookup.verify')}
         </Button>
       </Form>
     </div>
@@ -113,14 +113,14 @@ function VerifyForm({
 }
 
 function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Booking);
   return (
     <div className="mt-8">
       <h2 className="mb-2 text-sm font-semibold text-foreground">
-        {t('booking.lookup.recentTitle')}
+        {t('lookup.recentTitle')}
       </h2>
       {recent.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('booking.lookup.recentEmpty')}</p>
+        <p className="text-sm text-muted-foreground">{t('lookup.recentEmpty')}</p>
       ) : (
         <ul className="divide-y divide-border rounded-xl border border-border">
           {recent.map((code) => (
@@ -130,7 +130,7 @@ function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' 
                 className="flex items-center justify-between px-4 py-3 text-sm hover:bg-muted"
               >
                 <span className="font-mono font-semibold">{code}</span>
-                <span className="text-muted-foreground">{t('booking.viewDetails')} →</span>
+                <span className="text-muted-foreground">{t('viewDetails')} →</span>
               </Link>
             </li>
           ))}

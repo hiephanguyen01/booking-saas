@@ -3,7 +3,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { Calendar, ChevronDown, MapPin, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { typeIcon } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
@@ -16,7 +16,7 @@ import { useLocale } from '../../lib/use-locale';
  * support today, so wiring them up would just produce a dead form.
  */
 export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTypeResponse[] }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
   const [mode, setMode] = useState<'hourly' | 'daily'>('hourly');
   const types = listingTypes.slice(0, 6);
@@ -59,7 +59,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
                 : 'border-border text-muted-foreground',
             )}
           >
-            {t('common.home.bookHourly')}
+            {t('home.bookHourly')}
           </button>
           <button
             type="button"
@@ -71,18 +71,18 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
                 : 'border-border text-muted-foreground',
             )}
           >
-            {t('common.home.bookDaily')}
+            {t('home.bookDaily')}
           </button>
         </div>
         {mode === 'hourly' ? (
-          <p className="text-xs font-medium text-emerald-600">{t('common.home.bookHourlyHint')}</p>
+          <p className="text-xs font-medium text-emerald-600">{t('home.bookHourlyHint')}</p>
         ) : null}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end sm:gap-4">
           <label className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3">
             <Search className="size-5 text-muted-foreground" />
             <span className="truncate text-sm text-muted-foreground">
-              {t('common.home.searchPlaceholder')}
+              {t('home.searchPlaceholder')}
             </span>
           </label>
           <button
@@ -91,7 +91,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
           >
             <MapPin className="size-5 text-muted-foreground" />
             <span className="flex-1 truncate text-sm text-muted-foreground">
-              {t('common.home.locationPlaceholder')}
+              {t('home.locationPlaceholder')}
             </span>
             <ChevronDown className="size-4 text-muted-foreground" />
           </button>
@@ -107,7 +107,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
           >
             <Users className="size-5 text-muted-foreground" />
             <span className="flex-1 truncate text-sm text-foreground">
-              {t('common.home.guestsPlaceholder')}
+              {t('home.guestsPlaceholder')}
             </span>
             <ChevronDown className="size-4 text-muted-foreground" />
           </button>
@@ -118,7 +118,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
             type="button"
             className="w-full rounded-sm bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:w-60"
           >
-            {t('common.home.search')}
+            {t('home.search')}
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { enCommon } from './locales/en/common';
 import { enErrors } from './locales/en/errors';
 import { enListing } from './locales/en/listing';
 import { enNavigation } from './locales/en/navigation';
+import type { TranslationShape } from './locales/translation-shape';
 import { viBooking } from './locales/vi/booking';
 import { viCatalog } from './locales/vi/catalog';
 import { viCheckout } from './locales/vi/checkout';
@@ -12,44 +13,44 @@ import { viCommon } from './locales/vi/common';
 import { viErrors } from './locales/vi/errors';
 import { viListing } from './locales/vi/listing';
 import { viNavigation } from './locales/vi/navigation';
-import type { TranslationShape } from './locales/translation-shape';
+import { NsI18n } from './ns-i18n';
 
 export const supportedLocales = ['vi', 'en'] as const;
 export type Locale = (typeof supportedLocales)[number];
 
 export const defaultLocale: Locale = 'vi';
-export const defaultNS = 'common' as const;
+export const defaultNS = NsI18n.Common;
 export const namespaces = [
-  'common',
-  'navigation',
-  'catalog',
-  'listing',
-  'checkout',
-  'booking',
-  'errors',
+  NsI18n.Common,
+  NsI18n.Navigation,
+  NsI18n.Catalog,
+  NsI18n.Listing,
+  NsI18n.Checkout,
+  NsI18n.Booking,
+  NsI18n.Error,
 ] as const;
 export type Namespace = (typeof namespaces)[number];
 
 export const vi = {
-  common: viCommon,
-  navigation: viNavigation,
-  catalog: viCatalog,
-  listing: viListing,
-  checkout: viCheckout,
-  booking: viBooking,
-  errors: viErrors,
+  [NsI18n.Common]: viCommon,
+  [NsI18n.Navigation]: viNavigation,
+  [NsI18n.Catalog]: viCatalog,
+  [NsI18n.Listing]: viListing,
+  [NsI18n.Checkout]: viCheckout,
+  [NsI18n.Booking]: viBooking,
+  [NsI18n.Error]: viErrors,
 } as const;
 
 export type Messages = typeof vi;
 
 export const en = {
-  common: enCommon,
-  navigation: enNavigation,
-  catalog: enCatalog,
-  listing: enListing,
-  checkout: enCheckout,
-  booking: enBooking,
-  errors: enErrors,
+  [NsI18n.Common]: enCommon,
+  [NsI18n.Navigation]: enNavigation,
+  [NsI18n.Catalog]: enCatalog,
+  [NsI18n.Listing]: enListing,
+  [NsI18n.Checkout]: enCheckout,
+  [NsI18n.Booking]: enBooking,
+  [NsI18n.Error]: enErrors,
 } satisfies TranslationShape<Messages>;
 
 export const resources = { vi, en } as const;

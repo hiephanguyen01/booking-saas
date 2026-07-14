@@ -17,7 +17,7 @@ import {
   mockPay,
   mockPaymentsEnabled,
 } from '../lib/booking.server';
-import { type I18n, useTranslation } from '../lib/i18n';
+import { NsI18n, type ScopedI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../lib/time';
 import { formatVnd } from '../lib/ui';
@@ -30,6 +30,9 @@ export function meta() {
 
 const PENDING = new Set<BookingStatus>(['pending_payment', 'pending_approval', 'draft']);
 const SUCCESS = new Set<BookingStatus>(['confirmed', 'completed']);
+type BookingT = ScopedI18n<NsI18n.Booking>['t'];
+type CheckoutT = ScopedI18n<NsI18n.Checkout>['t'];
+type ListingT = ScopedI18n<NsI18n.Listing>['t'];
 const BOOKING_STATUSES = [
   'draft',
   'pending_approval',
@@ -83,7 +86,10 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function BookingDetail({ loaderData, actionData }: Route.ComponentProps) {
   const { code, status, booking, mockEnabled } = loaderData;
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Booking);
+  const { t: tCheckout } = useTranslation(NsI18n.Checkout);
+  const { t: tListing } = useTranslation(NsI18n.Listing);
+  const { t: tNavigation } = useTranslation(NsI18n.Navigation);
   const locale = useLocale();
   const [sp] = useSearchParams();
   const revalidator = useRevalidator();
@@ -108,14 +114,22 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
           <StatusHeader status={bookingStatus} isSuccess={isSuccess} isPending={isPending} t={t} />
 
           <div className="space-y-1 text-sm">
-            <Row label={t('booking.code')} value={code} mono />
-            <Row label={t('booking.status')} value={t(`booking.statusLabels.${bookingStatus}`)} />
+            <Row label={t('code')} value={code} mono />
+            <Row label={t('status')} value={t(`statusLabels.${bookingStatus}`)} />
             {status && status.paidAmount !== '0' ? (
-              <Row label={t('booking.payment.paid')} value={formatVnd(status.paidAmount)} />
+              <Row label={t('payment.paid')} value={formatVnd(status.paidAmount)} />
             ) : null}
           </div>
 
-          {booking ? <BookingDetails booking={booking} locale={locale} t={t} /> : null}
+          {booking ? (
+            <BookingDetails
+              booking={booking}
+              locale={locale}
+              t={t}
+              tCheckout={tCheckout}
+              tListing={tListing}
+            />
+          ) : null}
 
           {actionData && !actionData.ok && actionData.error ? (
             <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -134,7 +148,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
               to={storefrontPaths.bookings(locale)}
               className="text-sm text-muted-foreground hover:underline"
             >
-              {t('navigation.lookup')}
+              {tNavigation('lookup')}
             </Link>
           </div>
         </CardContent>
@@ -163,7 +177,7 @@ function StatusHeader({
   status: BookingStatus;
   isSuccess: boolean;
   isPending: boolean;
-  t: I18n['t'];
+  t: BookingT;
 }) {
   if (isSuccess) {
     return (
@@ -179,25 +193,25 @@ function StatusHeader({
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-xl font-bold">{t('booking.payment.succeeded')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('booking.payment.confirmedNote')}</p>
+        <h1 className="text-xl font-bold">{t('payment.succeeded')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('payment.confirmedNote')}</p>
       </div>
     );
   }
   if (isPending) {
     return (
       <div className="text-center">
-        <h1 className="text-xl font-bold">{t('booking.payment.title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('booking.payment.pending')}</p>
+        <h1 className="text-xl font-bold">{t('payment.title')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('payment.pending')}</p>
       </div>
     );
   }
   const failed = status === 'expired' || status === 'rejected';
   return (
     <div className="text-center">
-      <h1 className="text-xl font-bold">{t(`booking.statusLabels.${status}`)}</h1>
+      <h1 className="text-xl font-bold">{t(`statusLabels.${status}`)}</h1>
       {failed ? (
-        <p className="mt-1 text-sm text-destructive">{t('booking.payment.failed')}</p>
+        <p className="mt-1 text-sm text-destructive">{t('payment.failed')}</p>
       ) : null}
     </div>
   );
@@ -210,22 +224,22 @@ function PendingActions({
 }: {
   status: PaymentStatusResponse | null;
   mockEnabled: boolean;
-  t: I18n['t'];
+  t: BookingT;
 }) {
   // Only offer the mock button while awaiting payment (not while awaiting partner approval).
   const awaitingPayment = status?.bookingStatus === 'pending_payment';
   if (!mockEnabled || !awaitingPayment) {
     return (
-      <p className="text-center text-sm text-muted-foreground">{t('booking.payment.checking')}</p>
+      <p className="text-center text-sm text-muted-foreground">{t('payment.checking')}</p>
     );
   }
   return (
     <Form method="post" className="space-y-2">
       <input type="hidden" name="intent" value="mock-pay" />
       <Button type="submit" className="h-11 w-full">
-        {t('booking.payment.mockPay')}
+        {t('payment.mockPay')}
       </Button>
-      <p className="text-center text-xs text-muted-foreground">{t('booking.payment.mockHint')}</p>
+      <p className="text-center text-xs text-muted-foreground">{t('payment.mockHint')}</p>
     </Form>
   );
 }
@@ -234,10 +248,14 @@ function BookingDetails({
   booking,
   locale,
   t,
+  tCheckout,
+  tListing,
 }: {
   booking: BookingResponse;
   locale: 'vi' | 'en';
-  t: I18n['t'];
+  t: BookingT;
+  tCheckout: CheckoutT;
+  tListing: ListingT;
 }) {
   const tz = DEFAULT_TZ;
   const isDaily = booking.bookingMode === 'daily';
@@ -248,28 +266,28 @@ function BookingDetails({
     <>
       <Separator />
       <div className="space-y-1 text-sm">
-        <Row label={t('booking.schedule')} value={schedule} />
-        <Row label={t('checkout.total')} value={formatVnd(booking.finalAmount)} />
+        <Row label={t('schedule')} value={schedule} />
+        <Row label={tCheckout('total')} value={formatVnd(booking.finalAmount)} />
         {booking.securityDeposit !== '0' ? (
-          <Row label={t('listing.securityDeposit')} value={formatVnd(booking.securityDeposit)} />
+          <Row label={tListing('securityDeposit')} value={formatVnd(booking.securityDeposit)} />
         ) : null}
       </div>
     </>
   );
 }
 
-function CancelSection({ otp, t }: { otp: string | null; t: I18n['t'] }) {
+function CancelSection({ otp, t }: { otp: string | null; t: BookingT }) {
   return (
     <details className="rounded-lg border border-border p-3">
       <summary className="cursor-pointer text-sm font-medium text-foreground">
-        {t('booking.cancel')}
+        {t('cancel')}
       </summary>
       <Form method="post" className="mt-3 space-y-2">
         <input type="hidden" name="intent" value="cancel" />
         {otp ? <input type="hidden" name="otp" value={otp} /> : null}
-        <Textarea name="reason" placeholder={t('booking.cancelReason')} rows={2} />
+        <Textarea name="reason" placeholder={t('cancelReason')} rows={2} />
         <Button type="submit" variant="destructive" size="sm">
-          {t('booking.cancelConfirm')}
+          {t('cancelConfirm')}
         </Button>
       </Form>
     </details>

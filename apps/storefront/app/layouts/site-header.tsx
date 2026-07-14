@@ -9,7 +9,7 @@ import {
 } from '@booking/ui/components/ui/sheet';
 import { LayoutGrid, Menu, Search } from 'lucide-react';
 import { Link, NavLink, useFetcher, useLocation } from 'react-router';
-import { type Locale, useTranslation } from '../lib/i18n';
+import { type Locale, NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths, switchLocalePath } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { typeIcon } from '../lib/ui';
@@ -24,7 +24,7 @@ export function SiteHeader({
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Navigation);
 
   const logo = tenant.logoUrl ? (
     <img src={tenant.logoUrl} alt={tenant.name} className="h-8 w-auto max-w-40 object-contain" />
@@ -49,22 +49,22 @@ export function SiteHeader({
               className="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:flex"
             >
               <Search className="size-4" />
-              {t('navigation.lookup')}
+              {t('lookup')}
             </Link>
             {/* Decorative placeholder — no customer auth exists on the storefront yet. */}
             <span className="rounded-md border border-foreground/30 px-4 py-2.5 text-xs font-semibold text-foreground">
-              {t('navigation.community')}
+              {t('community')}
             </span>
             <Link
               to={storefrontPaths.becomePartner(locale)}
               className="rounded-md border border-primary px-4 py-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
             >
-              {t('navigation.becomePartner')}
+              {t('becomePartner')}
             </Link>
             {/* Decorative placeholders — no customer auth exists on the storefront yet. */}
-            <span className="px-2 text-xs font-semibold text-primary">{t('navigation.login')}</span>
+            <span className="px-2 text-xs font-semibold text-primary">{t('login')}</span>
             <span className="rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground">
-              {t('navigation.register')}
+              {t('register')}
             </span>
             <LocaleSwitcher current={locale} />
           </div>
@@ -95,14 +95,14 @@ export function SiteHeader({
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={t('navigation.openMenu')}
+                aria-label={t('openMenu')}
               >
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
           </div>
           <SheetContent side="left" className="w-80">
-            <SheetTitle className="sr-only">{t('navigation.openMenu')}</SheetTitle>
+            <SheetTitle className="sr-only">{t('openMenu')}</SheetTitle>
             <div className="flex flex-col gap-1 overflow-y-auto p-4">
               <SheetClose asChild>
                 <NavLink
@@ -111,7 +111,7 @@ export function SiteHeader({
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                 >
                   <LayoutGrid className="size-4" />
-                  {t('navigation.all')}
+                  {t('all')}
                 </NavLink>
               </SheetClose>
               {listingTypes.map((type) => {
@@ -134,7 +134,7 @@ export function SiteHeader({
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                 >
                   <Search className="size-4" />
-                  {t('navigation.lookup')}
+                  {t('lookup')}
                 </Link>
               </SheetClose>
               <div className="my-2 border-t border-border" />
@@ -143,18 +143,18 @@ export function SiteHeader({
                   to={storefrontPaths.becomePartner(locale)}
                   className="rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-muted"
                 >
-                  {t('navigation.becomePartner')}
+                  {t('becomePartner')}
                 </Link>
               </SheetClose>
               {/* Decorative placeholders — no customer auth exists on the storefront yet. */}
               <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
-                {t('navigation.community')}
+                {t('community')}
               </span>
               <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
-                {t('navigation.login')}
+                {t('login')}
               </span>
               <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
-                {t('navigation.register')}
+                {t('register')}
               </span>
               <div className="my-2 border-t border-border" />
               <LocaleSwitcher current={locale} />

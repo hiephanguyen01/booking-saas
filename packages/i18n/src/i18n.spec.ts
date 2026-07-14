@@ -4,20 +4,22 @@ import {
   createTranslator,
   en,
   flattenTranslationKeys,
+  NsI18n,
   namespaces,
   vi,
 } from './index';
 
 describe('@booking/i18n', () => {
   it('exposes only the seven feature namespaces', () => {
+    expect(namespaces).toEqual(Object.values(NsI18n));
     expect(namespaces).toEqual([
-      'common',
-      'navigation',
-      'catalog',
-      'listing',
-      'checkout',
-      'booking',
-      'errors',
+      NsI18n.Common,
+      NsI18n.Navigation,
+      NsI18n.Catalog,
+      NsI18n.Listing,
+      NsI18n.Checkout,
+      NsI18n.Booking,
+      NsI18n.Error,
     ]);
     expect(Object.keys(vi)).toEqual(namespaces);
     expect(Object.keys(en)).toEqual(namespaces);

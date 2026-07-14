@@ -12,9 +12,9 @@ import type { Locale, Messages, Namespace } from './resources';
 
 export { en, vi } from './resources';
 export {
+  isLocale,
   defaultLocale,
   defaultNS,
-  isLocale,
   namespaces,
   resources,
   supportedLocales,
@@ -30,8 +30,8 @@ export function createBookingI18n(locale: Locale): i18n {
     supportedLngs: [...supportedLocales],
     resources,
     ns: [...namespaces],
-    defaultNS: 'common',
-    fallbackNS: 'common',
+    defaultNS,
+    fallbackNS: defaultNS,
     initAsync: false,
     returnNull: false,
     interpolation: {

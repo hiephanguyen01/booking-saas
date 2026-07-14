@@ -3,7 +3,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import { Form, useSearchParams } from 'react-router';
-import { type I18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, type ScopedI18n, useTranslation } from '../../lib/i18n';
 import { typeIcon } from '../../lib/ui';
 import type { Route } from '../../routes/+types/catalog';
 import { ListingCard } from './components/listing-card';
@@ -11,13 +11,13 @@ import { ListingCard } from './components/listing-card';
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, listings } = loaderData;
   const [searchParams] = useSearchParams();
-  const i18n = useTranslation();
+  const i18n = useTranslation(NsI18n.Catalog);
   const { t } = i18n;
 
   if (!type) {
     return (
       <div className="mx-auto max-w-7xl px-6 py-24 text-center text-muted-foreground">
-        {t('catalog.typeNotFound', { slug: params.typeSlug })}
+        {t('typeNotFound', { slug: params.typeSlug })}
       </div>
     );
   }
@@ -33,7 +33,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{type.name}</h1>
           <p className="text-sm text-muted-foreground">
-            {t('catalog.resultsCount', { count: listings.length })}
+            {t('resultsCount', { count: listings.length })}
           </p>
         </div>
       </div>
@@ -44,7 +44,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
 
       {listings.length === 0 ? (
         <div className="mt-16 rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
-          {t('catalog.empty')}
+          {t('empty')}
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
@@ -64,7 +64,7 @@ function FilterBar({
 }: {
   fields: AttributeField[];
   searchParams: URLSearchParams;
-  i18n: I18n;
+  i18n: ScopedI18n<NsI18n.Catalog>;
 }) {
   const { t } = i18n;
   return (
@@ -82,17 +82,25 @@ function FilterBar({
       ))}
       <div className="ml-auto flex gap-2">
         <Button type="submit" size="sm">
-          {t('catalog.filter')}
+          {t('filter')}
         </Button>
         <Button asChild variant="ghost" size="sm">
-          <a href="?">{t('catalog.clear')}</a>
+          <a href="?">{t('clear')}</a>
         </Button>
       </div>
     </Form>
   );
 }
 
-function FilterField({ field, value, i18n }: { field: AttributeField; value: string; i18n: I18n }) {
+function FilterField({
+  field,
+  value,
+  i18n,
+}: {
+  field: AttributeField;
+  value: string;
+  i18n: ScopedI18n<NsI18n.Catalog>;
+}) {
   const { t } = i18n;
   const name = `attr.${field.key}`;
   let control: React.ReactNode;
@@ -102,7 +110,7 @@ function FilterField({ field, value, i18n }: { field: AttributeField; value: str
     case 'multiselect':
       control = (
         <NativeSelect name={name} defaultValue={value} size="sm">
-          <NativeSelectOption value="">{t('catalog.allOption')}</NativeSelectOption>
+          <NativeSelectOption value="">{t('allOption')}</NativeSelectOption>
           {(field.options ?? []).map((option) => (
             <NativeSelectOption key={option} value={option}>
               {option}
@@ -114,9 +122,9 @@ function FilterField({ field, value, i18n }: { field: AttributeField; value: str
     case 'boolean':
       control = (
         <NativeSelect name={name} defaultValue={value} size="sm">
-          <NativeSelectOption value="">{t('catalog.allOption')}</NativeSelectOption>
-          <NativeSelectOption value="true">{t('catalog.yes')}</NativeSelectOption>
-          <NativeSelectOption value="false">{t('catalog.no')}</NativeSelectOption>
+          <NativeSelectOption value="">{t('allOption')}</NativeSelectOption>
+          <NativeSelectOption value="true">{t('yes')}</NativeSelectOption>
+          <NativeSelectOption value="false">{t('no')}</NativeSelectOption>
         </NativeSelect>
       );
       break;

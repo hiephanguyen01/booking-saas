@@ -40,7 +40,7 @@ export interface PartnerApplyPayload {
   businessInfo?: Record<string, unknown>;
 }
 
-/** A message code the route maps to `t('common.becomePartner.errors.<code>')`. */
+/** A message code the route maps with `useTranslation(NsI18n.Common)`. */
 export type PartnerErrorCode =
   | 'emailTakenWrongPassword'
   | 'slugTaken'

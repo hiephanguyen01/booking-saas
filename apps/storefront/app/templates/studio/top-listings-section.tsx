@@ -6,7 +6,7 @@ import {
   CarouselNext,
 } from '@booking/ui/components/ui/carousel';
 import { ListingCard } from '../../features/catalog/components/listing-card';
-import { useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 
 /**
  * "Top 10 Studio đặt nhiều nhất" row. NOTE: this is not a real popularity
@@ -15,12 +15,12 @@ import { useTranslation } from '../../lib/i18n';
  * popularity signal.
  */
 export function TopListingsSection({ listings }: { listings: PublicListingResponse[] }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Common);
   if (listings.length === 0) return null;
 
   return (
     <section className="rounded-2xl border border-border bg-card p-6">
-      <h2 className="mb-6 text-lg font-semibold text-foreground">{t('common.home.topListings')}</h2>
+      <h2 className="mb-6 text-lg font-semibold text-foreground">{t('home.topListings')}</h2>
       <Carousel opts={{ align: 'start' }} className="px-1">
         <CarouselContent>
           {listings.map((listing) => (

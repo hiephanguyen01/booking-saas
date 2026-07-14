@@ -4,7 +4,7 @@ import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { Form, Link, useSearchParams } from 'react-router';
-import { type I18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, type ScopedI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../../lib/time';
 import { formatVnd } from '../../lib/ui';
@@ -13,7 +13,8 @@ import type { Route } from '../../routes/+types/checkout';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const { listing, mode, start, end, qty, quote, promoCode, promo } = loaderData;
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Checkout);
+  const { t: tListing } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const [sp] = useSearchParams();
   const fieldErrors = actionData?.fieldErrors ?? null;
@@ -32,7 +33,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
         >
           ← {listing.title}
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('checkout.title')}</h1>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('title')}</h1>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -63,6 +64,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
             dueNow={dueNow}
             locale={locale}
             t={t}
+            tListing={tListing}
           />
           <PromoForm searchParams={sp} promoCode={promoCode} promo={promo} locale={locale} t={t} />
         </div>
@@ -89,14 +91,14 @@ function scheduleLabel(
   end: string,
   qty: string,
   locale: 'vi' | 'en',
-  t: I18n['t'],
+  tListing: ScopedI18n<NsI18n.Listing>['t'],
 ): string {
   const tz = DEFAULT_TZ;
   if (mode === 'daily') {
     return `${dateLabelInTz(start, tz, locale)} → ${dateLabelInTz(end, tz, locale)}`;
   }
   if (mode === 'inventory') {
-    return `${dateLabelInTz(start, tz, locale)} → ${dateLabelInTz(end, tz, locale)} · ${t('listing.quantity')}: ${qty}`;
+    return `${dateLabelInTz(start, tz, locale)} → ${dateLabelInTz(end, tz, locale)} · ${tListing('quantity')}: ${qty}`;
   }
   return `${dateLabelInTz(start, tz, locale)} · ${timeInTz(start, tz)}–${timeInTz(end, tz)}`;
 }
@@ -113,6 +115,7 @@ function SummaryCard({
   dueNow,
   locale,
   t,
+  tListing,
 }: {
   listing: { title: string };
   mode: string;
@@ -124,26 +127,27 @@ function SummaryCard({
   finalAmount: string;
   dueNow: string;
   locale: 'vi' | 'en';
-  t: I18n['t'];
+  t: ScopedI18n<NsI18n.Checkout>['t'];
+  tListing: ScopedI18n<NsI18n.Listing>['t'];
 }) {
   return (
     <Card className="rounded-2xl border-border">
       <CardContent className="space-y-3 p-5 text-sm">
         <div className="font-semibold text-foreground">{listing.title}</div>
         <div className="text-muted-foreground">
-          {scheduleLabel(mode, start, end, qty, locale, t)}
+          {scheduleLabel(mode, start, end, qty, locale, tListing)}
         </div>
         <Separator />
-        <Row label={t('listing.subtotal')} value={formatVnd(quote.subtotal)} />
+        <Row label={tListing('subtotal')} value={formatVnd(quote.subtotal)} />
         {discount !== '0' ? (
-          <Row label={t('checkout.discount')} value={`− ${formatVnd(discount)}`} accent />
+          <Row label={t('discount')} value={`− ${formatVnd(discount)}`} accent />
         ) : null}
         {quote.securityDeposit !== '0' ? (
-          <Row label={t('listing.securityDeposit')} value={formatVnd(quote.securityDeposit)} />
+          <Row label={tListing('securityDeposit')} value={formatVnd(quote.securityDeposit)} />
         ) : null}
         <Separator />
-        <Row label={t('checkout.total')} value={formatVnd(finalAmount)} bold />
-        <Row label={t('checkout.dueNow')} value={formatVnd(dueNow)} bold />
+        <Row label={t('total')} value={formatVnd(finalAmount)} bold />
+        <Row label={t('dueNow')} value={formatVnd(dueNow)} bold />
       </CardContent>
     </Card>
   );
@@ -181,7 +185,7 @@ function PromoForm({
   promoCode: string | null;
   promo: ValidatePromoResponse | null;
   locale: 'vi' | 'en';
-  t: I18n['t'];
+  t: ScopedI18n<NsI18n.Checkout>['t'];
 }) {
   const hidden = ['listing', 'mode', 'start', 'end', 'qty'].map(
     (k) => [k, searchParams.get(k) ?? ''] as const,
@@ -192,11 +196,11 @@ function PromoForm({
   return (
     <Card className="rounded-2xl border-border">
       <CardContent className="space-y-2 p-5">
-        <div className="text-sm font-semibold">{t('checkout.promoSection')}</div>
+        <div className="text-sm font-semibold">{t('promoSection')}</div>
         {applied ? (
           <div className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm">
             <span className="font-medium text-primary">
-              {t('checkout.promoApplied', {
+              {t('promoApplied', {
                 code: promoCode ?? '',
                 amount: formatVnd(promo!.discountAmount) ?? '',
               })}
@@ -205,7 +209,7 @@ function PromoForm({
               to={promoRemoveUrl(hidden, locale)}
               className="text-xs font-semibold text-muted-foreground hover:underline"
             >
-              {t('checkout.promoRemove')}
+              {t('promoRemove')}
             </Link>
           </div>
         ) : (
@@ -216,16 +220,16 @@ function PromoForm({
             <Input
               name="promo"
               defaultValue={promoCode ?? ''}
-              placeholder={t('checkout.promoPlaceholder')}
+              placeholder={t('promoPlaceholder')}
               className="h-10 uppercase"
             />
             <Button type="submit" variant="outline" className="h-10">
-              {t('checkout.promoApply')}
+              {t('promoApply')}
             </Button>
           </Form>
         )}
         {errorCode ? (
-          <p className="text-sm text-destructive">{t(`checkout.promoErrors.${errorCode}`)}</p>
+          <p className="text-sm text-destructive">{t(`promoErrors.${errorCode}`)}</p>
         ) : null}
       </CardContent>
     </Card>
@@ -259,7 +263,7 @@ function GuestForm({
   promoCode: string | null;
   fieldErrors: Partial<Record<string, string[]>> | null;
   serverError: string | null;
-  t: I18n['t'];
+  t: ScopedI18n<NsI18n.Checkout>['t'];
 }) {
   return (
     <Form method="post" className="space-y-4">
@@ -270,7 +274,7 @@ function GuestForm({
       <input type="hidden" name="qty" value={qty} />
       {promoCode ? <input type="hidden" name="promoCode" value={promoCode} /> : null}
 
-      <h2 className="text-lg font-semibold">{t('checkout.guestSection')}</h2>
+      <h2 className="text-lg font-semibold">{t('guestSection')}</h2>
       {serverError ? (
         <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {serverError}
@@ -279,7 +283,7 @@ function GuestForm({
 
       <GuestField
         name="fullName"
-        label={t('checkout.fullName')}
+        label={t('fullName')}
         autoComplete="name"
         errors={fieldErrors?.fullName}
       />
@@ -287,21 +291,21 @@ function GuestForm({
         <GuestField
           name="email"
           type="email"
-          label={t('checkout.email')}
+          label={t('email')}
           autoComplete="email"
           errors={fieldErrors?.email}
         />
         <GuestField
           name="phone"
-          label={t('checkout.phone')}
+          label={t('phone')}
           autoComplete="tel"
           errors={fieldErrors?.phone}
         />
       </div>
-      <GuestField name="customerNote" label={t('checkout.note')} errors={undefined} />
+      <GuestField name="customerNote" label={t('note')} errors={undefined} />
 
       <Button type="submit" className="h-11 w-full text-base">
-        {t('checkout.payNow')}
+        {t('payNow')}
       </Button>
     </Form>
   );

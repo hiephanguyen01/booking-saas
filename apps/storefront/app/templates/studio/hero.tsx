@@ -1,5 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
-import { useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
 import { HeroSearchCard } from './hero-search-card';
 
@@ -15,9 +15,9 @@ export function StudioHero({
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
 }) {
-  const { t } = useTranslation();
-  const title = tenant.hero.title ?? t('common.home.heroTitleFallback', { name: tenant.name });
-  const subtitle = tenant.hero.subtitle ?? t('common.home.heroSubtitleFallback');
+  const { t } = useTranslation(NsI18n.Common);
+  const title = tenant.hero.title ?? t('home.heroTitleFallback', { name: tenant.name });
+  const subtitle = tenant.hero.subtitle ?? t('home.heroSubtitleFallback');
   const image = tenant.hero.imageUrl ?? `https://picsum.photos/seed/${tenant.slug}-hero/1600/700`;
 
   return (

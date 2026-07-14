@@ -1,13 +1,13 @@
 import { ArrowUp, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router';
-import { useTranslation } from '../lib/i18n';
+import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { useLocale } from '../lib/use-locale';
 
 /** Storefront footer — brand, contact + social links from theme_config (§16.2). */
 export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
   const socials = [
     { href: tenant.social.facebook, label: 'Facebook' },
@@ -19,7 +19,7 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
   const socialsRow =
     socials.length > 0 ? (
       <div className="flex flex-col items-center gap-3 sm:items-start">
-        <span className="text-sm text-muted-foreground">{t('common.footer.followUs')}</span>
+        <span className="text-sm text-muted-foreground">{t('footer.followUs')}</span>
         <div className="flex items-center gap-3">
           {socials.map(({ href, label }) => (
             <a
@@ -41,25 +41,25 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
   // non-interactive text rather than dead `href="#"` anchors.
   const aboutList = (
     <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-      <span className="font-semibold text-foreground">{t('common.footer.aboutUs')}</span>
+      <span className="font-semibold text-foreground">{t('footer.aboutUs')}</span>
       <span className="text-sm text-muted-foreground">
-        {t('common.footer.aboutLinks.intro', { tenant: tenant.name })}
+        {t('footer.aboutLinks.intro', { tenant: tenant.name })}
       </span>
-      <span className="text-sm text-muted-foreground">{t('common.footer.aboutLinks.privacy')}</span>
-      <span className="text-sm text-muted-foreground">{t('common.footer.aboutLinks.terms')}</span>
+      <span className="text-sm text-muted-foreground">{t('footer.aboutLinks.privacy')}</span>
+      <span className="text-sm text-muted-foreground">{t('footer.aboutLinks.terms')}</span>
     </div>
   );
 
   const supportList = (
     <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-      <span className="font-semibold text-foreground">{t('common.footer.support')}</span>
-      <span className="text-sm text-muted-foreground">{t('common.footer.supportLinks.help')}</span>
-      <span className="text-sm text-muted-foreground">{t('common.footer.supportLinks.rules')}</span>
+      <span className="font-semibold text-foreground">{t('footer.support')}</span>
+      <span className="text-sm text-muted-foreground">{t('footer.supportLinks.help')}</span>
+      <span className="text-sm text-muted-foreground">{t('footer.supportLinks.rules')}</span>
       {tenant.contact.phone ? (
         <span className="text-sm text-muted-foreground">{tenant.contact.phone}</span>
       ) : (
         <span className="text-sm text-muted-foreground">
-          {t('common.footer.supportLinks.contact')}
+          {t('footer.supportLinks.contact')}
         </span>
       )}
     </div>
@@ -87,7 +87,7 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
             )}
           </Link>
           <span className="font-semibold text-foreground">{tenant.name}</span>
-          <span className="text-sm text-muted-foreground">{t('common.currencyNote')}</span>
+          <span className="text-sm text-muted-foreground">{t('currencyNote')}</span>
           {tenant.contact.address ? (
             <span className="text-sm text-muted-foreground">{tenant.contact.address}</span>
           ) : null}
@@ -95,18 +95,18 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
             to={storefrontPaths.becomePartner(locale)}
             className="text-sm font-medium text-foreground transition-colors hover:text-primary"
           >
-            {t('common.becomePartner.title')}
+            {t('becomePartner.title')}
           </Link>
         </div>
       </div>
       <div className="mx-auto hidden max-w-7xl items-center justify-between border-t border-border px-6 py-4 sm:flex">
         <span className="text-sm text-muted-foreground">
-          {t('common.footer.copyright', { year, tenant: tenant.name })}
+          {t('footer.copyright', { year, tenant: tenant.name })}
         </span>
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          aria-label={t('common.footer.scrollToTop')}
+          aria-label={t('footer.scrollToTop')}
           className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90"
         >
           <ArrowUp className="size-4" />

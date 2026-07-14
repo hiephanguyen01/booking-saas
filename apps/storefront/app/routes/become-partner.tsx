@@ -3,7 +3,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { CheckCircle2 } from 'lucide-react';
 import { data, Link, useRouteLoaderData } from 'react-router';
-import { useTranslation } from '../lib/i18n';
+import { NsI18n, type ScopedI18n, useTranslation } from '../lib/i18n';
 import { applyAsPartner, registerOrLogin, type PartnerApplyPayload } from '../lib/partner.server';
 import { resolveTenant } from '../lib/tenant.server';
 import type { loader as rootLoader } from '../root';
@@ -81,19 +81,21 @@ export async function action({ request }: Route.ActionArgs) {
 
 const isCompany = (v: PartnerRegistrationInput) => v.partnerType === 'company';
 
-function buildFields(t: ReturnType<typeof useTranslation>['t']): FieldConfig<PartnerRegistrationInput>[] {
+function buildFields(
+  t: ScopedI18n<NsI18n.Common>['t'],
+): FieldConfig<PartnerRegistrationInput>[] {
   return [
     {
       name: 'fullName',
       type: 'text',
-      label: t('common.becomePartner.fullName'),
+      label: t('becomePartner.fullName'),
       placeholder: 'Nguyễn Văn A',
       autoComplete: 'name',
     },
     {
       name: 'phone',
       type: 'text',
-      label: t('common.becomePartner.phone'),
+      label: t('becomePartner.phone'),
       placeholder: '0912 345 678',
       autoComplete: 'tel',
     },
@@ -101,66 +103,66 @@ function buildFields(t: ReturnType<typeof useTranslation>['t']): FieldConfig<Par
       name: 'partnerType',
       type: 'radio',
       variant: 'segmented',
-      label: t('common.becomePartner.partnerType'),
+      label: t('becomePartner.partnerType'),
       colSpan: 2,
       options: [
-        { label: t('common.becomePartner.typeIndividual'), value: 'individual' },
-        { label: t('common.becomePartner.typeCompany'), value: 'company' },
+        { label: t('becomePartner.typeIndividual'), value: 'individual' },
+        { label: t('becomePartner.typeCompany'), value: 'company' },
       ],
     },
-    { name: 'name', type: 'text', label: t('common.becomePartner.partnerName') },
+    { name: 'name', type: 'text', label: t('becomePartner.partnerName') },
     {
       name: 'slug',
       type: 'text',
-      label: t('common.becomePartner.slug'),
-      description: t('common.becomePartner.slugHint'),
+      label: t('becomePartner.slug'),
+      description: t('becomePartner.slugHint'),
     },
-    { name: 'email', type: 'email', label: t('common.becomePartner.email'), autoComplete: 'email' },
+    { name: 'email', type: 'email', label: t('becomePartner.email'), autoComplete: 'email' },
     {
       name: 'password',
       type: 'password',
-      label: t('common.becomePartner.password'),
+      label: t('becomePartner.password'),
       autoComplete: 'new-password',
     },
     {
       name: 'description',
       type: 'textarea',
-      label: t('common.becomePartner.description'),
+      label: t('becomePartner.description'),
       colSpan: 2,
     },
     // Company-only
     {
       name: 'legalName',
       type: 'text',
-      label: t('common.becomePartner.legalName'),
+      label: t('becomePartner.legalName'),
       colSpan: 2,
       hidden: (v) => !isCompany(v),
     },
     {
       name: 'taxId',
       type: 'text',
-      label: t('common.becomePartner.taxId'),
+      label: t('becomePartner.taxId'),
       hidden: (v) => !isCompany(v),
     },
     {
       name: 'businessRegistrationNo',
       type: 'text',
-      label: t('common.becomePartner.businessRegistrationNo'),
+      label: t('becomePartner.businessRegistrationNo'),
       hidden: (v) => !isCompany(v),
     },
     // Individual-only
     {
       name: 'licenseNo',
       type: 'text',
-      label: t('common.becomePartner.licenseNo'),
+      label: t('becomePartner.licenseNo'),
       colSpan: 2,
       hidden: (v) => isCompany(v),
     },
     {
       name: 'licenseDocs',
       type: 'textarea',
-      label: t('common.becomePartner.licenseDoc'),
-      description: t('common.becomePartner.licenseDocHint'),
+      label: t('becomePartner.licenseDoc'),
+      description: t('becomePartner.licenseDocHint'),
       colSpan: 2,
     },
   ];
@@ -184,12 +186,12 @@ const DEFAULTS: PartnerRegistrationInput = {
 
 export default function BecomePartner({ loaderData, actionData }: Route.ComponentProps) {
   const { tenantName, tenantLogoUrl, dashboardUrl } = loaderData;
-  const { t } = useTranslation();
+  const { t } = useTranslation(NsI18n.Common);
   const rootData = useRouteLoaderData<typeof rootLoader>('root');
   const logoUrl = tenantLogoUrl ?? rootData?.tenant?.logoUrl ?? null;
 
   const serverError = actionData?.error
-    ? t(`common.becomePartner.errors.${actionData.error}`)
+    ? t(`becomePartner.errors.${actionData.error}`)
     : null;
 
   const Nav = (
@@ -244,14 +246,14 @@ export default function BecomePartner({ loaderData, actionData }: Route.Componen
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="p-8 lg:p-10">
             <h1 className="mb-8 text-2xl font-bold uppercase tracking-widest text-gray-900">
-              {t('common.becomePartner.title')}
+              {t('becomePartner.title')}
             </h1>
             <GenericForm
               schema={partnerRegistrationSchema}
               fields={buildFields(t)}
               defaultValues={DEFAULTS}
               columns={2}
-              submitLabel={t('common.becomePartner.submit')}
+              submitLabel={t('becomePartner.submit')}
               submitFullWidth
               serverError={serverError}
               fieldErrors={actionData?.fieldErrors ?? null}

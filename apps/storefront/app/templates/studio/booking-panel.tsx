@@ -13,7 +13,7 @@ import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { type I18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, type ScopedI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import {
   DEFAULT_TZ,
@@ -47,7 +47,7 @@ const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
  * availability + the quote on every change (SSR-safe, no client API calls).
  */
 export function BookingPanel({ listing, mode, availability, quote }: PanelProps) {
-  const i18n = useTranslation();
+  const i18n = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const [sp, setSp] = useSearchParams();
   const tz = availability?.timezone ?? DEFAULT_TZ;
@@ -110,10 +110,10 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
         <Button asChild={canBook} className="h-11 w-full text-base" disabled={!canBook}>
           {canBook ? (
             <Link to={`${storefrontPaths.checkout(locale)}?${checkoutParams.toString()}`}>
-              {i18n.t('listing.bookNow')}
+              {i18n.t('bookNow')}
             </Link>
           ) : (
-            <span>{i18n.t('listing.selectToContinue')}</span>
+            <span>{i18n.t('selectToContinue')}</span>
           )}
         </Button>
       </CardContent>
@@ -128,7 +128,7 @@ function QuoteHeader({
 }: {
   quote: QuoteResponse | null;
   listing: PublicListingDetailResponse;
-  i18n: I18n;
+  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
   const from = formatVnd(fromPrice(listing.modeConfig));
   return (
@@ -137,16 +137,16 @@ function QuoteHeader({
         <>
           <span className="text-2xl font-bold text-foreground">{formatVnd(quote.subtotal)}</span>
           <span className="text-sm text-muted-foreground">
-            {i18n.t('listing.subtotalEstimate')}
+            {i18n.t('subtotalEstimate')}
           </span>
         </>
       ) : from ? (
         <>
           <span className="text-2xl font-bold text-foreground">{from}</span>
-          <span className="text-sm text-muted-foreground">{i18n.t('listing.fromPrice')}</span>
+          <span className="text-sm text-muted-foreground">{i18n.t('fromPrice')}</span>
         </>
       ) : (
-        <span className="text-lg font-semibold">{i18n.t('listing.pickScheduleForPrice')}</span>
+        <span className="text-lg font-semibold">{i18n.t('pickScheduleForPrice')}</span>
       )}
     </div>
   );
@@ -161,12 +161,12 @@ function ModeToggle({
   modes: AvailabilityMode[];
   active: AvailabilityMode;
   onSelect: (m: AvailabilityMode) => void;
-  i18n: I18n;
+  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
   const label: Record<AvailabilityMode, string> = {
-    hourly: i18n.t('listing.modeHourly'),
-    daily: i18n.t('listing.modeDaily'),
-    inventory: i18n.t('listing.modeInventory'),
+    hourly: i18n.t('modeHourly'),
+    daily: i18n.t('modeDaily'),
+    inventory: i18n.t('modeInventory'),
   };
   return (
     <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
@@ -202,7 +202,7 @@ function HourlyPicker({
   sp: URLSearchParams;
   setSp: (next: URLSearchParams) => void;
   tz: string;
-  i18n: I18n;
+  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
   const today = todayInTz(tz);
   const day = sp.get('day') || today;
@@ -233,7 +233,7 @@ function HourlyPicker({
   return (
     <div className="space-y-3">
       <label className="flex flex-col gap-1.5">
-        <FieldLabel>{i18n.t('listing.pickDay')}</FieldLabel>
+        <FieldLabel>{i18n.t('pickDay')}</FieldLabel>
         <input
           type="date"
           value={day}
@@ -243,10 +243,10 @@ function HourlyPicker({
         />
       </label>
 
-      <FieldLabel>{i18n.t('listing.pickSlot')}</FieldLabel>
+      <FieldLabel>{i18n.t('pickSlot')}</FieldLabel>
       {available.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-          {i18n.t('listing.noSlots')}
+          {i18n.t('noSlots')}
         </p>
       ) : (
         <div className="grid grid-cols-3 gap-2">
@@ -290,7 +290,7 @@ function DailyPicker({
   sp: URLSearchParams;
   setSp: (next: URLSearchParams) => void;
   tz: string;
-  i18n: I18n;
+  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
   const days: DayAvailability[] = availability?.mode === 'daily' ? availability.days : [];
   const dailyCfg = (listing.modeConfig.daily ?? {}) as {
@@ -348,7 +348,7 @@ function DailyPicker({
 
   return (
     <div className="space-y-2">
-      <FieldLabel>{i18n.t('listing.pickDates')}</FieldLabel>
+      <FieldLabel>{i18n.t('pickDates')}</FieldLabel>
       <Calendar
         mode="range"
         selected={range}
@@ -359,11 +359,11 @@ function DailyPicker({
       />
       {nights > 0 ? (
         <p className="text-sm text-muted-foreground">
-          {i18n.t('listing.nights', { count: nights })}
-          {nights < minNights ? ` · ${i18n.t('listing.minNights', { count: minNights })}` : ''}
+          {i18n.t('nights', { count: nights })}
+          {nights < minNights ? ` · ${i18n.t('minNights', { count: minNights })}` : ''}
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground">{i18n.t('listing.selectRange')}</p>
+        <p className="text-sm text-muted-foreground">{i18n.t('selectRange')}</p>
       )}
     </div>
   );
@@ -384,7 +384,7 @@ function InventoryPicker({
   sp: URLSearchParams;
   setSp: (next: URLSearchParams) => void;
   tz: string;
-  i18n: I18n;
+  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
   const today = todayInTz(tz);
   const remaining = availability?.mode === 'inventory' ? availability.inventory.remaining : 0;
@@ -415,7 +415,7 @@ function InventoryPicker({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1.5">
-          <FieldLabel>{i18n.t('listing.checkin')}</FieldLabel>
+          <FieldLabel>{i18n.t('checkin')}</FieldLabel>
           <input
             type="date"
             value={fromDate}
@@ -425,7 +425,7 @@ function InventoryPicker({
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <FieldLabel>{i18n.t('listing.checkout')}</FieldLabel>
+          <FieldLabel>{i18n.t('checkout')}</FieldLabel>
           <input
             type="date"
             value={toDate}
@@ -437,7 +437,7 @@ function InventoryPicker({
       </div>
 
       <div className="flex items-center justify-between">
-        <FieldLabel>{i18n.t('listing.quantity')}</FieldLabel>
+        <FieldLabel>{i18n.t('quantity')}</FieldLabel>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -463,7 +463,7 @@ function InventoryPicker({
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        {i18n.t('listing.remaining', { count: remaining })}
+        {i18n.t('remaining', { count: remaining })}
       </p>
     </div>
   );
@@ -471,30 +471,36 @@ function InventoryPicker({
 
 // ── Shared ───────────────────────────────────────────────────────────────────
 
-function Breakdown({ quote, i18n }: { quote: QuoteResponse; i18n: I18n }) {
+function Breakdown({
+  quote,
+  i18n,
+}: {
+  quote: QuoteResponse;
+  i18n: ScopedI18n<NsI18n.Listing>;
+}) {
   return (
     <dl className="space-y-1.5 text-sm">
       {quote.lineItems.map((line, idx) => (
         <div key={idx} className="flex justify-between text-muted-foreground">
           <dt>
             {line.label}
-            {line.block ? ` (${i18n.t('listing.package')})` : ''}
+            {line.block ? ` (${i18n.t('package')})` : ''}
           </dt>
           <dd>{formatVnd(line.amount)}</dd>
         </div>
       ))}
       <Separator className="my-2" />
       <div className="flex justify-between font-semibold text-foreground">
-        <dt>{i18n.t('listing.subtotal')}</dt>
+        <dt>{i18n.t('subtotal')}</dt>
         <dd>{formatVnd(quote.subtotal)}</dd>
       </div>
       <div className="flex justify-between text-muted-foreground">
-        <dt>{i18n.t('listing.deposit')}</dt>
+        <dt>{i18n.t('deposit')}</dt>
         <dd>{formatVnd(quote.depositAmount)}</dd>
       </div>
       {quote.securityDeposit !== '0' ? (
         <div className="flex justify-between text-muted-foreground">
-          <dt>{i18n.t('listing.securityDeposit')}</dt>
+          <dt>{i18n.t('securityDeposit')}</dt>
           <dd>{formatVnd(quote.securityDeposit)}</dd>
         </div>
       ) : null}
