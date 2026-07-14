@@ -1,5 +1,6 @@
-import type { SessionInfoResponse } from '@booking/contracts';
-import { apiGet, type ApiAuth, type RefreshedTokens } from './api.server';
+import { sessionInfoResponseSchema, type SessionInfoResponse } from '@booking/contracts';
+import type { ApiResult, BackendRefreshResult } from '@booking/api-client';
+import { apiGet, backendRefresh } from './api.server';
 import {
   getDashboardSessionService,
   type DashboardSessionData,
@@ -22,7 +23,10 @@ export type DashboardAuthenticationResult =
 
 interface DashboardAuthMiddlewareDependencies {
   sessionService: DashboardSessionService;
-  authenticate(data: DashboardSessionData): Promise<DashboardAuthenticationResult>;
+  authenticate(
+    data: DashboardSessionData,
+    signal?: AbortSignal,
+  ): Promise<DashboardAuthenticationResult>;
 }
 
 interface DashboardMiddlewareArgs {
@@ -72,7 +76,7 @@ export function createDashboardAuthMiddleware({
       );
     }
 
-    const result = await authenticate(stored.data);
+    const result = await authenticate(stored.data, request.signal);
     if (result.kind === 'unavailable') {
       throw new Response('Dịch vụ xác thực đang tạm thời không khả dụng.', {
         status: 503,
@@ -103,37 +107,53 @@ export function createDashboardAuthMiddleware({
   };
 }
 
-export async function authenticateDashboardSession(
-  data: DashboardSessionData,
-): Promise<DashboardAuthenticationResult> {
-  let rotated: RefreshedTokens | null = null;
-  const auth: ApiAuth = {
-    token: data.accessToken,
-    refreshToken: data.refreshToken,
-    onRefreshed(tokens) {
-      rotated = tokens;
-    },
-  };
-  const result = await apiGet<SessionInfoResponse>('/auth/session', auth);
+interface DashboardAuthApi {
+  session(accessToken: string, signal?: AbortSignal): Promise<ApiResult<SessionInfoResponse>>;
+  refresh(refreshToken: string, signal?: AbortSignal): Promise<BackendRefreshResult>;
+}
 
-  if (!result.ok || !result.data) {
-    return result.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
-  }
+function failedAuthentication(status: number): DashboardAuthenticationResult {
+  return status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
+}
 
-  const tokens = rotated as RefreshedTokens | null;
-  return {
-    kind: 'authenticated',
-    info: result.data,
-    sessionData: tokens
-      ? {
-          ...data,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-        }
-      : data,
-    rotated: Boolean(tokens),
+export function createDashboardSessionAuthenticator({ session, refresh }: DashboardAuthApi) {
+  return async (
+    data: DashboardSessionData,
+    signal?: AbortSignal,
+  ): Promise<DashboardAuthenticationResult> => {
+    const initial = await session(data.accessToken, signal);
+    if (initial.ok && initial.data) {
+      return { kind: 'authenticated', info: initial.data, sessionData: data };
+    }
+    if (initial.status !== 401) return failedAuthentication(initial.status);
+
+    const refreshed = await refresh(data.refreshToken, signal);
+    if (!refreshed.ok || !refreshed.tokens) return failedAuthentication(refreshed.status);
+
+    const retried = await session(refreshed.tokens.accessToken, signal);
+    if (!retried.ok || !retried.data) return failedAuthentication(retried.status);
+
+    return {
+      kind: 'authenticated',
+      info: retried.data,
+      sessionData: {
+        ...data,
+        accessToken: refreshed.tokens.accessToken,
+        refreshToken: refreshed.tokens.refreshToken,
+      },
+      rotated: true,
+    };
   };
 }
+
+export const authenticateDashboardSession = createDashboardSessionAuthenticator({
+  session: (accessToken, signal) =>
+    apiGet<SessionInfoResponse>('/auth/session', accessToken, {
+      signal,
+      schema: sessionInfoResponseSchema,
+    }),
+  refresh: (refreshToken, signal) => backendRefresh(refreshToken, { signal }),
+});
 
 export async function dashboardAuthMiddleware(
   args: DashboardMiddlewareArgs,

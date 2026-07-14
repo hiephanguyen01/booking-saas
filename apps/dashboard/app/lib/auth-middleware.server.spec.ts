@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SessionInfoResponse } from '@booking/contracts';
 import type { DashboardSessionData, DashboardSessionService } from './session.server';
 import {
+  createDashboardSessionAuthenticator,
   createDashboardAuthMiddleware,
   type DashboardAuthenticationResult,
 } from './auth-middleware.server';
@@ -44,8 +45,9 @@ describe('Dashboard auth middleware', () => {
       sessionData,
     }));
     const middleware = createDashboardAuthMiddleware({ sessionService: service, authenticate });
+    const activeRequest = request();
 
-    const response = await middleware({ request: request() }, async () => {
+    const response = await middleware({ request: activeRequest }, async () => {
       expect(getCurrentDashboardAuth()).toEqual({ user: sessionData, info });
       expect(getCurrentDashboardAuth()).toEqual({ user: sessionData, info });
       return new Response('ok');
@@ -53,6 +55,7 @@ describe('Dashboard auth middleware', () => {
 
     expect(await response.text()).toBe('ok');
     expect(authenticate).toHaveBeenCalledTimes(1);
+    expect(authenticate).toHaveBeenCalledWith(sessionData, activeRequest.signal);
   });
 
   it('persists rotated tokens exactly once after downstream work completes', async () => {
@@ -150,5 +153,51 @@ describe('Dashboard auth middleware', () => {
     expect(await response.text()).toBe('logged-in');
     expect(read).not.toHaveBeenCalled();
     expect(authenticate).not.toHaveBeenCalled();
+  });
+});
+
+describe('Dashboard session authenticator', () => {
+  it('refreshes once and retries session once after an access 401', async () => {
+    const session = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401, data: null, failure: 'http' })
+      .mockResolvedValueOnce({ ok: true, status: 200, data: info });
+    const refresh = vi.fn(async () => ({
+      ok: true as const,
+      status: 200,
+      tokens: { accessToken: 'access-2', refreshToken: 'refresh-2' },
+    }));
+    const authenticate = createDashboardSessionAuthenticator({ session, refresh });
+
+    await expect(authenticate(sessionData)).resolves.toEqual({
+      kind: 'authenticated',
+      info,
+      sessionData: {
+        ...sessionData,
+        accessToken: 'access-2',
+        refreshToken: 'refresh-2',
+      },
+      rotated: true,
+    });
+    expect(session).toHaveBeenNthCalledWith(1, 'access-1', undefined);
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(refresh).toHaveBeenCalledWith('refresh-1', undefined);
+    expect(session).toHaveBeenNthCalledWith(2, 'access-2', undefined);
+  });
+
+  it('does not refresh non-401 failures and distinguishes outages from invalid sessions', async () => {
+    const refresh = vi.fn();
+    const unavailable = createDashboardSessionAuthenticator({
+      session: async () => ({ ok: false, status: 503, data: null, failure: 'network' }),
+      refresh,
+    });
+    await expect(unavailable(sessionData)).resolves.toEqual({ kind: 'unavailable' });
+    expect(refresh).not.toHaveBeenCalled();
+
+    const invalid = createDashboardSessionAuthenticator({
+      session: async () => ({ ok: false, status: 401, data: null, failure: 'http' }),
+      refresh: async () => ({ ok: false, status: 401, failure: 'http' }),
+    });
+    await expect(invalid(sessionData)).resolves.toEqual({ kind: 'invalid' });
   });
 });

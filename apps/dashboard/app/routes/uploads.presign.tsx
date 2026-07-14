@@ -5,7 +5,11 @@
  * server-side, and returns the presigned grant. The browser then PUTs the bytes
  * straight to storage. Action-only: no default export, so it renders no UI.
  */
-import { presignUploadInputSchema, type PresignUploadResponse } from '@booking/contracts';
+import {
+  presignUploadInputSchema,
+  presignUploadResponseSchema,
+  type PresignUploadResponse,
+} from '@booking/contracts';
 import type { Route } from './+types/uploads.presign';
 import { requireUser } from '~/lib/auth.server';
 import { apiPost, type ApiAuth } from '~/lib/api.server';
@@ -31,7 +35,10 @@ export async function action({ request }: Route.ActionArgs): Promise<Response> {
     token: user.accessToken,
   };
 
-  const res = await apiPost<PresignUploadResponse>('/uploads/presign', parsed.data, auth);
+  const res = await apiPost<PresignUploadResponse>('/uploads/presign', parsed.data, auth, {
+    signal: request.signal,
+    schema: presignUploadResponseSchema,
+  });
 
   if (!res.ok || !res.data) {
     return json({ message: res.error ?? 'Không thể tạo liên kết tải lên.' }, res.status || 400, {});
