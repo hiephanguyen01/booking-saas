@@ -1,13 +1,38 @@
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import {
   createBookingI18n,
   createTranslator,
   en,
   flattenTranslationKeys,
+  I18nProvider,
   NsI18n,
   namespaces,
+  type ScopedTranslationKey,
+  useTranslation,
   vi,
 } from './index';
+
+type CommonAndNavigationKey = ScopedTranslationKey<
+  readonly [NsI18n.Common, NsI18n.Navigation]
+>;
+
+const commonAndNavigationKeys = [
+  'save',
+  'lookup',
+  'common:save',
+  'navigation:lookup',
+] satisfies CommonAndNavigationKey[];
+
+function MultipleNamespaceConsumer() {
+  const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation]);
+  return createElement(
+    'span',
+    null,
+    `${t('save')}|${t('lookup')}|${t('navigation:lookup')}`,
+  );
+}
 
 describe('@booking/i18n', () => {
   it('exposes only the seven feature namespaces', () => {
@@ -23,6 +48,27 @@ describe('@booking/i18n', () => {
     ]);
     expect(Object.keys(vi)).toEqual(namespaces);
     expect(Object.keys(en)).toEqual(namespaces);
+  });
+
+  it('supports multiple typed namespaces', () => {
+    expect(commonAndNavigationKeys).toEqual([
+      'save',
+      'lookup',
+      'common:save',
+      'navigation:lookup',
+    ]);
+
+    const html = renderToStaticMarkup(
+      createElement(
+        I18nProvider,
+        {
+          value: createTranslator('en'),
+          children: createElement(MultipleNamespaceConsumer),
+        },
+      ),
+    );
+
+    expect(html).toBe('<span>Save|Find a booking|Find a booking</span>');
   });
 
   it('keeps Vietnamese and English translation keys identical', () => {

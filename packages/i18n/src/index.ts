@@ -21,5 +21,12 @@ export {
   I18nProvider,
   useTranslation,
 } from './i18n-provider';
-export type { I18n, NamespaceTranslationKey, ScopedI18n, TranslationKey } from './i18n-provider';
+export type {
+  I18n,
+  NamespaceInput,
+  NamespaceTranslationKey,
+  ScopedI18n,
+  ScopedTranslationKey,
+  TranslationKey,
+} from './i18n-provider';
 export { NsI18n } from './ns-i18n';

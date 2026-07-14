@@ -8,11 +8,12 @@ import { typeIcon } from '../../lib/ui';
 import type { Route } from '../../routes/+types/catalog';
 import { ListingCard } from './components/listing-card';
 
+type CatalogT = ScopedI18n<NsI18n.Catalog>['t'];
+
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, listings } = loaderData;
   const [searchParams] = useSearchParams();
-  const i18n = useTranslation(NsI18n.Catalog);
-  const { t } = i18n;
+  const { t } = useTranslation(NsI18n.Catalog);
 
   if (!type) {
     return (
@@ -39,7 +40,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
       </div>
 
       {type.attributeSchema.length > 0 ? (
-        <FilterBar fields={type.attributeSchema} searchParams={searchParams} i18n={i18n} />
+        <FilterBar fields={type.attributeSchema} searchParams={searchParams} t={t} />
       ) : null}
 
       {listings.length === 0 ? (
@@ -60,13 +61,12 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
 function FilterBar({
   fields,
   searchParams,
-  i18n,
+  t,
 }: {
   fields: AttributeField[];
   searchParams: URLSearchParams;
-  i18n: ScopedI18n<NsI18n.Catalog>;
+  t: CatalogT;
 }) {
-  const { t } = i18n;
   return (
     <Form
       method="get"
@@ -77,7 +77,7 @@ function FilterBar({
           key={field.key}
           field={field}
           value={searchParams.get(`attr.${field.key}`) ?? ''}
-          i18n={i18n}
+          t={t}
         />
       ))}
       <div className="ml-auto flex gap-2">
@@ -92,16 +92,7 @@ function FilterBar({
   );
 }
 
-function FilterField({
-  field,
-  value,
-  i18n,
-}: {
-  field: AttributeField;
-  value: string;
-  i18n: ScopedI18n<NsI18n.Catalog>;
-}) {
-  const { t } = i18n;
+function FilterField({ field, value, t }: { field: AttributeField; value: string; t: CatalogT }) {
   const name = `attr.${field.key}`;
   let control: React.ReactNode;
 
