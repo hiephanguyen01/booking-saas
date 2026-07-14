@@ -130,7 +130,7 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
         </div>
       ) : null}
 
-      <Form method="post" className="max-w-xl space-y-3">
+      <Form method="post" className="space-y-3">
         {DAYS.map((d) => {
           const state = days[d.dow];
           return (

@@ -183,4 +183,19 @@ export const affiliateDetailResponseSchema = z.object({
 });
 export type AffiliateDetailResponse = z.infer<typeof affiliateDetailResponseSchema>;
 
+/** Minimal echo after approving/suspending an affiliate (§15.1). */
+export const affiliateStatusResponseSchema = z.object({
+  id: z.string(),
+  status: affiliateStatusSchema,
+});
+export type AffiliateStatusResponse = z.infer<typeof affiliateStatusResponseSchema>;
+
+/** Minimal echo after setting/clearing a custom commission rate (§15.2). */
+export const affiliateRateResponseSchema = z.object({
+  id: z.string(),
+  /** Whole-percent digit string, or null when the override is cleared. */
+  customRate: z.string().nullable(),
+});
+export type AffiliateRateResponse = z.infer<typeof affiliateRateResponseSchema>;
+
 export { vndDigits as affiliateVndDigits, signedVndDigits as affiliateSignedVndDigits };

@@ -5,6 +5,7 @@ import {
   type IPayoutRepository,
   type PayoutRecord,
 } from '../../domain/ports/payout-repository.port';
+import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 
 /**
  * Mark a payout failed (§7.7). No ledger journal was written for a pending payout,
@@ -14,6 +15,7 @@ import {
 export class FailPayoutUseCase {
   constructor(
     @Inject(PAYOUT_REPOSITORY) private readonly payouts: IPayoutRepository,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -25,8 +27,13 @@ export class FailPayoutUseCase {
         throw new BadRequestException({ statusCode: 400, code: 'PAYOUT_SETTLED', message: `Payout already ${payout.status}` });
       }
       const updated = await this.payouts.markFailed(tx, id, reason);
-      await tx.auditLog.create({
-        data: { tenantId, actorUserId: actorId, action: 'payout.failed', entityType: 'payout', entityId: id, data: { reason } },
+      await this.audit.write(tx, {
+        tenantId,
+        actorUserId: actorId,
+        action: 'payout.failed',
+        entityType: 'payout',
+        entityId: id,
+        data: { reason },
       });
       return updated;
     });

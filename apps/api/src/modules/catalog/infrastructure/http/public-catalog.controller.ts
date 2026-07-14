@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, Get, Headers, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
-  listPublicListingsQuerySchema,
+  publicListingsFilterSchema,
   type PublicListingResponse,
   type PublicListingTypeResponse,
 } from '@booking/contracts';
@@ -47,24 +47,8 @@ export class PublicCatalogController {
     @Headers('host') host?: string,
   ): Promise<PublicListingResponse[]> {
     const resolvedHost = resolveHost(forwardedHost, host);
-    const known = listPublicListingsQuerySchema.safeParse(query);
-    const base = known.success ? known.data : {};
-
-    // Dynamic attr.<key>=<value> equality filters (zod can't express arbitrary keys).
-    const attrFilters: Record<string, string> = {};
-    for (const [key, value] of Object.entries(query)) {
-      // Skip blank values — a GET filter form submits every field, empty or not.
-      if (key.startsWith('attr.') && key.length > 5 && typeof value === 'string' && value !== '') {
-        attrFilters[key.slice(5)] = value;
-      }
-    }
-
-    const listings = await this.listListings.execute(resolvedHost, {
-      typeSlug: base.type,
-      category: base.category,
-      q: base.q,
-      attrFilters,
-    });
+    const filters = publicListingsFilterSchema.parse(query);
+    const listings = await this.listListings.execute(resolvedHost, filters);
     return listings.map(toPublicListingResponse);
   }
 }

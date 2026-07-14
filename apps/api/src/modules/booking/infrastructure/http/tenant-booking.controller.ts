@@ -1,4 +1,9 @@
-import { uuidSchema, type BookingResponse, type CancelBookingResponse } from '@booking/contracts';
+import {
+  uuidSchema,
+  type BookingResponse,
+  type CancelBookingResponse,
+  type PartnerBookingStatsResponse,
+} from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UuidParam } from '../../../../shared/openapi/decorators';
@@ -8,7 +13,11 @@ import type { SessionPrincipal } from '../../../identity-access/domain/ports/ses
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
+import {
+  toBookingResponse,
+  toCancelResponse,
+  toPartnerBookingStatsResponse,
+} from '../../application/booking.mapper';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { ListTenantBookingsUseCase } from '../../application/use-cases/list-tenant-bookings.use-case';
@@ -20,19 +29,6 @@ import {
   ReasonDto,
   TenantBookingsQueryDto,
 } from './dto/booking.dto';
-
-/** Partner booking health for the tenant dashboard — counts plus derived rates. */
-interface PartnerBookingStatsResponse {
-  partnerId: string;
-  total: number;
-  cancelled: number;
-  noShow: number;
-  completed: number;
-  confirmed: number;
-  /** 0–1 fractions; 0 when the partner has no bookings yet. */
-  cancellationRate: number;
-  noShowRate: number;
-}
 
 /**
  * Tenant-side booking overview (Task 1.13). Bookings are advanced by the
@@ -69,11 +65,7 @@ export class TenantBookingController {
   @ApiOkResponse({ type: [PartnerBookingStatsResponseDto] })
   async partnerBookingStats(): Promise<PartnerBookingStatsResponse[]> {
     const stats = await this.partnerStats.execute(this.tenantContext.tenantIdOrThrow());
-    return stats.map((s) => ({
-      ...s,
-      cancellationRate: s.total > 0 ? s.cancelled / s.total : 0,
-      noShowRate: s.total > 0 ? s.noShow / s.total : 0,
-    }));
+    return stats.map(toPartnerBookingStatsResponse);
   }
 
   /** Single booking for the tenant detail view (Task 1.13). */

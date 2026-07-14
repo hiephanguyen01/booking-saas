@@ -11,7 +11,9 @@ import {
   uuidSchema,
   type DomainResponse,
   type DomainVerificationResult,
+  type PartnerPromotionsToggle,
   type SubscriptionStatusResponse,
+  type TenantThemeResponse,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UuidParam } from '../../../../shared/openapi/decorators';
@@ -25,23 +27,22 @@ import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
-import { toDomainResponse, toSubscriptionStatusResponse } from '../../application/tenancy.mapper';
+import { SetPartnerPromotionsUseCase } from '../../application/use-cases/set-partner-promotions.use-case';
+import {
+  toDomainResponse,
+  toPartnerPromotionsToggle,
+  toSubscriptionStatusResponse,
+  toTenantThemeResponse,
+} from '../../application/tenancy.mapper';
 import {
   AddDomainDto,
   DomainResponseDto,
   DomainVerificationResultDto,
+  PartnerPromotionsToggleDto,
   SubscriptionStatusResponseDto,
   TenantThemeResponseDto,
   UpdateThemeDto,
 } from './dto/tenancy.dto';
-
-/** The theme payload the dashboard reads back to hydrate the settings form. */
-interface TenantThemeResponse {
-  name: string;
-  vertical: string;
-  defaultLocale: string;
-  themeConfig: Record<string, unknown>;
-}
 
 /**
  * Tenant self-service settings (Task 1.13): storefront theme (§16.1) and custom
@@ -59,6 +60,7 @@ export class TenantSettingsController {
     private readonly verifyDomain: VerifyDomainUseCase,
     private readonly deleteDomain: DeleteDomainUseCase,
     private readonly getSubscriptionStatus: GetSubscriptionStatusUseCase,
+    private readonly setPartnerPromotions: SetPartnerPromotionsUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -80,6 +82,32 @@ export class TenantSettingsController {
     return toSubscriptionStatusResponse(view);
   }
 
+  // ── Feature flags ─────────────────────────────────────────────────────────────
+
+  @RequirePermissions('tenant.settings.manage')
+  @Get('flags')
+  @ApiOperation({ summary: 'Read tenant feature flags (e.g. partner promotions)' })
+  @ApiOkResponse({ type: PartnerPromotionsToggleDto })
+  async flags(): Promise<PartnerPromotionsToggle> {
+    return toPartnerPromotionsToggle(
+      await this.getTenant.execute(this.tenantContext.tenantIdOrThrow()),
+    );
+  }
+
+  @RequirePermissions('tenant.settings.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Patch('flags')
+  @ApiOperation({ summary: 'Toggle whether partners may create their own promotions (§12.2)' })
+  @ApiOkResponse({ type: PartnerPromotionsToggleDto })
+  async updateFlags(@Body() input: PartnerPromotionsToggleDto): Promise<PartnerPromotionsToggle> {
+    return toPartnerPromotionsToggle(
+      await this.setPartnerPromotions.execute(
+        this.tenantContext.tenantIdOrThrow(),
+        input.partnerPromotionsEnabled,
+      ),
+    );
+  }
+
   // ── Theme ───────────────────────────────────────────────────────────────────
 
   @RequirePermissions('tenant.theme.manage')
@@ -87,13 +115,9 @@ export class TenantSettingsController {
   @ApiOperation({ summary: 'Read the storefront theme config' })
   @ApiOkResponse({ type: TenantThemeResponseDto })
   async theme(): Promise<TenantThemeResponse> {
-    const tenant = await this.getTenant.execute(this.tenantContext.tenantIdOrThrow());
-    return {
-      name: tenant.name,
-      vertical: tenant.vertical,
-      defaultLocale: tenant.defaultLocale,
-      themeConfig: tenant.themeConfig,
-    };
+    return toTenantThemeResponse(
+      await this.getTenant.execute(this.tenantContext.tenantIdOrThrow()),
+    );
   }
 
   @RequirePermissions('tenant.theme.manage')
@@ -102,15 +126,11 @@ export class TenantSettingsController {
   @ApiOperation({ summary: 'Update the storefront theme config' })
   @ApiOkResponse({ type: TenantThemeResponseDto })
   async updateTheme(@Body() input: UpdateThemeDto): Promise<TenantThemeResponse> {
-    const tenant = await this.updateTenant.execute(this.tenantContext.tenantIdOrThrow(), {
-      themeConfig: input.themeConfig,
-    });
-    return {
-      name: tenant.name,
-      vertical: tenant.vertical,
-      defaultLocale: tenant.defaultLocale,
-      themeConfig: tenant.themeConfig,
-    };
+    return toTenantThemeResponse(
+      await this.updateTenant.execute(this.tenantContext.tenantIdOrThrow(), {
+        themeConfig: input.themeConfig,
+      }),
+    );
   }
 
   // ── Domains ─────────────────────────────────────────────────────────────────

@@ -8,12 +8,14 @@ import {
   domainResponseSchema,
   domainVerificationResultSchema,
   paginationQuerySchema,
+  partnerPromotionsToggleSchema,
   planResponseSchema,
   platformHealthResponseSchema,
   publicTenantResponseSchema,
   subscriptionResponseSchema,
   subscriptionStatusResponseSchema,
   tenantResponseSchema,
+  tenantThemeResponseSchema,
   updateTenantInputSchema,
 } from '@booking/contracts';
 
@@ -28,6 +30,7 @@ export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
 /** Free-form storefront theme config body (§16.1). Stored as `tenants.theme_config`. */
 const updateThemeInputSchema = z.object({ themeConfig: z.record(z.unknown()) });
 export class UpdateThemeDto extends createZodDto(updateThemeInputSchema) {}
+export class PartnerPromotionsToggleDto extends createZodDto(partnerPromotionsToggleSchema) {}
 
 // ── Responses ────────────────────────────────────────────────────────────────
 export class PlanResponseDto extends createZodDto(planResponseSchema) {}
@@ -49,11 +52,4 @@ export class CurrentSubscriptionDto extends createZodDto(
   z.object({ subscription: subscriptionResponseSchema, plan: planResponseSchema.nullable() }),
 ) {}
 
-/** The theme payload the dashboard reads back to hydrate the settings form. */
-const tenantThemeResponseSchema = z.object({
-  name: z.string(),
-  vertical: z.string(),
-  defaultLocale: z.string(),
-  themeConfig: z.record(z.unknown()),
-});
 export class TenantThemeResponseDto extends createZodDto(tenantThemeResponseSchema) {}

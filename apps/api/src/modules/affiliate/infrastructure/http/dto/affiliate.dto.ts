@@ -3,8 +3,10 @@ import {
   affiliateCommissionResponseSchema,
   affiliateDetailResponseSchema,
   affiliateListItemSchema,
+  affiliateRateResponseSchema,
   affiliateResponseSchema,
   affiliateStatsResponseSchema,
+  affiliateStatusResponseSchema,
   applyAffiliateInputSchema,
   createReferralLinkInputSchema,
   referralLinkResponseSchema,
@@ -28,4 +30,6 @@ export class AffiliateDetailResponseDto extends createZodDto(affiliateDetailResp
 export class ReferralLinkResponseDto extends createZodDto(referralLinkResponseSchema) {}
 export class AffiliateStatsResponseDto extends createZodDto(affiliateStatsResponseSchema) {}
 export class AffiliateCommissionResponseDto extends createZodDto(affiliateCommissionResponseSchema) {}
+export class AffiliateStatusResponseDto extends createZodDto(affiliateStatusResponseSchema) {}
+export class AffiliateRateResponseDto extends createZodDto(affiliateRateResponseSchema) {}
 export class TrackReferralResponseDto extends createZodDto(trackReferralResponseSchema) {}

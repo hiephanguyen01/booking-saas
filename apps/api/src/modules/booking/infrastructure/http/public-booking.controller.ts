@@ -10,7 +10,6 @@ import {
   Get,
   Headers,
   HttpCode,
-  Inject,
   NotFoundException,
   Param,
   Post,
@@ -27,13 +26,9 @@ import {
 import type { Request } from 'express';
 import { randomUUID } from 'node:crypto';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
-import {
-  SESSION_STORE,
-  type ISessionStore,
-} from '../../../identity-access/domain/ports/session-store.port';
-import { ACCESS_COOKIE } from '../../../identity-access/infrastructure/http/cookies';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { OptionalPrincipal } from '../../../identity-access/infrastructure/http/decorators/optional-principal.decorator';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
@@ -63,7 +58,6 @@ export class PublicBookingController {
     private readonly cancelBooking: CancelBookingUseCase,
     private readonly lookup: BookingLookupUseCase,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
-    @Inject(SESSION_STORE) private readonly sessions: ISessionStore,
   ) {}
 
   @Public()
@@ -73,10 +67,11 @@ export class PublicBookingController {
   async create(
     @Body() input: CreateBookingDto,
     @Req() req: Request,
+    @OptionalPrincipal() principal?: SessionPrincipal,
     @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<BookingResponse> {
     const booking = await this.createBooking.execute(hostOf(req), input, {
-      customerUserId: await this.optionalUserId(req),
+      customerUserId: principal?.userId,
       idempotencyKey: idempotencyKey ?? randomUUID(),
     });
     return toBookingResponse(booking);
@@ -114,12 +109,13 @@ export class PublicBookingController {
   async view(
     @Param('code') code: string,
     @Req() req: Request,
+    @OptionalPrincipal() principal?: SessionPrincipal,
     @Query('otp') otp?: string,
   ): Promise<BookingResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const booking = await this.lookup.resolveForAccess(tenant.id, code, {
       otp,
-      sessionUserId: await this.optionalUserId(req),
+      sessionUserId: principal?.userId,
     });
     return toBookingResponse(booking);
   }
@@ -134,9 +130,10 @@ export class PublicBookingController {
     @Param('code') code: string,
     @Body() body: CancelBookingDto,
     @Req() req: Request,
+    @OptionalPrincipal() principal?: SessionPrincipal,
   ): Promise<CancelBookingResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
-    const sessionUserId = await this.optionalUserId(req);
+    const sessionUserId = principal?.userId;
     const booking = await this.lookup.resolveForAccess(tenant.id, code, {
       otp: body.otp,
       sessionUserId,
@@ -162,13 +159,6 @@ export class PublicBookingController {
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const booking = await this.lookup.byCode(tenant.id, code);
     return toBookingResponse(await this.confirmBooking.execute(tenant.id, booking.id));
-  }
-
-  private async optionalUserId(req: Request): Promise<string | undefined> {
-    const token = (req.cookies as Record<string, string> | undefined)?.[ACCESS_COOKIE];
-    if (!token) return undefined;
-    const principal = await this.sessions.findByAccessToken(token);
-    return principal && principal.status === 'active' ? principal.userId : undefined;
   }
 }
 

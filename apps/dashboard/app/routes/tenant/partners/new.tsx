@@ -60,7 +60,7 @@ const fields: FieldConfig<CreateHousePartnerInput>[] = [
 
 export default function NewHousePartner({ actionData }: Route.ComponentProps) {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
           <Link to="/tenant/partners">

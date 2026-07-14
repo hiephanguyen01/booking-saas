@@ -35,6 +35,7 @@ export const dashboardPaths = {
     calendar: (partnerId: string) => partnerPath(partnerId, '/calendar'),
     bookings: (partnerId: string) => partnerPath(partnerId, '/bookings'),
     listings: (partnerId: string) => partnerPath(partnerId, '/listings'),
+    promotions: (partnerId: string) => partnerPath(partnerId, '/promotions'),
     revenue: (partnerId: string) => partnerPath(partnerId, '/revenue'),
     profile: (partnerId: string) => partnerPath(partnerId, '/profile'),
   },

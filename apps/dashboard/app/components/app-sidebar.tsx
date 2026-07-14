@@ -50,27 +50,34 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
           </SidebarGroup>
         ) : null}
         {areas.map((area) => {
-          return (
-            <SidebarGroup key={area.scope}>
-              <SidebarGroupLabel>{area.title}</SidebarGroupLabel>
-              <SidebarMenu>
-                {area.items.map((item) => {
-                  const isActive =
-                    location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-                  return (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                        <Link to={item.to}>
-                          {item.icon ? <item.icon /> : null}
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroup>
-          );
+          return area.sections.map((section, index) => {
+            const items = section.items;
+            if (items.length === 0) return null;
+            // The leading unlabelled cluster (overview) borrows the area title so
+            // multi-area users can still tell the areas apart.
+            const label = section.label ?? (index === 0 ? area.title : undefined);
+            return (
+              <SidebarGroup key={`${area.basePath}-${index}`}>
+                {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
+                <SidebarMenu>
+                  {items.map((item) => {
+                    const isActive =
+                      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+                    return (
+                      <SidebarMenuItem key={item.to}>
+                        <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                          <Link to={item.to}>
+                            {item.icon ? <item.icon /> : null}
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroup>
+            );
+          });
         })}
       </SidebarContent>
 

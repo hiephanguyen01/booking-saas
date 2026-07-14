@@ -8,6 +8,7 @@ import {
   cancelBookingResponseSchema,
   createBookingInputSchema,
   markReturnedInputSchema,
+  partnerBookingStatsResponseSchema,
   partnerCalendarBookingResponseSchema,
   reasonInputSchema,
   returnBookingResponseSchema,
@@ -54,18 +55,6 @@ export class PartnerCalendarBookingResponseDto extends createZodDto(
   partnerCalendarBookingResponseSchema,
 ) {}
 
-/** Partner booking health for the tenant dashboard — counts plus derived rates. */
-const partnerBookingStatsResponseSchema = z.object({
-  partnerId: z.string(),
-  total: z.number(),
-  cancelled: z.number(),
-  noShow: z.number(),
-  completed: z.number(),
-  confirmed: z.number(),
-  /** 0–1 fractions; 0 when the partner has no bookings yet. */
-  cancellationRate: z.number(),
-  noShowRate: z.number(),
-});
 export class PartnerBookingStatsResponseDto extends createZodDto(
   partnerBookingStatsResponseSchema,
 ) {}

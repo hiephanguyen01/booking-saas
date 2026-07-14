@@ -9,14 +9,15 @@ import { apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
 import { PageHeader } from '../components/page';
 import { PromotionForm, readPromotionForm } from '../components/promotion-form';
+import { loadScopeOptions } from './scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tạo khuyến mãi · Tenant · Bookify' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await requireTenant(request, 'tenant.promotions.manage');
-  return null;
+  const { auth } = await requireTenant(request, 'tenant.promotions.manage');
+  return { scopeOptions: await loadScopeOptions(auth) };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -32,7 +33,7 @@ export async function action({ request }: Route.ActionArgs) {
   return redirect('/tenant/promotions');
 }
 
-export default function NewPromotion({ actionData }: Route.ComponentProps) {
+export default function NewPromotion({ loaderData, actionData }: Route.ComponentProps) {
   const error = actionData && 'error' in actionData ? actionData.error : null;
   return (
     <div className="space-y-6">
@@ -46,7 +47,7 @@ export default function NewPromotion({ actionData }: Route.ComponentProps) {
       <Card>
         <CardHeader><CardTitle>Thông tin khuyến mãi</CardTitle></CardHeader>
         <CardContent>
-          <PromotionForm mode="create" submitLabel="Tạo khuyến mãi" />
+          <PromotionForm mode="create" submitLabel="Tạo khuyến mãi" scopeOptions={loaderData.scopeOptions} />
         </CardContent>
       </Card>
     </div>

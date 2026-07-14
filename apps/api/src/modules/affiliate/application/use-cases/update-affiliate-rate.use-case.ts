@@ -23,7 +23,17 @@ export class UpdateAffiliateRateUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async execute(tenantId: string, affiliateId: string, customRate: bigint | null): Promise<AffiliateRecord> {
+  /**
+   * `customRateInput` is the raw contract value — a whole-percent digit string or
+   * null to clear the override. The bigint conversion lives here (not the
+   * controller) so the HTTP layer stays free of money parsing.
+   */
+  async execute(
+    tenantId: string,
+    affiliateId: string,
+    customRateInput: string | null,
+  ): Promise<AffiliateRecord> {
+    const customRate = customRateInput === null ? null : BigInt(customRateInput);
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.affiliates.findById(tx, affiliateId);
       if (!existing) {

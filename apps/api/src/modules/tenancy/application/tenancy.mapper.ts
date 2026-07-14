@@ -1,10 +1,12 @@
 import type {
   DomainResponse,
+  PartnerPromotionsToggle,
   PlanResponse,
   PublicTenantResponse,
   SubscriptionResponse,
   SubscriptionStatusResponse,
   TenantResponse,
+  TenantThemeResponse,
   Vertical,
 } from '@booking/contracts';
 import type { TenantRecord } from '../domain/ports/tenant-repository.port';
@@ -23,6 +25,21 @@ export function toTenantResponse(t: TenantRecord): TenantResponse {
     defaultTimezone: t.defaultTimezone,
     defaultLocale: t.defaultLocale as 'vi' | 'en',
     createdAt: t.createdAt.toISOString(),
+  };
+}
+
+/** Derive the partner-promotions flag from the tenant's free-form settings (§12.2). */
+export function toPartnerPromotionsToggle(t: TenantRecord): PartnerPromotionsToggle {
+  return { partnerPromotionsEnabled: t.settings?.partnerPromotionsEnabled === true };
+}
+
+/** The storefront theme payload the dashboard hydrates its settings form from (§16.1). */
+export function toTenantThemeResponse(t: TenantRecord): TenantThemeResponse {
+  return {
+    name: t.name,
+    vertical: t.vertical,
+    defaultLocale: t.defaultLocale,
+    themeConfig: t.themeConfig,
   };
 }
 

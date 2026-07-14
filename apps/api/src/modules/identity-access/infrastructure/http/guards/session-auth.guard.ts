@@ -21,9 +21,19 @@ export class SessionAuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
-
     const req = context.switchToHttp().getRequest();
+    // Public routes may still want to know *who* is calling (e.g. attributing a
+    // storefront booking to a logged-in customer). Best-effort: attach the
+    // principal when a valid cookie is present, but never block the request.
+    if (isPublic) {
+      const token: string | undefined = req.cookies?.[ACCESS_COOKIE];
+      if (token) {
+        const principal = await this.sessions.findByAccessToken(token);
+        if (principal && principal.status === 'active') req.principal = principal;
+      }
+      return true;
+    }
+
     const token: string | undefined = req.cookies?.[ACCESS_COOKIE];
     if (!token) {
       throw new UnauthorizedException({

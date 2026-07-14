@@ -7,6 +7,7 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
+import { toGatewayConfigResponse } from '../../application/payments.mapper';
 import { GatewayConfigResponseDto, UpsertGatewayConfigDto } from './dto/payments.dto';
 
 /** Tenant-side gateway credential management (§11.1). Scope via x-tenant-id. */
@@ -24,7 +25,8 @@ export class TenantGatewayController {
   @ApiOperation({ summary: 'Create or update the tenant payment gateway credentials' })
   @ApiOkResponse({ type: GatewayConfigResponseDto })
   async put(@Body() input: UpsertGatewayConfigDto): Promise<GatewayConfigResponse> {
-    const config = await this.upsert.execute(this.tenantContext.tenantIdOrThrow(), input);
-    return { gateway: config.gateway, environment: config.environment, isActive: true };
+    return toGatewayConfigResponse(
+      await this.upsert.execute(this.tenantContext.tenantIdOrThrow(), input),
+    );
   }
 }
