@@ -9,11 +9,12 @@ import type {
   PaymentStatusResponse,
   ValidatePromoResponse,
 } from '@booking/contracts';
+import { requestPublicJson } from './public-api.server';
 
 /**
  * Server-only booking BFF (§20): the storefront never calls the API from the
- * browser. GET reads mirror `catalog.server.ts` (swallow → null); mutations
- * return a structured `ApiResult` so routes can surface field errors and stable
+ * browser. GET reads preserve HTTP failure semantics; mutations return a
+ * structured `ApiResult` so routes can surface field errors and stable
  * problem messages instead of throwing.
  */
 export interface ApiResult<T> {
@@ -36,16 +37,6 @@ function hostOf(request: Request): string {
 
 function baseHeaders(request: Request): Record<string, string> {
   return { 'x-forwarded-host': hostOf(request), accept: 'application/json' };
-}
-
-async function getJson<T>(request: Request, path: string): Promise<T | null> {
-  try {
-    const res = await fetch(`${backendUrl()}${path}`, { headers: baseHeaders(request) });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
 }
 
 async function postJson<T>(
@@ -91,9 +82,9 @@ export function fetchAvailability(
   request: Request,
   slug: string,
   query: { mode: AvailabilityMode; from: string; to: string },
-): Promise<AvailabilityResponse | null> {
+): Promise<AvailabilityResponse> {
   const qs = new URLSearchParams(query).toString();
-  return getJson<AvailabilityResponse>(
+  return requestPublicJson<AvailabilityResponse>(
     request,
     `/public/listings/${encodeURIComponent(slug)}/availability?${qs}`,
   );
@@ -137,7 +128,11 @@ export function fetchBookingByCode(
   otp?: string,
 ): Promise<BookingResponse | null> {
   const qs = otp ? `?otp=${encodeURIComponent(otp)}` : '';
-  return getJson<BookingResponse>(request, `/public/bookings/${encodeURIComponent(code)}${qs}`);
+  return requestPublicJson<BookingResponse>(
+    request,
+    `/public/bookings/${encodeURIComponent(code)}${qs}`,
+    { allowNotFound: true },
+  );
 }
 
 export function requestBookingOtp(
@@ -169,9 +164,10 @@ export function fetchPaymentStatus(
   request: Request,
   code: string,
 ): Promise<PaymentStatusResponse | null> {
-  return getJson<PaymentStatusResponse>(
+  return requestPublicJson<PaymentStatusResponse>(
     request,
     `/public/bookings/${encodeURIComponent(code)}/payment-status`,
+    { allowNotFound: true },
   );
 }
 
