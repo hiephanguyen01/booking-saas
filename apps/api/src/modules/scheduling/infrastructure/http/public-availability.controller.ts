@@ -1,19 +1,23 @@
 import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
-import { availabilityQuerySchema, type AvailabilityQuery, type AvailabilityResponse } from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { type AvailabilityResponse } from '@booking/shared';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { GetAvailabilityUseCase } from '../../application/use-cases/get-availability.use-case';
+import { AvailabilityQueryDto, AvailabilityResponseDto } from './dto/scheduling.dto';
 
 /** Storefront availability for a listing (§9). Tenant resolved from Host (BFF). */
+@ApiTags('public-availability')
 @Controller('public/listings')
 export class PublicAvailabilityController {
   constructor(private readonly getAvailability: GetAvailabilityUseCase) {}
 
   @Public()
   @Get(':slug/availability')
+  @ApiOperation({ summary: 'Get storefront availability for a listing over a date range' })
+  @ApiOkResponse({ type: AvailabilityResponseDto })
   async availability(
     @Param('slug') slug: string,
-    @Query(new ZodValidationPipe(availabilityQuerySchema)) query: AvailabilityQuery,
+    @Query() query: AvailabilityQueryDto,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
   ): Promise<AvailabilityResponse> {

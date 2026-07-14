@@ -97,53 +97,66 @@ function spanDays(from: string, to: string): number {
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
-export interface AvailabilityRuleResponse {
-  id: string;
-  listingId: string;
-  dayOfWeek: number;
-  openTime: string;
-  closeTime: string;
-}
+export const availabilityRuleResponseSchema = z.object({
+  id: z.string(),
+  listingId: z.string(),
+  dayOfWeek: z.number(),
+  openTime: z.string(),
+  closeTime: z.string(),
+});
+export type AvailabilityRuleResponse = z.infer<typeof availabilityRuleResponseSchema>;
 
-export interface AvailabilityExceptionResponse {
-  id: string;
-  resourceId: string;
-  date: string;
-  type: AvailabilityExceptionType;
-  openTime: string | null;
-  closeTime: string | null;
-  reason: string | null;
-}
+export const availabilityExceptionResponseSchema = z.object({
+  id: z.string(),
+  resourceId: z.string(),
+  date: z.string(),
+  type: availabilityExceptionTypeSchema,
+  openTime: z.string().nullable(),
+  closeTime: z.string().nullable(),
+  reason: z.string().nullable(),
+});
+export type AvailabilityExceptionResponse = z.infer<typeof availabilityExceptionResponseSchema>;
 
 /** One bookable start for hourly mode; `price` is the VND đồng cost of a min-duration booking. */
-export interface HourlySlot {
-  startUtc: string;
-  endUtc: string;
-  available: boolean;
-  price: string;
-}
+export const hourlySlotSchema = z.object({
+  startUtc: z.string(),
+  endUtc: z.string(),
+  available: z.boolean(),
+  price: z.string(),
+});
+export type HourlySlot = z.infer<typeof hourlySlotSchema>;
 
-export type DayStatus = 'available' | 'booked' | 'blocked' | 'closed';
+export const dayStatusSchema = z.enum(['available', 'booked', 'blocked', 'closed']);
+export type DayStatus = z.infer<typeof dayStatusSchema>;
 
-export interface DayAvailability {
-  date: string;
-  status: DayStatus;
+export const dayAvailabilitySchema = z.object({
+  date: z.string(),
+  status: dayStatusSchema,
   /** Night price (VND đồng); null when closed/blocked. */
-  price: string | null;
-}
+  price: z.string().nullable(),
+});
+export type DayAvailability = z.infer<typeof dayAvailabilitySchema>;
 
-export interface HourlyDay {
-  date: string;
-  slots: HourlySlot[];
-}
+export const hourlyDaySchema = z.object({
+  date: z.string(),
+  slots: z.array(hourlySlotSchema),
+});
+export type HourlyDay = z.infer<typeof hourlyDaySchema>;
 
 /** Remaining stock for an inventory listing over the queried window (§9.4). */
-export interface InventoryAvailability {
-  stock: number;
-  remaining: number;
-}
+export const inventoryAvailabilitySchema = z.object({
+  stock: z.number(),
+  remaining: z.number(),
+});
+export type InventoryAvailability = z.infer<typeof inventoryAvailabilitySchema>;
 
-export type AvailabilityResponse =
-  | { mode: 'hourly'; timezone: string; days: HourlyDay[] }
-  | { mode: 'daily'; timezone: string; days: DayAvailability[] }
-  | { mode: 'inventory'; timezone: string; inventory: InventoryAvailability };
+export const availabilityResponseSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('hourly'), timezone: z.string(), days: z.array(hourlyDaySchema) }),
+  z.object({ mode: z.literal('daily'), timezone: z.string(), days: z.array(dayAvailabilitySchema) }),
+  z.object({
+    mode: z.literal('inventory'),
+    timezone: z.string(),
+    inventory: inventoryAvailabilitySchema,
+  }),
+]);
+export type AvailabilityResponse = z.infer<typeof availabilityResponseSchema>;

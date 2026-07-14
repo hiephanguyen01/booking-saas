@@ -9,9 +9,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  pricingRuleInputSchema,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
   uuidSchema,
-  type PricingRuleInput,
   type PricingRuleResponse,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
@@ -22,7 +27,10 @@ import { CreatePricingRuleUseCase } from '../../application/use-cases/create-pri
 import { ListPricingRulesUseCase } from '../../application/use-cases/list-pricing-rules.use-case';
 import { DeletePricingRuleUseCase } from '../../application/use-cases/delete-pricing-rule.use-case';
 import { toPricingRuleResponse } from '../../application/listing.mapper';
+import { UuidParam } from '../../../../shared/openapi/decorators';
+import { PricingRuleDto, PricingRuleResponseDto } from './dto/listing.dto';
 
+@ApiTags('tenant-pricing-rules')
 @Controller('tenant/listings/:listingId/pricing-rules')
 export class TenantPricingRuleController {
   constructor(
@@ -34,6 +42,9 @@ export class TenantPricingRuleController {
 
   @RequirePermissions('tenant.listings.read')
   @Get()
+  @ApiOperation({ summary: 'List a listing\'s pricing rules' })
+  @UuidParam('listingId')
+  @ApiOkResponse({ type: [PricingRuleResponseDto] })
   async list(
     @Param('listingId', new ZodValidationPipe(uuidSchema)) listingId: string,
   ): Promise<PricingRuleResponse[]> {
@@ -44,9 +55,12 @@ export class TenantPricingRuleController {
   @RequirePermissions('tenant.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post()
+  @ApiOperation({ summary: 'Create a pricing rule for a listing' })
+  @UuidParam('listingId')
+  @ApiCreatedResponse({ type: PricingRuleResponseDto })
   async create(
     @Param('listingId', new ZodValidationPipe(uuidSchema)) listingId: string,
-    @Body(new ZodValidationPipe(pricingRuleInputSchema)) input: PricingRuleInput,
+    @Body() input: PricingRuleDto,
   ): Promise<PricingRuleResponse> {
     return toPricingRuleResponse(
       await this.createRule.execute(this.tenantContext.tenantIdOrThrow(), listingId, input),
@@ -57,6 +71,9 @@ export class TenantPricingRuleController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Delete(':ruleId')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a pricing rule' })
+  @UuidParam('ruleId')
+  @ApiNoContentResponse()
   async remove(
     @Param('ruleId', new ZodValidationPipe(uuidSchema)) ruleId: string,
   ): Promise<void> {

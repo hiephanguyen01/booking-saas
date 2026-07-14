@@ -102,23 +102,24 @@ export const setPlatformRateInputSchema = z.object({
 });
 export type SetPlatformRateInput = z.infer<typeof setPlatformRateInputSchema>;
 
-export interface CommissionRuleResponse {
-  id: string;
-  appliesTo: CommissionAppliesToDto;
-  listingTypeId: string | null;
-  categoryId: string | null;
-  partnerId: string | null;
-  tenantRateType: RateTypeDto;
+export const commissionRuleResponseSchema = z.object({
+  id: z.string(),
+  appliesTo: commissionAppliesToSchema,
+  listingTypeId: z.string().nullable(),
+  categoryId: z.string().nullable(),
+  partnerId: z.string().nullable(),
+  tenantRateType: rateTypeSchema,
   /** VND đồng digit string; a whole percent for `percent` rules. */
-  tenantRate: string;
+  tenantRate: z.string(),
   /** Platform fee, whole percent. */
-  platformRate: number;
-  affiliateRateType: RateTypeDto;
-  affiliateRate: string;
-  effectiveFrom: string | null;
-  effectiveTo: string | null;
-  createdAt: string;
-}
+  platformRate: z.number(),
+  affiliateRateType: rateTypeSchema,
+  affiliateRate: z.string(),
+  effectiveFrom: z.string().nullable(),
+  effectiveTo: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type CommissionRuleResponse = z.infer<typeof commissionRuleResponseSchema>;
 
 // ── Ledger + balances ───────────────────────────────────────────────────────
 
@@ -141,53 +142,58 @@ export type LedgerEntryTypeDto = z.infer<typeof ledgerEntryTypeSchema>;
 export const ledgerOwnerTypeSchema = z.enum(['platform', 'tenant', 'partner', 'affiliate']);
 export type LedgerOwnerTypeDto = z.infer<typeof ledgerOwnerTypeSchema>;
 
-export interface LedgerEntryResponse {
-  id: string;
-  journalId: string;
-  ownerType: LedgerOwnerTypeDto;
-  ownerId: string | null;
-  entryType: LedgerEntryTypeDto;
+export const ledgerEntryResponseSchema = z.object({
+  id: z.string(),
+  journalId: z.string(),
+  ownerType: ledgerOwnerTypeSchema,
+  ownerId: z.string().nullable(),
+  entryType: ledgerEntryTypeSchema,
   /** VND đồng digit strings. Exactly one of debit/credit is > 0. */
-  debit: string;
-  credit: string;
-  bookingId: string | null;
-  paymentId: string | null;
-  payoutId: string | null;
-  memo: string | null;
-  createdAt: string;
-}
+  debit: z.string(),
+  credit: z.string(),
+  bookingId: z.string().nullable(),
+  paymentId: z.string().nullable(),
+  payoutId: z.string().nullable(),
+  memo: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type LedgerEntryResponse = z.infer<typeof ledgerEntryResponseSchema>;
 
 /** Net balance for one ledger owner — `balance` = credit − debit (VND, signed). */
-export interface OwnerBalanceResponse {
-  ownerType: LedgerOwnerTypeDto;
-  ownerId: string | null;
+export const ownerBalanceResponseSchema = z.object({
+  ownerType: ledgerOwnerTypeSchema,
+  ownerId: z.string().nullable(),
   /** Signed VND đồng digit string. Positive = payable to the owner / owed by the tenant. */
-  balance: string;
-  totalDebit: string;
-  totalCredit: string;
-}
+  balance: z.string(),
+  totalDebit: z.string(),
+  totalCredit: z.string(),
+});
+export type OwnerBalanceResponse = z.infer<typeof ownerBalanceResponseSchema>;
 
 /** Tenant finance overview (§13.3). All amounts are signed VND đồng digit strings. */
-export interface TenantFinanceSummaryResponse {
-  netRevenue: string;
-  partnerPayable: string;
-  affiliatePayable: string;
-  platformFeePayable: string;
-  partnerBalances: OwnerBalanceResponse[];
-  affiliateBalances: OwnerBalanceResponse[];
-}
+export const tenantFinanceSummaryResponseSchema = z.object({
+  netRevenue: z.string(),
+  partnerPayable: z.string(),
+  affiliatePayable: z.string(),
+  platformFeePayable: z.string(),
+  partnerBalances: z.array(ownerBalanceResponseSchema),
+  affiliateBalances: z.array(ownerBalanceResponseSchema),
+});
+export type TenantFinanceSummaryResponse = z.infer<typeof tenantFinanceSummaryResponseSchema>;
 
 /** Partner finance view (§13.3): the partner's current payable + entry history. */
-export interface PartnerFinanceResponse {
-  balance: string;
-  entries: LedgerEntryResponse[];
-}
+export const partnerFinanceResponseSchema = z.object({
+  balance: z.string(),
+  entries: z.array(ledgerEntryResponseSchema),
+});
+export type PartnerFinanceResponse = z.infer<typeof partnerFinanceResponseSchema>;
 
 /** Platform finance view (§13.3): fee collected per tenant. */
-export interface PlatformFinanceResponse {
-  totalFeePayable: string;
-  perTenant: Array<{ tenantId: string; feePayable: string }>;
-}
+export const platformFinanceResponseSchema = z.object({
+  totalFeePayable: z.string(),
+  perTenant: z.array(z.object({ tenantId: z.string(), feePayable: z.string() })),
+});
+export type PlatformFinanceResponse = z.infer<typeof platformFinanceResponseSchema>;
 
 // ── Payouts ─────────────────────────────────────────────────────────────────
 
@@ -229,19 +235,20 @@ export const failPayoutInputSchema = z.object({
 });
 export type FailPayoutInput = z.infer<typeof failPayoutInputSchema>;
 
-export interface PayoutResponse {
-  id: string;
-  payeeType: PayoutPayeeTypeDto;
-  payeeId: string;
+export const payoutResponseSchema = z.object({
+  id: z.string(),
+  payeeType: payoutPayeeTypeSchema,
+  payeeId: z.string(),
   /** VND đồng digit string. */
-  amount: string;
-  periodFrom: string | null;
-  periodTo: string | null;
-  status: PayoutStatusDto;
-  paidAt: string | null;
-  reference: string | null;
-  createdAt: string;
-}
+  amount: z.string(),
+  periodFrom: z.string().nullable(),
+  periodTo: z.string().nullable(),
+  status: payoutStatusSchema,
+  paidAt: z.string().nullable(),
+  reference: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type PayoutResponse = z.infer<typeof payoutResponseSchema>;
 
 // Re-export a couple of helpers so this file documents the shared money shape.
 export { vndDigits as financeVndDigits, signedVndDigits as financeSignedVndDigits };

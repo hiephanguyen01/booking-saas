@@ -11,15 +11,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  createListingInputSchema,
-  moderationReasonInputSchema,
-  updateListingInputSchema,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
   uuidSchema,
-  type CreateListingInput,
   type ListingResponse,
   type ListingReviewResponse,
-  type ModerationReasonInput,
-  type UpdateListingInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -37,12 +37,21 @@ import { CreateListingUseCase } from '../../application/use-cases/create-listing
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
 import { toListingResponse } from '../../application/listing.mapper';
+import { UuidParam } from '../../../../shared/openapi/decorators';
+import {
+  CreateListingDto,
+  ListingResponseDto,
+  ModerationReasonDto,
+  SubmitListingResponseDto,
+  UpdateListingDto,
+} from './dto/listing.dto';
 
 /**
  * Partner-side listing moderation (§7.3). The partner acts as `partner`; every
  * action is restricted to the partner's own listings, and re-publishing a post
  * an admin hid is blocked (LISTING_ADMIN_LOCKED). Scope via x-partner-id.
  */
+@ApiTags('partner-listing-moderation')
 @Controller('partner/listings')
 export class PartnerListingModerationController {
   constructor(
@@ -59,6 +68,8 @@ export class PartnerListingModerationController {
   /** The partner's own listings (§7.3) — read-only, scoped to x-partner-id. */
   @RequirePermissions('partner.listings.read')
   @Get()
+  @ApiOperation({ summary: 'List the calling partner\'s listings' })
+  @ApiOkResponse({ type: [ListingResponseDto] })
   async list(): Promise<ListingResponse[]> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
@@ -76,8 +87,10 @@ export class PartnerListingModerationController {
   @UseGuards(RequireActiveSubscriptionGuard, PlanLimitGuard)
   @EnforcePlanLimit('listing')
   @Post()
+  @ApiOperation({ summary: 'Create a listing for the calling partner' })
+  @ApiCreatedResponse({ type: ListingResponseDto })
   async create(
-    @Body(new ZodValidationPipe(createListingInputSchema)) input: CreateListingInput,
+    @Body() input: CreateListingDto,
   ): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
@@ -87,6 +100,9 @@ export class PartnerListingModerationController {
   /** A single own listing — for the edit-form prefill. 404 if not the partner's. */
   @RequirePermissions('partner.listings.read')
   @Get(':id')
+  @ApiOperation({ summary: 'Get one of the partner\'s own listings' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingResponseDto })
   async getOne(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<ListingResponse> {
@@ -96,9 +112,12 @@ export class PartnerListingModerationController {
   @RequirePermissions('partner.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':id')
+  @ApiOperation({ summary: 'Update one of the partner\'s own listings' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingResponseDto })
   async update(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(updateListingInputSchema)) input: UpdateListingInput,
+    @Body() input: UpdateListingDto,
   ): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     await this.ownedListing(id); // ownership guard (partnerId is immutable on update)
@@ -133,6 +152,9 @@ export class PartnerListingModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/submit')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Submit a listing for review' })
+  @UuidParam()
+  @ApiOkResponse({ type: SubmitListingResponseDto })
   async submit(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
@@ -146,9 +168,12 @@ export class PartnerListingModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/hide')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Hide the partner\'s own published listing' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingResponseDto })
   async hide(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(moderationReasonInputSchema)) body: ModerationReasonInput,
+    @Body() body: ModerationReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
     @Ip() ip: string,
   ): Promise<ListingResponse> {
@@ -161,6 +186,9 @@ export class PartnerListingModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/republish')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Republish the partner\'s own hidden listing' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingResponseDto })
   async republish(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,

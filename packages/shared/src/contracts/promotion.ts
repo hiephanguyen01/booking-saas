@@ -88,44 +88,49 @@ export type PromoErrorCode =
   | 'PROMO_MIN_ORDER'
   | 'PROMO_NOT_APPLICABLE';
 
-export interface ValidatePromoResponse {
-  valid: boolean;
+export const validatePromoResponseSchema = z.object({
+  valid: z.boolean(),
   /** VND đồng digit strings. `0` when invalid. */
-  discountAmount: string;
-  finalAmount: string;
-  code: string;
+  discountAmount: z.string(),
+  finalAmount: z.string(),
+  code: z.string(),
   /** A stable {@link PromoErrorCode} when `valid` is false. */
-  error?: PromoErrorCode;
-}
+  error: z
+    .enum(['PROMO_NOT_FOUND', 'PROMO_EXPIRED', 'PROMO_LIMIT_REACHED', 'PROMO_MIN_ORDER', 'PROMO_NOT_APPLICABLE'])
+    .optional(),
+});
+export type ValidatePromoResponse = z.infer<typeof validatePromoResponseSchema>;
 
-export interface PromotionResponse {
-  id: string;
-  name: string;
-  code: string | null;
-  discountType: PromotionDiscountTypeDto;
+export const promotionResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  code: z.string().nullable(),
+  discountType: promotionDiscountTypeSchema,
   /** VND đồng digit strings. `discountValue` is a whole percent for `percent` codes. */
-  discountValue: string;
-  maxDiscount: string | null;
-  fundedBy: 'tenant' | 'partner';
-  appliesTo: 'all' | 'listing_type' | 'listing_group' | 'category' | 'listing' | 'partner';
-  appliesToId: string | null;
-  minOrderAmount: string | null;
-  usageLimitTotal: number | null;
-  redeemedCount: number;
-  startsAt: string | null;
-  endsAt: string | null;
-  status: PromotionStatusDto;
-  createdAt: string;
-}
+  discountValue: z.string(),
+  maxDiscount: z.string().nullable(),
+  fundedBy: z.enum(['tenant', 'partner']),
+  appliesTo: z.enum(['all', 'listing_type', 'listing_group', 'category', 'listing', 'partner']),
+  appliesToId: z.string().nullable(),
+  minOrderAmount: z.string().nullable(),
+  usageLimitTotal: z.number().nullable(),
+  redeemedCount: z.number(),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  status: promotionStatusSchema,
+  createdAt: z.string(),
+});
+export type PromotionResponse = z.infer<typeof promotionResponseSchema>;
 
-export interface PromoUsageStatsResponse {
-  promotionId: string;
-  code: string | null;
-  usageLimitTotal: number | null;
-  redeemedCount: number;
-  reservedCount: number;
-  appliedCount: number;
-  releasedCount: number;
+export const promoUsageStatsResponseSchema = z.object({
+  promotionId: z.string(),
+  code: z.string().nullable(),
+  usageLimitTotal: z.number().nullable(),
+  redeemedCount: z.number(),
+  reservedCount: z.number(),
+  appliedCount: z.number(),
+  releasedCount: z.number(),
   /** Sum of discount granted across non-released redemptions, VND đồng digit string. */
-  totalDiscount: string;
-}
+  totalDiscount: z.string(),
+});
+export type PromoUsageStatsResponse = z.infer<typeof promoUsageStatsResponseSchema>;

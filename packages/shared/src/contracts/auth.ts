@@ -41,6 +41,12 @@ export const authSessionResponseSchema = z.object({
 });
 export type AuthSessionResponse = z.infer<typeof authSessionResponseSchema>;
 
+/** `POST /auth/refresh` payload — new access-session expiry (tokens ride httpOnly cookies). */
+export const refreshResponseSchema = z.object({
+  accessExpiresAt: z.string(),
+});
+export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
+
 export const scopeLevelSchema = z.enum(['platform', 'tenant', 'partner']);
 export type ScopeLevel = z.infer<typeof scopeLevelSchema>;
 

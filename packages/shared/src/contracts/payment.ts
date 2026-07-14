@@ -13,21 +13,24 @@ export const upsertGatewayConfigInputSchema = z.object({
 });
 export type UpsertGatewayConfigInput = z.infer<typeof upsertGatewayConfigInputSchema>;
 
-export interface CheckoutResponse {
-  paymentId: string;
-  paymentUrl: string;
-}
+export const checkoutResponseSchema = z.object({
+  paymentId: z.string(),
+  paymentUrl: z.string(),
+});
+export type CheckoutResponse = z.infer<typeof checkoutResponseSchema>;
 
-export interface PaymentStatusResponse {
-  bookingCode: string;
-  bookingStatus: string;
+export const paymentStatusResponseSchema = z.object({
+  bookingCode: z.string(),
+  bookingStatus: z.string(),
   /** none = no payment yet. */
-  paymentStatus: 'none' | 'pending' | 'succeeded' | 'failed' | 'expired';
-  paidAmount: string;
-}
+  paymentStatus: z.enum(['none', 'pending', 'succeeded', 'failed', 'expired']),
+  paidAmount: z.string(),
+});
+export type PaymentStatusResponse = z.infer<typeof paymentStatusResponseSchema>;
 
-export interface GatewayConfigResponse {
-  gateway: GatewayKey;
-  environment: 'sandbox' | 'production';
-  isActive: boolean;
-}
+export const gatewayConfigResponseSchema = z.object({
+  gateway: gatewayKeySchema,
+  environment: gatewayEnvironmentSchema,
+  isActive: z.boolean(),
+});
+export type GatewayConfigResponse = z.infer<typeof gatewayConfigResponseSchema>;

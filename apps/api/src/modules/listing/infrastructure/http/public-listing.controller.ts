@@ -1,17 +1,17 @@
 import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import {
-  quoteQuerySchema,
   type PublicListingDetailResponse,
-  type QuoteQuery,
   type QuoteResponse,
 } from '@booking/shared';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { GetPublicListingUseCase } from '../../application/use-cases/get-public-listing.use-case';
 import { GetPublicQuoteUseCase } from '../../application/use-cases/get-public-quote.use-case';
 import { toPublicListingDetailResponse } from '../../application/listing.mapper';
+import { PublicListingDetailResponseDto, QuoteQueryDto, QuoteResponseDto } from './dto/listing.dto';
 
 /** Storefront listing detail + quote (§16/§17). Tenant resolved from Host (BFF). */
+@ApiTags('public-listings')
 @Controller('public/listings')
 export class PublicListingController {
   constructor(
@@ -21,6 +21,9 @@ export class PublicListingController {
 
   @Public()
   @Get(':slug')
+  @ApiOperation({ summary: 'Public storefront listing detail' })
+  @ApiParam({ name: 'slug', type: 'string' })
+  @ApiOkResponse({ type: PublicListingDetailResponseDto })
   async detail(
     @Param('slug') slug: string,
     @Headers('x-forwarded-host') forwardedHost?: string,
@@ -33,9 +36,12 @@ export class PublicListingController {
 
   @Public()
   @Get(':slug/quote')
+  @ApiOperation({ summary: 'Public price quote for a listing' })
+  @ApiParam({ name: 'slug', type: 'string' })
+  @ApiOkResponse({ type: QuoteResponseDto })
   async quote(
     @Param('slug') slug: string,
-    @Query(new ZodValidationPipe(quoteQuerySchema)) query: QuoteQuery,
+    @Query() query: QuoteQueryDto,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
   ): Promise<QuoteResponse> {

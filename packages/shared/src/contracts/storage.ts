@@ -43,12 +43,13 @@ export const presignUploadInputSchema = z.object({
 });
 export type PresignUploadInput = z.infer<typeof presignUploadInputSchema>;
 
-export interface PresignUploadResponse {
+export const presignUploadResponseSchema = z.object({
   /** PUT the bytes here with the same Content-Type. */
-  uploadUrl: string;
+  uploadUrl: z.string(),
   /** Persist this key on the listing/group `photos`. */
-  key: string;
+  key: z.string(),
   /** URL the storefront serves the image from. */
-  publicUrl: string;
-  expiresInSec: number;
-}
+  publicUrl: z.string(),
+  expiresInSec: z.number(),
+});
+export type PresignUploadResponse = z.infer<typeof presignUploadResponseSchema>;

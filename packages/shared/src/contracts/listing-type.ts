@@ -104,42 +104,45 @@ export type ListPublicListingsQuery = z.infer<typeof listPublicListingsQuerySche
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
-export interface ListingTypeResponse {
-  id: string;
-  tenantId: string;
-  name: string;
-  slug: string;
-  icon: string | null;
-  allowedModes: BookingMode[];
-  defaultModes: BookingMode[];
-  attributeSchema: AttributeField[];
-  unitLabel: string | null;
-  sortOrder: number;
-  isActive: boolean;
-  requiresIdentityVerification: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+export const listingTypeResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  icon: z.string().nullable(),
+  allowedModes: z.array(bookingModeSchema),
+  defaultModes: z.array(bookingModeSchema),
+  attributeSchema: z.array(attributeFieldSchema),
+  unitLabel: z.string().nullable(),
+  sortOrder: z.number(),
+  isActive: z.boolean(),
+  requiresIdentityVerification: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ListingTypeResponse = z.infer<typeof listingTypeResponseSchema>;
 
 /** The storefront menu entry — active types only, schema trimmed to filterable fields. */
-export interface PublicListingTypeResponse {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string | null;
-  unitLabel: string | null;
-  sortOrder: number;
-  requiresIdentityVerification: boolean;
-  attributeSchema: AttributeField[];
-}
+export const publicListingTypeResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  icon: z.string().nullable(),
+  unitLabel: z.string().nullable(),
+  sortOrder: z.number(),
+  requiresIdentityVerification: z.boolean(),
+  attributeSchema: z.array(attributeFieldSchema),
+});
+export type PublicListingTypeResponse = z.infer<typeof publicListingTypeResponseSchema>;
 
-export interface PublicListingResponse {
-  id: string;
-  title: string;
-  slug: string;
-  listingTypeSlug: string;
-  attributes: Record<string, unknown>;
-  photos: unknown[];
+export const publicListingResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  slug: z.string(),
+  listingTypeSlug: z.string(),
+  attributes: z.record(z.unknown()),
+  photos: z.array(z.unknown()),
   /** Lowest configured price in VND đồng as a digit string, or null. */
-  priceFrom: string | null;
-}
+  priceFrom: z.string().nullable(),
+});
+export type PublicListingResponse = z.infer<typeof publicListingResponseSchema>;

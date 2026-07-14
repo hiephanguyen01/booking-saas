@@ -11,12 +11,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  createListingInputSchema,
-  updateListingInputSchema,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
   uuidSchema,
-  type CreateListingInput,
   type ListingResponse,
-  type UpdateListingInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -30,7 +34,10 @@ import { GetListingUseCase } from '../../application/use-cases/get-listing.use-c
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
 import { DeleteListingUseCase } from '../../application/use-cases/delete-listing.use-case';
 import { toListingResponse } from '../../application/listing.mapper';
+import { UuidParam } from '../../../../shared/openapi/decorators';
+import { CreateListingDto, ListingResponseDto, UpdateListingDto } from './dto/listing.dto';
 
+@ApiTags('tenant-listings')
 @Controller('tenant/listings')
 export class TenantListingController {
   constructor(
@@ -44,6 +51,9 @@ export class TenantListingController {
 
   @RequirePermissions('tenant.listings.read')
   @Get()
+  @ApiOperation({ summary: 'List the tenant\'s listings' })
+  @ApiQuery({ name: 'groupId', required: false, type: 'string' })
+  @ApiOkResponse({ type: [ListingResponseDto] })
   async list(@Query('groupId') groupId?: string): Promise<ListingResponse[]> {
     const items = await this.listListings.execute(this.tenantContext.tenantIdOrThrow(), { groupId });
     return items.map(toListingResponse);
@@ -53,8 +63,10 @@ export class TenantListingController {
   @UseGuards(RequireActiveSubscriptionGuard, PlanLimitGuard)
   @EnforcePlanLimit('listing')
   @Post()
+  @ApiOperation({ summary: 'Create a listing' })
+  @ApiCreatedResponse({ type: ListingResponseDto })
   async create(
-    @Body(new ZodValidationPipe(createListingInputSchema)) input: CreateListingInput,
+    @Body() input: CreateListingDto,
   ): Promise<ListingResponse> {
     return toListingResponse(
       await this.createListing.execute(this.tenantContext.tenantIdOrThrow(), input),
@@ -63,6 +75,9 @@ export class TenantListingController {
 
   @RequirePermissions('tenant.listings.read')
   @Get(':id')
+  @ApiOperation({ summary: 'Get a listing by id' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingResponseDto })
   async get(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<ListingResponse> {
     return toListingResponse(await this.getListing.execute(this.tenantContext.tenantIdOrThrow(), id));
   }
@@ -70,9 +85,12 @@ export class TenantListingController {
   @RequirePermissions('tenant.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a listing' })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingResponseDto })
   async update(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(updateListingInputSchema)) input: UpdateListingInput,
+    @Body() input: UpdateListingDto,
   ): Promise<ListingResponse> {
     return toListingResponse(
       await this.updateListing.execute(this.tenantContext.tenantIdOrThrow(), id, input),
@@ -83,6 +101,9 @@ export class TenantListingController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Delete(':id')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a listing' })
+  @UuidParam()
+  @ApiNoContentResponse()
   async remove(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<void> {
     await this.deleteListing.execute(this.tenantContext.tenantIdOrThrow(), id);
   }

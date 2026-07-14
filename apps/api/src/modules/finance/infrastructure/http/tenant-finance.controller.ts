@@ -1,26 +1,33 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
-  createCommissionRuleInputSchema,
-  createPayoutInputSchema,
-  failPayoutInputSchema,
-  markPayoutPaidInputSchema,
-  paginationQuerySchema,
-  updateCommissionRuleInputSchema,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
   uuidSchema,
   type CommissionRuleResponse,
-  type CreateCommissionRuleInput,
-  type CreatePayoutInput,
-  type FailPayoutInput,
   type LedgerEntryResponse,
-  type MarkPayoutPaidInput,
   type Paginated,
-  type PaginationQuery,
   type PartnerFinanceResponse,
   type PayoutResponse,
   type TenantFinanceSummaryResponse,
-  type UpdateCommissionRuleInput,
 } from '@booking/shared';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -44,8 +51,22 @@ import {
   toPayoutResponse,
   toTenantFinanceSummaryResponse,
 } from '../../application/finance.mapper';
+import {
+  CommissionRuleResponseDto,
+  CreateCommissionRuleDto,
+  CreatePayoutDto,
+  FailPayoutDto,
+  LedgerEntryResponseDto,
+  MarkPayoutPaidDto,
+  PaginationQueryDto,
+  PartnerFinanceResponseDto,
+  PayoutResponseDto,
+  TenantFinanceSummaryResponseDto,
+  UpdateCommissionRuleDto,
+} from './dto/finance.dto';
 
 /** Tenant finance: commission rules, ledger overview + manual payouts (§13.3). */
+@ApiTags('tenant-finance')
 @Controller('tenant/finance')
 export class TenantFinanceController {
   constructor(
@@ -71,6 +92,8 @@ export class TenantFinanceController {
 
   @RequirePermissions('tenant.commissions.manage')
   @Get('commission-rules')
+  @ApiOperation({ summary: 'List commission rules' })
+  @ApiOkResponse({ type: [CommissionRuleResponseDto] })
   async listRules(): Promise<CommissionRuleResponse[]> {
     return (await this.listRulesUseCase.execute(this.tenantId)).map(toCommissionRuleResponse);
   }
@@ -78,18 +101,21 @@ export class TenantFinanceController {
   @RequirePermissions('tenant.commissions.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post('commission-rules')
-  async createRule(
-    @Body(new ZodValidationPipe(createCommissionRuleInputSchema)) input: CreateCommissionRuleInput,
-  ): Promise<CommissionRuleResponse> {
+  @ApiOperation({ summary: 'Create a commission rule' })
+  @ApiCreatedResponse({ type: CommissionRuleResponseDto })
+  async createRule(@Body() input: CreateCommissionRuleDto): Promise<CommissionRuleResponse> {
     return toCommissionRuleResponse(await this.createRuleUseCase.execute(this.tenantId, input));
   }
 
   @RequirePermissions('tenant.commissions.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch('commission-rules/:id')
+  @ApiOperation({ summary: 'Update a commission rule' })
+  @UuidParam()
+  @ApiOkResponse({ type: CommissionRuleResponseDto })
   async updateRule(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(updateCommissionRuleInputSchema)) input: UpdateCommissionRuleInput,
+    @Body() input: UpdateCommissionRuleDto,
   ): Promise<CommissionRuleResponse> {
     return toCommissionRuleResponse(await this.updateRuleUseCase.execute(this.tenantId, id, input));
   }
@@ -97,6 +123,9 @@ export class TenantFinanceController {
   @RequirePermissions('tenant.commissions.manage')
   @Delete('commission-rules/:id')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a commission rule' })
+  @UuidParam()
+  @ApiNoContentResponse()
   async deleteRule(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<void> {
     await this.deleteRuleUseCase.execute(this.tenantId, id);
   }
@@ -105,31 +134,45 @@ export class TenantFinanceController {
 
   @RequirePermissions('tenant.finance.read')
   @Get('summary')
+  @ApiOperation({ summary: 'Tenant finance overview' })
+  @ApiOkResponse({ type: TenantFinanceSummaryResponseDto })
   async summary(): Promise<TenantFinanceSummaryResponse> {
     return toTenantFinanceSummaryResponse(await this.summaryUseCase.execute(this.tenantId));
   }
 
   @RequirePermissions('tenant.finance.read')
   @Get('ledger')
-  async ledger(
-    @Query(new ZodValidationPipe(paginationQuerySchema)) query: PaginationQuery,
-  ): Promise<Paginated<LedgerEntryResponse>> {
+  @ApiOperation({ summary: 'List tenant ledger entries' })
+  @ApiPaginatedResponse(LedgerEntryResponseDto)
+  async ledger(@Query() query: PaginationQueryDto): Promise<Paginated<LedgerEntryResponse>> {
     const { items, total } = await this.listLedgerUseCase.execute(this.tenantId, query);
-    return { items: items.map(toLedgerEntryResponse), page: query.page, pageSize: query.pageSize, total };
+    return {
+      items: items.map(toLedgerEntryResponse),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
   }
 
   @RequirePermissions('tenant.finance.read')
   @Get('partners/:partnerId')
+  @ApiOperation({ summary: "A partner's balance + ledger history" })
+  @UuidParam('partnerId')
+  @ApiOkResponse({ type: PartnerFinanceResponseDto })
   async partner(
     @Param('partnerId', new ZodValidationPipe(uuidSchema)) partnerId: string,
   ): Promise<PartnerFinanceResponse> {
-    return toPartnerFinanceResponse(await this.partnerFinanceUseCase.execute(this.tenantId, partnerId));
+    return toPartnerFinanceResponse(
+      await this.partnerFinanceUseCase.execute(this.tenantId, partnerId),
+    );
   }
 
   // ── Payouts ───────────────────────────────────────────────────────────────
 
   @RequirePermissions('tenant.payouts.manage')
   @Get('payouts')
+  @ApiOperation({ summary: 'List payouts' })
+  @ApiOkResponse({ type: [PayoutResponseDto] })
   async listPayouts(): Promise<PayoutResponse[]> {
     return (await this.listPayoutsUseCase.execute(this.tenantId)).map(toPayoutResponse);
   }
@@ -137,31 +180,50 @@ export class TenantFinanceController {
   @RequirePermissions('tenant.payouts.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post('payouts')
+  @ApiOperation({ summary: 'Create a payout run' })
+  @ApiCreatedResponse({ type: PayoutResponseDto })
   async createPayout(
-    @Body(new ZodValidationPipe(createPayoutInputSchema)) input: CreatePayoutInput,
+    @Body() input: CreatePayoutDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PayoutResponse> {
-    return toPayoutResponse(await this.createPayoutUseCase.execute(this.tenantId, input, principal.userId));
+    return toPayoutResponse(
+      await this.createPayoutUseCase.execute(this.tenantId, input, principal.userId),
+    );
   }
 
   @RequirePermissions('tenant.payouts.manage')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post('payouts/:id/mark-paid')
+  @ApiOperation({ summary: 'Mark a payout as paid' })
+  @UuidParam()
+  @ApiCreatedResponse({ type: PayoutResponseDto })
   async markPaid(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(markPayoutPaidInputSchema)) input: MarkPayoutPaidInput,
+    @Body() input: MarkPayoutPaidDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PayoutResponse> {
-    return toPayoutResponse(await this.markPayoutPaidUseCase.execute(this.tenantId, id, input, principal.userId));
+    return toPayoutResponse(
+      await this.markPayoutPaidUseCase.execute(this.tenantId, id, input, principal.userId),
+    );
   }
 
   @RequirePermissions('tenant.payouts.manage')
   @Post('payouts/:id/fail')
+  @ApiOperation({ summary: 'Mark a payout as failed' })
+  @UuidParam()
+  @ApiCreatedResponse({ type: PayoutResponseDto })
   async failPayout(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(failPayoutInputSchema)) input: FailPayoutInput,
+    @Body() input: FailPayoutDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PayoutResponse> {
-    return toPayoutResponse(await this.failPayoutUseCase.execute(this.tenantId, id, input.reason ?? null, principal.userId));
+    return toPayoutResponse(
+      await this.failPayoutUseCase.execute(
+        this.tenantId,
+        id,
+        input.reason ?? null,
+        principal.userId,
+      ),
+    );
   }
 }

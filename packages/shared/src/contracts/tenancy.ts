@@ -159,45 +159,49 @@ export type ThemeConfigInput = z.infer<typeof themeConfigSchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
-export interface TenantResponse {
-  id: string;
-  name: string;
-  slug: string;
-  status: TenantStatus;
-  vertical: Vertical;
-  defaultTimezone: string;
-  defaultLocale: 'vi' | 'en';
-  createdAt: string;
-}
+export const tenantResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  status: tenantStatusSchema,
+  vertical: verticalSchema,
+  defaultTimezone: z.string(),
+  defaultLocale: localeSchema,
+  createdAt: z.string(),
+});
+export type TenantResponse = z.infer<typeof tenantResponseSchema>;
 
-export interface PlanResponse {
-  id: string;
-  name: string;
+export const planResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
   /** VND đồng as a digit string. */
-  priceMonthly: string;
-  limits: PlanLimits;
-  isActive: boolean;
-}
+  priceMonthly: z.string(),
+  limits: planLimitsSchema,
+  isActive: z.boolean(),
+});
+export type PlanResponse = z.infer<typeof planResponseSchema>;
 
-export interface SubscriptionResponse {
-  id: string;
-  tenantId: string;
-  planId: string;
-  status: SubscriptionStatus;
-  startsAt: string;
-  expiresAt: string;
-  note: string | null;
-}
+export const subscriptionResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  planId: z.string(),
+  status: subscriptionStatusSchema,
+  startsAt: z.string(),
+  expiresAt: z.string(),
+  note: z.string().nullable(),
+});
+export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 
-export interface DomainResponse {
-  id: string;
-  tenantId: string;
-  hostname: string;
-  isPrimary: boolean;
-  verifiedAt: string | null;
+export const domainResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  hostname: z.string(),
+  isPrimary: z.boolean(),
+  verifiedAt: z.string().nullable(),
   /** TXT record the tenant must publish to verify a custom domain. */
-  verificationToken?: string;
-}
+  verificationToken: z.string().optional(),
+});
+export type DomainResponse = z.infer<typeof domainResponseSchema>;
 
 /**
  * Result of triggering a custom-domain verification (§6.1). The DNS TXT lookup
@@ -205,49 +209,53 @@ export interface DomainResponse {
  * (the worker flips `verifiedAt` once the record propagates); an
  * already-verified domain returns `verified` immediately.
  */
-export interface DomainVerificationResult {
-  status: 'verified' | 'checking';
-  domain: DomainResponse;
-}
+export const domainVerificationResultSchema = z.object({
+  status: z.enum(['verified', 'checking']),
+  domain: domainResponseSchema,
+});
+export type DomainVerificationResult = z.infer<typeof domainVerificationResultSchema>;
 
 /**
  * Soft monthly-bookings quota (§6.5). Never blocks checkout — the dashboard uses
  * `overLimit` to nudge an upgrade. `null` on the status response when the tenant
  * has no active plan.
  */
-export interface BookingQuotaStatus {
-  used: number;
-  limit: number;
-  overLimit: boolean;
-}
+export const bookingQuotaStatusSchema = z.object({
+  used: z.number(),
+  limit: z.number(),
+  overLimit: z.boolean(),
+});
+export type BookingQuotaStatus = z.infer<typeof bookingQuotaStatusSchema>;
 
 /**
  * Tenant-facing subscription snapshot the dashboard reads to render a read-only
  * banner (§6.5). `dashboardReadOnly` is true once the subscription has expired or
  * is cancelled; `bookingQuota` surfaces the soft monthly-bookings warning.
  */
-export interface SubscriptionStatusResponse {
+export const subscriptionStatusResponseSchema = z.object({
   /** null when the tenant has never been subscribed. */
-  status: SubscriptionStatus | null;
-  phase: 'active' | 'grace' | 'expired';
-  storefrontLive: boolean;
-  dashboardReadOnly: boolean;
-  newBookingsAllowed: boolean;
-  daysUntilExpiry: number;
-  expiresAt: string | null;
-  bookingQuota: BookingQuotaStatus | null;
-}
+  status: subscriptionStatusSchema.nullable(),
+  phase: z.enum(['active', 'grace', 'expired']),
+  storefrontLive: z.boolean(),
+  dashboardReadOnly: z.boolean(),
+  newBookingsAllowed: z.boolean(),
+  daysUntilExpiry: z.number(),
+  expiresAt: z.string().nullable(),
+  bookingQuota: bookingQuotaStatusSchema.nullable(),
+});
+export type SubscriptionStatusResponse = z.infer<typeof subscriptionStatusResponseSchema>;
 
 /**
  * What the storefront BFF gets when resolving a Host header (§6.1). `live`
  * false → render the suspended page instead of the storefront.
  */
-export interface PublicTenantResponse {
-  id: string;
-  name: string;
-  slug: string;
-  vertical: Vertical;
-  defaultLocale: 'vi' | 'en';
-  themeConfig: Record<string, unknown>;
-  live: boolean;
-}
+export const publicTenantResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  vertical: verticalSchema,
+  defaultLocale: localeSchema,
+  themeConfig: z.record(z.unknown()),
+  live: z.boolean(),
+});
+export type PublicTenantResponse = z.infer<typeof publicTenantResponseSchema>;

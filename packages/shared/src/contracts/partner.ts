@@ -153,18 +153,19 @@ export type PartnerRegistrationInput = z.infer<typeof partnerRegistrationSchema>
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
-export interface PartnerResponse {
-  id: string;
-  tenantId: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  partnerType: PartnerType;
-  isHouse: boolean;
-  status: PartnerStatus;
-  verificationStatus: PartnerVerificationStatus;
-  verifiedAt: string | null;
-  dateOfBirth: string | null;
-  payoutInfo: Record<string, unknown>;
-  createdAt: string;
-}
+export const partnerResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  partnerType: partnerTypeSchema,
+  isHouse: z.boolean(),
+  status: partnerStatusSchema,
+  verificationStatus: partnerVerificationStatusSchema,
+  verifiedAt: z.string().nullable(),
+  dateOfBirth: z.string().nullable(),
+  payoutInfo: z.record(z.unknown()),
+  createdAt: z.string(),
+});
+export type PartnerResponse = z.infer<typeof partnerResponseSchema>;
