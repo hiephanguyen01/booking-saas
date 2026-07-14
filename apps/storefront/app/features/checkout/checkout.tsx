@@ -8,6 +8,8 @@ import type { Route } from '../../routes/+types/checkout';
 import { fetchListing, fetchQuote } from '../../lib/catalog.server';
 import { validatePromo, createBooking, checkoutBooking } from '../../lib/booking.server';
 import { appendRecentCookie } from '../../lib/recent.server';
+import { readRefCode } from '../../lib/affiliate.server';
+import { resolveTenant } from '../../lib/tenant.server';
 import { useT, type I18n } from '../../lib/i18n';
 import { formatVnd } from '../../lib/ui';
 import { DEFAULT_TZ, timeInTz, dateLabelInTz } from '../../lib/time';
@@ -80,6 +82,11 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ fieldErrors: guest.fieldErrors, error: null }, { status: 400 });
   }
 
+  // Replay the affiliate last-click cookie (§15.1) into the booking. The backend
+  // validates + drops self-referral/self-dealing, so an invalid code is harmless.
+  const tenant = await resolveTenant(request);
+  const refCode = readRefCode(request, tenant.id) ?? undefined;
+
   const input: CreateBookingInput = {
     listingId,
     mode: mode as CreateBookingInput['mode'],
@@ -90,6 +97,7 @@ export async function action({ request }: Route.ActionArgs) {
     customerNote: note,
     guest: guest.data,
     promoCode,
+    refCode,
   };
 
   // Deterministic idempotency key: a resubmit (double-click / validation retry)

@@ -1,0 +1,99 @@
+import { NavLink, Outlet, useSearchParams } from 'react-router';
+import { Card, CardContent } from '@booking/ui/components/ui/card';
+import { cn } from '@booking/ui/lib/utils';
+import { Share2 } from 'lucide-react';
+import type { Route } from './+types/_layout';
+import { requireAffiliate } from './affiliate.server';
+
+export function meta(): Route.MetaDescriptors {
+  return [{ title: 'Cộng tác viên · Bookify' }];
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const { memberships, active } = await requireAffiliate(request);
+  return {
+    memberships: memberships.map((m) => ({ tenantId: m.tenantId, tenantName: m.tenantName, status: m.status })),
+    active: active ? { tenantId: active.tenantId, tenantName: active.tenantName } : null,
+  };
+}
+
+const TABS = [
+  { to: '/affiliate', label: 'Tổng quan', end: true },
+  { to: '/affiliate/links', label: 'Link giới thiệu', end: false },
+  { to: '/affiliate/commissions', label: 'Hoa hồng', end: false },
+];
+
+export default function AffiliateLayout({ loaderData }: Route.ComponentProps) {
+  const { memberships, active } = loaderData;
+  const [sp] = useSearchParams();
+  const approved = memberships.filter((m) => m.status === 'approved');
+
+  if (!active) {
+    return (
+      <div className="mx-auto max-w-lg py-16 text-center">
+        <Share2 className="mx-auto mb-4 size-10 text-muted-foreground" />
+        <h1 className="text-xl font-semibold">Chưa có tài khoản cộng tác viên</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {memberships.length > 0
+            ? 'Yêu cầu cộng tác viên của bạn đang chờ được duyệt. Vui lòng quay lại sau khi được duyệt.'
+            : 'Bạn chưa đăng ký làm cộng tác viên. Hãy đăng ký trên trang cửa hàng của tenant.'}
+        </p>
+      </div>
+    );
+  }
+
+  const tenantQuery = sp.get('tenant');
+  const withTenant = (to: string) => (tenantQuery ? `${to}?tenant=${tenantQuery}` : to);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Cộng tác viên</h1>
+          <p className="text-sm text-muted-foreground">{active.tenantName}</p>
+        </div>
+        {approved.length > 1 ? (
+          <Card className="w-fit">
+            <CardContent className="flex items-center gap-2 p-2">
+              <span className="text-xs text-muted-foreground">Tenant:</span>
+              {approved.map((m) => (
+                <NavLink
+                  key={m.tenantId}
+                  to={`/affiliate?tenant=${m.tenantId}`}
+                  className={cn(
+                    'rounded px-2 py-1 text-xs',
+                    m.tenantId === active.tenantId ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                  )}
+                >
+                  {m.tenantName}
+                </NavLink>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
+
+      <nav className="flex gap-1 border-b border-border">
+        {TABS.map((tab) => (
+          <NavLink
+            key={tab.to}
+            to={withTenant(tab.to)}
+            end={tab.end}
+            className={({ isActive }) =>
+              cn(
+                'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )
+            }
+          >
+            {tab.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <Outlet />
+    </div>
+  );
+}

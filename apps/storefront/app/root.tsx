@@ -1,5 +1,6 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import {
+  data,
   isRouteErrorResponse,
   Links,
   Meta,
@@ -13,6 +14,12 @@ import type { Route } from './+types/root';
 import './app.css';
 import { SiteFooter } from './layouts/site-footer';
 import { SiteHeader } from './layouts/site-header';
+import {
+  readRefCode,
+  refAttributionCookie,
+  resolveVisitorId,
+  trackReferral,
+} from './lib/affiliate.server';
 import { fetchListingTypes } from './lib/catalog.server';
 import { createTranslator, I18nProvider, type Locale } from './lib/i18n';
 import { messagesFor, resolveLocale } from './lib/i18n.server';
@@ -29,10 +36,29 @@ export interface StorefrontContext {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
-  console.log('🚀 ~ loader ~ tenant:', tenant);
   const locale = resolveLocale(request, tenant.defaultLocale);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
-  return { tenant, listingTypes, locale, messages: messagesFor(locale) };
+  const payload = { tenant, listingTypes, locale, messages: messagesFor(locale) };
+
+  // Affiliate attribution (§15.1): capture `?ref=CODE` once per new code and set
+  // the last-click cookie. Only track when the code differs from what's already
+  // attributed, so repeat page views don't re-hit the backend.
+  const ref = new URL(request.url).searchParams.get('ref')?.trim().toUpperCase();
+  if (!ref || ref.length > 50 || readRefCode(request, tenant.id) === ref) {
+    return payload;
+  }
+  const visitor = resolveVisitorId(request);
+  const valid = await trackReferral(request, ref, visitor.id);
+  if (!valid) {
+    // Still persist the visitor id if it was freshly minted.
+    return visitor.setCookie
+      ? data(payload, { headers: { 'Set-Cookie': visitor.setCookie } })
+      : payload;
+  }
+  const headers = new Headers();
+  headers.append('Set-Cookie', refAttributionCookie(tenant.id, ref));
+  if (visitor.setCookie) headers.append('Set-Cookie', visitor.setCookie);
+  return data(payload, { headers });
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {

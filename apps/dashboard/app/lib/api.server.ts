@@ -8,7 +8,7 @@
  * NEVER import this file in browser-side code.
  */
 
-import { createApiClient } from '@booking/api-client';
+import { createApiClient, type Auth } from '@booking/api-client';
 
 export type {
   ApiAuth,
@@ -25,23 +25,23 @@ function client() {
   return createApiClient(backendUrl());
 }
 
-export function apiGet<T>(path: string, auth: import('@booking/api-client').Auth) {
+export function apiGet<T>(path: string, auth: Auth) {
   return client().get<T>(path, auth);
 }
 
-export function apiPost<T>(path: string, body: unknown, auth: import('@booking/api-client').Auth) {
+export function apiPost<T>(path: string, body: unknown, auth: Auth) {
   return client().post<T>(path, body, auth);
 }
 
-export function apiPatch<T>(path: string, body: unknown, auth: import('@booking/api-client').Auth) {
+export function apiPatch<T>(path: string, body: unknown, auth: Auth) {
   return client().patch<T>(path, body, auth);
 }
 
-export function apiPut<T>(path: string, body: unknown, auth: import('@booking/api-client').Auth) {
+export function apiPut<T>(path: string, body: unknown, auth: Auth) {
   return client().put<T>(path, body, auth);
 }
 
-export function apiDelete<T>(path: string, auth: import('@booking/api-client').Auth) {
+export function apiDelete<T>(path: string, auth: Auth) {
   return client().delete<T>(path, auth);
 }
 

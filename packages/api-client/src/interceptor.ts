@@ -52,5 +52,6 @@ export function scopeHeaders(auth: ApiAuth): Record<string, string> {
   const headers: Record<string, string> = {};
   if (auth.tenantId) headers['x-tenant-id'] = auth.tenantId;
   if (auth.partnerId) headers['x-partner-id'] = auth.partnerId;
+  if (auth.affiliateTenantId) headers['x-affiliate-tenant'] = auth.affiliateTenantId;
   return headers;
 }

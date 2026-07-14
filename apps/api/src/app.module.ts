@@ -20,6 +20,7 @@ import { BookingModule } from './modules/booking/infrastructure/http/booking.mod
 import { PaymentsModule } from './modules/payments/infrastructure/http/payments.module';
 import { PromotionsModule } from './modules/promotions/infrastructure/http/promotions.module';
 import { FinanceModule } from './modules/finance/infrastructure/http/finance.module';
+import { AffiliateModule } from './modules/affiliate/infrastructure/http/affiliate.module';
 import { NotificationModule } from './modules/notification/infrastructure/http/notification.module';
 
 @Module({
@@ -48,6 +49,7 @@ import { NotificationModule } from './modules/notification/infrastructure/http/n
     PaymentsModule,
     PromotionsModule,
     FinanceModule,
+    AffiliateModule,
     NotificationModule,
   ],
   providers: [

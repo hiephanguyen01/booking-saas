@@ -88,6 +88,9 @@ export interface InsertBookingData {
   promotionSnapshot?: unknown;
   /** Immutable commission config resolved at booking time (Task 1.10, §13.1). */
   commissionSnapshot?: unknown;
+  /** Affiliate attribution resolved at checkout (§15.1) — null when no referral. */
+  affiliateId?: string | null;
+  referralCode?: string | null;
 }
 
 /** Inventory fulfillment patch (§9.4) — pickup / return / damage. */

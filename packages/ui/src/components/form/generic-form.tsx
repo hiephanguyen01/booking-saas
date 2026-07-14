@@ -4,6 +4,7 @@ import * as React from "react"
 import { useForm, type DefaultValues, type FieldValues, type Path } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigation, useSubmit } from "react-router"
+import { AlertCircle } from "lucide-react"
 import type { z } from "zod"
 
 import { cn } from "@booking/ui/lib/utils"
@@ -29,6 +30,8 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   method?: "post" | "put" | "patch"
   /** Optional route path to submit to; defaults to the current route's action. */
   action?: string
+  /** Stretch the submit button to full width (onboarding pages). */
+  submitFullWidth?: boolean
   /** Extra content rendered below the fields (e.g. a secondary button). */
   children?: React.ReactNode
   className?: string
@@ -62,6 +65,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   fieldErrors,
   method = "post",
   action,
+  submitFullWidth,
   children,
   className,
 }: GenericFormProps<TSchema>) {
@@ -116,13 +120,14 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
         {serverError ? (
           <div
             role="alert"
-            className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           >
+            <AlertCircle className="size-4 shrink-0" />
             {serverError}
           </div>
         ) : null}
 
-        <div className={cn("grid gap-4", COLS[columns])}>
+        <div className={cn("grid gap-5", COLS[columns])}>
           {fields.map((field) => {
             if (field.hidden?.(values as Values)) return null
             const span = field.colSpan ? SPAN[field.colSpan] : undefined
@@ -134,8 +139,12 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
           })}
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button type="submit" disabled={isSubmitting}>
+        <div className={cn("flex items-center gap-3", submitFullWidth && "flex-col")}>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className={cn("h-14 rounded-lg px-8 text-sm font-semibold", submitFullWidth && "w-full")}
+          >
             {isSubmitting ? "Đang lưu..." : submitLabel}
           </Button>
           {children}

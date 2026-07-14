@@ -723,8 +723,32 @@ async function seedDemo(): Promise<void> {
   // Daily mode is open by default without rules, but seed them so the calendar is explicit.
   await ensureWeeklyRules(trialTenant.id, homestay.id, '00:00', '23:59');
 
+  // ── Affiliate (§15) ─────────────────────────────────────────────────────────
+  // An approved affiliate + a referral link so both dashboards render non-empty.
+  // Commissions populate through the real booking flow (?ref=R-DEMO01 at checkout).
+  const affiliateUser = await prisma.user.upsert({
+    where: { email: 'affiliate@studiohub.vn' },
+    update: {},
+    create: { email: 'affiliate@studiohub.vn', passwordHash: password, fullName: 'Le Thi Cong Tac Vien' },
+  });
+  const affiliate = await prisma.affiliate.upsert({
+    where: { tenantId_userId: { tenantId: tenant.id, userId: affiliateUser.id } },
+    update: { status: 'approved' },
+    create: {
+      tenantId: tenant.id,
+      userId: affiliateUser.id,
+      status: 'approved',
+      payoutInfo: { bankName: 'Vietcombank', accountNo: '0123456789', accountHolder: 'LE THI CONG TAC VIEN' },
+    },
+  });
+  if (!(await prisma.referralLink.findFirst({ where: { tenantId: tenant.id, code: 'R-DEMO01' } }))) {
+    await prisma.referralLink.create({
+      data: { tenantId: tenant.id, affiliateId: affiliate.id, code: 'R-DEMO01', target: 'tenant_home' },
+    });
+  }
+
   console.log(
-    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings + weekly hours, commission rules, WELCOME10) + a second themed storefront "Aperture Rentals" (aperture.localhost, 1 homestay/daily listing, trial expiring soon) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure).`,
+    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings + weekly hours, commission rules, WELCOME10) + a second themed storefront "Aperture Rentals" (aperture.localhost, 1 homestay/daily listing, trial expiring soon) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure) + an approved affiliate (affiliate@studiohub.vn) with referral link R-DEMO01.`,
   );
 }
 

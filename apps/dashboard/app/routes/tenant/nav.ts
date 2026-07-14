@@ -8,6 +8,7 @@ import {
   Wallet,
   BookText,
   Ticket,
+  Share2,
   Settings,
 } from 'lucide-react';
 import type { DashboardNavItem } from '~/lib/navigation-types';
@@ -25,5 +26,6 @@ export const tenantNavItems: DashboardNavItem[] = [
   { title: 'Tài chính', to: '/tenant/finance', icon: Wallet, permission: 'tenant.finance.read' },
   { title: 'Sổ cái', to: '/tenant/finance/ledger', icon: BookText, permission: 'tenant.finance.read' },
   { title: 'Khuyến mãi', to: '/tenant/promotions', icon: Ticket, permission: 'tenant.promotions.manage' },
+  { title: 'Cộng tác viên', to: '/tenant/affiliates', icon: Share2, permission: 'tenant.affiliates.manage' },
   { title: 'Cài đặt', to: '/tenant/settings', icon: Settings, permission: 'tenant.theme.manage' },
 ];

@@ -43,6 +43,13 @@ export const createBookingInputSchema = z.object({
   guest: guestInfoSchema.optional(),
   /** Optional promotion code entered at checkout (§12.3) — normalised uppercase server-side. */
   promoCode: z.string().min(1).max(50).optional(),
+  /**
+   * Affiliate referral code (§15.1) read by the storefront BFF from the
+   * `aff_<tenantId>` last-click cookie. Attribution is resolved + validated
+   * server-side (self-referral / self-dealing dropped silently) so an invalid or
+   * abusive code never blocks the booking.
+   */
+  refCode: z.string().min(1).max(50).optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingInputSchema>;
 

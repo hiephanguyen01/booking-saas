@@ -254,7 +254,6 @@ function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
 }
 
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
-  console.log("🚀 ~ TenantSettings ~ loaderData:", loaderData)
   const { theme, domains, canTheme, canDomains } = loaderData;
   const { readOnly } = useTenantArea();
   const nav = useNavigation();

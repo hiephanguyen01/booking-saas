@@ -10,7 +10,7 @@ import { ApiErrorDto } from './dto';
 
 /**
  * Documents a `Paginated<T>` response: `{ items: T[], page, pageSize, total }`.
- * Mirrors the `Paginated<T>` interface in `@booking/shared`.
+ * Mirrors the `Paginated<T>` interface in `@booking/contracts`.
  */
 export function ApiPaginatedResponse<TModel extends Type<unknown>>(model: TModel) {
   return applyDecorators(

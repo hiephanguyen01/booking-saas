@@ -6,7 +6,7 @@ import { ACCESS_COOKIE } from '../../modules/identity-access/infrastructure/http
 /**
  * Mounts the OpenAPI document at `/docs` (UI) and `/docs-json` (raw JSON).
  *
- * Schemas are generated from the same `@booking/shared` zod contracts used for
+ * Schemas are generated from the same `@booking/contracts` zod contracts used for
  * validation: request/response bodies are `createZodDto(...)` classes, and
  * `cleanupOpenApiDoc` post-processes the zod-derived parts of the document. This
  * keeps the docs in lock-step with the types the API actually validates/returns.

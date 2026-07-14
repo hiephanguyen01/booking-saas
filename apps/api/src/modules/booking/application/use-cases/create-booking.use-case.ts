@@ -9,6 +9,7 @@ import { FindOrCreateGuestUseCase } from '../../../identity-access/application/u
 import { PricingService } from '../../../listing/application/services/pricing.service';
 import { ApplyPromotionService, type PreparedPromotion } from '../../../promotions/application/apply-promotion.service';
 import { ResolveCommissionService } from '../../../finance/application/resolve-commission.service';
+import { ResolveAttributionService } from '../../../affiliate/application/resolve-attribution.service';
 import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../../listing/domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY, type IResourceRepository } from '../../../listing/domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY, type IPricingRuleRepository } from '../../../listing/domain/ports/pricing-rule-repository.port';
@@ -44,6 +45,7 @@ export class CreateBookingUseCase {
     private readonly pricing: PricingService,
     private readonly promotions: ApplyPromotionService, // Task 1.11 — in-tx promo reservation
     private readonly commissions: ResolveCommissionService, // Task 1.10 — in-tx commission snapshot
+    private readonly attribution: ResolveAttributionService, // Task 2.1 — in-tx affiliate attribution
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -219,12 +221,30 @@ export class CreateBookingUseCase {
       where: { id: args.listing.partnerId },
       select: { isHouse: true },
     });
-    const commissionSnapshot = await this.commissions.snapshot(tx, {
+    let commissionSnapshot = await this.commissions.snapshot(tx, {
       partnerId: args.listing.partnerId,
       listingTypeId: args.listing.listingTypeId,
       categoryId: args.listing.categoryId,
       isHouse: partner?.isHouse ?? false,
     });
+
+    // ── Task 2.1 (Affiliate attribution) ──────────────────────────────────────
+    // Resolve the referral code to an attributable affiliate (self-referral /
+    // self-dealing dropped silently, §15.2). When one applies, freeze the
+    // affiliate's custom_rate into the commission snapshot so BOTH the ledger leg
+    // and the tracked affiliate_commissions row use the same rate — keeping the
+    // journal balanced. A miss leaves affiliateId null and the booking unchanged.
+    let attribution: Awaited<ReturnType<typeof this.attribution.resolve>> = null;
+    if (args.input.refCode) {
+      attribution = await this.attribution.resolve(tx, {
+        code: args.input.refCode,
+        customerId: args.customerId,
+        listingPartnerId: args.listing.partnerId,
+      });
+      if (attribution) {
+        commissionSnapshot = this.attribution.applyCustomRate(commissionSnapshot, attribution.customRate);
+      }
+    }
 
     const draft = await this.bookings.insertDraft(tx, tenantId, {
       listingId: args.listing.id,
@@ -247,6 +267,8 @@ export class CreateBookingUseCase {
       promoCode: promo?.promoCode ?? null,
       promotionSnapshot: promo?.snapshot ?? null,
       commissionSnapshot,
+      affiliateId: attribution?.affiliateId ?? null,
+      referralCode: attribution?.referralCode ?? null,
       cancellationPolicyId: args.listing.cancellationPolicyId,
       cancellationPolicySnapshot: args.policyRules,
       pricingSnapshot: args.quote,

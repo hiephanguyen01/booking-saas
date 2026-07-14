@@ -30,6 +30,11 @@ export interface TextFieldConfig<T extends FieldValues> extends BaseFieldConfig<
   type: "text" | "email" | "password" | "url" | "number" | "textarea"
   /** Textarea row hint. */
   rows?: number
+  /**
+   * Password fields render a show/hide eye toggle by default. Set `false` to hide it.
+   * Ignored for non-password types.
+   */
+  showToggle?: boolean
 }
 
 /** `select | combobox | radio` — pick one of `options`. */
@@ -38,6 +43,12 @@ export interface ChoiceFieldConfig<T extends FieldValues> extends BaseFieldConfi
   options: FieldOption[]
   /** Placeholder shown in the combobox search box. */
   searchPlaceholder?: string
+  /**
+   * `radio` layout: `"default"` = a vertical radio list; `"segmented"` = a
+   * horizontal button group (the register-partner partner-type toggle). Ignored
+   * for `select`/`combobox`.
+   */
+  variant?: "default" | "segmented"
 }
 
 /** `checkbox | switch` — a boolean toggle. */

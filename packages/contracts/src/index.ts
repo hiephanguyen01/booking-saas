@@ -9,6 +9,7 @@ export * from './contracts/booking';
 export * from './contracts/payment';
 export * from './contracts/promotion';
 export * from './contracts/finance';
+export * from './contracts/affiliate';
 export * from './contracts/platform';
 export * from './contracts/storage';
 export { default as viMessages } from './i18n/vi.json';

@@ -29,6 +29,8 @@ export interface ApiAuth {
   /** Scope headers required by the PermissionsGuard for tenant/partner routes. */
   tenantId?: string;
   partnerId?: string;
+  /** Membership selector for the affiliate portal (§15.3) — picks which tenant's affiliate account to act in. */
+  affiliateTenantId?: string;
 }
 
 /** Either a bare access token or the full auth descriptor (for refresh + scope). */

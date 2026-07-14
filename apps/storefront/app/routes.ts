@@ -7,7 +7,10 @@ export default [
   route('checkout', 'routes/checkout.tsx'),
   route('bookings', 'routes/bookings.tsx'),
   route('bookings/:code', 'routes/booking-detail.tsx'),
-  layout('routes/_partner-layout.tsx', [route('become-partner', 'routes/become-partner.tsx')]),
+  layout('routes/_partner-layout.tsx', [
+    route('become-partner', 'routes/become-partner.tsx'),
+    route('become-affiliate', 'routes/become-affiliate.tsx'),
+  ]),
   route('set-locale', 'routes/set-locale.tsx'),
   route('sitemap.xml', 'routes/sitemap[.]xml.tsx'),
   route('robots.txt', 'routes/robots[.]txt.tsx'),

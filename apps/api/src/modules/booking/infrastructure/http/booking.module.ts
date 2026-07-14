@@ -6,6 +6,7 @@ import { ListingModule } from '../../../listing/infrastructure/http/listing.modu
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { PromotionsModule } from '../../../promotions/infrastructure/http/promotions.module';
 import { FinanceModule } from '../../../finance/infrastructure/http/finance.module';
+import { AffiliateModule } from '../../../affiliate/infrastructure/http/affiliate.module';
 import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
 import { BOOKING_REPOSITORY } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE } from '../../domain/ports/hold-store.port';
@@ -37,6 +38,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     IdentityAccessModule,
     PromotionsModule,
     FinanceModule,
+    AffiliateModule,
     NotificationModule,
   ],
   controllers: [PublicBookingController, PartnerBookingController, TenantBookingController],

@@ -98,7 +98,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         id, tenant_id, listing_id, partner_id, resource_id, customer_id, code, idempotency_key,
         booking_mode, status, timeslot, blocked_period,
         guest_count, quantity, total_amount, discount_amount, final_amount, deposit_amount, security_deposit,
-        promotion_id, promo_code, promotion_snapshot, commission_snapshot,
+        promotion_id, promo_code, promotion_snapshot, commission_snapshot, affiliate_id, referral_code,
         cancellation_policy_id, cancellation_policy_snapshot, pricing_snapshot, customer_note, updated_at
       ) VALUES (
         ${id}::uuid, ${tenantId}::uuid, ${data.listingId}::uuid, ${data.partnerId}::uuid,
@@ -111,6 +111,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         ${data.promotionId ?? null}::uuid, ${data.promoCode ?? null},
         ${JSON.stringify(data.promotionSnapshot ?? null)}::jsonb,
         ${JSON.stringify(data.commissionSnapshot ?? null)}::jsonb,
+        ${data.affiliateId ?? null}::uuid, ${data.referralCode ?? null},
         ${data.cancellationPolicyId}::uuid,
         ${JSON.stringify(data.cancellationPolicySnapshot ?? null)}::jsonb,
         ${JSON.stringify(data.pricingSnapshot ?? null)}::jsonb, ${data.customerNote}, now()
