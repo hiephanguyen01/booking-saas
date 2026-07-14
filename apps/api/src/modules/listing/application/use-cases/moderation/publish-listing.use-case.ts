@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
+import { AUDIT_WRITER, type IAuditWriter } from '../../../../../shared/audit/audit-writer.port';
 import {
   LISTING_REPOSITORY,
   type IListingRepository,
@@ -27,6 +28,7 @@ export class PublishListingUseCase {
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
   ) {}
 
   async execute(ctx: ModerationContext, listingId: string, force = false): Promise<ListingRecord> {
@@ -47,7 +49,7 @@ export class PublishListingUseCase {
 
       const outcome = runModeration(() => transitionPublish(listing, 'admin'));
       const updated = await this.listings.moderate(tx, listingId, outcome);
-      await writeModerationAudit(tx, ctx, {
+      await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.published',
         entityType: 'listing',
         entityId: listing.id,

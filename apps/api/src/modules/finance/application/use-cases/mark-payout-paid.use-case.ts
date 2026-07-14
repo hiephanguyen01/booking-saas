@@ -12,6 +12,7 @@ import {
   type ILedgerRepository,
 } from '../../domain/ports/ledger-repository.port';
 import { buildPayoutJournal } from '../../domain/ledger-journal';
+import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 
 /**
  * Mark a payout paid (§13.2): write the Debit-payable / Credit-cash journal so the
@@ -22,6 +23,7 @@ export class MarkPayoutPaidUseCase {
   constructor(
     @Inject(PAYOUT_REPOSITORY) private readonly payouts: IPayoutRepository,
     @Inject(LEDGER_REPOSITORY) private readonly ledger: ILedgerRepository,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -62,15 +64,13 @@ export class MarkPayoutPaidUseCase {
         reference: input.reference,
         evidenceKey: input.evidenceKey,
       });
-      await tx.auditLog.create({
-        data: {
-          tenantId,
-          actorUserId: actorId,
-          action: 'payout.paid',
-          entityType: 'payout',
-          entityId: id,
-          data: { reference: input.reference },
-        },
+      await this.audit.write(tx, {
+        tenantId,
+        actorUserId: actorId,
+        action: 'payout.paid',
+        entityType: 'payout',
+        entityId: id,
+        data: { reference: input.reference },
       });
       // Notify the payee (§17) — the notification module emails partner members.
       await this.outbox.emit(tx, {

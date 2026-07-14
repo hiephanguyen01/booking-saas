@@ -25,6 +25,7 @@ import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-cas
 import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
 import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
 import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
+import { SetPartnerPromotionsUseCase } from '../../application/use-cases/set-partner-promotions.use-case';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
@@ -71,6 +72,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     AssignSubscriptionUseCase,
     GetCurrentSubscriptionUseCase,
     GetSubscriptionStatusUseCase,
+    SetPartnerPromotionsUseCase,
     AddDomainUseCase,
     VerifyDomainUseCase,
     ListDomainsUseCase,

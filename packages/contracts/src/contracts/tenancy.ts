@@ -70,6 +70,15 @@ export type UpdateTenantInput = z.infer<typeof updateTenantInputSchema>;
 export const partnerPromotionsToggleSchema = z.object({ partnerPromotionsEnabled: z.boolean() });
 export type PartnerPromotionsToggle = z.infer<typeof partnerPromotionsToggleSchema>;
 
+/** The storefront theme payload the dashboard reads back to hydrate its form (§16.1). */
+export const tenantThemeResponseSchema = z.object({
+  name: z.string(),
+  vertical: z.string(),
+  defaultLocale: z.string(),
+  themeConfig: z.record(z.unknown()),
+});
+export type TenantThemeResponse = z.infer<typeof tenantThemeResponseSchema>;
+
 export const createPlanInputSchema = z.object({
   name: z.string().min(1).max(120),
   /** VND đồng as a digit string (money never travels as a JS number). */

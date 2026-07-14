@@ -102,6 +102,31 @@ export const listPublicListingsQuerySchema = z.object({
 });
 export type ListPublicListingsQuery = z.infer<typeof listPublicListingsQuerySchema>;
 
+/**
+ * Parse the full storefront listing query into the shape the list use-case
+ * consumes. Dynamic `attr.<key>=<value>` equality filters (which zod can't type)
+ * are captured via passthrough and folded into `attrFilters`; blank values are
+ * dropped (a GET filter form submits every field). Malformed known fields
+ * degrade to `undefined` rather than failing the whole search.
+ */
+export const publicListingsFilterSchema = z
+  .object({
+    type: slugSchema.optional().catch(undefined),
+    category: slugSchema.optional().catch(undefined),
+    q: z.string().max(200).optional().catch(undefined),
+  })
+  .passthrough()
+  .transform((raw) => {
+    const attrFilters: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      if (key.startsWith('attr.') && key.length > 5 && typeof value === 'string' && value !== '') {
+        attrFilters[key.slice(5)] = value;
+      }
+    }
+    return { typeSlug: raw.type, category: raw.category, q: raw.q, attrFilters };
+  });
+export type PublicListingsFilter = z.infer<typeof publicListingsFilterSchema>;
+
 // ── Responses ────────────────────────────────────────────────────────────────
 
 export const listingTypeResponseSchema = z.object({

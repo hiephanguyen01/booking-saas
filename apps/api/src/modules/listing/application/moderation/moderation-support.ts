@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { ModerationError } from '../../domain/moderation/listing-moderation';
 
 /** Who is acting + the audit metadata every moderation use case needs. */
@@ -60,6 +61,7 @@ export function runModeration<T>(fn: () => T): T {
 
 /** Append a moderation action to the audit log inside the same tx (§14.4). */
 export async function writeModerationAudit(
+  audit: IAuditWriter,
   tx: PrismaTx,
   ctx: ModerationContext,
   params: {
@@ -71,19 +73,17 @@ export async function writeModerationAudit(
     reason?: string;
   },
 ): Promise<void> {
-  await tx.auditLog.create({
+  await audit.write(tx, {
+    tenantId: ctx.tenantId,
+    actorUserId: ctx.actorUserId ?? null,
+    action: params.action,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    ip: ctx.ip ?? null,
     data: {
-      tenantId: ctx.tenantId,
-      actorUserId: ctx.actorUserId ?? null,
-      action: params.action,
-      entityType: params.entityType,
-      entityId: params.entityId,
-      ip: ctx.ip ?? null,
-      data: {
-        fromStatus: params.fromStatus,
-        toStatus: params.toStatus,
-        reason: params.reason ?? null,
-      },
+      fromStatus: params.fromStatus,
+      toStatus: params.toStatus,
+      reason: params.reason ?? null,
     },
   });
 }

@@ -1,8 +1,11 @@
 import type {
   AffiliateCommissionResponse,
+  AffiliateDetailResponse,
   AffiliateListItem,
+  AffiliateRateResponse,
   AffiliateResponse,
   AffiliateStatsResponse,
+  AffiliateStatusResponse,
   ReferralLinkResponse,
 } from '@booking/contracts';
 import type { AffiliateRecord, AffiliateWithUser } from '../domain/ports/affiliate-repository.port';
@@ -11,6 +14,7 @@ import type {
   AffiliateCommissionTotals,
   AffiliateCommissionWithBooking,
 } from '../domain/ports/affiliate-commission-repository.port';
+import type { TenantAffiliateDetail } from './use-cases/get-tenant-affiliate.use-case';
 
 export function toReferralLinkResponse(r: ReferralLinkRecord): ReferralLinkResponse {
   return {
@@ -49,6 +53,25 @@ export function toAffiliateListItem(
     totalEarned: extras.totalEarned.toString(),
     createdAt: a.createdAt.toISOString(),
   };
+}
+
+/** Detail view: profile row + referral links + commission history (§15.3). */
+export function toAffiliateDetailResponse(d: TenantAffiliateDetail): AffiliateDetailResponse {
+  return {
+    affiliate: toAffiliateListItem(d.affiliate, { linksCount: d.links.length, totalEarned: d.totalEarned }),
+    links: d.links.map(toReferralLinkResponse),
+    commissions: d.commissions.map(toAffiliateCommissionResponse),
+  };
+}
+
+/** Minimal echo after an approve/suspend (§15.1). */
+export function toAffiliateStatusResponse(a: AffiliateRecord): AffiliateStatusResponse {
+  return { id: a.id, status: a.status };
+}
+
+/** Minimal echo after setting/clearing a custom rate (§15.2). */
+export function toAffiliateRateResponse(a: AffiliateRecord): AffiliateRateResponse {
+  return { id: a.id, customRate: a.customRate === null ? null : a.customRate.toString() };
 }
 
 export function toAffiliateCommissionResponse(c: AffiliateCommissionWithBooking): AffiliateCommissionResponse {

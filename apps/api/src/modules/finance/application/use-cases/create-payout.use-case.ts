@@ -8,6 +8,7 @@ import {
   type PayoutRecord,
 } from '../../domain/ports/payout-repository.port';
 import { LEDGER_REPOSITORY, type ILedgerRepository } from '../../domain/ports/ledger-repository.port';
+import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 
 interface PayoutPolicy {
   holdingDays: number;
@@ -29,6 +30,7 @@ export class CreatePayoutUseCase {
   constructor(
     @Inject(PAYOUT_REPOSITORY) private readonly payouts: IPayoutRepository,
     @Inject(LEDGER_REPOSITORY) private readonly ledger: ILedgerRepository,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -65,8 +67,13 @@ export class CreatePayoutUseCase {
         periodTo,
         createdBy,
       });
-      await tx.auditLog.create({
-        data: { tenantId, actorUserId: createdBy, action: 'payout.created', entityType: 'payout', entityId: payout.id, data: { amount: available.toString() } },
+      await this.audit.write(tx, {
+        tenantId,
+        actorUserId: createdBy,
+        action: 'payout.created',
+        entityType: 'payout',
+        entityId: payout.id,
+        data: { amount: available.toString() },
       });
       return payout;
     });

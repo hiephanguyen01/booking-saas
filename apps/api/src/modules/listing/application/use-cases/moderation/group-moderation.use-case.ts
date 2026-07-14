@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { ModerationActor } from '@booking/contracts';
 import { TenantDbService, type PrismaTx } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
+import { AUDIT_WRITER, type IAuditWriter } from '../../../../../shared/audit/audit-writer.port';
 import {
   LISTING_GROUP_REPOSITORY,
   type IListingGroupRepository,
@@ -33,6 +34,7 @@ export class GroupModerationUseCase {
     @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
   ) {}
 
   private async load(tx: PrismaTx, id: string): Promise<ListingGroupRecord> {
@@ -102,7 +104,7 @@ export class GroupModerationUseCase {
       assertOwnership(group, ctx.partnerId);
       const outcome = transition(group);
       const updated = await this.groups.moderate(tx, id, outcome);
-      await writeModerationAudit(tx, ctx, {
+      await writeModerationAudit(this.audit, tx, ctx, {
         action: `listing_group.${action}`,
         entityType: 'listing_group',
         entityId: group.id,

@@ -10,6 +10,7 @@ import { RedisModule } from './shared/redis/redis.module';
 import { TenantContextModule } from './shared/tenant-context/tenant-context.module';
 import { OutboxModule } from './shared/outbox/outbox.module';
 import { StorageModule } from './shared/storage/storage.module';
+import { AuditModule } from './shared/audit/audit.module';
 import { IdentityAccessModule } from './modules/identity-access/infrastructure/http/identity-access.module';
 import { TenancyModule } from './modules/tenancy/infrastructure/http/tenancy.module';
 import { PartnerModule } from './modules/partner/infrastructure/http/partner.module';
@@ -38,6 +39,7 @@ import { NotificationModule } from './modules/notification/infrastructure/http/n
     TenantContextModule,
     OutboxModule,
     StorageModule,
+    AuditModule,
     HealthModule,
     IdentityAccessModule,
     TenancyModule,

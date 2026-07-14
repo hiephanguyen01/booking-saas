@@ -2,7 +2,6 @@ import { uuidSchema, type ListingResponse, type ListingReviewResponse } from '@b
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   HttpCode,
   Ip,
@@ -95,7 +94,9 @@ export class PartnerListingModerationController {
   async getOne(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<ListingResponse> {
-    return toListingResponse(await this.ownedListing(id));
+    const tenantId = this.tenantContext.tenantIdOrThrow();
+    const partnerId = this.tenantContext.partnerIdOrThrow();
+    return toListingResponse(await this.getListing.execute(tenantId, id, { requirePartnerId: partnerId }));
   }
 
   @RequirePermissions('partner.listings.write')
@@ -109,23 +110,10 @@ export class PartnerListingModerationController {
     @Body() input: UpdateListingDto,
   ): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
-    await this.ownedListing(id); // ownership guard (partnerId is immutable on update)
-    return toListingResponse(await this.updateListing.execute(tenantId, id, input));
-  }
-
-  /** Load a listing and assert it belongs to the calling partner (else 403). */
-  private async ownedListing(id: string) {
-    const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
-    const listing = await this.getListing.execute(tenantId, id);
-    if (listing.partnerId !== partnerId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'LISTING_NOT_OWNED',
-        message: 'This listing belongs to another partner',
-      });
-    }
-    return listing;
+    return toListingResponse(
+      await this.updateListing.execute(tenantId, id, input, { requirePartnerId: partnerId }),
+    );
   }
 
   private ctx(principal: SessionPrincipal, ip: string) {

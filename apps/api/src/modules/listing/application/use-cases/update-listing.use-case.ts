@@ -35,7 +35,12 @@ export class UpdateListingUseCase {
     private readonly outbox: OutboxService,
   ) {}
 
-  async execute(tenantId: string, id: string, input: UpdateListingInput): Promise<ListingRecord> {
+  async execute(
+    tenantId: string,
+    id: string,
+    input: UpdateListingInput,
+    opts?: { requirePartnerId?: string },
+  ): Promise<ListingRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.listings.findById(tx, id);
       if (!existing) {
@@ -43,6 +48,14 @@ export class UpdateListingUseCase {
           statusCode: 404,
           code: 'LISTING_NOT_FOUND',
           message: 'Listing not found',
+        });
+      }
+      // Partner-scoped callers may only edit their own listings (§7.3).
+      if (opts?.requirePartnerId && existing.partnerId !== opts.requirePartnerId) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'LISTING_NOT_OWNED',
+          message: 'This listing belongs to another partner',
         });
       }
       if (input.slug && input.slug !== existing.slug) {

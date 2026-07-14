@@ -15,6 +15,7 @@ import {
   subscriptionResponseSchema,
   subscriptionStatusResponseSchema,
   tenantResponseSchema,
+  tenantThemeResponseSchema,
   updateTenantInputSchema,
 } from '@booking/contracts';
 
@@ -51,11 +52,4 @@ export class CurrentSubscriptionDto extends createZodDto(
   z.object({ subscription: subscriptionResponseSchema, plan: planResponseSchema.nullable() }),
 ) {}
 
-/** The theme payload the dashboard reads back to hydrate the settings form. */
-const tenantThemeResponseSchema = z.object({
-  name: z.string(),
-  vertical: z.string(),
-  defaultLocale: z.string(),
-  themeConfig: z.record(z.unknown()),
-});
 export class TenantThemeResponseDto extends createZodDto(tenantThemeResponseSchema) {}

@@ -170,3 +170,20 @@ export const partnerCalendarBookingResponseSchema = z.object({
   returnedAt: z.string().nullable(),
 });
 export type PartnerCalendarBookingResponse = z.infer<typeof partnerCalendarBookingResponseSchema>;
+
+/**
+ * Per-partner booking health for the tenant dashboard (§7.3): raw counts plus
+ * derived cancellation / no-show rates (0–1 fractions, 0 when the partner has no
+ * bookings yet). The rates are computed in the booking mapper, not the controller.
+ */
+export const partnerBookingStatsResponseSchema = z.object({
+  partnerId: z.string(),
+  total: z.number(),
+  cancelled: z.number(),
+  noShow: z.number(),
+  completed: z.number(),
+  confirmed: z.number(),
+  cancellationRate: z.number(),
+  noShowRate: z.number(),
+});
+export type PartnerBookingStatsResponse = z.infer<typeof partnerBookingStatsResponseSchema>;
