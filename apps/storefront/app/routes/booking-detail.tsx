@@ -17,6 +17,8 @@ import {
 import { useT, type I18n } from '../lib/i18n';
 import { formatVnd } from '../lib/ui';
 import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '../lib/time';
+import { storefrontPaths } from '../lib/locale-paths';
+import { useLocale } from '../lib/use-locale';
 
 export function meta() {
   return [{ title: 'Booking' }, { name: 'robots', content: 'noindex' }];
@@ -54,6 +56,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 export default function BookingDetail({ loaderData, actionData }: Route.ComponentProps) {
   const { code, status, booking, mockEnabled } = loaderData;
   const { t } = useT();
+  const locale = useLocale();
   const [sp] = useSearchParams();
   const revalidator = useRevalidator();
 
@@ -84,7 +87,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
             ) : null}
           </div>
 
-          {booking ? <BookingDetails booking={booking} t={t} /> : null}
+          {booking ? <BookingDetails booking={booking} locale={locale} t={t} /> : null}
 
           {actionData && !actionData.ok && actionData.error ? (
             <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{actionData.error}</p>
@@ -99,7 +102,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
           ) : null}
 
           <div className="pt-2 text-center">
-            <Link to="/bookings" className="text-sm text-muted-foreground hover:underline">
+            <Link to={storefrontPaths.bookings(locale)} className="text-sm text-muted-foreground hover:underline">
               {t('nav.lookup')}
             </Link>
           </div>
@@ -109,8 +112,9 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
   );
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  return <RouteErrorState error={error} homeHref="/bookings" homeLabel="Tra cứu đặt chỗ" />;
+export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+  return <RouteErrorState error={error} homeHref={storefrontPaths.bookings(locale)} homeLabel="Tra cứu đặt chỗ" />;
 }
 
 function StatusHeader({
@@ -179,12 +183,12 @@ function PendingActions({
   );
 }
 
-function BookingDetails({ booking, t }: { booking: BookingResponse; t: I18n['t'] }) {
+function BookingDetails({ booking, locale, t }: { booking: BookingResponse; locale: 'vi' | 'en'; t: I18n['t'] }) {
   const tz = DEFAULT_TZ;
   const isDaily = booking.bookingMode === 'daily';
   const schedule = isDaily
-    ? `${dateLabelInTz(booking.startUtc, tz, 'vi')} → ${dateLabelInTz(booking.endUtc, tz, 'vi')}`
-    : `${dateLabelInTz(booking.startUtc, tz, 'vi')} · ${timeInTz(booking.startUtc, tz)}–${timeInTz(booking.endUtc, tz)}`;
+    ? `${dateLabelInTz(booking.startUtc, tz, locale)} → ${dateLabelInTz(booking.endUtc, tz, locale)}`
+    : `${dateLabelInTz(booking.startUtc, tz, locale)} · ${timeInTz(booking.startUtc, tz)}–${timeInTz(booking.endUtc, tz)}`;
   return (
     <>
       <Separator />

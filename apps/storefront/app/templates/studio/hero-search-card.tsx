@@ -5,6 +5,8 @@ import type { PublicListingTypeResponse } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
 import { useT } from '../../lib/i18n';
 import { typeIcon } from '../../lib/ui';
+import { storefrontPaths } from '../../lib/locale-paths';
+import { useLocale } from '../../lib/use-locale';
 
 /**
  * The floating white search card on the home hero. The listing-type tabs are
@@ -15,6 +17,7 @@ import { typeIcon } from '../../lib/ui';
  */
 export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTypeResponse[] }) {
   const { t } = useT();
+  const locale = useLocale();
   const [mode, setMode] = useState<'hourly' | 'daily'>('hourly');
   const types = listingTypes.slice(0, 6);
 
@@ -28,7 +31,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
             return (
               <Link
                 key={type.id}
-                to={`/t/${type.slug}`}
+                to={storefrontPaths.catalog(locale, type.slug)}
                 className={cn(
                   'flex shrink-0 flex-col items-center justify-center gap-1 rounded-t-lg px-2 py-3 text-xs font-medium transition-colors sm:flex-1 sm:px-4 sm:py-3 sm:text-base',
                   active
@@ -91,7 +94,7 @@ export function HeroSearchCard({ listingTypes }: { listingTypes: PublicListingTy
           <label className="flex items-center gap-2 rounded-sm border border-input bg-background px-4 py-3">
             <Calendar className="size-5 text-muted-foreground" />
             <span className="truncate text-sm text-foreground">
-              {new Date().toLocaleDateString('vi-VN')}
+              {new Date().toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US')}
             </span>
           </label>
           <button

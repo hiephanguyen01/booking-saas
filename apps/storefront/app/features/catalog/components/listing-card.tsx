@@ -2,6 +2,8 @@ import { Heart } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
 import { attributeSummary, formatVnd } from '../../../lib/ui';
+import { storefrontPaths } from '../../../lib/locale-paths';
+import { useLocale } from '../../../lib/use-locale';
 
 /**
  * Image-forward listing card used on the home + catalog pages. Visual chrome
@@ -11,13 +13,14 @@ import { attributeSummary, formatVnd } from '../../../lib/ui';
  * rating/review/discount data behind it, and this card must not invent any.
  */
 export function ListingCard({ listing }: { listing: PublicListingResponse }) {
+  const locale = useLocale();
   const cover = listing.photos[0] as string | undefined;
   const price = formatVnd(listing.priceFrom);
   const summary = attributeSummary(listing.attributes);
 
   return (
     <Link
-      to={`/l/${listing.slug}`}
+      to={storefrontPaths.listing(locale, listing.slug)}
       className="group block overflow-hidden rounded-lg border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="relative aspect-3/2 overflow-hidden bg-muted">

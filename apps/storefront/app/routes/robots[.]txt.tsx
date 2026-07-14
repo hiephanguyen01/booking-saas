@@ -8,8 +8,9 @@ export function loader({ request, url }: Route.LoaderArgs) {
   const body = [
     'User-agent: *',
     'Allow: /',
-    'Disallow: /checkout',
-    'Disallow: /bookings',
+    'Disallow: /*/checkout',
+    'Disallow: /*/bookings',
+    'Disallow: /set-locale',
     `Sitemap: ${origin}/sitemap.xml`,
     '',
   ].join('\n');

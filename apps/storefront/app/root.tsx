@@ -26,19 +26,24 @@ import { fetchListingTypes } from './lib/catalog.server';
 import { resolveLocale } from './lib/i18n.server';
 import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
 import { themeCss } from './theme/theme';
+import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
 
 /** Shared route context: the resolved tenant + its auto-generated menu + locale. */
 export interface StorefrontContext {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
+  canonical: string;
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const tenant = await resolveTenant(request);
   const locale = resolveLocale(request, tenant.defaultLocale);
+  const publicUrl = requestPublicUrl(request, url);
+  const canonical = canonicalUrl(publicUrl);
+  const alternates = localizedAlternates(publicUrl);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
-  const payload = { tenant, listingTypes, locale };
+  const payload = { tenant, listingTypes, locale, canonical, alternates };
 
   // Affiliate attribution (§15.1): capture `?ref=CODE` once per new code and set
   // the last-click cookie. Only track when the code differs from what's already
@@ -71,6 +76,11 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: 'og:title', content: title },
     { property: 'og:type', content: 'website' },
     { property: 'og:site_name', content: tenant.name },
+    { property: 'og:url', content: loaderData.canonical },
+    { tagName: 'link', rel: 'canonical', href: loaderData.canonical },
+    { tagName: 'link', rel: 'alternate', hrefLang: 'vi', href: loaderData.alternates.vi },
+    { tagName: 'link', rel: 'alternate', hrefLang: 'en', href: loaderData.alternates.en },
+    { tagName: 'link', rel: 'alternate', hrefLang: 'x-default', href: loaderData.alternates.default },
   ];
   if (description) {
     tags.push({ name: 'description', content: description });
@@ -108,7 +118,7 @@ function ThemeStyle({ theme }: { theme: StorefrontTenant['theme'] }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { tenant, listingTypes, locale } = loaderData;
+  const { tenant, listingTypes, locale, canonical } = loaderData;
 
   const matches = useMatches();
   
@@ -137,7 +147,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
             <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
           )}
           <main className="flex-1">
-            <Outlet context={{ tenant, listingTypes, locale } satisfies StorefrontContext} />
+            <Outlet context={{ tenant, listingTypes, locale, canonical } satisfies StorefrontContext} />
           </main>
           {!isStandalone && <SiteFooter tenant={tenant} />}
         </div>

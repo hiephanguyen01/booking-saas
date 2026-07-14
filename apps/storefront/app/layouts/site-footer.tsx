@@ -2,10 +2,13 @@ import { ArrowUp, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { useT } from '../lib/i18n';
+import { storefrontPaths } from '../lib/locale-paths';
+import { useLocale } from '../lib/use-locale';
 
 /** Storefront footer — brand, contact + social links from theme_config (§16.2). */
 export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
   const { t } = useT();
+  const locale = useLocale();
   const socials = [
     { href: tenant.social.facebook, label: 'Facebook' },
     { href: tenant.social.instagram, label: 'Instagram' },
@@ -68,7 +71,7 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
         {aboutList}
         {supportList}
         <div className="flex flex-col gap-3">
-          <Link to="/" className="text-lg font-extrabold text-primary">
+          <Link to={storefrontPaths.home(locale)} className="text-lg font-extrabold text-primary">
             {tenant.logoUrl ? (
               <img src={tenant.logoUrl} alt={tenant.name} className="h-10 w-auto max-w-40 object-contain" />
             ) : (
@@ -81,7 +84,7 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
             <span className="text-sm text-muted-foreground">{tenant.contact.address}</span>
           ) : null}
           <Link
-            to="/become-partner"
+            to={storefrontPaths.becomePartner(locale)}
             className="text-sm font-medium text-foreground transition-colors hover:text-primary"
           >
             {t('becomePartner.title')}
@@ -102,7 +105,7 @@ export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
 
       {/* Mobile: single centered column */}
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-6 py-8 text-center sm:hidden">
-        <Link to="/" className="text-lg font-extrabold text-primary">
+        <Link to={storefrontPaths.home(locale)} className="text-lg font-extrabold text-primary">
           {tenant.logoUrl ? (
             <img src={tenant.logoUrl} alt={tenant.name} className="h-10 w-auto max-w-40 object-contain" />
           ) : (

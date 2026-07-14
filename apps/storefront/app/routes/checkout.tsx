@@ -9,12 +9,14 @@ import { fetchListing, fetchQuote } from '../lib/catalog.server';
 import { buildCheckoutIdempotencyKey } from '../lib/checkout-idempotency.server';
 import { appendRecentCookie } from '../lib/recent.server';
 import { resolveTenant } from '../lib/tenant.server';
+import { storefrontPaths } from '../lib/locale-paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Checkout' }, { name: 'robots', content: 'noindex' }];
 }
 
-export async function loader({ request, url }: Route.LoaderArgs) {
+export async function loader({ request, url, params }: Route.LoaderArgs) {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
   const searchParams = url.searchParams;
   const slug = searchParams.get('listing');
   const mode = searchParams.get('mode');
@@ -23,7 +25,9 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const qty = searchParams.get('qty') || '1';
   const promoCode = searchParams.get('promo')?.trim().toUpperCase() || null;
 
-  if (!slug || !mode || !start || !end) throw redirect(slug ? `/l/${slug}` : '/');
+  if (!slug || !mode || !start || !end) {
+    throw redirect(slug ? storefrontPaths.listing(locale, slug) : storefrontPaths.home(locale));
+  }
 
   const [listing, quote] = await Promise.all([
     fetchListing(request, slug),
@@ -34,8 +38,8 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     ),
   ]);
 
-  if (!listing) throw redirect('/');
-  if (!quote) throw redirect(`/l/${slug}`);
+  if (!listing) throw redirect(storefrontPaths.home(locale));
+  if (!quote) throw redirect(storefrontPaths.listing(locale, slug));
 
   let promo: ValidatePromoResponse | null = null;
   if (promoCode) {
@@ -69,7 +73,8 @@ function validateGuest(
   return { ok: true, data: { fullName, email, phone } };
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request, params }: Route.ActionArgs) {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
   const form = await request.formData();
   const listingId = String(form.get('listingId') ?? '');
   const mode = String(form.get('mode') ?? '');
@@ -129,13 +134,16 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  return redirect(`/bookings/${booking.code}`, { headers: { 'Set-Cookie': setCookie } });
+  return redirect(storefrontPaths.booking(locale, booking.code), {
+    headers: { 'Set-Cookie': setCookie },
+  });
 }
 
 export default function CheckoutRoute(props: Route.ComponentProps) {
   return <CheckoutPage {...props} />;
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  return <RouteErrorState error={error} homeHref="/" homeLabel="Về trang chủ" />;
+export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+  return <RouteErrorState error={error} homeHref={storefrontPaths.home(locale)} homeLabel="Về trang chủ" />;
 }

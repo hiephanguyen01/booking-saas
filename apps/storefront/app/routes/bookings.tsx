@@ -6,6 +6,8 @@ import type { Route } from './+types/bookings';
 import { requestBookingOtp } from '../lib/booking.server';
 import { readRecentCodes } from '../lib/recent.server';
 import { useT } from '../lib/i18n';
+import { storefrontPaths } from '../lib/locale-paths';
+import { useLocale } from '../lib/use-locale';
 
 export function meta() {
   return [{ title: 'Bookings' }, { name: 'robots', content: 'noindex' }];
@@ -30,6 +32,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function Bookings({ loaderData, actionData }: Route.ComponentProps) {
   const { recent } = loaderData;
   const { t } = useT();
+  const locale = useLocale();
   const sent = actionData?.sent ?? false;
 
   return (
@@ -40,14 +43,14 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
       <Card className="mt-6 rounded-2xl border-border">
         <CardContent className="p-6">
           {sent ? (
-            <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} />
+            <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} locale={locale} />
           ) : (
             <RequestForm error={actionData?.error ?? null} />
           )}
         </CardContent>
       </Card>
 
-      <RecentList recent={recent} />
+      <RecentList recent={recent} locale={locale} />
     </div>
   );
 }
@@ -69,7 +72,7 @@ function RequestForm({ error }: { error: string | null }) {
 }
 
 /** After the OTP email is sent, submit code+OTP as a GET to the detail page. */
-function VerifyForm({ code, devOtp }: { code: string; devOtp: string | null }) {
+function VerifyForm({ code, devOtp, locale }: { code: string; devOtp: string | null; locale: 'vi' | 'en' }) {
   const { t } = useT();
   return (
     <div className="space-y-3">
@@ -77,7 +80,7 @@ function VerifyForm({ code, devOtp }: { code: string; devOtp: string | null }) {
       {devOtp ? (
         <p className="text-xs text-muted-foreground">{t('lookup.otpHintDev', { otp: devOtp })}</p>
       ) : null}
-      <Form method="get" action={`/bookings/${encodeURIComponent(code)}`} className="space-y-3">
+      <Form method="get" action={storefrontPaths.booking(locale, code)} className="space-y-3">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
@@ -90,7 +93,7 @@ function VerifyForm({ code, devOtp }: { code: string; devOtp: string | null }) {
   );
 }
 
-function RecentList({ recent }: { recent: string[] }) {
+function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' }) {
   const { t } = useT();
   return (
     <div className="mt-8">
@@ -102,7 +105,7 @@ function RecentList({ recent }: { recent: string[] }) {
           {recent.map((code) => (
             <li key={code}>
               <Link
-                to={`/bookings/${encodeURIComponent(code)}`}
+                to={storefrontPaths.booking(locale, code)}
                 className="flex items-center justify-between px-4 py-3 text-sm hover:bg-muted"
               >
                 <span className="font-mono font-semibold">{code}</span>

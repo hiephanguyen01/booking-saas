@@ -3,8 +3,11 @@ import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CatalogPage } from '../features/catalog/catalog-page';
 import { fetchListingTypes, fetchListings } from '../lib/catalog.server';
 
-export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
-  return [{ title: params.typeSlug }];
+export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
+  return [
+    { title: loaderData?.type.name ?? params.typeSlug },
+    ...(loaderData?.noIndex ? [{ name: 'robots', content: 'noindex,follow' }] : []),
+  ];
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
@@ -16,9 +19,15 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     fetchListings(request, search),
   ]);
 
+  const type = types.find((item) => item.slug === params.typeSlug) ?? null;
+  if (!type) throw new Response('Listing type not found', { status: 404 });
+
   return {
-    type: types.find((item) => item.slug === params.typeSlug) ?? null,
+    type,
     listings,
+    noIndex: ['q', 'city', 'minPrice', 'maxPrice', 'rating', 'amenity'].some((key) =>
+      url.searchParams.has(key),
+    ),
   };
 }
 
@@ -26,6 +35,7 @@ export default function CatalogRoute(props: Route.ComponentProps) {
   return <CatalogPage {...props} />;
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  return <RouteErrorState error={error} homeHref="/" homeLabel="Về trang chủ" />;
+export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel="Về trang chủ" />;
 }

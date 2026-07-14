@@ -15,6 +15,8 @@ import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
 import { useT, type I18n } from '../../lib/i18n';
 import { formatVnd } from '../../lib/ui';
+import { storefrontPaths } from '../../lib/locale-paths';
+import { useLocale } from '../../lib/use-locale';
 import {
   DEFAULT_TZ,
   addDays,
@@ -46,6 +48,7 @@ const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
  */
 export function BookingPanel({ listing, mode, availability, quote }: PanelProps) {
   const i18n = useT();
+  const locale = useLocale();
   const [sp, setSp] = useSearchParams();
   const tz = availability?.timezone ?? DEFAULT_TZ;
   const modes = listing.bookingModes.filter((m): m is AvailabilityMode =>
@@ -106,7 +109,7 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
 
         <Button asChild={canBook} className="h-11 w-full text-base" disabled={!canBook}>
           {canBook ? (
-            <Link to={`/checkout?${checkoutParams.toString()}`}>{i18n.t('listing.bookNow')}</Link>
+            <Link to={`${storefrontPaths.checkout(locale)}?${checkoutParams.toString()}`}>{i18n.t('listing.bookNow')}</Link>
           ) : (
             <span>{i18n.t('listing.selectToContinue')}</span>
           )}

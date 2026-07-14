@@ -5,6 +5,9 @@ import { ListingPage } from '../features/listing/listing-page';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
 import { addDays, DEFAULT_TZ, todayInTz } from '../lib/time';
+import { useOutletContext } from 'react-router';
+import type { StorefrontContext } from '../root';
+import { jsonLd } from '../lib/seo';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
@@ -92,9 +95,53 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
 }
 
 export default function ListingRoute(props: Route.ComponentProps) {
-  return <ListingPage {...props} />;
+  const { tenant, locale, canonical } = useOutletContext<StorefrontContext>();
+  const listing = props.loaderData.listing;
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${new URL(canonical).origin}/#organization`,
+        name: tenant.name,
+        url: new URL(canonical).origin,
+        ...(tenant.logoUrl ? { logo: tenant.logoUrl } : {}),
+      },
+      {
+        '@type': 'WebPage',
+        '@id': `${canonical}#webpage`,
+        url: canonical,
+        name: listing.title,
+        description: listing.description,
+        inLanguage: locale,
+        image: listing.photos,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: locale === 'vi' ? 'Trang chủ' : 'Home',
+            item: new URL(`/${locale}`, canonical).toString(),
+          },
+          { '@type': 'ListItem', position: 2, name: listing.title, item: canonical },
+        ],
+      },
+    ],
+  };
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
+      />
+      <ListingPage {...props} />
+    </>
+  );
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  return <RouteErrorState error={error} homeHref="/" homeLabel="Về trang chủ" />;
+export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel="Về trang chủ" />;
 }

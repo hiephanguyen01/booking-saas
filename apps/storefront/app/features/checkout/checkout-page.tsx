@@ -8,10 +8,13 @@ import type { Route } from '../../routes/+types/checkout';
 import { useT, type I18n } from '../../lib/i18n';
 import { formatVnd } from '../../lib/ui';
 import { DEFAULT_TZ, timeInTz, dateLabelInTz } from '../../lib/time';
+import { storefrontPaths } from '../../lib/locale-paths';
+import { useLocale } from '../../lib/use-locale';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const { listing, mode, start, end, qty, quote, promoCode, promo } = loaderData;
   const { t } = useT();
+  const locale = useLocale();
   const [sp] = useSearchParams();
   const fieldErrors = actionData?.fieldErrors ?? null;
   const serverError = actionData?.error ?? null;
@@ -25,7 +28,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-6">
-        <Link to={`/l/${listing.slug}`} className="text-sm text-muted-foreground hover:underline">
+        <Link to={storefrontPaths.listing(locale, listing.slug)} className="text-sm text-muted-foreground hover:underline">
           ← {listing.title}
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{t('checkout.title')}</h1>
@@ -57,12 +60,14 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
             discount={discount}
             finalAmount={finalAmount}
             dueNow={dueNow}
+            locale={locale}
             t={t}
           />
           <PromoForm
             searchParams={sp}
             promoCode={promoCode}
             promo={promo}
+            locale={locale}
             t={t}
           />
         </div>
@@ -80,15 +85,22 @@ function subtractDeposit(quote: { subtotal: string; depositAmount: string }, pro
   return String(Math.round(final * ratio));
 }
 
-function scheduleLabel(mode: string, start: string, end: string, qty: string, t: I18n['t']): string {
+function scheduleLabel(
+  mode: string,
+  start: string,
+  end: string,
+  qty: string,
+  locale: 'vi' | 'en',
+  t: I18n['t'],
+): string {
   const tz = DEFAULT_TZ;
   if (mode === 'daily') {
-    return `${dateLabelInTz(start, tz, 'vi')} → ${dateLabelInTz(end, tz, 'vi')}`;
+    return `${dateLabelInTz(start, tz, locale)} → ${dateLabelInTz(end, tz, locale)}`;
   }
   if (mode === 'inventory') {
-    return `${dateLabelInTz(start, tz, 'vi')} → ${dateLabelInTz(end, tz, 'vi')} · ${t('listing.quantity')}: ${qty}`;
+    return `${dateLabelInTz(start, tz, locale)} → ${dateLabelInTz(end, tz, locale)} · ${t('listing.quantity')}: ${qty}`;
   }
-  return `${dateLabelInTz(start, tz, 'vi')} · ${timeInTz(start, tz)}–${timeInTz(end, tz)}`;
+  return `${dateLabelInTz(start, tz, locale)} · ${timeInTz(start, tz)}–${timeInTz(end, tz)}`;
 }
 
 function SummaryCard({
@@ -101,6 +113,7 @@ function SummaryCard({
   discount,
   finalAmount,
   dueNow,
+  locale,
   t,
 }: {
   listing: { title: string };
@@ -112,13 +125,14 @@ function SummaryCard({
   discount: string;
   finalAmount: string;
   dueNow: string;
+  locale: 'vi' | 'en';
   t: I18n['t'];
 }) {
   return (
     <Card className="rounded-2xl border-border">
       <CardContent className="space-y-3 p-5 text-sm">
         <div className="font-semibold text-foreground">{listing.title}</div>
-        <div className="text-muted-foreground">{scheduleLabel(mode, start, end, qty, t)}</div>
+        <div className="text-muted-foreground">{scheduleLabel(mode, start, end, qty, locale, t)}</div>
         <Separator />
         <Row label={t('listing.subtotal')} value={formatVnd(quote.subtotal)} />
         {discount !== '0' ? (
@@ -148,11 +162,13 @@ function PromoForm({
   searchParams,
   promoCode,
   promo,
+  locale,
   t,
 }: {
   searchParams: URLSearchParams;
   promoCode: string | null;
   promo: ValidatePromoResponse | null;
+  locale: 'vi' | 'en';
   t: I18n['t'];
 }) {
   const hidden = ['listing', 'mode', 'start', 'end', 'qty'].map((k) => [k, searchParams.get(k) ?? ''] as const);
@@ -169,7 +185,7 @@ function PromoForm({
               {t('checkout.promoApplied', { code: promoCode ?? '', amount: formatVnd(promo!.discountAmount) ?? '' })}
             </span>
             <Link
-              to={promoRemoveUrl(hidden)}
+              to={promoRemoveUrl(hidden, locale)}
               className="text-xs font-semibold text-muted-foreground hover:underline"
             >
               {t('checkout.promoRemove')}
@@ -199,9 +215,9 @@ function PromoForm({
   );
 }
 
-function promoRemoveUrl(hidden: readonly (readonly [string, string])[]): string {
+function promoRemoveUrl(hidden: readonly (readonly [string, string])[], locale: 'vi' | 'en'): string {
   const params = new URLSearchParams(hidden.map(([k, v]) => [k, v]));
-  return `/checkout?${params.toString()}`;
+  return `${storefrontPaths.checkout(locale)}?${params.toString()}`;
 }
 
 function GuestForm({
