@@ -78,6 +78,8 @@ export const enCommon = {
     acceptedTerms: 'I agree to the Booking Studio Partner Agreement',
     privacyNotice:
       'By selecting register, you agree that Booking Studio may collect, use, and disclose the information you provide on behalf of the registering company under the Partner Agreement privacy and messaging terms.',
+    identityCardFront: 'Citizen ID — front',
+    identityCardBack: 'Citizen ID — back',
     addLicenseDoc: 'Add license',
     removeLicenseDoc: 'Remove',
     submit: 'Register as partner',

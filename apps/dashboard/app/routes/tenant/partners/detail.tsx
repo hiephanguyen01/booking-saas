@@ -2,10 +2,24 @@ import { Form, Link, useNavigation, data as routeData } from 'react-router';
 import type { PartnerResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { ArrowLeft, CircleAlert, Check, BadgeCheck, Ban } from 'lucide-react';
+import {
+  ArrowLeft,
+  CircleAlert,
+  Check,
+  BadgeCheck,
+  Ban,
+  ExternalLink,
+  FileImage,
+} from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
@@ -41,12 +55,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   const intent = String(form.get('intent'));
   const perm = PERM[intent];
   if (!perm) return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
-  if (!can(perm)) return routeData({ error: 'Bạn không có quyền thực hiện thao tác này.' }, { status: 403 });
+  if (!can(perm))
+    return routeData({ error: 'Bạn không có quyền thực hiện thao tác này.' }, { status: 403 });
 
   const id = params.partnerId;
-  const body = intent === 'verify' ? { note: String(form.get('note') ?? '').trim() || undefined } : {};
+  const body =
+    intent === 'verify' ? { note: String(form.get('note') ?? '').trim() || undefined } : {};
   const res = await apiPost(`/tenant/partners/${id}/${intent}`, body, auth);
-  if (!res.ok) return routeData({ error: res.error ?? 'Thao tác không thành công.' }, { status: 400 });
+  if (!res.ok)
+    return routeData({ error: res.error ?? 'Thao tác không thành công.' }, { status: 400 });
   return { ok: true };
 }
 
@@ -56,8 +73,13 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
   const nav = useNavigation();
   const busy = nav.state !== 'idle';
 
-  const payout = partner.payoutInfo as { bank?: string; accountNumber?: string; holderName?: string };
+  const payout = partner.payoutInfo as {
+    bank?: string;
+    accountNumber?: string;
+    holderName?: string;
+  };
   const hasPayout = Boolean(payout?.bank || payout?.accountNumber || payout?.holderName);
+  const businessInfo = readBusinessInfo(partner.businessInfo, partner.partnerType);
 
   return (
     <div className="space-y-6">
@@ -92,9 +114,15 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
         </CardHeader>
         <CardContent>
           <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-            <Field label="Loại đối tác" value={TYPE_LABEL[partner.partnerType] ?? partner.partnerType} />
+            <Field
+              label="Loại đối tác"
+              value={TYPE_LABEL[partner.partnerType] ?? partner.partnerType}
+            />
             <Field label="Ngày tham gia" value={formatDate(partner.createdAt)} />
-            <Field label="Ngày sinh" value={partner.dateOfBirth ? formatDate(partner.dateOfBirth) : '—'} />
+            <Field
+              label="Ngày sinh"
+              value={partner.dateOfBirth ? formatDate(partner.dateOfBirth) : '—'}
+            />
             <Field
               label="Đã xác minh lúc"
               value={partner.verifiedAt ? formatDateTime(partner.verifiedAt) : '—'}
@@ -105,6 +133,35 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
               </div>
             ) : null}
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Hồ sơ pháp lý</CardTitle>
+          <CardDescription>Thông tin và giấy tờ đối tác đã cung cấp khi đăng ký.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {businessInfo.details.length > 0 ? (
+            <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+              {businessInfo.details.map((detail) => (
+                <Field key={detail.label} label={detail.label} value={detail.value} />
+              ))}
+            </dl>
+          ) : null}
+
+          {businessInfo.documents.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {businessInfo.documents.map((document) => (
+                <DocumentPreview key={`${document.label}-${document.url}`} {...document} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              <FileImage className="size-5 shrink-0" />
+              Đối tác chưa cung cấp giấy tờ pháp lý.
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -194,5 +251,86 @@ function Field({ label, value }: { label: string; value: string }) {
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="text-sm">{value}</dd>
     </div>
+  );
+}
+
+interface LegalDocument {
+  label: string;
+  url: string;
+}
+
+interface BusinessInfoView {
+  details: { label: string; value: string }[];
+  documents: LegalDocument[];
+}
+
+function readBusinessInfo(
+  raw: Record<string, unknown>,
+  partnerType: PartnerResponse['partnerType'],
+): BusinessInfoView {
+  const details = [
+    { label: 'Tên pháp lý', value: readText(raw.legalName) },
+    { label: 'Mã số thuế', value: readText(raw.taxId) },
+    { label: 'Số giấy phép kinh doanh', value: readText(raw.businessRegistrationNo) },
+    { label: 'Số giấy phép/chứng chỉ', value: readText(raw.licenseNo) },
+  ].filter((item): item is { label: string; value: string } => Boolean(item.value));
+
+  const documents: LegalDocument[] = [];
+  if (partnerType === 'company') {
+    addDocument(documents, 'GPKD mặt trước', raw.businessLicenseFrontUrl);
+    addDocument(documents, 'GPKD mặt sau', raw.businessLicenseBackUrl);
+  }
+  addDocument(documents, 'CCCD mặt trước', raw.identityCardFrontUrl);
+  addDocument(documents, 'CCCD mặt sau', raw.identityCardBackUrl);
+
+  if (documents.length === 0 && Array.isArray(raw.licenseDocs)) {
+    raw.licenseDocs.forEach((value, index) => {
+      addDocument(documents, `Giấy tờ pháp lý ${index + 1}`, value);
+    });
+  }
+
+  return { details, documents };
+}
+
+function readText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function addDocument(documents: LegalDocument[], label: string, value: unknown): void {
+  const url = readHttpUrl(value);
+  if (url) documents.push({ label, url });
+}
+
+function readHttpUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function DocumentPreview({ label, url }: LegalDocument) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="group overflow-hidden rounded-xl border bg-muted/30 transition-colors hover:border-primary/40"
+    >
+      <div className="aspect-[4/3] overflow-hidden bg-muted">
+        <img
+          src={url}
+          alt={label}
+          loading="lazy"
+          className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+        />
+      </div>
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <span className="text-sm font-medium">{label}</span>
+        <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
+      </div>
+    </a>
   );
 }

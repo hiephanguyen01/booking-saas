@@ -1,11 +1,8 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { ImageIcon, UploadIcon, XIcon } from "lucide-react"
+import { ExternalLinkIcon, ImageIcon, UploadIcon, XIcon } from 'lucide-react';
+import * as React from 'react';
 
-import { cn } from "@booking/ui/lib/utils"
-import { Button } from "@booking/ui/components/ui/button"
-import { Spinner } from "@booking/ui/components/ui/spinner"
 import {
   Attachment,
   AttachmentAction,
@@ -14,53 +11,52 @@ import {
   AttachmentDescription,
   AttachmentMedia,
   AttachmentTitle,
-} from "@booking/ui/components/ui/attachment"
-import { presignAndPut, type UploadTarget } from "@booking/ui/lib/upload"
+} from '@booking/ui/components/ui/attachment';
+import { Button } from '@booking/ui/components/ui/button';
+import { Spinner } from '@booking/ui/components/ui/spinner';
+import { presignAndPut, type UploadTarget } from '@booking/ui/lib/upload';
+import { cn } from '@booking/ui/lib/utils';
 
 /** Raster images the presign endpoint accepts (kept in sync with `@booking/contracts`). */
 export const DEFAULT_IMAGE_ACCEPT = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/avif",
-  "image/gif",
-] as const
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+] as const;
 
 /** Favicons additionally allow `.ico`. */
 export const FAVICON_ACCEPT = [
-  "image/png",
-  "image/x-icon",
-  "image/vnd.microsoft.icon",
-  "image/webp",
-] as const
+  'image/png',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
+  'image/webp',
+] as const;
 
-const DEFAULT_MAX_SIZE_MB = 5
+const DEFAULT_MAX_SIZE_MB = 5;
 
 export interface ImageUploadProps {
   /** Single mode → a URL string; multiple mode → a URL array. */
-  value?: string | string[] | null
-  onChange: (value: string | string[]) => void
-  multiple?: boolean
-  target: UploadTarget
+  value?: string | string[] | null;
+  onChange: (value: string | string[]) => void;
+  multiple?: boolean;
+  target: UploadTarget;
   /** Same-origin resource route proxying `POST /uploads/presign`. */
-  presignEndpoint?: string
+  presignEndpoint?: string;
   /** Accepted MIME types (defaults to the image allowlist). */
-  accept?: readonly string[]
-  maxSizeMb?: number
+  accept?: readonly string[];
+  maxSizeMb?: number;
   /** Cap on total images in multiple mode. */
-  maxFiles?: number
-  disabled?: boolean
-  className?: string
-  /** Keep the selected image in browser memory without calling the upload API. */
-  previewOnly?: boolean
-  /** Visual treatment for document-front/back upload tiles. */
-  variant?: "default" | "document"
+  maxFiles?: number;
+  disabled?: boolean;
+  className?: string;
 }
 
 interface PendingItem {
-  id: string
-  name: string
-  error?: string
+  id: string;
+  name: string;
+  error?: string;
 }
 
 /**
@@ -82,79 +78,57 @@ export function ImageUpload({
   disabled,
   className,
   previewOnly = false,
-  variant = "default",
+  variant = 'default',
 }: ImageUploadProps) {
-  const inputRef = React.useRef<HTMLInputElement>(null)
-  const [pending, setPending] = React.useState<PendingItem[]>([])
-  const counter = React.useRef(0)
-  const [localPreview, setLocalPreview] = React.useState<{ name: string; url: string } | null>(null)
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [pending, setPending] = React.useState<PendingItem[]>([]);
+  const counter = React.useRef(0);
 
-  React.useEffect(
-    () => () => {
-      if (localPreview) URL.revokeObjectURL(localPreview.url)
-    },
-    [localPreview],
-  )
-
-  const urls = React.useMemo(() => normalize(value), [value])
-  const atLimit = multiple && maxFiles != null && urls.length >= maxFiles
+  const urls = React.useMemo(() => normalize(value), [value]);
+  const atLimit = multiple && maxFiles != null && urls.length >= maxFiles;
 
   async function handleFiles(files: FileList | null): Promise<void> {
-    if (!files || files.length === 0) return
-    const chosen = multiple ? Array.from(files) : Array.from(files).slice(0, 1)
-    let current = multiple ? [...urls] : []
+    if (!files || files.length === 0) return;
+    const chosen = multiple ? Array.from(files) : Array.from(files).slice(0, 1);
+    let current = multiple ? [...urls] : [];
 
     for (const file of chosen) {
-      if (multiple && maxFiles != null && current.length >= maxFiles) break
-      const id = `u${counter.current++}`
-      const error = validate(file, accept, maxSizeMb)
+      if (multiple && maxFiles != null && current.length >= maxFiles) break;
+      const id = `u${counter.current++}`;
+      const error = validate(file, accept, maxSizeMb);
       if (error) {
-        setPending((p) => [...p, { id, name: file.name, error }])
-        continue
+        setPending((p) => [...p, { id, name: file.name, error }]);
+        continue;
       }
-      if (previewOnly) {
-        if (localPreview) URL.revokeObjectURL(localPreview.url)
-        const nextPreview = { name: file.name, url: URL.createObjectURL(file) }
-        setLocalPreview(nextPreview)
-        onChange(file.name)
-        setPending([])
-        continue
-      }
-      setPending((p) => [...p, { id, name: file.name }])
+      setPending((p) => [...p, { id, name: file.name }]);
       try {
-        const { publicUrl } = await presignAndPut(file, { target, presignEndpoint })
-        current = multiple ? [...current, publicUrl] : [publicUrl]
-        onChange(multiple ? current : (current[0] ?? ""))
-        setPending((p) => p.filter((x) => x.id !== id))
+        const { publicUrl } = await presignAndPut(file, { target, presignEndpoint });
+        current = multiple ? [...current, publicUrl] : [publicUrl];
+        onChange(multiple ? current : (current[0] ?? ''));
+        setPending((p) => p.filter((x) => x.id !== id));
       } catch (e) {
-        setPending((p) => p.map((x) => (x.id === id ? { ...x, error: (e as Error).message } : x)))
+        setPending((p) => p.map((x) => (x.id === id ? { ...x, error: (e as Error).message } : x)));
       }
     }
-    if (inputRef.current) inputRef.current.value = ""
+    if (inputRef.current) inputRef.current.value = '';
   }
 
   function removeAt(index: number): void {
-    const next = urls.filter((_, i) => i !== index)
-    onChange(multiple ? next : (next[0] ?? ""))
+    const next = urls.filter((_, i) => i !== index);
+    onChange(multiple ? next : (next[0] ?? ''));
   }
 
-  function removeLocalPreview(): void {
-    if (localPreview) URL.revokeObjectURL(localPreview.url)
-    setLocalPreview(null)
-    onChange("")
-  }
+  const showTrigger = !disabled && !atLimit && (multiple || urls.length === 0);
 
-  const showTrigger = !disabled && !atLimit && (multiple || urls.length === 0)
-
-  if (variant === "document") {
-    const remotePreview = !previewOnly && urls.length > 0 ? urls[0] : null
-    const previewUrl = localPreview?.url ?? remotePreview
+  if (variant === 'document') {
+    const remotePreview = !previewOnly && urls.length > 0 ? urls[0] : null;
+    const previewUrl = localPreview?.url ?? remotePreview;
     return (
-      <div className={cn("space-y-2", className)}>
+      <div className={cn('space-y-2', className)}>
         <input
           ref={inputRef}
           type="file"
-          accept={accept.join(",")}
+          accept={accept.join(',')}
           hidden
           disabled={disabled}
           onChange={(e) => void handleFiles(e.target.files)}
@@ -192,15 +166,15 @@ export function ImageUpload({
           ) : null,
         )}
       </div>
-    )
+    );
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn('space-y-2', className)}>
       <input
         ref={inputRef}
         type="file"
-        accept={accept.join(",")}
+        accept={accept.join(',')}
         multiple={multiple}
         hidden
         disabled={disabled}
@@ -211,9 +185,14 @@ export function ImageUpload({
         {urls.map((url, i) => (
           <Attachment key={`${url}-${i}`} orientation="vertical" state="done" className="w-28">
             <AttachmentMedia variant="image">
-              <img src={url} alt="" />
+              <img src={url} alt={`Ảnh đã tải lên ${i + 1}`} />
             </AttachmentMedia>
             <AttachmentActions>
+              <AttachmentAction asChild aria-label="Xem ảnh">
+                <a href={url} target="_blank" rel="noreferrer">
+                  <ExternalLinkIcon />
+                </a>
+              </AttachmentAction>
               <AttachmentAction
                 type="button"
                 onClick={() => removeAt(i)}
@@ -230,7 +209,7 @@ export function ImageUpload({
           <Attachment
             key={item.id}
             orientation="vertical"
-            state={item.error ? "error" : "uploading"}
+            state={item.error ? 'error' : 'uploading'}
             className="w-28"
           >
             <AttachmentMedia variant="icon">
@@ -268,21 +247,21 @@ export function ImageUpload({
         ) : null}
       </div>
     </div>
-  )
+  );
 }
 
 function validate(file: File, accept: readonly string[], maxSizeMb: number): string | undefined {
   if (accept.length > 0 && !accept.includes(file.type)) {
-    return `Định dạng không hỗ trợ: ${file.type || "không rõ"}`
+    return `Định dạng không hỗ trợ: ${file.type || 'không rõ'}`;
   }
   if (file.size > maxSizeMb * 1024 * 1024) {
-    return `Tệp vượt quá ${maxSizeMb}MB`
+    return `Tệp vượt quá ${maxSizeMb}MB`;
   }
-  return undefined
+  return undefined;
 }
 
 function normalize(value?: string | string[] | null): string[] {
-  if (Array.isArray(value)) return value.filter(Boolean)
-  if (typeof value === "string" && value.length > 0) return [value]
-  return []
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === 'string' && value.length > 0) return [value];
+  return [];
 }

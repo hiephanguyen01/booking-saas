@@ -75,6 +75,8 @@ export const viCommon = {
     acceptedTerms: 'Tôi đồng ý với Hợp đồng đối tác của Booking Studio',
     privacyNotice:
       'Bằng việc nhấn vào nút đăng ký, anh/chị đồng ý rằng Booking Studio có thể thu thập, sử dụng và tiết lộ thông tin do anh/chị cung cấp, thay mặt cho công ty đăng ký. Theo Phụ lục 1: NGUYÊN TẮC QUYỀN RIÊNG TƯ DỮ LIỆU VÀ NHẮN TIN trong Hợp đồng đối tác.',
+    identityCardFront: 'CCCD mặt trước',
+    identityCardBack: 'CCCD mặt sau',
     addLicenseDoc: 'Thêm giấy phép',
     removeLicenseDoc: 'Xoá',
     submit: 'Đăng ký đối tác',
