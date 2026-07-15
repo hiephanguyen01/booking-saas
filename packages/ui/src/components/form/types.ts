@@ -1,9 +1,9 @@
-import type { FieldValues, Path } from "react-hook-form"
+import type { FieldValues, Path } from 'react-hook-form';
 
 /** An option for `select`, `combobox`, and `radio` fields. */
 export interface FieldOption {
-  label: string
-  value: string
+  label: string;
+  value: string;
 }
 
 /**
@@ -13,56 +13,56 @@ export interface FieldOption {
  * from the submission).
  */
 interface BaseFieldConfig<T extends FieldValues> {
-  name: Path<T>
-  label?: string
-  description?: string
-  placeholder?: string
+  name: Path<T>;
+  label?: string;
+  description?: string;
+  placeholder?: string;
   /** Columns spanned in the grid layout (1 = full width when `columns` is 1). */
-  colSpan?: number
+  colSpan?: number;
   /** Grid rows spanned by taller controls such as document upload tiles. */
-  rowSpan?: number
+  rowSpan?: number;
   /** Hide the field when the predicate is true, given the current form values. */
-  hidden?: (values: T) => boolean
-  disabled?: boolean
+  hidden?: (values: T) => boolean;
+  disabled?: boolean;
   /** Shows the required marker and forwards required semantics to native controls. */
-  required?: boolean
-  autoComplete?: string
+  required?: boolean;
+  autoComplete?: string;
 }
 
 /** `text | email | password | url | number | textarea` — plain value inputs. */
 export interface TextFieldConfig<T extends FieldValues> extends BaseFieldConfig<T> {
-  type: "text" | "email" | "password" | "url" | "number" | "textarea"
+  type: 'text' | 'email' | 'password' | 'url' | 'number' | 'textarea';
   /** Textarea row hint. */
-  rows?: number
+  rows?: number;
   /**
    * Password fields render a show/hide eye toggle by default. Set `false` to hide it.
    * Ignored for non-password types.
    */
-  showToggle?: boolean
+  showToggle?: boolean;
 }
 
 /** `select | combobox | radio` — pick one of `options`. */
 export interface ChoiceFieldConfig<T extends FieldValues> extends BaseFieldConfig<T> {
-  type: "select" | "combobox" | "radio"
-  options: FieldOption[]
+  type: 'select' | 'combobox' | 'radio';
+  options: FieldOption[];
   /** Placeholder shown in the combobox search box. */
-  searchPlaceholder?: string
+  searchPlaceholder?: string;
   /**
    * `radio` layout: `"default"` = a vertical radio list; `"segmented"` = a
    * horizontal button group (the register-partner partner-type toggle). Ignored
    * for `select`/`combobox`.
    */
-  variant?: "default" | "segmented"
+  variant?: 'default' | 'segmented';
 }
 
 /** `checkbox | switch` — a boolean toggle. */
 export interface BooleanFieldConfig<T extends FieldValues> extends BaseFieldConfig<T> {
-  type: "checkbox" | "switch"
+  type: 'checkbox' | 'switch';
 }
 
 /** `date` — a calendar popover; the field value is a `Date`. */
 export interface DateFieldConfig<T extends FieldValues> extends BaseFieldConfig<T> {
-  type: "date"
+  type: 'date';
 }
 
 /**
@@ -71,22 +71,20 @@ export interface DateFieldConfig<T extends FieldValues> extends BaseFieldConfig<
  * submits plain JSON. `target` is the storage album passed to the presign endpoint.
  */
 export interface FileFieldConfig<T extends FieldValues> extends BaseFieldConfig<T> {
-  type: "file"
+  type: 'file';
   /** Multiple → value is `string[]`; single (default) → a `string`. */
-  multiple?: boolean
+  multiple?: boolean;
   /** Storage album/target for the presign endpoint. */
-  target: "listings" | "groups" | "partners" | "tenants"
+  target: 'listings' | 'groups' | 'partners' | 'tenants';
   /** Accepted MIME types (defaults to the image allowlist). */
-  accept?: readonly string[]
-  maxSizeMb?: number
+  accept?: readonly string[];
+  maxSizeMb?: number;
   /** Cap on total images in multiple mode. */
-  maxFiles?: number
+  maxFiles?: number;
   /** Same-origin resource route proxying `POST /uploads/presign`. */
-  presignEndpoint?: string
-  /** Select and preview locally without uploading. Useful before an upload API exists. */
-  previewOnly?: boolean
+  presignEndpoint?: string;
   /** Larger dashed tile used by document-verification forms. */
-  variant?: "default" | "document"
+  variant?: 'default' | 'document';
 }
 
 export type FieldConfig<T extends FieldValues> =
@@ -94,4 +92,4 @@ export type FieldConfig<T extends FieldValues> =
   | ChoiceFieldConfig<T>
   | BooleanFieldConfig<T>
   | DateFieldConfig<T>
-  | FileFieldConfig<T>
+  | FileFieldConfig<T>;

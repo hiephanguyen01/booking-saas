@@ -24,8 +24,10 @@ describe('partnerOnboardingProfileSchema', () => {
         partnerType: 'company',
         companyName: 'Studio Ánh Sáng LLC',
         businessRegistrationNo: 'GPKD-123',
-        businessLicenseFront: 'front.png',
-        businessLicenseBack: 'back.png',
+        businessLicenseFrontUrl: 'https://cdn.example.com/business-front.png',
+        businessLicenseBackUrl: 'https://cdn.example.com/business-back.png',
+        identityCardFrontUrl: 'https://cdn.example.com/id-front.png',
+        identityCardBackUrl: 'https://cdn.example.com/id-back.png',
       }).success,
     ).toBe(true);
   });
@@ -35,8 +37,23 @@ describe('partnerOnboardingProfileSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       const fields = result.error.flatten().fieldErrors;
-      expect(fields.identityDocumentFront).toBeDefined();
-      expect(fields.identityDocumentBack).toBeDefined();
+      expect(fields.identityCardFrontUrl).toBeDefined();
+      expect(fields.identityCardBackUrl).toBeDefined();
+    }
+  });
+
+  it('rejects document values that are not uploaded URLs', () => {
+    const result = partnerOnboardingProfileSchema.safeParse({
+      ...base,
+      partnerType: 'individual',
+      identityCardFrontUrl: 'front.png',
+      identityCardBackUrl: 'back.png',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const fields = result.error.flatten().fieldErrors;
+      expect(fields.identityCardFrontUrl).toBeDefined();
+      expect(fields.identityCardBackUrl).toBeDefined();
     }
   });
 
@@ -44,8 +61,8 @@ describe('partnerOnboardingProfileSchema', () => {
     const result = partnerOnboardingProfileSchema.safeParse({
       ...base,
       partnerType: 'individual',
-      identityDocumentFront: 'front.png',
-      identityDocumentBack: 'back.png',
+      identityCardFrontUrl: 'https://cdn.example.com/id-front.png',
+      identityCardBackUrl: 'https://cdn.example.com/id-back.png',
       acceptedTerms: false,
     });
     expect(result.success).toBe(false);

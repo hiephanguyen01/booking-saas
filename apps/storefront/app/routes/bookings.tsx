@@ -1,4 +1,11 @@
-import { bookingResponseSchema, type BookingResponse } from '@booking/contracts';
+import {
+  bookingLookupInputSchema,
+  bookingResponseSchema,
+  type BookingLookupInput,
+  type BookingResponse,
+} from '@booking/contracts';
+import { GenericForm } from '@booking/ui/components/form/generic-form';
+import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
@@ -37,15 +44,39 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const form = await request.formData();
-  const code = String(form.get('code') ?? '').trim();
-  if (!code) return data({ sent: false, code: '', devOtp: null, error: 'MISSING_CODE' });
+  const parsed = bookingLookupInputSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return data(
+      {
+        sent: false,
+        code: '',
+        devOtp: null,
+        error: null,
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      },
+      { status: 400 },
+    );
+  }
+
+  const code = parsed.data.code.toUpperCase();
 
   const result = await requestBookingOtp(request, code);
   if (!result.ok) {
-    return data({ sent: false, code, devOtp: null, error: result.error ?? 'INVALID_CODE' });
+    return data({
+      sent: false,
+      code,
+      devOtp: null,
+      error: result.error ?? 'INVALID_CODE',
+      fieldErrors: null,
+    });
   }
-  return data({ sent: true, code, devOtp: result.data?.devOtp ?? null, error: null });
+  return data({
+    sent: true,
+    code,
+    devOtp: result.data?.devOtp ?? null,
+    error: null,
+    fieldErrors: null,
+  });
 }
 
 export default function Bookings({ loaderData, actionData }: Route.ComponentProps) {
@@ -85,7 +116,10 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
           {sent ? (
             <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} locale={locale} />
           ) : (
-            <RequestForm error={actionData?.error ?? null} />
+            <RequestForm
+              error={actionData?.error ?? null}
+              fieldErrors={actionData?.fieldErrors ?? null}
+            />
           )}
         </CardContent>
       </Card>
@@ -95,24 +129,37 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
   );
 }
 
-function RequestForm({ error }: { error: string | null }) {
+function RequestForm({
+  error,
+  fieldErrors,
+}: {
+  error: string | null;
+  fieldErrors: Partial<Record<keyof BookingLookupInput, string[] | undefined>> | null;
+}) {
   const { t } = useTranslation(NsI18n.Booking);
+
+  const fields: FieldConfig<BookingLookupInput>[] = [
+    {
+      name: 'code',
+      type: 'text',
+      label: t('lookup.codeLabel'),
+      placeholder: t('lookup.codePlaceholder'),
+      autoComplete: 'off',
+      required: true,
+    },
+  ];
+
   return (
-    <Form method="post" className="space-y-3">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-foreground">{t('lookup.codeLabel')}</span>
-        <Input
-          name="code"
-          placeholder={t('lookup.codePlaceholder')}
-          className="uppercase"
-          autoFocus
-        />
-      </label>
-      {error ? <p className="text-sm text-destructive">{t('lookup.invalidCode')}</p> : null}
-      <Button type="submit" className="h-11 w-full">
-        {t('lookup.sendOtp')}
-      </Button>
-    </Form>
+    <GenericForm
+      schema={bookingLookupInputSchema}
+      fields={fields}
+      defaultValues={{ code: '' }}
+      submitLabel={t('lookup.sendOtp')}
+      submitFullWidth
+      serverError={error ? t('lookup.invalidCode') : null}
+      fieldErrors={fieldErrors}
+      transform={(values) => ({ code: values.code.trim().toUpperCase() })}
+    />
   );
 }
 
@@ -140,7 +187,7 @@ function VerifyForm({
           <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
         </label>
-        <Button type="submit" className="h-11 w-full">
+        <Button type="submit" className="w-full">
           {t('lookup.verify')}
         </Button>
       </Form>

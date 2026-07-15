@@ -492,7 +492,6 @@ function FileControl<T extends FieldValues>({
       maxFiles={field.maxFiles}
       presignEndpoint={field.presignEndpoint}
       disabled={field.disabled}
-      previewOnly={field.previewOnly}
       variant={field.variant}
       className={appearance === 'partner' ? 'w-full' : undefined}
     />

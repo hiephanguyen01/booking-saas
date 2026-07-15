@@ -51,6 +51,8 @@ export interface ImageUploadProps {
   maxFiles?: number;
   disabled?: boolean;
   className?: string;
+  /** Larger dashed tile used by legal-document and identity forms. */
+  variant?: 'default' | 'document';
 }
 
 interface PendingItem {
@@ -77,7 +79,6 @@ export function ImageUpload({
   maxFiles,
   disabled,
   className,
-  previewOnly = false,
   variant = 'default',
 }: ImageUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -86,6 +87,7 @@ export function ImageUpload({
 
   const urls = React.useMemo(() => normalize(value), [value]);
   const atLimit = multiple && maxFiles != null && urls.length >= maxFiles;
+  const uploading = pending.some((item) => !item.error);
 
   async function handleFiles(files: FileList | null): Promise<void> {
     if (!files || files.length === 0) return;
@@ -95,7 +97,7 @@ export function ImageUpload({
     for (const file of chosen) {
       if (multiple && maxFiles != null && current.length >= maxFiles) break;
       const id = `u${counter.current++}`;
-      const error = validate(file, accept, maxSizeMb);
+      const error = validateImageUpload(file, accept, maxSizeMb);
       if (error) {
         setPending((p) => [...p, { id, name: file.name, error }]);
         continue;
@@ -103,8 +105,9 @@ export function ImageUpload({
       setPending((p) => [...p, { id, name: file.name }]);
       try {
         const { publicUrl } = await presignAndPut(file, { target, presignEndpoint });
-        current = multiple ? [...current, publicUrl] : [publicUrl];
-        onChange(multiple ? current : (current[0] ?? ''));
+        const next = uploadedImageValue(current, multiple, publicUrl);
+        current = normalize(next);
+        onChange(next);
         setPending((p) => p.filter((x) => x.id !== id));
       } catch (e) {
         setPending((p) => p.map((x) => (x.id === id ? { ...x, error: (e as Error).message } : x)));
@@ -114,38 +117,48 @@ export function ImageUpload({
   }
 
   function removeAt(index: number): void {
-    const next = urls.filter((_, i) => i !== index);
-    onChange(multiple ? next : (next[0] ?? ''));
+    onChange(removedImageValue(urls, multiple, index));
   }
 
   const showTrigger = !disabled && !atLimit && (multiple || urls.length === 0);
 
   if (variant === 'document') {
-    const remotePreview = !previewOnly && urls.length > 0 ? urls[0] : null;
-    const previewUrl = localPreview?.url ?? remotePreview;
+    const previewUrl = urls[0] ?? null;
     return (
-      <div className={cn('space-y-2', className)}>
+      <div className={cn('flex flex-col gap-2', className)}>
         <input
           ref={inputRef}
           type="file"
           accept={accept.join(',')}
           hidden
-          disabled={disabled}
+          disabled={disabled || uploading}
           onChange={(e) => void handleFiles(e.target.files)}
         />
         <div className="group relative h-[156px] overflow-hidden rounded-sm border border-dashed border-primary bg-white">
           {previewUrl ? (
             <>
-              <img src={previewUrl} alt="" className="size-full object-cover" />
+              <img
+                src={previewUrl}
+                alt="Ảnh giấy tờ đã tải lên"
+                className="size-full object-cover"
+              />
               <button
                 type="button"
-                onClick={previewOnly ? removeLocalPreview : () => removeAt(0)}
+                onClick={() => removeAt(0)}
                 className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-white/95 text-[#344054] shadow-sm transition-colors hover:text-destructive"
                 aria-label="Xoá ảnh"
               >
                 <XIcon className="size-4" />
               </button>
             </>
+          ) : uploading ? (
+            <div
+              className="flex size-full flex-col items-center justify-center gap-2 text-primary"
+              role="status"
+            >
+              <Spinner />
+              <span className="text-xs font-medium">Đang tải ảnh lên…</span>
+            </div>
           ) : (
             <button
               type="button"
@@ -160,7 +173,7 @@ export function ImageUpload({
         </div>
         {pending.map((item) =>
           item.error ? (
-            <p key={item.id} className="text-xs text-destructive">
+            <p key={item.id} role="alert" className="text-xs text-destructive">
               {item.error}
             </p>
           ) : null,
@@ -250,7 +263,11 @@ export function ImageUpload({
   );
 }
 
-function validate(file: File, accept: readonly string[], maxSizeMb: number): string | undefined {
+export function validateImageUpload(
+  file: File,
+  accept: readonly string[],
+  maxSizeMb: number,
+): string | undefined {
   if (accept.length > 0 && !accept.includes(file.type)) {
     return `Định dạng không hỗ trợ: ${file.type || 'không rõ'}`;
   }
@@ -264,4 +281,21 @@ function normalize(value?: string | string[] | null): string[] {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (typeof value === 'string' && value.length > 0) return [value];
   return [];
+}
+
+export function uploadedImageValue(
+  current: readonly string[],
+  multiple: boolean,
+  publicUrl: string,
+): string | string[] {
+  return multiple ? [...current, publicUrl] : publicUrl;
+}
+
+export function removedImageValue(
+  current: readonly string[],
+  multiple: boolean,
+  index: number,
+): string | string[] {
+  const next = current.filter((_, currentIndex) => currentIndex !== index);
+  return multiple ? next : (next[0] ?? '');
 }

@@ -17,6 +17,12 @@ export const bookingStatusSchema = z.enum([
 ]);
 export type BookingStatus = z.infer<typeof bookingStatusSchema>;
 
+/** Customer-facing booking lookup form. The storefront normalises the code before lookup. */
+export const bookingLookupInputSchema = z.object({
+  code: z.string().trim().min(1, 'Vui lòng nhập mã đặt chỗ').max(32),
+});
+export type BookingLookupInput = z.infer<typeof bookingLookupInputSchema>;
+
 /** Bookable modes: exclusive-calendar (hourly/daily) + multi-unit inventory (§9.4). */
 export const bookableModeSchema = z.enum(['hourly', 'daily', 'inventory']);
 export type BookableMode = z.infer<typeof bookableModeSchema>;

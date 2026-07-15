@@ -8,6 +8,8 @@
  * storefront stays stateless; the partner re-authenticates on the dashboard).
  */
 
+import type { PartnerApplyInput } from '@booking/contracts';
+
 const backendUrl = (): string => process.env.BACKEND_URL ?? 'http://localhost:3000';
 
 const JSON_HEADERS = { 'content-type': 'application/json', accept: 'application/json' } as const;
@@ -31,16 +33,7 @@ export interface RegisterCredentials {
   phone?: string;
 }
 
-export interface PartnerApplyPayload {
-  tenantId: string;
-  name: string;
-  slug: string;
-  partnerType: 'individual' | 'company';
-  description?: string;
-  businessInfo?: Record<string, unknown>;
-  contactInfo?: Record<string, unknown>;
-  payoutInfo?: { bank: string; accountNumber: string; holderName: string };
-}
+export type PartnerApplyPayload = PartnerApplyInput;
 
 /** A message code the route maps with `useTranslation(NsI18n.Common)`. */
 export type PartnerErrorCode =

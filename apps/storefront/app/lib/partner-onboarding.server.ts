@@ -8,12 +8,13 @@ import {
   type AuthChallengeResponse,
   type AuthFlowCompleteResponse,
   type AuthOtpVerifiedResponse,
+  type PartnerOnboardingProfileInput,
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { backendLogin, publicPost } from './api.server';
 import { authFlow, type AuthFlowPhase } from './auth-flow.server';
-import { requireAuth } from './auth.server';
+import { getOptionalAuth, requireAuth } from './auth.server';
 import { applyAsPartner, type PartnerApplyPayload, type PartnerErrorCode } from './partner.server';
 import { suppressStorefrontSessionCommit } from './request-auth.server';
 import { createUserSession } from './session.server';
@@ -33,7 +34,9 @@ const invalid = (fieldErrors: Record<string, string[] | undefined>) =>
   data<PartnerOnboardingActionData>(
     {
       fieldErrors: Object.fromEntries(
-        Object.entries(fieldErrors).filter((entry): entry is [string, string[]] => Boolean(entry[1])),
+        Object.entries(fieldErrors).filter((entry): entry is [string, string[]] =>
+          Boolean(entry[1]),
+        ),
       ),
     },
     { status: 400 },
@@ -45,14 +48,47 @@ const failed = (result: { status: number; code?: string; error?: string }) =>
   );
 
 function inferredName(email: string) {
-  const local = email.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
+  const local = email
+    .split('@')[0]
+    ?.replace(/[._-]+/g, ' ')
+    .trim();
   return local || 'Đối tác mới';
+}
+
+export type PartnerRegistrationEntry = 'register' | 'profile' | 'dashboard';
+
+/** Decide the first onboarding step without mutating auth or flow state. */
+export function partnerRegistrationEntry(
+  auth: ReturnType<typeof getOptionalAuth>,
+  tenantId: string,
+): PartnerRegistrationEntry {
+  if (!auth) return 'register';
+  const alreadyPartner = auth.info.scopes.some(
+    (membership) => membership.scope === 'partner' && membership.tenantId === tenantId,
+  );
+  return alreadyPartner ? 'dashboard' : 'profile';
 }
 
 export async function startPartnerRegistration(request: Request, localeParam?: string) {
   const locale = localeOf(localeParam);
+  const auth = getOptionalAuth();
+  if (auth) {
+    const tenant = await resolveTenant(request);
+    const entry = partnerRegistrationEntry(auth, tenant.id);
+    if (entry === 'dashboard') {
+      return redirect(`${process.env.DASHBOARD_URL ?? 'http://localhost:5174'}/partner`);
+    }
+    const setCookie = await authFlow.create(request, {
+      phase: 'partner_registration_profile',
+      email: auth.info.user.email,
+      maskedDestination: auth.info.user.email,
+    });
+    return redirect(path(locale, 'profile'), { headers: { 'Set-Cookie': setCookie } });
+  }
   const form = fields(await request.formData());
-  const email = String(form.email ?? '').trim().toLowerCase();
+  const email = String(form.email ?? '')
+    .trim()
+    .toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) return invalid({ email: ['Email không hợp lệ'] });
   const result = await publicPost<AuthChallengeResponse>(
     '/auth/registration/start',
@@ -110,10 +146,14 @@ export async function verifyPartnerRegistration(request: Request, localeParam?: 
     code: form.get('code'),
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
-  const result = await publicPost<AuthOtpVerifiedResponse>('/auth/registration/verify', parsed.data, {
-    signal: request.signal,
-    schema: authOtpVerifiedResponseSchema,
-  });
+  const result = await publicPost<AuthOtpVerifiedResponse>(
+    '/auth/registration/verify',
+    parsed.data,
+    {
+      signal: request.signal,
+      schema: authOtpVerifiedResponseSchema,
+    },
+  );
   if (!result.ok || !result.data) return failed(result);
   await authFlow.update(flow.id, {
     phase: 'partner_registration_password',
@@ -124,11 +164,13 @@ export async function verifyPartnerRegistration(request: Request, localeParam?: 
   return redirect(path(locale, 'password'));
 }
 
-const partnerPasswordSchema = authPasswordCompleteInputSchema.omit({ completionToken: true }).extend({
-  password: authPasswordCompleteInputSchema.shape.password
-    .regex(/[A-Z]/, 'Cần ít nhất một chữ hoa')
-    .regex(/[^A-Za-z0-9]/, 'Cần ít nhất một ký tự đặc biệt'),
-});
+const partnerPasswordSchema = authPasswordCompleteInputSchema
+  .omit({ completionToken: true })
+  .extend({
+    password: authPasswordCompleteInputSchema.shape.password
+      .regex(/[A-Z]/, 'Cần ít nhất một chữ hoa')
+      .regex(/[^A-Za-z0-9]/, 'Cần ít nhất một ký tự đặc biệt'),
+  });
 
 export async function completePartnerPassword(request: Request, localeParam?: string) {
   const locale = localeOf(localeParam);
@@ -150,7 +192,10 @@ export async function completePartnerPassword(request: Request, localeParam?: st
     { signal: request.signal, schema: authFlowCompleteResponseSchema },
   );
   if (!completed.ok || !completed.data) return failed(completed);
-  const login = await backendLogin({ email: flow.record.email ?? '', password: String(form.password) });
+  const login = await backendLogin({
+    email: flow.record.email ?? '',
+    password: String(form.password),
+  });
   if (!login.ok || !login.tokens || !login.user) return failed(login);
   await authFlow.update(flow.id, {
     phase: 'partner_registration_profile',
@@ -177,35 +222,29 @@ export function partnerSlugFor(name: string, userId: string) {
   return `${base || 'doi-tac'}-${userId.replace(/-/g, '').slice(0, 8)}`;
 }
 
-export async function loadPartnerProfile(request: Request, localeParam?: string) {
-  const locale = localeOf(localeParam);
-  const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
-  const auth = requireAuth(startPath(locale));
-  const tenant = await resolveTenant(request);
-  return { email: auth.info.user.email, tenantName: tenant.name, flow };
-}
-
-export async function submitPartnerProfile(request: Request, localeParam?: string) {
-  const locale = localeOf(localeParam);
-  const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
-  const auth = requireAuth(startPath(locale));
-  const tenant = await resolveTenant(request);
-  const parsed = partnerOnboardingProfileSchema.safeParse(await request.json());
-  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
-  const value = parsed.data;
+/** Map the storefront profile contract to the API's partner-application payload. */
+export function partnerApplyPayloadFor(
+  value: PartnerOnboardingProfileInput,
+  tenantId: string,
+  userId: string,
+): PartnerApplyPayload {
   const businessInfo: Record<string, unknown> = {
     representativeName: value.representativeName,
     identityNumber: value.identityNumber,
+    identityCardFrontUrl: value.identityCardFrontUrl,
+    identityCardBackUrl: value.identityCardBackUrl,
   };
   if (value.partnerType === 'company') {
     businessInfo.legalName = value.companyName;
     businessInfo.businessRegistrationNo = value.businessRegistrationNo;
     businessInfo.taxId = value.businessRegistrationNo;
+    businessInfo.businessLicenseFrontUrl = value.businessLicenseFrontUrl;
+    businessInfo.businessLicenseBackUrl = value.businessLicenseBackUrl;
   }
-  const payload: PartnerApplyPayload = {
-    tenantId: tenant.id,
+  return {
+    tenantId,
     name: value.name,
-    slug: partnerSlugFor(value.name, auth.session.userId),
+    slug: partnerSlugFor(value.name, userId),
     partnerType: value.partnerType,
     businessInfo,
     contactInfo: {
@@ -221,9 +260,30 @@ export async function submitPartnerProfile(request: Request, localeParam?: strin
       holderName: value.bankAccountHolder,
     },
   };
+}
+
+export async function loadPartnerProfile(request: Request, localeParam?: string) {
+  const locale = localeOf(localeParam);
+  const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
+  const auth = requireAuth(startPath(locale));
+  const tenant = await resolveTenant(request);
+  return { email: auth.info.user.email, tenantName: tenant.name, flow };
+}
+
+export async function submitPartnerProfile(request: Request, localeParam?: string) {
+  const locale = localeOf(localeParam);
+  const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
+  const auth = requireAuth(startPath(locale));
+  const tenant = await resolveTenant(request);
+  const parsed = partnerOnboardingProfileSchema.safeParse(await request.json());
+  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
+  const payload = partnerApplyPayloadFor(parsed.data, tenant.id, auth.session.userId);
   const applied = await applyAsPartner(auth.session.accessToken, payload);
   if (!applied.ok) {
-    return data<PartnerOnboardingActionData>({ error: applied.code satisfies PartnerErrorCode }, { status: 400 });
+    return data<PartnerOnboardingActionData>(
+      { error: applied.code satisfies PartnerErrorCode },
+      { status: 400 },
+    );
   }
   await authFlow.update(flow.id, {
     phase: 'partner_registration_done',

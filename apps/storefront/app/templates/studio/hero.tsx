@@ -21,7 +21,7 @@ export function StudioHero({
   const image = tenant.hero.imageUrl ?? `https://picsum.photos/seed/${tenant.slug}-hero/1600/700`;
 
   return (
-    <section className="mx-auto max-w-292.5 px-6 lg:px-0 pt-6 pb-24 sm:pb-32">
+    <section className="mx-auto max-w-292.5 px-6 lg:px-0 pt-6">
       <div className="relative overflow-hidden rounded-3xl bg-gray-900">
         <img
           src={image}

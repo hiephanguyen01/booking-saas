@@ -164,13 +164,6 @@ function AuthenticatedActions({
       <span className="max-w-36 truncate text-xs font-semibold text-foreground">
         {currentUser.fullName}
       </span>
-      <Link
-        to={storefrontPaths.bookings(locale)}
-        prefetch="intent"
-        className="px-2 text-xs font-semibold text-primary"
-      >
-        {t('myBookings')}
-      </Link>
       <LogoutForm locale={locale} label={t('logout')} />
     </>
   );

@@ -23,14 +23,24 @@ export const action = ({ request, params }: Route.ActionArgs) =>
   startPartnerRegistration(request, params.locale);
 
 export default function PartnerRegistrationStart() {
-  const { locale } = useOutletContext<StorefrontContext>();
+  const { locale, currentUser } = useOutletContext<StorefrontContext>();
   const actionData = useActionData<PartnerOnboardingActionData>();
   const emailError = actionData?.fieldErrors?.email?.[0];
   const duplicate = actionData?.error === 'EMAIL_TAKEN';
   return (
     <AuthSplit>
-      <FormHeading title="Đăng ký" />
-      <Form method="post" className="space-y-10" noValidate>
+      <FormHeading
+        title={currentUser ? 'Tiếp tục đăng ký đối tác' : 'Đăng ký'}
+        description={
+          currentUser ? (
+            <>
+              Bạn đang đăng nhập bằng{' '}
+              <strong className="font-semibold text-[#344054]">{currentUser.email}</strong>
+            </>
+          ) : undefined
+        }
+      />
+      <Form method="post" className="flex flex-col gap-10" noValidate>
         <FormAlert>
           {duplicate
             ? 'Email này đã được sử dụng. Vui lòng đăng nhập tài khoản.'
@@ -38,15 +48,17 @@ export default function PartnerRegistrationStart() {
               ? 'Không thể gửi email xác thực. Vui lòng thử lại.'
               : undefined}
         </FormAlert>
-        <EmailField
-          error={
-            emailError ??
-            (duplicate ? 'Email này đã được sử dụng. Vui lòng đăng nhập tài khoản' : undefined)
-          }
-        />
-        <PrimaryButton>Đăng ký</PrimaryButton>
+        {currentUser ? null : (
+          <EmailField
+            error={
+              emailError ??
+              (duplicate ? 'Email này đã được sử dụng. Vui lòng đăng nhập tài khoản' : undefined)
+            }
+          />
+        )}
+        <PrimaryButton>{currentUser ? 'Tiếp tục' : 'Đăng ký'}</PrimaryButton>
       </Form>
-      <LoginPrompt locale={locale} />
+      {currentUser ? null : <LoginPrompt locale={locale} />}
     </AuthSplit>
   );
 }

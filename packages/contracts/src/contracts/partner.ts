@@ -203,10 +203,18 @@ export const partnerOnboardingProfileSchema = z
     bank: z.string().trim().min(1, 'Vui lòng chọn ngân hàng').max(120),
     bankAccountNumber: z.string().trim().min(1, 'Vui lòng nhập số tài khoản').max(64),
     bankAccountHolder: z.string().trim().min(1, 'Vui lòng nhập tên người thụ hưởng').max(200),
-    businessLicenseFront: z.string().max(255).optional(),
-    businessLicenseBack: z.string().max(255).optional(),
-    identityDocumentFront: z.string().max(255).optional(),
-    identityDocumentBack: z.string().max(255).optional(),
+    businessLicenseFrontUrl: z
+      .string()
+      .url('Vui lòng tải ảnh GPKD mặt trước')
+      .or(z.literal(''))
+      .optional(),
+    businessLicenseBackUrl: z
+      .string()
+      .url('Vui lòng tải ảnh GPKD mặt sau')
+      .or(z.literal(''))
+      .optional(),
+    identityCardFrontUrl: z.string().url('Vui lòng tải ảnh CMND/CCCD mặt trước').or(z.literal('')),
+    identityCardBackUrl: z.string().url('Vui lòng tải ảnh CMND/CCCD mặt sau').or(z.literal('')),
     acceptedTerms: z.boolean().refine(Boolean, 'Vui lòng đồng ý với Hợp đồng đối tác'),
   })
   .superRefine((value, context) => {
@@ -218,12 +226,11 @@ export const partnerOnboardingProfileSchema = z
     if (value.partnerType === 'company') {
       required('companyName', 'Vui lòng nhập tên doanh nghiệp');
       required('businessRegistrationNo', 'Vui lòng nhập số giấy phép kinh doanh');
-      required('businessLicenseFront', 'Vui lòng chọn mặt trước GPKD');
-      required('businessLicenseBack', 'Vui lòng chọn mặt sau GPKD');
-    } else {
-      required('identityDocumentFront', 'Vui lòng chọn mặt trước CMND/CCCD');
-      required('identityDocumentBack', 'Vui lòng chọn mặt sau CMND/CCCD');
+      required('businessLicenseFrontUrl', 'Vui lòng tải ảnh GPKD mặt trước');
+      required('businessLicenseBackUrl', 'Vui lòng tải ảnh GPKD mặt sau');
     }
+    required('identityCardFrontUrl', 'Vui lòng tải ảnh CMND/CCCD mặt trước');
+    required('identityCardBackUrl', 'Vui lòng tải ảnh CMND/CCCD mặt sau');
   });
 export type PartnerOnboardingProfileInput = z.infer<typeof partnerOnboardingProfileSchema>;
 
