@@ -434,8 +434,8 @@ function SearchDatePicker({
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>{trigger}</PopoverTrigger>
           <PopoverContent
-            align="center"
-            className="w-153 p-0 before:absolute before:-top-2 before:left-1/2 before:size-4 before:-translate-x-1/2 before:rotate-45 before:border-t before:border-l before:border-border before:bg-popover"
+            align="start"
+            className="w-153 p-0 before:absolute before:-top-2 before:left-1/5 before:size-4 before:-translate-x-1/2 before:rotate-45 before:border-t before:border-l before:border-border before:bg-popover"
           >
             {calendar(2, () => setPopoverOpen(false))}
           </PopoverContent>
