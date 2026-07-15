@@ -379,54 +379,69 @@ function ComboboxControl<T extends FieldValues>({
   const [open, setOpen] = React.useState(false);
   const current = field.options.find((o) => o.value === rhf.value);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={field.disabled}
-          aria-required={field.required}
-          className={cn(
-            appearance === 'partner' ? PARTNER_TRIGGER : PREMIUM_TRIGGER,
-            'justify-between font-normal',
-            !current && 'text-muted-foreground',
-          )}
+    <div className="w-full">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            disabled={field.disabled}
+            aria-required={field.required}
+            className={cn(
+              appearance === 'partner' ? PARTNER_TRIGGER : PREMIUM_TRIGGER,
+              'w-full justify-between font-normal hover:bg-primary/10 hover:text-primary active:bg-primary active:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground data-[state=open]:hover:bg-primary data-[state=open]:hover:text-primary-foreground dark:hover:bg-primary/10 dark:hover:text-primary',
+              !current && 'text-muted-foreground',
+            )}
+          >
+            <span className="truncate">{current?.label ?? field.placeholder ?? 'Chọn...'}</span>
+            <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-content-available-width)] p-0"
+          align="start"
         >
-          {current?.label ?? field.placeholder ?? 'Chọn...'}
-          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={field.searchPlaceholder ?? 'Tìm kiếm...'} />
-          <CommandList>
-            <CommandEmpty>Không có kết quả.</CommandEmpty>
-            <CommandGroup>
-              {field.options.map((opt) => (
-                <CommandItem
-                  key={opt.value}
-                  value={opt.label}
-                  onSelect={() => {
-                    rhf.onChange(opt.value);
-                    setOpen(false);
-                  }}
-                >
-                  <CheckIcon
-                    className={cn(
-                      'mr-2 size-4',
-                      opt.value === rhf.value ? 'opacity-100' : 'opacity-0',
-                    )}
-                  />
-                  {opt.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          <Command>
+            <CommandInput placeholder={field.searchPlaceholder ?? 'Tìm kiếm...'} />
+            <CommandList>
+              <CommandEmpty>Không có kết quả.</CommandEmpty>
+              <CommandGroup>
+                {field.options.map((opt) => {
+                  const selected = opt.value === rhf.value;
+                  return (
+                    <CommandItem
+                      key={opt.value}
+                      value={opt.label}
+                      className={cn(
+                        'data-[selected=true]:bg-primary/10 data-[selected=true]:text-primary',
+                        selected &&
+                          'bg-primary text-primary-foreground data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground',
+                      )}
+                      onSelect={() => {
+                        rhf.onChange(opt.value);
+                        setOpen(false);
+                      }}
+                    >
+                      <CheckIcon
+                        className={cn(
+                          'mr-2 size-4',
+                          selected
+                            ? 'text-primary-foreground opacity-100'
+                            : 'text-primary opacity-0',
+                        )}
+                      />
+                      {opt.label}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 

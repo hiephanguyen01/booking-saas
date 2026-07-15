@@ -62,11 +62,19 @@ const DEFAULTS: PartnerOnboardingProfileInput = {
 const field = (
   name: Path<PartnerOnboardingProfileInput>,
   label: string,
-  type: 'text' | 'select' | 'file' = 'text',
+  type: 'text' | 'select' | 'combobox' | 'file' = 'text',
   required = true,
 ): FieldConfig<PartnerOnboardingProfileInput> => {
-  if (type === 'select')
-    return { name, label, type, required, placeholder: 'Chọn', options: BANKS };
+  if (type === 'select' || type === 'combobox')
+    return {
+      name,
+      label,
+      type,
+      required,
+      placeholder: 'Chọn ngân hàng',
+      searchPlaceholder: type === 'combobox' ? 'Tìm ngân hàng...' : undefined,
+      options: BANKS,
+    };
   if (type === 'file')
     return {
       name,
@@ -283,7 +291,10 @@ export default function PartnerProfile() {
                 <DocumentPair company={partnerType === 'company'} />
                 {partnerType === 'company' ? <DocumentPair company={false} /> : null}
                 <FieldRenderer field={field('phone', 'Số điện thoại')} appearance="partner" />
-                <FieldRenderer field={field('bank', 'Ngân hàng', 'select')} appearance="partner" />
+                <FieldRenderer
+                  field={field('bank', 'Ngân hàng', 'combobox')}
+                  appearance="partner"
+                />
                 <FieldRenderer
                   field={field('bankAccountNumber', 'Số tài khoản')}
                   appearance="partner"
