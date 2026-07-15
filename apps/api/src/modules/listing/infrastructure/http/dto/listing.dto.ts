@@ -37,7 +37,9 @@ export class ListingGroupDetailResponseDto extends createZodDto(listingGroupDeta
 export class ListingResponseDto extends createZodDto(listingResponseSchema) {}
 export class ResourceResponseDto extends createZodDto(resourceResponseSchema) {}
 export class PricingRuleResponseDto extends createZodDto(pricingRuleResponseSchema) {}
-export class PublicListingDetailResponseDto extends createZodDto(publicListingDetailResponseSchema) {}
+export class PublicListingDetailResponseDto extends createZodDto(
+  publicListingDetailResponseSchema,
+) {}
 export class QuoteResponseDto extends createZodDto(quoteResponseSchema) {}
 export class ListingReviewResponseDto extends createZodDto(listingReviewResponseSchema) {}
 

@@ -1,7 +1,7 @@
-import { Heart } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
-import { attributeSummary, formatVnd } from '../../../lib/ui';
+import { attributeSummary, formatListingLocation, formatVnd } from '../../../lib/ui';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { useLocale } from '../../../lib/use-locale';
 
@@ -17,10 +17,15 @@ export function ListingCard({ listing }: { listing: PublicListingResponse }) {
   const cover = listing.photos[0] as string | undefined;
   const price = formatVnd(listing.priceFrom);
   const summary = attributeSummary(listing.attributes);
+  const location = formatListingLocation(listing);
 
   return (
     <Link
-      to={listing.kind === 'group' ? storefrontPaths.listingGroup(locale, listing.slug) : storefrontPaths.listing(locale, listing.slug)}
+      to={
+        listing.kind === 'group'
+          ? storefrontPaths.listingGroup(locale, listing.slug)
+          : storefrontPaths.listing(locale, listing.slug)
+      }
       className="group block overflow-hidden rounded-lg border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="relative aspect-3/2 overflow-hidden bg-muted">
@@ -48,6 +53,12 @@ export function ListingCard({ listing }: { listing: PublicListingResponse }) {
         <h3 className="line-clamp-2 leading-snug font-semibold text-foreground transition-colors group-hover:text-primary">
           {listing.title}
         </h3>
+        {location ? (
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="line-clamp-1">{location}</span>
+          </p>
+        ) : null}
         {summary ? <p className="line-clamp-1 text-sm text-muted-foreground">{summary}</p> : null}
         {price ? (
           <p className="text-right text-sm">

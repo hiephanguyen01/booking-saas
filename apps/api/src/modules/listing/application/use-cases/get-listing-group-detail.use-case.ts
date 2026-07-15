@@ -1,9 +1,19 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { ListingGroupDetailResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { LISTING_TYPE_REPOSITORY, type IListingTypeRepository } from '../../../catalog/domain/ports/listing-type-repository.port';
-import { LISTING_GROUP_REPOSITORY, type IListingGroupRepository } from '../../domain/ports/listing-group-repository.port';
-import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../domain/ports/listing-repository.port';
+import {
+  LISTING_TYPE_REPOSITORY,
+  type IListingTypeRepository,
+} from '../../../catalog/domain/ports/listing-type-repository.port';
+import {
+  LISTING_GROUP_REPOSITORY,
+  type IListingGroupRepository,
+} from '../../domain/ports/listing-group-repository.port';
+import {
+  LISTING_REPOSITORY,
+  type IListingRepository,
+  type ListingRecord,
+} from '../../domain/ports/listing-repository.port';
 import { toListingGroupResponse, toListingResponse } from '../listing.mapper';
 
 function basePrice(listing: ListingRecord): number[] {
@@ -17,7 +27,11 @@ function basePrice(listing: ListingRecord): number[] {
 }
 
 function isReady(listing: ListingRecord): boolean {
-  return Boolean(listing.description?.trim()) && listing.photos.length > 0 && basePrice(listing).length >= listing.bookingModes.length;
+  return (
+    Boolean(listing.description?.trim()) &&
+    listing.photos.length > 0 &&
+    basePrice(listing).length >= listing.bookingModes.length
+  );
 }
 
 @Injectable()
@@ -29,11 +43,19 @@ export class GetListingGroupDetailUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, id: string, requirePartnerId?: string): Promise<ListingGroupDetailResponse> {
+  execute(
+    tenantId: string,
+    id: string,
+    requirePartnerId?: string,
+  ): Promise<ListingGroupDetailResponse> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const group = await this.groups.findById(tx, id);
       if (!group || (requirePartnerId && group.partnerId !== requirePartnerId)) {
-        throw new NotFoundException({ statusCode: 404, code: 'LISTING_GROUP_NOT_FOUND', message: 'Listing group not found' });
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'LISTING_GROUP_NOT_FOUND',
+          message: 'Listing group not found',
+        });
       }
       const [children, type] = await Promise.all([
         this.listings.list(tx, { groupId: group.id, partnerId: requirePartnerId }),

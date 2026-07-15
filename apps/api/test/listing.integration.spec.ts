@@ -98,7 +98,15 @@ describe('listings, groups & pricing', () => {
     resourceId = resource.body.id;
 
     const group = await tenantReq('post', '/tenant/listing-groups')
-      .send({ partnerId, listingTypeId: studioTypeId, title: 'Giang Q1', slug: 'giang-q1' })
+      .send({
+        partnerId,
+        listingTypeId: studioTypeId,
+        title: 'Giang Q1',
+        slug: 'giang-q1',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
+      })
       .expect(201);
     groupId = group.body.id;
 
@@ -110,6 +118,9 @@ describe('listings, groups & pricing', () => {
         resourceId,
         title: 'Room One',
         slug: 'room-one',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         attributes: { area: 30, style: 'Vintage', naturalLight: true },
         bookingModes: ['hourly'],
         modeConfig: { hourly: hourlyModeConfig },
@@ -127,6 +138,9 @@ describe('listings, groups & pricing', () => {
         resourceId, // same resource → shared calendar
         title: 'Room Two',
         slug: 'room-two',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         attributes: { area: 20, style: 'Hàn Quốc', naturalLight: false },
         bookingModes: ['hourly'],
         modeConfig: { hourly: hourlyModeConfig },
@@ -143,6 +157,9 @@ describe('listings, groups & pricing', () => {
         resourceId,
         title: 'Bad attrs',
         slug: 'bad-attrs',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         attributes: { area: 'not-a-number' },
         bookingModes: ['hourly'],
         modeConfig: { hourly: hourlyModeConfig },
@@ -157,6 +174,9 @@ describe('listings, groups & pricing', () => {
         resourceId,
         title: 'Bad modes',
         slug: 'bad-modes',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         attributes: { area: 10 },
         bookingModes: ['inventory'],
         stockQuantity: 1,
@@ -172,6 +192,9 @@ describe('listings, groups & pricing', () => {
         resourceId,
         title: 'Dup',
         slug: 'room-one',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         attributes: { area: 10 },
         bookingModes: ['hourly'],
         modeConfig: { hourly: hourlyModeConfig },
@@ -186,6 +209,9 @@ describe('listings, groups & pricing', () => {
         resourceId,
         title: 'A Model',
         slug: 'a-model',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         attributes: { height: 170 },
         bookingModes: ['hourly'],
         modeConfig: { hourly: hourlyModeConfig },

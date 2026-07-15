@@ -38,7 +38,11 @@ interface RoomCandidate {
 type EvaluatedRoom = SearchRoomSummary;
 
 function normalized(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('vi').trim();
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi')
+    .trim();
 }
 
 function stringPhotos(photos: unknown[]): string[] {
@@ -47,7 +51,9 @@ function stringPhotos(photos: unknown[]): string[] {
 
 function containsLocation(group: PublicListingGroupDetailResponse, location: string): boolean {
   if (!location) return true;
-  const haystack = normalized(`${group.address ?? ''} ${group.workingArea ?? ''}`);
+  const haystack = normalized(
+    `${group.address ?? ''} ${group.workingArea ?? ''} ${group.wardName ?? ''} ${group.provinceName ?? ''}`,
+  );
   return haystack.includes(normalized(location));
 }
 
@@ -55,7 +61,8 @@ function attributeTokens(attributes: Record<string, unknown>): string[] {
   const tokens: string[] = [];
   for (const value of Object.values(attributes)) {
     if (typeof value === 'string') tokens.push(value);
-    else if (Array.isArray(value)) tokens.push(...value.filter((item): item is string => typeof item === 'string'));
+    else if (Array.isArray(value))
+      tokens.push(...value.filter((item): item is string => typeof item === 'string'));
   }
   return tokens.map(normalized);
 }
@@ -123,7 +130,10 @@ async function evaluateRoom(
     if (!availability || availability.mode !== 'hourly') return null;
     const slots = availability.days.flatMap((day) => day.slots).filter((slot) => slot.available);
     if (slots.length === 0) return null;
-    const price = slots.reduce((min, slot) => Math.min(min, Number(slot.price)), Number.POSITIVE_INFINITY);
+    const price = slots.reduce(
+      (min, slot) => Math.min(min, Number(slot.price)),
+      Number.POSITIVE_INFINITY,
+    );
     if (!Number.isFinite(price)) return null;
     if (state.minPrice !== null && price < state.minPrice) return null;
     if (state.maxPrice !== null && price > state.maxPrice) return null;
@@ -132,7 +142,8 @@ async function evaluateRoom(
 
   const nights = nightsBetween(state.from, state.to);
   const config = dailyConfig(detail);
-  if (nights < config.minNights || (config.maxNights !== null && nights > config.maxNights)) return null;
+  if (nights < config.minNights || (config.maxNights !== null && nights > config.maxNights))
+    return null;
   const lastNight = addDays(state.to, -1);
   const availability = await safely(
     fetchAvailability(request, room.slug, { mode: 'daily', from: state.from, to: lastNight }),
@@ -146,7 +157,11 @@ async function evaluateRoom(
   const start = zonedToUtcIso(state.from, config.checkinTime, availability.timezone);
   const end = zonedToUtcIso(state.to, config.checkoutTime, availability.timezone);
   const quote = await safely(
-    fetchQuote(request, room.slug, new URLSearchParams({ mode: 'daily', from: start, to: end, quantity: '1' })),
+    fetchQuote(
+      request,
+      room.slug,
+      new URLSearchParams({ mode: 'daily', from: start, to: end, quantity: '1' }),
+    ),
   );
   if (!quote) return null;
   const price = Number(quote.subtotal);
@@ -186,10 +201,14 @@ async function enrichGroup(
     attributes: room.attributes,
     bookingModes: room.bookingModes,
   }));
-  const evaluated = (await mapLimit(rooms, 5, (room) => evaluateRoom(request, room, group.amenities, state)))
-    .filter((room): room is EvaluatedRoom => room !== null);
+  const evaluated = (
+    await mapLimit(rooms, 5, (room) => evaluateRoom(request, room, group.amenities, state))
+  ).filter((room): room is EvaluatedRoom => room !== null);
   if (evaluated.length === 0) return null;
-  const priceFrom = evaluated.reduce((min, room) => Math.min(min, Number(room.price)), Number.POSITIVE_INFINITY);
+  const priceFrom = evaluated.reduce(
+    (min, room) => Math.min(min, Number(room.price)),
+    Number.POSITIVE_INFINITY,
+  );
   return {
     id: group.id,
     kind: 'group',
@@ -198,6 +217,8 @@ async function enrichGroup(
     photos: group.photos,
     address: group.address,
     workingArea: group.workingArea,
+    wardName: group.wardName,
+    provinceName: group.provinceName,
     amenities: group.amenities,
     priceFrom: String(priceFrom),
     priceUnit: state.mode === 'hourly' ? 'giờ' : 'ngày',
@@ -228,8 +249,10 @@ async function enrichStandalone(
     title: detail.title,
     slug: detail.slug,
     photos: detail.photos.length ? detail.photos : stringPhotos(candidate.photos),
-    address: null,
+    address: detail.address,
     workingArea: null,
+    wardName: detail.wardName,
+    provinceName: detail.provinceName,
     amenities: [],
     priceFrom: evaluated.price,
     priceUnit: state.mode === 'hourly' ? 'giờ' : 'ngày',
@@ -244,18 +267,27 @@ export async function composeSearchResults(
   state: StorefrontSearchState,
   pageSize = 12,
 ): Promise<SearchComposition> {
-  const enriched = (await mapLimit(candidates.slice(0, 100), 4, (candidate) =>
-    candidate.kind === 'group'
-      ? enrichGroup(request, candidate, state)
-      : enrichStandalone(request, candidate, state),
-  )).filter((item): item is EnrichedSearchListing => item !== null);
+  const enriched = (
+    await mapLimit(candidates.slice(0, 100), 4, (candidate) =>
+      candidate.kind === 'group'
+        ? enrichGroup(request, candidate, state)
+        : enrichStandalone(request, candidate, state),
+    )
+  ).filter((item): item is EnrichedSearchListing => item !== null);
 
-  if (state.sort === 'price-asc') enriched.sort((a, b) => Number(a.priceFrom) - Number(b.priceFrom));
+  if (state.sort === 'price-asc')
+    enriched.sort((a, b) => Number(a.priceFrom) - Number(b.priceFrom));
   const total = enriched.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(state.page, totalPages);
   const start = (page - 1) * pageSize;
-  const locations = [...new Set(enriched.flatMap((item) => [item.workingArea, item.address]).filter((value): value is string => Boolean(value)))];
+  const locations = [
+    ...new Set(
+      enriched
+        .flatMap((item) => [item.workingArea, item.wardName, item.provinceName, item.address])
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
   const amenities = [...new Set(enriched.flatMap((item) => item.amenities))];
 
   return {
@@ -273,8 +305,18 @@ export async function deriveLocationSuggestions(
   candidates: PublicListingResponse[],
 ): Promise<string[]> {
   const groups = candidates.filter((item) => item.kind === 'group').slice(0, 40);
-  const details = await mapLimit(groups, 5, (item) => safely(fetchListingGroup(request, item.slug)));
-  return [...new Set(details.flatMap((group) => group ? [group.workingArea, group.address] : []).filter((value): value is string => Boolean(value)))].slice(0, 20);
+  const details = await mapLimit(groups, 5, (item) =>
+    safely(fetchListingGroup(request, item.slug)),
+  );
+  return [
+    ...new Set(
+      details
+        .flatMap((group) =>
+          group ? [group.workingArea, group.wardName, group.provinceName, group.address] : [],
+        )
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ].slice(0, 20);
 }
 
 export function availabilityForRange(
@@ -283,6 +325,8 @@ export function availabilityForRange(
   to: string,
 ): boolean {
   if (!availability || availability.mode !== 'daily') return false;
-  const open = new Set(availability.days.filter((day) => day.status === 'available').map((day) => day.date));
+  const open = new Set(
+    availability.days.filter((day) => day.status === 'available').map((day) => day.date),
+  );
   return rangeDates(from, to).every((date) => open.has(date));
 }

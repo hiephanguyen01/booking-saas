@@ -36,7 +36,11 @@ export class PublishListingUseCase {
       const listing = await this.listings.findById(tx, listingId);
       if (!listing) listingNotFound();
       if (listing.groupId) {
-        throw new BadRequestException({ statusCode: 400, code: 'GROUP_MANAGED_LISTING', message: 'Publish the parent listing group instead' });
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'GROUP_MANAGED_LISTING',
+          message: 'Publish the parent listing group instead',
+        });
       }
 
       const review = buildListingReview(listing);

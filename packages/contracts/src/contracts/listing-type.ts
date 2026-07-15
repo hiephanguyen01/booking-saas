@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { administrativeAddressSnapshotSchema } from './administrative-division';
 import { slugSchema } from './tenancy';
 
 /** How a listing may be booked (mirrors the Prisma BookingMode enum, §7.3). */
@@ -169,16 +170,18 @@ export const publicListingTypeResponseSchema = z.object({
 });
 export type PublicListingTypeResponse = z.infer<typeof publicListingTypeResponseSchema>;
 
-export const publicListingResponseSchema = z.object({
-  id: z.string(),
-  kind: z.enum(['listing', 'group']),
-  title: z.string(),
-  slug: z.string(),
-  listingTypeSlug: z.string(),
-  attributes: z.record(z.unknown()),
-  photos: z.array(z.unknown()),
-  /** Lowest configured price in VND đồng as a digit string, or null. */
-  priceFrom: z.string().nullable(),
-  itemLabel: z.string().nullable(),
-});
+export const publicListingResponseSchema = z
+  .object({
+    id: z.string(),
+    kind: z.enum(['listing', 'group']),
+    title: z.string(),
+    slug: z.string(),
+    listingTypeSlug: z.string(),
+    attributes: z.record(z.unknown()),
+    photos: z.array(z.unknown()),
+    /** Lowest configured price in VND đồng as a digit string, or null. */
+    priceFrom: z.string().nullable(),
+    itemLabel: z.string().nullable(),
+  })
+  .merge(administrativeAddressSnapshotSchema);
 export type PublicListingResponse = z.infer<typeof publicListingResponseSchema>;

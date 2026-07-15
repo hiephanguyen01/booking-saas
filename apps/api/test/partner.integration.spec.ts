@@ -85,7 +85,18 @@ describe('partner onboarding & verification', () => {
     const res = await request(http)
       .post('/partners/apply')
       .set('Cookie', customerCookies)
-      .send({ tenantId, name, slug, partnerType: 'individual' })
+      .send({
+        tenantId,
+        name,
+        slug,
+        partnerType: 'individual',
+        contactInfo: {
+          phone: '0901234567',
+          provinceCode: '79',
+          wardCode: '26740',
+          address: '12 Nguyễn Huệ',
+        },
+      })
       .expect(201);
     return res.body.id;
   }
@@ -102,8 +113,44 @@ describe('partner onboarding & verification', () => {
     const applied = list.body.items.find((p: { id: string }) => p.id === partnerId);
     expect(applied).toBeDefined();
     expect(applied.status).toBe('pending');
+    const stored = await db.admin.partner.findUniqueOrThrow({ where: { id: partnerId } });
+    expect(stored.contactInfo).toMatchObject({
+      provinceCode: '79',
+      provinceName: 'Thành phố Hồ Chí Minh',
+      wardCode: '26740',
+      wardName: 'Phường Sài Gòn',
+      address: '12 Nguyễn Huệ',
+    });
     // the pending individual partner from the seed is in the queue too
     expect(list.body.items.some((p: { slug: string }) => p.slug === 'trang-makeup')).toBe(true);
+  });
+
+  it.each([
+    ['unknown province', '99', '26740'],
+    ['unknown ward', '79', '99999'],
+    ['ward paired with the wrong province', '79', '00004'],
+  ])('rejects an invalid administrative address: %s', async (_case, provinceCode, wardCode) => {
+    const before = await db.admin.partner.count({ where: { tenantId } });
+    const slug = `invalid-location-${provinceCode}-${wardCode}`;
+    const response = await request(http)
+      .post('/partners/apply')
+      .set('Cookie', customerCookies)
+      .send({
+        tenantId,
+        name: 'Tampered Location',
+        slug,
+        partnerType: 'individual',
+        contactInfo: {
+          phone: '0901234567',
+          provinceCode,
+          wardCode,
+          address: 'Không hợp lệ',
+        },
+      })
+      .expect(400);
+
+    expect(response.body.code).toBe('INVALID_ADMINISTRATIVE_DIVISION');
+    await expect(db.admin.partner.count({ where: { tenantId } })).resolves.toBe(before);
   });
 
   it('denies partner management to a user without the tenant role', async () => {

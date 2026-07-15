@@ -13,7 +13,11 @@ export class GetListingGroupUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async execute(tenantId: string, id: string, options: { requirePartnerId?: string } = {}): Promise<ListingGroupRecord> {
+  async execute(
+    tenantId: string,
+    id: string,
+    options: { requirePartnerId?: string } = {},
+  ): Promise<ListingGroupRecord> {
     const group = await this.tenantDb.forTenant(tenantId, (tx) => this.repo.findById(tx, id));
     if (!group) {
       throw new NotFoundException({
@@ -23,7 +27,11 @@ export class GetListingGroupUseCase {
       });
     }
     if (options.requirePartnerId && group.partnerId !== options.requirePartnerId) {
-      throw new ForbiddenException({ statusCode: 403, code: 'LISTING_GROUP_NOT_OWNED', message: 'Listing group belongs to another partner' });
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'LISTING_GROUP_NOT_OWNED',
+        message: 'Listing group belongs to another partner',
+      });
     }
     return group;
   }

@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { CreateListingGroupInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -7,7 +13,11 @@ import {
   type IListingGroupRepository,
   type ListingGroupRecord,
 } from '../../domain/ports/listing-group-repository.port';
-import { LISTING_TYPE_REPOSITORY, type IListingTypeRepository } from '../../../catalog/domain/ports/listing-type-repository.port';
+import {
+  LISTING_TYPE_REPOSITORY,
+  type IListingTypeRepository,
+} from '../../../catalog/domain/ports/listing-type-repository.port';
+import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 
 /** Two-tier post: a group (album/amenities/address) that holds room/package listings (§7.3). */
 @Injectable()
@@ -15,16 +25,30 @@ export class CreateListingGroupUseCase {
   constructor(
     @Inject(LISTING_GROUP_REPOSITORY) private readonly repo: IListingGroupRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
+    private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
 
   async execute(tenantId: string, input: CreateListingGroupInput): Promise<ListingGroupRecord> {
+    const location = await this.resolveAdministrativeAddress.execute(
+      input.provinceCode,
+      input.wardCode,
+    );
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const listingType = await this.listingTypes.findById(tx, input.listingTypeId);
-      if (!listingType) throw new NotFoundException({ statusCode: 404, code: 'LISTING_TYPE_NOT_FOUND', message: 'Listing type not found' });
+      if (!listingType)
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'LISTING_TYPE_NOT_FOUND',
+          message: 'Listing type not found',
+        });
       if (listingType.structure === 'standalone') {
-        throw new BadRequestException({ statusCode: 400, code: 'LISTING_TYPE_NOT_GROUPABLE', message: 'This listing type only supports standalone listings' });
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'LISTING_TYPE_NOT_GROUPABLE',
+          message: 'This listing type only supports standalone listings',
+        });
       }
       if (await this.repo.findBySlug(tx, input.slug)) {
         throw new ConflictException({
@@ -39,7 +63,11 @@ export class CreateListingGroupUseCase {
         title: input.title,
         slug: input.slug,
         description: input.description ?? null,
-        address: input.address ?? null,
+        provinceCode: location.province.code,
+        provinceName: location.province.name,
+        wardCode: location.ward.code,
+        wardName: location.ward.name,
+        address: input.address,
         workingArea: input.workingArea ?? null,
         amenities: input.amenities,
         photos: input.photos,

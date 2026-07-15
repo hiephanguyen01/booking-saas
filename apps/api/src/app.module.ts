@@ -23,6 +23,7 @@ import { PromotionsModule } from './modules/promotions/infrastructure/http/promo
 import { FinanceModule } from './modules/finance/infrastructure/http/finance.module';
 import { AffiliateModule } from './modules/affiliate/infrastructure/http/affiliate.module';
 import { NotificationModule } from './modules/notification/infrastructure/http/notification.module';
+import { AdministrativeDivisionModule } from './modules/administrative-division/infrastructure/http/administrative-division.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { NotificationModule } from './modules/notification/infrastructure/http/n
     FinanceModule,
     AffiliateModule,
     NotificationModule,
+    AdministrativeDivisionModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

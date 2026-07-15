@@ -1,6 +1,4 @@
-import {
-  type ResourceResponse
-} from '@booking/contracts';
+import { type ResourceResponse } from '@booking/contracts';
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';

@@ -23,6 +23,7 @@ import {
   LISTING_GROUP_REPOSITORY,
   type IListingGroupRepository,
 } from '../../domain/ports/listing-group-repository.port';
+import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 
 @Injectable()
 export class UpdateListingUseCase {
@@ -31,6 +32,7 @@ export class UpdateListingUseCase {
     @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
     private readonly attributeValidator: AttributeValidatorService,
+    private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -41,6 +43,18 @@ export class UpdateListingUseCase {
     input: UpdateListingInput,
     opts?: { requirePartnerId?: string },
   ): Promise<ListingRecord> {
+    const hasLocationCodes = input.provinceCode !== undefined || input.wardCode !== undefined;
+    if (hasLocationCodes && (!input.provinceCode || !input.wardCode)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'INVALID_ADMINISTRATIVE_DIVISION',
+        message: 'Both provinceCode and wardCode are required when changing the address',
+      });
+    }
+    const location =
+      input.provinceCode && input.wardCode
+        ? await this.resolveAdministrativeAddress.execute(input.provinceCode, input.wardCode)
+        : null;
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.listings.findById(tx, id);
       if (!existing) {
@@ -60,7 +74,9 @@ export class UpdateListingUseCase {
       }
 
       const effectiveGroupId = input.groupId === undefined ? existing.groupId : input.groupId;
-      const effectiveGroup = effectiveGroupId ? await this.groups.findById(tx, effectiveGroupId) : null;
+      const effectiveGroup = effectiveGroupId
+        ? await this.groups.findById(tx, effectiveGroupId)
+        : null;
       if (effectiveGroupId && !effectiveGroup) {
         throw new NotFoundException({
           statusCode: 404,
@@ -105,7 +121,11 @@ export class UpdateListingUseCase {
           });
         }
         if (group.listingTypeId !== existing.listingTypeId) {
-          throw new BadRequestException({ statusCode: 400, code: 'LISTING_GROUP_TYPE_MISMATCH', message: 'The listing and its group must use the same listing type' });
+          throw new BadRequestException({
+            statusCode: 400,
+            code: 'LISTING_GROUP_TYPE_MISMATCH',
+            message: 'The listing and its group must use the same listing type',
+          });
         }
       }
 
@@ -132,7 +152,9 @@ export class UpdateListingUseCase {
             });
           }
           const modeConfig = (input.modeConfig ?? existing.modeConfig) as Record<string, unknown>;
-          const missing = input.bookingModes.filter((m: BookingMode) => modeConfig[m] === undefined);
+          const missing = input.bookingModes.filter(
+            (m: BookingMode) => modeConfig[m] === undefined,
+          );
           if (missing.length > 0) {
             throw new BadRequestException({
               statusCode: 400,
@@ -149,6 +171,11 @@ export class UpdateListingUseCase {
         title: input.title,
         slug: input.slug,
         description: input.description,
+        provinceCode: location?.province.code,
+        provinceName: location?.province.name,
+        wardCode: location?.ward.code,
+        wardName: location?.ward.name,
+        address: input.address,
         photos: input.photos,
         attributes: input.attributes,
         bookingModes: input.bookingModes,

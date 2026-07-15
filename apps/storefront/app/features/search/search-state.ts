@@ -37,6 +37,8 @@ export interface EnrichedSearchListing {
   photos: string[];
   address: string | null;
   workingArea: string | null;
+  wardName: string | null;
+  provinceName: string | null;
   amenities: string[];
   priceFrom: string;
   priceUnit: 'giờ' | 'ngày';
@@ -100,7 +102,9 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     guests: Math.min(100, positiveInt(params.get('guests'), 1)),
     minPrice: money(params.get('minPrice')),
     maxPrice: money(params.get('maxPrice')),
-    amenities: [...new Set(params.getAll('amenities').flatMap((item) => item.split(',')))].filter(Boolean),
+    amenities: [...new Set(params.getAll('amenities').flatMap((item) => item.split(',')))].filter(
+      Boolean,
+    ),
     area,
     sort,
     page: positiveInt(params.get('page'), 1),
@@ -132,15 +136,16 @@ export function locationSelectOptions(locations: string[], selected: string): st
   for (const raw of values) {
     const value = raw.trim();
     if (!value) continue;
-    const key = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('vi');
+    const key = value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('vi');
     if (!unique.has(key)) unique.set(key, value);
   }
   return [...unique.values()].sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
-export function dateSelectionForMode(
-  nextMode: SearchMode,
-): SearchDateSelection {
+export function dateSelectionForMode(nextMode: SearchMode): SearchDateSelection {
   return { mode: nextMode, date: '', from: '', to: '' };
 }
 
@@ -164,7 +169,8 @@ export function numberAttribute(
 ): number | null {
   for (const key of keys) {
     const raw = attributes[key];
-    const value = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw.replace(',', '.')) : NaN;
+    const value =
+      typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw.replace(',', '.')) : NaN;
     if (Number.isFinite(value) && value >= 0) return value;
   }
   return null;

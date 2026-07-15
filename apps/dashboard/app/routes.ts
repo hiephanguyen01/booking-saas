@@ -22,6 +22,8 @@ export default [
 
   // Presign proxy for direct-to-storage image uploads (§4.2) — any logged-in user.
   route('uploads/presign', 'routes/uploads.presign.tsx'),
+  route('administrative-divisions/provinces', 'routes/administrative-provinces.tsx'),
+  route('administrative-divisions/wards', 'routes/administrative-wards.tsx'),
 
   route('admin', 'routes/admin/_layout.tsx', adminChildren),
   route('tenant', 'routes/tenant/_layout.tsx', tenantChildren),

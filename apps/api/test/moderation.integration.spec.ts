@@ -113,6 +113,9 @@ describe('listing moderation & trust signals', () => {
         resourceId: resource.body.id,
         title: 'Studio ánh sáng',
         slug: 'studio-anh-sang',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         description: 'Đặt phòng gọi 0901234567 hoặc Zalo để được giảm giá',
         photos: ['https://picsum.photos/seed/x/800/600'],
         attributes,
@@ -182,6 +185,9 @@ describe('listing moderation & trust signals', () => {
         listingTypeId: studioTypeId,
         title: 'Giang Studio Q3',
         slug: 'giang-q3',
+        provinceCode: '79',
+        wardCode: '26740',
+        address: '12 Nguyễn Huệ',
         description: 'Ghé xem studio, add zalo 0912345678 nhé',
       })
       .expect(201);

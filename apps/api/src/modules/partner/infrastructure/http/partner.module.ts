@@ -3,6 +3,7 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
+import { AdministrativeDivisionModule } from '../../../administrative-division/infrastructure/http/administrative-division.module';
 import { PARTNER_REPOSITORY } from '../../domain/ports/partner-repository.port';
 import { AGREEMENT_REPOSITORY } from '../../domain/ports/agreement-repository.port';
 import { PARTNER_ROLES } from '../../domain/ports/partner-roles.port';
@@ -25,7 +26,13 @@ import { TenantPartnerController } from './tenant-partner.controller';
 import { PartnerProfileController } from './partner-profile.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, IdentityAccessModule, TenancyModule],
+  imports: [
+    PrismaModule,
+    TenantContextModule,
+    IdentityAccessModule,
+    TenancyModule,
+    AdministrativeDivisionModule,
+  ],
   controllers: [PartnerApplicationController, TenantPartnerController, PartnerProfileController],
   providers: [
     { provide: PARTNER_REPOSITORY, useClass: PrismaPartnerRepository },

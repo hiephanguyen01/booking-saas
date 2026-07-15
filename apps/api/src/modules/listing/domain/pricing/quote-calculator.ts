@@ -95,10 +95,7 @@ function matchingRule(
 }
 
 /** Merge consecutive units with the same price + rule into one line item. */
-function coalesce(
-  units: { price: Vnd; ruleId?: string }[],
-  label: string,
-): QuoteLine[] {
+function coalesce(units: { price: Vnd; ruleId?: string }[], label: string): QuoteLine[] {
   const lines: QuoteLine[] = [];
   for (const unit of units) {
     const last = lines[lines.length - 1];
@@ -141,8 +138,10 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
     const isHourly = req.mode === 'hourly';
     const hourly = req.modeConfig.hourly;
     const daily = req.modeConfig.daily;
-    if (isHourly && !hourly) throw new PricingError('MODE_CONFIG_MISSING', 'No hourly config on this listing');
-    if (!isHourly && !daily) throw new PricingError('MODE_CONFIG_MISSING', 'No daily config on this listing');
+    if (isHourly && !hourly)
+      throw new PricingError('MODE_CONFIG_MISSING', 'No hourly config on this listing');
+    if (!isHourly && !daily)
+      throw new PricingError('MODE_CONFIG_MISSING', 'No daily config on this listing');
 
     const unitMs = isHourly ? HOUR_MS : DAY_MS;
     const count = wholeUnits(req.startUtc, req.endUtc, unitMs, isHourly ? 'hour' : 'night');
@@ -158,7 +157,13 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
       const price = vnd(block.price);
       subtotal = price;
       lineItems = [
-        { label: `${count} ${isHourly ? 'giờ' : 'đêm'} (bundle)`, quantity: 1, unitPrice: price, amount: price, block: true },
+        {
+          label: `${count} ${isHourly ? 'giờ' : 'đêm'} (bundle)`,
+          quantity: 1,
+          unitPrice: price,
+          amount: price,
+          block: true,
+        },
       ];
     } else {
       const units = Array.from({ length: count }, (_, i) => {
@@ -191,7 +196,10 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
     subtotal = lineItems.reduce((sum, l) => sum + l.amount, 0n);
     securityDeposit = vnd(cfg.securityDeposit) * BigInt(req.quantity);
   } else {
-    throw new PricingError('MODE_UNSUPPORTED', `Pricing for "${req.mode}" is not supported in Phase 1`);
+    throw new PricingError(
+      'MODE_UNSUPPORTED',
+      `Pricing for "${req.mode}" is not supported in Phase 1`,
+    );
   }
 
   const depositAmount = percentOfBps(subtotal, req.depositPercent * 100);

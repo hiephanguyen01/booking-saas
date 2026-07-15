@@ -16,7 +16,8 @@ export function typeIcon(slug: string): LucideIcon {
   if (slug.includes('equipment')) return Package;
   if (slug.includes('makeup')) return Sparkles;
   if (slug.includes('photo')) return Aperture;
-  if (slug.includes('clothes') || slug.includes('costume') || slug.includes('fashion')) return Shirt;
+  if (slug.includes('clothes') || slug.includes('costume') || slug.includes('fashion'))
+    return Shirt;
   return Tag;
 }
 
@@ -33,4 +34,32 @@ export function attributeSummary(attributes: Record<string, unknown>, max = 3): 
     .slice(0, max)
     .map((v) => String(v))
     .join(' · ');
+}
+
+export interface ListingLocation {
+  address?: string | null;
+  wardName?: string | null;
+  provinceName?: string | null;
+  workingArea?: string | null;
+}
+
+/** Compact cards show the administrative area; detail pages include the street address. */
+export function formatListingLocation(
+  location: ListingLocation,
+  detail: 'compact' | 'full' = 'compact',
+): string | null {
+  const values =
+    detail === 'full'
+      ? [location.address, location.workingArea, location.wardName, location.provinceName]
+      : [location.workingArea, location.wardName, location.provinceName];
+  const unique = values
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .filter(
+      (value, index, items) =>
+        items.findIndex(
+          (item) => item.localeCompare(value, 'vi', { sensitivity: 'base' }) === 0,
+        ) === index,
+    );
+  return unique.length ? unique.join(', ') : null;
 }

@@ -5,9 +5,8 @@ const base = {
   name: 'Studio Ánh Sáng',
   representativeName: 'Nguyễn Văn A',
   identityNumber: '079123456789',
-  province: 'TP Hồ Chí Minh',
-  district: 'Quận 1',
-  ward: 'Bến Nghé',
+  provinceCode: '79',
+  wardCode: '26740',
   address: '12 Nguyễn Huệ',
   phone: '0901234567',
   bank: 'Vietcombank',
@@ -67,5 +66,19 @@ describe('partnerOnboardingProfileSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.flatten().fieldErrors.acceptedTerms).toBeDefined();
+  });
+
+  it('uses the new two-level address and drops legacy district input', () => {
+    const result = partnerOnboardingProfileSchema.parse({
+      ...base,
+      district: 'Quận 1',
+      partnerType: 'individual',
+      identityCardFrontUrl: 'https://cdn.example.com/id-front.png',
+      identityCardBackUrl: 'https://cdn.example.com/id-back.png',
+    });
+
+    expect(result.provinceCode).toBe('79');
+    expect(result.wardCode).toBe('26740');
+    expect(result).not.toHaveProperty('district');
   });
 });

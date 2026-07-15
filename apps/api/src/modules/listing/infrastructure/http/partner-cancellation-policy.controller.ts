@@ -8,7 +8,10 @@ import { ListCancellationPoliciesUseCase } from '../../application/use-cases/lis
 @ApiTags('partner-cancellation-policies')
 @Controller('partner/cancellation-policies')
 export class PartnerCancellationPolicyController {
-  constructor(private readonly listPolicies: ListCancellationPoliciesUseCase, private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly listPolicies: ListCancellationPoliciesUseCase,
+    private readonly tenantContext: TenantContextService,
+  ) {}
 
   @RequirePermissions('partner.listings.read')
   @Get()

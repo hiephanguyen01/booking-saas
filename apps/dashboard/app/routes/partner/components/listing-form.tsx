@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@booking/ui/components/ui/select';
+import { AdministrativeAddressFields } from './administrative-address-fields';
 
 const MODE_LABEL: Record<BookingMode, string> = {
   hourly: 'Theo giờ',
@@ -46,8 +47,21 @@ const num = (v: unknown, fallback = ''): string =>
 /** Local state for the dynamic (mode config + attribute) block, kept as strings. */
 interface DynamicState {
   bookingModes: BookingMode[];
-  hourly: { basePrice: string; minDuration: string; maxDuration: string; granularity: string; leadTimeMin: string };
-  daily: { basePricePerNight: string; minNights: string; maxNights: string; checkinTime: string; checkoutTime: string; leadTimeMin: string };
+  hourly: {
+    basePrice: string;
+    minDuration: string;
+    maxDuration: string;
+    granularity: string;
+    leadTimeMin: string;
+  };
+  daily: {
+    basePricePerNight: string;
+    minNights: string;
+    maxNights: string;
+    checkinTime: string;
+    checkoutTime: string;
+    leadTimeMin: string;
+  };
   inventory: { unit: 'hour' | 'day'; basePrice: string; securityDeposit: string };
   stockQuantity: string;
   attributes: Record<string, unknown>;
@@ -152,9 +166,23 @@ export function ListingForm({
       options: listingTypes.map((t) => ({ label: t.name, value: t.id })),
     },
     { name: 'title', type: 'text', label: 'Tiêu đề', colSpan: 1 },
-    { name: 'slug', type: 'text', label: 'Slug (đường dẫn)', placeholder: 'vd: studio-a-han-quoc', colSpan: 1 },
+    {
+      name: 'slug',
+      type: 'text',
+      label: 'Slug (đường dẫn)',
+      placeholder: 'vd: studio-a-han-quoc',
+      colSpan: 1,
+    },
     { name: 'description', type: 'textarea', label: 'Mô tả', colSpan: 2 },
-    { name: 'photos', type: 'file', label: 'Ảnh', target: 'listings', multiple: true, maxFiles: 12, colSpan: 2 },
+    {
+      name: 'photos',
+      type: 'file',
+      label: 'Ảnh',
+      target: 'listings',
+      multiple: true,
+      maxFiles: 12,
+      colSpan: 2,
+    },
     { name: 'bufferBefore', type: 'number', label: 'Đệm trước (phút)', colSpan: 1 },
     { name: 'bufferAfter', type: 'number', label: 'Đệm sau (phút)', colSpan: 1 },
     { name: 'depositPercent', type: 'number', label: 'Đặt cọc (%)', colSpan: 1 },
@@ -168,15 +196,27 @@ export function ListingForm({
         { label: 'Tại chỗ', value: 'on_arrival' },
       ],
     },
-    { name: 'approvalRequired', type: 'switch', label: 'Yêu cầu duyệt trước khi thanh toán', colSpan: 2 },
-    ...(cancellationPolicies.length ? [{
-      name: 'cancellationPolicyId' as const,
-      type: 'select' as const,
-      label: 'Chính sách hủy',
+    {
+      name: 'approvalRequired',
+      type: 'switch',
+      label: 'Yêu cầu duyệt trước khi thanh toán',
       colSpan: 2,
-      placeholder: 'Chọn chính sách hủy',
-      options: cancellationPolicies.map((policy) => ({ label: policy.name, value: policy.id })),
-    }] : []),
+    },
+    ...(cancellationPolicies.length
+      ? [
+          {
+            name: 'cancellationPolicyId' as const,
+            type: 'select' as const,
+            label: 'Chính sách hủy',
+            colSpan: 2,
+            placeholder: 'Chọn chính sách hủy',
+            options: cancellationPolicies.map((policy) => ({
+              label: policy.name,
+              value: policy.id,
+            })),
+          },
+        ]
+      : []),
   ];
 
   const defaults: CreateListingInput = {
@@ -186,6 +226,9 @@ export function ListingForm({
     title: listing?.title ?? '',
     slug: listing?.slug ?? '',
     description: listing?.description ?? '',
+    provinceCode: listing?.provinceCode ?? '',
+    wardCode: listing?.wardCode ?? '',
+    address: listing?.address ?? '',
     photos: listing?.photos ?? [],
     bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
     modeConfig: {},
@@ -208,11 +251,15 @@ export function ListingForm({
       serverError={serverError}
       fieldErrors={fieldErrors}
       extraFields={(form) => (
-        <ListingConfig form={form} listingTypes={listingTypes} listing={listing} />
+        <div className="space-y-6">
+          <AdministrativeAddressFields form={form} />
+          <ListingConfig form={form} listingTypes={listingTypes} listing={listing} />
+        </div>
       )}
       transform={(d) => ({
         ...d,
         description: d.description?.trim() || undefined,
+        address: d.address.trim(),
         photos: (d.photos ?? []).filter(Boolean),
       })}
     />
@@ -279,7 +326,9 @@ function ListingConfig({
     <div className="space-y-6">
       <Section title="Hình thức đặt">
         {allowedModes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Chọn loại dịch vụ để xem hình thức khả dụng.</p>
+          <p className="text-sm text-muted-foreground">
+            Chọn loại dịch vụ để xem hình thức khả dụng.
+          </p>
         ) : (
           <div className="flex flex-wrap gap-4">
             {allowedModes.map((m) => (
@@ -305,19 +354,44 @@ function ListingConfig({
         <Section title="Cấu hình — theo giờ">
           <Grid>
             <Field label="Giá / giờ (VND)">
-              <Input type="number" min={0} value={state.hourly.basePrice} onChange={(e) => set('hourly', { ...state.hourly, basePrice: e.target.value })} />
+              <Input
+                type="number"
+                min={0}
+                value={state.hourly.basePrice}
+                onChange={(e) => set('hourly', { ...state.hourly, basePrice: e.target.value })}
+              />
             </Field>
             <Field label="Bước (phút)">
-              <Input type="number" min={1} value={state.hourly.granularity} onChange={(e) => set('hourly', { ...state.hourly, granularity: e.target.value })} />
+              <Input
+                type="number"
+                min={1}
+                value={state.hourly.granularity}
+                onChange={(e) => set('hourly', { ...state.hourly, granularity: e.target.value })}
+              />
             </Field>
             <Field label="Tối thiểu (giờ)">
-              <Input type="number" min={1} value={state.hourly.minDuration} onChange={(e) => set('hourly', { ...state.hourly, minDuration: e.target.value })} />
+              <Input
+                type="number"
+                min={1}
+                value={state.hourly.minDuration}
+                onChange={(e) => set('hourly', { ...state.hourly, minDuration: e.target.value })}
+              />
             </Field>
             <Field label="Tối đa (giờ)">
-              <Input type="number" min={1} value={state.hourly.maxDuration} onChange={(e) => set('hourly', { ...state.hourly, maxDuration: e.target.value })} />
+              <Input
+                type="number"
+                min={1}
+                value={state.hourly.maxDuration}
+                onChange={(e) => set('hourly', { ...state.hourly, maxDuration: e.target.value })}
+              />
             </Field>
             <Field label="Đặt trước tối thiểu (phút)">
-              <Input type="number" min={0} value={state.hourly.leadTimeMin} onChange={(e) => set('hourly', { ...state.hourly, leadTimeMin: e.target.value })} />
+              <Input
+                type="number"
+                min={0}
+                value={state.hourly.leadTimeMin}
+                onChange={(e) => set('hourly', { ...state.hourly, leadTimeMin: e.target.value })}
+              />
             </Field>
           </Grid>
         </Section>
@@ -327,19 +401,44 @@ function ListingConfig({
         <Section title="Cấu hình — theo ngày">
           <Grid>
             <Field label="Giá / đêm (VND)">
-              <Input type="number" min={0} value={state.daily.basePricePerNight} onChange={(e) => set('daily', { ...state.daily, basePricePerNight: e.target.value })} />
+              <Input
+                type="number"
+                min={0}
+                value={state.daily.basePricePerNight}
+                onChange={(e) =>
+                  set('daily', { ...state.daily, basePricePerNight: e.target.value })
+                }
+              />
             </Field>
             <Field label="Tối thiểu (đêm)">
-              <Input type="number" min={1} value={state.daily.minNights} onChange={(e) => set('daily', { ...state.daily, minNights: e.target.value })} />
+              <Input
+                type="number"
+                min={1}
+                value={state.daily.minNights}
+                onChange={(e) => set('daily', { ...state.daily, minNights: e.target.value })}
+              />
             </Field>
             <Field label="Tối đa (đêm)">
-              <Input type="number" min={1} value={state.daily.maxNights} onChange={(e) => set('daily', { ...state.daily, maxNights: e.target.value })} />
+              <Input
+                type="number"
+                min={1}
+                value={state.daily.maxNights}
+                onChange={(e) => set('daily', { ...state.daily, maxNights: e.target.value })}
+              />
             </Field>
             <Field label="Giờ nhận">
-              <Input type="time" value={state.daily.checkinTime} onChange={(e) => set('daily', { ...state.daily, checkinTime: e.target.value })} />
+              <Input
+                type="time"
+                value={state.daily.checkinTime}
+                onChange={(e) => set('daily', { ...state.daily, checkinTime: e.target.value })}
+              />
             </Field>
             <Field label="Giờ trả">
-              <Input type="time" value={state.daily.checkoutTime} onChange={(e) => set('daily', { ...state.daily, checkoutTime: e.target.value })} />
+              <Input
+                type="time"
+                value={state.daily.checkoutTime}
+                onChange={(e) => set('daily', { ...state.daily, checkoutTime: e.target.value })}
+              />
             </Field>
           </Grid>
         </Section>
@@ -349,7 +448,12 @@ function ListingConfig({
         <Section title="Cấu hình — theo kho">
           <Grid>
             <Field label="Đơn vị">
-              <Select value={state.inventory.unit} onValueChange={(v) => set('inventory', { ...state.inventory, unit: v as 'hour' | 'day' })}>
+              <Select
+                value={state.inventory.unit}
+                onValueChange={(v) =>
+                  set('inventory', { ...state.inventory, unit: v as 'hour' | 'day' })
+                }
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -360,13 +464,35 @@ function ListingConfig({
               </Select>
             </Field>
             <Field label="Giá / đơn vị (VND)">
-              <Input type="number" min={0} value={state.inventory.basePrice} onChange={(e) => set('inventory', { ...state.inventory, basePrice: e.target.value })} />
+              <Input
+                type="number"
+                min={0}
+                value={state.inventory.basePrice}
+                onChange={(e) =>
+                  set('inventory', { ...state.inventory, basePrice: e.target.value })
+                }
+              />
             </Field>
             <Field label="Tiền cọc thiết bị (VND)">
-              <Input type="number" min={0} value={state.inventory.securityDeposit} onChange={(e) => set('inventory', { ...state.inventory, securityDeposit: e.target.value })} />
+              <Input
+                type="number"
+                min={0}
+                value={state.inventory.securityDeposit}
+                onChange={(e) =>
+                  set('inventory', { ...state.inventory, securityDeposit: e.target.value })
+                }
+              />
             </Field>
-            <Field label="Số lượng trong kho" error={errors.stockQuantity ? [String(errors.stockQuantity.message)] : undefined}>
-              <Input type="number" min={1} value={state.stockQuantity} onChange={(e) => set('stockQuantity', e.target.value)} />
+            <Field
+              label="Số lượng trong kho"
+              error={errors.stockQuantity ? [String(errors.stockQuantity.message)] : undefined}
+            >
+              <Input
+                type="number"
+                min={1}
+                value={state.stockQuantity}
+                onChange={(e) => set('stockQuantity', e.target.value)}
+              />
             </Field>
           </Grid>
         </Section>
@@ -450,7 +576,9 @@ function AttributeInput({
       <Input
         type={field.type === 'number' ? 'number' : 'text'}
         value={value === undefined || value === null ? '' : String(value)}
-        onChange={(e) => onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)}
+        onChange={(e) =>
+          onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)
+        }
       />
     </Field>
   );

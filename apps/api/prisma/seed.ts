@@ -4,6 +4,7 @@ import {
   PERMISSION_CATALOG,
   SYSTEM_ROLES,
 } from '../src/modules/identity-access/domain/permission-catalog';
+import { seedAdministrativeDivisions } from './seed-administrative-divisions';
 
 /**
  * Seeds the permission catalog + system roles (idempotent), and in dev a
@@ -14,6 +15,8 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
+  await seedAdministrativeDivisions(prisma);
+
   for (const perm of PERMISSION_CATALOG) {
     await prisma.permission.upsert({
       where: { key: perm.key },
@@ -121,7 +124,11 @@ async function seedDemo(): Promise<void> {
   const customer = await prisma.user.upsert({
     where: { email: 'customer@studiohub.vn' },
     update: {},
-    create: { email: 'customer@studiohub.vn', passwordHash: password, fullName: 'Nguyen Van Khach' },
+    create: {
+      email: 'customer@studiohub.vn',
+      passwordHash: password,
+      fullName: 'Nguyen Van Khach',
+    },
   });
 
   // ── Tenant + domains + subscription ─────────────────────────────────────────
@@ -193,7 +200,18 @@ async function seedDemo(): Promise<void> {
   // ── Partners (a company partner + a house partner) ──────────────────────────
   const partner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: tenant.id, slug: 'giang-studio' } },
-    update: {},
+    update: {
+      contactInfo: {
+        phone: '0900000002',
+        provinceCode: '79',
+        provinceName: 'Thành phố Hồ Chí Minh',
+        provinceType: 'municipality',
+        wardCode: '26740',
+        wardName: 'Phường Sài Gòn',
+        wardType: 'ward',
+        address: '12 Nguyễn Huệ',
+      },
+    },
     create: {
       tenantId: tenant.id,
       name: 'Giang Studio',
@@ -203,21 +221,48 @@ async function seedDemo(): Promise<void> {
       status: 'approved',
       verifiedAt: new Date(),
       businessInfo: { taxId: '0312345678' },
-      contactInfo: { phone: '0900000002', address: '12 Nguyen Hue, Q1, HCMC' },
-      payoutInfo: { bank: 'Vietcombank', accountNumber: '0011223344', holderName: 'CONG TY GIANG STUDIO' },
+      contactInfo: {
+        phone: '0900000002',
+        provinceCode: '79',
+        provinceName: 'Thành phố Hồ Chí Minh',
+        provinceType: 'municipality',
+        wardCode: '26740',
+        wardName: 'Phường Sài Gòn',
+        wardType: 'ward',
+        address: '12 Nguyễn Huệ',
+      },
+      payoutInfo: {
+        bank: 'Vietcombank',
+        accountNumber: '0011223344',
+        holderName: 'CONG TY GIANG STUDIO',
+      },
     },
   });
   await ensureRoleAssignment(partnerUser.id, partnerOwnerRole.id, tenant.id, partner.id);
-  if (!(await prisma.partnerMember.findFirst({ where: { partnerId: partner.id, userId: partnerUser.id } }))) {
+  if (
+    !(await prisma.partnerMember.findFirst({
+      where: { partnerId: partner.id, userId: partnerUser.id },
+    }))
+  ) {
     await prisma.partnerMember.create({
       data: { tenantId: tenant.id, partnerId: partner.id, userId: partnerUser.id },
     });
   }
   // Fee-schedule + terms acceptance recorded at approval (§7.2).
   for (const agreementType of ['partner_terms', 'commission_schedule'] as const) {
-    if (!(await prisma.agreementAcceptance.findFirst({ where: { partnerId: partner.id, agreementType } }))) {
+    if (
+      !(await prisma.agreementAcceptance.findFirst({
+        where: { partnerId: partner.id, agreementType },
+      }))
+    ) {
       await prisma.agreementAcceptance.create({
-        data: { tenantId: tenant.id, partnerId: partner.id, userId: partnerUser.id, agreementType, version: '2026-01' },
+        data: {
+          tenantId: tenant.id,
+          partnerId: partner.id,
+          userId: partnerUser.id,
+          agreementType,
+          version: '2026-01',
+        },
       });
     }
   }
@@ -225,7 +270,12 @@ async function seedDemo(): Promise<void> {
   const applicantUser = await prisma.user.upsert({
     where: { email: 'trang@makeup.vn' },
     update: {},
-    create: { email: 'trang@makeup.vn', passwordHash: password, fullName: 'Tran Thi Trang', phone: '0900000003' },
+    create: {
+      email: 'trang@makeup.vn',
+      passwordHash: password,
+      fullName: 'Tran Thi Trang',
+      phone: '0900000003',
+    },
   });
   const pendingPartner = await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: tenant.id, slug: 'trang-makeup' } },
@@ -239,12 +289,24 @@ async function seedDemo(): Promise<void> {
       verificationStatus: 'pending',
       dateOfBirth: new Date('1996-05-20T00:00:00.000Z'),
       contactInfo: { phone: '0900000003' },
-      payoutInfo: { bank: 'Techcombank', accountNumber: '9988776655', holderName: 'TRAN THI TRANG' },
-      identityInfo: { documentType: 'national_id', documentNumber: '079196000123', holderName: 'TRAN THI TRANG' },
+      payoutInfo: {
+        bank: 'Techcombank',
+        accountNumber: '9988776655',
+        holderName: 'TRAN THI TRANG',
+      },
+      identityInfo: {
+        documentType: 'national_id',
+        documentNumber: '079196000123',
+        holderName: 'TRAN THI TRANG',
+      },
     },
   });
   await ensureRoleAssignment(applicantUser.id, partnerOwnerRole.id, tenant.id, pendingPartner.id);
-  if (!(await prisma.partnerMember.findFirst({ where: { partnerId: pendingPartner.id, userId: applicantUser.id } }))) {
+  if (
+    !(await prisma.partnerMember.findFirst({
+      where: { partnerId: pendingPartner.id, userId: applicantUser.id },
+    }))
+  ) {
     await prisma.partnerMember.create({
       data: { tenantId: tenant.id, partnerId: pendingPartner.id, userId: applicantUser.id },
     });
@@ -266,13 +328,20 @@ async function seedDemo(): Promise<void> {
   const studioType = await upsertListingType(tenant.id, {
     name: 'Studio',
     slug: 'studio',
+    structure: 'flexible',
     allowedModes: ['hourly', 'daily'],
     defaultModes: ['hourly'],
     unitLabel: 'giờ',
     sortOrder: 1,
     attributeSchema: [
       { key: 'area', label: 'Diện tích (m²)', type: 'number', filterable: true },
-      { key: 'style', label: 'Phong cách', type: 'select', filterable: true, options: ['Hàn Quốc', 'Vintage', 'Tối giản'] },
+      {
+        key: 'style',
+        label: 'Phong cách',
+        type: 'select',
+        filterable: true,
+        options: ['Hàn Quốc', 'Vintage', 'Tối giản'],
+      },
       { key: 'naturalLight', label: 'Ánh sáng tự nhiên', type: 'boolean', filterable: true },
     ],
   });
@@ -310,7 +379,8 @@ async function seedDemo(): Promise<void> {
     create: { tenantId: tenant.id, name: 'Chụp chân dung', slug: 'chup-chan-dung' },
   });
   const cancelPolicy = await ensure(
-    () => prisma.cancellationPolicy.findFirst({ where: { tenantId: tenant.id, name: 'Linh hoạt' } }),
+    () =>
+      prisma.cancellationPolicy.findFirst({ where: { tenantId: tenant.id, name: 'Linh hoạt' } }),
     () =>
       prisma.cancellationPolicy.create({
         data: {
@@ -328,7 +398,13 @@ async function seedDemo(): Promise<void> {
   // ── Two-tier post: a Studio group with two room listings sharing nothing ────
   const group = await prisma.listingGroup.upsert({
     where: { tenantId_slug: { tenantId: tenant.id, slug: 'giang-studio-q1' } },
-    update: {},
+    update: {
+      provinceCode: '79',
+      provinceName: 'Thành phố Hồ Chí Minh',
+      wardCode: '26740',
+      wardName: 'Phường Sài Gòn',
+      address: '12 Nguyễn Huệ',
+    },
     create: {
       tenantId: tenant.id,
       partnerId: partner.id,
@@ -336,7 +412,11 @@ async function seedDemo(): Promise<void> {
       title: 'Giang Studio Q1',
       slug: 'giang-studio-q1',
       description: 'Hệ thống 2 phòng studio ánh sáng tự nhiên, ngay trung tâm Q1.',
-      address: '12 Nguyen Hue, Q1, HCMC',
+      provinceCode: '79',
+      provinceName: 'Thành phố Hồ Chí Minh',
+      wardCode: '26740',
+      wardName: 'Phường Sài Gòn',
+      address: '12 Nguyễn Huệ',
       status: 'published',
       publishedBy: 'partner',
       amenities: ['Lễ tân', 'Chỗ đậu xe', 'Máy lạnh'],
@@ -350,6 +430,11 @@ async function seedDemo(): Promise<void> {
   const studioA = await upsertRoomListing(tenant.id, partner.id, studioType.id, {
     title: 'Studio A — Hàn Quốc',
     slug: 'studio-a-han-quoc',
+    provinceCode: '79',
+    provinceName: 'Thành phố Hồ Chí Minh',
+    wardCode: '26740',
+    wardName: 'Phường Sài Gòn',
+    address: '12 Nguyễn Huệ',
     photos: [
       'https://picsum.photos/seed/studio-a-1/1200/900',
       'https://picsum.photos/seed/studio-a-2/1200/900',
@@ -390,6 +475,11 @@ async function seedDemo(): Promise<void> {
   const studioB = await upsertRoomListing(tenant.id, partner.id, studioType.id, {
     title: 'Studio B — Vintage',
     slug: 'studio-b-vintage',
+    provinceCode: '79',
+    provinceName: 'Thành phố Hồ Chí Minh',
+    wardCode: '26740',
+    wardName: 'Phường Sài Gòn',
+    address: '12 Nguyễn Huệ',
     photos: [
       'https://picsum.photos/seed/studio-b-1/1200/900',
       'https://picsum.photos/seed/studio-b-2/1200/900',
@@ -421,7 +511,11 @@ async function seedDemo(): Promise<void> {
   await ensureWeeklyRules(tenant.id, studioB.id);
 
   // ── Golden-hour pricing rule on Studio A (18:00–22:00 costs more) ───────────
-  if (!(await prisma.pricingRule.findFirst({ where: { listingId: studioA.id, ruleType: 'time_range' } }))) {
+  if (
+    !(await prisma.pricingRule.findFirst({
+      where: { listingId: studioA.id, ruleType: 'time_range' },
+    }))
+  ) {
     await prisma.pricingRule.create({
       data: {
         tenantId: tenant.id,
@@ -439,6 +533,11 @@ async function seedDemo(): Promise<void> {
   await upsertRoomListing(tenant.id, housePartner.id, equipmentType.id, {
     title: 'Sony FX3 (Cinema camera)',
     slug: 'sony-fx3',
+    provinceCode: '79',
+    provinceName: 'Thành phố Hồ Chí Minh',
+    wardCode: '26740',
+    wardName: 'Phường Sài Gòn',
+    address: '12 Nguyễn Huệ',
     photos: [
       'https://picsum.photos/seed/sony-fx3-1/1200/900',
       'https://picsum.photos/seed/sony-fx3-2/1200/900',
@@ -521,11 +620,17 @@ async function seedDemo(): Promise<void> {
   // Let partners create their own codes on this tenant (the per-tenant toggle).
   await prisma.tenant.update({
     where: { id: tenant.id },
-    data: { settings: { ...(tenant.settings as Record<string, unknown>), partnerPromotionsEnabled: true } },
+    data: {
+      settings: { ...(tenant.settings as Record<string, unknown>), partnerPromotionsEnabled: true },
+    },
   });
 
   // An auto-applied campaign (no code) — off-peak Fri/Sat evenings on Studio listings.
-  if (!(await prisma.promotion.findFirst({ where: { tenantId: tenant.id, name: 'Giờ vàng cuối tuần' } }))) {
+  if (
+    !(await prisma.promotion.findFirst({
+      where: { tenantId: tenant.id, name: 'Giờ vàng cuối tuần' },
+    }))
+  ) {
     await prisma.promotion.create({
       data: {
         tenantId: tenant.id,
@@ -737,12 +842,23 @@ async function seedDemo(): Promise<void> {
     sortOrder: 1,
     attributeSchema: [
       { key: 'bedrooms', label: 'Số phòng ngủ', type: 'number', filterable: true },
-      { key: 'view', label: 'Hướng nhìn', type: 'select', filterable: true, options: ['Biển', 'Thành phố', 'Núi'] },
+      {
+        key: 'view',
+        label: 'Hướng nhìn',
+        type: 'select',
+        filterable: true,
+        options: ['Biển', 'Thành phố', 'Núi'],
+      },
     ],
   });
   const homestay = await upsertRoomListing(trialTenant.id, aperturePartner.id, homestayType.id, {
     title: 'Villa Aperture — Homestay ven biển',
     slug: 'villa-aperture-ven-bien',
+    provinceCode: '48',
+    provinceName: 'Thành phố Đà Nẵng',
+    wardCode: '20263',
+    wardName: 'Phường Sơn Trà',
+    address: 'Đường Hoàng Sa',
     photos: [
       'https://picsum.photos/seed/aperture-1/1200/900',
       'https://picsum.photos/seed/aperture-2/1200/900',
@@ -776,7 +892,11 @@ async function seedDemo(): Promise<void> {
   const affiliateUser = await prisma.user.upsert({
     where: { email: 'affiliate@studiohub.vn' },
     update: {},
-    create: { email: 'affiliate@studiohub.vn', passwordHash: password, fullName: 'Le Thi Cong Tac Vien' },
+    create: {
+      email: 'affiliate@studiohub.vn',
+      passwordHash: password,
+      fullName: 'Le Thi Cong Tac Vien',
+    },
   });
   const affiliate = await prisma.affiliate.upsert({
     where: { tenantId_userId: { tenantId: tenant.id, userId: affiliateUser.id } },
@@ -785,12 +905,23 @@ async function seedDemo(): Promise<void> {
       tenantId: tenant.id,
       userId: affiliateUser.id,
       status: 'approved',
-      payoutInfo: { bankName: 'Vietcombank', accountNo: '0123456789', accountHolder: 'LE THI CONG TAC VIEN' },
+      payoutInfo: {
+        bankName: 'Vietcombank',
+        accountNo: '0123456789',
+        accountHolder: 'LE THI CONG TAC VIEN',
+      },
     },
   });
-  if (!(await prisma.referralLink.findFirst({ where: { tenantId: tenant.id, code: 'R-DEMO01' } }))) {
+  if (
+    !(await prisma.referralLink.findFirst({ where: { tenantId: tenant.id, code: 'R-DEMO01' } }))
+  ) {
     await prisma.referralLink.create({
-      data: { tenantId: tenant.id, affiliateId: affiliate.id, code: 'R-DEMO01', target: 'tenant_home' },
+      data: {
+        tenantId: tenant.id,
+        affiliateId: affiliate.id,
+        code: 'R-DEMO01',
+        target: 'tenant_home',
+      },
     });
   }
 
@@ -907,15 +1038,19 @@ async function upsertListingType(
     sortOrder: number;
     attributeSchema: unknown;
     requiresIdentityVerification?: boolean;
+    structure?: 'standalone' | 'grouped' | 'flexible';
   },
 ) {
   return prisma.listingType.upsert({
     where: { tenantId_slug: { tenantId, slug: input.slug } },
-    update: {},
+    update: {
+      structure: input.structure ?? 'standalone',
+    },
     create: {
       tenantId,
       name: input.name,
       slug: input.slug,
+      structure: input.structure ?? 'standalone',
       allowedModes: input.allowedModes as never,
       defaultModes: input.defaultModes as never,
       unitLabel: input.unitLabel,
@@ -944,12 +1079,28 @@ async function upsertRoomListing(
     bufferAfter: number;
     depositPercent: number;
     photos?: string[];
+    provinceCode: string;
+    provinceName: string;
+    wardCode: string;
+    wardName: string;
+    address: string;
   },
 ) {
   const existing = await prisma.listing.findUnique({
     where: { tenantId_slug: { tenantId, slug: input.slug } },
   });
-  if (existing) return existing;
+  if (existing) {
+    return prisma.listing.update({
+      where: { id: existing.id },
+      data: {
+        provinceCode: input.provinceCode,
+        provinceName: input.provinceName,
+        wardCode: input.wardCode,
+        wardName: input.wardName,
+        address: input.address,
+      },
+    });
+  }
 
   // Each listing gets its own calendar-holding resource 1:1 by default (§7.3).
   const resource = await prisma.resource.create({
@@ -966,6 +1117,11 @@ async function upsertRoomListing(
       cancellationPolicyId: input.cancellationPolicyId,
       title: input.title,
       slug: input.slug,
+      provinceCode: input.provinceCode,
+      provinceName: input.provinceName,
+      wardCode: input.wardCode,
+      wardName: input.wardName,
+      address: input.address,
       photos: (input.photos ?? []) as never,
       bookingModes: input.bookingModes as never,
       attributes: input.attributes as never,

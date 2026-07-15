@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { BookingMode, ModeConfig, QuoteResponse } from '@booking/contracts';
-import { computeQuote, PricingError, type PricingRuleView } from '../../domain/pricing/quote-calculator';
+import {
+  computeQuote,
+  PricingError,
+  type PricingRuleView,
+} from '../../domain/pricing/quote-calculator';
 
 export interface QuoteInput {
   mode: BookingMode;

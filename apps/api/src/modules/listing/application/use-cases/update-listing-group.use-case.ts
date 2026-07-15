@@ -1,4 +1,11 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { UpdateListingGroupInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -11,12 +18,14 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../domain/ports/listing-repository.port';
+import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 
 @Injectable()
 export class UpdateListingGroupUseCase {
   constructor(
     @Inject(LISTING_GROUP_REPOSITORY) private readonly repo: IListingGroupRepository,
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
+    private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -27,6 +36,18 @@ export class UpdateListingGroupUseCase {
     input: UpdateListingGroupInput,
     options: { requirePartnerId?: string } = {},
   ): Promise<ListingGroupRecord> {
+    const hasLocationCodes = input.provinceCode !== undefined || input.wardCode !== undefined;
+    if (hasLocationCodes && (!input.provinceCode || !input.wardCode)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'INVALID_ADMINISTRATIVE_DIVISION',
+        message: 'Both provinceCode and wardCode are required when changing the address',
+      });
+    }
+    const location =
+      input.provinceCode && input.wardCode
+        ? await this.resolveAdministrativeAddress.execute(input.provinceCode, input.wardCode)
+        : null;
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.repo.findById(tx, id);
       if (!existing) {
@@ -37,7 +58,11 @@ export class UpdateListingGroupUseCase {
         });
       }
       if (options.requirePartnerId && existing.partnerId !== options.requirePartnerId) {
-        throw new ForbiddenException({ statusCode: 403, code: 'LISTING_GROUP_NOT_OWNED', message: 'Listing group belongs to another partner' });
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'LISTING_GROUP_NOT_OWNED',
+          message: 'Listing group belongs to another partner',
+        });
       }
       if (options.requirePartnerId && !['draft', 'archived'].includes(existing.status)) {
         throw new ConflictException({
@@ -49,8 +74,13 @@ export class UpdateListingGroupUseCase {
       if (options.requirePartnerId && existing.status === 'archived') {
         const draftState = { status: 'draft' as const, publishedBy: null, hiddenBy: null };
         await this.repo.moderate(tx, id, draftState);
-        const children = await this.listings.list(tx, { groupId: id, partnerId: existing.partnerId });
-        await Promise.all(children.map((child) => this.listings.moderate(tx, child.id, draftState)));
+        const children = await this.listings.list(tx, {
+          groupId: id,
+          partnerId: existing.partnerId,
+        });
+        await Promise.all(
+          children.map((child) => this.listings.moderate(tx, child.id, draftState)),
+        );
         await this.outbox.emit(tx, {
           tenantId,
           eventType: 'listing_group.reopened',
@@ -73,6 +103,10 @@ export class UpdateListingGroupUseCase {
         title: input.title,
         slug: input.slug,
         description: input.description,
+        provinceCode: location?.province.code,
+        provinceName: location?.province.name,
+        wardCode: location?.ward.code,
+        wardName: location?.ward.name,
         address: input.address,
         workingArea: input.workingArea,
         amenities: input.amenities,

@@ -68,5 +68,10 @@ export function toPublicListingResponse(l: PublicListingRecord): PublicListingRe
     photos: l.group?.photos ?? l.photos,
     priceFrom: priceFrom(l.modeConfig),
     itemLabel: l.group?.itemLabel ?? null,
+    provinceCode: l.group?.provinceCode ?? l.provinceCode,
+    provinceName: l.group?.provinceName ?? l.provinceName,
+    wardCode: l.group?.wardCode ?? l.wardCode,
+    wardName: l.group?.wardName ?? l.wardName,
+    address: l.group?.address ?? l.address,
   };
 }

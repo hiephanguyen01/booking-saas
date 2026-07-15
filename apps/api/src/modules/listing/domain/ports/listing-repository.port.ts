@@ -14,6 +14,11 @@ export interface ListingRecord {
   title: string;
   slug: string;
   description: string | null;
+  provinceCode: string | null;
+  provinceName: string | null;
+  wardCode: string | null;
+  wardName: string | null;
+  address: string | null;
   photos: string[];
   attributes: Record<string, unknown>;
   bookingModes: BookingMode[];
@@ -62,6 +67,11 @@ export interface CreateListingData {
   title: string;
   slug: string;
   description?: string | null;
+  provinceCode?: string | null;
+  provinceName?: string | null;
+  wardCode?: string | null;
+  wardName?: string | null;
+  address?: string | null;
   photos: string[];
   attributes: Record<string, unknown>;
   bookingModes: BookingMode[];

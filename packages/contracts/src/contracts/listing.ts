@@ -2,11 +2,17 @@ import { z } from 'zod';
 import { uuidSchema } from './common';
 import { slugSchema } from './tenancy';
 import { bookingModeSchema, type BookingMode } from './listing-type';
+import {
+  administrativeAddressInputSchema,
+  administrativeAddressSnapshotSchema,
+} from './administrative-division';
 
 /** VND đồng as a digit string — money never travels as a JS number. */
 const vndAmountSchema = z.string().regex(/^\d+$/, 'Must be an integer VND amount in đồng');
 const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM (24h)');
-const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be an ISO date (YYYY-MM-DD)');
+const dateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be an ISO date (YYYY-MM-DD)');
 const weekdaySchema = z.number().int().min(0).max(6); // 0=Sun … 6=Sat
 
 export const publishStatusSchema = z.enum(['draft', 'pending_review', 'published', 'archived']);
@@ -27,7 +33,9 @@ export type PricingRuleType = z.infer<typeof pricingRuleTypeSchema>;
 export const hourlyModeConfigSchema = z
   .object({
     basePrice: vndAmountSchema,
-    blocks: z.array(z.object({ hours: z.number().int().positive(), price: vndAmountSchema })).default([]),
+    blocks: z
+      .array(z.object({ hours: z.number().int().positive(), price: vndAmountSchema }))
+      .default([]),
     minDuration: z.number().int().positive().default(1),
     maxDuration: z.number().int().positive().default(8),
     granularity: z.number().int().positive().default(60),
@@ -35,14 +43,20 @@ export const hourlyModeConfigSchema = z
   })
   .superRefine((c, ctx) => {
     if (c.maxDuration < c.minDuration) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['maxDuration'], message: 'maxDuration must be ≥ minDuration' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['maxDuration'],
+        message: 'maxDuration must be ≥ minDuration',
+      });
     }
   });
 
 export const dailyModeConfigSchema = z
   .object({
     basePricePerNight: vndAmountSchema,
-    blocks: z.array(z.object({ days: z.number().int().positive(), price: vndAmountSchema })).default([]),
+    blocks: z
+      .array(z.object({ days: z.number().int().positive(), price: vndAmountSchema }))
+      .default([]),
     minNights: z.number().int().positive().default(1),
     maxNights: z.number().int().positive().default(30),
     checkinTime: timeStringSchema.default('14:00'),
@@ -51,7 +65,11 @@ export const dailyModeConfigSchema = z
   })
   .superRefine((c, ctx) => {
     if (c.maxNights < c.minNights) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['maxNights'], message: 'maxNights must be ≥ minNights' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['maxNights'],
+        message: 'maxNights must be ≥ minNights',
+      });
     }
   });
 
@@ -74,44 +92,47 @@ export type ModeConfig = z.infer<typeof modeConfigSchema>;
 
 // ── Inputs ───────────────────────────────────────────────────────────────────
 
-export const createListingGroupInputSchema = z.object({
-  partnerId: uuidSchema,
-  listingTypeId: uuidSchema,
-  title: z.string().min(1).max(200),
-  slug: slugSchema,
-  description: z.string().max(5000).optional(),
-  address: z.string().max(500).optional(),
-  workingArea: z.string().max(200).optional(),
-  amenities: z.array(z.string().min(1)).default([]),
-  photos: z.array(z.string().url()).default([]),
-});
+export const createListingGroupInputSchema = z
+  .object({
+    partnerId: uuidSchema,
+    listingTypeId: uuidSchema,
+    title: z.string().min(1).max(200),
+    slug: slugSchema,
+    description: z.string().max(5000).optional(),
+    workingArea: z.string().max(200).optional(),
+    amenities: z.array(z.string().min(1)).default([]),
+    photos: z.array(z.string().url()).default([]),
+  })
+  .merge(administrativeAddressInputSchema);
 export type CreateListingGroupInput = z.infer<typeof createListingGroupInputSchema>;
 
 export const updateListingGroupInputSchema = createListingGroupInputSchema.partial();
 export type UpdateListingGroupInput = z.infer<typeof updateListingGroupInputSchema>;
 
-const listingBaseSchema = z.object({
-  partnerId: uuidSchema,
-  listingTypeId: uuidSchema,
-  groupId: uuidSchema.optional(),
-  categoryId: uuidSchema.optional(),
-  resourceId: uuidSchema.optional(),
-  title: z.string().min(1).max(200),
-  slug: slugSchema,
-  description: z.string().max(5000).optional(),
-  photos: z.array(z.string().url()).default([]),
-  attributes: z.record(z.unknown()).default({}),
-  bookingModes: z.array(bookingModeSchema).min(1),
-  modeConfig: modeConfigSchema,
-  stockQuantity: z.number().int().positive().optional(),
-  capacity: z.number().int().positive().optional(),
-  bufferBefore: z.number().int().nonnegative().default(0),
-  bufferAfter: z.number().int().nonnegative().default(0),
-  approvalRequired: z.boolean().default(false),
-  depositPercent: z.number().int().min(0).max(100).default(100),
-  balanceDue: balanceDueSchema.default('online_before'),
-  cancellationPolicyId: uuidSchema.optional(),
-});
+const listingBaseSchema = z
+  .object({
+    partnerId: uuidSchema,
+    listingTypeId: uuidSchema,
+    groupId: uuidSchema.optional(),
+    categoryId: uuidSchema.optional(),
+    resourceId: uuidSchema.optional(),
+    title: z.string().min(1).max(200),
+    slug: slugSchema,
+    description: z.string().max(5000).optional(),
+    photos: z.array(z.string().url()).default([]),
+    attributes: z.record(z.unknown()).default({}),
+    bookingModes: z.array(bookingModeSchema).min(1),
+    modeConfig: modeConfigSchema,
+    stockQuantity: z.number().int().positive().optional(),
+    capacity: z.number().int().positive().optional(),
+    bufferBefore: z.number().int().nonnegative().default(0),
+    bufferAfter: z.number().int().nonnegative().default(0),
+    approvalRequired: z.boolean().default(false),
+    depositPercent: z.number().int().min(0).max(100).default(100),
+    balanceDue: balanceDueSchema.default('online_before'),
+    cancellationPolicyId: uuidSchema.optional(),
+  })
+  .merge(administrativeAddressInputSchema);
 
 /** Each enabled mode must have matching mode_config; inventory needs stockQuantity. */
 const modeConfigCoversModes = (
@@ -122,18 +143,28 @@ const modeConfigCoversModes = (
   const config = value.modeConfig as Record<string, unknown>;
   for (const mode of value.bookingModes) {
     if (config[mode] === undefined) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['modeConfig'], message: `modeConfig.${mode} is required for enabled mode "${mode}"` });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['modeConfig'],
+        message: `modeConfig.${mode} is required for enabled mode "${mode}"`,
+      });
     }
   }
   if (value.bookingModes.includes('inventory') && value.stockQuantity === undefined) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['stockQuantity'], message: 'stockQuantity is required for inventory mode' });
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['stockQuantity'],
+      message: 'stockQuantity is required for inventory mode',
+    });
   }
 };
 
 export const createListingInputSchema = listingBaseSchema.superRefine(modeConfigCoversModes);
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
-export const updateListingInputSchema = listingBaseSchema.partial().superRefine(modeConfigCoversModes);
+export const updateListingInputSchema = listingBaseSchema
+  .partial()
+  .superRefine(modeConfigCoversModes);
 export type UpdateListingInput = z.infer<typeof updateListingInputSchema>;
 
 export const createResourceInputSchema = z.object({
@@ -169,7 +200,11 @@ export const pricingRuleInputSchema = z
           ? timeRangeParamsSchema
           : dateRangeParamsSchema;
     if (!schema.safeParse(rule.params).success) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['params'], message: `Invalid params for ruleType "${rule.ruleType}"` });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['params'],
+        message: `Invalid params for ruleType "${rule.ruleType}"`,
+      });
     }
   });
 export type PricingRuleInput = z.infer<typeof pricingRuleInputSchema>;
@@ -184,55 +219,58 @@ export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
 
 // ── Responses ──────────────────────────────────────────────────────────────
 
-export const listingGroupResponseSchema = z.object({
-  id: z.string(),
-  tenantId: z.string(),
-  partnerId: z.string(),
-  listingTypeId: z.string(),
-  title: z.string(),
-  slug: z.string(),
-  description: z.string().nullable(),
-  address: z.string().nullable(),
-  workingArea: z.string().nullable(),
-  amenities: z.array(z.string()),
-  photos: z.array(z.string()),
-  status: publishStatusSchema,
-  publishedBy: moderationActorSchema.nullable(),
-  hiddenBy: moderationActorSchema.nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
+export const listingGroupResponseSchema = z
+  .object({
+    id: z.string(),
+    tenantId: z.string(),
+    partnerId: z.string(),
+    listingTypeId: z.string(),
+    title: z.string(),
+    slug: z.string(),
+    description: z.string().nullable(),
+    workingArea: z.string().nullable(),
+    amenities: z.array(z.string()),
+    photos: z.array(z.string()),
+    status: publishStatusSchema,
+    publishedBy: moderationActorSchema.nullable(),
+    hiddenBy: moderationActorSchema.nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .merge(administrativeAddressSnapshotSchema);
 export type ListingGroupResponse = z.infer<typeof listingGroupResponseSchema>;
 
-export const listingResponseSchema = z.object({
-  id: z.string(),
-  tenantId: z.string(),
-  partnerId: z.string(),
-  listingTypeId: z.string(),
-  resourceId: z.string(),
-  groupId: z.string().nullable(),
-  categoryId: z.string().nullable(),
-  title: z.string(),
-  slug: z.string(),
-  description: z.string().nullable(),
-  photos: z.array(z.string()),
-  attributes: z.record(z.unknown()),
-  bookingModes: z.array(bookingModeSchema),
-  modeConfig: z.record(z.unknown()),
-  stockQuantity: z.number().nullable(),
-  capacity: z.number().nullable(),
-  bufferBefore: z.number(),
-  bufferAfter: z.number(),
-  approvalRequired: z.boolean(),
-  depositPercent: z.number(),
-  balanceDue: balanceDueSchema,
-  cancellationPolicyId: z.string().nullable(),
-  status: publishStatusSchema,
-  publishedBy: moderationActorSchema.nullable(),
-  hiddenBy: moderationActorSchema.nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
+export const listingResponseSchema = z
+  .object({
+    id: z.string(),
+    tenantId: z.string(),
+    partnerId: z.string(),
+    listingTypeId: z.string(),
+    resourceId: z.string(),
+    groupId: z.string().nullable(),
+    categoryId: z.string().nullable(),
+    title: z.string(),
+    slug: z.string(),
+    description: z.string().nullable(),
+    photos: z.array(z.string()),
+    attributes: z.record(z.unknown()),
+    bookingModes: z.array(bookingModeSchema),
+    modeConfig: z.record(z.unknown()),
+    stockQuantity: z.number().nullable(),
+    capacity: z.number().nullable(),
+    bufferBefore: z.number(),
+    bufferAfter: z.number(),
+    approvalRequired: z.boolean(),
+    depositPercent: z.number(),
+    balanceDue: balanceDueSchema,
+    cancellationPolicyId: z.string().nullable(),
+    status: publishStatusSchema,
+    publishedBy: moderationActorSchema.nullable(),
+    hiddenBy: moderationActorSchema.nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .merge(administrativeAddressSnapshotSchema);
 export type ListingResponse = z.infer<typeof listingResponseSchema>;
 
 export const cancellationPolicySummarySchema = z.object({
@@ -299,34 +337,8 @@ export const trustSignalsSchema = z.object({
 export type TrustSignals = z.infer<typeof trustSignalsSchema>;
 
 /** Storefront listing detail (public) — enough to render the page + a quote form. */
-export const publicListingDetailResponseSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  slug: z.string(),
-  description: z.string().nullable(),
-  photos: z.array(z.string()),
-  attributes: z.record(z.unknown()),
-  bookingModes: z.array(bookingModeSchema),
-  modeConfig: z.record(z.unknown()),
-  depositPercent: z.number(),
-  listingTypeSlug: z.string(),
-  group: z.object({ title: z.string(), slug: z.string() }).nullable(),
-  trust: trustSignalsSchema,
-});
-export type PublicListingDetailResponse = z.infer<typeof publicListingDetailResponseSchema>;
-
-export const publicListingGroupDetailResponseSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  slug: z.string(),
-  description: z.string().nullable(),
-  address: z.string().nullable(),
-  workingArea: z.string().nullable(),
-  amenities: z.array(z.string()),
-  photos: z.array(z.string()),
-  listingTypeSlug: z.string(),
-  itemLabel: z.string(),
-  listings: z.array(z.object({
+export const publicListingDetailResponseSchema = z
+  .object({
     id: z.string(),
     title: z.string(),
     slug: z.string(),
@@ -334,10 +346,43 @@ export const publicListingGroupDetailResponseSchema = z.object({
     photos: z.array(z.string()),
     attributes: z.record(z.unknown()),
     bookingModes: z.array(bookingModeSchema),
-    priceFrom: z.string().nullable(),
-  })),
-});
-export type PublicListingGroupDetailResponse = z.infer<typeof publicListingGroupDetailResponseSchema>;
+    modeConfig: z.record(z.unknown()),
+    depositPercent: z.number(),
+    listingTypeSlug: z.string(),
+    group: z.object({ title: z.string(), slug: z.string() }).nullable(),
+    trust: trustSignalsSchema,
+  })
+  .merge(administrativeAddressSnapshotSchema);
+export type PublicListingDetailResponse = z.infer<typeof publicListingDetailResponseSchema>;
+
+export const publicListingGroupDetailResponseSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    slug: z.string(),
+    description: z.string().nullable(),
+    workingArea: z.string().nullable(),
+    amenities: z.array(z.string()),
+    photos: z.array(z.string()),
+    listingTypeSlug: z.string(),
+    itemLabel: z.string(),
+    listings: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        slug: z.string(),
+        description: z.string().nullable(),
+        photos: z.array(z.string()),
+        attributes: z.record(z.unknown()),
+        bookingModes: z.array(bookingModeSchema),
+        priceFrom: z.string().nullable(),
+      }),
+    ),
+  })
+  .merge(administrativeAddressSnapshotSchema);
+export type PublicListingGroupDetailResponse = z.infer<
+  typeof publicListingGroupDetailResponseSchema
+>;
 
 export const quoteLineItemSchema = z.object({
   label: z.string(),

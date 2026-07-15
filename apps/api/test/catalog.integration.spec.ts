@@ -175,13 +175,18 @@ describe('dynamic listing types', () => {
       .get('/public/listings?type=studio')
       .set('Host', HOST)
       .expect(200);
-    expect(all.body.length).toBeGreaterThanOrEqual(2);
+    // Published children of the same group are consolidated into one catalog card.
+    expect(all.body.length).toBeGreaterThanOrEqual(1);
+    expect(all.body[0]).toMatchObject({
+      wardName: 'Phường Sài Gòn',
+      provinceName: 'Thành phố Hồ Chí Minh',
+    });
 
     const vintage = await request(http)
       .get('/public/listings?type=studio&attr.style=Vintage')
       .set('Host', HOST)
       .expect(200);
-    expect(vintage.body.map((l: { slug: string }) => l.slug)).toEqual(['studio-b-vintage']);
+    expect(vintage.body.map((l: { slug: string }) => l.slug)).toEqual(['giang-studio-q1']);
     expect(vintage.body[0].priceFrom).toBe('250000');
   });
 

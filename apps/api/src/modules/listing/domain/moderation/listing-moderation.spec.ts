@@ -20,7 +20,11 @@ describe('listing moderation transitions', () => {
   });
 
   it('publishes a pending listing and stamps the reviewer', () => {
-    const pending: ModerationState = { status: 'pending_review', publishedBy: null, hiddenBy: null };
+    const pending: ModerationState = {
+      status: 'pending_review',
+      publishedBy: null,
+      hiddenBy: null,
+    };
     expect(transitionPublish(pending, 'admin')).toEqual({
       status: 'published',
       publishedBy: 'admin',
@@ -33,7 +37,11 @@ describe('listing moderation transitions', () => {
   });
 
   it('hides a published listing and records who hid it', () => {
-    const published: ModerationState = { status: 'published', publishedBy: 'admin', hiddenBy: null };
+    const published: ModerationState = {
+      status: 'published',
+      publishedBy: 'admin',
+      hiddenBy: null,
+    };
     expect(transitionHide(published, 'partner')).toEqual({
       status: 'archived',
       publishedBy: 'admin',

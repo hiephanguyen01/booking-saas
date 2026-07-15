@@ -57,9 +57,7 @@ describe('scanForContactInfo', () => {
   });
 
   it('scans every photo entry independently', () => {
-    const flags = scanForContactInfo(
-      photoScanFields(['clean-cover.jpg', 'zalo-me.png']),
-    );
+    const flags = scanForContactInfo(photoScanFields(['clean-cover.jpg', 'zalo-me.png']));
     expect(flags.some((f) => f.type === 'zalo' && f.field === 'photo[1]')).toBe(true);
   });
 });

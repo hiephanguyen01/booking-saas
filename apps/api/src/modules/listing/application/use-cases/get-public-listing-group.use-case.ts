@@ -2,15 +2,27 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { PublicListingGroupDetailResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
-import { LISTING_TYPE_REPOSITORY, type IListingTypeRepository } from '../../../catalog/domain/ports/listing-type-repository.port';
-import { LISTING_GROUP_REPOSITORY, type IListingGroupRepository } from '../../domain/ports/listing-group-repository.port';
-import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../domain/ports/listing-repository.port';
+import {
+  LISTING_TYPE_REPOSITORY,
+  type IListingTypeRepository,
+} from '../../../catalog/domain/ports/listing-type-repository.port';
+import {
+  LISTING_GROUP_REPOSITORY,
+  type IListingGroupRepository,
+} from '../../domain/ports/listing-group-repository.port';
+import {
+  LISTING_REPOSITORY,
+  type IListingRepository,
+  type ListingRecord,
+} from '../../domain/ports/listing-repository.port';
 
 function listingPriceFrom(listing: ListingRecord): string | null {
   const prices = Object.values(listing.modeConfig).flatMap((value) => {
     if (!value || typeof value !== 'object') return [];
     const config = value as Record<string, unknown>;
-    return ['basePrice', 'basePricePerNight'].map((key) => Number(config[key])).filter((price) => Number.isFinite(price) && price > 0);
+    return ['basePrice', 'basePricePerNight']
+      .map((key) => Number(config[key]))
+      .filter((price) => Number.isFinite(price) && price > 0);
   });
   return prices.length ? String(Math.min(...prices)) : null;
 }
@@ -39,25 +51,36 @@ export class GetPublicListingGroupUseCase {
         title: group.title,
         slug: group.slug,
         description: group.description,
+        provinceCode: group.provinceCode,
+        provinceName: group.provinceName,
+        wardCode: group.wardCode,
+        wardName: group.wardName,
         address: group.address,
         workingArea: group.workingArea,
         amenities: group.amenities,
         photos: group.photos,
         listingTypeSlug: listingType?.slug ?? '',
         itemLabel: listingType?.itemLabel?.trim() || 'hạng mục',
-        listings: children.filter((listing) => listing.status === 'published').map((listing) => ({
-          id: listing.id,
-          title: listing.title,
-          slug: listing.slug,
-          description: listing.description,
-          photos: listing.photos,
-          attributes: listing.attributes,
-          bookingModes: listing.bookingModes,
-          priceFrom: listingPriceFrom(listing),
-        })),
+        listings: children
+          .filter((listing) => listing.status === 'published')
+          .map((listing) => ({
+            id: listing.id,
+            title: listing.title,
+            slug: listing.slug,
+            description: listing.description,
+            photos: listing.photos,
+            attributes: listing.attributes,
+            bookingModes: listing.bookingModes,
+            priceFrom: listingPriceFrom(listing),
+          })),
       } satisfies PublicListingGroupDetailResponse;
     });
-    if (!result) throw new NotFoundException({ statusCode: 404, code: 'LISTING_GROUP_NOT_FOUND', message: 'Listing group not found' });
+    if (!result)
+      throw new NotFoundException({
+        statusCode: 404,
+        code: 'LISTING_GROUP_NOT_FOUND',
+        message: 'Listing group not found',
+      });
     return result;
   }
 }

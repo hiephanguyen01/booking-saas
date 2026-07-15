@@ -1,4 +1,5 @@
 export * from './contracts/common';
+export * from './contracts/administrative-division';
 export * from './contracts/auth';
 export * from './contracts/tenancy';
 export * from './contracts/partner';

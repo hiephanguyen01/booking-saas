@@ -65,7 +65,10 @@ describe('computeQuote — hourly', () => {
 
   it('uses the block (bundle) price when the duration matches a block', () => {
     const q = computeQuote(
-      base({ startUtc: new Date('2026-03-10T11:00:00Z'), endUtc: new Date('2026-03-10T13:00:00Z') }), // 18:00–20:00, 2h
+      base({
+        startUtc: new Date('2026-03-10T11:00:00Z'),
+        endUtc: new Date('2026-03-10T13:00:00Z'),
+      }), // 18:00–20:00, 2h
     );
     expect(q.subtotal).toBe(500_000n);
     expect(q.lineItems[0]!.block).toBe(true);

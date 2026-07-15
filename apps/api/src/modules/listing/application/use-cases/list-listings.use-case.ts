@@ -13,7 +13,10 @@ export class ListListingsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, filter: { groupId?: string; partnerId?: string }): Promise<ListingRecord[]> {
+  execute(
+    tenantId: string,
+    filter: { groupId?: string; partnerId?: string },
+  ): Promise<ListingRecord[]> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.listings.list(tx, filter));
   }
 }

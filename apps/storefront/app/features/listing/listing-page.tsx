@@ -7,6 +7,8 @@ import type { Route } from '../../routes/+types/listing';
 import { BookingPanel } from '../../templates/studio/booking-panel';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { useLocale } from '../../lib/use-locale';
+import { formatListingLocation } from '../../lib/ui';
+import { MapPin } from 'lucide-react';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote } = loaderData;
@@ -24,12 +26,26 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const attrs = Object.entries(listing.attributes).filter(
     ([, v]) => v !== null && v !== '' && typeof v !== 'boolean',
   );
+  const location = formatListingLocation(listing, 'full');
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-4">
-        {listing.group ? <Link to={storefrontPaths.listingGroup(locale, listing.group.slug)} className="mb-2 inline-flex text-sm text-muted-foreground hover:text-foreground">← {listing.group.title}</Link> : null}
+        {listing.group ? (
+          <Link
+            to={storefrontPaths.listingGroup(locale, listing.group.slug)}
+            className="mb-2 inline-flex text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← {listing.group.title}
+          </Link>
+        ) : null}
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{listing.title}</h1>
+        {location ? (
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <MapPin className="size-4 shrink-0" aria-hidden="true" />
+            {location}
+          </p>
+        ) : null}
         {attrs.length > 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">
             {attrs.map(([, v]) => String(v)).join(' · ')}

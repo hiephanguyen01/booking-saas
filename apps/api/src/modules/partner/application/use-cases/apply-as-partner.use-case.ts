@@ -13,6 +13,7 @@ import {
   type ITenantRepository,
 } from '../../../tenancy/domain/ports/tenant-repository.port';
 import { PlanLimitService } from '../../../tenancy/application/services/plan-limit.service';
+import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 import {
   PARTNER_REPOSITORY,
   type IPartnerRepository,
@@ -34,6 +35,7 @@ export class ApplyAsPartnerUseCase {
     @Inject(PARTNER_ROLES) private readonly roles: IPartnerRoles,
     @Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository,
     private readonly planLimits: PlanLimitService,
+    private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -54,6 +56,11 @@ export class ApplyAsPartnerUseCase {
         message: 'Tenant is not accepting partner applications',
       });
     }
+
+    const location = await this.resolveAdministrativeAddress.execute(
+      input.contactInfo.provinceCode,
+      input.contactInfo.wardCode,
+    );
 
     // Hard plan limit (this route has no tenant context, so enforce here rather
     // than via PlanLimitGuard).
@@ -76,7 +83,16 @@ export class ApplyAsPartnerUseCase {
         partnerType: input.partnerType,
         status: 'pending',
         businessInfo: input.businessInfo,
-        contactInfo: input.contactInfo,
+        contactInfo: {
+          phone: input.contactInfo.phone,
+          provinceCode: location.province.code,
+          provinceName: location.province.name,
+          provinceType: location.province.type,
+          wardCode: location.ward.code,
+          wardName: location.ward.name,
+          wardType: location.ward.type,
+          address: input.contactInfo.address,
+        },
         payoutInfo: input.payoutInfo,
       });
       await this.partners.addMember(tx, {

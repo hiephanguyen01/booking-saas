@@ -37,7 +37,12 @@ export type PartnerApplyPayload = PartnerApplyInput;
 
 /** A message code the route maps with `useTranslation(NsI18n.Common)`. */
 export type PartnerErrorCode =
-  'emailTakenWrongPassword' | 'slugTaken' | 'planLimit' | 'tenantInactive' | 'generic';
+  | 'emailTakenWrongPassword'
+  | 'slugTaken'
+  | 'planLimit'
+  | 'tenantInactive'
+  | 'invalidLocation'
+  | 'generic';
 type ErrorCode = PartnerErrorCode;
 type TokenResult = { ok: true; token: string } | { ok: false; code: ErrorCode };
 
@@ -92,6 +97,7 @@ const APPLY_ERROR_CODES: Record<string, ErrorCode> = {
   PLAN_LIMIT_REACHED: 'planLimit',
   TENANT_INACTIVE: 'tenantInactive',
   TENANT_NOT_FOUND: 'generic',
+  INVALID_ADMINISTRATIVE_DIVISION: 'invalidLocation',
 };
 
 /** Submit the partner application with the just-minted session token. */

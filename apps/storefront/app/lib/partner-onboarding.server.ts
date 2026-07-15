@@ -19,6 +19,7 @@ import { applyAsPartner, type PartnerApplyPayload, type PartnerErrorCode } from 
 import { suppressStorefrontSessionCommit } from './request-auth.server';
 import { createUserSession } from './session.server';
 import { resolveTenant } from './tenant.server';
+import { loadAdministrativeProvinces } from './administrative-divisions.server';
 
 export interface PartnerOnboardingActionData {
   error?: string;
@@ -249,9 +250,8 @@ export function partnerApplyPayloadFor(
     businessInfo,
     contactInfo: {
       phone: value.phone,
-      province: value.province,
-      district: value.district,
-      ward: value.ward,
+      provinceCode: value.provinceCode,
+      wardCode: value.wardCode,
       address: value.address,
     },
     payoutInfo: {
@@ -266,8 +266,11 @@ export async function loadPartnerProfile(request: Request, localeParam?: string)
   const locale = localeOf(localeParam);
   const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
   const auth = requireAuth(startPath(locale));
-  const tenant = await resolveTenant(request);
-  return { email: auth.info.user.email, tenantName: tenant.name, flow };
+  const [tenant, provinces] = await Promise.all([
+    resolveTenant(request),
+    loadAdministrativeProvinces(request),
+  ]);
+  return { email: auth.info.user.email, tenantName: tenant.name, provinces, flow };
 }
 
 export async function submitPartnerProfile(request: Request, localeParam?: string) {

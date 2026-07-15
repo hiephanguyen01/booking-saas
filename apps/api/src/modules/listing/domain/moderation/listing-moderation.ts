@@ -43,7 +43,10 @@ export function transitionSubmit(state: ModerationState): ModerationOutcome {
 }
 
 /** pending_review → published (reviewer). Clears any prior hide. */
-export function transitionPublish(state: ModerationState, actor: ModerationActor): ModerationOutcome {
+export function transitionPublish(
+  state: ModerationState,
+  actor: ModerationActor,
+): ModerationOutcome {
   if (state.status !== 'pending_review') {
     throw new ModerationError(
       'LISTING_NOT_IN_REVIEW',
@@ -63,7 +66,8 @@ export function transitionPublish(state: ModerationState, actor: ModerationActor
  * hide must never downgrade an existing admin lock.
  */
 export function transitionHide(state: ModerationState, actor: ModerationActor): ModerationOutcome {
-  const hiddenBy: ModerationActor = actor === 'admin' || state.hiddenBy === 'admin' ? 'admin' : actor;
+  const hiddenBy: ModerationActor =
+    actor === 'admin' || state.hiddenBy === 'admin' ? 'admin' : actor;
   return { status: 'archived', publishedBy: state.publishedBy, hiddenBy };
 }
 

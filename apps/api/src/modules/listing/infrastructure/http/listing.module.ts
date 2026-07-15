@@ -4,6 +4,7 @@ import { TenantContextModule } from '../../../../shared/tenant-context/tenant-co
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { CatalogModule } from '../../../catalog/infrastructure/http/catalog.module';
 import { PartnerModule } from '../../../partner/infrastructure/http/partner.module';
+import { AdministrativeDivisionModule } from '../../../administrative-division/infrastructure/http/administrative-division.module';
 import { LISTING_GROUP_REPOSITORY } from '../../domain/ports/listing-group-repository.port';
 import { LISTING_REPOSITORY } from '../../domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY } from '../../domain/ports/resource-repository.port';
@@ -54,7 +55,14 @@ import { ListCancellationPoliciesUseCase } from '../../application/use-cases/lis
 import { PartnerCancellationPolicyController } from './partner-cancellation-policy.controller';
 
 @Module({
-  imports: [PrismaModule, TenantContextModule, TenancyModule, CatalogModule, PartnerModule],
+  imports: [
+    PrismaModule,
+    TenantContextModule,
+    TenancyModule,
+    CatalogModule,
+    PartnerModule,
+    AdministrativeDivisionModule,
+  ],
   controllers: [
     TenantListingGroupController,
     TenantListingController,

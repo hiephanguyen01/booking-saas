@@ -12,6 +12,10 @@ export interface ListingGroupRecord {
   title: string;
   slug: string;
   description: string | null;
+  provinceCode: string | null;
+  provinceName: string | null;
+  wardCode: string | null;
+  wardName: string | null;
   address: string | null;
   workingArea: string | null;
   amenities: string[];
@@ -29,6 +33,10 @@ export interface CreateListingGroupData {
   title: string;
   slug: string;
   description?: string | null;
+  provinceCode?: string | null;
+  provinceName?: string | null;
+  wardCode?: string | null;
+  wardName?: string | null;
   address?: string | null;
   workingArea?: string | null;
   amenities: string[];

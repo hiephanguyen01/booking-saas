@@ -1,4 +1,8 @@
-import { type PublicListingDetailResponse, type PublicListingGroupDetailResponse, type QuoteResponse } from '@booking/contracts';
+import {
+  type PublicListingDetailResponse,
+  type PublicListingGroupDetailResponse,
+  type QuoteResponse,
+} from '@booking/contracts';
 import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';

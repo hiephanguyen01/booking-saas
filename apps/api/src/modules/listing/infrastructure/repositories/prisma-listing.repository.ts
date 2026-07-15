@@ -25,6 +25,11 @@ function toRecord(l: Row): ListingRecord {
     title: l.title,
     slug: l.slug,
     description: l.description,
+    provinceCode: l.provinceCode,
+    provinceName: l.provinceName,
+    wardCode: l.wardCode,
+    wardName: l.wardName,
+    address: l.address,
     photos: (l.photos ?? []) as string[],
     attributes: (l.attributes ?? {}) as Record<string, unknown>,
     bookingModes: l.bookingModes as BookingMode[],
@@ -60,6 +65,11 @@ export class PrismaListingRepository implements IListingRepository {
           title: data.title,
           slug: data.slug,
           description: data.description ?? null,
+          provinceCode: data.provinceCode ?? null,
+          provinceName: data.provinceName ?? null,
+          wardCode: data.wardCode ?? null,
+          wardName: data.wardName ?? null,
+          address: data.address ?? null,
           photos: data.photos as Prisma.InputJsonValue,
           attributes: data.attributes as Prisma.InputJsonValue,
           bookingModes: data.bookingModes as never,
@@ -119,7 +129,10 @@ export class PrismaListingRepository implements IListingRepository {
       ...toRecord(l),
       resourceTimezone: l.resource.timezone,
       listingTypeSlug: l.listingType.slug,
-      group: l.group && l.group.status === 'published' ? { title: l.group.title, slug: l.group.slug } : null,
+      group:
+        l.group && l.group.status === 'published'
+          ? { title: l.group.title, slug: l.group.slug }
+          : null,
       partnerName: l.partner.name,
       partnerVerifiedAt: l.partner.verifiedAt,
       partnerActiveSince: l.partner.createdAt,
@@ -129,7 +142,10 @@ export class PrismaListingRepository implements IListingRepository {
     };
   }
 
-  async list(tx: PrismaTx, filter: { groupId?: string; partnerId?: string }): Promise<ListingRecord[]> {
+  async list(
+    tx: PrismaTx,
+    filter: { groupId?: string; partnerId?: string },
+  ): Promise<ListingRecord[]> {
     const where: { groupId?: string; partnerId?: string } = {};
     if (filter.groupId) where.groupId = filter.groupId;
     if (filter.partnerId) where.partnerId = filter.partnerId;
@@ -150,6 +166,11 @@ export class PrismaListingRepository implements IListingRepository {
           title: data.title,
           slug: data.slug,
           description: data.description,
+          provinceCode: data.provinceCode,
+          provinceName: data.provinceName,
+          wardCode: data.wardCode,
+          wardName: data.wardName,
+          address: data.address,
           photos: data.photos as Prisma.InputJsonValue | undefined,
           attributes: data.attributes as Prisma.InputJsonValue | undefined,
           bookingModes: data.bookingModes as never,

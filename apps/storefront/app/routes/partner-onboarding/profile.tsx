@@ -1,14 +1,15 @@
 import {
   partnerOnboardingProfileSchema,
+  type AdministrativeWard,
   type PartnerOnboardingProfileInput,
 } from '@booking/contracts';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Form } from '@booking/ui/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm, useWatch, type Path } from 'react-hook-form';
-import { useActionData, useLoaderData, useNavigation, useSubmit } from 'react-router';
+import { useActionData, useFetcher, useLoaderData, useNavigation, useSubmit } from 'react-router';
 import {
   loadPartnerProfile,
   submitPartnerProfile,
@@ -44,9 +45,8 @@ const DEFAULTS: PartnerOnboardingProfileInput = {
   companyName: '',
   businessRegistrationNo: '',
   identityNumber: '',
-  province: '',
-  district: '',
-  ward: '',
+  provinceCode: '',
+  wardCode: '',
   address: '',
   phone: '',
   bank: '',
@@ -120,6 +120,10 @@ export default function PartnerProfile() {
   const actionData = useActionData<PartnerOnboardingActionData>();
   const navigation = useNavigation();
   const submit = useSubmit();
+  const wardsFetcher = useFetcher<{
+    provinceCode: string;
+    wards: AdministrativeWard[];
+  }>();
   const form = useForm<PartnerOnboardingProfileInput>({
     resolver: zodResolver(partnerOnboardingProfileSchema),
     defaultValues: DEFAULTS,
@@ -132,6 +136,24 @@ export default function PartnerProfile() {
     name: 'partnerType',
     defaultValue: 'company',
   });
+  const provinceCode = useWatch({
+    control: form.control,
+    name: 'provinceCode',
+    defaultValue: '',
+  });
+  const previousProvinceCode = useRef(provinceCode);
+  const loadWards = wardsFetcher.load;
+  useEffect(() => {
+    if (previousProvinceCode.current !== provinceCode) {
+      form.setValue('wardCode', '', { shouldDirty: true, shouldValidate: false });
+      previousProvinceCode.current = provinceCode;
+    }
+    if (provinceCode) {
+      void loadWards(
+        `/administrative-divisions/wards?provinceCode=${encodeURIComponent(provinceCode)}`,
+      );
+    }
+  }, [form, loadWards, provinceCode]);
   useEffect(() => {
     if (!actionData?.fieldErrors) return;
     for (const [name, messages] of Object.entries(actionData.fieldErrors)) {
@@ -149,9 +171,18 @@ export default function PartnerProfile() {
         ? 'Cửa hàng đã đạt giới hạn số đối tác.'
         : actionData?.error === 'tenantInactive'
           ? 'Cửa hàng hiện không nhận thêm hồ sơ đối tác.'
-          : actionData?.error
-            ? 'Không thể hoàn tất đăng ký. Vui lòng thử lại.'
-            : undefined;
+          : actionData?.error === 'invalidLocation'
+            ? 'Địa chỉ hành chính không hợp lệ. Vui lòng chọn lại tỉnh và phường / xã.'
+            : actionData?.error
+              ? 'Không thể hoàn tất đăng ký. Vui lòng thử lại.'
+              : undefined;
+  const provinceOptions = loaderData.provinces.map((province) => ({
+    label: province.name,
+    value: province.code,
+  }));
+  const wardsData = wardsFetcher.data;
+  const wards = wardsData?.provinceCode === provinceCode ? wardsData.wards : [];
+  const wardOptions = wards.map((ward) => ({ label: ward.name, value: ward.code }));
   return (
     <main className="mx-auto w-full max-w-[1170px] px-4 pb-16 sm:px-6 lg:px-0">
       <section className="bg-white p-6 shadow-[0_4px_7.5px_rgba(0,0,0,0.07)] sm:p-10">
@@ -200,9 +231,36 @@ export default function PartnerProfile() {
                   field={field('identityNumber', 'Số CMND/CCCD')}
                   appearance="partner"
                 />
-                <FieldRenderer field={field('province', 'Tỉnh / Thành phố')} appearance="partner" />
-                <FieldRenderer field={field('district', 'Quận / Huyện')} appearance="partner" />
-                <FieldRenderer field={field('ward', 'Phường / Xã')} appearance="partner" />
+                <FieldRenderer
+                  field={{
+                    name: 'provinceCode',
+                    label: 'Tỉnh / Thành phố',
+                    type: 'combobox',
+                    required: true,
+                    placeholder: 'Chọn tỉnh / thành phố',
+                    searchPlaceholder: 'Tìm tỉnh / thành phố...',
+                    options: provinceOptions,
+                  }}
+                  appearance="partner"
+                />
+                <FieldRenderer
+                  field={{
+                    name: 'wardCode',
+                    label: 'Phường / Xã / Đặc khu',
+                    type: 'combobox',
+                    required: true,
+                    disabled: !provinceCode || wardsFetcher.state !== 'idle',
+                    placeholder:
+                      wardsFetcher.state !== 'idle'
+                        ? 'Đang tải phường / xã...'
+                        : provinceCode
+                          ? 'Chọn phường / xã / đặc khu'
+                          : 'Chọn tỉnh / thành phố trước',
+                    searchPlaceholder: 'Tìm phường / xã...',
+                    options: wardOptions,
+                  }}
+                  appearance="partner"
+                />
                 <FieldRenderer field={field('address', 'Địa chỉ cụ thể')} appearance="partner" />
                 <div className="space-y-4 pt-1 text-base leading-6 text-[#1d2939]">
                   <p>

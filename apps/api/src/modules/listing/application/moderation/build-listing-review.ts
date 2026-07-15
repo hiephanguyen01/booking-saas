@@ -1,10 +1,7 @@
 import type { BookingMode, ListingReviewResponse } from '@booking/contracts';
 import type { ListingRecord } from '../../domain/ports/listing-repository.port';
 import { photoScanFields, scanForContactInfo } from '../../domain/moderation/contact-scan';
-import {
-  buildReviewChecklist,
-  checklistPassed,
-} from '../../domain/moderation/review-checklist';
+import { buildReviewChecklist, checklistPassed } from '../../domain/moderation/review-checklist';
 
 function modeHasPrice(mode: BookingMode, modeConfig: Record<string, unknown>): boolean {
   const cfg = modeConfig[mode];

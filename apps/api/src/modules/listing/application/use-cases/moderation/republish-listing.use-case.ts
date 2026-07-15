@@ -41,7 +41,11 @@ export class RepublishListingUseCase {
       if (!listing) listingNotFound();
       assertOwnership(listing, ctx.partnerId);
       if (listing.groupId) {
-        throw new BadRequestException({ statusCode: 400, code: 'GROUP_MANAGED_LISTING', message: 'Republish the parent listing group instead' });
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'GROUP_MANAGED_LISTING',
+          message: 'Republish the parent listing group instead',
+        });
       }
 
       const outcome = runModeration(() => transitionRepublish(listing, actor));

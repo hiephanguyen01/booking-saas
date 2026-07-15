@@ -1,4 +1,10 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -15,7 +21,11 @@ export class DeleteListingGroupUseCase {
     private readonly outbox: OutboxService,
   ) {}
 
-  async execute(tenantId: string, id: string, options: { requirePartnerId?: string } = {}): Promise<void> {
+  async execute(
+    tenantId: string,
+    id: string,
+    options: { requirePartnerId?: string } = {},
+  ): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.repo.findById(tx, id);
       if (!existing) {
@@ -26,7 +36,11 @@ export class DeleteListingGroupUseCase {
         });
       }
       if (options.requirePartnerId && existing.partnerId !== options.requirePartnerId) {
-        throw new ForbiddenException({ statusCode: 403, code: 'LISTING_GROUP_NOT_OWNED', message: 'Listing group belongs to another partner' });
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: 'LISTING_GROUP_NOT_OWNED',
+          message: 'Listing group belongs to another partner',
+        });
       }
       const count = await this.repo.countListings(tx, id);
       if (count > 0) {

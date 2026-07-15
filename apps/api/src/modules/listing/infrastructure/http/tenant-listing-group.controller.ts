@@ -1,4 +1,8 @@
-import { uuidSchema, type ListingGroupDetailResponse, type ListingGroupResponse } from '@booking/contracts';
+import {
+  uuidSchema,
+  type ListingGroupDetailResponse,
+  type ListingGroupResponse,
+} from '@booking/contracts';
 import {
   Body,
   Controller,
@@ -72,7 +76,9 @@ export class TenantListingGroupController {
   @RequirePermissions('tenant.listings.read')
   @Get(':id/detail')
   @ApiOkResponse({ type: ListingGroupDetailResponseDto })
-  detail(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<ListingGroupDetailResponse> {
+  detail(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<ListingGroupDetailResponse> {
     return this.getGroupDetail.execute(this.tenantContext.tenantIdOrThrow(), id);
   }
 

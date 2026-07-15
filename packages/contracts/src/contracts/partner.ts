@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { paginationQuerySchema, uuidSchema } from './common';
+import { provinceCodeSchema, wardCodeSchema } from './administrative-division';
 import { slugSchema } from './tenancy';
 
 /** Partner classification (§7.3): a freelancer vs a registered company. */
@@ -30,6 +31,15 @@ export const payoutInfoSchema = z.object({
 });
 export type PayoutInfo = z.infer<typeof payoutInfoSchema>;
 
+/** Address supplied by a Partner applicant; official names are resolved by the API. */
+export const partnerContactInfoSchema = z.object({
+  phone: z.string().trim().min(6).max(20),
+  provinceCode: provinceCodeSchema,
+  wardCode: wardCodeSchema,
+  address: z.string().trim().min(1).max(300),
+});
+export type PartnerContactInfo = z.infer<typeof partnerContactInfoSchema>;
+
 // ── Inputs (validated identically on FE + BE) ────────────────────────────────
 
 /** A logged-in user applies to become a partner under a tenant (self-signup). */
@@ -40,7 +50,7 @@ export const partnerApplyInputSchema = z.object({
   partnerType: partnerTypeSchema.default('individual'),
   description: z.string().max(1000).optional(),
   businessInfo: z.record(z.unknown()).optional(),
-  contactInfo: z.record(z.unknown()).optional(),
+  contactInfo: partnerContactInfoSchema,
   payoutInfo: payoutInfoSchema.optional(),
 });
 export type PartnerApplyInput = z.infer<typeof partnerApplyInputSchema>;
@@ -195,9 +205,8 @@ export const partnerOnboardingProfileSchema = z
     companyName: z.string().trim().max(200).optional(),
     businessRegistrationNo: z.string().trim().max(64).optional(),
     identityNumber: z.string().trim().min(1, 'Vui lòng nhập số CMND/CCCD').max(64),
-    province: z.string().trim().min(1, 'Vui lòng nhập tỉnh/thành phố').max(120),
-    district: z.string().trim().min(1, 'Vui lòng nhập quận/huyện').max(120),
-    ward: z.string().trim().min(1, 'Vui lòng nhập phường/xã').max(120),
+    provinceCode: provinceCodeSchema,
+    wardCode: wardCodeSchema,
     address: z.string().trim().min(1, 'Vui lòng nhập địa chỉ cụ thể').max(300),
     phone: z.string().trim().min(6, 'Số điện thoại không hợp lệ').max(20),
     bank: z.string().trim().min(1, 'Vui lòng chọn ngân hàng').max(120),

@@ -16,7 +16,11 @@ describe('review checklist', () => {
   });
 
   it('fails the relevant item when a photo/description/price/policy is missing', () => {
-    const items = buildReviewChecklist({ ...complete, photoCount: 0, hasCancellationPolicy: false });
+    const items = buildReviewChecklist({
+      ...complete,
+      photoCount: 0,
+      hasCancellationPolicy: false,
+    });
     expect(checklistPassed(items)).toBe(false);
     expect(items.find((i) => i.key === 'photos')?.passed).toBe(false);
     expect(items.find((i) => i.key === 'cancellation_policy')?.passed).toBe(false);

@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -15,10 +6,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import {
-  uuidSchema,
-  type PricingRuleResponse,
-} from '@booking/contracts';
+import { uuidSchema, type PricingRuleResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -42,7 +30,7 @@ export class TenantPricingRuleController {
 
   @RequirePermissions('tenant.listings.read')
   @Get()
-  @ApiOperation({ summary: 'List a listing\'s pricing rules' })
+  @ApiOperation({ summary: "List a listing's pricing rules" })
   @UuidParam('listingId')
   @ApiOkResponse({ type: [PricingRuleResponseDto] })
   async list(
@@ -74,9 +62,7 @@ export class TenantPricingRuleController {
   @ApiOperation({ summary: 'Delete a pricing rule' })
   @UuidParam('ruleId')
   @ApiNoContentResponse()
-  async remove(
-    @Param('ruleId', new ZodValidationPipe(uuidSchema)) ruleId: string,
-  ): Promise<void> {
+  async remove(@Param('ruleId', new ZodValidationPipe(uuidSchema)) ruleId: string): Promise<void> {
     await this.deleteRule.execute(this.tenantContext.tenantIdOrThrow(), ruleId);
   }
 }

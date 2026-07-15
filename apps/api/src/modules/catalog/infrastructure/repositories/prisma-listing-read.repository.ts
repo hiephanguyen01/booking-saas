@@ -33,7 +33,19 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       orderBy: { createdAt: 'desc' },
       include: {
         listingType: { select: { slug: true, itemLabel: true } },
-        group: { select: { id: true, title: true, slug: true, photos: true } },
+        group: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            photos: true,
+            provinceCode: true,
+            provinceName: true,
+            wardCode: true,
+            wardName: true,
+            address: true,
+          },
+        },
       },
       take: 100,
     });
@@ -46,13 +58,25 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       attributes: (l.attributes ?? {}) as Record<string, unknown>,
       photos: (l.photos ?? []) as unknown[],
       modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
-      group: l.group ? {
-        id: l.group.id,
-        title: l.group.title,
-        slug: l.group.slug,
-        photos: (l.group.photos ?? []) as unknown[],
-        itemLabel: l.listingType.itemLabel,
-      } : null,
+      provinceCode: l.provinceCode,
+      provinceName: l.provinceName,
+      wardCode: l.wardCode,
+      wardName: l.wardName,
+      address: l.address,
+      group: l.group
+        ? {
+            id: l.group.id,
+            title: l.group.title,
+            slug: l.group.slug,
+            photos: (l.group.photos ?? []) as unknown[],
+            itemLabel: l.listingType.itemLabel,
+            provinceCode: l.group.provinceCode,
+            provinceName: l.group.provinceName,
+            wardCode: l.group.wardCode,
+            wardName: l.group.wardName,
+            address: l.group.address,
+          }
+        : null,
     }));
   }
 }

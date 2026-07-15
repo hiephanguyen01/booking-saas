@@ -67,7 +67,10 @@ export class PartnerListingModerationController {
   async list(@Query('groupId') groupId?: string): Promise<ListingResponse[]> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
-    const listings = await this.listListings.execute(tenantId, { partnerId, ...(groupId ? { groupId } : {}) });
+    const listings = await this.listListings.execute(tenantId, {
+      partnerId,
+      ...(groupId ? { groupId } : {}),
+    });
     return listings.map(toListingResponse);
   }
 
@@ -100,7 +103,9 @@ export class PartnerListingModerationController {
   ): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
-    return toListingResponse(await this.getListing.execute(tenantId, id, { requirePartnerId: partnerId }));
+    return toListingResponse(
+      await this.getListing.execute(tenantId, id, { requirePartnerId: partnerId }),
+    );
   }
 
   @RequirePermissions('partner.listings.write')
@@ -125,7 +130,9 @@ export class PartnerListingModerationController {
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<void> {
-    await this.deleteListing.execute(this.tenantContext.tenantIdOrThrow(), id, { requirePartnerId: this.tenantContext.partnerIdOrThrow() });
+    await this.deleteListing.execute(this.tenantContext.tenantIdOrThrow(), id, {
+      requirePartnerId: this.tenantContext.partnerIdOrThrow(),
+    });
   }
 
   private ctx(principal: SessionPrincipal, ip: string) {

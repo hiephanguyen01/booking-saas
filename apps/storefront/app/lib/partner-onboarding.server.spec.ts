@@ -52,9 +52,8 @@ describe('partnerApplyPayloadFor', () => {
         companyName: 'Công ty Ánh Sáng',
         businessRegistrationNo: 'GPKD-123',
         identityNumber: '079123456789',
-        province: 'TP Hồ Chí Minh',
-        district: 'Quận 1',
-        ward: 'Bến Nghé',
+        provinceCode: '79',
+        wardCode: '26740',
         address: '12 Nguyễn Huệ',
         phone: '0901234567',
         bank: 'Vietcombank',
@@ -88,9 +87,8 @@ describe('partnerApplyPayloadFor', () => {
       },
       contactInfo: {
         phone: '0901234567',
-        province: 'TP Hồ Chí Minh',
-        district: 'Quận 1',
-        ward: 'Bến Nghé',
+        provinceCode: '79',
+        wardCode: '26740',
         address: '12 Nguyễn Huệ',
       },
       payoutInfo: {

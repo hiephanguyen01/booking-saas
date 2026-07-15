@@ -33,6 +33,7 @@ import {
   LISTING_GROUP_REPOSITORY,
   type IListingGroupRepository,
 } from '../../domain/ports/listing-group-repository.port';
+import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 
 /**
  * Create a listing. Inside one tenant transaction it validates the attributes
@@ -50,11 +51,16 @@ export class CreateListingUseCase {
     @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
     private readonly attributeValidator: AttributeValidatorService,
     private readonly partnerVerification: PartnerVerificationService,
+    private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
 
   async execute(tenantId: string, input: CreateListingInput): Promise<ListingRecord> {
+    const location = await this.resolveAdministrativeAddress.execute(
+      input.provinceCode,
+      input.wardCode,
+    );
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       if (await this.listings.findBySlug(tx, input.slug)) {
         throw new ConflictException({
@@ -114,7 +120,11 @@ export class CreateListingUseCase {
           });
         }
         if (group.listingTypeId !== input.listingTypeId) {
-          throw new BadRequestException({ statusCode: 400, code: 'LISTING_GROUP_TYPE_MISMATCH', message: 'The listing and its group must use the same listing type' });
+          throw new BadRequestException({
+            statusCode: 400,
+            code: 'LISTING_GROUP_TYPE_MISMATCH',
+            message: 'The listing and its group must use the same listing type',
+          });
         }
         if (group.status !== 'draft') {
           throw new ConflictException({
@@ -163,6 +173,11 @@ export class CreateListingUseCase {
         title: input.title,
         slug: input.slug,
         description: input.description ?? null,
+        provinceCode: location.province.code,
+        provinceName: location.province.name,
+        wardCode: location.ward.code,
+        wardName: location.ward.name,
+        address: input.address,
         photos: input.photos,
         attributes: input.attributes,
         bookingModes: input.bookingModes,

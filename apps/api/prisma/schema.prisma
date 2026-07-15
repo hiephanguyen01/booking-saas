@@ -99,6 +99,21 @@ enum PartnerVerificationStatus {
   @@map("partner_verification_status")
 }
 
+enum AdministrativeProvinceType {
+  province
+  municipality
+
+  @@map("administrative_province_type")
+}
+
+enum AdministrativeWardType {
+  ward
+  commune
+  special_zone
+
+  @@map("administrative_ward_type")
+}
+
 /// Storefront booking type of a listing (§2 "booking mode").
 enum BookingMode {
   hourly
@@ -481,6 +496,41 @@ model RoleAssignment {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Global reference data — Decision 19/2025/QĐ-TTg (effective 2025-07-01)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AdministrativeProvince {
+  code          String                     @id @db.Char(2)
+  name          String
+  type          AdministrativeProvinceType
+  sortOrder     Int                        @map("sort_order")
+  effectiveFrom DateTime                   @map("effective_from") @db.Date
+  createdAt     DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  wards AdministrativeWard[]
+
+  @@index([sortOrder])
+  @@map("administrative_provinces")
+}
+
+model AdministrativeWard {
+  code          String                 @id @db.Char(5)
+  provinceCode  String                 @map("province_code") @db.Char(2)
+  name          String
+  type          AdministrativeWardType
+  sortOrder     Int                    @map("sort_order")
+  effectiveFrom DateTime               @map("effective_from") @db.Date
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  province AdministrativeProvince @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
+
+  @@index([provinceCode, sortOrder])
+  @@map("administrative_wards")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 7.2 Tenancy
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -523,15 +573,15 @@ model Tenant {
 }
 
 model TenantDomain {
-  id         String    @id @default(uuid(7)) @db.Uuid
-  tenantId   String    @map("tenant_id") @db.Uuid
-  hostname   String    @unique @db.Citext
-  isPrimary  Boolean   @default(false) @map("is_primary")
+  id                String    @id @default(uuid(7)) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  hostname          String    @unique @db.Citext
+  isPrimary         Boolean   @default(false) @map("is_primary")
   /// TXT value the tenant publishes to prove ownership of a custom domain (§6.1). Null once verified/for subdomains.
-  verificationToken String? @map("verification_token")
-  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  verificationToken String?   @map("verification_token")
+  verifiedAt        DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -594,30 +644,30 @@ model TenantSubscription {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Partner {
-  id           String        @id @default(uuid(7)) @db.Uuid
-  tenantId     String        @map("tenant_id") @db.Uuid
-  name         String
-  slug         String
-  description  String?
-  partnerType  PartnerType   @default(individual) @map("partner_type")
+  id                 String                    @id @default(uuid(7)) @db.Uuid
+  tenantId           String                    @map("tenant_id") @db.Uuid
+  name               String
+  slug               String
+  description        String?
+  partnerType        PartnerType               @default(individual) @map("partner_type")
   /// Tenant-owned inventory: no partner payable/payout, platform fee on GMV (§7.3).
-  isHouse      Boolean       @default(false) @map("is_house")
-  status       PartnerStatus @default(pending)
+  isHouse            Boolean                   @default(false) @map("is_house")
+  status             PartnerStatus             @default(pending)
   /// tax ID / business registration for a `company` partner.
-  businessInfo Json          @default("{}") @map("business_info")
-  contactInfo  Json          @default("{}") @map("contact_info")
+  businessInfo       Json                      @default("{}") @map("business_info")
+  contactInfo        Json                      @default("{}") @map("contact_info")
   /// bank account for receiving payouts.
-  payoutInfo   Json          @default("{}") @map("payout_info")
+  payoutInfo         Json                      @default("{}") @map("payout_info")
   /// national ID / DOB verification for people-booking listing types (§7.3).
-  verifiedAt   DateTime?     @map("verified_at") @db.Timestamptz(6)
+  verifiedAt         DateTime?                 @map("verified_at") @db.Timestamptz(6)
   /// manual-review state; `verified` (with verifiedAt set) unlocks people-booking types.
   verificationStatus PartnerVerificationStatus @default(unsubmitted) @map("verification_status")
   /// date of birth for the under-18 block on people-booking types (§7.3).
-  dateOfBirth  DateTime?     @map("date_of_birth") @db.Date
+  dateOfBirth        DateTime?                 @map("date_of_birth") @db.Date
   /// { documentType, documentNumber, holderName, reviewedBy, reviewNote } — manual eKYC (Phase 3 automates).
-  identityInfo Json          @default("{}") @map("identity_info")
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  identityInfo       Json                      @default("{}") @map("identity_info")
+  createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   members              PartnerMember[]
@@ -655,26 +705,26 @@ model PartnerMember {
 
 /// A tenant-defined service category (dynamic, not hard-coded) — §7.3.
 model ListingType {
-  tenantId        String        @map("tenant_id") @db.Uuid
-  id              String        @id @default(uuid(7)) @db.Uuid
-  name            String
-  slug            String
-  icon            String?
+  tenantId                     String           @map("tenant_id") @db.Uuid
+  id                           String           @id @default(uuid(7)) @db.Uuid
+  name                         String
+  slug                         String
+  icon                         String?
   /// which BookingModes this type may enable / enables by default on a new listing.
-  allowedModes    BookingMode[] @map("allowed_modes")
-  defaultModes    BookingMode[] @map("default_modes")
+  allowedModes                 BookingMode[]    @map("allowed_modes")
+  defaultModes                 BookingMode[]    @map("default_modes")
   /// [{key,label,type,required,filterable,options}] — validates listing.attributes.
-  attributeSchema Json          @default("[]") @map("attribute_schema")
+  attributeSchema              Json             @default("[]") @map("attribute_schema")
   /// price display unit: "hour", "day", "session", "set"…
-  unitLabel       String?       @map("unit_label")
+  unitLabel                    String?          @map("unit_label")
   /// people-booking type (models, makeup): the partner must be identity-verified to serve it (§7.3, Task 1.2/1.3).
-  requiresIdentityVerification Boolean @default(false) @map("requires_identity_verification")
-  structure       ListingStructure @default(standalone)
-  itemLabel       String?          @map("item_label")
-  sortOrder       Int           @default(0) @map("sort_order")
-  isActive        Boolean       @default(true) @map("is_active")
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  requiresIdentityVerification Boolean          @default(false) @map("requires_identity_verification")
+  structure                    ListingStructure @default(standalone)
+  itemLabel                    String?          @map("item_label")
+  sortOrder                    Int              @default(0) @map("sort_order")
+  isActive                     Boolean          @default(true) @map("is_active")
+  createdAt                    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   listingGroups   ListingGroup[]
@@ -696,6 +746,10 @@ model ListingGroup {
   title         String
   slug          String
   description   String?
+  provinceCode  String?          @map("province_code") @db.Char(2)
+  provinceName  String?          @map("province_name")
+  wardCode      String?          @map("ward_code") @db.Char(5)
+  wardName      String?          @map("ward_name")
   address       String?
   workingArea   String?          @map("working_area")
   photos        Json             @default("[]")
@@ -717,6 +771,7 @@ model ListingGroup {
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@index([partnerId])
+  @@index([tenantId, provinceCode, wardCode])
   @@map("listing_groups")
 }
 
@@ -753,6 +808,11 @@ model Listing {
   title                   String
   slug                    String
   description             String?
+  provinceCode            String?          @map("province_code") @db.Char(2)
+  provinceName            String?          @map("province_name")
+  wardCode                String?          @map("ward_code") @db.Char(5)
+  wardName                String?          @map("ward_name")
+  address                 String?
   photos                  Json             @default("[]")
   /// attribute values, validated against the listing type's attribute_schema.
   attributes              Json             @default("{}")
@@ -798,6 +858,7 @@ model Listing {
   @@index([tenantId])
   @@index([partnerId])
   @@index([resourceId])
+  @@index([tenantId, provinceCode, wardCode])
   @@index([groupId])
   @@index([listingTypeId])
   @@map("listings")
