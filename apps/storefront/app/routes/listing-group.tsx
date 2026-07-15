@@ -31,17 +31,15 @@ async function safe<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
-  const locationSuggestions = safe(fetchListings(request, new URLSearchParams()))
-    .then((candidates) => candidates ? safe(deriveLocationSuggestions(request, candidates)) : null);
-  const [group, suggestedLocations] = await Promise.all([
+  const [group, catalogCandidates] = await Promise.all([
     fetchListingGroup(request, params.groupSlug),
-    locationSuggestions,
+    safe(fetchListings(request, new URLSearchParams())),
   ]);
   if (!group) throw new Response('Listing group not found', { status: 404 });
+  const suggestedLocations = catalogCandidates
+    ? await safe(deriveLocationSuggestions(request, catalogCandidates))
+    : null;
   const state = parseSearchState(url.searchParams);
-  const room = url.searchParams.get('room');
-  const start = url.searchParams.get('start');
-  const end = url.searchParams.get('end');
   const children = group.listings.slice(0, 20);
   const options = await Promise.all(children.map(async (child) => {
     const detail = await safe(fetchListing(request, child.slug));
@@ -68,16 +66,26 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     return { child, detail, availability, available: Boolean(available && quote), price: quote?.subtotal ?? null, quote, start: roomStart, end: roomEnd };
   }));
   const roomOptions = options.filter((option): option is NonNullable<typeof option> => option !== null);
-  const selectedOption = roomOptions.find((option) => option.child.slug === room) ?? null;
-  const selectedQuote = state.mode === 'hourly' && room && start && end
-    ? await safe(fetchQuote(request, room, new URLSearchParams({ mode: 'hourly', from: start, to: end, quantity: '1' })))
-    : selectedOption?.quote ?? null;
   const locations = [...new Set([
     ...(suggestedLocations ?? []),
     group.workingArea,
     group.address,
   ].filter((value): value is string => Boolean(value)))];
-  return { group, state, roomOptions, selectedOption, selectedQuote, start, end, locations };
+  const childIds = new Set(group.listings.map((listing) => listing.id));
+  const relatedListings = (catalogCandidates ?? [])
+    .filter((listing) => (
+      listing.id !== group.id
+      && !childIds.has(listing.id)
+      && listing.listingTypeSlug === group.listingTypeSlug
+    ))
+    .slice(0, 4);
+  return {
+    group,
+    state,
+    roomOptions,
+    locations,
+    relatedListings,
+  };
 }
 
 export default function ListingGroupRoute({ loaderData, params }: Route.ComponentProps) {
