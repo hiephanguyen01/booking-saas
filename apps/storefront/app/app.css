@@ -1,5 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import '@booking/ui/globals.css';
+
+@theme inline {
+  --font-studio: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+}
 
 :root {
   /* defaults — overridden per tenant by themeStyle() on the app shell */
@@ -16,7 +20,12 @@ html {
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family:
+    'Plus Jakarta Sans',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

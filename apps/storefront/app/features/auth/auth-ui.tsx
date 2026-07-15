@@ -1,0 +1,457 @@
+import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
+import { Button } from '@booking/ui/components/ui/button';
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from '@booking/ui/components/ui/field';
+import { Input } from '@booking/ui/components/ui/input';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@booking/ui/components/ui/input-group';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from '@booking/ui/components/ui/input-otp';
+import { Spinner } from '@booking/ui/components/ui/spinner';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useForm } from 'react-hook-form';
+import { Link, useNavigation, useSubmit } from 'react-router';
+import { z } from 'zod';
+import type { AuthActionData } from '../../lib/auth-types';
+import { NsI18n, useTranslation } from '../../lib/i18n';
+import { storefrontPaths } from '../../lib/locale-paths';
+import type { StorefrontTenant } from '../../lib/tenant-mapper';
+
+export function AuthFrame({
+  tenant,
+  title,
+  description,
+  split = false,
+  children,
+}: {
+  tenant: StorefrontTenant;
+  title: string;
+  description: string;
+  split?: boolean;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation(NsI18n.Auth);
+  return (
+    <section className="mx-auto flex w-full max-w-292.5 items-stretch overflow-hidden rounded-md bg-background shadow-[0_18px_60px_rgba(26,32,44,0.10)]">
+      {split ? (
+        <aside className="relative hidden min-h-175 max-w-[570px] overflow-hidden bg-primary/8 p-12 lg:flex lg:flex-col lg:justify-end">
+          {tenant.hero.imageUrl ? (
+            <img
+              src={tenant.hero.imageUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover opacity-25"
+            />
+          ) : null}
+          <div className="absolute inset-0 bg-linear-to-t from-primary/30 via-transparent to-transparent" />
+          <div className="relative max-w-sm rounded-md bg-background/88 p-7 backdrop-blur-sm">
+            <p className="text-2xl font-semibold tracking-tight">{t('promo.title')}</p>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('promo.description')}</p>
+          </div>
+        </aside>
+      ) : null}
+      <div
+        className={
+          split
+            ? 'flex min-h-175 flex-1 items-center px-6 py-12 sm:px-12'
+            : 'w-full px-6 py-12 sm:px-12'
+        }
+      >
+        <div className="mx-auto w-full max-w-122">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
+          </div>
+          {children}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function messageFor(
+  error: string | undefined,
+  t: ReturnType<typeof useTranslation<typeof NsI18n.Auth>>['t'],
+) {
+  if (!error) return null;
+  if (error === 'INVALID_CREDENTIALS' || error === 'ACCOUNT_NOT_FOUND')
+    return t('errors.invalidCredentials');
+  if (error === 'ACCOUNT_LOCKED') return t('errors.accountLocked');
+  if (error === 'EMAIL_TAKEN') return t('errors.emailTaken');
+  if (error === 'OTP_INVALID') return t('errors.invalidOtp');
+  if (error === 'CHALLENGE_EXPIRED' || error === 'OTP_ATTEMPTS_EXCEEDED')
+    return t('errors.expired');
+  return t('errors.generic');
+}
+
+function FormError({ actionData }: { actionData?: AuthActionData }) {
+  const { t } = useTranslation(NsI18n.Auth);
+  const message = messageFor(actionData?.error, t);
+  return message ? (
+    <Alert variant="destructive">
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
+  ) : null;
+}
+
+function SubmitButton({ children }: { children: ReactNode }) {
+  const navigation = useNavigation();
+  const pending = navigation.state === 'submitting';
+  return (
+    <Button type="submit" className="h-13 w-full rounded-sm text-base" disabled={pending}>
+      {pending ? <Spinner data-icon="inline-start" /> : null}
+      {children}
+    </Button>
+  );
+}
+
+export function SocialButtons() {
+  const { t } = useTranslation(NsI18n.Auth);
+  return (
+    <div className="mt-8">
+      <FieldSeparator>{t('social.or')}</FieldSeparator>
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        {[
+          ['/images/auth/google.svg', t('social.google')],
+          ['/images/auth/facebook.svg', t('social.facebook')],
+        ].map(([icon, label]) => (
+          <Button
+            key={label}
+            type="button"
+            variant="outline"
+            className="h-12 rounded-sm"
+            aria-disabled="true"
+            disabled
+          >
+            <img src={icon} alt="" aria-hidden="true" className="size-6 shrink-0" />
+            <span>{label}</span>
+            <span className="sr-only">— {t('social.soon')}</span>
+          </Button>
+        ))}
+      </div>
+      <p className="mt-2 text-center text-xs text-muted-foreground">{t('social.soon')}</p>
+    </div>
+  );
+}
+
+export function StartForm({
+  mode,
+  locale,
+  actionData,
+}: {
+  mode: 'register' | 'login' | 'reset';
+  locale: 'vi' | 'en';
+  actionData?: AuthActionData;
+}) {
+  const { t } = useTranslation(NsI18n.Auth);
+  const submit = useSubmit();
+  const schema = z.object({
+    fullName: mode === 'register' ? z.string().trim().min(1) : z.string().optional(),
+    email: z.string().email(),
+    password: mode === 'login' ? z.string().min(1) : z.string().optional(),
+  });
+  type Values = z.infer<typeof schema>;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Values>({
+    resolver: zodResolver(schema),
+    mode: 'onSubmit',
+    reValidateMode: 'onBlur',
+    defaultValues: { fullName: '', email: '', password: '' },
+  });
+  return (
+    <form onSubmit={handleSubmit((values) => submit(values, { method: 'post' }))} noValidate>
+      <FieldGroup className="gap-5">
+        <FormError actionData={actionData} />
+        {mode === 'register' ? (
+          <Field data-invalid={Boolean(errors.fullName || actionData?.fieldErrors?.fullName)}>
+            <FieldLabel htmlFor="fullName">{t('fields.fullName')}</FieldLabel>
+            <div className="relative">
+              <UserRound className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="fullName"
+                autoComplete="name"
+                className="h-13 rounded-sm pl-11"
+                aria-invalid={Boolean(errors.fullName)}
+                {...register('fullName')}
+              />
+            </div>
+            <FieldError errors={[errors.fullName]}>
+              {actionData?.fieldErrors?.fullName?.[0]}
+            </FieldError>
+          </Field>
+        ) : null}
+        <Field data-invalid={Boolean(errors.email || actionData?.fieldErrors?.email)}>
+          <FieldLabel htmlFor="email">{t('fields.email')}</FieldLabel>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              className="h-13 rounded-sm pl-11"
+              aria-invalid={Boolean(errors.email)}
+              {...register('email')}
+            />
+          </div>
+          <FieldError errors={[errors.email]}>{actionData?.fieldErrors?.email?.[0]}</FieldError>
+        </Field>
+        {mode === 'login' ? (
+          <Field data-invalid={Boolean(errors.password || actionData?.fieldErrors?.password)}>
+            <div className="flex items-center justify-between">
+              <FieldLabel htmlFor="password">{t('fields.password')}</FieldLabel>
+              <Link
+                to={storefrontPaths.forgotPassword(locale)}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                {t('login.forgot')}
+              </Link>
+            </div>
+            <PasswordInput
+              id="password"
+              autoComplete="current-password"
+              registration={register('password')}
+              invalid={Boolean(errors.password)}
+            />
+            <FieldError errors={[errors.password]}>
+              {actionData?.fieldErrors?.password?.[0]}
+            </FieldError>
+          </Field>
+        ) : null}
+        <SubmitButton>
+          {mode === 'register'
+            ? t('register.submit')
+            : mode === 'reset'
+              ? t('forgot.submit')
+              : t('login.submit')}
+        </SubmitButton>
+      </FieldGroup>
+    </form>
+  );
+}
+
+function PasswordInput({
+  id,
+  autoComplete,
+  registration,
+  invalid,
+}: {
+  id: string;
+  autoComplete: string;
+  registration: ReturnType<ReturnType<typeof useForm>['register']>;
+  invalid?: boolean;
+}) {
+  const { t } = useTranslation(NsI18n.Auth);
+  const [visible, setVisible] = useState(false);
+  return (
+    <InputGroup className="h-13 rounded-sm">
+      <InputGroupAddon>
+        <LockKeyhole />
+      </InputGroupAddon>
+      <InputGroupInput
+        id={id}
+        type={visible ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        aria-invalid={invalid}
+        {...registration}
+      />
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton
+          onClick={() => setVisible((value) => !value)}
+          aria-label={visible ? t('password.hide') : t('password.show')}
+        >
+          {visible ? <EyeOff /> : <Eye />}
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
+  );
+}
+
+export function OtpForm({
+  initialSeconds,
+  actionData,
+}: {
+  initialSeconds: number;
+  actionData?: AuthActionData & { resendAfterSec?: number };
+}) {
+  const { t } = useTranslation(NsI18n.Auth);
+  const submit = useSubmit();
+  const [seconds, setSeconds] = useState(actionData?.resendAfterSec ?? initialSeconds);
+  const [code, setCode] = useState('');
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1_000);
+    return () => window.clearInterval(timer);
+  }, [seconds]);
+  useEffect(() => {
+    if (actionData?.resendAfterSec) setSeconds(actionData.resendAfterSec);
+  }, [actionData?.resendAfterSec]);
+  return (
+    <div className="flex flex-col gap-6">
+      <FormError actionData={actionData} />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (code.length === 6) submit({ code }, { method: 'post' });
+        }}
+      >
+        <FieldGroup className="gap-6">
+          <Field data-invalid={Boolean(actionData?.fieldErrors?.code)}>
+            <FieldLabel className="justify-center">{t('verify.code')}</FieldLabel>
+            <InputOTP
+              maxLength={6}
+              value={code}
+              onChange={setCode}
+              inputMode="numeric"
+              autoFocus
+              containerClassName="justify-center"
+              aria-invalid={Boolean(actionData?.fieldErrors?.code)}
+            >
+              <InputOTPGroup>
+                {[0, 1, 2].map((index) => (
+                  <InputOTPSlot
+                    key={index}
+                    index={index}
+                    className="h-13 w-11 sm:h-16 sm:w-16 sm:text-xl"
+                  />
+                ))}
+              </InputOTPGroup>
+              <InputOTPSeparator />
+              <InputOTPGroup>
+                {[3, 4, 5].map((index) => (
+                  <InputOTPSlot
+                    key={index}
+                    index={index}
+                    className="h-13 w-11 sm:h-16 sm:w-16 sm:text-xl"
+                  />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+            <FieldError className="text-center">{actionData?.fieldErrors?.code?.[0]}</FieldError>
+          </Field>
+          <SubmitButton>{t('verify.submit')}</SubmitButton>
+        </FieldGroup>
+      </form>
+      <Button
+        type="button"
+        variant="ghost"
+        className="mx-auto"
+        disabled={seconds > 0}
+        onClick={() => submit({ intent: 'resend' }, { method: 'post' })}
+      >
+        {seconds > 0 ? t('verify.resendIn', { seconds }) : t('verify.resend')}
+      </Button>
+    </div>
+  );
+}
+
+export function NewPasswordForm({
+  mode,
+  actionData,
+}: {
+  mode: 'registration' | 'reset';
+  actionData?: AuthActionData;
+}) {
+  const { t } = useTranslation(NsI18n.Auth);
+  const submit = useSubmit();
+  const schema = z
+    .object({
+      password: z
+        .string()
+        .min(8)
+        .max(128)
+        .regex(/[A-Za-z]/)
+        .regex(/[0-9]/),
+      confirmPassword: z.string(),
+    })
+    .refine((value) => value.password === value.confirmPassword, {
+      path: ['confirmPassword'],
+      message: t('errors.passwordMismatch'),
+    });
+  type Values = z.infer<typeof schema>;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Values>({
+    resolver: zodResolver(schema),
+    mode: 'onSubmit',
+    reValidateMode: 'onBlur',
+    defaultValues: { password: '', confirmPassword: '' },
+  });
+  return (
+    <form onSubmit={handleSubmit((values) => submit(values, { method: 'post' }))} noValidate>
+      <FieldGroup className="gap-5">
+        <FormError actionData={actionData} />
+        <Field data-invalid={Boolean(errors.password)}>
+          <FieldLabel htmlFor="password">{t('password.label')}</FieldLabel>
+          <PasswordInput
+            id="password"
+            autoComplete="new-password"
+            registration={register('password')}
+            invalid={Boolean(errors.password)}
+          />
+          <FieldError errors={[errors.password]}>
+            {actionData?.fieldErrors?.password?.[0]}
+          </FieldError>
+        </Field>
+        <Field data-invalid={Boolean(errors.confirmPassword)}>
+          <FieldLabel htmlFor="confirmPassword">{t('password.confirm')}</FieldLabel>
+          <PasswordInput
+            id="confirmPassword"
+            autoComplete="new-password"
+            registration={register('confirmPassword')}
+            invalid={Boolean(errors.confirmPassword)}
+          />
+          <FieldError errors={[errors.confirmPassword]}>
+            {errors.confirmPassword?.message ??
+              (actionData?.fieldErrors?.confirmPassword?.[0] ? t('errors.passwordMismatch') : null)}
+          </FieldError>
+        </Field>
+        <SubmitButton>
+          {mode === 'registration' ? t('password.submitRegistration') : t('password.submitReset')}
+        </SubmitButton>
+      </FieldGroup>
+    </form>
+  );
+}
+
+export function SuccessState({
+  mode,
+  locale,
+}: {
+  mode: 'registration' | 'reset';
+  locale: 'vi' | 'en';
+}) {
+  const { t } = useTranslation(NsI18n.Auth);
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="mb-6 flex size-20 items-center justify-center rounded-full bg-primary/10 text-primary">
+        {mode === 'registration' ? (
+          <ShieldCheck className="size-10" />
+        ) : (
+          <CheckCircle2 className="size-10" />
+        )}
+      </div>
+      <Button asChild className="h-13 w-full rounded-sm text-base">
+        <Link to={storefrontPaths.login(locale)}>{t('success.login')}</Link>
+      </Button>
+    </div>
+  );
+}

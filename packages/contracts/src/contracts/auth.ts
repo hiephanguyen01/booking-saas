@@ -4,7 +4,58 @@ import { localeSchema, uuidSchema } from './common';
 export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
-  .max(128);
+  .max(128)
+  .regex(/[A-Za-z]/, 'Password must contain at least one letter')
+  .regex(/[0-9]/, 'Password must contain at least one number');
+
+const challengeIdSchema = z.string().min(32).max(128);
+const completionTokenSchema = z.string().min(32).max(256);
+const otpCodeSchema = z.string().regex(/^\d{6}$/, 'Code must contain 6 digits');
+
+export const registrationStartInputSchema = z.object({
+  fullName: z.string().trim().min(1).max(200),
+  email: z.string().email().toLowerCase(),
+  locale: localeSchema.default('vi'),
+});
+export type RegistrationStartInput = z.infer<typeof registrationStartInputSchema>;
+
+export const passwordResetStartInputSchema = z.object({
+  email: z.string().email().toLowerCase(),
+  locale: localeSchema.default('vi'),
+});
+export type PasswordResetStartInput = z.infer<typeof passwordResetStartInputSchema>;
+
+export const authChallengeInputSchema = z.object({ challengeId: challengeIdSchema });
+export type AuthChallengeInput = z.infer<typeof authChallengeInputSchema>;
+
+export const authOtpVerifyInputSchema = z.object({
+  challengeId: challengeIdSchema,
+  code: otpCodeSchema,
+});
+export type AuthOtpVerifyInput = z.infer<typeof authOtpVerifyInputSchema>;
+
+export const authChallengeResponseSchema = z.object({
+  challengeId: challengeIdSchema,
+  maskedDestination: z.string(),
+  expiresInSec: z.number().int().positive(),
+  resendAfterSec: z.number().int().nonnegative(),
+});
+export type AuthChallengeResponse = z.infer<typeof authChallengeResponseSchema>;
+
+export const authOtpVerifiedResponseSchema = z.object({
+  completionToken: completionTokenSchema,
+  expiresInSec: z.number().int().positive(),
+});
+export type AuthOtpVerifiedResponse = z.infer<typeof authOtpVerifiedResponseSchema>;
+
+export const authPasswordCompleteInputSchema = z.object({
+  completionToken: completionTokenSchema,
+  password: passwordSchema,
+});
+export type AuthPasswordCompleteInput = z.infer<typeof authPasswordCompleteInputSchema>;
+
+export const authFlowCompleteResponseSchema = z.object({ success: z.literal(true) });
+export type AuthFlowCompleteResponse = z.infer<typeof authFlowCompleteResponseSchema>;
 
 export const registerInputSchema = z.object({
   email: z.string().email().toLowerCase(),

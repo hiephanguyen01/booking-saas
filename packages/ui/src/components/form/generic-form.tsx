@@ -1,7 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { useForm, type DefaultValues, type FieldValues, type Path, type UseFormReturn } from "react-hook-form"
+import {
+  useForm,
+  type DefaultValues,
+  type FieldValues,
+  type Path,
+  type UseFormReturn,
+} from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigation, useSubmit } from "react-router"
 import { AlertCircle } from "lucide-react"
@@ -21,7 +27,7 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   defaultValues?: DefaultValues<z.infer<TSchema>>
   submitLabel?: string
   /** Grid columns for the layout (default 1). Per-field `colSpan` overrides width. */
-  columns?: 1 | 2 | 3
+  columns?: 1 | 2 | 3 | 4
   /** Form-level error from the action (`data({ error }, …)`). */
   serverError?: string | null
   /** Per-field errors from the action (`parsed.error.flatten().fieldErrors`). */
@@ -32,6 +38,8 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   action?: string
   /** Stretch the submit button to full width (onboarding pages). */
   submitFullWidth?: boolean
+  /** Optional visual treatment for customer-facing forms. */
+  appearance?: "default" | "partner"
   /**
    * Custom controls rendered inside the form, below the config-driven grid. Use
    * this for fields the `fields` config can't express (dynamic repeaters, mode
@@ -51,16 +59,24 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   className?: string
 }
 
-const COLS: Record<1 | 2 | 3, string> = {
+const COLS: Record<1 | 2 | 3 | 4, string> = {
   1: "grid-cols-1",
   2: "grid-cols-1 sm:grid-cols-2",
   3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+  4: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
 }
 
 const SPAN: Record<number, string> = {
   1: "sm:col-span-1",
   2: "sm:col-span-2",
   3: "sm:col-span-3",
+  4: "sm:col-span-2 lg:col-span-4",
+}
+
+const ROW_SPAN: Record<number, string> = {
+  1: "lg:row-span-1",
+  2: "lg:row-span-2",
+  3: "lg:row-span-3",
 }
 
 /**
@@ -80,6 +96,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   method = "post",
   action,
   submitFullWidth,
+  appearance = "default",
   extraFields,
   transform,
   children,
@@ -95,6 +112,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   const submit = useSubmit()
   const navigation = useNavigation()
   const isSubmitting = navigation.state === "submitting"
+  const isPartnerAppearance = appearance === "partner"
 
   const values = form.watch()
 
@@ -145,13 +163,27 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
           </div>
         ) : null}
 
-        <div className={cn("grid gap-5", COLS[columns])}>
+        <div
+          className={cn(
+            "grid gap-5",
+            COLS[columns],
+            isPartnerAppearance && [
+              "gap-x-10 gap-y-6",
+              columns === 2 && "sm:grid-cols-1 lg:grid-cols-2",
+            ],
+          )}
+        >
           {fields.map((field) => {
             if (field.hidden?.(values as Values)) return null
-            const span = field.colSpan ? SPAN[field.colSpan] : undefined
+            const span = field.colSpan
+              ? isPartnerAppearance && field.colSpan === 2
+                ? "lg:col-span-2"
+                : SPAN[field.colSpan]
+              : undefined
+            const rowSpan = field.rowSpan ? ROW_SPAN[field.rowSpan] : undefined
             return (
-              <div key={field.name} className={cn(span)}>
-                <FieldRenderer field={field} />
+              <div key={field.name} className={cn(span, rowSpan)}>
+                <FieldRenderer field={field} appearance={appearance} />
               </div>
             )
           })}
@@ -159,11 +191,22 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
 
         {extraFields ? extraFields(form) : null}
 
-        <div className={cn("flex items-center gap-3", submitFullWidth && "flex-col")}>
+        <div
+          className={cn(
+            "flex items-center gap-3",
+            submitFullWidth && "flex-col",
+            isPartnerAppearance && "justify-center pt-2",
+          )}
+        >
           <Button
             type="submit"
             disabled={isSubmitting}
-            className={cn("h-14 rounded-lg px-8 text-sm font-semibold", submitFullWidth && "w-full")}
+            className={cn(
+              "h-14 rounded-lg px-8 text-sm font-semibold",
+              submitFullWidth && "w-full",
+              isPartnerAppearance &&
+                "w-full max-w-[400px] rounded-sm bg-primary text-base shadow-none hover:bg-primary/90",
+            )}
           >
             {isSubmitting ? "Đang lưu..." : submitLabel}
           </Button>

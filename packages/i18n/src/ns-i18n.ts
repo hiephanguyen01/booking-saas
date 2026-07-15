@@ -6,4 +6,5 @@ export enum NsI18n {
   Checkout = 'checkout',
   Booking = 'booking',
   Error = 'errors',
+  Auth = 'auth',
 }

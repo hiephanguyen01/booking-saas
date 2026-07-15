@@ -1,135 +1,147 @@
-import { ArrowUp, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { useLocale } from '../lib/use-locale';
+import { SITE_FOOTER_FALLBACK } from './site-footer-fallback';
+import { TenantBrand } from './tenant-brand';
 
-/** Storefront footer — brand, contact + social links from theme_config (§16.2). */
-export function SiteFooter({ tenant }: { tenant: StorefrontTenant }) {
+export function SiteFooter({
+  tenant,
+  className = 'mt-16',
+}: {
+  tenant: StorefrontTenant;
+  className?: string;
+}) {
   const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
-  const socials = [
-    { href: tenant.social.facebook, label: 'Facebook' },
-    { href: tenant.social.instagram, label: 'Instagram' },
-    { href: tenant.social.tiktok, label: 'TikTok' },
-    { href: tenant.social.youtube, label: 'YouTube' },
-  ].filter((s) => s.href);
-
-  const socialsRow =
-    socials.length > 0 ? (
-      <div className="flex flex-col items-center gap-3 sm:items-start">
-        <span className="text-sm text-muted-foreground">{t('footer.followUs')}</span>
-        <div className="flex items-center gap-3">
-          {socials.map(({ href, label }) => (
-            <a
-              key={label}
-              href={href!}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-primary"
-            >
-              <ExternalLink className="size-4" />
-              {label}
-            </a>
-          ))}
-        </div>
-      </div>
-    ) : null;
-
-  // Static link labels below have no real destination today — rendered as
-  // non-interactive text rather than dead `href="#"` anchors.
-  const aboutList = (
-    <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-      <span className="font-semibold text-foreground">{t('footer.aboutUs')}</span>
-      <span className="text-sm text-muted-foreground">
-        {t('footer.aboutLinks.intro', { tenant: tenant.name })}
-      </span>
-      <span className="text-sm text-muted-foreground">{t('footer.aboutLinks.privacy')}</span>
-      <span className="text-sm text-muted-foreground">{t('footer.aboutLinks.terms')}</span>
-    </div>
-  );
-
-  const supportList = (
-    <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-      <span className="font-semibold text-foreground">{t('footer.support')}</span>
-      <span className="text-sm text-muted-foreground">{t('footer.supportLinks.help')}</span>
-      <span className="text-sm text-muted-foreground">{t('footer.supportLinks.rules')}</span>
-      {tenant.contact.phone ? (
-        <span className="text-sm text-muted-foreground">{tenant.contact.phone}</span>
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {t('footer.supportLinks.contact')}
-        </span>
-      )}
-    </div>
-  );
-
-  const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-16 border-t border-border">
-      {/* Desktop: 4-column grid */}
-      <div className="mx-auto hidden max-w-7xl grid-cols-4 gap-8 px-6 py-10 sm:grid">
-        {socialsRow}
-        {aboutList}
-        {supportList}
-        <div className="flex flex-col gap-3">
-          <Link to={storefrontPaths.home(locale)} className="text-lg font-extrabold text-primary">
-            {tenant.logoUrl ? (
-              <img
-                src={tenant.logoUrl}
-                alt={tenant.name}
-                className="h-10 w-auto max-w-40 object-contain"
+    <footer className={`${className} bg-background font-studio text-foreground`}>
+      <div className="mx-auto w-full max-w-292.5 px-4 pb-6 pt-8 sm:px-6 lg:pb-0 lg:pt-10 xl:px-0">
+        <div className="grid gap-10 sm:grid-cols-2 lg:min-h-[180px] lg:grid-cols-[370px_220px_220px_270px] lg:justify-between lg:gap-0">
+          <section aria-labelledby="footer-download" className="flex flex-col items-start">
+            <h2 id="footer-download" className="text-base font-semibold leading-6">
+              {t('footer.downloadApp')}
+            </h2>
+            <div className="mt-5 flex flex-wrap items-center gap-2.5">
+              {SITE_FOOTER_FALLBACK.appBadges.map((badge) => (
+                <img
+                  key={badge.name}
+                  src={badge.src}
+                  alt={badge.alt}
+                  width={badge.width}
+                  height={badge.height}
+                  className="h-11 w-auto"
+                />
+              ))}
+            </div>
+            <p className="mt-4 text-sm leading-5 text-muted-foreground">
+              {t('footer.followUs')}
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              {SITE_FOOTER_FALLBACK.socialProfiles.map((social) => {
+                const href = social.tenantKey ? tenant.social[social.tenantKey] : null;
+                const icon = (
+                  <img
+                    src={social.src}
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="size-10"
+                  />
+                );
+                return href ? (
+                  <a
+                    key={social.name}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={social.name}
+                    className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {icon}
+                  </a>
+                ) : (
+                  <span key={social.name} role="img" aria-label={social.name}>
+                    {icon}
+                  </span>
+                );
+              })}
+            </div>
+          </section>
+
+          <FooterList
+            title={t('footer.aboutUs')}
+            items={[
+              t('footer.aboutLinks.intro', { tenant: tenant.name }),
+              t('footer.aboutLinks.privacy'),
+              t('footer.aboutLinks.terms'),
+            ]}
+          />
+          <FooterList
+            title={t('footer.support')}
+            items={[
+              t('footer.supportLinks.help'),
+              t('footer.supportLinks.rules'),
+              tenant.contact.phone ?? tenant.contact.email ?? t('footer.supportLinks.contact'),
+            ]}
+          />
+
+          <section aria-labelledby="footer-company" className="flex flex-col items-start gap-4">
+            <Link
+              to={storefrontPaths.home(locale)}
+              prefetch="intent"
+              aria-label={`${tenant.name} - Trang chủ`}
+              className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <TenantBrand
+                name={tenant.name}
+                logoUrl={tenant.logoUrl}
+                imageClassName="h-12 w-auto max-w-48 object-contain"
+                textClassName="max-w-64 text-xl font-bold text-primary"
               />
-            ) : (
-              tenant.name
-            )}
-          </Link>
-          <span className="font-semibold text-foreground">{tenant.name}</span>
-          <span className="text-sm text-muted-foreground">{t('currencyNote')}</span>
-          {tenant.contact.address ? (
-            <span className="text-sm text-muted-foreground">{tenant.contact.address}</span>
-          ) : null}
-          <Link
-            to={storefrontPaths.becomePartner(locale)}
-            className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+            </Link>
+            <h2 id="footer-company" className="text-base font-semibold leading-6">
+              {t('footer.companyName')}
+            </h2>
+            <img
+              src={SITE_FOOTER_FALLBACK.legalBadge.src}
+              alt={SITE_FOOTER_FALLBACK.legalBadge.alt}
+              width={SITE_FOOTER_FALLBACK.legalBadge.width}
+              height={SITE_FOOTER_FALLBACK.legalBadge.height}
+              className="h-10 w-32.5 object-contain"
+            />
+          </section>
+        </div>
+
+        <div className="relative mt-10 flex min-h-14 items-end justify-center border-t border-border pt-5 lg:min-h-[70px]">
+          <p className="pr-14 text-center text-sm leading-5 text-muted-foreground sm:pr-0">
+            {t('footer.copyright')}
+          </p>
+          {/* <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label={t('footer.scrollToTop')}
+            className="absolute -top-10 right-0 flex size-17 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {t('becomePartner.title')}
-          </Link>
+            <ArrowUp aria-hidden="true" className="size-8" strokeWidth={1.7} />
+          </button> */}
         </div>
       </div>
-      <div className="mx-auto hidden max-w-7xl items-center justify-between border-t border-border px-6 py-4 sm:flex">
-        <span className="text-sm text-muted-foreground">
-          {t('footer.copyright', { year, tenant: tenant.name })}
-        </span>
-        <button
-          type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          aria-label={t('footer.scrollToTop')}
-          className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90"
-        >
-          <ArrowUp className="size-4" />
-        </button>
-      </div>
-
-      {/* Mobile: single centered column */}
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-6 py-8 text-center sm:hidden">
-        <Link to={storefrontPaths.home(locale)} className="text-lg font-extrabold text-primary">
-          {tenant.logoUrl ? (
-            <img
-              src={tenant.logoUrl}
-              alt={tenant.name}
-              className="h-10 w-auto max-w-40 object-contain"
-            />
-          ) : (
-            tenant.name
-          )}
-        </Link>
-        {aboutList}
-        {supportList}
-        {socialsRow}
-      </div>
     </footer>
+  );
+}
+
+function FooterList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <section className="flex flex-col items-start gap-3">
+      <h2 className="text-base font-semibold uppercase leading-6">{title}</h2>
+      {items.map((item) => (
+        <span key={item} className="text-sm font-medium leading-5 text-muted-foreground">
+          {item}
+        </span>
+      ))}
+    </section>
   );
 }

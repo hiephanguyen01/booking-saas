@@ -77,6 +77,7 @@ export class ApplyAsPartnerUseCase {
         status: 'pending',
         businessInfo: input.businessInfo,
         contactInfo: input.contactInfo,
+        payoutInfo: input.payoutInfo,
       });
       await this.partners.addMember(tx, {
         tenantId: input.tenantId,

@@ -31,6 +31,7 @@ export interface CreatePartnerData {
   status?: PartnerStatus;
   businessInfo?: Record<string, unknown>;
   contactInfo?: Record<string, unknown>;
+  payoutInfo?: Record<string, unknown>;
 }
 
 export interface UpdatePartnerData {
@@ -66,9 +67,15 @@ export interface IPartnerRepository {
    */
   findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerRecord | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<PartnerRecord | null>;
-  list(tx: PrismaTx, filter: ListPartnersFilter): Promise<{ items: PartnerRecord[]; total: number }>;
+  list(
+    tx: PrismaTx,
+    filter: ListPartnersFilter,
+  ): Promise<{ items: PartnerRecord[]; total: number }>;
   update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord>;
-  addMember(tx: PrismaTx, params: { tenantId: string; partnerId: string; userId: string }): Promise<void>;
+  addMember(
+    tx: PrismaTx,
+    params: { tenantId: string; partnerId: string; userId: string },
+  ): Promise<void>;
   assignRole(
     tx: PrismaTx,
     params: { tenantId: string; partnerId: string; userId: string; roleId: string },

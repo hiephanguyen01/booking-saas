@@ -38,15 +38,13 @@ export interface PartnerApplyPayload {
   partnerType: 'individual' | 'company';
   description?: string;
   businessInfo?: Record<string, unknown>;
+  contactInfo?: Record<string, unknown>;
+  payoutInfo?: { bank: string; accountNumber: string; holderName: string };
 }
 
 /** A message code the route maps with `useTranslation(NsI18n.Common)`. */
 export type PartnerErrorCode =
-  | 'emailTakenWrongPassword'
-  | 'slugTaken'
-  | 'planLimit'
-  | 'tenantInactive'
-  | 'generic';
+  'emailTakenWrongPassword' | 'slugTaken' | 'planLimit' | 'tenantInactive' | 'generic';
 type ErrorCode = PartnerErrorCode;
 type TokenResult = { ok: true; token: string } | { ok: false; code: ErrorCode };
 

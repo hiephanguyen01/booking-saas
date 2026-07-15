@@ -12,6 +12,7 @@ import type {
 } from './types';
 
 export interface ApiClient {
+  publicPost<T>(path: string, body: unknown, options?: ApiRequestOptions<T>): Promise<ApiResult<T>>;
   get<T>(path: string, auth: Auth, options?: ApiRequestOptions<T>): Promise<ApiResult<T>>;
   post<T>(
     path: string,
@@ -65,6 +66,27 @@ function authHeaders(auth: Auth, options?: ApiRequestOptions<unknown>): Record<s
   };
 }
 
+async function publicRequest<T>(
+  instance: AxiosInstance,
+  path: string,
+  body: unknown,
+  options?: ApiRequestOptions<T>,
+): Promise<ApiResult<T>> {
+  try {
+    const response = await instance.post(path, body, {
+      signal: options?.signal,
+      timeout: options?.timeoutMs,
+      headers: {
+        ...options?.headers,
+        ...(options?.requestId ? { 'x-request-id': options.requestId } : {}),
+      },
+    });
+    return toResult<T>(response, options?.schema);
+  } catch (error) {
+    return transportError<T>(error);
+  }
+}
+
 async function request<T>(
   instance: AxiosInstance,
   method: Method,
@@ -93,6 +115,7 @@ export function createApiClient(input: string | ApiClientOptions): ApiClient {
   const instance = createAxiosInstance(factoryOptions(input));
 
   return {
+    publicPost: (path, body, options) => publicRequest(instance, path, body, options),
     get: (path, auth, options) => request(instance, 'GET', path, auth, undefined, options),
     post: (path, body, auth, options) => request(instance, 'POST', path, auth, body, options),
     patch: (path, body, auth, options) => request(instance, 'PATCH', path, auth, body, options),

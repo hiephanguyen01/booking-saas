@@ -1,4 +1,10 @@
-import { type AuthSessionResponse, type SessionInfoResponse } from '@booking/contracts';
+import type {
+  AuthChallengeResponse,
+  AuthFlowCompleteResponse,
+  AuthOtpVerifiedResponse,
+  AuthSessionResponse,
+  SessionInfoResponse,
+} from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Ip, Post, Req, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -9,6 +15,16 @@ import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUseCase } from '../../application/use-cases/register.use-case';
 import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
+import {
+  CompletePasswordResetUseCase,
+  CompleteRegistrationUseCase,
+  ResendPasswordResetUseCase,
+  ResendRegistrationUseCase,
+  StartPasswordResetUseCase,
+  StartRegistrationUseCase,
+  VerifyPasswordResetUseCase,
+  VerifyRegistrationUseCase,
+} from '../../application/use-cases/customer-auth-flow.use-cases';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
 import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './cookies';
@@ -17,10 +33,18 @@ import { CurrentPrincipal } from './decorators/current-principal.decorator';
 import { Public } from './decorators/public.decorator';
 import {
   AuthSessionResponseDto,
+  AuthChallengeDto,
+  AuthChallengeResponseDto,
+  AuthFlowCompleteResponseDto,
+  AuthOtpVerifiedResponseDto,
+  AuthOtpVerifyDto,
+  AuthPasswordCompleteDto,
   CurrentUserDto,
   LoginDto,
   RefreshResponseDto,
   RegisterDto,
+  RegistrationStartDto,
+  PasswordResetStartDto,
   SessionInfoResponseDto,
   UpgradeGuestDto,
 } from './dto/auth.dto';
@@ -49,7 +73,89 @@ export class AuthController {
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getSessionInfoUseCase: GetSessionInfoUseCase,
     private readonly upgradeGuestUseCase: UpgradeGuestUseCase,
+    private readonly startRegistrationUseCase: StartRegistrationUseCase,
+    private readonly resendRegistrationUseCase: ResendRegistrationUseCase,
+    private readonly verifyRegistrationUseCase: VerifyRegistrationUseCase,
+    private readonly completeRegistrationUseCase: CompleteRegistrationUseCase,
+    private readonly startPasswordResetUseCase: StartPasswordResetUseCase,
+    private readonly resendPasswordResetUseCase: ResendPasswordResetUseCase,
+    private readonly verifyPasswordResetUseCase: VerifyPasswordResetUseCase,
+    private readonly completePasswordResetUseCase: CompletePasswordResetUseCase,
   ) {}
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('registration/start')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthChallengeResponseDto })
+  startRegistration(@Body() input: RegistrationStartDto): Promise<AuthChallengeResponse> {
+    return this.startRegistrationUseCase.execute(input);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @Post('registration/resend')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthChallengeResponseDto })
+  resendRegistration(@Body() input: AuthChallengeDto): Promise<AuthChallengeResponse> {
+    return this.resendRegistrationUseCase.execute(input);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('registration/verify')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthOtpVerifiedResponseDto })
+  verifyRegistration(@Body() input: AuthOtpVerifyDto): Promise<AuthOtpVerifiedResponse> {
+    return this.verifyRegistrationUseCase.execute(input);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('registration/complete')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthFlowCompleteResponseDto })
+  completeRegistration(@Body() input: AuthPasswordCompleteDto): Promise<AuthFlowCompleteResponse> {
+    return this.completeRegistrationUseCase.execute(input);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('password-reset/start')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthChallengeResponseDto })
+  startPasswordReset(@Body() input: PasswordResetStartDto): Promise<AuthChallengeResponse> {
+    return this.startPasswordResetUseCase.execute(input);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @Post('password-reset/resend')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthChallengeResponseDto })
+  resendPasswordReset(@Body() input: AuthChallengeDto): Promise<AuthChallengeResponse> {
+    return this.resendPasswordResetUseCase.execute(input);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('password-reset/verify')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthOtpVerifiedResponseDto })
+  verifyPasswordReset(@Body() input: AuthOtpVerifyDto): Promise<AuthOtpVerifiedResponse> {
+    return this.verifyPasswordResetUseCase.execute(input);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('password-reset/complete')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthFlowCompleteResponseDto })
+  completePasswordReset(
+    @Body() input: AuthPasswordCompleteDto,
+  ): Promise<AuthFlowCompleteResponse> {
+    return this.completePasswordResetUseCase.execute(input);
+  }
 
   @Public()
   @Post('register')

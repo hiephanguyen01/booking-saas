@@ -55,6 +55,7 @@ export class PrismaPartnerRepository implements IPartnerRepository {
           status: data.status ?? 'pending',
           businessInfo: (data.businessInfo ?? {}) as Prisma.InputJsonValue,
           contactInfo: (data.contactInfo ?? {}) as Prisma.InputJsonValue,
+          payoutInfo: (data.payoutInfo ?? {}) as Prisma.InputJsonValue,
         },
       }),
     );

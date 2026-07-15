@@ -25,4 +25,6 @@ export interface ISessionStore {
   /** Rotates both tokens; returns null when the refresh token is invalid. */
   rotate(refreshToken: string): Promise<SessionTokens | null>;
   revoke(sessionId: string): Promise<void>;
+  /** Revokes every active device after a credential reset. */
+  revokeAllForUser(userId: string): Promise<void>;
 }

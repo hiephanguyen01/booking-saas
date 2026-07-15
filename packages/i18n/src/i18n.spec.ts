@@ -35,7 +35,7 @@ function MultipleNamespaceConsumer() {
 }
 
 describe('@booking/i18n', () => {
-  it('exposes only the seven feature namespaces', () => {
+  it('exposes only the eight feature namespaces', () => {
     expect(namespaces).toEqual(Object.values(NsI18n));
     expect(namespaces).toEqual([
       NsI18n.Common,
@@ -45,6 +45,7 @@ describe('@booking/i18n', () => {
       NsI18n.Checkout,
       NsI18n.Booking,
       NsI18n.Error,
+      NsI18n.Auth,
     ]);
     expect(Object.keys(vi)).toEqual(namespaces);
     expect(Object.keys(en)).toEqual(namespaces);

@@ -12,16 +12,32 @@ import { RefreshSessionUseCase } from '../../application/use-cases/refresh-sessi
 import { RegisterUseCase } from '../../application/use-cases/register.use-case';
 import { FindOrCreateGuestUseCase } from '../../application/use-cases/find-or-create-guest.use-case';
 import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
+import {
+  CompletePasswordResetUseCase,
+  CompleteRegistrationUseCase,
+  ResendPasswordResetUseCase,
+  ResendRegistrationUseCase,
+  StartPasswordResetUseCase,
+  StartRegistrationUseCase,
+  VerifyPasswordResetUseCase,
+  VerifyRegistrationUseCase,
+} from '../../application/use-cases/customer-auth-flow.use-cases';
+import { AUTH_CHALLENGE_STORE } from '../../domain/ports/auth-challenge-store.port';
+import { AUTH_EMAIL_SENDER } from '../../domain/ports/auth-email-sender.port';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';
 import { Argon2PasswordHasher } from '../services/argon2-password-hasher';
 import { PermissionResolverService } from '../services/permission-resolver.service';
 import { PrismaSessionInfoReader } from '../services/prisma-session-info.reader';
 import { PrismaSessionStore } from '../services/prisma-session.store';
+import { RedisAuthChallengeStore } from '../services/redis-auth-challenge.store';
+import { SmtpAuthEmailSender } from '../services/smtp-auth-email.sender';
+import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
 import { AuthController } from './auth.controller';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 
 @Module({
+  imports: [NotificationModule],
   controllers: [AuthController],
   providers: [
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
@@ -29,6 +45,8 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     { provide: SESSION_STORE, useClass: PrismaSessionStore },
     { provide: PERMISSION_RESOLVER, useClass: PermissionResolverService },
     { provide: SESSION_INFO_READER, useClass: PrismaSessionInfoReader },
+    { provide: AUTH_CHALLENGE_STORE, useClass: RedisAuthChallengeStore },
+    { provide: AUTH_EMAIL_SENDER, useClass: SmtpAuthEmailSender },
     RegisterUseCase,
     LoginUseCase,
     RefreshSessionUseCase,
@@ -36,6 +54,14 @@ import { SessionAuthGuard } from './guards/session-auth.guard';
     GetSessionInfoUseCase,
     FindOrCreateGuestUseCase,
     UpgradeGuestUseCase,
+    StartRegistrationUseCase,
+    ResendRegistrationUseCase,
+    VerifyRegistrationUseCase,
+    CompleteRegistrationUseCase,
+    StartPasswordResetUseCase,
+    ResendPasswordResetUseCase,
+    VerifyPasswordResetUseCase,
+    CompletePasswordResetUseCase,
     // guard order matters: authentication first, then deny-by-default authorization
     { provide: APP_GUARD, useClass: SessionAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

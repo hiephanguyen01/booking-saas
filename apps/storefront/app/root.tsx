@@ -1,4 +1,4 @@
-import type { PublicListingTypeResponse } from '@booking/contracts';
+import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { BookingI18nProvider, type Locale } from '@booking/i18n';
 import { QueryProvider } from '@booking/query';
 import {
@@ -27,6 +27,10 @@ import { resolveLocale } from './lib/i18n.server';
 import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
 import { themeCss } from './theme/theme';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
+import { storefrontAuthMiddleware } from './lib/auth-middleware.server';
+import { getOptionalAuth } from './lib/auth.server';
+
+export const middleware: Route.MiddlewareFunction[] = [storefrontAuthMiddleware];
 
 /** Shared route context: the resolved tenant + its auto-generated menu + locale. */
 export interface StorefrontContext {
@@ -34,6 +38,7 @@ export interface StorefrontContext {
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
   canonical: string;
+  currentUser: CurrentUser | null;
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
@@ -43,7 +48,8 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const canonical = canonicalUrl(publicUrl);
   const alternates = localizedAlternates(publicUrl);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
-  const payload = { tenant, listingTypes, locale, canonical, alternates };
+  const currentUser = getOptionalAuth()?.info.user ?? null;
+  const payload = { tenant, listingTypes, locale, canonical, alternates, currentUser };
 
   // Affiliate attribution (§15.1): capture `?ref=CODE` once per new code and set
   // the last-click cookie. Only track when the code differs from what's already
@@ -80,7 +86,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { tagName: 'link', rel: 'canonical', href: loaderData.canonical },
     { tagName: 'link', rel: 'alternate', hrefLang: 'vi', href: loaderData.alternates.vi },
     { tagName: 'link', rel: 'alternate', hrefLang: 'en', href: loaderData.alternates.en },
-    { tagName: 'link', rel: 'alternate', hrefLang: 'x-default', href: loaderData.alternates.default },
+    {
+      tagName: 'link',
+      rel: 'alternate',
+      hrefLang: 'x-default',
+      href: loaderData.alternates.default,
+    },
   ];
   if (description) {
     tags.push({ name: 'description', content: description });
@@ -118,13 +129,12 @@ function ThemeStyle({ theme }: { theme: StorefrontTenant['theme'] }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { tenant, listingTypes, locale, canonical } = loaderData;
+  const { tenant, listingTypes, locale, canonical, currentUser } = loaderData;
 
   const matches = useMatches();
-  
-   const isStandalone = matches.some(
-    (match) =>
-      (match.handle as { standalone?: boolean } | undefined)?.standalone,
+
+  const isStandalone = matches.some(
+    (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
   );
 
   if (!tenant.live) {
@@ -135,19 +145,42 @@ export default function App({ loaderData }: Route.ComponentProps) {
       </div>
     );
   }
-  
+
   return (
     <BookingI18nProvider locale={locale}>
       <QueryProvider>
         <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
           <ThemeStyle theme={tenant.theme} />
-          {!isStandalone && (
-            <SiteHeader tenant={tenant} listingTypes={listingTypes} locale={locale} />
+          {isStandalone ? (
+            <Outlet
+              context={
+                { tenant, listingTypes, locale, canonical, currentUser } satisfies StorefrontContext
+              }
+            />
+          ) : (
+            <>
+              <SiteHeader
+                tenant={tenant}
+                listingTypes={listingTypes}
+                locale={locale}
+                currentUser={currentUser}
+              />
+              <main className="flex-1">
+                <Outlet
+                  context={
+                    {
+                      tenant,
+                      listingTypes,
+                      locale,
+                      canonical,
+                      currentUser,
+                    } satisfies StorefrontContext
+                  }
+                />
+              </main>
+              <SiteFooter tenant={tenant} />
+            </>
           )}
-          <main className="flex-1">
-            <Outlet context={{ tenant, listingTypes, locale, canonical } satisfies StorefrontContext} />
-          </main>
-          {!isStandalone && <SiteFooter tenant={tenant} />}
         </div>
       </QueryProvider>
     </BookingI18nProvider>

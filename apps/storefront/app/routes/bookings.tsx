@@ -1,7 +1,11 @@
+import { bookingResponseSchema, type BookingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { data, Form, Link } from 'react-router';
+import { z } from 'zod';
+import { apiGet } from '../lib/api.server';
+import { getOptionalAuth } from '../lib/auth.server';
 import { requestBookingOtp } from '../lib/booking.server';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
@@ -14,7 +18,22 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  return { recent: readRecentCodes(request) };
+  const auth = getOptionalAuth();
+  let myBookings: BookingResponse[] = [];
+  if (auth) {
+    const host = (request.headers.get('host') ?? 'localhost').split(':')[0];
+    const result = await apiGet<BookingResponse[]>(
+      '/public/my-bookings',
+      auth.session.accessToken,
+      {
+        signal: request.signal,
+        headers: { 'x-forwarded-host': host },
+        schema: z.array(bookingResponseSchema),
+      },
+    );
+    if (result.ok && result.data) myBookings = result.data;
+  }
+  return { recent: readRecentCodes(request), myBookings };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -30,7 +49,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Bookings({ loaderData, actionData }: Route.ComponentProps) {
-  const { recent } = loaderData;
+  const { recent, myBookings } = loaderData;
   const { t } = useTranslation(NsI18n.Booking);
   const locale = useLocale();
   const sent = actionData?.sent ?? false;
@@ -39,6 +58,27 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
     <div className="mx-auto max-w-lg px-6 py-12">
       <h1 className="text-2xl font-bold tracking-tight">{t('lookup.title')}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{t('lookup.subtitle')}</p>
+
+      {myBookings.length > 0 ? (
+        <ul className="mt-6 divide-y divide-border rounded-xl border border-border bg-background">
+          {myBookings.map((booking) => (
+            <li key={booking.id}>
+              <Link
+                to={storefrontPaths.booking(locale, booking.code)}
+                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted"
+              >
+                <span>
+                  <span className="block font-mono text-sm font-semibold">{booking.code}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(booking.startUtc).toLocaleString(locale)}
+                  </span>
+                </span>
+                <span className="text-sm font-medium text-primary">{booking.status}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <Card className="mt-6 rounded-2xl border-border">
         <CardContent className="p-6">
@@ -93,15 +133,11 @@ function VerifyForm({
         {t('lookup.otpSent')}
       </p>
       {devOtp ? (
-        <p className="text-xs text-muted-foreground">
-          {t('lookup.otpHintDev', { otp: devOtp })}
-        </p>
+        <p className="text-xs text-muted-foreground">{t('lookup.otpHintDev', { otp: devOtp })}</p>
       ) : null}
       <Form method="get" action={storefrontPaths.booking(locale, code)} className="space-y-3">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">
-            {t('lookup.otpLabel')}
-          </span>
+          <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
         </label>
         <Button type="submit" className="h-11 w-full">
@@ -116,9 +152,7 @@ function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' 
   const { t } = useTranslation(NsI18n.Booking);
   return (
     <div className="mt-8">
-      <h2 className="mb-2 text-sm font-semibold text-foreground">
-        {t('lookup.recentTitle')}
-      </h2>
+      <h2 className="mb-2 text-sm font-semibold text-foreground">{t('lookup.recentTitle')}</h2>
       {recent.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('lookup.recentEmpty')}</p>
       ) : (

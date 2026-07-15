@@ -35,7 +35,7 @@ import { DispatchNotificationService } from '../../application/dispatch-notifica
     ReminderWorker,
   ],
   // Exported so the booking module can send the guest-lookup OTP synchronously (§8.6).
-  exports: [DispatchNotificationService],
+  exports: [DispatchNotificationService, EMAIL_SENDER],
 })
 export class NotificationModule implements OnModuleInit {
   constructor(

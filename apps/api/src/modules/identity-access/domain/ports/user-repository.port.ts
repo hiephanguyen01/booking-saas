@@ -13,6 +13,7 @@ export interface UserRecord {
   status: 'active' | 'suspended';
   failedLoginCount: number;
   lockedUntil: Date | null;
+  emailVerifiedAt: Date | null;
 }
 
 export interface CreateUserData {
@@ -21,6 +22,7 @@ export interface CreateUserData {
   fullName: string;
   phone?: string;
   locale: string;
+  emailVerifiedAt?: Date;
 }
 
 export interface CreateGuestData {

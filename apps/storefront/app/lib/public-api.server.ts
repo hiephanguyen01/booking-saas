@@ -1,7 +1,10 @@
+import { getOptionalAccessToken } from './auth.server';
+
 export interface PublicJsonOptions {
   allowNotFound?: boolean;
   fetchImplementation?: typeof fetch;
 }
+
 
 interface NullablePublicJsonOptions extends PublicJsonOptions {
   allowNotFound: true;
@@ -36,6 +39,7 @@ export async function requestPublicJson<T>(
       headers: {
         'x-forwarded-host': forwardedHost(request),
         accept: 'application/json',
+        ...(getOptionalAccessToken() ? { cookie: `sid=${getOptionalAccessToken()}` } : {}),
       },
       signal: request.signal,
     });

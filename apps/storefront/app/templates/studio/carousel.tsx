@@ -6,7 +6,7 @@
 export function StudioCarousel({ images }: { images: string[] }) {
   if (images.length === 0) return null;
   return (
-    <section className="mx-auto max-w-7xl px-6 pt-6" aria-label="Ảnh nổi bật">
+    <section className="mx-auto max-w-292.5 px-6 pt-6" aria-label="Ảnh nổi bật">
       <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto rounded-3xl">
         {images.map((src, i) => (
           <img

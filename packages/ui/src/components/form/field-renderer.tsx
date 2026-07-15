@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { format } from 'date-fns';
 import {
   AlertCircle,
@@ -10,9 +9,18 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
+import * as React from 'react';
 import { useFormContext, type FieldValues } from 'react-hook-form';
 
-import { cn } from '@booking/ui/lib/utils';
+import { ImageUpload } from '@booking/ui/components/form/image-upload';
+import type {
+  BooleanFieldConfig,
+  ChoiceFieldConfig,
+  DateFieldConfig,
+  FieldConfig,
+  FileFieldConfig,
+  TextFieldConfig,
+} from '@booking/ui/components/form/types';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
@@ -44,15 +52,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import { Switch } from '@booking/ui/components/ui/switch';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { ImageUpload } from '@booking/ui/components/form/image-upload';
-import type {
-  BooleanFieldConfig,
-  ChoiceFieldConfig,
-  DateFieldConfig,
-  FieldConfig,
-  FileFieldConfig,
-  TextFieldConfig,
-} from '@booking/ui/components/form/types';
+import { cn } from '@booking/ui/lib/utils';
 
 /**
  * Premium control styling (the "register partner" design system, expressed in
@@ -71,16 +71,33 @@ const SEGMENTED_ON = 'border-primary bg-primary text-primary-foreground shadow-s
 const SEGMENTED_OFF =
   'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground';
 
+export type FieldAppearance = 'default' | 'partner';
+
+const PARTNER_CONTROL =
+  'h-14 rounded-sm border-[#d0d5dd] bg-white px-4 text-base font-medium text-[#101828] shadow-none placeholder:text-[#667085] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15';
+const PARTNER_TEXTAREA =
+  'min-h-28 rounded-sm border-[#d0d5dd] bg-white px-4 py-3 text-base font-medium text-[#101828] shadow-none placeholder:text-[#667085] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15';
+const PARTNER_TRIGGER =
+  'h-14 w-full rounded-sm border-[#d0d5dd] bg-white px-4 text-base font-medium text-[#667085] shadow-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15';
+
 /**
  * Renders a single field from its config, bound to react-hook-form. Boolean and
  * date types get their own inline layout; everything else uses the standard
  * label / control / message stack.
  */
-export function FieldRenderer<T extends FieldValues>({ field }: { field: FieldConfig<T> }) {
+export function FieldRenderer<T extends FieldValues>({
+  field,
+  appearance = 'default',
+}: {
+  field: FieldConfig<T>;
+  appearance?: FieldAppearance;
+}) {
   const { control } = useFormContext<T>();
+  const isPartnerSegmented =
+    appearance === 'partner' && field.type === 'radio' && field.variant === 'segmented';
 
   if (field.type === 'checkbox' || field.type === 'switch') {
-    return <BooleanField field={field} control={control} />;
+    return <BooleanField field={field} control={control} appearance={appearance} />;
   }
 
   return (
@@ -88,9 +105,24 @@ export function FieldRenderer<T extends FieldValues>({ field }: { field: FieldCo
       control={control}
       name={field.name}
       render={({ field: rhf }) => (
-        <FormItem>
-          {field.label ? <FormLabel className="font-medium">{field.label}</FormLabel> : null}
-          <FormControl>{renderControl(field, rhf)}</FormControl>
+        <FormItem className={cn(isPartnerSegmented && 'gap-4')}>
+          {field.label ? (
+            <FormLabel
+              className={cn(
+                'font-medium',
+                appearance === 'partner' && 'text-sm leading-5 text-[#344054]',
+                isPartnerSegmented && 'text-lg font-semibold leading-7 text-[#3f3f3f]',
+              )}
+            >
+              {field.label}
+              {field.required ? (
+                <span aria-hidden="true" className="mr-1 text-[#f43f3f]">
+                  *
+                </span>
+              ) : null}
+            </FormLabel>
+          ) : null}
+          <FormControl>{renderControl(field, rhf, appearance)}</FormControl>
           {field.description ? <FormDescription>{field.description}</FormDescription> : null}
           <FieldMessage />
         </FormItem>
@@ -124,6 +156,7 @@ type RhfField = {
 function renderControl<T extends FieldValues>(
   field: FieldConfig<T>,
   rhf: RhfField,
+  appearance: FieldAppearance,
 ): React.ReactElement {
   switch (field.type) {
     case 'textarea':
@@ -132,22 +165,23 @@ function renderControl<T extends FieldValues>(
           placeholder={field.placeholder}
           rows={(field as TextFieldConfig<T>).rows}
           disabled={field.disabled}
-          className={PREMIUM_TEXTAREA}
+          required={field.required}
+          className={appearance === 'partner' ? PARTNER_TEXTAREA : PREMIUM_TEXTAREA}
           {...textBinding(rhf)}
         />
       );
     case 'password':
-      return <PasswordControl field={field} rhf={rhf} />;
+      return <PasswordControl field={field} rhf={rhf} appearance={appearance} />;
     case 'select':
-      return <SelectControl field={field} rhf={rhf} />;
+      return <SelectControl field={field} rhf={rhf} appearance={appearance} />;
     case 'combobox':
-      return <ComboboxControl field={field} rhf={rhf} />;
+      return <ComboboxControl field={field} rhf={rhf} appearance={appearance} />;
     case 'radio':
-      return <RadioControl field={field} rhf={rhf} />;
+      return <RadioControl field={field} rhf={rhf} appearance={appearance} />;
     case 'date':
       return <DateControl field={field} rhf={rhf} />;
     case 'file':
-      return <FileControl field={field} rhf={rhf} />;
+      return <FileControl field={field} rhf={rhf} appearance={appearance} />;
     case 'number':
       return (
         <Input
@@ -156,7 +190,8 @@ function renderControl<T extends FieldValues>(
           placeholder={field.placeholder}
           autoComplete={field.autoComplete}
           disabled={field.disabled}
-          className={PREMIUM_CONTROL}
+          required={field.required}
+          className={appearance === 'partner' ? PARTNER_CONTROL : PREMIUM_CONTROL}
           name={rhf.name}
           onBlur={rhf.onBlur}
           value={rhf.value === undefined || rhf.value === null ? '' : String(rhf.value)}
@@ -170,7 +205,8 @@ function renderControl<T extends FieldValues>(
           placeholder={field.placeholder}
           autoComplete={field.autoComplete}
           disabled={field.disabled}
-          className={PREMIUM_CONTROL}
+          required={field.required}
+          className={appearance === 'partner' ? PARTNER_CONTROL : PREMIUM_CONTROL}
           {...textBinding(rhf)}
         />
       );
@@ -191,9 +227,11 @@ function textBinding(rhf: RhfField) {
 function PasswordControl<T extends FieldValues>({
   field,
   rhf,
+  appearance,
 }: {
   field: TextFieldConfig<T>;
   rhf: RhfField;
+  appearance: FieldAppearance;
 }) {
   const [show, setShow] = React.useState(false);
   const withToggle = field.showToggle !== false;
@@ -204,7 +242,11 @@ function PasswordControl<T extends FieldValues>({
         placeholder={field.placeholder}
         autoComplete={field.autoComplete}
         disabled={field.disabled}
-        className={cn(PREMIUM_CONTROL, withToggle && 'pr-11')}
+        required={field.required}
+        className={cn(
+          appearance === 'partner' ? PARTNER_CONTROL : PREMIUM_CONTROL,
+          withToggle && 'pr-11',
+        )}
         {...textBinding(rhf)}
       />
       {withToggle ? (
@@ -225,17 +267,20 @@ function PasswordControl<T extends FieldValues>({
 function SelectControl<T extends FieldValues>({
   field,
   rhf,
+  appearance,
 }: {
   field: ChoiceFieldConfig<T>;
   rhf: RhfField;
+  appearance: FieldAppearance;
 }) {
   return (
     <Select
       value={rhf.value ? String(rhf.value) : undefined}
       onValueChange={rhf.onChange}
       disabled={field.disabled}
+      required={field.required}
     >
-      <SelectTrigger className={PREMIUM_TRIGGER}>
+      <SelectTrigger className={appearance === 'partner' ? PARTNER_TRIGGER : PREMIUM_TRIGGER}>
         <SelectValue placeholder={field.placeholder ?? 'Chọn...'} />
       </SelectTrigger>
       <SelectContent>
@@ -252,12 +297,39 @@ function SelectControl<T extends FieldValues>({
 function RadioControl<T extends FieldValues>({
   field,
   rhf,
+  appearance,
 }: {
   field: ChoiceFieldConfig<T>;
   rhf: RhfField;
+  appearance: FieldAppearance;
 }) {
   // Segmented: a horizontal button group (register-partner partner-type toggle).
   if (field.variant === 'segmented') {
+    if (appearance === 'partner') {
+      return (
+        <RadioGroup
+          value={rhf.value ? String(rhf.value) : undefined}
+          onValueChange={rhf.onChange}
+          disabled={field.disabled}
+          aria-required={field.required}
+          className="grid grid-cols-1 gap-2 sm:grid-cols-[240px_240px] sm:gap-4"
+        >
+          {field.options.map((opt) => (
+            <label
+              key={opt.value}
+              className="flex min-h-14 cursor-pointer items-center gap-3 px-4 text-base font-medium text-[#101828]"
+            >
+              <RadioGroupItem
+                value={opt.value}
+                className="size-5 border-[#344054] text-primary data-[state=checked]:border-primary"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </RadioGroup>
+      );
+    }
+
     return (
       <div className="flex gap-3">
         {field.options.map((opt) => {
@@ -298,9 +370,11 @@ function RadioControl<T extends FieldValues>({
 function ComboboxControl<T extends FieldValues>({
   field,
   rhf,
+  appearance,
 }: {
   field: ChoiceFieldConfig<T>;
   rhf: RhfField;
+  appearance: FieldAppearance;
 }) {
   const [open, setOpen] = React.useState(false);
   const current = field.options.find((o) => o.value === rhf.value);
@@ -313,8 +387,9 @@ function ComboboxControl<T extends FieldValues>({
           role="combobox"
           aria-expanded={open}
           disabled={field.disabled}
+          aria-required={field.required}
           className={cn(
-            PREMIUM_TRIGGER,
+            appearance === 'partner' ? PARTNER_TRIGGER : PREMIUM_TRIGGER,
             'justify-between font-normal',
             !current && 'text-muted-foreground',
           )}
@@ -400,9 +475,11 @@ function DateControl<T extends FieldValues>({
 function FileControl<T extends FieldValues>({
   field,
   rhf,
+  appearance,
 }: {
   field: FileFieldConfig<T>;
   rhf: RhfField;
+  appearance: FieldAppearance;
 }) {
   return (
     <ImageUpload
@@ -415,6 +492,9 @@ function FileControl<T extends FieldValues>({
       maxFiles={field.maxFiles}
       presignEndpoint={field.presignEndpoint}
       disabled={field.disabled}
+      previewOnly={field.previewOnly}
+      variant={field.variant}
+      className={appearance === 'partner' ? 'w-full' : undefined}
     />
   );
 }
@@ -422,16 +502,23 @@ function FileControl<T extends FieldValues>({
 function BooleanField<T extends FieldValues>({
   field,
   control,
+  appearance,
 }: {
   field: BooleanFieldConfig<T>;
   control: ReturnType<typeof useFormContext<T>>['control'];
+  appearance: FieldAppearance;
 }) {
   return (
     <FormField
       control={control}
       name={field.name}
       render={({ field: rhf }) => (
-        <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-lg border p-4">
+        <FormItem
+          className={cn(
+            'flex flex-row items-start gap-3 space-y-0 rounded-lg border p-4',
+            appearance === 'partner' && 'rounded-none border-0 p-0',
+          )}
+        >
           <FormControl>
             {field.type === 'switch' ? (
               <Switch
@@ -444,11 +531,22 @@ function BooleanField<T extends FieldValues>({
                 checked={!!rhf.value}
                 onCheckedChange={rhf.onChange}
                 disabled={field.disabled}
+                required={field.required}
+                className={appearance === 'partner' ? 'mt-0.5 size-5 border-[#344054]' : undefined}
               />
             )}
           </FormControl>
           <div className="space-y-1 leading-none">
-            {field.label ? <FormLabel className="font-medium">{field.label}</FormLabel> : null}
+            {field.label ? (
+              <FormLabel
+                className={cn(
+                  'font-medium',
+                  appearance === 'partner' && 'text-base font-normal leading-6 text-[#344054]',
+                )}
+              >
+                {field.label}
+              </FormLabel>
+            ) : null}
             {field.description ? <FormDescription>{field.description}</FormDescription> : null}
             <FieldMessage />
           </div>

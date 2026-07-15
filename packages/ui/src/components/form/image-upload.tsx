@@ -51,6 +51,10 @@ export interface ImageUploadProps {
   maxFiles?: number
   disabled?: boolean
   className?: string
+  /** Keep the selected image in browser memory without calling the upload API. */
+  previewOnly?: boolean
+  /** Visual treatment for document-front/back upload tiles. */
+  variant?: "default" | "document"
 }
 
 interface PendingItem {
@@ -77,10 +81,20 @@ export function ImageUpload({
   maxFiles,
   disabled,
   className,
+  previewOnly = false,
+  variant = "default",
 }: ImageUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [pending, setPending] = React.useState<PendingItem[]>([])
   const counter = React.useRef(0)
+  const [localPreview, setLocalPreview] = React.useState<{ name: string; url: string } | null>(null)
+
+  React.useEffect(
+    () => () => {
+      if (localPreview) URL.revokeObjectURL(localPreview.url)
+    },
+    [localPreview],
+  )
 
   const urls = React.useMemo(() => normalize(value), [value])
   const atLimit = multiple && maxFiles != null && urls.length >= maxFiles
@@ -98,6 +112,14 @@ export function ImageUpload({
         setPending((p) => [...p, { id, name: file.name, error }])
         continue
       }
+      if (previewOnly) {
+        if (localPreview) URL.revokeObjectURL(localPreview.url)
+        const nextPreview = { name: file.name, url: URL.createObjectURL(file) }
+        setLocalPreview(nextPreview)
+        onChange(file.name)
+        setPending([])
+        continue
+      }
       setPending((p) => [...p, { id, name: file.name }])
       try {
         const { publicUrl } = await presignAndPut(file, { target, presignEndpoint })
@@ -105,9 +127,7 @@ export function ImageUpload({
         onChange(multiple ? current : (current[0] ?? ""))
         setPending((p) => p.filter((x) => x.id !== id))
       } catch (e) {
-        setPending((p) =>
-          p.map((x) => (x.id === id ? { ...x, error: (e as Error).message } : x)),
-        )
+        setPending((p) => p.map((x) => (x.id === id ? { ...x, error: (e as Error).message } : x)))
       }
     }
     if (inputRef.current) inputRef.current.value = ""
@@ -118,7 +138,62 @@ export function ImageUpload({
     onChange(multiple ? next : (next[0] ?? ""))
   }
 
+  function removeLocalPreview(): void {
+    if (localPreview) URL.revokeObjectURL(localPreview.url)
+    setLocalPreview(null)
+    onChange("")
+  }
+
   const showTrigger = !disabled && !atLimit && (multiple || urls.length === 0)
+
+  if (variant === "document") {
+    const remotePreview = !previewOnly && urls.length > 0 ? urls[0] : null
+    const previewUrl = localPreview?.url ?? remotePreview
+    return (
+      <div className={cn("space-y-2", className)}>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept.join(",")}
+          hidden
+          disabled={disabled}
+          onChange={(e) => void handleFiles(e.target.files)}
+        />
+        <div className="group relative h-[156px] overflow-hidden rounded-sm border border-dashed border-primary bg-white">
+          {previewUrl ? (
+            <>
+              <img src={previewUrl} alt="" className="size-full object-cover" />
+              <button
+                type="button"
+                onClick={previewOnly ? removeLocalPreview : () => removeAt(0)}
+                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-white/95 text-[#344054] shadow-sm transition-colors hover:text-destructive"
+                aria-label="Xoá ảnh"
+              >
+                <XIcon className="size-4" />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => inputRef.current?.click()}
+              className="flex size-full items-center justify-center text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Chọn ảnh giấy tờ"
+            >
+              <ImageIcon className="size-8" strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+        {pending.map((item) =>
+          item.error ? (
+            <p key={item.id} className="text-xs text-destructive">
+              {item.error}
+            </p>
+          ) : null,
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className={cn("space-y-2", className)}>

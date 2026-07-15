@@ -1,11 +1,11 @@
-import { createHash, randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { createHash, randomBytes } from 'node:crypto';
+import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type {
   ISessionStore,
   SessionPrincipal,
   SessionTokens,
 } from '../../domain/ports/session-store.port';
-import { PrismaService } from '../../../../shared/prisma/prisma.service';
 
 export const ACCESS_TTL_MINUTES = 15;
 export const REFRESH_TTL_DAYS = 30;
@@ -97,6 +97,13 @@ export class PrismaSessionStore implements ISessionStore {
   async revoke(sessionId: string): Promise<void> {
     await this.prisma.admin.session.update({
       where: { id: sessionId },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  async revokeAllForUser(userId: string): Promise<void> {
+    await this.prisma.admin.session.updateMany({
+      where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }

@@ -17,7 +17,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
 
   if (!type) {
     return (
-      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-muted-foreground">
+      <div className="mx-auto max-w-292.5 px-6 py-24 text-center text-muted-foreground">
         {t('typeNotFound', { slug: params.typeSlug })}
       </div>
     );
@@ -26,7 +26,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const Icon = typeIcon(type.slug);
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
+    <div className="mx-auto max-w-292.5 px-6 py-10">
       <div className="mb-6 flex items-center gap-3">
         <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Icon className="size-5" />

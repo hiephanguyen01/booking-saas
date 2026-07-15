@@ -41,6 +41,7 @@ export const partnerApplyInputSchema = z.object({
   description: z.string().max(1000).optional(),
   businessInfo: z.record(z.unknown()).optional(),
   contactInfo: z.record(z.unknown()).optional(),
+  payoutInfo: payoutInfoSchema.optional(),
 });
 export type PartnerApplyInput = z.infer<typeof partnerApplyInputSchema>;
 
@@ -108,7 +109,7 @@ export const partnerRegistrationSchema = z
     fullName: z.string().min(1, 'Vui lòng nhập họ và tên').max(200),
     email: z.string().email('Email không hợp lệ'),
     password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
-    phone: z.string().max(20).optional(),
+    phone: z.string().min(5, 'Số điện thoại không hợp lệ').max(20),
     // Partner — mirrors partnerApplyInputSchema.
     name: z.string().min(1, 'Vui lòng nhập tên đối tác').max(200),
     slug: slugSchema,
@@ -121,11 +122,28 @@ export const partnerRegistrationSchema = z
     licenseNo: z.string().max(120).optional(),
     /** One URL per line; parsed into `businessInfo.licenseDocs` server-side. */
     licenseDocs: z.string().max(2000).optional(),
+    identityNumber: z.string().min(1, 'Vui lòng nhập số CMND/CCCD').max(64),
+    province: z.string().min(1, 'Vui lòng nhập tỉnh/thành phố').max(120),
+    district: z.string().min(1, 'Vui lòng nhập quận/huyện').max(120),
+    ward: z.string().min(1, 'Vui lòng nhập phường/xã').max(120),
+    address: z.string().min(1, 'Vui lòng nhập địa chỉ cụ thể').max(300),
+    bank: z.string().min(1, 'Vui lòng chọn ngân hàng').max(120),
+    bankAccountNumber: z.string().min(1, 'Vui lòng nhập số tài khoản').max(64),
+    bankAccountHolder: z.string().min(1, 'Vui lòng nhập tên người thụ hưởng').max(200),
+    businessLicenseFront: z.string().max(255).optional(),
+    businessLicenseBack: z.string().max(255).optional(),
+    identityDocumentFront: z.string().max(255).optional(),
+    identityDocumentBack: z.string().max(255).optional(),
+    acceptedTerms: z.boolean().refine(Boolean, 'Vui lòng đồng ý với Hợp đồng đối tác'),
   })
   .superRefine((val, ctx) => {
     if (val.partnerType === 'company') {
-      if (!val.taxId?.trim())
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['taxId'], message: 'Doanh nghiệp cần mã số thuế' });
+      if (!val.legalName?.trim())
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['legalName'],
+          message: 'Doanh nghiệp cần tên doanh nghiệp',
+        });
       if (!val.businessRegistrationNo?.trim())
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -133,8 +151,6 @@ export const partnerRegistrationSchema = z
           message: 'Doanh nghiệp cần số giấy phép kinh doanh',
         });
     }
-    if (val.phone && val.phone.trim().length > 0 && val.phone.trim().length < 5)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['phone'], message: 'Số điện thoại không hợp lệ' });
     if (val.licenseDocs) {
       const invalid = val.licenseDocs
         .split(/\r?\n/)
@@ -150,6 +166,51 @@ export const partnerRegistrationSchema = z
     }
   });
 export type PartnerRegistrationInput = z.infer<typeof partnerRegistrationSchema>;
+
+/**
+ * Profile step of the dedicated partner-onboarding wizard. Account creation is
+ * completed before this schema is used, so credentials and the generated slug
+ * deliberately do not belong to the browser form payload.
+ */
+export const partnerOnboardingProfileSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Vui lòng nhập tên đối tác').max(200),
+    partnerType: partnerTypeSchema,
+    representativeName: z.string().trim().min(1, 'Vui lòng nhập người đại diện').max(200),
+    companyName: z.string().trim().max(200).optional(),
+    businessRegistrationNo: z.string().trim().max(64).optional(),
+    identityNumber: z.string().trim().min(1, 'Vui lòng nhập số CMND/CCCD').max(64),
+    province: z.string().trim().min(1, 'Vui lòng nhập tỉnh/thành phố').max(120),
+    district: z.string().trim().min(1, 'Vui lòng nhập quận/huyện').max(120),
+    ward: z.string().trim().min(1, 'Vui lòng nhập phường/xã').max(120),
+    address: z.string().trim().min(1, 'Vui lòng nhập địa chỉ cụ thể').max(300),
+    phone: z.string().trim().min(6, 'Số điện thoại không hợp lệ').max(20),
+    bank: z.string().trim().min(1, 'Vui lòng chọn ngân hàng').max(120),
+    bankAccountNumber: z.string().trim().min(1, 'Vui lòng nhập số tài khoản').max(64),
+    bankAccountHolder: z.string().trim().min(1, 'Vui lòng nhập tên người thụ hưởng').max(200),
+    businessLicenseFront: z.string().max(255).optional(),
+    businessLicenseBack: z.string().max(255).optional(),
+    identityDocumentFront: z.string().max(255).optional(),
+    identityDocumentBack: z.string().max(255).optional(),
+    acceptedTerms: z.boolean().refine(Boolean, 'Vui lòng đồng ý với Hợp đồng đối tác'),
+  })
+  .superRefine((value, context) => {
+    const required = (key: keyof typeof value, message: string) => {
+      if (!String(value[key] ?? '').trim()) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message });
+      }
+    };
+    if (value.partnerType === 'company') {
+      required('companyName', 'Vui lòng nhập tên doanh nghiệp');
+      required('businessRegistrationNo', 'Vui lòng nhập số giấy phép kinh doanh');
+      required('businessLicenseFront', 'Vui lòng chọn mặt trước GPKD');
+      required('businessLicenseBack', 'Vui lòng chọn mặt sau GPKD');
+    } else {
+      required('identityDocumentFront', 'Vui lòng chọn mặt trước CMND/CCCD');
+      required('identityDocumentBack', 'Vui lòng chọn mặt sau CMND/CCCD');
+    }
+  });
+export type PartnerOnboardingProfileInput = z.infer<typeof partnerOnboardingProfileSchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 

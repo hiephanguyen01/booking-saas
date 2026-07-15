@@ -2,8 +2,8 @@ import type { StorefrontTenant } from '../lib/tenant.server';
 
 /**
  * Tenant theming via CSS variables (TONG-QUAN.md §16.2). The tenant's
- * `theme_config.colors` drive the shadcn design tokens (`--primary`/`--accent`/
- * `--ring`) so every `@booking/ui` component renders in the tenant brand — plus
+ * `theme_config.colors` drive the shadcn design tokens (`--background`/`--primary`/
+ * `--accent`/`--ring`) so every `@booking/ui` component renders in the tenant brand — plus
  * the legacy `--sf-*` vars for hand-rolled classNames. Emitted once at SSR into
  * a `<style>:root{…}</style>` (see root.tsx), so a theme change needs no rebuild.
  */
@@ -73,6 +73,8 @@ export function themeCss(theme: StorefrontTenant['theme']): string {
   const accent = sanitizeColor(theme.accent) ?? DEFAULTS.accent;
   const background = sanitizeColor(theme.background) ?? DEFAULTS.background;
   const decls = [
+    `--background:${background}`,
+    `--foreground:${contrastToken(background)}`,
     `--primary:${primary}`,
     `--primary-foreground:${contrastToken(primary)}`,
     `--accent:${accent}`,

@@ -11,6 +11,7 @@ import type {
   ValidatePromoResponse,
 } from '@booking/contracts';
 import { requestPublicJson } from './public-api.server';
+import { getOptionalAccessToken } from './auth.server';
 
 /**
  * Server-only booking BFF (§20): the storefront never calls the API from the
@@ -37,7 +38,12 @@ function hostOf(request: Request): string {
 }
 
 function baseHeaders(request: Request): Record<string, string> {
-  return { 'x-forwarded-host': hostOf(request), accept: 'application/json' };
+  const token = getOptionalAccessToken();
+  return {
+    'x-forwarded-host': hostOf(request),
+    accept: 'application/json',
+    ...(token ? { cookie: `sid=${token}` } : {}),
+  };
 }
 
 async function postJson<T>(

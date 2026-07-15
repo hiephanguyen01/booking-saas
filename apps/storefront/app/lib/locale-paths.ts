@@ -25,4 +25,9 @@ export const storefrontPaths = {
   booking: (locale: Locale, code: string) => `/${locale}/bookings/${segment(code)}`,
   becomePartner: (locale: Locale) => `/${locale}/become-partner`,
   becomeAffiliate: (locale: Locale) => `/${locale}/become-affiliate`,
+  login: (locale: Locale, redirectTo?: string) =>
+    `/${locale}/auth/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`,
+  register: (locale: Locale) => `/${locale}/auth/register`,
+  forgotPassword: (locale: Locale) => `/${locale}/auth/forgot-password`,
+  logout: (locale: Locale) => `/${locale}/auth/logout`,
 } as const;

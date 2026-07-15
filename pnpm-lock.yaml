@@ -244,6 +244,9 @@ importers:
       '@booking/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@hookform/resolvers':
+        specifier: ^5.2.0
+        version: 5.4.0(react-hook-form@7.81.0(react@19.2.7))
       '@react-router/node':
         specifier: 8.0.1
         version: 8.0.1(react-router@8.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(typescript@5.9.3)
@@ -265,9 +268,18 @@ importers:
       react-dom:
         specifier: 19.2.7
         version: 19.2.7(react@19.2.7)
+      react-hook-form:
+        specifier: ^7.60.0
+        version: 7.81.0(react@19.2.7)
       react-router:
         specifier: 8.0.1
         version: 8.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      redis:
+        specifier: 6.1.0
+        version: 6.1.0
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
     devDependencies:
       '@react-router/dev':
         specifier: 8.0.1

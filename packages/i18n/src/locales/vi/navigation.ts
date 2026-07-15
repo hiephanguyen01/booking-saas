@@ -1,4 +1,5 @@
 export const viNavigation = {
+  mainNavigation: 'Điều hướng chính',
   all: 'Tất cả',
   lookup: 'Tra cứu đặt chỗ',
   myBookings: 'Đặt chỗ của tôi',
@@ -7,4 +8,5 @@ export const viNavigation = {
   login: 'Đăng nhập',
   register: 'Đăng ký',
   openMenu: 'Mở menu',
+  logout: 'Đăng xuất',
 } as const;

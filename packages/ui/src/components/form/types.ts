@@ -19,9 +19,13 @@ interface BaseFieldConfig<T extends FieldValues> {
   placeholder?: string
   /** Columns spanned in the grid layout (1 = full width when `columns` is 1). */
   colSpan?: number
+  /** Grid rows spanned by taller controls such as document upload tiles. */
+  rowSpan?: number
   /** Hide the field when the predicate is true, given the current form values. */
   hidden?: (values: T) => boolean
   disabled?: boolean
+  /** Shows the required marker and forwards required semantics to native controls. */
+  required?: boolean
   autoComplete?: string
 }
 
@@ -79,6 +83,10 @@ export interface FileFieldConfig<T extends FieldValues> extends BaseFieldConfig<
   maxFiles?: number
   /** Same-origin resource route proxying `POST /uploads/presign`. */
   presignEndpoint?: string
+  /** Select and preview locally without uploading. Useful before an upload API exists. */
+  previewOnly?: boolean
+  /** Larger dashed tile used by document-verification forms. */
+  variant?: "default" | "document"
 }
 
 export type FieldConfig<T extends FieldValues> =

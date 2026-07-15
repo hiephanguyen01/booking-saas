@@ -1,4 +1,4 @@
-import type { PublicListingTypeResponse } from '@booking/contracts';
+import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Sheet,
@@ -7,156 +7,128 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@booking/ui/components/ui/sheet';
-import { LayoutGrid, Menu, Search } from 'lucide-react';
+import { Globe2, LayoutGrid, Menu, Search } from 'lucide-react';
 import { Link, NavLink, useFetcher, useLocation } from 'react-router';
 import { type Locale, NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths, switchLocalePath } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
-import { typeIcon } from '../lib/ui';
+import { TenantBrand } from './tenant-brand';
 
-/** Storefront navigation — logo + a category bar auto-generated from listing types. */
+/** Tenant-aware header shared by the storefront, customer auth, and partner flows. */
 export function SiteHeader({
   tenant,
   listingTypes,
   locale,
+  currentUser = null,
 }: {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
+  currentUser?: CurrentUser | null;
 }) {
   const { t } = useTranslation(NsI18n.Navigation);
-
-  const logo = tenant.logoUrl ? (
-    <img src={tenant.logoUrl} alt={tenant.name} className="h-8 w-auto max-w-40 object-contain" />
-  ) : (
-    tenant.name
-  );
+  const location = useLocation();
+  const redirectTo = `${location.pathname}${location.search}`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-(--sf-background)/85 backdrop-blur-md">
-      <div className="mx-auto max-w-7xl px-6">
-        {/* Desktop */}
-        <div className="hidden h-16 items-center justify-between gap-4 md:flex">
-          <Link
-            to={storefrontPaths.home(locale)}
-            className="flex items-center gap-2 rounded-md text-xl font-extrabold tracking-tight text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            {logo}
-          </Link>
-          <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-40 bg-background font-studio text-foreground shadow-sm">
+      <div className="mx-auto w-full max-w-292.5 px-4 sm:px-6 xl:px-0">
+        <div className="hidden h-18 items-center justify-between lg:flex">
+          <BrandHomeLink locale={locale} tenant={tenant} />
+
+          <nav aria-label={t('mainNavigation')} className="flex items-center gap-4">
             <Link
               to={storefrontPaths.bookings(locale)}
-              className="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:flex"
+              prefetch="intent"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-foreground px-4 text-xs font-semibold text-foreground shadow-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Search className="size-4" />
+              <Search aria-hidden="true" className="size-4" />
               {t('lookup')}
             </Link>
-            {/* Decorative placeholder — no customer auth exists on the storefront yet. */}
-            <span className="rounded-md border border-foreground/30 px-4 py-2.5 text-xs font-semibold text-foreground">
+            <span className="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-foreground px-4 text-xs font-semibold text-foreground shadow-xs">
+              <Globe2 aria-hidden="true" className="size-4" />
               {t('community')}
             </span>
             <Link
               to={storefrontPaths.becomePartner(locale)}
-              className="rounded-md border border-primary px-4 py-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+              prefetch="intent"
+              className="inline-flex h-10 items-center justify-center rounded-sm border border-primary px-4 text-xs font-semibold text-primary shadow-xs transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {t('becomePartner')}
             </Link>
-            {/* Decorative placeholders — no customer auth exists on the storefront yet. */}
-            <span className="px-2 text-xs font-semibold text-primary">{t('login')}</span>
-            <span className="rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground">
-              {t('register')}
-            </span>
-            <LocaleSwitcher current={locale} />
-          </div>
+            {currentUser ? (
+              <AuthenticatedActions currentUser={currentUser} locale={locale} />
+            ) : (
+              <>
+                <Link
+                  to={storefrontPaths.login(locale, redirectTo)}
+                  prefetch="intent"
+                  className="inline-flex h-10 items-center justify-center rounded-sm px-4 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {t('login')}
+                </Link>
+                <Link
+                  to={storefrontPaths.register(locale)}
+                  prefetch="intent"
+                  className="inline-flex h-10 items-center justify-center rounded-sm bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {t('register')}
+                </Link>
+              </>
+            )}
+          </nav>
         </div>
-        {/* <nav className="-mx-1 hidden items-center gap-1 overflow-x-auto pb-3 md:flex">
-          <CategoryLink to="/" label={t('navigation.all')} icon={LayoutGrid} end />
-          {listingTypes.map((type) => (
-            <CategoryLink key={type.id} to={`/t/${type.slug}`} label={type.name} icon={typeIcon(type.slug)} />
-          ))}
-        </nav> */}
 
-        {/* Mobile */}
         <Sheet>
-          <div className="flex h-14 items-center justify-between md:hidden">
-            {/* <SheetTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" aria-label={t('navigation.openMenu')}>
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger> */}
-            <Link
-              to={storefrontPaths.home(locale)}
-              className="flex items-center gap-2 text-lg font-extrabold text-primary"
-            >
-              {logo}
-            </Link>
+          <div className="flex h-18 items-center justify-between lg:hidden">
+            <BrandHomeLink locale={locale} tenant={tenant} />
             <SheetTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={t('openMenu')}
-              >
-                <Menu className="size-5" />
+              <Button type="button" variant="ghost" size="icon" aria-label={t('openMenu')}>
+                <Menu aria-hidden="true" />
               </Button>
             </SheetTrigger>
           </div>
-          <SheetContent side="left" className="w-80">
+          <SheetContent side="right" className="w-80 font-studio" showCloseButton>
             <SheetTitle className="sr-only">{t('openMenu')}</SheetTitle>
-            <div className="flex flex-col gap-1 overflow-y-auto p-4">
-              <SheetClose asChild>
-                <NavLink
-                  to={storefrontPaths.home(locale)}
-                  end
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                >
-                  <LayoutGrid className="size-4" />
-                  {t('all')}
-                </NavLink>
-              </SheetClose>
-              {listingTypes.map((type) => {
-                const Icon = typeIcon(type.slug);
-                return (
-                  <SheetClose asChild key={type.id}>
-                    <NavLink
-                      to={storefrontPaths.catalog(locale, type.slug)}
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                    >
-                      <Icon className="size-4" />
-                      {type.name}
-                    </NavLink>
-                  </SheetClose>
-                );
-              })}
-              <SheetClose asChild>
-                <Link
-                  to={storefrontPaths.bookings(locale)}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                >
-                  <Search className="size-4" />
-                  {t('lookup')}
-                </Link>
-              </SheetClose>
-              <div className="my-2 border-t border-border" />
-              <SheetClose asChild>
-                <Link
-                  to={storefrontPaths.becomePartner(locale)}
-                  className="rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-muted"
-                >
-                  {t('becomePartner')}
-                </Link>
-              </SheetClose>
-              {/* Decorative placeholders — no customer auth exists on the storefront yet. */}
-              <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
-                {t('community')}
-              </span>
-              <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
-                {t('login')}
-              </span>
-              <span className="rounded-md px-3 py-2 text-sm font-medium text-foreground">
-                {t('register')}
-              </span>
-              <div className="my-2 border-t border-border" />
+            <div className="flex flex-col gap-1 overflow-y-auto px-4 pb-6 pt-14">
+              <MobileNavLink to={storefrontPaths.home(locale)}>
+                <LayoutGrid aria-hidden="true" className="size-4" />
+                {t('all')}
+              </MobileNavLink>
+              {listingTypes.map((type) => (
+                <MobileNavLink key={type.id} to={storefrontPaths.catalog(locale, type.slug)}>
+                  {type.name}
+                </MobileNavLink>
+              ))}
+              <MobileNavLink to={storefrontPaths.bookings(locale)}>
+                <Search aria-hidden="true" className="size-4" />
+                {t('lookup')}
+              </MobileNavLink>
+              <div className="my-2 h-px bg-border" />
+              <MobileNavLink to={storefrontPaths.becomePartner(locale)} emphasized>
+                {t('becomePartner')}
+              </MobileNavLink>
+              {currentUser ? (
+                <>
+                  <span className="px-3 py-2 text-sm font-semibold text-foreground">
+                    {currentUser.fullName}
+                  </span>
+                  <MobileNavLink to={storefrontPaths.bookings(locale)} emphasized>
+                    {t('myBookings')}
+                  </MobileNavLink>
+                  <LogoutForm locale={locale} label={t('logout')} mobile />
+                </>
+              ) : (
+                <>
+                  <MobileNavLink to={storefrontPaths.login(locale, redirectTo)}>
+                    {t('login')}
+                  </MobileNavLink>
+                  <MobileNavLink to={storefrontPaths.register(locale)} emphasized>
+                    {t('register')}
+                  </MobileNavLink>
+                </>
+              )}
+              <div className="my-2 h-px bg-border" />
               <LocaleSwitcher current={locale} />
             </div>
           </SheetContent>
@@ -166,7 +138,96 @@ export function SiteHeader({
   );
 }
 
-/** vi/en switcher — posts to the `set-locale` action which sets the cookie + redirects back. */
+function BrandHomeLink({ locale, tenant }: { locale: Locale; tenant: StorefrontTenant }) {
+  return (
+    <Link
+      to={storefrontPaths.home(locale)}
+      prefetch="intent"
+      aria-label={`${tenant.name} - Trang chủ`}
+      className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <TenantBrand name={tenant.name} logoUrl={tenant.logoUrl} width={133} height={40} />
+    </Link>
+  );
+}
+
+function AuthenticatedActions({
+  currentUser,
+  locale,
+}: {
+  currentUser: CurrentUser;
+  locale: Locale;
+}) {
+  const { t } = useTranslation(NsI18n.Navigation);
+  return (
+    <>
+      <span className="max-w-36 truncate text-xs font-semibold text-foreground">
+        {currentUser.fullName}
+      </span>
+      <Link
+        to={storefrontPaths.bookings(locale)}
+        prefetch="intent"
+        className="px-2 text-xs font-semibold text-primary"
+      >
+        {t('myBookings')}
+      </Link>
+      <LogoutForm locale={locale} label={t('logout')} />
+    </>
+  );
+}
+
+function MobileNavLink({
+  to,
+  children,
+  emphasized = false,
+}: {
+  to: string;
+  children: React.ReactNode;
+  emphasized?: boolean;
+}) {
+  return (
+    <SheetClose asChild>
+      <NavLink
+        to={to}
+        prefetch="intent"
+        className={
+          emphasized
+            ? 'flex items-center gap-2 rounded-sm px-3 py-2.5 text-sm font-semibold text-primary hover:bg-accent'
+            : 'flex items-center gap-2 rounded-sm px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted'
+        }
+      >
+        {children}
+      </NavLink>
+    </SheetClose>
+  );
+}
+
+function LogoutForm({
+  locale,
+  label,
+  mobile = false,
+}: {
+  locale: Locale;
+  label: string;
+  mobile?: boolean;
+}) {
+  const fetcher = useFetcher();
+  return (
+    <fetcher.Form method="post" action={storefrontPaths.logout(locale)}>
+      <button
+        type="submit"
+        className={
+          mobile
+            ? 'rounded-sm px-3 py-2.5 text-sm font-medium text-destructive'
+            : 'px-2 text-xs font-semibold text-destructive'
+        }
+      >
+        {label}
+      </button>
+    </fetcher.Form>
+  );
+}
+
 function LocaleSwitcher({ current }: { current: Locale }) {
   const fetcher = useFetcher();
   const location = useLocation();
@@ -181,7 +242,7 @@ function LocaleSwitcher({ current }: { current: Locale }) {
       <input type="hidden" name="redirectTo" value={redirectTo} />
       <button
         type="submit"
-        className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold text-muted-foreground uppercase transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="rounded-sm px-3 py-2.5 text-sm font-semibold uppercase text-muted-foreground hover:bg-muted"
         aria-label={`Switch language to ${next}`}
       >
         {current}

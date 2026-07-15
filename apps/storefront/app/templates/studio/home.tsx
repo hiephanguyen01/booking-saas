@@ -1,10 +1,10 @@
 import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
 import type { StorefrontTenant } from '../../lib/tenant.server';
-import { StudioHero } from './hero';
 import { StudioCarousel } from './carousel';
+import { StudioHero } from './hero';
 import { StudioPromoBanner } from './promo-banner';
-import { TopListingsSection } from './top-listings-section';
 import { RecommendedSection } from './recommended-section';
+import { TopListingsSection } from './top-listings-section';
 
 const TOP_LISTINGS_COUNT = 10;
 
@@ -28,7 +28,7 @@ export function StudioHome({
     <>
       <StudioHero tenant={tenant} listingTypes={listingTypes} />
       <StudioCarousel images={tenant.carousel} />
-      <div className="mx-auto max-w-7xl space-y-10 px-6 py-10">
+      <div className="mx-auto max-w-292.5 space-y-10 px-6 lg:px-0 py-10">
         <StudioPromoBanner tenant={tenant} />
         <TopListingsSection listings={listings.slice(0, TOP_LISTINGS_COUNT)} />
         <RecommendedSection listings={listings.slice(TOP_LISTINGS_COUNT)} />

@@ -15,6 +15,7 @@ const GUEST: UserRecord = {
   status: 'active',
   failedLoginCount: 0,
   lockedUntil: null,
+  emailVerifiedAt: null,
 };
 
 const tokens: SessionTokens = {
