@@ -1,4 +1,3 @@
-import { ArrowUp } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
@@ -112,7 +111,7 @@ export function SiteFooter({
           <p className="pr-14 text-center text-sm leading-5 text-muted-foreground sm:pr-0">
             {t('footer.copyright')}
           </p>
-          <button
+          {/* <button
             type="button"
             onClick={() =>
               window.scrollTo({
@@ -126,7 +125,7 @@ export function SiteFooter({
             className="absolute -top-9 right-0 flex size-17 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-[opacity,transform] hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ArrowUp aria-hidden="true" className="size-8" strokeWidth={1.7} />
-          </button>
+          </button> */}
         </div>
       </div>
     </footer>

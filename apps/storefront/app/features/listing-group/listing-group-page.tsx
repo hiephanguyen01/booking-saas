@@ -17,6 +17,13 @@ import {
   DialogTrigger,
 } from '@booking/ui/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@booking/ui/components/ui/dropdown-menu';
+import {
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -31,40 +38,48 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
-import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
 import {
-  BadgeCheck,
+  AirVent,
   Building2,
   CalendarDays,
+  Camera,
   Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Clock3,
+  Copy,
+  Dog,
   Expand,
   Heart,
   ImageIcon,
+  LampCeiling,
   MapPin,
   Menu,
   MessageCircle,
+  ParkingCircle,
   Ruler,
   ShieldCheck,
   Sparkles,
   Star,
   Users,
+  Wifi,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { formatListingLocation, formatVnd } from '../../lib/ui';
-import { storefrontPaths } from '../../lib/locale-paths';
 import { dateLabelInTz, timeInTz } from '../../lib/time';
 import { useLocale } from '../../lib/use-locale';
 import type { StorefrontContext } from '../../root';
 import type { Route } from '../../routes/+types/listing-group';
 import { SearchForm } from '../search/search-form';
-import { listingGroupPresentation } from './listing-group-presentation';
+import { ListingCard } from '../catalog/components/listing-card';
+import {
+  filterPresentationReviews,
+  listingGroupPresentation,
+  paginatePresentationReviews,
+  relatedListingPresentation,
+} from './listing-group-presentation';
 import {
   atomicHourlySlots,
   checkoutHref,
@@ -76,19 +91,24 @@ import {
 type LoaderData = Route.ComponentProps['loaderData'];
 type RoomOption = LoaderData['roomOptions'][number];
 
-const presentation = listingGroupPresentation();
-
 export function ListingGroupPage({ loaderData }: { loaderData: LoaderData }) {
   const { group, state, roomOptions, locations, relatedListings } = loaderData;
   const { listingTypes } = useOutletContext<StorefrontContext>();
-  const locale = useLocale();
   const location = formatListingLocation(group, 'full');
   const trust = roomOptions[0]?.detail.trust ?? null;
   const availableOptions = roomOptions.filter((option) => option.available);
   const minimumPrice = minimumRoomPrice(availableOptions);
+  const presentation = listingGroupPresentation(
+    group.id || group.slug,
+    group.photos,
+    roomOptions[0]?.child.title,
+  );
+  const mapsHref = location
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
+    : null;
 
   return (
-    <div className="font-studio bg-background pb-20">
+    <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
       <SearchForm
         listingTypes={listingTypes}
         currentType={group.listingTypeSlug}
@@ -97,226 +117,349 @@ export function ListingGroupPage({ loaderData }: { loaderData: LoaderData }) {
         variant="bar"
       />
 
-      <div className="mx-auto flex max-w-292.5 flex-col gap-7 px-4 py-6 lg:px-0">
-        <nav
-          className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
-          aria-label="Breadcrumb"
-        >
-          <Link to={storefrontPaths.home(locale)} className="transition-colors hover:text-primary">
-            Trang chủ
-          </Link>
-          <span aria-hidden="true">/</span>
-          <Link
-            to={storefrontPaths.catalog(locale, group.listingTypeSlug)}
-            className="transition-colors hover:text-primary"
-          >
-            Studio
-          </Link>
-          <span aria-hidden="true">/</span>
-          <span className="text-foreground">{group.title}</span>
-        </nav>
-
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-[32px]">
-              {group.title}
-            </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-              {location ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="size-4" aria-hidden="true" />
-                  {location}
+      <div className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-4 xl:px-0">
+        <section className="rounded-lg bg-background p-4 shadow-[0_1px_5px_rgba(16,24,40,0.06)] sm:p-6">
+          <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold leading-tight md:text-2xl">{group.title}</h1>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+                {location ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="size-4" aria-hidden="true" />
+                    {location}
+                  </span>
+                ) : null}
+                {mapsHref ? (
+                  <a
+                    href={mapsHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Xem bản đồ
+                  </a>
+                ) : null}
+                <span className="inline-flex items-center gap-1.5 text-foreground">
+                  <Stars rating={presentation.rating} compact />
+                  <strong>{presentation.rating}</strong>
+                  <span className="text-muted-foreground">{presentation.reviewCount} đánh giá</span>
                 </span>
-              ) : null}
-              <a href="#map" className="font-medium text-primary hover:underline">
-                Xem bản đồ
-              </a>
-              <span className="inline-flex items-center gap-1.5 text-foreground">
-                <Star className="size-4 fill-primary text-primary" aria-hidden="true" />
-                <strong>{presentation.rating}</strong> ({presentation.reviewCount} đánh giá)
-              </span>
+              </div>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button type="button" variant="outline" size="icon" aria-label="Lưu studio">
-              <Heart />
-            </Button>
-            <Button type="button" variant="outline" size="icon" aria-label="Mở thêm lựa chọn">
-              <Menu />
-            </Button>
-          </div>
-        </header>
+            <HeaderActions title={group.title} />
+          </header>
+          <StudioGallery photos={group.photos} title={group.title} />
+        </section>
 
-        <StudioGallery photos={group.photos} title={group.title} />
-
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_284px]">
-          <div className="flex min-w-0 flex-col gap-8">
-            <section aria-labelledby="introduction-title" className="flex flex-col gap-4">
-              <h2 id="introduction-title" className="text-2xl font-semibold">
-                Giới thiệu studio
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,870px)_284px]">
+          <div className="flex min-w-0 flex-col gap-4">
+            <section
+              aria-labelledby="introduction-title"
+              className="rounded-lg bg-background p-4 shadow-[0_1px_5px_rgba(16,24,40,0.06)] sm:p-6"
+            >
+              <h2 id="introduction-title" className="text-base font-semibold">
+                Giới thiệu
               </h2>
-              <p className="whitespace-pre-wrap text-[15px] leading-7 text-muted-foreground">
-                {group.description || 'Studio chưa cập nhật mô tả chi tiết.'}
-              </p>
+              <ExpandableDescription description={group.description} />
             </section>
 
-            <Separator />
-
-            <section aria-labelledby="amenities-title" className="flex flex-col gap-5">
-              <h2 id="amenities-title" className="text-2xl font-semibold">
-                Tiện nghi nổi bật
+            <section
+              aria-labelledby="amenities-title"
+              className="rounded-lg bg-background p-4 shadow-[0_1px_5px_rgba(16,24,40,0.06)] sm:p-6"
+            >
+              <h2 id="amenities-title" className="text-base font-semibold">
+                Tiện ích
               </h2>
               {group.amenities.length ? (
-                <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {group.amenities.map((amenity) => (
-                    <div key={amenity} className="flex items-center gap-3 text-sm text-foreground">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                        <Check className="size-4" aria-hidden="true" />
-                      </span>
-                      <span>{amenity}</span>
-                    </div>
-                  ))}
+                <div className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {group.amenities.slice(0, 12).map((amenity) => {
+                    const Icon = amenityIcon(amenity);
+                    return (
+                      <div key={amenity} className="flex min-w-0 items-center gap-2.5 text-sm">
+                        <Icon
+                          className="size-4 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <span className="truncate">{amenity}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Studio chưa cập nhật danh sách tiện nghi.
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Studio chưa cập nhật danh sách tiện ích.
                 </p>
               )}
-            </section>
-
-            <Separator />
-
-            <section aria-labelledby="promotions-title" className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2 id="promotions-title" className="text-2xl font-semibold">
-                  Khuyến mãi dành cho bạn
-                </h2>
-                <Badge variant="secondary">
-                  <Sparkles /> Ưu đãi
-                </Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {presentation.promotions.map((promotion) => (
-                  <div
-                    key={promotion}
-                    className="flex gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm leading-6"
-                  >
-                    <BadgeCheck
-                      className="mt-0.5 size-5 shrink-0 text-primary"
-                      aria-hidden="true"
-                    />
-                    <span>{promotion}</span>
-                  </div>
-                ))}
-              </div>
             </section>
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
-            <div className="rounded-lg border bg-background p-5 shadow-sm">
-              <p className="text-sm text-muted-foreground">Giá phòng từ</p>
-              <p className="mt-1 text-2xl font-semibold text-primary">
-                {minimumPrice ?? 'Chọn lịch để xem giá'}
+            <div className="rounded-lg bg-background p-5 text-right shadow-[0_1px_5px_rgba(16,24,40,0.08)]">
+              <p className="text-sm text-muted-foreground">
+                từ <strong className="text-xl text-primary">{minimumPrice ?? 'Liên hệ'}</strong>
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {state.mode === 'hourly' ? 'cho 1 giờ' : `cho ${state.from} – ${state.to}`}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {state.mode === 'hourly' ? 'cho 1 giờ' : `cho ${state.from} - ${state.to}`}
               </p>
               <Button asChild className="mt-5 w-full">
-                <a href="#room-options">Xem phòng trống</a>
+                <a href="#room-options">Xem phòng</a>
               </Button>
             </div>
-
             <ProviderCard trust={trust} />
-
-            <div id="map" className="overflow-hidden rounded-lg border bg-muted/40">
-              <div className="grid h-44 place-items-center bg-[radial-gradient(circle_at_center,var(--primary)_0.75px,transparent_0.75px)] bg-[size:16px_16px] p-5 text-center">
-                <div className="rounded-lg border bg-background/95 px-4 py-3 shadow-sm">
-                  <MapPin className="mx-auto size-6 text-primary" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-medium">{location || 'Vị trí studio'}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Bản đồ chi tiết sẽ được tích hợp sau
-                  </p>
-                </div>
-              </div>
-            </div>
           </aside>
         </div>
 
-        <RoomOptionsSection roomOptions={roomOptions} mode={state.mode} date={state.date} />
+        <RoomOptionsSection
+          roomOptions={roomOptions}
+          mode={state.mode}
+          date={state.date}
+          promotion={presentation.promotion}
+          policies={presentation.policies}
+        />
 
-        <ReviewsSection />
+        <ReviewsSection presentation={presentation} />
 
-        <RelatedStudios listings={relatedListings} listingTypeSlug={group.listingTypeSlug} />
+        <RelatedStudios listings={relatedListings} />
       </div>
     </div>
   );
 }
 
 function StudioGallery({ photos, title }: { photos: string[]; title: string }) {
-  if (!photos.length) {
-    return (
-      <div className="grid aspect-[16/7] place-items-center rounded-lg bg-muted text-muted-foreground">
-        <ImageIcon className="mb-2 size-8" aria-hidden="true" />
-        <span>{title}</span>
-      </div>
-    );
-  }
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const visible = photos.slice(0, 7);
-  const overflow = Math.max(0, photos.length - visible.length);
+  const overflow = Math.max(0, photos.length - 7);
+
+  function show(index: number): void {
+    if (!photos[index]) return;
+    setActiveIndex(index);
+    setOpen(true);
+  }
+
   return (
-    <div className="grid overflow-hidden rounded-lg bg-muted md:h-85 md:grid-cols-[460px_1fr] md:gap-2">
-      <div className="relative min-h-64 overflow-hidden md:min-h-0">
-        <img src={visible[0]} alt={title} className="size-full object-cover" />
+    <Dialog open={open} onOpenChange={setOpen}>
+      <div className="grid h-64 overflow-hidden rounded-md bg-muted md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
+        <button
+          type="button"
+          onClick={() => show(0)}
+          disabled={!visible[0]}
+          className="group relative min-h-64 overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
+          aria-label={visible[0] ? `Xem ảnh chính của ${title}` : `Chưa có ảnh của ${title}`}
+        >
+          {visible[0] ? (
+            <img
+              src={visible[0]}
+              alt={title}
+              width={920}
+              height={680}
+              className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+          ) : (
+            <GalleryPlaceholder title={title} />
+          )}
+          {visible[0] ? (
+            <span className="absolute right-4 bottom-4 grid size-11 place-items-center rounded-full bg-background/95 shadow-sm">
+              <Expand className="size-4" aria-hidden="true" />
+            </span>
+          ) : null}
+        </button>
+        <div className="hidden grid-cols-3 grid-rows-2 gap-3 md:grid">
+          {Array.from({ length: 6 }, (_, index) => {
+            const photo = visible[index + 1];
+            const isLast = index === 5;
+            return (
+              <button
+                type="button"
+                key={photo ?? `placeholder-${index}`}
+                onClick={() => show(index + 1)}
+                disabled={!photo}
+                className="relative overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                aria-label={photo ? `Xem ảnh ${index + 2} của ${title}` : 'Chưa có ảnh'}
+              >
+                {photo ? (
+                  <img
+                    src={photo}
+                    alt=""
+                    width={430}
+                    height={328}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <GalleryPlaceholder />
+                )}
+                {isLast && overflow > 0 ? (
+                  <span className="absolute inset-0 grid place-items-center bg-foreground/55 text-lg font-semibold text-background">
+                    +{overflow}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <DialogContent className="max-h-[90vh] gap-4 overflow-hidden p-4 sm:max-w-5xl">
+        <DialogHeader className="pr-10">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            Ảnh {activeIndex + 1} / {Math.max(photos.length, 1)}
+          </DialogDescription>
+        </DialogHeader>
+        {photos[activeIndex] ? (
+          <img
+            src={photos[activeIndex]}
+            alt={`${title}, ảnh ${activeIndex + 1}`}
+            width={1400}
+            height={1000}
+            className="max-h-[68vh] w-full rounded-md object-contain"
+          />
+        ) : (
+          <div className="h-80">
+            <GalleryPlaceholder title={title} />
+          </div>
+        )}
+        {photos.length > 1 ? (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {photos.map((photo, index) => (
+              <button
+                type="button"
+                key={`${photo}-${index}`}
+                onClick={() => setActiveIndex(index)}
+                aria-label={`Chuyển đến ảnh ${index + 1}`}
+                aria-current={index === activeIndex ? 'true' : undefined}
+                className={cn(
+                  'h-16 w-24 shrink-0 overflow-hidden rounded-md border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  index === activeIndex ? 'border-primary' : 'border-transparent',
+                )}
+              >
+                <img src={photo} alt="" className="size-full object-cover" />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function GalleryPlaceholder({ title }: { title?: string }) {
+  return (
+    <span className="grid size-full place-items-center bg-muted text-muted-foreground">
+      <span className="flex flex-col items-center gap-2">
+        <ImageIcon className="size-7" aria-hidden="true" />
+        {title ? <span className="text-sm">{title}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+function HeaderActions({ title }: { title: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink(): Promise<void> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(window.location.href);
+      } else {
+        copyTextFallback(window.location.href);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(copyTextFallback(window.location.href));
+    }
+  }
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={`Lưu ${title}`}
+        title="Tính năng lưu studio đang được phát triển"
+      >
+        <Heart className="text-primary" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11"
+            aria-label="Mở thêm lựa chọn"
+          >
+            <Menu />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuGroup>
+            <DropdownMenuItem onSelect={() => void copyLink()}>
+              <Copy /> {copied ? 'Đã sao chép' : 'Sao chép liên kết'}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function copyTextFallback(value: string): boolean {
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  return copied;
+}
+
+function ExpandableDescription({ description }: { description: string | null }) {
+  const [expanded, setExpanded] = useState(false);
+  const copy = description || 'Studio chưa cập nhật mô tả chi tiết.';
+  return (
+    <div className="mt-4">
+      <p
+        className={cn(
+          'whitespace-pre-wrap text-sm leading-6 text-muted-foreground',
+          !expanded && 'line-clamp-6',
+        )}
+      >
+        {copy}
+      </p>
+      {copy.length > 220 ? (
         <Button
           type="button"
-          variant="secondary"
-          size="icon"
-          className="absolute right-4 bottom-4"
-          aria-label="Mở ảnh lớn"
+          variant="link"
+          className="mt-1 h-11 px-0 text-primary"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
         >
-          <Expand />
+          {expanded ? 'Thu gọn' : 'Xem thêm'}{' '}
+          <ChevronDown className={cn('transition-transform', expanded && 'rotate-180')} />
         </Button>
-      </div>
-      <div className="hidden grid-cols-3 grid-rows-2 gap-2 md:grid">
-        {Array.from({ length: 6 }, (_, index) => {
-          const photo = visible[index + 1];
-          const isLast = index === 5;
-          return (
-            <div
-              key={photo ?? `placeholder-${index}`}
-              className="relative overflow-hidden bg-muted"
-            >
-              {photo ? (
-                <img src={photo} alt="" className="size-full object-cover" />
-              ) : (
-                <div className="grid size-full place-items-center">
-                  <ImageIcon className="size-6 text-muted-foreground" aria-hidden="true" />
-                </div>
-              )}
-              {isLast && overflow > 0 ? (
-                <div className="absolute inset-0 grid place-items-center bg-foreground/55 text-lg font-semibold text-background">
-                  +{overflow}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+      ) : null}
     </div>
   );
 }
 
 function ProviderCard({ trust }: { trust: RoomOption['detail']['trust'] | null }) {
   return (
-    <div className="rounded-lg border bg-background p-5">
-      <p className="text-sm text-muted-foreground">Đơn vị cung cấp</p>
-      <div className="mt-4 flex items-center gap-3">
+    <div className="rounded-lg bg-background p-5 shadow-[0_1px_5px_rgba(16,24,40,0.08)]">
+      <div className="flex items-center gap-3">
         <Avatar className="size-11">
           <AvatarFallback>{initials(trust?.partnerName ?? 'Studio')}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
           <p className="truncate font-semibold">{trust?.partnerName ?? 'Đối tác studio'}</p>
-          <p className="text-xs text-muted-foreground">Phản hồi nhanh qua hệ thống</p>
+          <p className="text-xs text-muted-foreground">
+            {presentationProviderBookings(trust)} đã đặt
+          </p>
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-2 text-sm">
@@ -333,8 +476,14 @@ function ProviderCard({ trust }: { trust: RoomOption['detail']['trust'] | null }
           </span>
         ) : null}
       </div>
-      <Button type="button" variant="outline" className="mt-5 w-full" disabled>
-        <MessageCircle /> Nhắn tin
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-5 w-full"
+        disabled
+        title="Trang nhà cung cấp đang được phát triển"
+      >
+        <MessageCircle /> Xem nhà cung cấp
       </Button>
     </div>
   );
@@ -344,20 +493,24 @@ function RoomOptionsSection({
   roomOptions,
   mode,
   date,
+  promotion,
+  policies,
 }: {
   roomOptions: RoomOption[];
   mode: 'hourly' | 'daily';
   date: string;
+  promotion: string;
+  policies: string[];
 }) {
   return (
     <section
       id="room-options"
       aria-labelledby="room-options-title"
-      className="scroll-mt-28 rounded-lg border bg-background p-4 sm:p-6"
+      className="scroll-mt-28 rounded-lg bg-background p-4 shadow-[0_1px_5px_rgba(16,24,40,0.06)] sm:p-6"
     >
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 id="room-options-title" className="text-2xl font-semibold">
+          <h2 id="room-options-title" className="text-base font-semibold">
             Loại phòng
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -366,8 +519,8 @@ function RoomOptionsSection({
               : 'Giá và lịch trống theo khoảng ngày bạn đã chọn'}
           </p>
         </div>
-        <Badge variant="secondary">
-          <Sparkles /> Khuyến mãi dành cho bạn
+        <Badge variant="outline" className="border-emerald-400 bg-emerald-50 text-emerald-700">
+          <Sparkles /> Khuyến mãi {promotion} dành cho bạn
         </Badge>
       </div>
 
@@ -376,11 +529,11 @@ function RoomOptionsSection({
           <div
             role="table"
             aria-label="Danh sách loại phòng"
-            className="hidden overflow-hidden rounded-md border lg:block"
+            className="hidden overflow-hidden rounded-md border xl:block"
           >
             <div
               role="row"
-              className="grid grid-cols-[minmax(330px,1.55fr)_minmax(190px,1fr)_minmax(170px,.85fr)_220px] bg-muted/60 text-sm font-semibold"
+              className="grid grid-cols-[374px_280px_224px_244px] bg-muted/60 text-xs font-semibold"
             >
               <div role="columnheader" className="p-4">
                 Loại phòng
@@ -397,13 +550,25 @@ function RoomOptionsSection({
             </div>
             <div role="rowgroup">
               {roomOptions.map((option) => (
-                <DesktopRoomRow key={option.child.id} option={option} mode={mode} date={date} />
+                <DesktopRoomRow
+                  key={option.child.id}
+                  option={option}
+                  mode={mode}
+                  date={date}
+                  policies={policies}
+                />
               ))}
             </div>
           </div>
-          <div className="flex flex-col gap-4 lg:hidden">
+          <div className="flex flex-col gap-4 xl:hidden">
             {roomOptions.map((option) => (
-              <MobileRoomCard key={option.child.id} option={option} mode={mode} date={date} />
+              <MobileRoomCard
+                key={option.child.id}
+                option={option}
+                mode={mode}
+                date={date}
+                policies={policies}
+              />
             ))}
           </div>
         </>
@@ -428,17 +593,16 @@ function DesktopRoomRow({
   option,
   mode,
   date,
+  policies,
 }: {
   option: RoomOption;
   mode: 'hourly' | 'daily';
   date: string;
+  policies: string[];
 }) {
   const state = roomAvailabilityState(option);
   return (
-    <article
-      role="row"
-      className="grid grid-cols-[minmax(330px,1.55fr)_minmax(190px,1fr)_minmax(170px,.85fr)_220px] border-t text-sm"
-    >
+    <article role="row" className="grid grid-cols-[374px_280px_224px_244px] border-t text-sm">
       <div role="cell" className="min-w-0 p-5">
         <RoomDetails option={option} />
       </div>
@@ -450,7 +614,7 @@ function DesktopRoomRow({
       </div>
       <div role="cell" className="border-l p-5">
         <RoomAction option={option} mode={mode} date={date} state={state} />
-        <PolicyList depositPercent={option.detail.depositPercent} />
+        <PolicyList depositPercent={option.detail.depositPercent} policies={policies} />
       </div>
     </article>
   );
@@ -460,10 +624,12 @@ function MobileRoomCard({
   option,
   mode,
   date,
+  policies,
 }: {
   option: RoomOption;
   mode: 'hourly' | 'daily';
   date: string;
+  policies: string[];
 }) {
   const state = roomAvailabilityState(option);
   return (
@@ -476,7 +642,7 @@ function MobileRoomCard({
           <RoomPrice option={option} mode={mode} state={state} />
         </div>
         <RoomAction option={option} mode={mode} date={date} state={state} />
-        <PolicyList depositPercent={option.detail.depositPercent} />
+        <PolicyList depositPercent={option.detail.depositPercent} policies={policies} />
       </div>
     </article>
   );
@@ -644,11 +810,11 @@ function RoomAction({
   );
 }
 
-function PolicyList({ depositPercent }: { depositPercent: number }) {
+function PolicyList({ depositPercent, policies }: { depositPercent: number; policies: string[] }) {
   return (
     <div className="mt-5 flex flex-col gap-2.5">
       <p className="font-medium">Chính sách áp dụng:</p>
-      {presentation.policies.map((policy, index) => (
+      {policies.map((policy, index) => (
         <span
           key={policy}
           className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
@@ -769,11 +935,11 @@ function SlotPickerContent({
                   <label
                     key={`${slot.startUtc}:${slot.endUtc}`}
                     htmlFor={id}
-                    className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted"
+                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted"
                   >
                     <Checkbox id={id} checked={checked} onCheckedChange={() => toggle(slot)} />
                     <span className="flex-1 text-sm">
-                      {timeInTz(slot.startUtc, timezone)} – {timeInTz(slot.endUtc, timezone)}
+                      {timeInTz(slot.startUtc, timezone)} - {timeInTz(slot.endUtc, timezone)}
                     </span>
                     <span className="text-xs text-muted-foreground">{formatVnd(slot.price)}</span>
                   </label>
@@ -816,11 +982,11 @@ function SlotPickerContent({
         <div className="flex flex-wrap gap-2">
           {selected.map((slot) => (
             <Badge key={slot.startUtc} variant="secondary" className="gap-1.5 rounded-md py-1.5">
-              {timeInTz(slot.startUtc, timezone)} – {timeInTz(slot.endUtc, timezone)}
+              {timeInTz(slot.startUtc, timezone)} - {timeInTz(slot.endUtc, timezone)}
               <button
                 type="button"
                 onClick={() => toggle(slot)}
-                className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="grid size-6 place-items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={`Bỏ khung giờ ${timeInTz(slot.startUtc, timezone)}`}
               >
                 <X className="size-3.5" />
@@ -836,133 +1002,177 @@ function SlotPickerContent({
   );
 }
 
-function ReviewsSection() {
+function ReviewsSection({
+  presentation,
+}: {
+  presentation: ReturnType<typeof listingGroupPresentation>;
+}) {
+  const [rating, setRating] = useState<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(3);
+  const filtered = filterPresentationReviews(presentation.reviews, rating);
+  const visible = paginatePresentationReviews(filtered, visibleCount);
+
+  function selectRating(nextRating: number | null): void {
+    setRating(nextRating);
+    setVisibleCount(3);
+  }
+
   return (
-    <section aria-labelledby="reviews-title" className="flex flex-col gap-6 border-t pt-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 id="reviews-title" className="text-2xl font-semibold">
-            Đánh giá của khách hàng
-          </h2>
-          <p className="mt-2 flex items-center gap-2 text-sm">
-            <Star className="size-5 fill-primary text-primary" aria-hidden="true" />
-            <strong className="text-lg">{presentation.rating}</strong>
-            <span className="text-muted-foreground">· {presentation.reviewCount} đánh giá</span>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" size="icon" aria-label="Đánh giá trước">
-            <ChevronLeft />
-          </Button>
-          <Button type="button" variant="outline" size="icon" aria-label="Đánh giá tiếp">
-            <ChevronRight />
-          </Button>
-        </div>
+    <section
+      aria-labelledby="reviews-title"
+      className="rounded-lg bg-background p-4 shadow-[0_1px_5px_rgba(16,24,40,0.06)] sm:p-6"
+    >
+      <div>
+        <h2 id="reviews-title" className="text-base font-semibold">
+          Đánh giá
+        </h2>
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <Stars rating={presentation.rating} />
+          <strong>{presentation.rating}</strong>
+          <span className="text-muted-foreground">{presentation.reviewCount} đánh giá</span>
+        </p>
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {presentation.reviews.map((review) => (
-          <article key={review.id} className="flex flex-col gap-4 rounded-lg border p-5">
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarFallback>{review.initials}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold">{review.author}</p>
-                <p className="text-xs text-muted-foreground">{review.date}</p>
+      <div
+        className="mt-5 flex gap-2 overflow-x-auto pb-2"
+        role="group"
+        aria-label="Lọc đánh giá theo số sao"
+      >
+        {[5, 4, 3, 2, 1].map((value) => (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={rating === value ? 'default' : 'outline'}
+            onClick={() => selectRating(rating === value ? null : value)}
+            aria-pressed={rating === value}
+            className="min-h-11 shrink-0"
+          >
+            {value} <Star className="fill-current" /> (
+            {presentation.reviewDistribution[value as 1 | 2 | 3 | 4 | 5]})
+          </Button>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-col">
+        {visible.length ? (
+          visible.map((review) => (
+            <article key={review.id} className="flex flex-col gap-3 py-5 [&+&]:border-t">
+              <div className="flex items-start gap-3">
+                <Avatar className="size-10">
+                  <AvatarFallback>{review.initials}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold">{review.author}</p>
+                      <Stars rating={review.rating} compact />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{review.date}</p>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{review.content}</p>
+                  {review.photos.length ? (
+                    <div className="mt-3 flex gap-2 overflow-x-auto">
+                      {review.photos.map((photo, index) => (
+                        <img
+                          key={`${photo}-${index}`}
+                          src={photo}
+                          alt={`Ảnh đánh giá của ${review.author} ${index + 1}`}
+                          width={96}
+                          height={72}
+                          loading="lazy"
+                          className="h-18 w-24 shrink-0 rounded-md object-cover"
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                  {review.roomName ? (
+                    <p className="mt-2 text-xs text-muted-foreground">Phòng: {review.roomName}</p>
+                  ) : null}
+                  {review.reply ? (
+                    <div className="mt-4 flex gap-3 rounded-md bg-muted/60 p-3 text-xs leading-5">
+                      <Avatar className="size-8">
+                        <AvatarFallback>ST</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <strong>Phản hồi từ studio</strong>
+                          <span className="text-muted-foreground">{review.date}</span>
+                        </div>
+                        <p className="mt-1 text-muted-foreground">{review.reply}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
-            <div className="flex gap-0.5" aria-label={`${review.rating} trên 5 sao`}>
-              {Array.from({ length: 5 }, (_, index) => (
-                <Star
-                  key={index}
-                  className={cn(
-                    'size-4',
-                    index < review.rating ? 'fill-primary text-primary' : 'text-muted',
-                  )}
-                  aria-hidden="true"
-                />
-              ))}
-            </div>
-            <p className="text-sm leading-6 text-muted-foreground">{review.content}</p>
-            {review.reply ? (
-              <div className="mt-auto rounded-md bg-muted/60 p-3 text-xs leading-5">
-                <strong className="block text-foreground">Phản hồi từ studio</strong>
-                <span className="text-muted-foreground">{review.reply}</span>
-              </div>
-            ) : null}
-          </article>
+            </article>
+          ))
+        ) : (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            Chưa có đánh giá {rating} sao.
+          </p>
+        )}
+      </div>
+      {visible.length < filtered.length ? (
+        <div className="flex justify-center border-t pt-4">
+          <Button
+            type="button"
+            variant="link"
+            onClick={() => setVisibleCount((count) => count + 3)}
+          >
+            Xem thêm <ChevronDown />
+          </Button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function RelatedStudios({ listings }: { listings: PublicListingResponse[] }) {
+  if (!listings.length) return null;
+  return (
+    <section
+      aria-labelledby="related-title"
+      className="rounded-lg bg-background p-4 shadow-[0_1px_5px_rgba(16,24,40,0.06)] sm:p-6"
+    >
+      <h2 id="related-title" className="text-base font-semibold">
+        Studio tương tự
+      </h2>
+      <div className="-mx-4 mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 xl:mx-0 xl:grid xl:grid-cols-4 xl:overflow-visible xl:px-0">
+        {listings.slice(0, 4).map((listing) => (
+          <div
+            key={listing.id}
+            className="w-[78vw] max-w-69.5 shrink-0 snap-start sm:w-69.5 xl:w-auto xl:max-w-none"
+          >
+            <ListingCard
+              listing={listing}
+              presentation={relatedListingPresentation(
+                listing.id || listing.slug,
+                listing.priceFrom,
+              )}
+            />
+          </div>
         ))}
       </div>
     </section>
   );
 }
 
-function RelatedStudios({
-  listings,
-  listingTypeSlug,
-}: {
-  listings: PublicListingResponse[];
-  listingTypeSlug: string;
-}) {
-  const locale = useLocale();
-  if (!listings.length) return null;
+function Stars({ rating, compact = false }: { rating: number; compact?: boolean }) {
   return (
-    <section aria-labelledby="related-title" className="flex flex-col gap-5 border-t pt-8">
-      <div>
-        <h2 id="related-title" className="text-2xl font-semibold">
-          Studio tương tự
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">Một số lựa chọn khác trong cùng tenant</p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {listings.slice(0, 4).map((listing) => {
-          const photo = listing.photos.find((item): item is string => typeof item === 'string');
-          const path =
-            listing.kind === 'group'
-              ? storefrontPaths.listingGroup(locale, listing.slug)
-              : storefrontPaths.listing(locale, listing.slug);
-          const location = formatListingLocation(listing);
-          return (
-            <Link
-              key={listing.id}
-              to={path}
-              className="group overflow-hidden rounded-lg border bg-background transition-shadow hover:shadow-md"
-            >
-              <div className="aspect-[4/3] overflow-hidden bg-muted">
-                {photo ? (
-                  <img
-                    src={photo}
-                    alt=""
-                    className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                  />
-                ) : (
-                  <div className="grid size-full place-items-center">
-                    <Building2 className="size-7 text-muted-foreground" aria-hidden="true" />
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2 p-4">
-                <h3 className="line-clamp-2 font-semibold">{listing.title}</h3>
-                {location ? (
-                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="line-clamp-1">{location}</span>
-                  </p>
-                ) : null}
-                <p className="text-sm text-muted-foreground">
-                  {listing.listingTypeSlug === listingTypeSlug
-                    ? 'Cùng loại studio'
-                    : 'Không gian phù hợp khác'}
-                </p>
-                <p className="font-semibold text-primary">
-                  {formatVnd(listing.priceFrom) ?? 'Liên hệ'}
-                </p>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <span
+      className="inline-flex items-center gap-0.5 text-amber-500"
+      aria-label={`${rating.toFixed(1)} trên 5 sao`}
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <Star
+          key={index}
+          aria-hidden="true"
+          className={cn(
+            compact ? 'size-3' : 'size-4',
+            index < Math.round(rating) && 'fill-current',
+          )}
+        />
+      ))}
+    </span>
   );
 }
 
@@ -974,6 +1184,21 @@ function minimumRoomPrice(options: RoomOption[]): string | null {
       minimum = value;
   }
   return minimum === null ? null : formatVnd(String(minimum));
+}
+
+function amenityIcon(amenity: string) {
+  const normalized = amenity.toLocaleLowerCase('vi');
+  if (/wifi|wi-fi|internet/.test(normalized)) return Wifi;
+  if (/xe|đỗ|đậu/.test(normalized)) return ParkingCircle;
+  if (/camera|an ninh/.test(normalized)) return Camera;
+  if (/điều hòa|máy lạnh|air/.test(normalized)) return AirVent;
+  if (/thú cưng|pet/.test(normalized)) return Dog;
+  if (/đèn|ánh sáng/.test(normalized)) return LampCeiling;
+  return Check;
+}
+
+function presentationProviderBookings(trust: RoomOption['detail']['trust'] | null): number {
+  return trust?.completedBookings && trust.completedBookings > 0 ? trust.completedBookings : 456;
 }
 
 function roomCapacity(attributes: Record<string, unknown>): number | null {
