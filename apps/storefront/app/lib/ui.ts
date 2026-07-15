@@ -1,4 +1,13 @@
-import { Aperture, Camera, Package, Sparkles, Tag, UserRound, type LucideIcon } from 'lucide-react';
+import {
+  Aperture,
+  Camera,
+  Package,
+  Shirt,
+  Sparkles,
+  Tag,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react';
 
 /** Maps a listing type slug to a lucide icon for the menu + cards. */
 export function typeIcon(slug: string): LucideIcon {
@@ -7,6 +16,7 @@ export function typeIcon(slug: string): LucideIcon {
   if (slug.includes('equipment')) return Package;
   if (slug.includes('makeup')) return Sparkles;
   if (slug.includes('photo')) return Aperture;
+  if (slug.includes('clothes') || slug.includes('costume') || slug.includes('fashion')) return Shirt;
   return Tag;
 }
 

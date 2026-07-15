@@ -19,14 +19,16 @@ export function StudioHome({
   tenant,
   listingTypes,
   listings,
+  locations,
 }: {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   listings: PublicListingResponse[];
+  locations: string[];
 }) {
   return (
     <>
-      <StudioHero tenant={tenant} listingTypes={listingTypes} />
+      <StudioHero tenant={tenant} listingTypes={listingTypes} locations={locations} />
       <StudioCarousel images={tenant.carousel} />
       <div className="mx-auto max-w-292.5 space-y-10 px-6 lg:px-0 py-10">
         <StudioPromoBanner tenant={tenant} />

@@ -83,6 +83,8 @@ export function themeCss(theme: StorefrontTenant['theme']): string {
     `--sf-primary:${primary}`,
     `--sf-accent:${accent}`,
     `--sf-background:${background}`,
+    `--sf-primary-soft:color-mix(in oklch,${primary} 10%,${background})`,
+    `--sf-accent-soft:color-mix(in oklch,${accent} 10%,${background})`,
   ];
   return `:root{${decls.join(';')}}`;
 }

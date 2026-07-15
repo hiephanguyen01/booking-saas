@@ -13,5 +13,7 @@ describe('themeCss', () => {
     expect(css).toContain('--accent:#abcdef');
     expect(css).toContain('--background:#f8fafc');
     expect(css).toContain('--foreground:oklch(0.145 0 0)');
+    expect(css).toContain('--sf-primary-soft:color-mix(in oklch,#123456 10%,#f8fafc)');
+    expect(css).toContain('--sf-accent-soft:color-mix(in oklch,#abcdef 10%,#f8fafc)');
   });
 });

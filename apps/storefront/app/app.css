@@ -10,9 +10,37 @@
   --sf-primary: #0ea5e9;
   --sf-accent: #f97316;
   --sf-background: #ffffff;
+  --sf-primary-soft: color-mix(in oklch, var(--sf-primary) 10%, var(--sf-background));
+  --sf-accent-soft: color-mix(in oklch, var(--sf-accent) 10%, var(--sf-background));
   /* page canvas: a hair off-white so white cards lift off it */
   --sf-canvas: #ffffff;
   --sf-muted: #6b7280;
+}
+
+.sf-calendar button[data-selected-single='true'],
+.sf-calendar button[data-range-start='true'],
+.sf-calendar button[data-range-end='true'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.sf-calendar button[data-range-middle='true'] {
+  background: color-mix(in oklch, var(--primary) 10%, var(--background));
+  color: var(--foreground);
+}
+
+.sf-calendar button:not([data-selected-single='true']):not([data-range-start='true']):not([data-range-end='true']):not(:disabled):hover {
+  background: color-mix(in oklch, var(--primary) 10%, var(--background));
+  color: var(--foreground);
+}
+
+.sf-calendar [data-today='true']:not([data-selected='true']) {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.sf-calendar [data-today='true']:not([data-selected='true']) button {
+  font-weight: 600;
 }
 
 html {

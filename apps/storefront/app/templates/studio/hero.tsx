@@ -11,9 +11,11 @@ import { HeroSearchCard } from './hero-search-card';
 export function StudioHero({
   tenant,
   listingTypes,
+  locations,
 }: {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
+  locations: string[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const title = tenant.hero.title ?? t('home.heroTitleFallback', { name: tenant.name });
@@ -36,8 +38,8 @@ export function StudioHero({
           <p className="max-w-xl text-sm text-white/85 sm:text-base">{subtitle}</p>
         </div>
       </div>
-      <div className="relative z-10 mx-4 -mt-16 sm:mx-8 sm:-mt-20">
-        <HeroSearchCard listingTypes={listingTypes} />
+      <div className="relative z-10 -mt-16 sm:-mt-20">
+        <HeroSearchCard listingTypes={listingTypes} locations={locations} />
       </div>
     </section>
   );

@@ -11,6 +11,7 @@ export interface HomeTemplateProps {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   listings: PublicListingResponse[];
+  locations: string[];
 }
 
 export function homeTemplateFor(
