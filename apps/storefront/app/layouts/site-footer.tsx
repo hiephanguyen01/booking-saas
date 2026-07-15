@@ -1,3 +1,4 @@
+import { ArrowUp } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
@@ -17,9 +18,9 @@ export function SiteFooter({
   const locale = useLocale();
 
   return (
-    <footer className={`${className} bg-background font-studio text-foreground`}>
-      <div className="mx-auto w-full max-w-292.5 px-4 pb-6 pt-8 sm:px-6 lg:pb-0 lg:pt-10 xl:px-0">
-        <div className="grid gap-10 sm:grid-cols-2 lg:min-h-[180px] lg:grid-cols-[370px_220px_220px_270px] lg:justify-between lg:gap-0">
+    <footer className={`${className} bg-background pb-6 font-studio text-foreground`}>
+      <div className="mx-auto w-full max-w-292.5 px-4 pt-8 sm:px-6 xl:pb-0 xl:pt-10 xl:px-0">
+        <div className="grid gap-10 sm:grid-cols-2 xl:min-h-[180px] xl:grid-cols-[370px_220px_220px_270px] xl:justify-between xl:gap-0">
           <section aria-labelledby="footer-download" className="flex flex-col items-start">
             <h2 id="footer-download" className="text-base font-semibold leading-6">
               {t('footer.downloadApp')}
@@ -36,20 +37,12 @@ export function SiteFooter({
                 />
               ))}
             </div>
-            <p className="mt-4 text-sm leading-5 text-muted-foreground">
-              {t('footer.followUs')}
-            </p>
+            <p className="mt-4 text-sm leading-5 text-muted-foreground">{t('footer.followUs')}</p>
             <div className="mt-3 flex items-center gap-3">
               {SITE_FOOTER_FALLBACK.socialProfiles.map((social) => {
                 const href = social.tenantKey ? tenant.social[social.tenantKey] : null;
                 const icon = (
-                  <img
-                    src={social.src}
-                    alt=""
-                    width={40}
-                    height={40}
-                    className="size-10"
-                  />
+                  <img src={social.src} alt="" width={40} height={40} className="size-10" />
                 );
                 return href ? (
                   <a
@@ -115,18 +108,25 @@ export function SiteFooter({
           </section>
         </div>
 
-        <div className="relative mt-10 flex min-h-14 items-end justify-center border-t border-border pt-5 lg:min-h-[70px]">
+        <div className="relative mt-10 flex min-h-14 items-end justify-center border-t border-border pt-5 xl:min-h-[70px]">
           <p className="pr-14 text-center text-sm leading-5 text-muted-foreground sm:pr-0">
             {t('footer.copyright')}
           </p>
-          {/* <button
+          <button
             type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={() =>
+              window.scrollTo({
+                top: 0,
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                  ? 'auto'
+                  : 'smooth',
+              })
+            }
             aria-label={t('footer.scrollToTop')}
-            className="absolute -top-10 right-0 flex size-17 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute -top-9 right-0 flex size-17 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-[opacity,transform] hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ArrowUp aria-hidden="true" className="size-8" strokeWidth={1.7} />
-          </button> */}
+          </button>
         </div>
       </div>
     </footer>

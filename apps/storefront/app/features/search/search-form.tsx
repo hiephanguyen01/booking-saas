@@ -52,16 +52,18 @@ export function SearchForm({
   variant: SearchFormVariant;
 }) {
   const locale = useLocale();
+  const isHero = variant === 'hero';
   const state = initialState ?? parseSearchState(new URLSearchParams());
+  const initialMode: SearchMode = initialState ? state.mode : isHero ? 'daily' : state.mode;
   const studioType = listingTypes.find((type) => type.slug.toLowerCase() === 'studio');
   const [selectedType, setSelectedType] = useState(
     currentType ?? studioType?.slug ?? listingTypes[0]?.slug ?? 'studio',
   );
-  const [mode, setMode] = useState<SearchMode>(state.mode);
-  const [date, setDate] = useState(state.hasDateSelection ? state.date : '');
+  const [mode, setMode] = useState<SearchMode>(initialMode);
+  const [date, setDate] = useState(state.date);
   const [range, setRange] = useState<DateRange>({
-    from: state.hasDailyRange ? dateOnlyToLocal(state.from) : undefined,
-    to: state.hasDailyRange ? dateOnlyToLocal(state.to) : undefined,
+    from: dateOnlyToLocal(state.from),
+    to: dateOnlyToLocal(state.to),
   });
   const types = [...listingTypes]
     .sort((left, right) => {
@@ -72,7 +74,6 @@ export function SearchForm({
     .slice(0, 6);
   const options = locationSelectOptions(locations, state.location);
   const action = storefrontPaths.catalog(locale, selectedType);
-  const isHero = variant === 'hero';
   const dailyRange = validDailyRange(
     range.from ? localToDateOnly(range.from) : undefined,
     range.to ? localToDateOnly(range.to) : undefined,
@@ -98,7 +99,7 @@ export function SearchForm({
       className={cn(
         'font-studio',
         isHero
-          ? 'rounded-2xl bg-card text-card-foreground shadow-xl'
+          ? 'relative rounded-lg bg-card text-card-foreground shadow-[0_8px_22px_rgba(16,24,40,0.12)]'
           : 'bg-foreground text-background',
       )}
     >
@@ -115,13 +116,13 @@ export function SearchForm({
       <div
         className={cn(
           'flex flex-col gap-4',
-          isHero ? 'px-5 pt-4 pb-5 md:px-6' : 'mx-auto max-w-292.5 px-4 pb-6 lg:px-0',
+          isHero ? 'px-5 pt-5 pb-12 md:px-6' : 'mx-auto max-w-292.5 px-4 pb-6 lg:px-0',
         )}
       >
         {isHero ? (
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col items-start gap-2">
             <ModePills mode={mode} onModeChange={changeMode} />
-            <span className="text-xs font-medium text-foreground/70">
+            <span className="text-xs font-medium text-primary">
               {mode === 'hourly'
                 ? 'Dịch vụ được sử dụng trong ngày, tính theo giờ'
                 : 'Dịch vụ được sử dụng trong một hoặc nhiều ngày'}
@@ -142,7 +143,7 @@ export function SearchForm({
         <div
           className={cn(
             'grid gap-3',
-            isHero ? 'md:grid-cols-4' : 'lg:grid-cols-[1fr_1fr_1fr_1fr_auto]',
+            isHero ? 'sm:grid-cols-2 lg:grid-cols-4' : 'lg:grid-cols-[1fr_1fr_1fr_1fr_auto]',
           )}
         >
           <SearchField icon={Search} label="Bạn tìm gì?">
@@ -203,8 +204,13 @@ export function SearchForm({
         </div>
 
         {isHero ? (
-          <div className="flex justify-center">
-            <Button type="submit" size="lg" className="min-w-60 rounded-sm" disabled={!canSubmit}>
+          <div className="absolute inset-x-0 -bottom-6 flex justify-center">
+            <Button
+              type="submit"
+              size="lg"
+              className="min-w-60 rounded-sm shadow-[0_5px_4px_rgba(0,0,0,0.07)]"
+              disabled={!canSubmit}
+            >
               Tìm kiếm
             </Button>
           </div>
@@ -233,7 +239,7 @@ function CategoryPicker({
       className={cn(
         'flex overflow-x-auto overscroll-x-contain',
         isHero
-          ? 'rounded-t-2xl border-b border-border/70'
+          ? 'rounded-t-lg bg-[#f9fafb] shadow-[0_4px_8px_rgba(16,24,40,0.05)]'
           : 'mx-auto max-w-292.5 px-4 pt-5 pb-4 lg:px-0',
       )}
       aria-label="Loại dịch vụ"
@@ -251,8 +257,8 @@ function CategoryPicker({
               isHero
                 ? 'h-14 min-w-40 flex-1 gap-3 px-6 text-base leading-6 md:min-w-48 md:px-10'
                 : 'min-h-11 gap-2 rounded-full border border-transparent px-4 py-2 text-sm text-background/75',
-              isHero && !active && 'text-foreground hover:bg-foreground/10  bg-foreground/5',
-              active && isHero && '',
+              isHero && !active && 'text-foreground hover:bg-foreground/5',
+              active && isHero && 'bg-card text-foreground shadow-[0_3px_8px_rgba(16,24,40,0.08)]',
               active && !isHero && 'border-background text-background',
             )}
             aria-pressed={active}
@@ -298,18 +304,18 @@ function ModePills({
       value={mode}
       onValueChange={(value) => value && onModeChange(value as SearchMode)}
       variant="outline"
-      spacing={2}
+      spacing={3}
       aria-label="Hình thức đặt"
     >
       <ToggleGroupItem
         value="hourly"
-        className="rounded-full border-border data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+        className="h-10 rounded-full border-border px-4 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
       >
         Đặt theo giờ
       </ToggleGroupItem>
       <ToggleGroupItem
         value="daily"
-        className="rounded-full border-border data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+        className="h-10 rounded-full border-border px-4 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
       >
         Đặt theo ngày
       </ToggleGroupItem>
