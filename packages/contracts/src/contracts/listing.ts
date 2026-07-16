@@ -350,6 +350,7 @@ export const publicListingDetailResponseSchema = z
     depositPercent: z.number(),
     listingTypeSlug: z.string(),
     group: z.object({ title: z.string(), slug: z.string() }).nullable(),
+    cancellationPolicy: cancellationPolicySummarySchema.nullable(),
     trust: trustSignalsSchema,
   })
   .merge(administrativeAddressSnapshotSchema);

@@ -53,6 +53,14 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     return p ? toRecord(p) : null;
   }
 
+  async findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
+    const payment = await tx.payment.findFirst({
+      where: { bookingId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return payment ? toRecord(payment) : null;
+  }
+
   async findPendingCheckout(tx: PrismaTx, bookingId: string): Promise<{ id: string; paymentUrl: string } | null> {
     const rows = await tx.$queryRaw<{ id: string; paymentUrl: string | null }[]>(Prisma.sql`
       SELECT id, gateway_payload->>'paymentUrl' AS "paymentUrl"

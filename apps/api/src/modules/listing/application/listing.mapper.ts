@@ -115,6 +115,7 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
     depositPercent: l.depositPercent,
     listingTypeSlug: l.listingTypeSlug,
     group: l.group,
+    cancellationPolicy: l.cancellationPolicy,
     trust: {
       identityVerified: l.partnerVerifiedAt !== null,
       partnerActiveSince: l.partnerActiveSince.toISOString(),

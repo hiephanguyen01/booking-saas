@@ -41,6 +41,7 @@ export interface PaymentRef {
 export interface IPaymentRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePaymentData): Promise<PaymentRecord>;
   findActivePendingByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
+  findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   /** A reusable pending checkout (id + stored paymentUrl) — for idempotent checkout. */
   findPendingCheckout(tx: PrismaTx, bookingId: string): Promise<{ id: string; paymentUrl: string } | null>;
   findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;

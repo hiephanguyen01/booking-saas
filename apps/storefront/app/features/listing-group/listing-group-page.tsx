@@ -2,6 +2,7 @@ import type { HourlySlot, PublicListingResponse } from '@booking/contracts';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
+import { Spinner } from '@booking/ui/components/ui/spinner';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import {
   Collapsible,
@@ -66,7 +67,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useOutletContext } from 'react-router';
+import { Link, useNavigation, useOutletContext } from 'react-router';
 import { formatListingLocation, formatVnd } from '../../lib/ui';
 import { dateLabelInTz, timeInTz } from '../../lib/time';
 import { useLocale } from '../../lib/use-locale';
@@ -773,6 +774,8 @@ function RoomAction({
   state: ReturnType<typeof roomAvailabilityState>;
 }) {
   const locale = useLocale();
+  const navigation = useNavigation();
+  const navigating = navigation.state !== 'idle';
   if (state === 'booked')
     return (
       <div className="flex items-center gap-2 font-medium text-muted-foreground">
@@ -794,7 +797,7 @@ function RoomAction({
       </Button>
     );
   return (
-    <Button asChild className="w-full">
+    <Button asChild className="w-full" aria-disabled={navigating}>
       <Link
         to={checkoutHref({
           locale,
@@ -803,8 +806,12 @@ function RoomAction({
           start: option.start,
           end: option.end,
         })}
+        className={cn(navigating && 'pointer-events-none')}
+        aria-disabled={navigating || undefined}
+        tabIndex={navigating ? -1 : undefined}
       >
-        Chọn
+        {navigating ? <Spinner data-icon="inline-start" /> : null}
+        {navigating ? 'Đang chuyển…' : 'Chọn'}
       </Link>
     </Button>
   );
@@ -886,6 +893,7 @@ function SlotPickerContent({
   date: string;
 }) {
   const locale = useLocale();
+  const navigation = useNavigation();
   const [selected, setSelected] = useState<HourlySlot[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [selectionError, setSelectionError] = useState('');
@@ -995,9 +1003,23 @@ function SlotPickerContent({
           ))}
         </div>
       ) : null}
-      <Button asChild={Boolean(bookingHref)} disabled={!bookingHref} className="mt-1 w-full">
-        {bookingHref ? <Link to={bookingHref}>Đặt ngay</Link> : <span>Đặt ngay</span>}
-      </Button>
+      {bookingHref ? (
+        <Button asChild className="mt-1 w-full" aria-disabled={navigation.state !== 'idle'}>
+          <Link
+            to={bookingHref}
+            className={cn(navigation.state !== 'idle' && 'pointer-events-none')}
+            aria-disabled={navigation.state !== 'idle' || undefined}
+            tabIndex={navigation.state !== 'idle' ? -1 : undefined}
+          >
+            {navigation.state !== 'idle' ? <Spinner data-icon="inline-start" /> : null}
+            {navigation.state !== 'idle' ? 'Đang chuyển…' : 'Đặt ngay'}
+          </Link>
+        </Button>
+      ) : (
+        <Button disabled className="mt-1 w-full">
+          <span>Đặt ngay</span>
+        </Button>
+      )}
     </div>
   );
 }

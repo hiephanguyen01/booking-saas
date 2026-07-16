@@ -10,6 +10,8 @@ import { buildCheckoutIdempotencyKey } from '../lib/checkout-idempotency.server'
 import { appendRecentCookie } from '../lib/recent.server';
 import { resolveTenant } from '../lib/tenant.server';
 import { storefrontPaths } from '../lib/locale-paths';
+import { getOptionalAuth } from '../lib/auth.server';
+import { getCheckoutFlowService } from '../lib/checkout-flow.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Checkout' }, { name: 'robots', content: 'noindex' }];
@@ -51,7 +53,17 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
     promo = result.data;
   }
 
-  return { listing, mode, start, end, qty, quote, promoCode, promo };
+  return {
+    listing,
+    mode,
+    start,
+    end,
+    qty,
+    quote,
+    promoCode,
+    promo,
+    currentUser: getOptionalAuth()?.info.user ?? null,
+  };
 }
 
 type GuestFields = { fullName: string; email: string; phone: string };
@@ -125,17 +137,27 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   const booking = created.data;
-  const setCookie = appendRecentCookie(request, booking.code);
+  const headers = new Headers();
+  headers.append('Set-Cookie', appendRecentCookie(request, booking.code));
+  headers.append(
+    'Set-Cookie',
+    await getCheckoutFlowService().create(request, {
+      bookingId: booking.id,
+      bookingCode: booking.code,
+      listingSlug: String(form.get('listingSlug') ?? ''),
+      locale,
+    }),
+  );
 
   if (booking.status === 'pending_payment') {
     const checkout = await checkoutBooking(request, booking.id);
     if (checkout.ok && checkout.data && /^https?:/i.test(checkout.data.paymentUrl)) {
-      return redirect(checkout.data.paymentUrl, { headers: { 'Set-Cookie': setCookie } });
+      return redirect(checkout.data.paymentUrl, { headers });
     }
   }
 
   return redirect(storefrontPaths.booking(locale, booking.code), {
-    headers: { 'Set-Cookie': setCookie },
+    headers,
   });
 }
 
