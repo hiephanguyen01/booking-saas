@@ -23,8 +23,21 @@ function panel(search: string, locations: string[], amenities: string[] = []): s
   return render(
     <FilterPanel
       state={parseSearchState(new URLSearchParams(search))}
-      locations={locations}
-      amenities={amenities}
+      facets={[
+        { key: 'price', label: 'Khoảng giá', control: 'range', options: [] },
+        {
+          key: 'location',
+          label: 'Khu vực',
+          control: 'checkbox',
+          options: locations.map((value) => ({ value, label: value, count: 1 })),
+        },
+        {
+          key: 'amenities',
+          label: 'Tiện ích',
+          control: 'checkbox',
+          options: amenities.map((value) => ({ value, label: value, count: 1 })),
+        },
+      ]}
     />,
     search ? `?${search}` : '',
   );

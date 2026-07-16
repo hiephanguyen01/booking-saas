@@ -13,30 +13,22 @@ import {
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Form, Link } from 'react-router';
+import { Form, Link, useSearchParams } from 'react-router';
+import type { PublicCatalogFacet } from '@booking/contracts';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import {
-  locationSelectOptions,
-  type SearchArea,
-  type StorefrontSearchState,
-} from '../../search/search-state';
+import type { StorefrontSearchState } from '../../search/search-state';
 
 interface FilterOption {
   value: string;
   label: string;
 }
 
-/** Mirrors the ranges `matchesArea()` implements — the only room sizes the search can honour. */
-const AREA_VALUES = ['under-25', '25-50', '50-100', 'over-100'] as const satisfies readonly Exclude<
-  SearchArea,
-  ''
->[];
-
 /**
  * The catalog sidebar filters.
  *
- * Every option comes from the facets the loader derived from the current result
- * set. The panel used to be built on a hand-written mock catalogue (invented
+ * Every option comes from facets derived from the current category and schedule
+ * context, before the active checkbox filters are applied. The panel used to be
+ * built on a hand-written mock catalogue (invented
  * locations, two amenity lists and "(132)" counts rendered as if they were real)
  * whose location values were slugs — `containsLocation()` substring-matches the
  * listing's address text, so a slug never matched and any location filter
@@ -44,35 +36,28 @@ const AREA_VALUES = ['under-25', '25-50', '50-100', 'over-100'] as const satisfi
  */
 export function FilterPanel({
   state,
-  locations,
-  amenities,
+  facets,
+  booleanFacetKeys = [],
 }: {
   state: StorefrontSearchState;
-  locations: string[];
-  amenities: string[];
+  facets: PublicCatalogFacet[];
+  booleanFacetKeys?: string[];
 }) {
   const { t } = useTranslation(NsI18n.Catalog);
-  const locationOptions = locationSelectOptions(locations, state.location).map((location) => ({
-    value: location,
-    label: location,
-  }));
-  // Facets are derived from the matching results, so an active amenity has to be
-  // carried in explicitly — otherwise it disappears from the panel and can only
-  // be undone by clearing every filter.
-  const amenityOptions = [...new Set([...state.amenities, ...amenities])].map((amenity) => ({
-    value: amenity,
-    label: amenity,
-  }));
+  const [params] = useSearchParams();
 
   return (
-    <Form method="get" className="flex flex-col gap-6">
+    <Form key={params.toString()} method="get" className="flex flex-col gap-6">
       <input type="hidden" name="q" value={state.q} />
-      <input type="hidden" name="mode" value={state.mode} />
+      {state.mode !== 'none' ? <input type="hidden" name="mode" value={state.mode} /> : null}
       <input type="hidden" name="guests" value={state.guests} />
+      {state.mode === 'inventory' ? (
+        <input type="hidden" name="quantity" value={state.quantity} />
+      ) : null}
       {state.sort !== 'relevance' ? <input type="hidden" name="sort" value={state.sort} /> : null}
       {state.mode === 'hourly' && state.hasDateSelection ? (
         <input type="hidden" name="date" value={state.date} />
-      ) : state.mode === 'daily' && state.hasDailyRange ? (
+      ) : (state.mode === 'daily' || state.mode === 'inventory') && state.hasDailyRange ? (
         <>
           <input type="hidden" name="from" value={state.from} />
           <input type="hidden" name="to" value={state.to} />
@@ -81,48 +66,91 @@ export function FilterPanel({
 
       <h2 className="text-base font-semibold uppercase text-foreground">{t('filters.title')}</h2>
 
-      <FilterSection title={t('filters.price')}>
-        <div className="flex items-center gap-2">
-          <PriceInput name="minPrice" value={state.minPrice} label={t('filters.minPrice')} />
-          <span aria-hidden="true">–</span>
-          <PriceInput name="maxPrice" value={state.maxPrice} label={t('filters.maxPrice')} />
-        </div>
-      </FilterSection>
-
-      {locationOptions.length ? (
-        <FilterSection title={t('filters.location')}>
-          <FilterRadioList
-            name="location"
-            options={locationOptions}
-            selected={state.location}
-            allLabel={t('filters.all')}
-            visibleCount={6}
-          />
-        </FilterSection>
-      ) : null}
-
-      {amenityOptions.length ? (
-        <FilterSection title={t('filters.amenities')}>
-          <FilterCheckList
-            name="amenities"
-            options={amenityOptions}
-            selected={state.amenities}
-            visibleCount={8}
-          />
-        </FilterSection>
-      ) : null}
-
-      <FilterSection title={t('filters.area')}>
-        <FilterRadioList
-          name="area"
-          options={AREA_VALUES.map((value) => ({
-            value,
-            label: t(`filters.areaOptions.${value}`),
-          }))}
-          selected={state.area}
-          allLabel={t('filters.all')}
-        />
-      </FilterSection>
+      {facets.map((facet) => {
+        if (facet.key === 'price') {
+          return (
+            <FilterSection key={facet.key} title={t('filters.price')}>
+              <div className="flex items-center gap-2">
+                <PriceInput name="minPrice" value={state.minPrice} label={t('filters.minPrice')} />
+                <span aria-hidden="true">–</span>
+                <PriceInput name="maxPrice" value={state.maxPrice} label={t('filters.maxPrice')} />
+              </div>
+            </FilterSection>
+          );
+        }
+        const facetLabel =
+          facet.key === 'location'
+            ? t('filters.location')
+            : facet.key === 'amenities'
+              ? t('filters.amenities')
+              : facet.label;
+        if (facet.control === 'range') {
+          const min = Number(params.get(`${facet.key}.min`));
+          const max = Number(params.get(`${facet.key}.max`));
+          return (
+            <FilterSection key={facet.key} title={facetLabel}>
+              <div className="flex items-center gap-2">
+                <input
+                  aria-label={`${facetLabel}: ${t('filters.minimum')}`}
+                  className="h-10 min-w-0 rounded-md border px-3 text-sm"
+                  name={`${facet.key}.min`}
+                  type="number"
+                  defaultValue={Number.isFinite(min) && params.has(`${facet.key}.min`) ? min : ''}
+                  placeholder={String(facet.min ?? '')}
+                />
+                <span aria-hidden="true">–</span>
+                <input
+                  aria-label={`${facetLabel}: ${t('filters.maximum')}`}
+                  className="h-10 min-w-0 rounded-md border px-3 text-sm"
+                  name={`${facet.key}.max`}
+                  type="number"
+                  defaultValue={Number.isFinite(max) && params.has(`${facet.key}.max`) ? max : ''}
+                  placeholder={String(facet.max ?? '')}
+                />
+              </div>
+            </FilterSection>
+          );
+        }
+        const selected = params
+          .getAll(facet.key)
+          .flatMap((value) => value.split(','))
+          .filter(Boolean);
+        const isBoolean = booleanFacetKeys.includes(facet.key);
+        const options = facet.options.map((option) => {
+          const label = isBoolean
+            ? option.value === 'true'
+              ? t('filters.yes')
+              : option.value === 'false'
+                ? t('filters.no')
+                : option.label
+            : option.label;
+          return { value: option.value, label: `${label} (${option.count})` };
+        });
+        for (const value of selected) {
+          if (!options.some((option) => option.value === value))
+            options.unshift({ value, label: value });
+        }
+        return (
+          <FilterSection key={facet.key} title={facetLabel}>
+            {facet.control === 'radio' ? (
+              <FilterRadioList
+                name={facet.key}
+                options={options}
+                selected={selected[0] ?? ''}
+                allLabel={t('filters.all')}
+                visibleCount={facet.key === 'location' ? 6 : 8}
+              />
+            ) : (
+              <FilterCheckList
+                name={facet.key}
+                options={options}
+                selected={selected}
+                visibleCount={facet.key === 'location' ? 6 : 8}
+              />
+            )}
+          </FilterSection>
+        );
+      })}
 
       <div className="sticky bottom-0 grid grid-cols-2 gap-2 bg-background/95 py-3 backdrop-blur-sm">
         <Button asChild variant="ghost">
@@ -134,15 +162,7 @@ export function FilterPanel({
   );
 }
 
-function PriceInput({
-  name,
-  value,
-  label,
-}: {
-  name: string;
-  value: number | null;
-  label: string;
-}) {
+function PriceInput({ name, value, label }: { name: string; value: number | null; label: string }) {
   return (
     <InputGroup className="bg-background shadow-none">
       <InputGroupInput

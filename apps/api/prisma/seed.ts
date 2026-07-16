@@ -800,6 +800,7 @@ async function upsertListingType(
     unitLabel: string;
     sortOrder: number;
     attributeSchema: unknown;
+    searchConfig?: unknown;
     requiresIdentityVerification?: boolean;
     structure?: 'standalone' | 'grouped' | 'flexible';
   },
@@ -814,6 +815,7 @@ async function upsertListingType(
       unitLabel: input.unitLabel,
       sortOrder: input.sortOrder,
       attributeSchema: input.attributeSchema as never,
+      searchConfig: (input.searchConfig ?? {}) as never,
       requiresIdentityVerification: input.requiresIdentityVerification ?? false,
     },
     create: {
@@ -826,6 +828,7 @@ async function upsertListingType(
       unitLabel: input.unitLabel,
       sortOrder: input.sortOrder,
       attributeSchema: input.attributeSchema as never,
+      searchConfig: (input.searchConfig ?? {}) as never,
       requiresIdentityVerification: input.requiresIdentityVerification ?? false,
     },
   });

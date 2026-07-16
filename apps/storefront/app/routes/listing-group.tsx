@@ -48,6 +48,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   const options = await Promise.all(
     children.map(async (child) => {
       const detail = await safe(fetchListing(request, child.slug));
+      if (state.mode === 'none') return null;
       if (!detail || !detail.bookingModes.includes(state.mode)) return null;
       if (state.mode === 'hourly') {
         const availability = await safe(

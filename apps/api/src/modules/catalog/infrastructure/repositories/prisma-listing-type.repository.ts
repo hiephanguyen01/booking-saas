@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { AttributeField, BookingMode, ListingStructure } from '@booking/contracts';
+import {
+  listingTypeSearchConfigSchema,
+  type AttributeField,
+  type BookingMode,
+  type ListingStructure,
+} from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateListingTypeData,
@@ -31,6 +36,7 @@ function toRecord(t: PrismaListingType): ListingTypeRecord {
     allowedModes: t.allowedModes as BookingMode[],
     defaultModes: t.defaultModes as BookingMode[],
     attributeSchema: (t.attributeSchema ?? []) as unknown as AttributeField[],
+    searchConfig: listingTypeSearchConfigSchema.parse(t.searchConfig ?? {}),
     unitLabel: t.unitLabel,
     sortOrder: t.sortOrder,
     isActive: t.isActive,
@@ -66,6 +72,7 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
           allowedModes: data.allowedModes as never,
           defaultModes: data.defaultModes as never,
           attributeSchema: data.attributeSchema as unknown as Prisma.InputJsonValue,
+          searchConfig: data.searchConfig as unknown as Prisma.InputJsonValue,
           unitLabel: data.unitLabel,
           sortOrder: data.sortOrder,
           isActive: data.isActive,
@@ -124,6 +131,10 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
             data.attributeSchema === undefined
               ? undefined
               : (data.attributeSchema as unknown as Prisma.InputJsonValue),
+          searchConfig:
+            data.searchConfig === undefined
+              ? undefined
+              : (data.searchConfig as unknown as Prisma.InputJsonValue),
           unitLabel: data.unitLabel,
           sortOrder: data.sortOrder,
           isActive: data.isActive,

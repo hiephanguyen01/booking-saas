@@ -1,6 +1,6 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Link } from 'react-router';
+import { Link, useOutletContext, useSearchParams } from 'react-router';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { Route } from '../../routes/+types/listing';
@@ -9,11 +9,16 @@ import { storefrontPaths } from '../../lib/locale-paths';
 import { useLocale } from '../../lib/use-locale';
 import { formatListingLocation } from '../../lib/ui';
 import { MapPin, ShieldCheck } from 'lucide-react';
+import type { StorefrontContext } from '../../root';
+import { SearchForm } from '../search/search-form';
+import { parseSearchState } from '../search/search-state';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote } = loaderData;
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
+  const { listingTypes } = useOutletContext<StorefrontContext>();
+  const [searchParams] = useSearchParams();
 
   if (!listing) {
     return (
@@ -29,43 +34,51 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const location = formatListingLocation(listing, 'full');
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="mb-4">
-        {listing.group ? (
-          <Link
-            to={storefrontPaths.listingGroup(locale, listing.group.slug)}
-            className="mb-2 inline-flex text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← {listing.group.title}
-          </Link>
-        ) : null}
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{listing.title}</h1>
-        {location ? (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <MapPin className="size-4 shrink-0" aria-hidden="true" />
-            {location}
-          </p>
-        ) : null}
-        {attrs.length > 0 ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {attrs.map(([, v]) => String(v)).join(' · ')}
-          </p>
-        ) : null}
-        <TrustSignals trust={listing.trust} />
-      </div>
-
-      <Gallery photos={listing.photos} title={listing.title} />
-
-      <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">
-        <div>
-          {listing.description ? (
-            <p className="text-[15px] leading-relaxed text-foreground">{listing.description}</p>
+    <div className="bg-muted/20 pb-20">
+      <SearchForm
+        listingTypes={listingTypes}
+        currentType={listing.listingTypeSlug}
+        initialState={parseSearchState(searchParams)}
+        variant="bar"
+      />
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="mb-4">
+          {listing.group ? (
+            <Link
+              to={storefrontPaths.listingGroup(locale, listing.group.slug)}
+              className="mb-2 inline-flex text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← {listing.group.title}
+            </Link>
           ) : null}
-          {attrs.length > 0 ? <ListingAttributes attrs={attrs} /> : null}
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{listing.title}</h1>
+          {location ? (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="size-4 shrink-0" aria-hidden="true" />
+              {location}
+            </p>
+          ) : null}
+          {attrs.length > 0 ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {attrs.map(([, v]) => String(v)).join(' · ')}
+            </p>
+          ) : null}
+          <TrustSignals trust={listing.trust} />
         </div>
 
-        <div>
-          <BookingPanel listing={listing} mode={mode} availability={availability} quote={quote} />
+        <Gallery photos={listing.photos} title={listing.title} />
+
+        <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">
+          <div>
+            {listing.description ? (
+              <p className="text-[15px] leading-relaxed text-foreground">{listing.description}</p>
+            ) : null}
+            {attrs.length > 0 ? <ListingAttributes attrs={attrs} /> : null}
+          </div>
+
+          <div>
+            <BookingPanel listing={listing} mode={mode} availability={availability} quote={quote} />
+          </div>
         </div>
       </div>
     </div>

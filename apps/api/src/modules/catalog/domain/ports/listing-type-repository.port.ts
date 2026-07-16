@@ -1,4 +1,9 @@
-import type { AttributeField, BookingMode, ListingStructure } from '@booking/contracts';
+import type {
+  AttributeField,
+  BookingMode,
+  ListingStructure,
+  ListingTypeSearchConfig,
+} from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const LISTING_TYPE_REPOSITORY = Symbol('LISTING_TYPE_REPOSITORY');
@@ -12,6 +17,7 @@ export interface ListingTypeRecord {
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
   attributeSchema: AttributeField[];
+  searchConfig: ListingTypeSearchConfig;
   unitLabel: string | null;
   sortOrder: number;
   isActive: boolean;
@@ -31,6 +37,7 @@ export interface CreateListingTypeData {
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
   attributeSchema: AttributeField[];
+  searchConfig: ListingTypeSearchConfig;
   unitLabel: string | null;
   sortOrder: number;
   isActive: boolean;

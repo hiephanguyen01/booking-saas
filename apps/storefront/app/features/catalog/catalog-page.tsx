@@ -35,6 +35,7 @@ import { SearchResultCard } from './components/search-result-card';
  */
 const SORT_OPTIONS = [
   { value: 'relevance', labelKey: 'sort.relevance' },
+  { value: 'bookings-desc', labelKey: 'sort.bookings' },
   { value: 'price-asc', labelKey: 'sort.priceAsc' },
 ] as const satisfies readonly { value: SearchSort; labelKey: string }[];
 
@@ -44,6 +45,9 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { t } = useTranslation(NsI18n.Catalog);
   const navigation = useNavigation();
   const pending = navigation.state === 'loading';
+  const booleanFacetKeys = type.attributeSchema
+    .filter((field) => field.type === 'boolean')
+    .map((field) => `attr.${field.key}`);
 
   return (
     // A plain <div>: root.tsx already wraps the outlet in the page's one <main>.
@@ -58,7 +62,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
 
       <div className="mx-auto grid max-w-292.5 gap-8 px-4 py-8 lg:grid-cols-[270px_minmax(0,1fr)] lg:px-0">
         <aside className="hidden lg:block">
-          <FilterPanel state={state} locations={search.locations} amenities={search.amenities} />
+          <FilterPanel state={state} facets={search.facets} booleanFacetKeys={booleanFacetKeys} />
         </aside>
 
         <section aria-labelledby="search-results-title" className="min-w-0">
@@ -85,18 +89,22 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
                 <div className="overflow-y-auto px-4 pb-8">
                   <FilterPanel
                     state={state}
-                    locations={search.locations}
-                    amenities={search.amenities}
+                    facets={search.facets}
+                    booleanFacetKeys={booleanFacetKeys}
                   />
                 </div>
               </DrawerContent>
             </Drawer>
           </div>
 
-          <SortBar state={state} />
+          <SortBar state={state} options={search.sortOptions} />
 
           {pending ? (
-            <div className="flex flex-col gap-6" aria-live="polite" aria-label={t('loadingResults')}>
+            <div
+              className="flex flex-col gap-6"
+              aria-live="polite"
+              aria-label={t('loadingResults')}
+            >
               {Array.from({ length: 4 }, (_, index) => (
                 <ResultSkeleton key={index} />
               ))}
@@ -135,7 +143,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   );
 }
 
-function SortBar({ state }: { state: StorefrontSearchState }) {
+function SortBar({ state, options }: { state: StorefrontSearchState; options: SearchSort[] }) {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation(NsI18n.Catalog);
   return (
@@ -145,7 +153,7 @@ function SortBar({ state }: { state: StorefrontSearchState }) {
     >
       <span className="shrink-0 text-sm font-medium text-foreground">{t('sort.label')}</span>
       <div className="flex gap-3">
-        {SORT_OPTIONS.map((option) => (
+        {SORT_OPTIONS.filter((option) => options.includes(option.value)).map((option) => (
           <SortChip
             key={option.value}
             label={t(option.labelKey)}

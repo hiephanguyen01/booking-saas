@@ -7,6 +7,7 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { Camera } from 'lucide-react';
+import { useState } from 'react';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
 import { StudioHero } from './hero';
@@ -31,13 +32,24 @@ export function StudioHome({
   locations: string[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
-  const sections = splitHomeListings(listings);
+  const [selectedType, setSelectedType] = useState(
+    listingTypes.find((type) => type.slug === 'studio')?.slug ?? listingTypes[0]?.slug ?? '',
+  );
+  const visibleListings = selectedType
+    ? listings.filter((listing) => listing.listingTypeSlug === selectedType)
+    : listings;
+  const sections = splitHomeListings(visibleListings);
 
   return (
     <div className="bg-background">
-      <StudioHero tenant={tenant} listingTypes={listingTypes} locations={locations} />
+      <StudioHero
+        tenant={tenant}
+        listingTypes={listingTypes}
+        locations={locations}
+        onTypeChange={setSelectedType}
+      />
       <div className="mx-auto flex max-w-292.5 flex-col gap-10 px-4 pb-24 sm:px-6 xl:px-0">
-        {listings.length > 0 ? (
+        {visibleListings.length > 0 ? (
           <>
             <TopListingsSection listings={sections.top} />
             <RecommendedSection listings={sections.recommended} />

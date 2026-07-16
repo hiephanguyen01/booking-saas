@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { CreateListingTypeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -26,6 +26,26 @@ export class CreateListingTypeUseCase {
           message: `Slug "${input.slug}" is already in use`,
         });
       }
+      if (input.searchConfig.schedule !== 'none' && !input.allowedModes.includes(input.searchConfig.schedule)) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'INVALID_SEARCH_SCHEDULE',
+          message: `Search schedule "${input.searchConfig.schedule}" must be enabled by allowedModes`,
+        });
+      }
+      const filterable = new Set(
+        input.attributeSchema.filter((field) => field.filterable).map((field) => field.key),
+      );
+      const invalidFacets = input.searchConfig.attributeFacets.filter(
+        (facet) => !filterable.has(facet.key),
+      );
+      if (invalidFacets.length > 0) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'INVALID_SEARCH_FACET',
+          message: `Search facets must reference filterable attributes: ${invalidFacets.map((facet) => facet.key).join(', ')}`,
+        });
+      }
       const created = await this.repo.create(tx, tenantId, {
         name: input.name,
         slug: input.slug,
@@ -33,6 +53,7 @@ export class CreateListingTypeUseCase {
         allowedModes: input.allowedModes,
         defaultModes: input.defaultModes,
         attributeSchema: input.attributeSchema,
+        searchConfig: input.searchConfig,
         unitLabel: input.unitLabel ?? null,
         sortOrder: input.sortOrder,
         isActive: input.isActive,

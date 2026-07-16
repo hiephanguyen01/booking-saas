@@ -1,20 +1,23 @@
 import type { PriceUnit } from '../../lib/ui';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
-export type SearchMode = 'hourly' | 'daily';
+export type SearchMode = 'hourly' | 'daily' | 'inventory' | 'none';
 export type SearchArea = '' | 'under-25' | '25-50' | '50-100' | 'over-100';
-export type SearchSort = 'relevance' | 'price-asc' | 'rating' | 'bookings';
+export type SearchSort = 'relevance' | 'price-asc' | 'bookings-desc';
 
 export interface StorefrontSearchState {
   q: string;
   location: string;
   mode: SearchMode;
   date: string;
+  startTime: string;
+  endTime: string;
   from: string;
   to: string;
   hasDateSelection: boolean;
   hasDailyRange: boolean;
   guests: number;
+  quantity: number;
   minPrice: number | null;
   maxPrice: number | null;
   amenities: string[];
@@ -74,7 +77,8 @@ function money(value: string | null): number | null {
 
 export function parseSearchState(params: URLSearchParams): StorefrontSearchState {
   const today = todayInTz(DEFAULT_TZ);
-  const mode: SearchMode = params.get('mode') === 'daily' ? 'daily' : 'hourly';
+  const rawMode = params.get('mode');
+  const mode: SearchMode = rawMode === 'daily' || rawMode === 'inventory' ? rawMode : 'hourly';
   const rawDate = params.get('date');
   const rawFrom = params.get('from');
   const rawTo = params.get('to');
@@ -86,7 +90,7 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     ? (areaParam as SearchArea)
     : '';
   const sortParam = params.get('sort');
-  const sort: SearchSort = ['price-asc', 'rating', 'bookings'].includes(sortParam ?? '')
+  const sort: SearchSort = ['price-asc', 'bookings-desc'].includes(sortParam ?? '')
     ? (sortParam as SearchSort)
     : 'relevance';
 
@@ -95,6 +99,12 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     location: params.get('location')?.trim().slice(0, 200) ?? '',
     mode,
     date: dateParam(rawDate, today),
+    startTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(params.get('startTime') ?? '')
+      ? params.get('startTime')!
+      : '09:00',
+    endTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(params.get('endTime') ?? '')
+      ? params.get('endTime')!
+      : '10:00',
     from,
     to,
     hasDateSelection: Boolean(rawDate && DATE_RE.test(rawDate)),
@@ -102,6 +112,7 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
       rawFrom && rawTo && DATE_RE.test(rawFrom) && DATE_RE.test(rawTo) && rawTo > rawFrom,
     ),
     guests: Math.min(100, positiveInt(params.get('guests'), 1)),
+    quantity: Math.min(100, positiveInt(params.get('quantity'), 1)),
     minPrice: money(params.get('minPrice')),
     maxPrice: money(params.get('maxPrice')),
     amenities: [...new Set(params.getAll('amenities').flatMap((item) => item.split(',')))].filter(
@@ -117,10 +128,12 @@ export function searchContextParams(state: StorefrontSearchState): URLSearchPara
   const params = new URLSearchParams();
   if (state.q) params.set('q', state.q);
   if (state.location) params.set('location', state.location);
-  params.set('mode', state.mode);
+  if (state.mode !== 'none') params.set('mode', state.mode);
   params.set('guests', String(state.guests));
-  if (state.mode === 'hourly' && state.hasDateSelection) params.set('date', state.date);
-  else if (state.mode === 'daily' && state.hasDailyRange) {
+  if (state.mode === 'inventory') params.set('quantity', String(state.quantity));
+  if (state.mode === 'hourly' && state.hasDateSelection) {
+    params.set('date', state.date);
+  } else if ((state.mode === 'daily' || state.mode === 'inventory') && state.hasDailyRange) {
     params.set('from', state.from);
     params.set('to', state.to);
   }
@@ -187,7 +200,7 @@ export function canSubmitSearch(
   from: string | undefined,
   to: string | undefined,
 ): boolean {
-  if (mode === 'hourly' || !from) return true;
+  if (mode === 'hourly' || mode === 'none' || !from) return true;
   return validDailyRange(from, to) !== null;
 }
 

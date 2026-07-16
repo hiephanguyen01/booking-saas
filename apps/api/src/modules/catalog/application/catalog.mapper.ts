@@ -16,6 +16,7 @@ export function toListingTypeResponse(t: ListingTypeRecord): ListingTypeResponse
     allowedModes: t.allowedModes,
     defaultModes: t.defaultModes,
     attributeSchema: t.attributeSchema,
+    searchConfig: t.searchConfig,
     unitLabel: t.unitLabel,
     sortOrder: t.sortOrder,
     isActive: t.isActive,
@@ -40,7 +41,10 @@ export function toPublicListingTypeResponse(t: ListingTypeRecord): PublicListing
     requiresIdentityVerification: t.requiresIdentityVerification,
     structure: t.structure,
     itemLabel: t.itemLabel,
+    allowedModes: t.allowedModes,
+    defaultModes: t.defaultModes,
     attributeSchema: t.attributeSchema.filter((f) => f.filterable),
+    searchConfig: t.searchConfig,
   };
 }
 

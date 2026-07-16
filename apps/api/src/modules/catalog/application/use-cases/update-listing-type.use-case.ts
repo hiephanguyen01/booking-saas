@@ -58,6 +58,24 @@ export class UpdateListingTypeUseCase {
           message: `defaultModes must be a subset of allowedModes; invalid: ${invalid.join(', ')}`,
         });
       }
+      const searchConfig = input.searchConfig ?? existing.searchConfig;
+      if (searchConfig.schedule !== 'none' && !allowed.includes(searchConfig.schedule)) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'INVALID_SEARCH_SCHEDULE',
+          message: `Search schedule "${searchConfig.schedule}" must be enabled by allowedModes`,
+        });
+      }
+      const attributes = input.attributeSchema ?? existing.attributeSchema;
+      const filterable = new Set(attributes.filter((field) => field.filterable).map((field) => field.key));
+      const invalidFacets = searchConfig.attributeFacets.filter((facet) => !filterable.has(facet.key));
+      if (invalidFacets.length > 0) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'INVALID_SEARCH_FACET',
+          message: `Search facets must reference filterable attributes: ${invalidFacets.map((facet) => facet.key).join(', ')}`,
+        });
+      }
 
       const updated = await this.repo.update(tx, id, {
         name: input.name,
@@ -66,6 +84,7 @@ export class UpdateListingTypeUseCase {
         allowedModes: input.allowedModes,
         defaultModes: input.defaultModes,
         attributeSchema: input.attributeSchema,
+        searchConfig: input.searchConfig,
         unitLabel: input.unitLabel,
         sortOrder: input.sortOrder,
         isActive: input.isActive,
