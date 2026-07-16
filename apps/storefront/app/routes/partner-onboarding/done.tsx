@@ -32,7 +32,7 @@ export default function PartnerDone() {
         </p>
         <a
           href={`${dashboardUrl}/auth/login`}
-          className="mt-10 flex h-14 w-full items-center justify-center rounded-sm bg-primary text-base font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="mt-10 flex h-11 w-full items-center justify-center rounded-sm bg-primary text-base font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           {t('common:becomePartner.goToDashboard')}
         </a>

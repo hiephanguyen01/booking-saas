@@ -148,7 +148,7 @@ export default function BecomeAffiliate({ loaderData, actionData }: Route.Compon
             </p>
             <a
               href={`${dashboardUrl}/auth/login`}
-              className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
             >
               {t('common:becomePartner.goToDashboard')}
             </a>
