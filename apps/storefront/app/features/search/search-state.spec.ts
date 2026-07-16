@@ -123,9 +123,12 @@ describe('storefront search state', () => {
     expect(selectedDates(state)).toMatchObject({ from: '', to: '' });
   });
 
-  it('accepts only a complete increasing daily range', () => {
+  it('accepts complete daily ranges and normalizes one selected day', () => {
     expect(validDailyRange('2026-08-10', undefined)).toBeNull();
-    expect(validDailyRange('2026-08-10', '2026-08-10')).toBeNull();
+    expect(validDailyRange('2026-08-10', '2026-08-10')).toEqual({
+      from: '2026-08-10',
+      to: '2026-08-11',
+    });
     expect(validDailyRange('2026-08-10', '2026-08-09')).toBeNull();
     expect(validDailyRange('2026-08-10', '2026-08-12')).toEqual({
       from: '2026-08-10',
@@ -145,7 +148,10 @@ describe('canSubmitSearch', () => {
   it('blocks a daily range the visitor started but did not finish', () => {
     expect(canSubmitSearch('daily', '2026-08-10', undefined)).toBe(false);
     expect(canSubmitSearch('daily', '2026-08-10', '2026-08-09')).toBe(false);
-    expect(canSubmitSearch('daily', '2026-08-10', '2026-08-10')).toBe(false);
+  });
+
+  it('allows a completed one-day daily selection', () => {
+    expect(canSubmitSearch('daily', '2026-08-10', '2026-08-10')).toBe(true);
   });
 
   it('allows a complete daily range', () => {

@@ -381,13 +381,18 @@ function SearchDatePicker({
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const day = (value: Date): string => dateLabelInTz(localToDateOnly(value), DEFAULT_TZ, locale);
+  const isSingleDayRange =
+    Boolean(range.from && range.to) &&
+    localToDateOnly(range.from!) === localToDateOnly(range.to!);
   const label =
     mode === 'hourly'
       ? date
         ? dateLabelInTz(date, DEFAULT_TZ, locale)
         : t('home.pickDate')
       : range.from
-        ? `${day(range.from)} - ${range.to ? day(range.to) : t('home.endDate')}`
+        ? isSingleDayRange
+          ? day(range.from)
+          : `${day(range.from)} - ${range.to ? day(range.to) : t('home.endDate')}`
         : t('home.pickDate');
   const description = modeHint(mode, t);
   const trigger = (
@@ -429,7 +434,6 @@ function SearchDatePicker({
           }}
           disabled={{ before: new Date() }}
           numberOfMonths={months}
-          min={1}
           resetOnSelect
           formatters={formatters}
           className="sf-calendar w-full [--cell-size:2.25rem]"

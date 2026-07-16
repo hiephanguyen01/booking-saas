@@ -1,4 +1,5 @@
 import type { PriceUnit } from '../../lib/ui';
+import { normalizeDailyRange } from '../../lib/daily-range';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
 export type SearchMode = 'hourly' | 'daily';
@@ -170,8 +171,8 @@ export function validDailyRange(
   from: string | undefined,
   to: string | undefined,
 ): { from: string; to: string } | null {
-  if (!from || !to || !DATE_RE.test(from) || !DATE_RE.test(to) || to <= from) return null;
-  return { from, to };
+  const range = normalizeDailyRange(from, to);
+  return range ? { from: range.from, to: range.to } : null;
 }
 
 /**
