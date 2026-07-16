@@ -8,6 +8,8 @@ import {
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
+import { cn } from '@booking/ui/lib/utils';
 import { Switch } from '@booking/ui/components/ui/switch';
 import type { Route } from './+types/listings.$listingId.hours';
 import { apiGet, apiPut } from '~/lib/api.server';
@@ -156,7 +158,7 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
                   value={state.open}
                   disabled={!state.enabled}
                   onChange={(e) => update(d.dow, { open: e.target.value })}
-                  className="w-32"
+                  className={cn('w-32', FORM_CONTROL)}
                 />
                 <span className="text-muted-foreground">→</span>
                 <Input
@@ -165,7 +167,7 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
                   value={state.close}
                   disabled={!state.enabled}
                   onChange={(e) => update(d.dow, { close: e.target.value })}
-                  className="w-32"
+                  className={cn('w-32', FORM_CONTROL)}
                 />
               </div>
               {state.enabled && state.open >= state.close ? (

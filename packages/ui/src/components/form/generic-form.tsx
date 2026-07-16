@@ -16,6 +16,7 @@ import type { z } from "zod"
 import { cn } from "@booking/ui/lib/utils"
 import { Button } from "@booking/ui/components/ui/button"
 import { Form } from "@booking/ui/components/ui/form"
+import { FORM_CONTROL } from "@booking/ui/components/form/control"
 import { FieldRenderer } from "@booking/ui/components/form/field-renderer"
 import type { FieldConfig } from "@booking/ui/components/form/types"
 
@@ -38,8 +39,6 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   action?: string
   /** Stretch the submit button to full width (onboarding pages). */
   submitFullWidth?: boolean
-  /** Optional visual treatment for customer-facing forms. */
-  appearance?: "default" | "partner"
   /**
    * Custom controls rendered inside the form, below the config-driven grid. Use
    * this for fields the `fields` config can't express (dynamic repeaters, mode
@@ -96,7 +95,6 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   method = "post",
   action,
   submitFullWidth,
-  appearance = "default",
   extraFields,
   transform,
   children,
@@ -112,7 +110,6 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   const submit = useSubmit()
   const navigation = useNavigation()
   const isSubmitting = navigation.state === "submitting"
-  const isPartnerAppearance = appearance === "partner"
 
   const values = form.watch()
 
@@ -163,27 +160,14 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
           </div>
         ) : null}
 
-        <div
-          className={cn(
-            "grid gap-5",
-            COLS[columns],
-            isPartnerAppearance && [
-              "gap-x-10 gap-y-6",
-              columns === 2 && "sm:grid-cols-1 lg:grid-cols-2",
-            ],
-          )}
-        >
+        <div className={cn("grid gap-5", COLS[columns])}>
           {fields.map((field) => {
             if (field.hidden?.(values as Values)) return null
-            const span = field.colSpan
-              ? isPartnerAppearance && field.colSpan === 2
-                ? "lg:col-span-2"
-                : SPAN[field.colSpan]
-              : undefined
+            const span = field.colSpan ? SPAN[field.colSpan] : undefined
             const rowSpan = field.rowSpan ? ROW_SPAN[field.rowSpan] : undefined
             return (
               <div key={field.name} className={cn(span, rowSpan)}>
-                <FieldRenderer field={field} appearance={appearance} />
+                <FieldRenderer field={field} />
               </div>
             )
           })}
@@ -191,22 +175,11 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
 
         {extraFields ? extraFields(form) : null}
 
-        <div
-          className={cn(
-            "flex items-center gap-3",
-            submitFullWidth && "flex-col",
-            isPartnerAppearance && "justify-center pt-2",
-          )}
-        >
+        <div className={cn("flex items-center gap-3", submitFullWidth && "flex-col")}>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className={cn(
-              "h-14 rounded-lg px-8 text-sm font-semibold",
-              submitFullWidth && "w-full",
-              isPartnerAppearance &&
-                "w-full max-w-[400px] rounded-sm bg-primary text-base shadow-none hover:bg-primary/90",
-            )}
+            className={cn(FORM_CONTROL, "px-8 font-semibold", submitFullWidth && "w-full")}
           >
             {isSubmitting ? "Đang lưu..." : submitLabel}
           </Button>

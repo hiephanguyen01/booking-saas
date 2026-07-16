@@ -3,12 +3,14 @@ import {
   type AdministrativeWard,
   type PartnerOnboardingProfileInput,
 } from '@booking/contracts';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Button } from '@booking/ui/components/ui/button';
 import { Field, FieldLabel } from '@booking/ui/components/ui/field';
 import { Form } from '@booking/ui/components/ui/form';
 import { Spinner } from '@booking/ui/components/ui/spinner';
+import { cn } from '@booking/ui/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch, type Path } from 'react-hook-form';
@@ -110,7 +112,6 @@ function DocumentPair({ company, t }: { company: boolean; t: ProfileI18n }) {
               : 'common:becomePartner.identityDocumentFront',
           ),
         )}
-        appearance="partner"
       />
       <FieldRenderer
         field={documentField(
@@ -121,7 +122,6 @@ function DocumentPair({ company, t }: { company: boolean; t: ProfileI18n }) {
               : 'common:becomePartner.identityDocumentBack',
           ),
         )}
-        appearance="partner"
       />
     </div>
   );
@@ -230,18 +230,18 @@ export default function PartnerProfile() {
                 <FieldLabel htmlFor="partner-email">{t('common:becomePartner.email')}</FieldLabel>
                 <output
                   id="partner-email"
-                  className="flex h-14 items-center rounded-sm border border-border bg-muted px-4 text-base font-medium text-muted-foreground"
+                  className={cn(
+                    'flex items-center rounded-md border border-input bg-muted text-base text-muted-foreground md:text-sm',
+                    FORM_CONTROL,
+                  )}
                 >
                   {loaderData.email}
                 </output>
               </Field>
-              <FieldRenderer
-                field={textField('name', t('common:becomePartner.partnerName'), t)}
-                appearance="partner"
-              />
+              <FieldRenderer field={textField('name', t('common:becomePartner.partnerName'), t)} />
             </div>
             <div className="mt-6">
-              <FieldRenderer field={partnerTypeField} appearance="partner" />
+              <FieldRenderer field={partnerTypeField} />
             </div>
             <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
               <div className="space-y-4">
@@ -249,7 +249,6 @@ export default function PartnerProfile() {
                   <>
                     <FieldRenderer
                       field={textField('companyName', t('common:becomePartner.companyName'), t)}
-                      appearance="partner"
                     />
                     <FieldRenderer
                       field={textField(
@@ -257,7 +256,6 @@ export default function PartnerProfile() {
                         t('common:becomePartner.businessRegistrationNo'),
                         t,
                       )}
-                      appearance="partner"
                     />
                   </>
                 ) : null}
@@ -267,11 +265,9 @@ export default function PartnerProfile() {
                     t('common:becomePartner.representative'),
                     t,
                   )}
-                  appearance="partner"
                 />
                 <FieldRenderer
                   field={textField('identityNumber', t('common:becomePartner.identityNumber'), t)}
-                  appearance="partner"
                 />
                 <FieldRenderer
                   field={{
@@ -283,7 +279,6 @@ export default function PartnerProfile() {
                     searchPlaceholder: t('auth:partner.searchProvince'),
                     options: provinceOptions,
                   }}
-                  appearance="partner"
                 />
                 <FieldRenderer
                   field={{
@@ -300,12 +295,8 @@ export default function PartnerProfile() {
                     searchPlaceholder: t('auth:partner.searchWard'),
                     options: wardOptions,
                   }}
-                  appearance="partner"
                 />
-                <FieldRenderer
-                  field={textField('address', t('common:becomePartner.address'), t)}
-                  appearance="partner"
-                />
+                <FieldRenderer field={textField('address', t('common:becomePartner.address'), t)} />
                 <div className="space-y-4 pt-1 text-base leading-6 text-foreground">
                   <p>{t('auth:partner.privacyNotice', { tenant: loaderData.tenantName })}</p>
                   <FieldRenderer
@@ -315,17 +306,13 @@ export default function PartnerProfile() {
                       label: t('auth:partner.acceptTerms', { tenant: loaderData.tenantName }),
                       required: true,
                     }}
-                    appearance="partner"
                   />
                 </div>
               </div>
               <div className="space-y-4">
                 <DocumentPair company={partnerType === 'company'} t={t} />
                 {partnerType === 'company' ? <DocumentPair company={false} t={t} /> : null}
-                <FieldRenderer
-                  field={textField('phone', t('common:becomePartner.phone'), t)}
-                  appearance="partner"
-                />
+                <FieldRenderer field={textField('phone', t('common:becomePartner.phone'), t)} />
                 <FieldRenderer
                   field={{
                     name: 'bank',
@@ -336,7 +323,6 @@ export default function PartnerProfile() {
                     searchPlaceholder: t('auth:partner.searchBank'),
                     options: BANKS,
                   }}
-                  appearance="partner"
                 />
                 <FieldRenderer
                   field={textField(
@@ -344,7 +330,6 @@ export default function PartnerProfile() {
                     t('common:becomePartner.bankAccountNumber'),
                     t,
                   )}
-                  appearance="partner"
                 />
                 <FieldRenderer
                   field={textField(
@@ -352,7 +337,6 @@ export default function PartnerProfile() {
                     t('common:becomePartner.bankAccountHolder'),
                     t,
                   )}
-                  appearance="partner"
                 />
               </div>
             </div>
@@ -360,7 +344,7 @@ export default function PartnerProfile() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="h-14 w-full max-w-[400px] rounded-sm text-base"
+                className="h-11 w-full max-w-[400px] text-base"
               >
                 {submitting ? <Spinner data-icon="inline-start" /> : null}
                 {t('common:becomePartner.submit')}

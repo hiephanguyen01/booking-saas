@@ -10,6 +10,8 @@ import {
 } from '@booking/contracts';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
+import { cn } from '@booking/ui/lib/utils';
 import { Switch } from '@booking/ui/components/ui/switch';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { UseFormReturn } from '@booking/ui/components/form/rhf';
@@ -359,6 +361,7 @@ function ListingConfig({
                 min={0}
                 value={state.hourly.basePrice}
                 onChange={(e) => set('hourly', { ...state.hourly, basePrice: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Bước (phút)">
@@ -367,6 +370,7 @@ function ListingConfig({
                 min={1}
                 value={state.hourly.granularity}
                 onChange={(e) => set('hourly', { ...state.hourly, granularity: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Tối thiểu (giờ)">
@@ -375,6 +379,7 @@ function ListingConfig({
                 min={1}
                 value={state.hourly.minDuration}
                 onChange={(e) => set('hourly', { ...state.hourly, minDuration: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Tối đa (giờ)">
@@ -383,6 +388,7 @@ function ListingConfig({
                 min={1}
                 value={state.hourly.maxDuration}
                 onChange={(e) => set('hourly', { ...state.hourly, maxDuration: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Đặt trước tối thiểu (phút)">
@@ -391,6 +397,7 @@ function ListingConfig({
                 min={0}
                 value={state.hourly.leadTimeMin}
                 onChange={(e) => set('hourly', { ...state.hourly, leadTimeMin: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
           </Grid>
@@ -408,6 +415,7 @@ function ListingConfig({
                 onChange={(e) =>
                   set('daily', { ...state.daily, basePricePerNight: e.target.value })
                 }
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Tối thiểu (đêm)">
@@ -416,6 +424,7 @@ function ListingConfig({
                 min={1}
                 value={state.daily.minNights}
                 onChange={(e) => set('daily', { ...state.daily, minNights: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Tối đa (đêm)">
@@ -424,6 +433,7 @@ function ListingConfig({
                 min={1}
                 value={state.daily.maxNights}
                 onChange={(e) => set('daily', { ...state.daily, maxNights: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Giờ nhận">
@@ -431,6 +441,7 @@ function ListingConfig({
                 type="time"
                 value={state.daily.checkinTime}
                 onChange={(e) => set('daily', { ...state.daily, checkinTime: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Giờ trả">
@@ -438,6 +449,7 @@ function ListingConfig({
                 type="time"
                 value={state.daily.checkoutTime}
                 onChange={(e) => set('daily', { ...state.daily, checkoutTime: e.target.value })}
+                className={FORM_CONTROL}
               />
             </Field>
           </Grid>
@@ -454,7 +466,7 @@ function ListingConfig({
                   set('inventory', { ...state.inventory, unit: v as 'hour' | 'day' })
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className={cn('w-full', FORM_CONTROL)}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -471,6 +483,7 @@ function ListingConfig({
                 onChange={(e) =>
                   set('inventory', { ...state.inventory, basePrice: e.target.value })
                 }
+                className={FORM_CONTROL}
               />
             </Field>
             <Field label="Tiền cọc thiết bị (VND)">
@@ -481,6 +494,7 @@ function ListingConfig({
                 onChange={(e) =>
                   set('inventory', { ...state.inventory, securityDeposit: e.target.value })
                 }
+                className={FORM_CONTROL}
               />
             </Field>
             <Field
@@ -492,6 +506,7 @@ function ListingConfig({
                 min={1}
                 value={state.stockQuantity}
                 onChange={(e) => set('stockQuantity', e.target.value)}
+                className={FORM_CONTROL}
               />
             </Field>
           </Grid>
@@ -537,7 +552,7 @@ function AttributeInput({
     return (
       <Field label={field.label}>
         <Select value={typeof value === 'string' ? value : ''} onValueChange={onChange}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger className={cn('w-full', FORM_CONTROL)}>
             <SelectValue placeholder="—" />
           </SelectTrigger>
           <SelectContent>
@@ -579,6 +594,7 @@ function AttributeInput({
         onChange={(e) =>
           onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)
         }
+        className={FORM_CONTROL}
       />
     </Field>
   );

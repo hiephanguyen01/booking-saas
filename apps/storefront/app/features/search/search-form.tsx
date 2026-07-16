@@ -1,4 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import {
@@ -208,7 +209,7 @@ export function SearchForm({
             <Button
               type="submit"
               size="lg"
-              className="min-w-60 rounded-sm shadow-md"
+              className="h-11 min-w-60 shadow-md"
               disabled={!canSubmit}
             >
               {t('home.search')}
@@ -313,6 +314,8 @@ function ModeToggle({
   );
 }
 
+/** One bordered box holding an icon + a control: the box carries the form-control
+ *  geometry, so the control inside is stripped of its own border/height/padding. */
 function SearchField({
   icon: Icon,
   label,
@@ -323,7 +326,12 @@ function SearchField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex h-11 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+    <label
+      className={cn(
+        'flex min-w-0 items-center gap-2 rounded-md border border-border bg-background text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30',
+        FORM_CONTROL,
+      )}
+    >
       <span className="sr-only">{label}</span>
       <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 [&_[data-slot=native-select-wrapper]]:w-full">
@@ -381,7 +389,10 @@ function SearchDatePicker({
   const trigger = (
     <button
       type="button"
-      className="flex h-11 w-full min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-left text-foreground shadow-xs focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+      className={cn(
+        'flex w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background text-left text-foreground shadow-xs focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30',
+        FORM_CONTROL,
+      )}
       aria-label={`${t('home.dateLabel')}: ${label}`}
     >
       <CalendarDays className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />

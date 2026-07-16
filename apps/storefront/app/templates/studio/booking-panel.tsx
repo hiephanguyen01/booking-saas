@@ -6,9 +6,11 @@ import type {
   PublicListingDetailResponse,
   QuoteResponse,
 } from '@booking/contracts';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
+import { Input } from '@booking/ui/components/ui/input';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
 import { useMemo, type ReactNode } from 'react';
@@ -230,12 +232,12 @@ function HourlyPicker({
     <div className="space-y-3">
       <label className="flex flex-col gap-1.5">
         <PickerLabel>{t('pickDay')}</PickerLabel>
-        <input
+        <Input
           type="date"
           value={day}
           min={today}
           onChange={(e) => e.target.value && pickDay(e.target.value)}
-          className="h-10 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+          className={FORM_CONTROL}
         />
       </label>
 
@@ -439,22 +441,22 @@ function InventoryPicker({
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1.5">
           <PickerLabel>{t('checkin')}</PickerLabel>
-          <input
+          <Input
             type="date"
             value={fromDate}
             min={today}
             onChange={(e) => e.target.value && update({ from: e.target.value })}
-            className="h-10 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+            className={FORM_CONTROL}
           />
         </label>
         <label className="flex flex-col gap-1.5">
           <PickerLabel>{t('checkout')}</PickerLabel>
-          <input
+          <Input
             type="date"
             value={toDate}
             min={addDays(fromDate, 1)}
             onChange={(e) => e.target.value && update({ to: e.target.value })}
-            className="h-10 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+            className={FORM_CONTROL}
           />
         </label>
       </div>
@@ -466,7 +468,7 @@ function InventoryPicker({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8"
+            className="size-11"
             disabled={qty <= 1}
             onClick={() => update({ qty: Math.max(1, qty - 1) })}
           >
@@ -477,7 +479,7 @@ function InventoryPicker({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8"
+            className="size-11"
             disabled={qty >= remaining}
             onClick={() => update({ qty: Math.min(remaining, qty + 1) })}
           >

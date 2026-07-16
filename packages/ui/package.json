@@ -11,6 +11,7 @@
     "./globals.css": "./src/styles/globals.css",
     "./lib/*": "./src/lib/*.ts",
     "./components/form/types": "./src/components/form/types.ts",
+    "./components/form/control": "./src/components/form/control.ts",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   },

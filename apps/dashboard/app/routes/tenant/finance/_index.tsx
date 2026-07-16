@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@book
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Input } from '@booking/ui/components/ui/input';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Label } from '@booking/ui/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -277,7 +278,7 @@ function CreatePayoutDialog({
             <div className="space-y-2">
               <Label>Loại người nhận</Label>
               <Select value={payeeType} onValueChange={(v) => setPayeeType(v as 'partner' | 'affiliate')}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className={FORM_CONTROL}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="partner">Đối tác</SelectItem>
                   <SelectItem value="affiliate">Affiliate</SelectItem>
@@ -287,7 +288,7 @@ function CreatePayoutDialog({
             <div className="space-y-2">
               <Label htmlFor="payeeId">Người nhận</Label>
               <Select name="payeeId" required key={payeeType}>
-                <SelectTrigger id="payeeId"><SelectValue placeholder="Chọn người nhận…" /></SelectTrigger>
+                <SelectTrigger id="payeeId" className={FORM_CONTROL}><SelectValue placeholder="Chọn người nhận…" /></SelectTrigger>
                 <SelectContent>
                   {payees.length === 0 ? (
                     <SelectItem value="none" disabled>Không có số dư phải chi</SelectItem>
@@ -338,7 +339,7 @@ function MarkFailedDialog({ payout, name, readOnly }: { payout: PayoutResponse; 
           </DialogHeader>
           <div className="space-y-2 py-4">
             <Label htmlFor={`fail-${payout.id}`}>Lý do (tuỳ chọn)</Label>
-            <Input id={`fail-${payout.id}`} name="reason" maxLength={500} placeholder="VD: sai số tài khoản" />
+            <Input id={`fail-${payout.id}`} name="reason" maxLength={500} placeholder="VD: sai số tài khoản" className={FORM_CONTROL} />
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="ghost">Huỷ</Button></DialogClose>
@@ -373,11 +374,11 @@ function MarkPaidDialog({ payout, name, readOnly }: { payout: PayoutResponse; na
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor={`ref-${payout.id}`}>Số tham chiếu chuyển khoản</Label>
-              <Input id={`ref-${payout.id}`} name="reference" required maxLength={200} placeholder="VD: FT24123456789" />
+              <Input id={`ref-${payout.id}`} name="reference" required maxLength={200} placeholder="VD: FT24123456789" className={FORM_CONTROL} />
             </div>
             <div className="space-y-2">
               <Label htmlFor={`ev-${payout.id}`}>Mã chứng từ (tuỳ chọn)</Label>
-              <Input id={`ev-${payout.id}`} name="evidenceKey" maxLength={500} placeholder="Khoá tệp bằng chứng đã tải lên" />
+              <Input id={`ev-${payout.id}`} name="evidenceKey" maxLength={500} placeholder="Khoá tệp bằng chứng đã tải lên" className={FORM_CONTROL} />
             </div>
           </div>
           <DialogFooter>

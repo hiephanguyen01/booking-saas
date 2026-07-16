@@ -4,6 +4,8 @@ import type { ReferralLinkResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
+import { cn } from '@booking/ui/lib/utils';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Plus, Copy, Check, Trash2 } from 'lucide-react';
 import type { Route } from './+types/links';
@@ -96,7 +98,7 @@ function LinkRow({ link, storefrontUrl }: { link: ReferralLinkResponse; storefro
         <Badge variant="outline" className="font-mono">
           {link.code}
         </Badge>
-        <Input readOnly value={url} className="min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+        <Input readOnly value={url} className={cn('min-w-0 flex-1 font-mono text-xs', FORM_CONTROL)} onFocus={(e) => e.currentTarget.select()} />
         <span className="text-xs text-muted-foreground">{link.clicksCount} click</span>
         <Button type="button" variant="outline" size="sm" onClick={copy}>
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}

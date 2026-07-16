@@ -12,6 +12,12 @@ import {
 import * as React from 'react';
 import { useFormContext, type FieldValues } from 'react-hook-form';
 
+import {
+  FORM_CONTROL,
+  FORM_SELECT_TRIGGER,
+  FORM_TEXTAREA,
+  FORM_TRIGGER,
+} from '@booking/ui/components/form/control';
 import { ImageUpload } from '@booking/ui/components/form/image-upload';
 import type {
   BooleanFieldConfig,
@@ -54,50 +60,25 @@ import { Switch } from '@booking/ui/components/ui/switch';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { cn } from '@booking/ui/lib/utils';
 
-/**
- * Premium control styling (the "register partner" design system, expressed in
- * semantic tokens so it stays dark-mode-correct and tenant-themeable). Merged
- * last onto the shadcn primitives via `cn`, so `tailwind-merge` overrides their
- * baseline height/radius/focus-ring.
- */
-const PREMIUM_CONTROL =
-  'rounded-lg px-4 text-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0';
-const PREMIUM_TEXTAREA =
-  'min-h-28 rounded-lg px-4 py-3 text-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-0';
-const PREMIUM_TRIGGER = 'w-full rounded-lg px-4 text-sm';
-const SEGMENTED_BASE =
-  'flex flex-1 items-center justify-center rounded-lg border text-sm font-semibold transition-all';
+/** `radio` + `variant: "segmented"`: a button group, so it carries its own chrome. */
+const SEGMENTED_BASE = cn(
+  FORM_CONTROL,
+  'flex flex-1 items-center justify-center rounded-md border text-sm font-semibold outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+);
 const SEGMENTED_ON = 'border-primary bg-primary text-primary-foreground shadow-sm';
 const SEGMENTED_OFF =
   'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground';
-
-export type FieldAppearance = 'default' | 'partner';
-
-const PARTNER_CONTROL =
-  'h-14 rounded-sm border-[#d0d5dd] bg-white px-4 text-base font-medium text-[#101828] shadow-none placeholder:text-[#667085] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15';
-const PARTNER_TEXTAREA =
-  'min-h-28 rounded-sm border-[#d0d5dd] bg-white px-4 py-3 text-base font-medium text-[#101828] shadow-none placeholder:text-[#667085] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15';
-const PARTNER_TRIGGER =
-  'h-14 w-full rounded-sm border-[#d0d5dd] bg-white px-4 text-base font-medium text-[#667085] shadow-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15';
 
 /**
  * Renders a single field from its config, bound to react-hook-form. Boolean and
  * date types get their own inline layout; everything else uses the standard
  * label / control / message stack.
  */
-export function FieldRenderer<T extends FieldValues>({
-  field,
-  appearance = 'default',
-}: {
-  field: FieldConfig<T>;
-  appearance?: FieldAppearance;
-}) {
+export function FieldRenderer<T extends FieldValues>({ field }: { field: FieldConfig<T> }) {
   const { control } = useFormContext<T>();
-  const isPartnerSegmented =
-    appearance === 'partner' && field.type === 'radio' && field.variant === 'segmented';
 
   if (field.type === 'checkbox' || field.type === 'switch') {
-    return <BooleanField field={field} control={control} appearance={appearance} />;
+    return <BooleanField field={field} control={control} />;
   }
 
   return (
@@ -105,24 +86,18 @@ export function FieldRenderer<T extends FieldValues>({
       control={control}
       name={field.name}
       render={({ field: rhf }) => (
-        <FormItem className={cn(isPartnerSegmented && 'gap-4')}>
+        <FormItem>
           {field.label ? (
-            <FormLabel
-              className={cn(
-                'font-medium',
-                appearance === 'partner' && 'text-sm leading-5 text-[#344054]',
-                isPartnerSegmented && 'text-lg font-semibold leading-7 text-[#3f3f3f]',
-              )}
-            >
+            <FormLabel>
               {field.label}
               {field.required ? (
-                <span aria-hidden="true" className="mr-1 text-[#f43f3f]">
+                <span aria-hidden="true" className="mr-1 text-destructive">
                   *
                 </span>
               ) : null}
             </FormLabel>
           ) : null}
-          <FormControl>{renderControl(field, rhf, appearance)}</FormControl>
+          <FormControl>{renderControl(field, rhf)}</FormControl>
           {field.description ? <FormDescription>{field.description}</FormDescription> : null}
           <FieldMessage />
         </FormItem>
@@ -131,7 +106,7 @@ export function FieldRenderer<T extends FieldValues>({
   );
 }
 
-/** Premium inline error row (AlertCircle + destructive text), matching the register page. */
+/** Inline error row (AlertCircle + destructive text) below a field's control. */
 function FieldMessage() {
   const { error, formMessageId } = useFormField();
   const message = error?.message ? String(error.message) : null;
@@ -156,7 +131,6 @@ type RhfField = {
 function renderControl<T extends FieldValues>(
   field: FieldConfig<T>,
   rhf: RhfField,
-  appearance: FieldAppearance,
 ): React.ReactElement {
   switch (field.type) {
     case 'textarea':
@@ -166,22 +140,22 @@ function renderControl<T extends FieldValues>(
           rows={(field as TextFieldConfig<T>).rows}
           disabled={field.disabled}
           required={field.required}
-          className={appearance === 'partner' ? PARTNER_TEXTAREA : PREMIUM_TEXTAREA}
+          className={FORM_TEXTAREA}
           {...textBinding(rhf)}
         />
       );
     case 'password':
-      return <PasswordControl field={field} rhf={rhf} appearance={appearance} />;
+      return <PasswordControl field={field} rhf={rhf} />;
     case 'select':
-      return <SelectControl field={field} rhf={rhf} appearance={appearance} />;
+      return <SelectControl field={field} rhf={rhf} />;
     case 'combobox':
-      return <ComboboxControl field={field} rhf={rhf} appearance={appearance} />;
+      return <ComboboxControl field={field} rhf={rhf} />;
     case 'radio':
-      return <RadioControl field={field} rhf={rhf} appearance={appearance} />;
+      return <RadioControl field={field} rhf={rhf} />;
     case 'date':
       return <DateControl field={field} rhf={rhf} />;
     case 'file':
-      return <FileControl field={field} rhf={rhf} appearance={appearance} />;
+      return <FileControl field={field} rhf={rhf} />;
     case 'number':
       return (
         <Input
@@ -191,7 +165,7 @@ function renderControl<T extends FieldValues>(
           autoComplete={field.autoComplete}
           disabled={field.disabled}
           required={field.required}
-          className={appearance === 'partner' ? PARTNER_CONTROL : PREMIUM_CONTROL}
+          className={FORM_CONTROL}
           name={rhf.name}
           onBlur={rhf.onBlur}
           value={rhf.value === undefined || rhf.value === null ? '' : String(rhf.value)}
@@ -206,7 +180,7 @@ function renderControl<T extends FieldValues>(
           autoComplete={field.autoComplete}
           disabled={field.disabled}
           required={field.required}
-          className={appearance === 'partner' ? PARTNER_CONTROL : PREMIUM_CONTROL}
+          className={FORM_CONTROL}
           {...textBinding(rhf)}
         />
       );
@@ -227,11 +201,9 @@ function textBinding(rhf: RhfField) {
 function PasswordControl<T extends FieldValues>({
   field,
   rhf,
-  appearance,
 }: {
   field: TextFieldConfig<T>;
   rhf: RhfField;
-  appearance: FieldAppearance;
 }) {
   const [show, setShow] = React.useState(false);
   const withToggle = field.showToggle !== false;
@@ -243,10 +215,7 @@ function PasswordControl<T extends FieldValues>({
         autoComplete={field.autoComplete}
         disabled={field.disabled}
         required={field.required}
-        className={cn(
-          appearance === 'partner' ? PARTNER_CONTROL : PREMIUM_CONTROL,
-          withToggle && 'pr-11',
-        )}
+        className={cn(FORM_CONTROL, withToggle && 'pr-11')}
         {...textBinding(rhf)}
       />
       {withToggle ? (
@@ -267,11 +236,9 @@ function PasswordControl<T extends FieldValues>({
 function SelectControl<T extends FieldValues>({
   field,
   rhf,
-  appearance,
 }: {
   field: ChoiceFieldConfig<T>;
   rhf: RhfField;
-  appearance: FieldAppearance;
 }) {
   return (
     <Select
@@ -280,7 +247,7 @@ function SelectControl<T extends FieldValues>({
       disabled={field.disabled}
       required={field.required}
     >
-      <SelectTrigger className={appearance === 'partner' ? PARTNER_TRIGGER : PREMIUM_TRIGGER}>
+      <SelectTrigger className={FORM_SELECT_TRIGGER}>
         <SelectValue placeholder={field.placeholder ?? 'Chọn...'} />
       </SelectTrigger>
       <SelectContent>
@@ -297,39 +264,12 @@ function SelectControl<T extends FieldValues>({
 function RadioControl<T extends FieldValues>({
   field,
   rhf,
-  appearance,
 }: {
   field: ChoiceFieldConfig<T>;
   rhf: RhfField;
-  appearance: FieldAppearance;
 }) {
   // Segmented: a horizontal button group (register-partner partner-type toggle).
   if (field.variant === 'segmented') {
-    if (appearance === 'partner') {
-      return (
-        <RadioGroup
-          value={rhf.value ? String(rhf.value) : undefined}
-          onValueChange={rhf.onChange}
-          disabled={field.disabled}
-          aria-required={field.required}
-          className="grid grid-cols-1 gap-2 sm:grid-cols-[240px_240px] sm:gap-4"
-        >
-          {field.options.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex min-h-14 cursor-pointer items-center gap-3 px-4 text-base font-medium text-[#101828]"
-            >
-              <RadioGroupItem
-                value={opt.value}
-                className="size-5 border-[#344054] text-primary data-[state=checked]:border-primary"
-              />
-              {opt.label}
-            </label>
-          ))}
-        </RadioGroup>
-      );
-    }
-
     return (
       <div className="flex gap-3">
         {field.options.map((opt) => {
@@ -358,7 +298,8 @@ function RadioControl<T extends FieldValues>({
       className="flex flex-col gap-2"
     >
       {field.options.map((opt) => (
-        <label key={opt.value} className="flex items-center gap-2 text-sm font-normal">
+        // The whole row is the tap target, so it takes the control's touch height.
+        <label key={opt.value} className="flex min-h-11 items-center gap-2 text-sm font-normal">
           <RadioGroupItem value={opt.value} />
           {opt.label}
         </label>
@@ -370,11 +311,9 @@ function RadioControl<T extends FieldValues>({
 function ComboboxControl<T extends FieldValues>({
   field,
   rhf,
-  appearance,
 }: {
   field: ChoiceFieldConfig<T>;
   rhf: RhfField;
-  appearance: FieldAppearance;
 }) {
   const [open, setOpen] = React.useState(false);
   const current = field.options.find((o) => o.value === rhf.value);
@@ -390,8 +329,8 @@ function ComboboxControl<T extends FieldValues>({
             disabled={field.disabled}
             aria-required={field.required}
             className={cn(
-              appearance === 'partner' ? PARTNER_TRIGGER : PREMIUM_TRIGGER,
-              'w-full justify-between font-normal hover:bg-primary/10 hover:text-primary active:bg-primary active:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground data-[state=open]:hover:bg-primary data-[state=open]:hover:text-primary-foreground dark:hover:bg-primary/10 dark:hover:text-primary',
+              FORM_TRIGGER,
+              'justify-between font-normal hover:bg-primary/10 hover:text-primary active:bg-primary active:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground data-[state=open]:hover:bg-primary data-[state=open]:hover:text-primary-foreground dark:hover:bg-primary/10 dark:hover:text-primary',
               !current && 'text-muted-foreground',
             )}
           >
@@ -463,7 +402,7 @@ function DateControl<T extends FieldValues>({
           variant="outline"
           disabled={field.disabled}
           className={cn(
-            PREMIUM_TRIGGER,
+            FORM_TRIGGER,
             'justify-start font-normal',
             !value && 'text-muted-foreground',
           )}
@@ -490,11 +429,9 @@ function DateControl<T extends FieldValues>({
 function FileControl<T extends FieldValues>({
   field,
   rhf,
-  appearance,
 }: {
   field: FileFieldConfig<T>;
   rhf: RhfField;
-  appearance: FieldAppearance;
 }) {
   return (
     <ImageUpload
@@ -508,7 +445,6 @@ function FileControl<T extends FieldValues>({
       presignEndpoint={field.presignEndpoint}
       disabled={field.disabled}
       variant={field.variant}
-      className={appearance === 'partner' ? 'w-full' : undefined}
     />
   );
 }
@@ -516,23 +452,16 @@ function FileControl<T extends FieldValues>({
 function BooleanField<T extends FieldValues>({
   field,
   control,
-  appearance,
 }: {
   field: BooleanFieldConfig<T>;
   control: ReturnType<typeof useFormContext<T>>['control'];
-  appearance: FieldAppearance;
 }) {
   return (
     <FormField
       control={control}
       name={field.name}
       render={({ field: rhf }) => (
-        <FormItem
-          className={cn(
-            'flex flex-row items-start gap-3 space-y-0 rounded-lg border p-4',
-            appearance === 'partner' && 'rounded-none border-0 p-0',
-          )}
-        >
+        <FormItem className="flex flex-row items-start gap-3 space-y-0 rounded-lg border p-4">
           <FormControl>
             {field.type === 'switch' ? (
               <Switch
@@ -546,21 +475,11 @@ function BooleanField<T extends FieldValues>({
                 onCheckedChange={rhf.onChange}
                 disabled={field.disabled}
                 required={field.required}
-                className={appearance === 'partner' ? 'mt-0.5 size-5 border-[#344054]' : undefined}
               />
             )}
           </FormControl>
           <div className="space-y-1 leading-none">
-            {field.label ? (
-              <FormLabel
-                className={cn(
-                  'font-medium',
-                  appearance === 'partner' && 'text-base font-normal leading-6 text-[#344054]',
-                )}
-              >
-                {field.label}
-              </FormLabel>
-            ) : null}
+            {field.label ? <FormLabel>{field.label}</FormLabel> : null}
             {field.description ? <FormDescription>{field.description}</FormDescription> : null}
             <FieldMessage />
           </div>

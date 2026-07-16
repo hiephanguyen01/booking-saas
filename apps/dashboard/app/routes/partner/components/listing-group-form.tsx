@@ -8,6 +8,7 @@ import { Controller } from '@booking/ui/components/form/rhf';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Input } from '@booking/ui/components/ui/input';
+import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Field, FieldDescription, FieldLabel } from '@booking/ui/components/ui/field';
 import { AdministrativeAddressFields } from './administrative-address-fields';
 
@@ -83,6 +84,7 @@ export function ListingGroupForm({
                     )
                   }
                   placeholder="Bãi đỗ xe, lễ tân, wifi"
+                  className={FORM_CONTROL}
                 />
                 <FieldDescription>Phân tách các mục bằng dấu phẩy.</FieldDescription>
               </Field>

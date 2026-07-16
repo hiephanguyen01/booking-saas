@@ -1,3 +1,4 @@
+import { FORM_INPUT_GROUP } from '@booking/ui/components/form/control';
 import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import {
@@ -11,6 +12,7 @@ import {
   InputGroupInput,
 } from '@booking/ui/components/ui/input-group';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
+import { cn } from '@booking/ui/lib/utils';
 import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Form, Link } from 'react-router';
@@ -144,7 +146,7 @@ function PriceInput({
   label: string;
 }) {
   return (
-    <InputGroup className="h-11 rounded-sm bg-background shadow-none">
+    <InputGroup className={cn(FORM_INPUT_GROUP, 'bg-background shadow-none')}>
       <InputGroupInput
         name={name}
         // Empty unless the URL carries the bound: a pre-filled default submits as
@@ -153,7 +155,6 @@ function PriceInput({
         inputMode="numeric"
         aria-label={label}
         placeholder={label}
-        className="h-11 px-3 text-sm"
       />
       <InputGroupAddon align="inline-end" className="pr-3 font-normal">
         đ

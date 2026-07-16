@@ -84,13 +84,13 @@ export default function PartnerVerify() {
           >
             <InputOTPGroup>
               {[0, 1, 2].map((index) => (
-                <InputOTPSlot key={index} index={index} className="h-14 w-12 sm:w-14" />
+                <InputOTPSlot key={index} index={index} className="size-11" />
               ))}
             </InputOTPGroup>
             <InputOTPSeparator />
             <InputOTPGroup>
               {[3, 4, 5].map((index) => (
-                <InputOTPSlot key={index} index={index} className="h-14 w-12 sm:w-14" />
+                <InputOTPSlot key={index} index={index} className="size-11" />
               ))}
             </InputOTPGroup>
           </InputOTP>
