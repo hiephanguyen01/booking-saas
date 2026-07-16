@@ -11,7 +11,6 @@ import {
 } from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { FORM_TEXTAREA } from '@booking/ui/components/form/control';
 import {
   ArrowLeft,
   CircleAlert,
@@ -214,7 +213,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
           <CardContent>
             <Form method="post" className="space-y-3">
               <input type="hidden" name="intent" value="verify" />
-              <Textarea name="note" placeholder="Ghi chú xét duyệt (tuỳ chọn)…" rows={2} className={FORM_TEXTAREA} />
+              <Textarea name="note" placeholder="Ghi chú xét duyệt (tuỳ chọn)…" rows={2} />
               <Button type="submit" disabled={busy}>
                 <BadgeCheck className="size-4" /> Xác minh danh tính
               </Button>

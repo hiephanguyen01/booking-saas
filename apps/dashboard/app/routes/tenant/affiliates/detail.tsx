@@ -4,8 +4,6 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Input } from '@booking/ui/components/ui/input';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
-import { cn } from '@booking/ui/lib/utils';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { ArrowLeft } from 'lucide-react';
 import type { Route } from './+types/detail';
@@ -175,8 +173,8 @@ function RateForm({ currentRate }: { currentRate: string | null }) {
           max={100}
           defaultValue={currentRate ?? ''}
           placeholder="Theo quy tắc"
-          // pr-7 trails FORM_CONTROL's px-4 so the "%" suffix stays clear.
-          className={cn(FORM_CONTROL, 'pr-7')}
+          // pr-7 trails the control's px-4 so the "%" suffix stays clear.
+          className="pr-7"
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
           %

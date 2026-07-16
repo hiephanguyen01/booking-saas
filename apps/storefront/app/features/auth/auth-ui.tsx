@@ -1,4 +1,3 @@
-import { FORM_CONTROL, FORM_INPUT_GROUP } from '@booking/ui/components/form/control';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -22,7 +21,6 @@ import {
   InputOTPSlot,
 } from '@booking/ui/components/ui/input-otp';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import { cn } from '@booking/ui/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -125,7 +123,7 @@ function SubmitButton({ children }: { children: ReactNode }) {
   // formMethod check keeps this scoped to submission-driven navigations.
   const pending = navigation.state !== 'idle' && navigation.formMethod != null;
   return (
-    <Button type="submit" className="h-11 w-full text-base" disabled={pending}>
+    <Button type="submit" size="control" className="w-full text-base" disabled={pending}>
       {pending ? <Spinner data-icon="inline-start" /> : null}
       {children}
     </Button>
@@ -146,7 +144,7 @@ export function SocialButtons() {
             key={label}
             type="button"
             variant="outline"
-            className="h-11"
+            size="control"
             aria-disabled="true"
             disabled
           >
@@ -200,7 +198,7 @@ export function StartForm({
               <Input
                 id="fullName"
                 autoComplete="name"
-                className={cn(FORM_CONTROL, 'pl-11')}
+                className="pl-11"
                 aria-invalid={Boolean(errors.fullName)}
                 {...register('fullName')}
               />
@@ -218,7 +216,7 @@ export function StartForm({
               id="email"
               type="email"
               autoComplete="email"
-              className={cn(FORM_CONTROL, 'pl-11')}
+              className="pl-11"
               aria-invalid={Boolean(errors.email)}
               {...register('email')}
             />
@@ -273,7 +271,7 @@ function PasswordInput({
   const { t } = useTranslation(NsI18n.Auth);
   const [visible, setVisible] = useState(false);
   return (
-    <InputGroup className={FORM_INPUT_GROUP}>
+    <InputGroup>
       <InputGroupAddon>
         <LockKeyhole />
       </InputGroupAddon>
@@ -469,7 +467,7 @@ export function SuccessState({
           <CheckCircle2 className="size-10" />
         )}
       </div>
-      <Button asChild className="h-11 w-full text-base">
+      <Button asChild size="control" className="w-full text-base">
         <Link to={storefrontPaths.login(locale)}>{t('success.login')}</Link>
       </Button>
     </div>

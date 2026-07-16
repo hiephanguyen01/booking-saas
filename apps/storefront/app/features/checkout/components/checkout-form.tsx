@@ -1,5 +1,4 @@
 import type { CurrentUser } from '@booking/contracts';
-import { FORM_INPUT_GROUP } from '@booking/ui/components/form/control';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@booking/ui/components/ui/field';
@@ -126,7 +125,8 @@ export function CheckoutForm({
 
       <Button
         type="submit"
-        className="h-11 w-full text-base font-semibold lg:ml-auto lg:w-70"
+        size="control"
+        className="w-full text-base font-semibold lg:ml-auto lg:w-70"
         disabled={submitting}
       >
         {submitting ? <Spinner data-icon="inline-start" /> : null}
@@ -242,7 +242,7 @@ function ContactField({
       <FieldLabel htmlFor={name} className="sr-only">
         {label}
       </FieldLabel>
-      <InputGroup className={FORM_INPUT_GROUP}>
+      <InputGroup>
         <InputGroupAddon className={cn(invalid && 'text-destructive')}>
           <Icon strokeWidth={1.6} aria-hidden="true" />
         </InputGroupAddon>

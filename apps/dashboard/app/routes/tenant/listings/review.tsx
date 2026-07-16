@@ -13,7 +13,6 @@ import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/a
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { FORM_TEXTAREA } from '@booking/ui/components/form/control';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { ArrowLeft, Check, CircleAlert, EyeOff, ImageOff, ShieldCheck, X } from 'lucide-react';
 import type { Route } from './+types/review';
@@ -242,7 +241,6 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
                 name="reason"
                 rows={3}
                 placeholder="VD: Ảnh không rõ, thiếu mô tả, lộ số điện thoại…"
-                className={FORM_TEXTAREA}
               />
             </div>
             <Button type="submit" variant="destructive" disabled={busy}>

@@ -12,12 +12,6 @@ import {
 import * as React from 'react';
 import { useFormContext, type FieldValues } from 'react-hook-form';
 
-import {
-  FORM_CONTROL,
-  FORM_SELECT_TRIGGER,
-  FORM_TEXTAREA,
-  FORM_TRIGGER,
-} from '@booking/ui/components/form/control';
 import { ImageUpload } from '@booking/ui/components/form/image-upload';
 import type {
   BooleanFieldConfig,
@@ -60,11 +54,17 @@ import { Switch } from '@booking/ui/components/ui/switch';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { cn } from '@booking/ui/lib/utils';
 
-/** `radio` + `variant: "segmented"`: a button group, so it carries its own chrome. */
-const SEGMENTED_BASE = cn(
-  FORM_CONTROL,
-  'flex flex-1 items-center justify-center rounded-md border text-sm font-semibold outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-);
+/**
+ * `radio` + `variant: "segmented"`: a button group, so it carries its own chrome.
+ *
+ * These are raw `<button>` elements, not the `Button` primitive — the selected /
+ * unselected states below own the border, background and text colour outright,
+ * which no `Button` variant expresses. So the 44px control height is written out
+ * here rather than inherited from `size="control"`; keep it in step with the
+ * `Input` beside it.
+ */
+const SEGMENTED_BASE =
+  'flex h-11 flex-1 items-center justify-center rounded-md border px-4 text-sm font-semibold outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 const SEGMENTED_ON = 'border-primary bg-primary text-primary-foreground shadow-sm';
 const SEGMENTED_OFF =
   'border-input bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground';
@@ -140,7 +140,6 @@ function renderControl<T extends FieldValues>(
           rows={(field as TextFieldConfig<T>).rows}
           disabled={field.disabled}
           required={field.required}
-          className={FORM_TEXTAREA}
           {...textBinding(rhf)}
         />
       );
@@ -165,7 +164,6 @@ function renderControl<T extends FieldValues>(
           autoComplete={field.autoComplete}
           disabled={field.disabled}
           required={field.required}
-          className={FORM_CONTROL}
           name={rhf.name}
           onBlur={rhf.onBlur}
           value={rhf.value === undefined || rhf.value === null ? '' : String(rhf.value)}
@@ -180,7 +178,6 @@ function renderControl<T extends FieldValues>(
           autoComplete={field.autoComplete}
           disabled={field.disabled}
           required={field.required}
-          className={FORM_CONTROL}
           {...textBinding(rhf)}
         />
       );
@@ -215,7 +212,7 @@ function PasswordControl<T extends FieldValues>({
         autoComplete={field.autoComplete}
         disabled={field.disabled}
         required={field.required}
-        className={cn(FORM_CONTROL, withToggle && 'pr-11')}
+        className={withToggle ? 'pr-11' : undefined}
         {...textBinding(rhf)}
       />
       {withToggle ? (
@@ -247,7 +244,7 @@ function SelectControl<T extends FieldValues>({
       disabled={field.disabled}
       required={field.required}
     >
-      <SelectTrigger className={FORM_SELECT_TRIGGER}>
+      <SelectTrigger className="w-full">
         <SelectValue placeholder={field.placeholder ?? 'Chọn...'} />
       </SelectTrigger>
       <SelectContent>
@@ -324,13 +321,13 @@ function ComboboxControl<T extends FieldValues>({
           <Button
             type="button"
             variant="outline"
+            size="control"
             role="combobox"
             aria-expanded={open}
             disabled={field.disabled}
             aria-required={field.required}
             className={cn(
-              FORM_TRIGGER,
-              'justify-between font-normal hover:bg-primary/10 hover:text-primary active:bg-primary active:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground data-[state=open]:hover:bg-primary data-[state=open]:hover:text-primary-foreground dark:hover:bg-primary/10 dark:hover:text-primary',
+              'w-full justify-between font-normal hover:bg-primary/10 hover:text-primary active:bg-primary active:text-primary-foreground data-[state=open]:bg-primary data-[state=open]:text-primary-foreground data-[state=open]:hover:bg-primary data-[state=open]:hover:text-primary-foreground dark:hover:bg-primary/10 dark:hover:text-primary',
               !current && 'text-muted-foreground',
             )}
           >
@@ -400,12 +397,9 @@ function DateControl<T extends FieldValues>({
         <Button
           type="button"
           variant="outline"
+          size="control"
           disabled={field.disabled}
-          className={cn(
-            FORM_TRIGGER,
-            'justify-start font-normal',
-            !value && 'text-muted-foreground',
-          )}
+          className={cn('w-full justify-start font-normal', !value && 'text-muted-foreground')}
         >
           <CalendarIcon className="mr-2 size-4" />
           {value ? format(value, 'dd/MM/yyyy') : (field.placeholder ?? 'Chọn ngày')}

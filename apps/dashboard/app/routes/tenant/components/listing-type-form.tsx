@@ -10,7 +10,6 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Label } from '@booking/ui/components/ui/label';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { Controller, type UseFormReturn } from '@booking/ui/components/form/rhf';
@@ -260,7 +259,6 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                             value={a.key}
                             onChange={(e) => update(i, { key: e.target.value })}
                             placeholder="area"
-                            className={FORM_CONTROL}
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -269,7 +267,6 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                             value={a.label}
                             onChange={(e) => update(i, { label: e.target.value })}
                             placeholder="Diện tích"
-                            className={FORM_CONTROL}
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -284,7 +281,7 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                               })
                             }
                           >
-                            <SelectTrigger className={FORM_CONTROL}>
+                            <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -310,7 +307,6 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                                 })
                               }
                               placeholder="Hàn Quốc, Vintage"
-                              className={FORM_CONTROL}
                             />
                           </div>
                         ) : null}

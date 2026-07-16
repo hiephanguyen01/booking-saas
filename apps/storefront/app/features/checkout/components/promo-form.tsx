@@ -1,5 +1,4 @@
 import type { ValidatePromoResponse } from '@booking/contracts';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import {
@@ -7,7 +6,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@booking/ui/components/ui/popover';
-import { cn } from '@booking/ui/lib/utils';
 import { ChevronRight, TicketPercent } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
@@ -68,9 +66,9 @@ export function PromoForm({
               defaultValue={promoCode ?? ''}
               placeholder={t('promoPlaceholder')}
               aria-label={t('promoSection')}
-              className={cn(FORM_CONTROL, 'uppercase')}
+              className="uppercase"
             />
-            <Button type="submit" variant="outline" className="h-11">
+            <Button type="submit" variant="outline" size="control">
               {t('promoApply')}
             </Button>
           </Form>

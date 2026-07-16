@@ -16,7 +16,6 @@ import type { z } from "zod"
 import { cn } from "@booking/ui/lib/utils"
 import { Button } from "@booking/ui/components/ui/button"
 import { Form } from "@booking/ui/components/ui/form"
-import { FORM_CONTROL } from "@booking/ui/components/form/control"
 import { FieldRenderer } from "@booking/ui/components/form/field-renderer"
 import type { FieldConfig } from "@booking/ui/components/form/types"
 
@@ -178,8 +177,9 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
         <div className={cn("flex items-center gap-3", submitFullWidth && "flex-col")}>
           <Button
             type="submit"
+            size="control"
             disabled={isSubmitting}
-            className={cn(FORM_CONTROL, "px-8 font-semibold", submitFullWidth && "w-full")}
+            className={cn("px-8 font-semibold", submitFullWidth && "w-full")}
           >
             {isSubmitting ? "Đang lưu..." : submitLabel}
           </Button>

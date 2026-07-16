@@ -6,8 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@book
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@booking/ui/components/ui/select';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
-import { cn } from '@booking/ui/lib/utils';
 import { TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
@@ -156,7 +154,7 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
         <TabsContent value="list" className="space-y-4">
           <div className="flex items-center justify-end">
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className={cn('w-48', FORM_CONTROL)}><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 <SelectItem value="pending_approval">Chờ duyệt</SelectItem>

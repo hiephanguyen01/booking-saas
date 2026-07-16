@@ -8,6 +8,12 @@ import { Button } from "@booking/ui/components/ui/button"
 import { Input } from "@booking/ui/components/ui/input"
 import { Textarea } from "@booking/ui/components/ui/textarea"
 
+/**
+ * DELIBERATE DEVIATION FROM THE SHADCN REGISTRY — do not let `shadcn add` silently
+ * revert it. The registry ships a 36px control; every form control in this product
+ * is 44px, the WCAG 2.5.8 / Apple HIG minimum touch target. Setting it here rather
+ * than at each call site is what keeps it true. The wrapper owns the height; its children own padding.
+ */
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -15,7 +21,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
       role="group"
       className={cn(
         "group/input-group relative flex w-full items-center rounded-md border border-input shadow-xs transition-[color,box-shadow] outline-none dark:bg-input/30",
-        "h-9 min-w-0 has-[>textarea]:h-auto",
+        "h-11 min-w-0 has-[>textarea]:h-auto",
 
         // Variants based on alignment.
         "has-[>[data-align=inline-start]]:[&>input]:pl-2",

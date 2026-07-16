@@ -5,7 +5,6 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Switch } from '@booking/ui/components/ui/switch';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { cn } from '@booking/ui/lib/utils';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -90,16 +89,17 @@ export function PromotionForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Tên chương trình" htmlFor="name">
-          <Input id="name" name="name" required maxLength={200} defaultValue={promotion?.name} placeholder="Khuyến mãi cuối tuần" className={FORM_CONTROL} />
+          <Input id="name" name="name" required maxLength={200} defaultValue={promotion?.name} placeholder="Khuyến mãi cuối tuần" />
         </Field>
 
         <div className="space-y-2">
           <Label htmlFor="code">Mã giảm giá</Label>
           {isAuto ? (
-            /* Stands in for the code Input, so it tracks the shared control height. */
-            <p className={cn('flex items-center text-sm text-muted-foreground', FORM_CONTROL)}>Tự động áp dụng — không cần mã.</p>
+            /* Not a control — a paragraph standing in for the code Input, so it
+               hardcodes the 44px control box to keep the grid row aligned. */
+            <p className="flex h-11 items-center px-4 text-sm text-muted-foreground">Tự động áp dụng — không cần mã.</p>
           ) : (
-            <Input id="code" name="code" required maxLength={50} defaultValue={promotion?.code ?? ''} placeholder="WEEKEND20" className={cn('uppercase', FORM_CONTROL)} />
+            <Input id="code" name="code" required maxLength={50} defaultValue={promotion?.code ?? ''} placeholder="WEEKEND20" className="uppercase" />
           )}
         </div>
 
@@ -110,7 +110,7 @@ export function PromotionForm({
 
         <Field label="Loại giảm giá" htmlFor="discountType">
           <Select value={discountType} onValueChange={setDiscountType}>
-            <SelectTrigger id="discountType" className={FORM_CONTROL}><SelectValue /></SelectTrigger>
+            <SelectTrigger id="discountType"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="percent">Theo phần trăm (%)</SelectItem>
               <SelectItem value="fixed">Số tiền cố định (₫)</SelectItem>
@@ -121,19 +121,19 @@ export function PromotionForm({
           label={discountType === 'percent' ? 'Phần trăm giảm (1–100)' : 'Số tiền giảm (₫)'}
           htmlFor="discountValue"
         >
-          <Input id="discountValue" name="discountValue" required inputMode="numeric" defaultValue={promotion?.discountValue} placeholder={discountType === 'percent' ? '20' : '50000'} className={FORM_CONTROL} />
+          <Input id="discountValue" name="discountValue" required inputMode="numeric" defaultValue={promotion?.discountValue} placeholder={discountType === 'percent' ? '20' : '50000'} />
         </Field>
 
         {discountType === 'percent' ? (
           <Field label="Giảm tối đa (₫, tuỳ chọn)" htmlFor="maxDiscount">
-            <Input id="maxDiscount" name="maxDiscount" inputMode="numeric" defaultValue={promotion?.maxDiscount ?? ''} placeholder="100000" className={FORM_CONTROL} />
+            <Input id="maxDiscount" name="maxDiscount" inputMode="numeric" defaultValue={promotion?.maxDiscount ?? ''} placeholder="100000" />
           </Field>
         ) : null}
 
         {!restrictPartnerFunded ? (
           <Field label="Bên chịu chi phí" htmlFor="fundedBy">
             <Select value={fundedBy} onValueChange={(v) => { setFundedBy(v); if (v === 'partner' && appliesTo !== 'listing' && appliesTo !== 'listing_group' && appliesTo !== 'partner') { setAppliesTo('listing'); } }}>
-              <SelectTrigger id="fundedBy" className={FORM_CONTROL}><SelectValue /></SelectTrigger>
+              <SelectTrigger id="fundedBy"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="tenant">Cửa hàng (tenant)</SelectItem>
                 <SelectItem value="partner">Đối tác (cần đối tác đồng ý)</SelectItem>
@@ -144,7 +144,7 @@ export function PromotionForm({
 
         <Field label="Áp dụng cho" htmlFor="appliesTo">
           <Select value={appliesTo} onValueChange={(v) => { setAppliesTo(v as ScopeKey); setAppliesToId(''); }}>
-            <SelectTrigger id="appliesTo" className={FORM_CONTROL}><SelectValue /></SelectTrigger>
+            <SelectTrigger id="appliesTo"><SelectValue /></SelectTrigger>
             <SelectContent>
               {effectiveChoices.map((c) => (
                 <SelectItem key={c} value={c}>{SCOPE_LABELS[c]}</SelectItem>
@@ -157,7 +157,7 @@ export function PromotionForm({
           <Field label={`Mục tiêu: ${SCOPE_LABELS[appliesTo]}`} htmlFor="appliesToIdPicker">
             {optionList ? (
               <Select value={appliesToId} onValueChange={setAppliesToId}>
-                <SelectTrigger id="appliesToIdPicker" className={FORM_CONTROL}><SelectValue placeholder="Chọn mục tiêu" /></SelectTrigger>
+                <SelectTrigger id="appliesToIdPicker"><SelectValue placeholder="Chọn mục tiêu" /></SelectTrigger>
                 <SelectContent>
                   {optionList.map((o) => (
                     <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
@@ -165,19 +165,19 @@ export function PromotionForm({
                 </SelectContent>
               </Select>
             ) : (
-              <Input id="appliesToIdPicker" value={appliesToId} onChange={(e) => setAppliesToId(e.target.value)} placeholder="UUID mục tiêu" className={FORM_CONTROL} />
+              <Input id="appliesToIdPicker" value={appliesToId} onChange={(e) => setAppliesToId(e.target.value)} placeholder="UUID mục tiêu" />
             )}
           </Field>
         ) : null}
 
         <Field label="Đơn tối thiểu (₫, tuỳ chọn)" htmlFor="minOrderAmount">
-          <Input id="minOrderAmount" name="minOrderAmount" inputMode="numeric" defaultValue={promotion?.minOrderAmount ?? ''} placeholder="200000" className={FORM_CONTROL} />
+          <Input id="minOrderAmount" name="minOrderAmount" inputMode="numeric" defaultValue={promotion?.minOrderAmount ?? ''} placeholder="200000" />
         </Field>
         <Field label="Giới hạn tổng lượt dùng (tuỳ chọn)" htmlFor="usageLimitTotal">
-          <Input id="usageLimitTotal" name="usageLimitTotal" inputMode="numeric" defaultValue={promotion?.usageLimitTotal ?? ''} placeholder="500" className={FORM_CONTROL} />
+          <Input id="usageLimitTotal" name="usageLimitTotal" inputMode="numeric" defaultValue={promotion?.usageLimitTotal ?? ''} placeholder="500" />
         </Field>
         <Field label="Giới hạn mỗi khách (tuỳ chọn)" htmlFor="usageLimitPerCustomer">
-          <Input id="usageLimitPerCustomer" name="usageLimitPerCustomer" inputMode="numeric" defaultValue={promotion?.usageLimitPerCustomer ?? ''} placeholder="1" className={FORM_CONTROL} />
+          <Input id="usageLimitPerCustomer" name="usageLimitPerCustomer" inputMode="numeric" defaultValue={promotion?.usageLimitPerCustomer ?? ''} placeholder="1" />
         </Field>
 
         <label className="flex items-center gap-3 sm:col-span-2">
@@ -187,7 +187,7 @@ export function PromotionForm({
 
         <Field label="Trạng thái" htmlFor="status">
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger id="status" className={FORM_CONTROL}><SelectValue /></SelectTrigger>
+            <SelectTrigger id="status"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="draft">Nháp</SelectItem>
               <SelectItem value="active">Đang chạy</SelectItem>
@@ -250,11 +250,11 @@ function TimeWindowsEditor({ windows, onChange }: { windows: TimeWindow[]; onCha
           </div>
           <div className="space-y-1">
             <Label className="text-xs" htmlFor={`from-${i}`}>Từ</Label>
-            <Input id={`from-${i}`} type="time" value={w.from} onChange={(e) => update(i, { from: e.target.value })} className={cn('w-32', FORM_CONTROL)} />
+            <Input id={`from-${i}`} type="time" value={w.from} onChange={(e) => update(i, { from: e.target.value })} className="w-32" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs" htmlFor={`to-${i}`}>Đến</Label>
-            <Input id={`to-${i}`} type="time" value={w.to} onChange={(e) => update(i, { to: e.target.value })} className={cn('w-32', FORM_CONTROL)} />
+            <Input id={`to-${i}`} type="time" value={w.to} onChange={(e) => update(i, { to: e.target.value })} className="w-32" />
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={() => onChange(windows.filter((_, idx) => idx !== i))} aria-label="Xoá khung giờ">
             <Trash2 className="size-4" />

@@ -6,7 +6,6 @@ import type {
   PublicListingDetailResponse,
   QuoteResponse,
 } from '@booking/contracts';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
@@ -110,7 +109,7 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
           </>
         ) : null}
 
-        <Button asChild={canBook} className="h-11 w-full text-base" disabled={!canBook}>
+        <Button asChild={canBook} size="control" className="w-full text-base" disabled={!canBook}>
           {canBook ? (
             <Link to={`${storefrontPaths.checkout(locale)}?${checkoutParams.toString()}`}>
               {t('bookNow')}
@@ -237,7 +236,6 @@ function HourlyPicker({
           value={day}
           min={today}
           onChange={(e) => e.target.value && pickDay(e.target.value)}
-          className={FORM_CONTROL}
         />
       </label>
 
@@ -446,7 +444,6 @@ function InventoryPicker({
             value={fromDate}
             min={today}
             onChange={(e) => e.target.value && update({ from: e.target.value })}
-            className={FORM_CONTROL}
           />
         </label>
         <label className="flex flex-col gap-1.5">
@@ -456,7 +453,6 @@ function InventoryPicker({
             value={toDate}
             min={addDays(fromDate, 1)}
             onChange={(e) => e.target.value && update({ to: e.target.value })}
-            className={FORM_CONTROL}
           />
         </label>
       </div>

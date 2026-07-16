@@ -14,7 +14,6 @@ import {
   DialogTrigger,
 } from '@booking/ui/components/ui/dialog';
 import { Input } from '@booking/ui/components/ui/input';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { Label } from '@booking/ui/components/ui/label';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { CircleAlert } from 'lucide-react';
@@ -110,7 +109,7 @@ function CancelDialog({ booking }: { booking: BookingResponse }) {
           </DialogHeader>
           <div className="space-y-2 py-4">
             <Label htmlFor="cancel-reason">Lý do (tuỳ chọn)</Label>
-            <Input id="cancel-reason" name="reason" maxLength={500} placeholder="Lý do huỷ đơn…" className={FORM_CONTROL} />
+            <Input id="cancel-reason" name="reason" maxLength={500} placeholder="Lý do huỷ đơn…" />
           </div>
           <DialogFooter>
             <DialogClose asChild>

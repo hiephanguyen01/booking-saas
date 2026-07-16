@@ -1003,6 +1003,25 @@ export default {
 - Components under `src/components/ui/` are shadcn copies — **never hand-modify them**; regenerate
   via the shadcn CLI. Composed/custom shared components (like the form system) live in sibling
   folders (`src/components/form/`, `src/components/{domain}/`).
+- **The one sanctioned exception: form-control geometry.** Six primitives deliberately diverge from
+  the registry, each with a comment saying so. **Re-apply these after any `shadcn add`:**
+
+  | File | Registry ships | We ship | Why |
+  | ---- | -------------- | ------- | --- |
+  | `ui/input.tsx` | `h-9 px-3` | `h-11 px-4` | 44px = WCAG 2.5.8 / HIG min touch target |
+  | `ui/native-select.tsx` | `h-9 px-3` | `h-11 px-4` | match `Input` |
+  | `ui/select.tsx` | `data-[size=default]:h-9`, `px-3` | `:h-11`, `px-4` | match `Input` |
+  | `ui/input-group.tsx` | `h-9` | `h-11` | match `Input` |
+  | `ui/textarea.tsx` | `min-h-16 px-3 py-2` | `min-h-28 px-4 py-3` | match `Input` |
+  | `ui/button.tsx` | — | adds `size="control"` | a Button in a form stack (trigger/submit) |
+
+  The size lives in the primitives **on purpose**. It was once opt-in (a `FORM_CONTROL` constant
+  every call site imported and merged), and forgetting the import silently produced a 36px control
+  — which is how five input heights (`h-9/10/11/13/14`) came to ship side by side. Never re-introduce
+  a per-call-site height, radius or text size on a form control: radius must track `--radius`, and
+  the primitives' `text-base md:text-sm` keeps mobile text at 16px so iOS Safari doesn't zoom on focus.
+  A height on an `Input`/`Select`/`Textarea`/`InputGroup` in app code is a defect; use
+  `data-[size=sm]` for genuinely compact cases.
 - The Tailwind preset defines the theme only — `content` globs are per-app (presets don't merge
   `content`).
 

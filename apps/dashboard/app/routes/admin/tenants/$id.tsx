@@ -24,8 +24,6 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { NativeSelect } from '@booking/ui/components/ui/native-select';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { FORM_CONTROL, FORM_TEXTAREA } from '@booking/ui/components/form/control';
-import { cn } from '@booking/ui/lib/utils';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/$id';
@@ -372,7 +370,7 @@ function SubscriptionCard({
             <input type="hidden" name="intent" value="assign-subscription" />
             <div className="space-y-1.5">
               <Label htmlFor="planId">Gói</Label>
-              <NativeSelect id="planId" name="planId" className={cn('w-full', FORM_CONTROL)} required>
+              <NativeSelect id="planId" name="planId" className="w-full" required>
                 {activePlans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} — {formatVnd(p.priceMonthly)}/tháng
@@ -386,7 +384,7 @@ function SubscriptionCard({
                 <NativeSelect
                   id="status"
                   name="status"
-                  className={cn('w-full', FORM_CONTROL)}
+                  className="w-full"
                   defaultValue="active"
                 >
                   {(['trial', 'active', 'past_due'] as const).map((s) => (
@@ -405,13 +403,12 @@ function SubscriptionCard({
                   required
                   min={minDate}
                   defaultValue={defaultExpiry}
-                  className={FORM_CONTROL}
                 />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="note">Ghi chú</Label>
-              <Textarea id="note" name="note" rows={2} placeholder="Số hoá đơn, ghi chú nội bộ…" className={FORM_TEXTAREA} />
+              <Textarea id="note" name="note" rows={2} placeholder="Số hoá đơn, ghi chú nội bộ…" />
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
               {subscription ? 'Đổi gói' : 'Gán gói'}

@@ -3,14 +3,12 @@ import {
   type AdministrativeWard,
   type PartnerOnboardingProfileInput,
 } from '@booking/contracts';
-import { FORM_CONTROL } from '@booking/ui/components/form/control';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Button } from '@booking/ui/components/ui/button';
 import { Field, FieldLabel } from '@booking/ui/components/ui/field';
 import { Form } from '@booking/ui/components/ui/form';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import { cn } from '@booking/ui/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch, type Path } from 'react-hook-form';
@@ -228,12 +226,13 @@ export default function PartnerProfile() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
               <Field>
                 <FieldLabel htmlFor="partner-email">{t('common:becomePartner.email')}</FieldLabel>
+                {/* Not an Input: a read-only echo of the verified email. It is
+                    hand-matched to the Input primitive's geometry (h-11 px-4,
+                    text-base md:text-sm) because it has to line up with the real
+                    field beside it. */}
                 <output
                   id="partner-email"
-                  className={cn(
-                    'flex items-center rounded-md border border-input bg-muted text-base text-muted-foreground md:text-sm',
-                    FORM_CONTROL,
-                  )}
+                  className="flex h-11 items-center rounded-md border border-input bg-muted px-4 text-base text-muted-foreground md:text-sm"
                 >
                   {loaderData.email}
                 </output>
@@ -343,8 +342,9 @@ export default function PartnerProfile() {
             <div className="mt-10 flex justify-center">
               <Button
                 type="submit"
+                size="control"
                 disabled={submitting}
-                className="h-11 w-full max-w-[400px] text-base"
+                className="w-full max-w-[400px] text-base"
               >
                 {submitting ? <Spinner data-icon="inline-start" /> : null}
                 {t('common:becomePartner.submit')}

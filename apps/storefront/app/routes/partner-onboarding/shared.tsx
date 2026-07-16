@@ -1,5 +1,4 @@
 import { createTranslator, isLocale, type Locale, type TranslationKey } from '@booking/i18n';
-import { FORM_INPUT_GROUP } from '@booking/ui/components/form/control';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@booking/ui/components/ui/field';
@@ -114,7 +113,7 @@ export function EmailField({ defaultValue, error }: { defaultValue?: string; err
   return (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor="email">{t('partner.emailLabel')}</FieldLabel>
-      <InputGroup className={FORM_INPUT_GROUP}>
+      <InputGroup>
         <InputGroupAddon>
           <Mail />
         </InputGroupAddon>
@@ -150,7 +149,7 @@ export function PasswordField({
   return (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor={name}>{label}</FieldLabel>
-      <InputGroup className={FORM_INPUT_GROUP}>
+      <InputGroup>
         <InputGroupInput
           id={name}
           name={name}
@@ -178,7 +177,7 @@ export function PrimaryButton({ children }: { children: ReactNode }) {
   const navigation = useNavigation();
   const pending = navigation.state === 'submitting';
   return (
-    <Button type="submit" className="h-11 w-full text-base" disabled={pending}>
+    <Button type="submit" size="control" className="w-full text-base" disabled={pending}>
       {pending ? <Spinner data-icon="inline-start" /> : null}
       {children}
     </Button>

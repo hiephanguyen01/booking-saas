@@ -21,7 +21,6 @@ import {
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { FORM_CONTROL, FORM_TEXTAREA } from '@booking/ui/components/form/control';
 import {
   Select,
   SelectContent,
@@ -462,7 +461,6 @@ function ReasonDialog({
               rows={3}
               maxLength={500}
               placeholder={placeholder}
-              className={FORM_TEXTAREA}
             />
           </div>
           <DialogFooter>
@@ -530,7 +528,6 @@ function ReturnDialog({
                 defaultValue="0"
                 pattern="\d*"
                 placeholder="0"
-                className={FORM_CONTROL}
               />
               <p className="text-xs text-muted-foreground">Khấu trừ từ tiền cọc; để 0 nếu thiết bị nguyên vẹn.</p>
             </div>
