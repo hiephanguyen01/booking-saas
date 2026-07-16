@@ -15,7 +15,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import type {
-  BookingMode,
   ListingGroupDetailResponse,
   ListingResponse,
   ListingTypeResponse,
@@ -68,7 +67,7 @@ import { EntityRef } from '~/components/entity-ref';
 import { PhotoStrip } from '~/components/photo-strip';
 import { CopyableCode } from '~/components/copyable-code';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { formatNumber } from '~/lib/format';
+import { BOOKING_MODE_LABEL, formatNumber } from '~/lib/format';
 import { listingPriceFrom } from './listing-price';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -230,13 +229,6 @@ const MODERATION_ACTOR_LABEL: Record<ModerationActor, string> = {
 };
 
 /** Booking-mode → Vietnamese label (exhaustive, so a new mode is a compile error). */
-const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-  inventory: 'Theo kho',
-};
 
 /** Full address line from the group's stored address snapshot. */
 function addressLine(group: ListingGroupDetailResponse): string {

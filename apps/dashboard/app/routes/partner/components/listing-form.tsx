@@ -17,6 +17,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { UseFormReturn } from '@booking/ui/components/form/rhf';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Section, Grid, Field } from '~/components/form-layout';
+import { BOOKING_MODE_LABEL } from '~/lib/format';
 import {
   buildModeConfig,
   initialDynamic,
@@ -34,13 +35,6 @@ import {
 } from '@booking/ui/components/ui/select';
 import { AdministrativeAddressFields } from './administrative-address-fields';
 
-const MODE_LABEL: Record<BookingMode, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  inventory: 'Theo kho (thuê thiết bị)',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-};
 
 /** Only these modes are bookable in Phase 1 and have a config panel here. */
 const CONFIGURABLE: BookingMode[] = ['hourly', 'daily', 'inventory'];
@@ -269,7 +263,7 @@ function ListingConfig({
                   checked={state.bookingModes.includes(m)}
                   onCheckedChange={(v) => toggleMode(m, v === true)}
                 />
-                {MODE_LABEL[m]}
+                {BOOKING_MODE_LABEL[m]}
               </label>
             ))}
           </div>

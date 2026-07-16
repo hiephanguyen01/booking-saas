@@ -9,16 +9,11 @@ import { ClipboardCheck, Eye } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDateTime } from '~/lib/format';
+import { BOOKING_MODE_LABEL, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
+import { asRecord } from '~/lib/records';
 
 /** Lowest configured base price across a listing's modes (VND đồng digit string). */
 function listingPriceFrom(modeConfig: Record<string, unknown>): string | null {
@@ -108,7 +103,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         <div className="flex flex-wrap gap-1">
           {l.bookingModes.map((m) => (
             <Badge key={m} variant="outline" className="font-normal">
-              {MODE_LABEL[m] ?? m}
+              {BOOKING_MODE_LABEL[m] ?? m}
             </Badge>
           ))}
         </div>
@@ -192,9 +187,3 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
     </div>
   );
 }
-
-const MODE_LABEL: Record<string, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  inventory: 'Cho thuê',
-};

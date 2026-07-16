@@ -22,3 +22,14 @@ export function Money({ value, compact, className }: MoneyProps) {
     </span>
   );
 }
+
+/**
+ * The credit/debit tint for a signed money figure — the ONE place these tints
+ * live (mirrors `StatCard`'s positive/negative tones). `positive` = a credit /
+ * money in; `negative` = a debit / money out.
+ */
+export function amountToneClass(tone: 'positive' | 'negative'): string {
+  return tone === 'positive'
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : 'text-rose-600 dark:text-rose-400';
+}

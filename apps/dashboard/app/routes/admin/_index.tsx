@@ -35,11 +35,8 @@ import {
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { GmvChart } from '~/routes/admin/components/gmv-chart';
-import {
-  CountSignal,
-  SubscriptionStatusBadge,
-  TenantStatusBadge,
-} from '~/routes/admin/components/status-badge';
+import { SubscriptionStatusBadge, TenantStatusBadge } from '~/components/status-badge';
+import { CountSignal } from '~/routes/admin/components/count-signal';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tổng quan nền tảng · Bookify Admin' }];

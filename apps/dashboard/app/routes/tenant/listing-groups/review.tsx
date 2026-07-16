@@ -1,7 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { data as routeData, Link, redirect, useNavigation, useSubmit } from 'react-router';
 import type {
-  BookingMode,
   ContactFlag,
   ListingGroupDetailResponse,
   ListingGroupReviewResponse,
@@ -20,23 +19,15 @@ import {
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@booking/ui/components/ui/alert-dialog';
+import { ConfirmButton } from '~/components/confirm-button';
 import { ArrowLeft, Check, CircleAlert, CircleCheck, EyeOff, ShieldCheck, TriangleAlert, X } from 'lucide-react';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import type { Route } from './+types/review';
 import { apiGet, apiPost } from '~/lib/api.server';
+import { BOOKING_MODE_LABEL } from '~/lib/format';
+import { asRecord } from '~/lib/records';
 import { requireTenant } from '../tenant.server';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
@@ -44,13 +35,6 @@ import { EntityRef } from '~/components/entity-ref';
 import { PhotoStrip } from '~/components/photo-strip';
 import { ListingStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 
-const MODE_LABEL: Record<BookingMode, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  inventory: 'Theo kho',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-};
 const CHECKLIST_LABEL: Record<string, string> = {
   photos: 'Có ít nhất 1 ảnh',
   description: 'Có mô tả',
@@ -76,12 +60,6 @@ function contactFieldLabel(field: string): string {
     return `Hạng mục ${Number(match[1]) + 1} · ${sub}`;
   }
   return CONTACT_FIELD_LABEL[field] ?? field;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 /** Lowest configured base price across a listing's modes (VND đồng digit string). */
@@ -410,7 +388,7 @@ function ChildCard({ listing }: { listing: ListingResponse }) {
         <div className="flex flex-wrap gap-1">
           {listing.bookingModes.map((mode) => (
             <Badge key={mode} variant="outline" className="font-normal">
-              {MODE_LABEL[mode]}
+              {BOOKING_MODE_LABEL[mode]}
             </Badge>
           ))}
         </div>
@@ -593,46 +571,5 @@ function HideBlock({
         onConfirm={onConfirm}
       />
     </div>
-  );
-}
-
-/** A trigger button gated behind an AlertDialog confirmation. */
-function ConfirmButton({
-  trigger,
-  title,
-  description,
-  confirmLabel,
-  destructive,
-  busy,
-  onConfirm,
-}: {
-  trigger: ReactNode;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  destructive?: boolean;
-  busy: boolean;
-  onConfirm: () => void;
-}) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Huỷ</AlertDialogCancel>
-          <AlertDialogAction
-            variant={destructive ? 'destructive' : 'default'}
-            disabled={busy}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }

@@ -26,15 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@booking/ui/components/ui/select';
+import { BOOKING_MODE_LABEL } from '~/lib/format';
 
 const ALL_MODES: BookingMode[] = ['hourly', 'daily', 'inventory', 'appointment', 'class'];
-const MODE_LABEL: Record<BookingMode, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  inventory: 'Theo kho',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-};
 const FIELD_TYPES: { value: AttributeFieldType; label: string }[] = [
   { value: 'text', label: 'Văn bản' },
   { value: 'number', label: 'Số' },
@@ -327,7 +321,7 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                       checked={allowed.includes(m)}
                       onCheckedChange={(v) => toggle(m, v === true)}
                     />
-                    {MODE_LABEL[m]}
+                    {BOOKING_MODE_LABEL[m]}
                   </label>
                 ))}
               </div>
@@ -355,7 +349,7 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                               )
                             }
                           />
-                          {MODE_LABEL[m]}
+                          {BOOKING_MODE_LABEL[m]}
                         </label>
                       ))}
                     </div>

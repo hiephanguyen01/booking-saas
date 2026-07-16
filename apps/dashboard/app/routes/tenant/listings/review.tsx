@@ -22,17 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/a
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { Separator } from '@booking/ui/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@booking/ui/components/ui/alert-dialog';
+import { ConfirmButton } from '~/components/confirm-button';
 import { ArrowLeft, Check, CircleAlert, CircleCheck, EyeOff, ShieldCheck, X } from 'lucide-react';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
@@ -40,6 +30,8 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { DetailRow } from '@booking/ui/components/detail/detail-row';
 import type { Route } from './+types/review';
 import { apiGet, apiPost } from '~/lib/api.server';
+import { BOOKING_MODE_LABEL } from '~/lib/format';
+import { asRecord } from '~/lib/records';
 import { requireTenant } from '../tenant.server';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
@@ -49,13 +41,6 @@ import { EntityRef } from '~/components/entity-ref';
 import { PhotoStrip } from '~/components/photo-strip';
 import { ListingStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 
-const MODE_LABEL: Record<BookingMode, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  inventory: 'Theo kho',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-};
 const BALANCE_LABEL: Record<BalanceDue, string> = {
   online_before: 'Trực tuyến trước',
   on_arrival: 'Tại chỗ',
@@ -86,11 +71,6 @@ const INVENTORY_UNIT_LABEL: Record<'hour' | 'day', string> = { hour: 'Giờ', da
 
 // ── mode_config readers (the stored config is free-form JSON) ─────────────────
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
 function readStr(value: unknown): string | null {
   if (typeof value === 'string' && value !== '') return value;
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
@@ -394,7 +374,7 @@ function ModeBlock({
   config: Record<string, unknown> | null;
 }) {
   return (
-    <DetailSection title={MODE_LABEL[mode]} emptyMessage="Chưa cấu hình giá cho hình thức này.">
+    <DetailSection title={BOOKING_MODE_LABEL[mode]} emptyMessage="Chưa cấu hình giá cho hình thức này.">
       {config ? <ModeFields mode={mode} config={config} /> : null}
     </DetailSection>
   );
@@ -837,46 +817,5 @@ function ActionsCard({
         ) : null}
       </CardContent>
     </Card>
-  );
-}
-
-/** A trigger button gated behind an AlertDialog confirmation. */
-function ConfirmButton({
-  trigger,
-  title,
-  description,
-  confirmLabel,
-  destructive,
-  busy,
-  onConfirm,
-}: {
-  trigger: ReactNode;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  destructive?: boolean;
-  busy: boolean;
-  onConfirm: () => void;
-}) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Huỷ</AlertDialogCancel>
-          <AlertDialogAction
-            variant={destructive ? 'destructive' : 'default'}
-            disabled={busy}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }

@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@book
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { CheckCircle2, MousePointerClick, Percent, ShoppingBag, Wallet } from 'lucide-react';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { formatRate } from '~/lib/format';
+import { formatDiscount, formatRate } from '~/lib/format';
 import type { Route } from './+types/_index';
 import { requireAffiliate } from './affiliate.server';
 import { StatCard } from '~/components/stat-card';
@@ -79,10 +79,7 @@ export default function AffiliateOverview({ loaderData, actionData }: Route.Comp
   const error = actionData?.error ?? null;
   const fieldErrors = actionData?.fieldErrors ?? null;
 
-  const rate =
-    membership.effectiveRateType === 'percent'
-      ? `${membership.effectiveRate}%`
-      : `${membership.effectiveRate} ₫`;
+  const rate = formatDiscount(membership.effectiveRateType, membership.effectiveRate);
 
   const payoutDefaults: UpdateAffiliatePayoutInfoInput = {
     bankName: membership.payoutInfo.bankName ?? '',
