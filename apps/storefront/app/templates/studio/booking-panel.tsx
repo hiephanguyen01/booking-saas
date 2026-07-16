@@ -14,6 +14,7 @@ import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
 import { useMemo, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { eligibleDailyRange, normalizeDailyRange } from '../../lib/daily-range';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import {
@@ -21,7 +22,6 @@ import {
   addDays,
   dateOnlyToLocal,
   localToDateOnly,
-  nightsBetween,
   timeInTz,
   todayInTz,
   zonedToUtcIso,
@@ -297,6 +297,9 @@ function DailyPicker({
   const checkinTime = dailyCfg.checkinTime ?? '14:00';
   const checkoutTime = dailyCfg.checkoutTime ?? '12:00';
   const minNights = dailyCfg.minNights ?? 1;
+  const maxNights = Number.isFinite(Number(dailyCfg.maxNights))
+    ? Number(dailyCfg.maxNights)
+    : null;
 
   const openDates = useMemo(
     () => new Set(days.filter((d) => d.status === 'available').map((d) => d.date)),
@@ -312,24 +315,32 @@ function DailyPicker({
   function onSelect(next: DateRange | undefined): void {
     const params = new URLSearchParams(sp);
     params.set('mode', 'daily');
-    params.delete('start');
-    params.delete('end');
     if (!next?.from) {
       params.delete('from');
       params.delete('to');
+      params.delete('start');
+      params.delete('end');
       setSp(params);
       return;
     }
     const fromStr = localToDateOnly(next.from);
     params.set('from', fromStr);
-    if (next.to && next.to.getTime() !== next.from.getTime()) {
-      const toStr = localToDateOnly(next.to);
-      params.set('to', toStr);
-      // The stored nights are [from checkin, to checkout) as UTC instants.
-      params.set('start', zonedToUtcIso(fromStr, checkinTime, tz));
-      params.set('end', zonedToUtcIso(toStr, checkoutTime, tz));
+
+    if (next.to) {
+      const selectedTo = localToDateOnly(next.to);
+      params.set('to', selectedTo);
+      const bookable = eligibleDailyRange(fromStr, selectedTo, minNights, maxNights);
+      if (bookable) {
+        params.set('start', zonedToUtcIso(bookable.from, checkinTime, tz));
+        params.set('end', zonedToUtcIso(bookable.to, checkoutTime, tz));
+      } else {
+        params.delete('start');
+        params.delete('end');
+      }
     } else {
       params.delete('to');
+      params.delete('start');
+      params.delete('end');
     }
     setSp(params);
   }
@@ -339,7 +350,8 @@ function DailyPicker({
     return !openDates.has(localToDateOnly(date));
   }
 
-  const nights = fromDate && toDate ? nightsBetween(fromDate, toDate) : 0;
+  const normalized = normalizeDailyRange(fromDate ?? undefined, toDate ?? undefined);
+  const nights = normalized?.nights ?? 0;
 
   return (
     <div className="space-y-2">
@@ -349,7 +361,6 @@ function DailyPicker({
         selected={range}
         onSelect={onSelect}
         disabled={isDisabled}
-        min={minNights + 1}
         className="rounded-lg border border-border p-2"
       />
       {nights > 0 ? (

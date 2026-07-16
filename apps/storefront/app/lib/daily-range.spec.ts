@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isDailyRangeEligible, normalizeDailyRange } from './daily-range';
+import {
+  eligibleDailyRange,
+  isDailyRangeEligible,
+  normalizeDailyRange,
+} from './daily-range';
 
 describe('normalizeDailyRange', () => {
   it('normalizes a same-date UI selection to one half-open day', () => {
@@ -42,5 +46,26 @@ describe('isDailyRangeEligible', () => {
   it('rejects one day outside listing night limits', () => {
     expect(isDailyRangeEligible(oneDay, 2, null)).toBe(false);
     expect(isDailyRangeEligible(oneDay, 1, 0)).toBe(false);
+  });
+});
+
+describe('eligibleDailyRange', () => {
+  it('returns an effective one-day booking range when one night is allowed', () => {
+    expect(eligibleDailyRange('2026-08-10', '2026-08-10', 1, null)).toMatchObject({
+      selectedFrom: '2026-08-10',
+      selectedTo: '2026-08-10',
+      from: '2026-08-10',
+      to: '2026-08-11',
+      nights: 1,
+    });
+  });
+
+  it('returns null when the normalized range violates listing limits', () => {
+    expect(eligibleDailyRange('2026-08-10', '2026-08-10', 2, null)).toBeNull();
+    expect(eligibleDailyRange('2026-08-10', '2026-08-12', 1, 1)).toBeNull();
+  });
+
+  it('returns null for an incomplete selection', () => {
+    expect(eligibleDailyRange('2026-08-10', undefined, 1, null)).toBeNull();
   });
 });

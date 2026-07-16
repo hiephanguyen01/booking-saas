@@ -41,3 +41,13 @@ export function isDailyRangeEligible(
 ): boolean {
   return range.nights >= minNights && (maxNights == null || range.nights <= maxNights);
 }
+
+export function eligibleDailyRange(
+  from: string | undefined,
+  to: string | undefined,
+  minNights: number,
+  maxNights?: number | null,
+): NormalizedDailyRange | null {
+  const range = normalizeDailyRange(from, to);
+  return range && isDailyRangeEligible(range, minNights, maxNights) ? range : null;
+}
