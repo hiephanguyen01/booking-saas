@@ -18,11 +18,36 @@ export interface LedgerEntryRecord {
   createdAt: Date;
 }
 
+/**
+ * A ledger entry plus its owner's display name — the read-model shape behind the
+ * ledger views. `ownerName` is denormalized presentation data, deliberately kept
+ * off `LedgerEntryRecord` so the ledger fact itself stays a pure domain record
+ * and the internal (idempotency/reversal) reads pay no join cost.
+ */
+export interface LedgerEntryView extends LedgerEntryRecord {
+  /**
+   * `partners.name`, the affiliate's user full name, or the tenant name. Null for
+   * `platform` legs and for an owner row that no longer exists — callers fall back
+   * to the `ownerType` label.
+   */
+  ownerName: string | null;
+}
+
 export interface RecordJournalRefs {
   bookingId?: string | null;
   paymentId?: string | null;
   payoutId?: string | null;
   memo?: string | null;
+}
+
+/** Optional, ANDed filters for the tenant ledger view (§13.3). */
+export interface LedgerFilters {
+  bookingId?: string;
+  ownerType?: OwnerType;
+  entryType?: LedgerEntryType;
+  /** Inclusive lower/upper bounds on `createdAt`. */
+  from?: Date;
+  to?: Date;
 }
 
 export interface OwnerBalance {
@@ -46,12 +71,18 @@ export interface ILedgerRepository {
   /** All non-zero owner balances of a given type for the current tenant. */
   balancesByType(tx: PrismaTx, ownerType: OwnerType): Promise<OwnerBalance[]>;
   /** Recent ledger entries for one owner (partner/affiliate history). */
-  entriesForOwner(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, limit: number): Promise<LedgerEntryRecord[]>;
+  entriesForOwner(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, limit: number): Promise<LedgerEntryView[]>;
   /**
    * Paginated journal/ledger lines for the current tenant (RLS-scoped), newest
-   * first — the tenant finance ledger view (§13.3). Returns the page + the total.
+   * first — the tenant finance ledger view (§13.3). Returns the page + the total
+   * matching `filters` (not the unfiltered total).
    */
-  listEntries(tx: PrismaTx, page: number, pageSize: number): Promise<{ items: LedgerEntryRecord[]; total: number }>;
+  listEntries(
+    tx: PrismaTx,
+    page: number,
+    pageSize: number,
+    filters: LedgerFilters,
+  ): Promise<{ items: LedgerEntryView[]; total: number }>;
   /**
    * Payable that has cleared the holding period (§7.7): net (credit − debit) over
    * the owner's entries older than `cutoff`, while settlements (payout/clawback)

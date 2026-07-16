@@ -1,5 +1,9 @@
 import { Link, redirect, data as routeData } from 'react-router';
-import { createPartnerPromotionInputSchema, type ListingResponse } from '@booking/contracts';
+import {
+  createPartnerPromotionInputSchema,
+  type ListingGroupResponse,
+  type ListingResponse,
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
@@ -7,7 +11,7 @@ import { ArrowLeft, CircleAlert } from 'lucide-react';
 import type { Route } from './+types/promotions.new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
 import { PromotionForm, readPromotionForm } from '../tenant/components/promotion-form';
 import type { ScopeOptions } from '../tenant/promotions/scope-options.server';
 
@@ -20,11 +24,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!canPartner(membership, 'partner.promotions.manage')) {
     throw new Response('Không có quyền.', { status: 403 });
   }
-  const listings = await apiGet<ListingResponse[]>('/partner/listings', auth);
+  const [listings, groups] = await Promise.all([
+    apiGet<ListingResponse[]>('/partner/listings', auth),
+    apiGet<ListingGroupResponse[]>('/partner/listing-groups', auth),
+  ]);
   const scopeOptions: ScopeOptions = {
     listings: (listings.ok ? (listings.data ?? []) : []).map((l) => ({ id: l.id, label: l.title })),
     listingTypes: [],
-    listingGroups: [],
+    // Populate the `listing_group` scope the form offers (was hardcoded empty before).
+    listingGroups: (groups.ok ? (groups.data ?? []) : []).map((g) => ({ id: g.id, label: g.title })),
     partners: [],
   };
   return { scopeOptions, partnerId: membership.partnerId };

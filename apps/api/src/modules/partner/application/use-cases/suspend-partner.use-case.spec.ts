@@ -24,7 +24,9 @@ const partner: PartnerRecord = {
   businessInfo: {},
   contactInfo: {},
   identityInfo: {},
+  owner: { email: 'owner@studio-x.test', phone: '0912345678' },
   createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 function makeRepo(overrides: Partial<IPartnerRepository>): IPartnerRepository {

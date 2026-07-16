@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, X } from 'lucide-react';
 import {
   createListingInputSchema,
   type AttributeField,
@@ -8,6 +9,7 @@ import {
   type ListingResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
+import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
 import { Switch } from '@booking/ui/components/ui/switch';
@@ -15,6 +17,14 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { UseFormReturn } from '@booking/ui/components/form/rhf';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Section, Grid, Field } from '~/components/form-layout';
+import {
+  buildModeConfig,
+  initialDynamic,
+  int,
+  savedModeConfig,
+  type BlockRow,
+  type DynamicState,
+} from './listing-mode-config';
 import {
   Select,
   SelectContent,
@@ -35,104 +45,12 @@ const MODE_LABEL: Record<BookingMode, string> = {
 /** Only these modes are bookable in Phase 1 and have a config panel here. */
 const CONFIGURABLE: BookingMode[] = ['hourly', 'daily', 'inventory'];
 
-/** Integer VND đồng string ("12000") from a numeric input value. */
-const vnd = (v: string): string => String(Math.max(0, Math.round(Number(v) || 0)));
-const int = (v: string, fallback: number): number => {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? n : fallback;
-};
-const num = (v: unknown, fallback = ''): string =>
-  v === undefined || v === null ? fallback : String(v);
+const INVENTORY_UNIT_LABEL: Record<'hour' | 'day', string> = { hour: 'giờ', day: 'ngày' };
 
-/** Local state for the dynamic (mode config + attribute) block, kept as strings. */
-interface DynamicState {
-  bookingModes: BookingMode[];
-  hourly: {
-    basePrice: string;
-    minDuration: string;
-    maxDuration: string;
-    granularity: string;
-    leadTimeMin: string;
-  };
-  daily: {
-    basePricePerNight: string;
-    minNights: string;
-    maxNights: string;
-    checkinTime: string;
-    checkoutTime: string;
-    leadTimeMin: string;
-  };
-  inventory: { unit: 'hour' | 'day'; basePrice: string; securityDeposit: string };
-  stockQuantity: string;
-  attributes: Record<string, unknown>;
-}
-
-function initialDynamic(listing?: ListingResponse): DynamicState {
-  const mc = (listing?.modeConfig ?? {}) as Record<string, Record<string, unknown>>;
-  const h = mc.hourly ?? {};
-  const d = mc.daily ?? {};
-  const inv = mc.inventory ?? {};
-  return {
-    bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
-    hourly: {
-      basePrice: num(h.basePrice, '0'),
-      minDuration: num(h.minDuration, '1'),
-      maxDuration: num(h.maxDuration, '8'),
-      granularity: num(h.granularity, '60'),
-      leadTimeMin: num(h.leadTimeMin, '0'),
-    },
-    daily: {
-      basePricePerNight: num(d.basePricePerNight, '0'),
-      minNights: num(d.minNights, '1'),
-      maxNights: num(d.maxNights, '30'),
-      checkinTime: num(d.checkinTime, '14:00'),
-      checkoutTime: num(d.checkoutTime, '12:00'),
-      leadTimeMin: num(d.leadTimeMin, '0'),
-    },
-    inventory: {
-      unit: (inv.unit as 'hour' | 'day') ?? 'day',
-      basePrice: num(inv.basePrice, '0'),
-      securityDeposit: num(inv.securityDeposit, '0'),
-    },
-    stockQuantity: num(listing?.stockQuantity, '1'),
-    attributes: listing?.attributes ?? {},
-  };
-}
-
-/** Assemble the typed `modeConfig` the schema expects from the string editor state. */
-function buildModeConfig(s: DynamicState): Record<string, unknown> {
-  const modes = s.bookingModes;
-  const modeConfig: Record<string, unknown> = {};
-  if (modes.includes('hourly')) {
-    modeConfig.hourly = {
-      basePrice: vnd(s.hourly.basePrice),
-      blocks: [],
-      minDuration: int(s.hourly.minDuration, 1),
-      maxDuration: int(s.hourly.maxDuration, 8),
-      granularity: int(s.hourly.granularity, 60),
-      leadTimeMin: int(s.hourly.leadTimeMin, 0),
-    };
-  }
-  if (modes.includes('daily')) {
-    modeConfig.daily = {
-      basePricePerNight: vnd(s.daily.basePricePerNight),
-      blocks: [],
-      minNights: int(s.daily.minNights, 1),
-      maxNights: int(s.daily.maxNights, 30),
-      checkinTime: s.daily.checkinTime,
-      checkoutTime: s.daily.checkoutTime,
-      leadTimeMin: int(s.daily.leadTimeMin, 0),
-    };
-  }
-  if (modes.includes('inventory')) {
-    modeConfig.inventory = {
-      unit: s.inventory.unit,
-      basePrice: vnd(s.inventory.basePrice),
-      securityDeposit: vnd(s.inventory.securityDeposit),
-    };
-  }
-  return modeConfig;
-}
+/**
+ * The mode-config round-trip (read → edit → write) lives in `listing-mode-config`
+ * — it is pure, load-bearing (a dropped key is destroyed on save), and specced.
+ */
 
 export function ListingForm({
   listingTypes,
@@ -185,6 +103,13 @@ export function ListingForm({
     },
     { name: 'bufferBefore', type: 'number', label: 'Đệm trước (phút)', colSpan: 1 },
     { name: 'bufferAfter', type: 'number', label: 'Đệm sau (phút)', colSpan: 1 },
+    {
+      name: 'capacity',
+      type: 'number',
+      label: 'Sức chứa (số khách tối đa)',
+      description: 'Để trống nếu không giới hạn.',
+      colSpan: 1,
+    },
     { name: 'depositPercent', type: 'number', label: 'Đặt cọc (%)', colSpan: 1 },
     {
       name: 'balanceDue',
@@ -234,11 +159,15 @@ export function ListingForm({
     modeConfig: {},
     attributes: listing?.attributes ?? {},
     stockQuantity: listing?.stockQuantity ?? undefined,
+    capacity: listing?.capacity ?? undefined,
     bufferBefore: listing?.bufferBefore ?? 0,
     bufferAfter: listing?.bufferAfter ?? 0,
     approvalRequired: listing?.approvalRequired ?? false,
     depositPercent: listing?.depositPercent ?? 100,
     balanceDue: (listing?.balanceDue as 'online_before' | 'on_arrival') ?? 'online_before',
+    // Without this the edit form submits an empty policy and CLEARS the listing's
+    // cancellation policy — a required checklist row for the reviewer.
+    cancellationPolicyId: listing?.cancellationPolicyId ?? undefined,
   };
 
   return (
@@ -291,6 +220,9 @@ function ListingConfig({
   const [state, setState] = useState<DynamicState>(() => initialDynamic(listing));
   const set = <K extends keyof DynamicState>(key: K, value: DynamicState[K]): void =>
     setState((s) => ({ ...s, [key]: value }));
+  // The listing's stored mode_config — the base every rebuild spreads over, so a
+  // key this form doesn't render survives the wholesale PATCH replace.
+  const saved = useMemo(() => savedModeConfig(listing), [listing]);
 
   // Reset modes/attributes when the user switches type (skip the initial mount so
   // an edit form keeps the listing's saved values).
@@ -307,13 +239,13 @@ function ListingConfig({
   // Mirror the dynamic values into RHF so the schema can validate them.
   useEffect(() => {
     form.setValue('bookingModes', state.bookingModes);
-    form.setValue('modeConfig', buildModeConfig(state) as CreateListingInput['modeConfig']);
+    form.setValue('modeConfig', buildModeConfig(state, saved) as CreateListingInput['modeConfig']);
     form.setValue('attributes', state.attributes);
     form.setValue(
       'stockQuantity',
       state.bookingModes.includes('inventory') ? int(state.stockQuantity, 1) : undefined,
     );
-  }, [state, form]);
+  }, [state, form, saved]);
 
   const errors = form.formState.errors;
   const toggleMode = (mode: BookingMode, on: boolean): void =>
@@ -394,6 +326,11 @@ function ListingConfig({
               />
             </Field>
           </Grid>
+          <BlockEditor
+            rows={state.hourly.blocks}
+            unitLabel="giờ"
+            onChange={(blocks) => set('hourly', { ...state.hourly, blocks })}
+          />
         </Section>
       ) : null}
 
@@ -440,7 +377,20 @@ function ListingConfig({
                 onChange={(e) => set('daily', { ...state.daily, checkoutTime: e.target.value })}
               />
             </Field>
+            <Field label="Đặt trước tối thiểu (phút)">
+              <Input
+                type="number"
+                min={0}
+                value={state.daily.leadTimeMin}
+                onChange={(e) => set('daily', { ...state.daily, leadTimeMin: e.target.value })}
+              />
+            </Field>
           </Grid>
+          <BlockEditor
+            rows={state.daily.blocks}
+            unitLabel="đêm"
+            onChange={(blocks) => set('daily', { ...state.daily, blocks })}
+          />
         </Section>
       ) : null}
 
@@ -494,6 +444,39 @@ function ListingConfig({
                 onChange={(e) => set('stockQuantity', e.target.value)}
               />
             </Field>
+            <Field label={`Thuê tối thiểu (${INVENTORY_UNIT_LABEL[state.inventory.unit]})`}>
+              <Input
+                type="number"
+                min={1}
+                placeholder="Không giới hạn"
+                value={state.inventory.minDuration}
+                onChange={(e) =>
+                  set('inventory', { ...state.inventory, minDuration: e.target.value })
+                }
+              />
+            </Field>
+            <Field label={`Thuê tối đa (${INVENTORY_UNIT_LABEL[state.inventory.unit]})`}>
+              <Input
+                type="number"
+                min={1}
+                placeholder="Không giới hạn"
+                value={state.inventory.maxDuration}
+                onChange={(e) =>
+                  set('inventory', { ...state.inventory, maxDuration: e.target.value })
+                }
+              />
+            </Field>
+            <Field label={`Phí trả trễ / ${INVENTORY_UNIT_LABEL[state.inventory.unit]} (VND)`}>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Mặc định: bằng giá thuê"
+                value={state.inventory.lateFeePerUnit}
+                onChange={(e) =>
+                  set('inventory', { ...state.inventory, lateFeePerUnit: e.target.value })
+                }
+              />
+            </Field>
           </Grid>
         </Section>
       ) : null}
@@ -512,6 +495,82 @@ function ListingConfig({
           </div>
         </Section>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Bundle pricing (§9.1): "N hours/nights for a flat price". A booking whose
+ * duration matches a block is charged the block price and pricing rules never
+ * override it — so these rows are real money, and losing them (as this form used
+ * to, by hardcoding `blocks: []`) silently re-prices the listing.
+ */
+function BlockEditor({
+  rows,
+  unitLabel,
+  onChange,
+}: {
+  rows: BlockRow[];
+  unitLabel: string;
+  onChange: (rows: BlockRow[]) => void;
+}) {
+  const update = (i: number, patch: Partial<BlockRow>): void =>
+    onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-sm font-medium">Giá theo gói</h3>
+        <p className="text-xs text-muted-foreground">
+          Đặt đúng số {unitLabel} của gói sẽ được tính giá trọn gói thay vì giá lẻ.
+        </p>
+      </div>
+      {rows.length > 0 ? (
+        <div className="space-y-2">
+          {rows.map((row, i) => (
+            <div key={i} className="flex items-end gap-2">
+              <div className="flex-1">
+                <Field label={`Số ${unitLabel}`}>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={row.count}
+                    onChange={(e) => update(i, { count: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="flex-1">
+                <Field label="Giá trọn gói (VND)">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={row.price}
+                    onChange={(e) => update(i, { price: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mb-0.5"
+                onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
+                aria-label={`Xoá gói ${i + 1}`}
+              >
+                <X className="size-4" aria-hidden />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => onChange([...rows, { count: '', price: '' }])}
+      >
+        <Plus className="size-4" aria-hidden /> Thêm gói
+      </Button>
     </div>
   );
 }

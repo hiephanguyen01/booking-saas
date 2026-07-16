@@ -8,9 +8,15 @@ import type {
   IAffiliateCommissionRepository,
 } from '../../domain/ports/affiliate-commission-repository.port';
 
-type RowWithBooking = Prisma.AffiliateCommissionGetPayload<{
-  include: { booking: { select: { code: true } } };
-}>;
+type RowWithBooking = Prisma.AffiliateCommissionGetPayload<{ include: typeof WITH_BOOKING }>;
+
+// A commission row is meaningless on its own: the affiliate needs to know which
+// booking (code, listing, amount) earned it and what state that booking is in.
+const WITH_BOOKING = {
+  booking: {
+    select: { code: true, status: true, finalAmount: true, listing: { select: { title: true } } },
+  },
+} as const;
 
 function toWithBooking(c: RowWithBooking): AffiliateCommissionWithBooking {
   return {
@@ -22,6 +28,13 @@ function toWithBooking(c: RowWithBooking): AffiliateCommissionWithBooking {
     status: c.status,
     createdAt: c.createdAt,
     bookingCode: c.booking?.code ?? null,
+    bookingStatus: c.booking?.status ?? null,
+    bookingTotal: c.booking?.finalAmount ?? null,
+    listingTitle: c.booking?.listing?.title ?? null,
+    // There is no `paid_at` column on affiliate_commissions; `paid` is terminal
+    // (markConfirmedPaid is the only transition into it and nothing leaves it
+    // except a clawback), so the row's last write IS the settlement instant.
+    paidAt: c.status === 'paid' ? c.updatedAt : null,
   };
 }
 
@@ -73,7 +86,7 @@ export class PrismaAffiliateCommissionRepository implements IAffiliateCommission
   async listByAffiliate(tx: PrismaTx, affiliateId: string): Promise<AffiliateCommissionWithBooking[]> {
     const rows = await tx.affiliateCommission.findMany({
       where: { affiliateId },
-      include: { booking: { select: { code: true } } },
+      include: WITH_BOOKING,
       orderBy: { createdAt: 'desc' },
     });
     return rows.map(toWithBooking);
@@ -86,12 +99,21 @@ export class PrismaAffiliateCommissionRepository implements IAffiliateCommission
       _sum: { amount: true },
       _count: { _all: true },
     });
-    const totals: AffiliateCommissionTotals = { pending: 0n, confirmed: 0n, paid: 0n, bookings: 0 };
+    const totals: AffiliateCommissionTotals = {
+      pending: 0n,
+      confirmed: 0n,
+      paid: 0n,
+      reversed: 0n,
+      clawedBack: 0n,
+      bookings: 0,
+    };
     for (const g of grouped) {
       const sum = g._sum.amount ?? 0n;
       if (g.status === 'pending') totals.pending = sum;
       else if (g.status === 'confirmed') totals.confirmed = sum;
       else if (g.status === 'paid') totals.paid = sum;
+      else if (g.status === 'reversed') totals.reversed = sum;
+      else if (g.status === 'clawed_back') totals.clawedBack = sum;
       // A booking "counts" while its commission is still live (not reversed/clawed_back).
       if (g.status === 'pending' || g.status === 'confirmed' || g.status === 'paid') {
         totals.bookings += g._count._all;

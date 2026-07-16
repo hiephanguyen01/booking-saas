@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { data, Link, useFetcher } from 'react-router';
 import { Clock, EyeOff, Lock, Pencil, Plus, Send, Undo2 } from 'lucide-react';
-import type { ListingGroupResponse, ListingResponse, ListingTypeResponse, PublishStatus } from '@booking/contracts';
+import type { BookingMode, ListingGroupResponse, ListingResponse, ListingTypeResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -16,17 +16,21 @@ import {
 import type { Route } from './+types/listings';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
-import { PageHeader } from './components/page-header';
-import { formatDate } from './components/format';
+import { PageHeader } from '~/components/page-header';
+import { Money } from '~/components/money';
+import { EnumValue } from '~/components/enum-value';
+import { ListingStatusBadge } from '~/components/status-badge';
+import { formatDate } from '~/lib/format';
+import { listingPriceFrom } from './listing-price';
 
-const STATUS_META: Record<PublishStatus, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
-  draft: { label: 'Nháp', variant: 'outline' },
-  pending_review: { label: 'Chờ duyệt', variant: 'secondary' },
-  published: { label: 'Đang hiển thị', variant: 'default' },
-  archived: { label: 'Đã ẩn', variant: 'outline' },
+/** Booking-mode → Vietnamese label (exhaustive, so a new mode is a compile error). */
+const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
+  hourly: 'Theo giờ',
+  daily: 'Theo ngày',
+  appointment: 'Lịch hẹn',
+  class: 'Lớp học',
+  inventory: 'Theo kho',
 };
-
-const MODE_LABEL: Record<string, string> = { hourly: 'Theo giờ', daily: 'Theo ngày', inventory: 'Kho' };
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng · Đối tác · Bookify' }];
@@ -119,11 +123,22 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
         <div className="flex flex-wrap gap-1">
           {l.bookingModes.map((m) => (
             <Badge key={m} variant="outline" className="font-normal">
-              {MODE_LABEL[m] ?? m}
+              <EnumValue map={BOOKING_MODE_LABEL} value={m} />
             </Badge>
           ))}
         </div>
       ),
+    },
+    {
+      header: 'Giá từ',
+      cell: (l) => {
+        const price = listingPriceFrom(l);
+        return price ? (
+          <Money value={price} />
+        ) : (
+          <span className="text-sm text-muted-foreground">Chưa có giá</span>
+        );
+      },
     },
     {
       header: 'Cập nhật',
@@ -132,13 +147,12 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
     {
       header: 'Trạng thái',
       cell: (l) => {
-        const meta = STATUS_META[l.status];
         const adminLocked = l.status === 'archived' && l.hiddenBy === 'admin';
         return (
           <div className="flex items-center gap-1.5">
-            <Badge variant={meta.variant}>{meta.label}</Badge>
+            <ListingStatusBadge status={l.status} />
             {adminLocked ? (
-              <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400" title="Bị quản trị viên ẩn">
+              <span className="inline-flex items-center gap-1 text-xs text-warning" title="Bị quản trị viên ẩn">
                 <Lock className="size-3" aria-hidden /> Khoá
               </span>
             ) : null}
@@ -198,17 +212,54 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
         </div>
       ) : null}
 
-      {groups.length > 0 ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{groups.map((group) => {
-        const type = listingTypes.find((item) => item.id === group.listingTypeId);
-        const count = listings.filter((listing) => listing.groupId === group.id).length;
-        return <Link key={group.id} to={`/partner/listing-groups/${group.id}`} className="block"><Card className="h-full"><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle>{group.title}</CardTitle><CardDescription>{type?.name ?? 'Bài đăng'} · {count} {type?.itemLabel || 'hạng mục'}</CardDescription></div><Badge variant="outline">{STATUS_META[group.status].label}</Badge></div></CardHeader><CardContent><p className="line-clamp-2 text-sm text-muted-foreground">{group.description || 'Chưa có mô tả.'}</p></CardContent></Card></Link>;
-      })}</div> : null}
+      {groups.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {groups.map((group) => {
+            const type = listingTypes.find((item) => item.id === group.listingTypeId);
+            return (
+              <Link
+                key={group.id}
+                to={`/partner/listing-groups/${group.id}`}
+                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Card className="h-full">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <CardTitle className="truncate">{group.title}</CardTitle>
+                        <CardDescription>
+                          {type?.name ?? 'Bài đăng'} · {group.listingCount}{' '}
+                          {type?.itemLabel || 'hạng mục'}
+                        </CardDescription>
+                      </div>
+                      <ListingStatusBadge status={group.status} />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {group.description || 'Chưa có mô tả.'}
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Giá từ </span>
+                      {group.priceFrom ? (
+                        <Money value={group.priceFrom} className="font-medium" />
+                      ) : (
+                        <span className="text-muted-foreground">Chưa có giá</span>
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
 
       <DataTable
         columns={columns}
         data={rows.filter((listing) => !listing.groupId)}
         getRowKey={(l) => l.id}
-        emptyMessage="Bạn chưa có tin đăng nào ở nhóm này."
+        emptyMessage="Chưa có tin đăng độc lập nào."
       />
     </div>
   );

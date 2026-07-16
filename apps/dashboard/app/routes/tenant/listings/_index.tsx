@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import type { ListingResponse, Paginated, PartnerResponse, PublishStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -10,9 +9,30 @@ import { ClipboardCheck, Eye } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDateTime } from '../format';
-import { PageHeader } from '../components/page';
-import { ListingStatusBadge } from '../components/status';
+import { formatDateTime } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { Money } from '~/components/money';
+import { ListingStatusBadge } from '~/components/status-badge';
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/** Lowest configured base price across a listing's modes (VND đồng digit string). */
+function listingPriceFrom(modeConfig: Record<string, unknown>): string | null {
+  let min: bigint | null = null;
+  for (const [mode, cfg] of Object.entries(modeConfig)) {
+    const c = asRecord(cfg);
+    if (!c) continue;
+    const raw = mode === 'daily' ? c.basePricePerNight : c.basePrice;
+    if (typeof raw !== 'string' || !/^\d+$/.test(raw)) continue;
+    const value = BigInt(raw);
+    if (min === null || value < min) min = value;
+  }
+  return min === null ? null : min.toString();
+}
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Listing · Tenant · Bookify' }];
@@ -20,8 +40,9 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
+  // `GET /tenant/listings` is paginated; pull a full moderation page (max 100).
   const [res, partnersRes] = await Promise.all([
-    apiGet<ListingResponse[]>('/tenant/listings', auth),
+    apiGet<Paginated<ListingResponse>>('/tenant/listings?pageSize=100', auth),
     can('tenant.partners.read')
       ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
       : Promise.resolve(null),
@@ -29,7 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
   return {
-    listings: res.ok ? (res.data ?? []) : [],
+    listings: res.ok ? (res.data?.items ?? []) : [],
     partnerNames,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách listing.'),
     canModerate: can('tenant.listings.publish'),
@@ -93,6 +114,19 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         </div>
       ),
     },
+    {
+      header: 'Giá từ',
+      cell: (l) => {
+        const price = listingPriceFrom(l.modeConfig);
+        return price ? (
+          <Money value={price} className="text-sm" />
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        );
+      },
+      className: 'hidden sm:table-cell whitespace-nowrap',
+      headClassName: 'hidden sm:table-cell',
+    },
     { header: 'Trạng thái', cell: (l) => <ListingStatusBadge status={l.status} /> },
     {
       header: 'Cập nhật',
@@ -131,9 +165,9 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
       />
 
       {error ? (
-        <Card>
-          <CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">{error}</CardContent>
-        </Card>
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
       ) : null}
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>

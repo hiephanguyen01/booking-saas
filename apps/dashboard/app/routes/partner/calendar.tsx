@@ -23,8 +23,8 @@ import type { Route } from './+types/calendar';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
 import { MasterCalendar } from './components/master-calendar';
-import { PageHeader } from './components/page-header';
-import { dayKey, formatDate } from './components/format';
+import { PageHeader } from '~/components/page-header';
+import { dayKey, formatDate } from '~/lib/format';
 import {
   addDays,
   mondayOf,
@@ -238,7 +238,7 @@ export default function PartnerCalendarPage({ loaderData, actionData }: Route.Co
               to={link({ view: v, ...(v === 'day' ? { day: view === 'day' ? anchor : today } : { week: view === 'week' ? anchor : today }) })}
               prefetch="intent"
               className={cn(
-                'rounded px-3 py-1 text-sm font-medium transition',
+                'rounded px-3 py-1 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 view === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >

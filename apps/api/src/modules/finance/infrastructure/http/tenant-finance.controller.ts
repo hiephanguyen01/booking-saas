@@ -6,6 +6,7 @@ import {
   type PartnerFinanceResponse,
   type PayoutResponse,
   type TenantFinanceSummaryResponse,
+  type TenantPayableResponse,
 } from '@booking/contracts';
 import {
   Body,
@@ -39,6 +40,7 @@ import {
   toPartnerFinanceResponse,
   toPayoutResponse,
   toTenantFinanceSummaryResponse,
+  toTenantPayableResponse,
 } from '../../application/finance.mapper';
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
 import { CreatePayoutUseCase } from '../../application/use-cases/create-payout.use-case';
@@ -46,6 +48,7 @@ import { DeleteCommissionRuleUseCase } from '../../application/use-cases/delete-
 import { FailPayoutUseCase } from '../../application/use-cases/fail-payout.use-case';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
 import { GetTenantFinanceSummaryUseCase } from '../../application/use-cases/get-tenant-finance-summary.use-case';
+import { GetTenantPayableUseCase } from '../../application/use-cases/get-tenant-payable.use-case';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
 import { ListPayoutsUseCase } from '../../application/use-cases/list-payouts.use-case';
 import { ListTenantLedgerUseCase } from '../../application/use-cases/list-tenant-ledger.use-case';
@@ -57,11 +60,13 @@ import {
   CreatePayoutDto,
   FailPayoutDto,
   LedgerEntryResponseDto,
+  LedgerQueryDto,
   MarkPayoutPaidDto,
-  PaginationQueryDto,
   PartnerFinanceResponseDto,
   PayoutResponseDto,
   TenantFinanceSummaryResponseDto,
+  TenantPayableQueryDto,
+  TenantPayableResponseDto,
   UpdateCommissionRuleDto,
 } from './dto/finance.dto';
 
@@ -81,6 +86,7 @@ export class TenantFinanceController {
     private readonly summaryUseCase: GetTenantFinanceSummaryUseCase,
     private readonly partnerFinanceUseCase: GetPartnerFinanceUseCase,
     private readonly listLedgerUseCase: ListTenantLedgerUseCase,
+    private readonly getPayableUseCase: GetTenantPayableUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -142,9 +148,9 @@ export class TenantFinanceController {
 
   @RequirePermissions('tenant.finance.read')
   @Get('ledger')
-  @ApiOperation({ summary: 'List tenant ledger entries' })
+  @ApiOperation({ summary: 'List tenant ledger entries', description: 'Filterable by booking, owner type, entry type and created-at range.' })
   @ApiPaginatedResponse(LedgerEntryResponseDto)
-  async ledger(@Query() query: PaginationQueryDto): Promise<Paginated<LedgerEntryResponse>> {
+  async ledger(@Query() query: LedgerQueryDto): Promise<Paginated<LedgerEntryResponse>> {
     const { items, total } = await this.listLedgerUseCase.execute(this.tenantId, query);
     return {
       items: items.map(toLedgerEntryResponse),
@@ -168,6 +174,18 @@ export class TenantFinanceController {
   }
 
   // ── Payouts ───────────────────────────────────────────────────────────────
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Get('payable')
+  @ApiOperation({
+    summary: 'Preview what a payout run would pay a payee',
+    description:
+      "The payable a run actually pays (maturePayable − outstanding), plus the policy inputs behind it. This — not the payee's raw ledger balance — is the amount to show before opening a run; `eligible`/`ineligibleReason` mirror the codes POST payouts would reject with.",
+  })
+  @ApiOkResponse({ type: TenantPayableResponseDto })
+  async payable(@Query() query: TenantPayableQueryDto): Promise<TenantPayableResponse> {
+    return toTenantPayableResponse(await this.getPayableUseCase.execute(this.tenantId, query));
+  }
 
   @RequirePermissions('tenant.payouts.manage')
   @Get('payouts')

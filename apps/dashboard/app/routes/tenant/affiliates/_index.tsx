@@ -2,16 +2,17 @@ import { useMemo, useState } from 'react';
 import { Link, useFetcher, data as routeData } from 'react-router';
 import type { AffiliateListItem, AffiliateStatusDto } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { Badge } from '@booking/ui/components/ui/badge';
+import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Check, Eye, Ban } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDate, formatVnd } from '../format';
-import { PageHeader } from '../components/page';
+import { formatRate } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { Money } from '~/components/money';
+import { PartnerStatusBadge } from '~/components/status-badge';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Tenant · Bookify' }];
@@ -48,17 +49,6 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'suspended', label: 'Tạm ngưng' },
 ];
 
-const STATUS_LABEL: Record<AffiliateStatusDto, string> = {
-  pending: 'Chờ duyệt',
-  approved: 'Đã duyệt',
-  suspended: 'Tạm ngưng',
-};
-
-function AffiliateStatusBadge({ status }: { status: AffiliateStatusDto }) {
-  const variant = status === 'approved' ? 'default' : status === 'pending' ? 'secondary' : 'outline';
-  return <Badge variant={variant}>{STATUS_LABEL[status]}</Badge>;
-}
-
 export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
   const { affiliates, error } = loaderData;
   const [filter, setFilter] = useState<Filter>('all');
@@ -79,7 +69,10 @@ export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
       header: 'Cộng tác viên',
       cell: (a) => (
         <div className="min-w-0">
-          <Link to={`/tenant/affiliates/${a.id}`} className="truncate font-medium hover:underline">
+          <Link
+            to={`/tenant/affiliates/${a.id}`}
+            className="truncate rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
             {a.userName}
           </Link>
           <div className="truncate text-xs text-muted-foreground">{a.userEmail}</div>
@@ -87,32 +80,38 @@ export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
       ),
     },
     {
-      header: 'Link',
-      cell: (a) => <span className="text-sm tabular-nums text-muted-foreground">{a.linksCount}</span>,
-      className: 'hidden sm:table-cell',
-      headClassName: 'hidden sm:table-cell',
+      header: 'Click',
+      cell: (a) => <span className="text-sm tabular-nums text-muted-foreground">{a.clicks}</span>,
+      className: 'hidden sm:table-cell text-right',
+      headClassName: 'hidden sm:table-cell text-right',
     },
     {
-      header: 'Đã kiếm',
-      cell: (a) => <span className="text-sm tabular-nums">{formatVnd(a.totalEarned)}</span>,
-      className: 'hidden md:table-cell',
-      headClassName: 'hidden md:table-cell',
+      header: 'Chuyển đổi',
+      cell: (a) => <span className="text-sm tabular-nums text-muted-foreground">{formatRate(a.conversionRate)}</span>,
+      className: 'hidden lg:table-cell text-right',
+      headClassName: 'hidden lg:table-cell text-right',
+    },
+    {
+      header: 'Cần chi',
+      cell: (a) => <Money value={a.confirmedCommission} className="text-sm" />,
+      className: 'hidden md:table-cell text-right',
+      headClassName: 'hidden md:table-cell text-right',
+    },
+    {
+      header: 'Đã chi',
+      cell: (a) => <span className="text-sm text-muted-foreground"><Money value={a.paidCommission} /></span>,
+      className: 'hidden lg:table-cell text-right',
+      headClassName: 'hidden lg:table-cell text-right',
     },
     {
       header: 'Hoa hồng riêng',
       cell: (a) => (
         <span className="text-sm text-muted-foreground">{a.customRate === null ? '—' : `${a.customRate}%`}</span>
       ),
-      className: 'hidden lg:table-cell',
-      headClassName: 'hidden lg:table-cell',
+      className: 'hidden xl:table-cell',
+      headClassName: 'hidden xl:table-cell',
     },
-    { header: 'Trạng thái', cell: (a) => <AffiliateStatusBadge status={a.status} /> },
-    {
-      header: 'Tham gia',
-      cell: (a) => <span className="text-sm text-muted-foreground">{formatDate(a.createdAt)}</span>,
-      className: 'hidden lg:table-cell',
-      headClassName: 'hidden lg:table-cell',
-    },
+    { header: 'Trạng thái', cell: (a) => <PartnerStatusBadge status={a.status} /> },
     {
       header: '',
       headClassName: 'text-right',
@@ -125,13 +124,13 @@ export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
     <div className="space-y-6">
       <PageHeader
         title="Cộng tác viên"
-        description="Duyệt cộng tác viên, đặt hoa hồng riêng và theo dõi hoa hồng đã phát sinh."
+        description="Duyệt cộng tác viên, đặt hoa hồng riêng và theo dõi hoa hồng cần chi trả."
       />
 
       {error ? (
-        <Card>
-          <CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">{error}</CardContent>
-        </Card>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>

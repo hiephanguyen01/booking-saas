@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { localeSchema, uuidSchema } from './common';
+import { localeSchema, paginationQuerySchema, uuidSchema } from './common';
 
 /** Storefront base template (TONG-QUAN.md §16.1) — independent of listing modes. */
 export const verticalSchema = z.enum(['studio', 'rental', 'classes']);
@@ -66,6 +66,17 @@ export const updateTenantInputSchema = z
   .partial();
 export type UpdateTenantInput = z.infer<typeof updateTenantInputSchema>;
 
+/**
+ * `GET /admin/tenants` query. Every filter is optional and ANDed; `search` matches
+ * the tenant name or slug (case-insensitive, partial).
+ */
+export const listTenantsQuerySchema = paginationQuerySchema.extend({
+  search: z.string().trim().min(1).max(200).optional(),
+  status: tenantStatusSchema.optional(),
+  vertical: verticalSchema.optional(),
+});
+export type ListTenantsQuery = z.infer<typeof listTenantsQuerySchema>;
+
 /** Tenant toggle for partner-created promotions (§12.2). */
 export const partnerPromotionsToggleSchema = z.object({ partnerPromotionsEnabled: z.boolean() });
 export type PartnerPromotionsToggle = z.infer<typeof partnerPromotionsToggleSchema>;
@@ -87,6 +98,30 @@ export const createPlanInputSchema = z.object({
   isActive: z.boolean().default(true),
 });
 export type CreatePlanInput = z.infer<typeof createPlanInputSchema>;
+
+/**
+ * `PATCH /admin/plans/:id`. Every field is optional — a plan is created before its
+ * price is necessarily final and `name` is UNIQUE, so without this a typo is
+ * permanent (the plan can be neither corrected nor recreated under the same name).
+ *
+ * `repriceExistingSubscribers` is a blast-radius acknowledgement, not a setting:
+ * `tenant_subscriptions` stores only a `plan_id` and reads `price_monthly` through
+ * that FK, so it holds **no price snapshot** — editing a plan's price silently
+ * re-prices every tenant already on it. The API therefore rejects a price change on
+ * a plan with live subscribers (409 `PLAN_HAS_SUBSCRIBERS`) unless this is `true`.
+ * Correcting a typo on a not-yet-sold plan — the common case — needs no flag.
+ */
+export const updatePlanInputSchema = z
+  .object({
+    name: z.string().min(1).max(120),
+    /** VND đồng as a digit string (money never travels as a JS number). */
+    priceMonthly: z.string().regex(/^\d+$/, 'Must be an integer amount in VND đồng'),
+    limits: planLimitsSchema,
+    isActive: z.boolean(),
+    repriceExistingSubscribers: z.boolean(),
+  })
+  .partial();
+export type UpdatePlanInput = z.infer<typeof updatePlanInputSchema>;
 
 export const assignSubscriptionInputSchema = z.object({
   planId: uuidSchema,
@@ -172,6 +207,13 @@ export type ThemeConfigInput = z.infer<typeof themeConfigSchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
+/**
+ * A tenant as configured. `themeConfig`/`settings` are writable through
+ * {@link updateTenantInputSchema}, so they are readable here too — an admin must be
+ * able to read back what it just wrote. Joins/aggregates (subscription, domains,
+ * counts) live on {@link tenantDetailResponseSchema} instead, so the paginated list
+ * stays one query.
+ */
 export const tenantResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -180,7 +222,10 @@ export const tenantResponseSchema = z.object({
   vertical: verticalSchema,
   defaultTimezone: z.string(),
   defaultLocale: localeSchema,
+  themeConfig: z.record(z.unknown()),
+  settings: z.record(z.unknown()),
   createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type TenantResponse = z.infer<typeof tenantResponseSchema>;
 
@@ -191,6 +236,20 @@ export const planResponseSchema = z.object({
   priceMonthly: z.string(),
   limits: planLimitsSchema,
   isActive: z.boolean(),
+  /**
+   * Tenants whose *current* subscription is on this plan and is still within its
+   * paid-through date (§6.5 `trial`/`active`/`past_due`). Deduped per tenant:
+   * assigning a plan appends a `tenant_subscriptions` row and never retires the
+   * previous one, so counting rows would count every renewal as another subscriber.
+   */
+  subscriberCount: z.number().int().nonnegative(),
+  /**
+   * Monthly recurring revenue this plan earns the platform, in VND đồng as a digit
+   * string — `subscriberCount × priceMonthly`, computed with bigint.
+   */
+  mrr: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 
@@ -215,6 +274,61 @@ export const domainResponseSchema = z.object({
   verificationToken: z.string().optional(),
 });
 export type DomainResponse = z.infer<typeof domainResponseSchema>;
+
+/** One row of a tenant's subscription history, with the plan resolved to its name. */
+export const subscriptionHistoryItemSchema = subscriptionResponseSchema.extend({
+  planName: z.string(),
+});
+export type SubscriptionHistoryItem = z.infer<typeof subscriptionHistoryItemSchema>;
+
+/**
+ * `GET /admin/tenants/:id` — a tenant plus the joins the admin detail screen needs.
+ * Deliberately NOT the list shape: `counts` and `subscription` are aggregates, and
+ * folding them into {@link tenantResponseSchema} would make `GET /admin/tenants`
+ * run a handful of extra queries per row.
+ */
+export const tenantDetailResponseSchema = tenantResponseSchema.extend({
+  /** The current subscription (latest by `startsAt`); null when never subscribed. */
+  subscription: z
+    .object({
+      planName: z.string(),
+      status: subscriptionStatusSchema,
+      expiresAt: z.string(),
+    })
+    .nullable(),
+  /** The tenant's primary hostname; null if it somehow has none. */
+  primaryDomain: domainResponseSchema.nullable(),
+  counts: z.object({
+    partners: z.number().int().nonnegative(),
+    listings: z.number().int().nonnegative(),
+    /** Bookings created in the trailing 30 days. */
+    bookings30d: z.number().int().nonnegative(),
+  }),
+});
+export type TenantDetailResponse = z.infer<typeof tenantDetailResponseSchema>;
+
+/** Platform-level tenancy config the admin UI needs to render subdomain previews. */
+export const tenancyConfigResponseSchema = z.object({
+  /** Base domain every tenant's default `<slug>.<baseDomain>` subdomain hangs off. */
+  baseDomain: z.string(),
+});
+export type TenancyConfigResponse = z.infer<typeof tenancyConfigResponseSchema>;
+
+/**
+ * Pre-flight for the create-tenant form. Mirrors exactly the two conflicts
+ * `POST /admin/tenants` enforces (`TENANT_SLUG_TAKEN`, `DOMAIN_TAKEN`), so a green
+ * check here means create will not 409 on the slug.
+ */
+export const slugAvailabilityResponseSchema = z.object({
+  slug: z.string(),
+  available: z.boolean(),
+  /** The subdomain that would be provisioned: `<slug>.<baseDomain>`. */
+  subdomain: z.string(),
+  baseDomain: z.string(),
+  /** Why it is unavailable; null when it is available. */
+  reason: z.enum(['slug_taken', 'domain_taken']).nullable(),
+});
+export type SlugAvailabilityResponse = z.infer<typeof slugAvailabilityResponseSchema>;
 
 /**
  * Result of triggering a custom-domain verification (§6.1). The DNS TXT lookup

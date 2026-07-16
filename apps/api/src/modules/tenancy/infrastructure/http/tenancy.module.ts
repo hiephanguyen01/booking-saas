@@ -19,11 +19,16 @@ import { DomainVerificationWorker } from '../domain-verification.worker';
 import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
 import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use-case';
 import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
+import { GetTenantDetailUseCase } from '../../application/use-cases/get-tenant-detail.use-case';
+import { CheckSlugAvailabilityUseCase } from '../../application/use-cases/check-slug-availability.use-case';
 import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
 import { CreatePlanUseCase } from '../../application/use-cases/create-plan.use-case';
 import { ListPlansUseCase } from '../../application/use-cases/list-plans.use-case';
+import { UpdatePlanUseCase } from '../../application/use-cases/update-plan.use-case';
+import { DeletePlanUseCase } from '../../application/use-cases/delete-plan.use-case';
 import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
 import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
+import { ListSubscriptionsUseCase } from '../../application/use-cases/list-subscriptions.use-case';
 import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
 import { SetPartnerPromotionsUseCase } from '../../application/use-cases/set-partner-promotions.use-case';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
@@ -66,11 +71,16 @@ import { TenantSettingsController } from './tenant-settings.controller';
     CreateTenantUseCase,
     ListTenantsUseCase,
     GetTenantUseCase,
+    GetTenantDetailUseCase,
+    CheckSlugAvailabilityUseCase,
     UpdateTenantUseCase,
     CreatePlanUseCase,
     ListPlansUseCase,
+    UpdatePlanUseCase,
+    DeletePlanUseCase,
     AssignSubscriptionUseCase,
     GetCurrentSubscriptionUseCase,
+    ListSubscriptionsUseCase,
     GetSubscriptionStatusUseCase,
     SetPartnerPromotionsUseCase,
     AddDomainUseCase,

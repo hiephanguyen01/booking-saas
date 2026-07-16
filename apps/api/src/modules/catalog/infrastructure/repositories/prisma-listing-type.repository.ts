@@ -9,7 +9,17 @@ import type {
   UpdateListingTypeData,
 } from '../../domain/ports/listing-type-repository.port';
 
-type PrismaListingType = Prisma.ListingTypeGetPayload<Record<string, never>>;
+/**
+ * `listingCount` on every read: it drives the "N listings" column and lets the UI
+ * say up-front that a type in use cannot be deleted, instead of surfacing that as
+ * a failed request. A `_count` is a cheap grouped subquery on the indexed
+ * `listings.listing_type_id`.
+ */
+const LISTING_TYPE_INCLUDE = {
+  _count: { select: { listings: true } },
+} as const satisfies Prisma.ListingTypeInclude;
+
+type PrismaListingType = Prisma.ListingTypeGetPayload<{ include: typeof LISTING_TYPE_INCLUDE }>;
 
 function toRecord(t: PrismaListingType): ListingTypeRecord {
   return {
@@ -27,6 +37,7 @@ function toRecord(t: PrismaListingType): ListingTypeRecord {
     requiresIdentityVerification: t.requiresIdentityVerification,
     structure: t.structure as ListingStructure,
     itemLabel: t.itemLabel,
+    listingCount: t._count.listings,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
   };
@@ -62,17 +73,18 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
           structure: data.structure,
           itemLabel: data.itemLabel,
         },
+        include: LISTING_TYPE_INCLUDE,
       }),
     );
   }
 
   async findById(tx: PrismaTx, id: string): Promise<ListingTypeRecord | null> {
-    const t = await tx.listingType.findUnique({ where: { id } });
+    const t = await tx.listingType.findUnique({ where: { id }, include: LISTING_TYPE_INCLUDE });
     return t ? toRecord(t) : null;
   }
 
   async findBySlug(tx: PrismaTx, slug: string): Promise<ListingTypeRecord | null> {
-    const t = await tx.listingType.findFirst({ where: { slug } });
+    const t = await tx.listingType.findFirst({ where: { slug }, include: LISTING_TYPE_INCLUDE });
     return t ? toRecord(t) : null;
   }
 
@@ -80,12 +92,17 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
     const items = await tx.listingType.findMany({
       where: opts.includeInactive ? {} : { isActive: true },
       orderBy,
+      include: LISTING_TYPE_INCLUDE,
     });
     return items.map(toRecord);
   }
 
   async listActive(tx: PrismaTx): Promise<ListingTypeRecord[]> {
-    const items = await tx.listingType.findMany({ where: { isActive: true }, orderBy });
+    const items = await tx.listingType.findMany({
+      where: { isActive: true },
+      orderBy,
+      include: LISTING_TYPE_INCLUDE,
+    });
     return items.map(toRecord);
   }
 
@@ -114,6 +131,7 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
           structure: data.structure,
           itemLabel: data.itemLabel,
         },
+        include: LISTING_TYPE_INCLUDE,
       }),
     );
   }

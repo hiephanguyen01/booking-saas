@@ -11,7 +11,7 @@ import { data, Link, redirect } from 'react-router';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import type { Route } from './+types/listing-groups.$groupId.listings.$listingId.edit';
 import { ListingForm } from './components/listing-form';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
 import { canPartner, requirePartner } from './partner.server';
 
 export async function loader({ request, params }: Route.LoaderArgs) {

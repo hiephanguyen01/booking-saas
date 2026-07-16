@@ -1,4 +1,4 @@
-import { uuidSchema, type ListingResponse } from '@booking/contracts';
+import { uuidSchema, type ListingResponse, type Paginated } from '@booking/contracts';
 import {
   Body,
   Controller,
@@ -16,10 +16,9 @@ import {
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -32,7 +31,12 @@ import { DeleteListingUseCase } from '../../application/use-cases/delete-listing
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
 import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
-import { CreateListingDto, ListingResponseDto, UpdateListingDto } from './dto/listing.dto';
+import {
+  CreateListingDto,
+  ListTenantListingsQueryDto,
+  ListingResponseDto,
+  UpdateListingDto,
+} from './dto/listing.dto';
 
 @ApiTags('tenant-listings')
 @Controller('tenant/listings')
@@ -46,16 +50,26 @@ export class TenantListingController {
     private readonly tenantContext: TenantContextService,
   ) {}
 
+  /**
+   * The tenant's listings, paginated (§13). Unlike a partner's own list, this
+   * spans every partner on the tenant and grows without bound, so it is paged.
+   */
   @RequirePermissions('tenant.listings.read')
   @Get()
   @ApiOperation({ summary: "List the tenant's listings" })
-  @ApiQuery({ name: 'groupId', required: false, type: 'string' })
-  @ApiOkResponse({ type: [ListingResponseDto] })
-  async list(@Query('groupId') groupId?: string): Promise<ListingResponse[]> {
-    const items = await this.listListings.execute(this.tenantContext.tenantIdOrThrow(), {
-      groupId,
-    });
-    return items.map(toListingResponse);
+  @ApiPaginatedResponse(ListingResponseDto)
+  async list(@Query() query: ListTenantListingsQueryDto): Promise<Paginated<ListingResponse>> {
+    const { items, total } = await this.listListings.executePage(
+      this.tenantContext.tenantIdOrThrow(),
+      { groupId: query.groupId },
+      { page: query.page, pageSize: query.pageSize },
+    );
+    return {
+      items: items.map(toListingResponse),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
   }
 
   @RequirePermissions('tenant.listings.write')

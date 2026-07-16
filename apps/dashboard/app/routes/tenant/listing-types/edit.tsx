@@ -5,7 +5,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { PageHeader } from '../components/page';
+import { PageHeader } from '~/components/page-header';
 import { ListingTypeForm } from '../components/listing-type-form';
 
 export function meta(): Route.MetaDescriptors {

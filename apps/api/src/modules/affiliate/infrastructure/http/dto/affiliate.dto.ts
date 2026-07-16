@@ -14,10 +14,12 @@ import {
   tenantUpdateAffiliateInputSchema,
   trackReferralInputSchema,
   trackReferralResponseSchema,
+  updateAffiliatePayoutInfoInputSchema,
 } from '@booking/contracts';
 
 // Request bodies
 export class ApplyAffiliateDto extends createZodDto(applyAffiliateInputSchema) {}
+export class UpdateAffiliatePayoutInfoDto extends createZodDto(updateAffiliatePayoutInfoInputSchema) {}
 export class CreateReferralLinkDto extends createZodDto(createReferralLinkInputSchema) {}
 export class TrackReferralDto extends createZodDto(trackReferralInputSchema) {}
 export class TenantAffiliateStatusDto extends createZodDto(tenantAffiliateStatusInputSchema) {}

@@ -1,5 +1,6 @@
-import { Link } from 'react-router';
+import { Form, Link } from 'react-router';
 import {
+  ledgerEntryTypeSchema,
   type LedgerEntryResponse,
   type LedgerEntryTypeDto,
   type LedgerOwnerTypeDto,
@@ -8,13 +9,19 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
+import { Label } from '@booking/ui/components/ui/label';
+import { Input } from '@booking/ui/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@booking/ui/components/ui/native-select';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Filter } from 'lucide-react';
 import type { Route } from './+types/ledger';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatVnd, formatDateTime } from '../format';
-import { PageHeader } from '../components/page';
+import { formatVnd, formatDateTime } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sổ cái · Tài chính · Tenant · Bookify' }];
@@ -22,17 +29,46 @@ export function meta(): Route.MetaDescriptors {
 
 const PAGE_SIZE = 25;
 
+/** VN market timezone offset — pins a `YYYY-MM-DD` filter bound to the local calendar day. */
+const TZ_OFFSET = '+07:00';
+
+/** Turn a `YYYY-MM-DD` form value into an ISO instant at the start/end of that local day. */
+function boundIso(day: string, edge: 'start' | 'end'): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const time = edge === 'start' ? '00:00:00.000' : '23:59:59.999';
+  const d = new Date(`${day}T${time}${TZ_OFFSET}`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** A validated `entryType` filter, or `''` when absent/invalid. */
+function parseEntryType(raw: string | null): LedgerEntryTypeDto | '' {
+  const r = ledgerEntryTypeSchema.safeParse(raw);
+  return r.success ? r.data : '';
+}
+
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.finance.read');
   const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
+  const entryType = parseEntryType(url.searchParams.get('entryType'));
+  // Keep the raw `YYYY-MM-DD` for the date inputs; send ISO bounds to the API.
+  const fromDay = url.searchParams.get('from') ?? '';
+  const toDay = url.searchParams.get('to') ?? '';
+
+  const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+  if (entryType) params.set('entryType', entryType);
+  const fromIso = boundIso(fromDay, 'start');
+  const toIso = boundIso(toDay, 'end');
+  if (fromIso) params.set('from', fromIso);
+  if (toIso) params.set('to', toIso);
 
   const res = await apiGet<Paginated<LedgerEntryResponse>>(
-    `/tenant/finance/ledger?page=${page}&pageSize=${PAGE_SIZE}`,
+    `/tenant/finance/ledger?${params.toString()}`,
     auth,
   );
 
   return {
     page,
+    filters: { entryType, from: fromDay, to: toDay },
     result: res.ok ? res.data : null,
     error: res.ok ? null : (res.error ?? 'Không tải được sổ cái.'),
   };
@@ -75,10 +111,12 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
   },
   {
     header: 'Chủ tài khoản',
+    // Prefer the server-resolved display name; null is expected for the platform owner
+    // (and for a deleted owner) — the ownerType badge already labels the row in that case.
     cell: (e) => (
       <div className="flex flex-col gap-0.5">
         <Badge variant="secondary" className="w-fit">{OWNER_LABEL[e.ownerType] ?? e.ownerType}</Badge>
-        {e.ownerId ? <span className="font-mono text-[11px] text-muted-foreground">{e.ownerId.slice(0, 8)}</span> : null}
+        {e.ownerName ? <span className="text-xs text-muted-foreground">{e.ownerName}</span> : null}
       </div>
     ),
   },
@@ -123,10 +161,21 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
 ];
 
 export default function TenantLedger({ loaderData }: Route.ComponentProps) {
-  const { result, error, page } = loaderData;
+  const { result, error, page, filters } = loaderData;
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Preserve the active filters when paging (a bare `?page=` link would drop them).
+  const pageHref = (p: number): string => {
+    const q = new URLSearchParams();
+    if (filters.entryType) q.set('entryType', filters.entryType);
+    if (filters.from) q.set('from', filters.from);
+    if (filters.to) q.set('to', filters.to);
+    q.set('page', String(p));
+    return `?${q.toString()}`;
+  };
+  const hasFilters = filters.entryType !== '' || filters.from !== '' || filters.to !== '';
 
   return (
     <div className="space-y-6">
@@ -142,9 +191,44 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         }
       />
 
+      <Card>
+        <CardContent className="p-4">
+          {/* GET filter form — submitting drops `page`, so any filter change returns to page 1. */}
+          <Form method="get" className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="entryType">Loại bút toán</Label>
+              <NativeSelect id="entryType" name="entryType" defaultValue={filters.entryType}>
+                <NativeSelectOption value="">Tất cả</NativeSelectOption>
+                {(Object.keys(ENTRY_LABEL) as LedgerEntryTypeDto[]).map((t) => (
+                  <NativeSelectOption key={t} value={t}>{ENTRY_LABEL[t]}</NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="from">Từ ngày</Label>
+              <Input id="from" name="from" type="date" defaultValue={filters.from} className="w-auto" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="to">Đến ngày</Label>
+              <Input id="to" name="to" type="date" defaultValue={filters.to} className="w-auto" />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" size="control" variant="outline">
+                <Filter className="size-4" /> Lọc
+              </Button>
+              {hasFilters ? (
+                <Button asChild size="control" variant="ghost">
+                  <Link to="?" prefetch="intent">Xoá lọc</Link>
+                </Button>
+              ) : null}
+            </div>
+          </Form>
+        </CardContent>
+      </Card>
+
       {error ? (
         <Card>
-          <CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">{error}</CardContent>
+          <CardContent className="p-4 text-sm text-destructive">{error}</CardContent>
         </Card>
       ) : null}
 
@@ -152,7 +236,7 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={items}
         getRowKey={(e) => e.id}
-        emptyMessage="Chưa có bút toán nào."
+        emptyMessage={hasFilters ? 'Không có bút toán khớp bộ lọc.' : 'Chưa có bút toán nào.'}
       />
 
       {totalPages > 1 ? (
@@ -161,12 +245,20 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
             Trang {page} / {totalPages}
           </span>
           <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm" disabled={page <= 1} aria-disabled={page <= 1}>
-              <Link to={`?page=${page - 1}`} prefetch="intent">Trước</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm" disabled={page >= totalPages} aria-disabled={page >= totalPages}>
-              <Link to={`?page=${page + 1}`} prefetch="intent">Sau</Link>
-            </Button>
+            {page > 1 ? (
+              <Button asChild variant="outline" size="sm">
+                <Link to={pageHref(page - 1)} prefetch="intent">Trước</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled>Trước</Button>
+            )}
+            {page < totalPages ? (
+              <Button asChild variant="outline" size="sm">
+                <Link to={pageHref(page + 1)} prefetch="intent">Sau</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled>Sau</Button>
+            )}
           </div>
         </div>
       ) : null}

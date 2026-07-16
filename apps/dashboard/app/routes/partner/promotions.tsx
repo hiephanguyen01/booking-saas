@@ -9,15 +9,13 @@ import { CircleAlert, HandCoins, Pencil, Plus } from 'lucide-react';
 import type { Route } from './+types/promotions';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
+import { PromotionStatusBadge } from '~/components/status-badge';
+import { formatDiscount } from '~/lib/format';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Đối tác · Bookify' }];
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Nháp', active: 'Đang chạy', paused: 'Tạm dừng', ended: 'Đã kết thúc',
-};
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);
@@ -67,9 +65,9 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
     },
     {
       header: 'Giảm',
-      cell: (p) => (p.discountType === 'percent' ? `${p.discountValue}%` : `${Number(p.discountValue).toLocaleString('vi-VN')}₫`),
+      cell: (p) => formatDiscount(p.discountType, p.discountValue),
     },
-    { header: 'Trạng thái', cell: (p) => <Badge variant={p.status === 'active' ? 'default' : 'outline'}>{STATUS_LABEL[p.status] ?? p.status}</Badge> },
+    { header: 'Trạng thái', cell: (p) => <PromotionStatusBadge status={p.status} /> },
     {
       header: '',
       cell: (p) => (
@@ -102,7 +100,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
                 <div>
                   <p className="font-medium">{p.name} {p.code ? <span className="text-muted-foreground">({p.code})</span> : null}</p>
                   <p className="text-sm text-muted-foreground">
-                    Giảm {p.discountType === 'percent' ? `${p.discountValue}%` : `${Number(p.discountValue).toLocaleString('vi-VN')}₫`}
+                    Giảm {formatDiscount(p.discountType, p.discountValue)}
                   </p>
                 </div>
                 <Form method="post">

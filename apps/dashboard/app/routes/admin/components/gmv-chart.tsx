@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { formatVnd, formatVndShort } from '~/routes/admin/lib/format';
+import { formatDayMonth, formatVnd, formatVndCompact } from '~/lib/format';
 
 interface Point {
   date: string;
@@ -20,7 +20,7 @@ export function GmvChart({ data }: { data: Array<{ date: string; gmv: string }> 
   const gradientId = useId();
   const points: Point[] = data.map((p) => ({
     date: p.date,
-    label: new Date(p.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+    label: formatDayMonth(p.date),
     gmv: Number(p.gmv),
   }));
 
@@ -70,7 +70,7 @@ export function GmvChart({ data }: { data: Array<{ date: string; gmv: string }> 
               className="fill-muted-foreground text-[10px] tabular-nums"
               style={{ fontSize: 10 }}
             >
-              {formatVndShort(v)}
+              {formatVndCompact(v)}
             </text>
           </g>
         ))}

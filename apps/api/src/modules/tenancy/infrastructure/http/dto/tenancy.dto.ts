@@ -7,25 +7,37 @@ import {
   createTenantInputSchema,
   domainResponseSchema,
   domainVerificationResultSchema,
+  listTenantsQuerySchema,
   paginationQuerySchema,
   partnerPromotionsToggleSchema,
   planResponseSchema,
   platformHealthResponseSchema,
   publicTenantResponseSchema,
+  slugAvailabilityResponseSchema,
+  slugSchema,
+  subscriptionHistoryItemSchema,
   subscriptionResponseSchema,
   subscriptionStatusResponseSchema,
+  tenancyConfigResponseSchema,
+  tenantDetailResponseSchema,
   tenantResponseSchema,
   tenantThemeResponseSchema,
+  updatePlanInputSchema,
   updateTenantInputSchema,
 } from '@booking/contracts';
 
 // ── Request bodies / queries ─────────────────────────────────────────────────
 export class CreatePlanDto extends createZodDto(createPlanInputSchema) {}
+export class UpdatePlanDto extends createZodDto(updatePlanInputSchema) {}
 export class CreateTenantDto extends createZodDto(createTenantInputSchema) {}
 export class UpdateTenantDto extends createZodDto(updateTenantInputSchema) {}
 export class AssignSubscriptionDto extends createZodDto(assignSubscriptionInputSchema) {}
 export class AddDomainDto extends createZodDto(addDomainInputSchema) {}
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
+export class ListTenantsQueryDto extends createZodDto(listTenantsQuerySchema) {}
+
+/** `GET /admin/tenants/slug-check?slug=…` — validated with the same slug rule create enforces. */
+export class SlugCheckQueryDto extends createZodDto(z.object({ slug: slugSchema })) {}
 
 /** Free-form storefront theme config body (§16.1). Stored as `tenants.theme_config`. */
 const updateThemeInputSchema = z.object({ themeConfig: z.record(z.unknown()) });
@@ -35,7 +47,11 @@ export class PartnerPromotionsToggleDto extends createZodDto(partnerPromotionsTo
 // ── Responses ────────────────────────────────────────────────────────────────
 export class PlanResponseDto extends createZodDto(planResponseSchema) {}
 export class TenantResponseDto extends createZodDto(tenantResponseSchema) {}
+export class TenantDetailResponseDto extends createZodDto(tenantDetailResponseSchema) {}
 export class SubscriptionResponseDto extends createZodDto(subscriptionResponseSchema) {}
+export class SubscriptionHistoryItemDto extends createZodDto(subscriptionHistoryItemSchema) {}
+export class TenancyConfigResponseDto extends createZodDto(tenancyConfigResponseSchema) {}
+export class SlugAvailabilityResponseDto extends createZodDto(slugAvailabilityResponseSchema) {}
 export class DomainResponseDto extends createZodDto(domainResponseSchema) {}
 export class DomainVerificationResultDto extends createZodDto(domainVerificationResultSchema) {}
 export class SubscriptionStatusResponseDto extends createZodDto(subscriptionStatusResponseSchema) {}

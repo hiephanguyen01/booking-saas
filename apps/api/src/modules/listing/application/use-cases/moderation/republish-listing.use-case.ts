@@ -13,6 +13,7 @@ import {
   assertOwnership,
   listingNotFound,
   runModeration,
+  stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
@@ -49,7 +50,13 @@ export class RepublishListingUseCase {
       }
 
       const outcome = runModeration(() => transitionRepublish(listing, actor));
-      const updated = await this.listings.moderate(tx, listingId, outcome);
+      // A republish keeps the ORIGINAL publishedAt — stampModerationTimestamps
+      // only sets it when the listing has never been published.
+      const updated = await this.listings.moderate(
+        tx,
+        listingId,
+        stampModerationTimestamps(listing, outcome),
+      );
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.republished',
         entityType: 'listing',

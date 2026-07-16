@@ -1,4 +1,4 @@
-import { uuidSchema, type PromotionResponse } from '@booking/contracts';
+import { uuidSchema, type PromotionDetailResponse, type PromotionResponse } from '@booking/contracts';
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -8,15 +8,21 @@ import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import { toPromotionResponse } from '../../application/promotion.mapper';
+import { toPromotionDetailResponse, toPromotionResponse } from '../../application/promotion.mapper';
 import { CreatePartnerPromotionUseCase } from '../../application/use-cases/create-partner-promotion.use-case';
 import { UpdatePartnerPromotionUseCase } from '../../application/use-cases/update-partner-promotion.use-case';
 import { EndPartnerPromotionUseCase } from '../../application/use-cases/end-partner-promotion.use-case';
+import { GetPartnerPromotionUseCase } from '../../application/use-cases/get-partner-promotion.use-case';
 import { ListPartnerPromotionsUseCase } from '../../application/use-cases/list-partner-promotions.use-case';
 import { ListPendingOptInUseCase } from '../../application/use-cases/list-pending-optin.use-case';
 import { OptInPromotionUseCase } from '../../application/use-cases/opt-in-promotion.use-case';
 import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabled.guard';
-import { CreatePartnerPromotionDto, PromotionResponseDto, UpdatePartnerPromotionDto } from './dto/promotions.dto';
+import {
+  CreatePartnerPromotionDto,
+  PromotionDetailResponseDto,
+  PromotionResponseDto,
+  UpdatePartnerPromotionDto,
+} from './dto/promotions.dto';
 
 /**
  * Partner-side promotions (§12.2 Phase 2). Every route needs the
@@ -31,6 +37,7 @@ export class PartnerPromotionController {
     private readonly createPromotion: CreatePartnerPromotionUseCase,
     private readonly updatePromotion: UpdatePartnerPromotionUseCase,
     private readonly endPromotion: EndPartnerPromotionUseCase,
+    private readonly getPromotion: GetPartnerPromotionUseCase,
     private readonly listPromotions: ListPartnerPromotionsUseCase,
     private readonly listPending: ListPendingOptInUseCase,
     private readonly optIn: OptInPromotionUseCase,
@@ -68,6 +75,17 @@ export class PartnerPromotionController {
   async create(@Body() input: CreatePartnerPromotionDto): Promise<PromotionResponse> {
     const { tenantId, partnerId } = this.scope();
     return toPromotionResponse(await this.createPromotion.execute(tenantId, partnerId, input));
+  }
+
+  /** Declared after `pending-optin` so the literal segment keeps winning the route match. */
+  @RequirePermissions('partner.promotions.manage')
+  @Get(':id')
+  @UuidParam()
+  @ApiOperation({ summary: 'Read one promotion the partner created or is asked to fund' })
+  @ApiOkResponse({ type: PromotionDetailResponseDto })
+  async detail(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<PromotionDetailResponse> {
+    const { tenantId, partnerId } = this.scope();
+    return toPromotionDetailResponse(await this.getPromotion.execute(tenantId, partnerId, id));
   }
 
   @RequirePermissions('partner.promotions.manage')

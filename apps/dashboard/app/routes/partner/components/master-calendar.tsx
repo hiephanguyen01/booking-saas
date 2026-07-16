@@ -16,7 +16,8 @@ import {
 } from '@booking/ui/components/ui/select';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@booking/ui/components/ui/empty';
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
-import { dayKey, formatTime, formatVnd, minutesOfDay, statusMeta } from './format';
+import { dayKey, formatTime, formatVnd, minutesOfDay } from '~/lib/format';
+import { bookingStatusMeta } from '~/components/status-badge';
 import { parseDay } from './calendar-dates';
 
 interface ListingType {
@@ -259,7 +260,7 @@ function DayGrid({
 }
 
 function EventChip({ booking, className }: { booking: PartnerCalendarBookingResponse; className?: string }) {
-  const meta = statusMeta(booking.status);
+  const meta = bookingStatusMeta(booking.status);
   const isHourly = booking.bookingMode === 'hourly';
   return (
     <Popover>
@@ -276,6 +277,7 @@ function EventChip({ booking, className }: { booking: PartnerCalendarBookingResp
             {isHourly ? formatTime(booking.startUtc) : booking.listingTypeName}
           </span>
           <span className="mt-0.5 block truncate font-medium">{booking.listingTitle}</span>
+          <span className="block truncate text-muted-foreground">{booking.customer.fullName}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 space-y-2.5">
@@ -288,6 +290,13 @@ function EventChip({ booking, className }: { booking: PartnerCalendarBookingResp
           </div>
           <p className="text-sm font-semibold leading-snug">{booking.listingTitle}</p>
           <p className="text-xs text-muted-foreground">{booking.listingTypeName}</p>
+          <p className="pt-0.5 text-sm font-medium">{booking.customer.fullName}</p>
+          {booking.customer.phone ? (
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {booking.customer.phone}
+              {booking.customer.phoneMasked ? ' · đã ẩn' : ''}
+            </p>
+          ) : null}
         </div>
         <dl className="space-y-1.5 text-xs">
           <div className="flex items-center gap-2 text-muted-foreground">

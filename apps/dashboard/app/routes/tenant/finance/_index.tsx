@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Form, Link, useNavigation, data as routeData } from 'react-router';
+import { Form, Link, useFetcher, useNavigation, data as routeData } from 'react-router';
 import {
   createPayoutInputSchema,
   failPayoutInputSchema,
@@ -9,6 +9,7 @@ import {
   type Paginated,
   type PayoutResponse,
   type TenantFinanceSummaryResponse,
+  type TenantPayableResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
@@ -28,17 +29,52 @@ import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
 import { useTenantArea } from '../area-context';
-import { formatVnd } from '../format';
-import { BarRow, PageHeader, StatCard } from '../components/page';
-import { PayoutStatusBadge } from '../components/status';
+import { formatVnd } from '~/lib/format';
+import { Money } from '~/components/money';
+import { PageHeader } from '~/components/page-header';
+import { BarRow, StatCard } from '~/components/stat-card';
+import { PayoutStatusBadge } from '~/components/status-badge';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tài chính · Tenant · Bookify' }];
 }
 
+/**
+ * Why a payout run would be rejected — mirrors the exact codes `POST /tenant/finance/payouts`
+ * returns, so the dialog can gray out its submit before the user hits a hard 400.
+ */
+const INELIGIBLE_REASON: Record<NonNullable<TenantPayableResponse['ineligibleReason']>, string> = {
+  NOTHING_TO_PAY:
+    'Chưa có số dư đủ điều kiện để chi — toàn bộ đang trong thời gian giữ hoặc đã nằm trong lệnh chi chờ xử lý.',
+  BELOW_MINIMUM: 'Số tiền đủ điều kiện chưa đạt mức tối thiểu của một kỳ chi trả.',
+};
+
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.finance.read');
   const canPayouts = can('tenant.payouts.manage');
+
+  // The create-payout dialog re-loads this route with ?payeeType&payeeId to preview the
+  // TRUE payable for the selected payee. That number — `available` = maturePayable − outstanding
+  // — is what a run actually pays; the raw ledger balance is not, and showing it is what made
+  // a run 400 with NOTHING_TO_PAY/BELOW_MINIMUM on a payee that looked flush.
+  const url = new URL(request.url);
+  const previewType = url.searchParams.get('payeeType');
+  const previewId = url.searchParams.get('payeeId');
+  if (canPayouts && (previewType === 'partner' || previewType === 'affiliate') && previewId) {
+    const res = await apiGet<TenantPayableResponse>(
+      `/tenant/finance/payable?payeeType=${previewType}&payeeId=${encodeURIComponent(previewId)}`,
+      auth,
+    );
+    return {
+      summary: null as TenantFinanceSummaryResponse | null,
+      payouts: [] as PayoutResponse[],
+      partnerNames: {} as Record<string, string>,
+      canPayouts,
+      payable: res.ok ? res.data : null,
+      payableError: res.ok ? null : (res.error ?? 'Không tính được số tiền phải chi.'),
+      error: null as string | null,
+    };
+  }
 
   const [summaryRes, payoutsRes, partnersRes] = await Promise.all([
     apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth),
@@ -56,6 +92,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     payouts: payoutsRes?.ok ? (payoutsRes.data ?? []) : [],
     partnerNames,
     canPayouts,
+    payable: null as TenantPayableResponse | null,
+    payableError: null as string | null,
     error: summaryRes.ok ? null : (summaryRes.error ?? 'Không tải được dữ liệu tài chính.'),
   };
 }
@@ -125,21 +163,34 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
   const payoutColumns: DataTableColumn<PayoutResponse>[] = [
     { header: 'Người nhận', cell: (p) => <span className="text-sm">{partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)}</span> },
     { header: 'Loại', cell: (p) => <span className="text-sm text-muted-foreground">{p.payeeType === 'partner' ? 'Đối tác' : 'Affiliate'}</span> },
-    { header: 'Số tiền', cell: (p) => <span className="font-medium tabular-nums">{formatVnd(p.amount)}</span> },
+    { header: 'Số tiền', cell: (p) => <Money value={p.amount} className="font-medium" /> },
     { header: 'Trạng thái', cell: (p) => <PayoutStatusBadge status={p.status} /> },
     {
       header: '',
       headClassName: 'text-right',
       className: 'text-right',
-      cell: (p) =>
-        p.status === 'pending' || p.status === 'processing' ? (
-          <div className="flex flex-wrap justify-end gap-1.5">
-            <MarkPaidDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
-            <MarkFailedDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
-          </div>
-        ) : p.reference ? (
+      cell: (p) => {
+        if (p.status === 'pending' || p.status === 'processing') {
+          return (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              <MarkPaidDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
+              <MarkFailedDialog payout={p} name={partnerNames[p.payeeId] ?? p.payeeId.slice(0, 8)} readOnly={readOnly} />
+            </div>
+          );
+        }
+        // A failed payout carries its explanation only in `failureReason` — render it, or the
+        // row reads as an unexplained failure. `PayoutStatusBadge` already flags the status.
+        if (p.status === 'failed') {
+          return (
+            <span className="text-xs text-destructive">
+              {p.failureReason ?? 'Thất bại — không rõ lý do'}
+            </span>
+          );
+        }
+        return p.reference ? (
           <span className="text-xs text-muted-foreground">Ref: {p.reference}</span>
-        ) : null,
+        ) : null;
+      },
     },
   ];
 
@@ -170,7 +221,7 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         }
       />
 
-      {error ? <Card><CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">{error}</CardContent></Card> : null}
+      {error ? <Card><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card> : null}
       {actionError ? (
         <Alert variant="destructive"><CircleAlert className="size-4" /><AlertDescription>{actionError}</AlertDescription></Alert>
       ) : null}
@@ -253,12 +304,34 @@ function CreatePayoutDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [payeeType, setPayeeType] = useState<'partner' | 'affiliate'>('partner');
+  const [payeeId, setPayeeId] = useState('');
   const nav = useNavigation();
   const busy = nav.state !== 'idle';
+  // Loads GET /tenant/finance?payeeType&payeeId (this route's loader) → the payee's TRUE payable.
+  const preview = useFetcher<typeof loader>();
+  const payable = preview.data?.payable ?? null;
+  const payableError = preview.data?.payableError ?? null;
+  const loadingPayable = preview.state !== 'idle';
 
   const payees = payeeType === 'partner' ? partnerPayees : affiliatePayees;
   const nameOf = (id: string): string =>
     payeeType === 'partner' ? partnerNames[id] ?? id.slice(0, 8) : id.slice(0, 8);
+
+  const loadPayable = (type: 'partner' | 'affiliate', id: string): void => {
+    if (id) preview.load(`/tenant/finance?payeeType=${type}&payeeId=${encodeURIComponent(id)}`);
+  };
+  const onTypeChange = (v: 'partner' | 'affiliate'): void => {
+    setPayeeType(v);
+    setPayeeId('');
+  };
+  const onPayeeChange = (id: string): void => {
+    setPayeeId(id);
+    loadPayable(payeeType, id);
+  };
+
+  // The number the run will actually pay is `available`; only an eligible payee can be paid.
+  const showPreview = payeeId !== '' && payable !== null && payable.payeeId === payeeId;
+  const eligible = showPreview && payable.eligible;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -271,12 +344,14 @@ function CreatePayoutDialog({
           <input type="hidden" name="payeeType" value={payeeType} />
           <DialogHeader>
             <DialogTitle>Tạo lệnh chi</DialogTitle>
-            <DialogDescription>Chi toàn bộ số dư đang nợ của bên nhận được chọn.</DialogDescription>
+            <DialogDescription>
+              Chi số dư đã qua thời gian giữ của bên nhận — đây là số tiền lệnh chi thực trả.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Loại người nhận</Label>
-              <Select value={payeeType} onValueChange={(v) => setPayeeType(v as 'partner' | 'affiliate')}>
+              <Select value={payeeType} onValueChange={(v) => onTypeChange(v as 'partner' | 'affiliate')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="partner">Đối tác</SelectItem>
@@ -286,7 +361,7 @@ function CreatePayoutDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="payeeId">Người nhận</Label>
-              <Select name="payeeId" required key={payeeType}>
+              <Select name="payeeId" required value={payeeId} onValueChange={onPayeeChange} key={payeeType}>
                 <SelectTrigger id="payeeId"><SelectValue placeholder="Chọn người nhận…" /></SelectTrigger>
                 <SelectContent>
                   {payees.length === 0 ? (
@@ -294,23 +369,80 @@ function CreatePayoutDialog({
                   ) : (
                     payees.map((b) => (
                       <SelectItem key={b.ownerId} value={b.ownerId as string}>
-                        {nameOf(b.ownerId as string)} · {formatVnd(b.balance)}
+                        {nameOf(b.ownerId as string)} · số dư {formatVnd(b.balance)}
                       </SelectItem>
                     ))
                   )}
                 </SelectContent>
               </Select>
             </div>
+
+            {payeeId !== '' ? (
+              <PayablePreview
+                loading={loadingPayable}
+                error={payableError}
+                payable={showPreview ? payable : null}
+              />
+            ) : null}
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="ghost">Huỷ</Button></DialogClose>
-            <Button type="submit" disabled={busy || payees.length === 0}>
+            <Button type="submit" disabled={busy || loadingPayable || !eligible}>
               <Banknote className="size-4" /> Tạo lệnh chi
             </Button>
           </DialogFooter>
         </Form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The TRUE payable for the selected payee: the headline `available` plus every input that shaped it. */
+function PayablePreview({
+  loading, error, payable,
+}: {
+  loading: boolean;
+  error: string | null;
+  payable: TenantPayableResponse | null;
+}) {
+  if (loading) {
+    return <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">Đang tính số tiền phải chi…</p>;
+  }
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <CircleAlert className="size-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+  if (!payable) return null;
+
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/40 p-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm text-muted-foreground">Lệnh chi sẽ trả</span>
+        <Money value={payable.available} className="text-lg font-semibold" />
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <dt>Số dư sổ cái</dt>
+        <dd className="text-right"><Money value={payable.balance} /></dd>
+        <dt>Đã qua thời gian giữ</dt>
+        <dd className="text-right"><Money value={payable.maturePayable} /></dd>
+        <dt>Đang trong lệnh chi khác</dt>
+        <dd className="text-right">−<Money value={payable.outstanding} /></dd>
+        <dt>Thời gian giữ</dt>
+        <dd className="text-right tabular-nums">{payable.holdingDays} ngày</dd>
+        <dt>Mức tối thiểu / kỳ</dt>
+        <dd className="text-right"><Money value={payable.minAmount} /></dd>
+      </dl>
+      {!payable.eligible && payable.ineligibleReason ? (
+        <p className="flex items-start gap-1.5 text-xs text-warning-foreground">
+          <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden />
+          {INELIGIBLE_REASON[payable.ineligibleReason]}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

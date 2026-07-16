@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@book
 import type { Route } from './+types/listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
 import { ListingForm } from './components/listing-form';
 
 export function meta(): Route.MetaDescriptors {

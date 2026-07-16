@@ -3,12 +3,12 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import {
   LEDGER_REPOSITORY,
   type ILedgerRepository,
-  type LedgerEntryRecord,
+  type LedgerEntryView,
 } from '../../domain/ports/ledger-repository.port';
 
 export interface PartnerFinance {
   balance: bigint;
-  entries: LedgerEntryRecord[];
+  entries: LedgerEntryView[];
 }
 
 /** Partner finance view (§13.3): current payable balance + recent ledger entries. */

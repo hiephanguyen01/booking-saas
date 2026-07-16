@@ -12,27 +12,8 @@ import {
 import {
   LISTING_REPOSITORY,
   type IListingRepository,
-  type ListingRecord,
 } from '../../domain/ports/listing-repository.port';
 import { toListingGroupResponse, toListingResponse } from '../listing.mapper';
-
-function basePrice(listing: ListingRecord): number[] {
-  return Object.values(listing.modeConfig).flatMap((value) => {
-    if (!value || typeof value !== 'object') return [];
-    const config = value as Record<string, unknown>;
-    return ['basePrice', 'basePricePerNight']
-      .map((key) => Number(config[key]))
-      .filter((price) => Number.isFinite(price) && price > 0);
-  });
-}
-
-function isReady(listing: ListingRecord): boolean {
-  return (
-    Boolean(listing.description?.trim()) &&
-    listing.photos.length > 0 &&
-    basePrice(listing).length >= listing.bookingModes.length
-  );
-}
 
 @Injectable()
 export class GetListingGroupDetailUseCase {
@@ -61,13 +42,11 @@ export class GetListingGroupDetailUseCase {
         this.listings.list(tx, { groupId: group.id, partnerId: requirePartnerId }),
         this.listingTypes.findById(tx, group.listingTypeId),
       ]);
-      const prices = children.flatMap(basePrice);
+      // listingCount / readyListingCount / priceFrom come from the base mapper —
+      // one definition of "ready", shared with the group list (§7.3).
       return {
         ...toListingGroupResponse(group),
         listings: children.map(toListingResponse),
-        listingCount: children.length,
-        readyListingCount: children.filter(isReady).length,
-        priceFrom: prices.length ? String(Math.min(...prices)) : null,
         itemLabel: type?.itemLabel?.trim() || 'hạng mục',
       };
     });

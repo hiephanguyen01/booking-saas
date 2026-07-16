@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
+import { evaluateSubscription, type SubscriptionState } from '../../domain/subscription-status';
 
 /**
  * Platform-admin health board (Task 1.12 / §13.3). A cross-tenant read that
@@ -10,7 +11,10 @@ import { PrismaService } from '../../../../shared/prisma/prisma.service';
  * every tenant.
  *
  * "GMV" = sum of `final_amount` for bookings that reached at least `confirmed`
- * (`confirmed`, `completed`, `no_show`) — realized gross merchandise value.
+ * (`confirmed`, `completed`, `no_show`) — realized gross merchandise value. GMV is
+ * the *merchants'* turnover; the platform's own revenue is `kpis.mrr`, summed from
+ * the plan each tenant is currently subscribed to. The two are not comparable and
+ * must not be added together.
  */
 
 /** Booking statuses that count toward realized GMV. */
@@ -21,6 +25,7 @@ export interface TenantHealthRow {
   name: string;
   slug: string;
   status: string;
+  vertical: string;
   createdAt: Date;
   gmv: bigint;
   gmv30d: bigint;
@@ -46,8 +51,11 @@ export interface PlatformHealth {
   kpis: {
     tenantCount: number;
     activeTenantCount: number;
+    /** Merchant turnover, NOT platform income. */
     gmvAllTime: bigint;
     gmv30d: bigint;
+    /** The platform's own monthly recurring subscription revenue, in VND đồng. */
+    mrr: bigint;
     publishedListings: number;
     bookings30d: number;
     webhookFailures: number;
@@ -63,6 +71,7 @@ interface TenantAggRow {
   name: string;
   slug: string;
   status: string;
+  vertical: string;
   created_at: Date;
   gmv: bigint;
   gmv_30d: bigint;
@@ -77,8 +86,10 @@ interface CountRow {
 interface SubRow {
   tenant_id: string;
   status: string;
+  starts_at: Date;
   expires_at: Date;
   plan_name: string;
+  price_monthly: bigint;
 }
 interface TrendRow {
   date: string;
@@ -102,7 +113,7 @@ export class GetPlatformHealthUseCase {
       await Promise.all([
         db.$queryRaw<TenantAggRow[]>(Prisma.sql`
           SELECT
-            t.id, t.name, t.slug, t.status::text AS status, t.created_at,
+            t.id, t.name, t.slug, t.status::text AS status, t.vertical, t.created_at,
             COALESCE(b.gmv, 0)::bigint       AS gmv,
             COALESCE(b.gmv_30d, 0)::bigint   AS gmv_30d,
             COALESCE(b.bookings_30d, 0)::int AS bookings_30d,
@@ -142,12 +153,18 @@ export class GetPlatformHealthUseCase {
             )
           GROUP BY tenant_id`),
 
+        // The current subscription per tenant. `starts_at DESC` (with created_at
+        // as a deterministic tiebreak) matches ISubscriptionRepository's
+        // `findCurrentByTenant`, so this board names the same plan the tenant is
+        // actually being served under — including back- or future-dated
+        // assignments, which a created_at ordering gets wrong.
         db.$queryRaw<SubRow[]>(Prisma.sql`
           SELECT DISTINCT ON (s.tenant_id)
-            s.tenant_id, s.status::text AS status, s.expires_at, p.name AS plan_name
+            s.tenant_id, s.status::text AS status, s.starts_at, s.expires_at,
+            p.name AS plan_name, p.price_monthly
           FROM tenant_subscriptions s
           JOIN subscription_plans p ON p.id = s.plan_id
-          ORDER BY s.tenant_id, s.created_at DESC`),
+          ORDER BY s.tenant_id, s.starts_at DESC, s.created_at DESC`),
 
         db.$queryRaw<TrendRow[]>(Prisma.sql`
           SELECT to_char(d.day, 'YYYY-MM-DD') AS date, COALESCE(SUM(b.final_amount), 0)::bigint AS gmv
@@ -177,6 +194,7 @@ export class GetPlatformHealthUseCase {
         name: t.name,
         slug: t.slug,
         status: t.status,
+        vertical: t.vertical,
         createdAt: t.created_at,
         gmv: t.gmv,
         gmv30d: t.gmv_30d,
@@ -191,7 +209,27 @@ export class GetPlatformHealthUseCase {
       };
     });
 
-    const now = Date.now();
+    const nowDate = new Date();
+    const now = nowDate.getTime();
+
+    /**
+     * Platform MRR: the plan price of every tenant whose current subscription is
+     * still live. "Live" is decided by the §6.5 domain rule rather than re-derived
+     * here, so this KPI cannot drift from the lifecycle the tenant actually
+     * experiences. Summed as bigint — VND never goes through a float.
+     */
+    const mrr = subRows.reduce((acc, r) => {
+      const { phase } = evaluateSubscription(
+        {
+          status: r.status as SubscriptionState,
+          startsAt: r.starts_at,
+          expiresAt: r.expires_at,
+        },
+        nowDate,
+      );
+      return phase === 'active' ? acc + r.price_monthly : acc;
+    }, 0n);
+
     const expiring: ExpiringSubscriptionRow[] = tenants
       .filter(
         (t) =>
@@ -215,6 +253,7 @@ export class GetPlatformHealthUseCase {
         activeTenantCount: tenants.filter((t) => t.status === 'active').length,
         gmvAllTime: tenants.reduce((acc, t) => acc + t.gmv, 0n),
         gmv30d: tenants.reduce((acc, t) => acc + t.gmv30d, 0n),
+        mrr,
         publishedListings: tenants.reduce((acc, t) => acc + t.publishedListings, 0),
         bookings30d: tenants.reduce((acc, t) => acc + t.bookings30d, 0),
         webhookFailures: webhookTotalRows[0]?.total ?? 0,

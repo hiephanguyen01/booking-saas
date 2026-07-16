@@ -1,5 +1,6 @@
 import { data, Link, redirect, useFetcher } from 'react-router';
 import {
+  CalendarCheck,
   CalendarClock,
   Copy,
   EyeOff,
@@ -10,12 +11,15 @@ import {
   Plus,
   RotateCcw,
   Send,
+  Star,
   Trash2,
 } from 'lucide-react';
 import type {
+  BookingMode,
   ListingGroupDetailResponse,
   ListingResponse,
   ListingTypeResponse,
+  ModerationActor,
   PublishStatus,
 } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
@@ -50,9 +54,22 @@ import {
 import { Progress } from '@booking/ui/components/ui/progress';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/listing-groups.$groupId';
+import { DetailSection } from '@booking/ui/components/detail/detail-section';
+import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
+import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { canPartner, requirePartner } from './partner.server';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
+import { StatCard } from '~/components/stat-card';
+import { Money } from '~/components/money';
+import { DateTimeValue } from '~/components/date-time-value';
+import { EnumValue } from '~/components/enum-value';
+import { EntityRef } from '~/components/entity-ref';
+import { PhotoStrip } from '~/components/photo-strip';
+import { CopyableCode } from '~/components/copyable-code';
+import { ListingStatusBadge } from '~/components/status-badge';
+import { formatNumber } from '~/lib/format';
+import { listingPriceFrom } from './listing-price';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);
@@ -206,17 +223,34 @@ function usesOpeningHours(listing: ListingResponse): boolean {
   return listing.bookingModes.some((mode) => mode === 'hourly' || mode === 'daily');
 }
 
-function priceFrom(listing: ListingResponse): string {
-  const prices = Object.values(listing.modeConfig).flatMap((value) => {
-    if (!value || typeof value !== 'object') return [];
-    const config = value as Record<string, unknown>;
-    return ['basePrice', 'basePricePerNight']
-      .map((key) => Number(config[key]))
-      .filter((value) => Number.isFinite(value) && value > 0);
-  });
-  return prices.length
-    ? `${new Intl.NumberFormat('vi-VN').format(Math.min(...prices))} ₫`
-    : 'Chưa có giá';
+/** Who published / hid the post — an em dash never leaks a raw slug. */
+const MODERATION_ACTOR_LABEL: Record<ModerationActor, string> = {
+  partner: 'Đối tác',
+  admin: 'Quản trị viên',
+};
+
+/** Booking-mode → Vietnamese label (exhaustive, so a new mode is a compile error). */
+const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
+  hourly: 'Theo giờ',
+  daily: 'Theo ngày',
+  appointment: 'Lịch hẹn',
+  class: 'Lớp học',
+  inventory: 'Theo kho',
+};
+
+/** Full address line from the group's stored address snapshot. */
+function addressLine(group: ListingGroupDetailResponse): string {
+  return [group.address, group.wardName, group.provinceName].filter(Boolean).join(', ');
+}
+
+/** A child's price (Money) or the muted "Chưa có giá" when none is configured. */
+function ChildPrice({ listing }: { listing: ListingResponse }) {
+  const price = listingPriceFrom(listing);
+  return price ? (
+    <Money value={price} />
+  ) : (
+    <span className="text-muted-foreground">Chưa có giá</span>
+  );
 }
 
 export default function ListingGroupWorkspace({ loaderData, actionData }: Route.ComponentProps) {
@@ -225,20 +259,33 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
   const statusMeta = STATUS_META[group.status];
   const adminLocked = group.status === 'archived' && group.hiddenBy === 'admin';
   const canEditItems = canWrite && group.status === 'draft';
-  const progress =
-    group.listingCount === 0 ? 33 : group.readyListingCount === group.listingCount ? 100 : 66;
+  const readyPct =
+    group.listingCount > 0 ? Math.round((group.readyListingCount / group.listingCount) * 100) : 0;
   const columns: DataTableColumn<ListingResponse>[] = [
     {
       header: itemLabel,
       cell: (listing) => (
         <div className="flex min-w-0 items-center gap-3">
           {listing.photos[0] ? (
-            <img src={listing.photos[0]} alt="" className="size-12 rounded-md object-cover" />
+            <img
+              src={listing.photos[0]}
+              alt={listing.title}
+              className="size-12 shrink-0 rounded-md object-cover"
+            />
           ) : (
-            <div className="size-12 rounded-md bg-muted" />
+            <div className="size-12 shrink-0 rounded-md bg-muted" />
           )}
           <div className="min-w-0">
-            <p className="truncate font-medium">{listing.title}</p>
+            <p className="truncate font-medium">
+              {canEditItems ? (
+                <EntityRef
+                  to={`/partner/listing-groups/${group.id}/listings/${listing.id}/edit`}
+                  name={listing.title}
+                />
+              ) : (
+                listing.title
+              )}
+            </p>
             <p className="truncate text-xs text-muted-foreground">/{listing.slug}</p>
           </div>
         </div>
@@ -249,20 +296,26 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
       cell: (listing) => (
         <div className="flex flex-wrap gap-1">
           {listing.bookingModes.map((mode) => (
-            <Badge key={mode} variant="outline">
-              {mode}
+            <Badge key={mode} variant="outline" className="font-normal">
+              <EnumValue map={BOOKING_MODE_LABEL} value={mode} />
             </Badge>
           ))}
         </div>
       ),
     },
-    { header: 'Giá từ', cell: priceFrom },
+    { header: 'Trạng thái', cell: (listing) => <ListingStatusBadge status={listing.status} /> },
+    { header: 'Giá từ', cell: (listing) => <ChildPrice listing={listing} /> },
     {
-      header: 'Hoàn thiện',
+      header: 'Cọc / Kho',
       cell: (listing) => (
-        <Badge variant={listing.description && listing.photos.length ? 'secondary' : 'outline'}>
-          {listing.description && listing.photos.length ? 'Sẵn sàng' : 'Cần bổ sung'}
-        </Badge>
+        <div className="text-sm">
+          <span>Cọc {listing.depositPercent}%</span>
+          {listing.stockQuantity != null ? (
+            <span className="block text-xs text-muted-foreground">
+              Kho: {formatNumber(listing.stockQuantity)}
+            </span>
+          ) : null}
+        </div>
       ),
     },
     {
@@ -288,7 +341,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         description={`${loaderData.listingType?.name ?? 'Bài đăng'} · ${group.listingCount} ${itemLabel}`}
         actions={
           <>
-            <Badge variant="outline">{statusMeta.label}</Badge>
+            <ListingStatusBadge status={group.status} />
             {canWrite && ['draft', 'archived'].includes(group.status) && !adminLocked ? (
               <Button asChild variant="outline" size="sm">
                 <Link to={`/partner/listing-groups/${group.id}/edit`}>
@@ -323,16 +376,84 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
       </Alert>
       <Card>
         <CardHeader>
-          <CardTitle>Tiến độ bài đăng</CardTitle>
-          <CardDescription>Thông tin chung → {itemLabel} & giá → Kiểm tra</CardDescription>
+          <CardTitle>Tổng quan</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <Progress value={progress} />
-          <div className="grid grid-cols-3 text-xs text-muted-foreground">
-            <span>Thông tin chung</span>
-            <span className="text-center">{itemLabel} & giá</span>
-            <span className="text-right">Kiểm tra</span>
-          </div>
+        <CardContent className="space-y-6">
+          <DetailGrid columns={3}>
+            <DetailField
+              label="Đường dẫn"
+              value={<CopyableCode value={`/${group.slug}`} label="đường dẫn" />}
+            />
+            <DetailField
+              label="Giá từ"
+              emphasis="strong"
+              value={group.priceFrom ? <Money value={group.priceFrom} /> : undefined}
+            />
+            <DetailField label="Trạng thái" value={<ListingStatusBadge status={group.status} />} />
+            <DetailField label="Ngày tạo" value={<DateTimeValue iso={group.createdAt} />} />
+            <DetailField
+              label="Cập nhật"
+              value={<DateTimeValue iso={group.updatedAt} relative />}
+            />
+            <DetailField
+              label="Xuất bản bởi"
+              omitWhenEmpty
+              value={
+                group.publishedBy ? (
+                  <EnumValue map={MODERATION_ACTOR_LABEL} value={group.publishedBy} />
+                ) : undefined
+              }
+            />
+            <DetailField
+              label="Ẩn bởi"
+              omitWhenEmpty
+              value={
+                group.hiddenBy ? (
+                  <EnumValue map={MODERATION_ACTOR_LABEL} value={group.hiddenBy} />
+                ) : undefined
+              }
+            />
+          </DetailGrid>
+          <DetailSection
+            title="Tiến độ"
+            description={`${group.readyListingCount}/${group.listingCount} ${itemLabel} đạt mức sẵn sàng (đủ ảnh, mô tả và giá).`}
+          >
+            <div className="space-y-1.5">
+              <Progress value={readyPct} />
+              <p className="text-xs text-muted-foreground">{readyPct}% hoàn thiện</p>
+            </div>
+          </DetailSection>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Nội dung</CardTitle>
+          <CardDescription>Album và thông tin dùng chung cho toàn bộ bài đăng.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <DetailSection title="Ảnh" emptyMessage="Chưa có ảnh.">
+            {group.photos.length ? <PhotoStrip photos={group.photos} alt={group.title} /> : null}
+          </DetailSection>
+          <DetailSection title="Mô tả" emptyMessage="Chưa có mô tả.">
+            {group.description ? (
+              <p className="whitespace-pre-wrap text-sm">{group.description}</p>
+            ) : null}
+          </DetailSection>
+          <DetailGrid>
+            <DetailField label="Khu vực hoạt động" value={group.workingArea} />
+            <DetailField label="Địa chỉ" value={addressLine(group) || undefined} />
+          </DetailGrid>
+          <DetailSection title="Tiện ích" emptyMessage="Chưa có tiện ích.">
+            {group.amenities.length ? (
+              <div className="flex flex-wrap gap-2">
+                {group.amenities.map((amenity) => (
+                  <Badge key={amenity} variant="secondary">
+                    {amenity}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </DetailSection>
         </CardContent>
       </Card>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -427,6 +548,20 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
             ) : null}
           </CardContent>
         </Card>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StatCard
+          label="Đánh giá trung bình"
+          value={group.ratingAvg != null ? group.ratingAvg.toFixed(1) : '—'}
+          hint={group.ratingAvg != null ? 'trên 5 sao' : 'Chưa có đánh giá'}
+          icon={<Star className="size-4" aria-hidden />}
+        />
+        <StatCard
+          label="Lượt đặt"
+          value={formatNumber(group.bookingCount)}
+          hint="Tổng lượt đặt của bài đăng"
+          icon={<CalendarCheck className="size-4" aria-hidden />}
+        />
       </div>
     </div>
   );
@@ -540,19 +675,31 @@ function GroupedListingCard({
         {listing.photos[0] ? (
           <img
             src={listing.photos[0]}
-            alt=""
+            alt={listing.title}
             className="size-16 shrink-0 rounded-md object-cover"
           />
         ) : (
           <div className="size-16 shrink-0 rounded-md bg-muted" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{listing.title}</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 truncate font-medium">
+              {canEdit ? (
+                <EntityRef
+                  to={`/partner/listing-groups/${groupId}/listings/${listing.id}/edit`}
+                  name={listing.title}
+                />
+              ) : (
+                listing.title
+              )}
+            </p>
+            <ListingStatusBadge status={listing.status} />
+          </div>
           <p className="truncate text-xs text-muted-foreground">/{listing.slug}</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {listing.bookingModes.map((mode) => (
-              <Badge key={mode} variant="outline">
-                {mode}
+              <Badge key={mode} variant="outline" className="font-normal">
+                <EnumValue map={BOOKING_MODE_LABEL} value={mode} />
               </Badge>
             ))}
           </div>
@@ -561,11 +708,18 @@ function GroupedListingCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs text-muted-foreground">Giá từ</p>
-          <p className="text-sm font-medium">{priceFrom(listing)}</p>
+          <p className="text-sm font-medium">
+            <ChildPrice listing={listing} />
+          </p>
         </div>
-        <Badge variant={listing.description && listing.photos.length ? 'secondary' : 'outline'}>
-          {listing.description && listing.photos.length ? 'Sẵn sàng' : 'Cần bổ sung'}
-        </Badge>
+        <div className="text-right text-sm">
+          <span>Cọc {listing.depositPercent}%</span>
+          {listing.stockQuantity != null ? (
+            <span className="block text-xs text-muted-foreground">
+              Kho: {formatNumber(listing.stockQuantity)}
+            </span>
+          ) : null}
+        </div>
       </div>
       <GroupedListingActions
         groupId={groupId}

@@ -4,13 +4,30 @@ import type { TransitionActor } from '../booking-state-machine';
 
 export const BOOKING_REPOSITORY = Symbol('BOOKING_REPOSITORY');
 
+/**
+ * The booking's customer, joined from `users`. RAW — it carries the real email
+ * and the real phone, so it must never be serialised straight onto a partner
+ * response; go through the partner mapper (§7.3). `users` is a global (non
+ * tenant-scoped) table, so no RLS policy governs this join.
+ */
+export interface BookingCustomerRecord {
+  id: string;
+  fullName: string;
+  /** `users.phone` is nullable — a guest-checkout row always sets it, a registered account may not. */
+  phone: string | null;
+  email: string;
+}
+
 export interface BookingRecord {
   id: string;
   tenantId: string;
   listingId: string;
+  /** Joined from `listings` — every booking surface shows the title, none of them had it. */
+  listingTitle: string;
   partnerId: string;
   resourceId: string;
   customerId: string;
+  customer: BookingCustomerRecord;
   code: string;
   idempotencyKey: string;
   bookingMode: string;
@@ -28,18 +45,33 @@ export interface BookingRecord {
   pickedUpAt: Date | null;
   returnedAt: Date | null;
   damageAmount: bigint;
+  /** Overtime/surcharge lines accrued after checkout (§8.3) — jsonb array. */
+  additionalCharges: unknown;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
-  /** Promotion applied at checkout (Task 1.11) — null when no code was used. */
+  /** Promotion applied at checkout (Task 1.11) — all null when no code was used. */
   promotionId: string | null;
+  promoCode: string | null;
+  promotionSnapshot: unknown;
+  /** Immutable commission config resolved at booking time (Task 1.10, §13.1). */
+  commissionSnapshot: unknown;
+  /** Frozen checkout quote (§9). */
+  pricingSnapshot: unknown;
+  /** Affiliate attribution resolved at checkout (§15.1) — null when no referral. */
+  affiliateId: string | null;
+  referralCode: string | null;
   customerNote: string | null;
+  /** Partner's private operational note (§8.2). */
+  partnerNote: string | null;
   expiresAt: Date | null;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 /**
  * A booking joined with the listing context the partner master calendar needs
- * (Task 1.14 / §21 item 8) — title + listing type for display and filtering.
+ * (Task 1.14 / §21 item 8) — title + listing type for display and filtering,
+ * plus the customer identity the partner is allowed to see (masked by the mapper).
  */
 export interface PartnerCalendarBooking {
   id: string;
@@ -55,10 +87,29 @@ export interface PartnerCalendarBooking {
   endUtc: Date;
   guestCount: number;
   quantity: number;
+  customer: BookingCustomerRecord;
   finalAmount: bigint;
+  discountAmount: bigint;
+  depositAmount: bigint;
+  paidAmount: bigint;
   securityDeposit: bigint;
   pickedUpAt: Date | null;
   returnedAt: Date | null;
+  customerNote: string | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+}
+
+/** One row of `booking_status_history` (§8.2), with the actor's name resolved. */
+export interface BookingStatusHistoryRecord {
+  id: string;
+  fromStatus: BookingStatus | null;
+  toStatus: BookingStatus;
+  actorId: string | null;
+  /** LEFT-joined from `users` — null for system transitions (expiry, auto-complete). */
+  actorName: string | null;
+  reason: string | null;
+  createdAt: Date;
 }
 
 export interface InsertBookingData {
@@ -160,6 +211,10 @@ export interface IBookingRepository {
   ): Promise<PartnerCalendarBooking[]>;
   /** Tenant-wide booking list (RLS-scoped by `forTenant`) for the dashboard. */
   listByTenant(tx: PrismaTx, filters: TenantBookingFilters): Promise<BookingRecord[]>;
+  /** Full transition audit trail for one booking, oldest first (§8.2). */
+  listStatusHistory(tx: PrismaTx, bookingId: string): Promise<BookingStatusHistoryRecord[]>;
+  /** Set/clear the partner's private note (§8.2). `null` clears it. */
+  updatePartnerNote(tx: PrismaTx, id: string, note: string | null): Promise<BookingRecord>;
   /** Aggregate booking counts per partner (RLS-scoped) for cancel/no-show rates. */
   partnerBookingStats(tx: PrismaTx): Promise<PartnerBookingStat[]>;
   /**

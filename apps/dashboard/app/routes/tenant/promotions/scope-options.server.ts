@@ -26,13 +26,14 @@ export interface ScopeOptions {
  */
 export async function loadScopeOptions(auth: Auth): Promise<ScopeOptions> {
   const [listings, listingTypes, listingGroups, partners] = await Promise.all([
-    apiGet<ListingResponse[]>('/tenant/listings', auth),
+    // `/tenant/listings` is paginated ({ items, total }); the others still return bare arrays.
+    apiGet<{ items: ListingResponse[] }>('/tenant/listings?page=1&pageSize=100', auth),
     apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
     apiGet<ListingGroupResponse[]>('/tenant/listing-groups', auth),
     apiGet<{ items: PartnerResponse[] }>('/tenant/partners?page=1&pageSize=100', auth),
   ]);
   return {
-    listings: (listings.ok ? (listings.data ?? []) : []).map((l) => ({ id: l.id, label: l.title })),
+    listings: (listings.ok ? (listings.data?.items ?? []) : []).map((l) => ({ id: l.id, label: l.title })),
     listingTypes: (listingTypes.ok ? (listingTypes.data ?? []) : []).map((t) => ({ id: t.id, label: t.name })),
     listingGroups: (listingGroups.ok ? (listingGroups.data ?? []) : []).map((g) => ({ id: g.id, label: g.title })),
     partners: (partners.ok ? (partners.data?.items ?? []) : []).map((p) => ({ id: p.id, label: p.name })),

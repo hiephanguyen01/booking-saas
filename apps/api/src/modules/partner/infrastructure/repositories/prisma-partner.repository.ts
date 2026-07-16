@@ -10,9 +10,25 @@ import type {
   UpdatePartnerData,
 } from '../../domain/ports/partner-repository.port';
 
-type PrismaPartner = Prisma.PartnerGetPayload<Record<string, never>>;
+/**
+ * The owning user is the EARLIEST `PartnerMember` — `applyAsPartner` creates the
+ * applicant's membership together with the partner row and grants it the Partner
+ * Owner role, so "first member" is the owner. `users` carries no tenant_id and
+ * therefore no RLS policy, but `partner_members` does: the join only ever reaches
+ * a user who is a member under the current `app.tenant_id`.
+ */
+const partnerInclude = {
+  members: {
+    orderBy: { createdAt: 'asc' },
+    take: 1,
+    select: { user: { select: { email: true, phone: true } } },
+  },
+} satisfies Prisma.PartnerInclude;
+
+type PrismaPartner = Prisma.PartnerGetPayload<{ include: typeof partnerInclude }>;
 
 function toRecord(p: PrismaPartner): PartnerRecord {
+  const owner = p.members[0]?.user ?? null;
   return {
     id: p.id,
     tenantId: p.tenantId,
@@ -29,7 +45,9 @@ function toRecord(p: PrismaPartner): PartnerRecord {
     businessInfo: (p.businessInfo ?? {}) as Record<string, unknown>,
     contactInfo: (p.contactInfo ?? {}) as Record<string, unknown>,
     identityInfo: (p.identityInfo ?? {}) as Record<string, unknown>,
+    owner: owner ? { email: owner.email, phone: owner.phone } : null,
     createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
   };
 }
 
@@ -57,12 +75,13 @@ export class PrismaPartnerRepository implements IPartnerRepository {
           contactInfo: (data.contactInfo ?? {}) as Prisma.InputJsonValue,
           payoutInfo: (data.payoutInfo ?? {}) as Prisma.InputJsonValue,
         },
+        include: partnerInclude,
       }),
     );
   }
 
   async findById(tx: PrismaTx, id: string): Promise<PartnerRecord | null> {
-    const p = await tx.partner.findUnique({ where: { id } });
+    const p = await tx.partner.findUnique({ where: { id }, include: partnerInclude });
     return p ? toRecord(p) : null;
   }
 
@@ -79,7 +98,7 @@ export class PrismaPartnerRepository implements IPartnerRepository {
 
   async findBySlug(tx: PrismaTx, slug: string): Promise<PartnerRecord | null> {
     // RLS scopes this to the current tenant; slug is unique per tenant.
-    const p = await tx.partner.findFirst({ where: { slug } });
+    const p = await tx.partner.findFirst({ where: { slug }, include: partnerInclude });
     return p ? toRecord(p) : null;
   }
 
@@ -94,6 +113,7 @@ export class PrismaPartnerRepository implements IPartnerRepository {
         orderBy: { createdAt: 'desc' },
         skip: (filter.page - 1) * filter.pageSize,
         take: filter.pageSize,
+        include: partnerInclude,
       }),
       tx.partner.count({ where }),
     ]);
@@ -113,6 +133,7 @@ export class PrismaPartnerRepository implements IPartnerRepository {
           identityInfo: data.identityInfo as Prisma.InputJsonValue | undefined,
           businessInfo: data.businessInfo as Prisma.InputJsonValue | undefined,
         },
+        include: partnerInclude,
       }),
     );
   }

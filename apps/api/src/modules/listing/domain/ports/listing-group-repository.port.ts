@@ -1,8 +1,20 @@
-import type { ModerationActor, PublishStatus } from '@booking/contracts';
+import type { BookingMode, ModerationActor, PublishStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { ModerationUpdate } from './listing-repository.port';
 
 export const LISTING_GROUP_REPOSITORY = Symbol('LISTING_GROUP_REPOSITORY');
+
+/**
+ * The slice of a child listing a post's aggregates are derived from. Joined by
+ * every group query so `listingCount` / `readyListingCount` / `priceFrom` come
+ * back with the group instead of costing an N+1 per row.
+ */
+export interface ListingGroupChildFacts {
+  description: string | null;
+  photos: string[];
+  bookingModes: BookingMode[];
+  modeConfig: Record<string, unknown>;
+}
 
 export interface ListingGroupRecord {
   id: string;
@@ -23,6 +35,11 @@ export interface ListingGroupRecord {
   status: PublishStatus;
   publishedBy: ModerationActor | null;
   hiddenBy: ModerationActor | null;
+  /** Mean review score (1–5, 2dp) as a number; null until the post has ratings. */
+  ratingAvg: number | null;
+  bookingCount: number;
+  /** The post's items, reduced to what the readiness/price aggregates need. */
+  children: ListingGroupChildFacts[];
   createdAt: Date;
   updatedAt: Date;
 }

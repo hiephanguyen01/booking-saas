@@ -22,11 +22,12 @@ import {
   transitionRepublish,
   transitionSubmit,
 } from '../../../domain/moderation/listing-moderation';
-import { photoScanFields, scanForContactInfo } from '../../../domain/moderation/contact-scan';
+import { groupContactFlags } from '../../moderation/build-listing-group-review';
 import {
   assertOwnership,
   groupNotFound,
   runModeration,
+  stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
@@ -62,23 +63,26 @@ export class GroupModerationUseCase {
     );
   }
 
+  /**
+   * Publishing a post publishes every child listing with it, so the contact-info
+   * gate (§7.3) MUST cover the children's text too — scanning only the post's own
+   * title/description would let a partner smuggle a phone number into an item's
+   * description and have it published, bypassing the gate the per-listing publish
+   * path enforces.
+   */
   publish(ctx: ModerationContext, id: string, force = false): Promise<ListingGroupRecord> {
     return this.run(
       ctx,
       id,
       'published',
       'listing_group.published',
-      (g) => {
-        const flags = scanForContactInfo({
-          title: g.title,
-          description: g.description,
-          ...photoScanFields(g.photos),
-        });
+      (g, children) => {
+        const flags = groupContactFlags(g, children);
         if (!force && flags.length > 0) {
           throw new BadRequestException({
             statusCode: 400,
             code: 'LISTING_HAS_CONTACT_INFO',
-            message: 'Remove contact information from the post before publishing',
+            message: 'Remove contact information from the post and its items before publishing',
             details: flags,
           });
         }
@@ -120,7 +124,10 @@ export class GroupModerationUseCase {
     id: string,
     action: string,
     eventType: string,
-    transition: (g: ListingGroupRecord) => {
+    transition: (
+      g: ListingGroupRecord,
+      children: ListingRecord[],
+    ) => {
       status: 'draft' | 'pending_review' | 'published' | 'archived';
       publishedBy: ModerationActor | null;
       hiddenBy: ModerationActor | null;
@@ -138,7 +145,7 @@ export class GroupModerationUseCase {
           message: 'Add at least one listing before submitting the group',
         });
       }
-      const outcome = transition(group);
+      const outcome = transition(group, children);
       const updated = await this.groups.moderate(tx, id, outcome);
       for (const child of children) {
         const childOutcome =
@@ -149,7 +156,7 @@ export class GroupModerationUseCase {
               : action === 'hidden'
                 ? runModeration(() => transitionHide(child, actorFromOutcome(outcome)))
                 : runModeration(() => transitionRepublish(child, actorFromOutcome(outcome)));
-        await this.listings.moderate(tx, child.id, childOutcome);
+        await this.listings.moderate(tx, child.id, stampModerationTimestamps(child, childOutcome));
       }
       await writeModerationAudit(this.audit, tx, ctx, {
         action: `listing_group.${action}`,

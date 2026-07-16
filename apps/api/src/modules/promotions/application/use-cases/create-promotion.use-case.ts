@@ -8,7 +8,9 @@ import {
   type IPromotionRepository,
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
+import { PROMO_CONTEXT_LOOKUP, type IPromoContextLookup } from '../../domain/ports/promo-context-lookup.port';
 import { normalizeCode } from '../apply-promotion.service';
+import { assertScopeTargetValid } from '../assert-scope-target';
 import { assertTenantShareRisk } from '../assert-tenant-share-risk';
 import { resolveFundingPartnerId } from '../resolve-funding-partner';
 
@@ -24,6 +26,7 @@ export class CreatePromotionUseCase {
 
   constructor(
     @Inject(PROMOTION_REPOSITORY) private readonly promotions: IPromotionRepository,
+    @Inject(PROMO_CONTEXT_LOOKUP) private readonly lookup: IPromoContextLookup,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -46,6 +49,9 @@ export class CreatePromotionUseCase {
       );
 
       const appliesToId = input.appliesTo === 'all' ? null : (input.appliesToId ?? null);
+      // The id must be an entity of the declared type — a cross-type id is a 400, never a
+      // silently mis-scoped promotion that matches no listing.
+      await assertScopeTargetValid(this.lookup, tx, input.appliesTo, appliesToId);
       // A tenant-created partner-funded promo must resolve a single partner and starts un-opted-in.
       const fundingPartnerId =
         input.fundedBy === 'partner' ? await resolveFundingPartnerId(tx, input.appliesTo, appliesToId) : null;
@@ -55,15 +61,15 @@ export class CreatePromotionUseCase {
         code,
         discountType: input.discountType,
         discountValue: vnd(input.discountValue),
-        maxDiscount: input.maxDiscount !== undefined ? vnd(input.maxDiscount) : null,
+        maxDiscount: input.maxDiscount != null ? vnd(input.maxDiscount) : null,
         fundedBy: input.fundedBy,
         appliesTo: input.appliesTo,
         appliesToId,
-        minOrderAmount: input.minOrderAmount !== undefined ? vnd(input.minOrderAmount) : null,
+        minOrderAmount: input.minOrderAmount != null ? vnd(input.minOrderAmount) : null,
         firstBookingOnly: input.firstBookingOnly,
         usageLimitTotal: input.usageLimitTotal ?? null,
         usageLimitPerCustomer: input.usageLimitPerCustomer ?? null,
-        timeWindows: input.timeWindows ?? null,
+        timeWindows: input.timeWindows?.length ? input.timeWindows : null,
         startsAt: input.startsAt ? new Date(input.startsAt) : null,
         endsAt: input.endsAt ? new Date(input.endsAt) : null,
         status: input.status,

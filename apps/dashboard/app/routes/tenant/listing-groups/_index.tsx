@@ -7,9 +7,10 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDate } from '../format';
-import { PageHeader } from '../components/page';
-import { ListingStatusBadge } from '../components/status';
+import { formatDate } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { Money } from '~/components/money';
+import { ListingStatusBadge } from '~/components/status-badge';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Bài đăng · Tenant · Bookify' }];
@@ -71,6 +72,17 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
       headClassName: 'hidden md:table-cell',
     },
     {
+      header: 'Giá từ',
+      cell: (g) =>
+        g.priceFrom ? (
+          <Money value={g.priceFrom} className="text-sm" />
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        ),
+      className: 'hidden sm:table-cell whitespace-nowrap',
+      headClassName: 'hidden sm:table-cell',
+    },
+    {
       header: 'Cập nhật',
       cell: (g) => (
         <span className="whitespace-nowrap text-sm text-muted-foreground">
@@ -86,7 +98,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
         <div className="flex items-center gap-1.5">
           <ListingStatusBadge status={g.status} />
           {g.hiddenBy === 'admin' ? (
-            <Badge variant="outline" className="text-amber-600 dark:text-amber-400">
+            <Badge variant="outline" className="border-warning/40 text-warning">
               Admin ẩn
             </Badge>
           ) : null}

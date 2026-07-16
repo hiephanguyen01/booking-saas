@@ -8,7 +8,7 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { platformSession } from '~/routes/admin/lib/api.server';
-import { PageHeader } from '~/routes/admin/components/page-header';
+import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tạo tenant · Bookify Admin' }];

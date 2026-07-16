@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { paginationQuerySchema, uuidSchema } from './common';
 import { slugSchema } from './tenancy';
 import { bookingModeSchema, type BookingMode } from './listing-type';
+import { partnerVerificationStatusSchema } from './partner';
 import {
   administrativeAddressInputSchema,
   administrativeAddressSnapshotSchema,
@@ -217,7 +218,31 @@ export const quoteQuerySchema = z.object({
 });
 export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
 
+/** `GET /tenant/listings` — paginated; `groupId` narrows to one post's items. */
+export const listTenantListingsQuerySchema = paginationQuerySchema.extend({
+  groupId: uuidSchema.optional(),
+});
+export type ListTenantListingsQuery = z.infer<typeof listTenantListingsQuerySchema>;
+
 // ── Responses ──────────────────────────────────────────────────────────────
+
+export const cancellationPolicySummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  rules: z.unknown(),
+});
+export type CancellationPolicySummary = z.infer<typeof cancellationPolicySummarySchema>;
+
+/**
+ * The partner a listing belongs to, as a reviewer needs to see them. Name +
+ * verification state only — a partner's phone/email is never embedded in a
+ * listing payload (§7.3 anti-disintermediation).
+ */
+export const listingPartnerSummarySchema = z.object({
+  name: z.string(),
+  verificationStatus: partnerVerificationStatusSchema,
+});
+export type ListingPartnerSummary = z.infer<typeof listingPartnerSummarySchema>;
 
 export const listingGroupResponseSchema = z
   .object({
@@ -234,6 +259,15 @@ export const listingGroupResponseSchema = z
     status: publishStatusSchema,
     publishedBy: moderationActorSchema.nullable(),
     hiddenBy: moderationActorSchema.nullable(),
+    /** Items in this post. */
+    listingCount: z.number().int().nonnegative(),
+    /** Items that would pass the submission checklist (photo + description + price). */
+    readyListingCount: z.number().int().nonnegative(),
+    /** Lowest configured base price across the post's items (VND đồng digit string). */
+    priceFrom: z.string().nullable(),
+    /** Mean review score, 1–5 with 2 decimals; null until the post has ratings. */
+    ratingAvg: z.number().nullable(),
+    bookingCount: z.number().int().nonnegative(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -263,28 +297,34 @@ export const listingResponseSchema = z
     approvalRequired: z.boolean(),
     depositPercent: z.number(),
     balanceDue: balanceDueSchema,
+    rescheduleAllowed: z.boolean(),
+    /** Cut-off before start, in hours; null = no deadline. */
+    rescheduleDeadlineHours: z.number().nullable(),
+    /** VND đồng digit string; null = free. */
+    rescheduleFee: vndAmountSchema.nullable(),
     cancellationPolicyId: z.string().nullable(),
+    /**
+     * The resolved policy behind `cancellationPolicyId`. The storefront has always
+     * received this; a tenant reviewer deciding whether to approve the listing
+     * needs the same rules in front of them, not just an opaque id.
+     */
+    cancellationPolicy: cancellationPolicySummarySchema.nullable(),
+    partner: listingPartnerSummarySchema,
     status: publishStatusSchema,
     publishedBy: moderationActorSchema.nullable(),
     hiddenBy: moderationActorSchema.nullable(),
+    /** Set when the listing entered `pending_review`; null while still a draft. */
+    submittedAt: z.string().nullable(),
+    /** Set when the listing FIRST reached `published`; survives a later hide. */
+    publishedAt: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
   .merge(administrativeAddressSnapshotSchema);
 export type ListingResponse = z.infer<typeof listingResponseSchema>;
 
-export const cancellationPolicySummarySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  rules: z.unknown(),
-});
-export type CancellationPolicySummary = z.infer<typeof cancellationPolicySummarySchema>;
-
 export const listingGroupDetailResponseSchema = listingGroupResponseSchema.extend({
   listings: z.array(listingResponseSchema),
-  listingCount: z.number().int().nonnegative(),
-  readyListingCount: z.number().int().nonnegative(),
-  priceFrom: z.string().nullable(),
   itemLabel: z.string(),
 });
 export type ListingGroupDetailResponse = z.infer<typeof listingGroupDetailResponseSchema>;
@@ -451,3 +491,23 @@ export const listingReviewResponseSchema = z.object({
   contactFlags: z.array(contactFlagSchema),
 });
 export type ListingReviewResponse = z.infer<typeof listingReviewResponseSchema>;
+
+/**
+ * What a tenant reviewer sees for a **post** (listing_group) awaiting moderation
+ * — the group-level mirror of `listingReviewResponseSchema`.
+ *
+ * Publishing a group publishes every child listing with it, so the checklist and
+ * the contact scan both cover the children: `contactFlags` aggregates the group's
+ * own text AND each child's, and a child's flags are namespaced in `field` (e.g.
+ * `listings[0].description`) so the reviewer can find the offending item.
+ */
+export const listingGroupReviewResponseSchema = z.object({
+  groupId: z.string(),
+  status: publishStatusSchema,
+  checklist: z.array(checklistItemSchema),
+  checklistPassed: z.boolean(),
+  contactFlags: z.array(contactFlagSchema),
+  /** Per-child review, in the same order as the post's items. */
+  listings: z.array(listingReviewResponseSchema),
+});
+export type ListingGroupReviewResponse = z.infer<typeof listingGroupReviewResponseSchema>;

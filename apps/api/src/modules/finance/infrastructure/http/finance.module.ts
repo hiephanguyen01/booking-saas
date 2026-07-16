@@ -11,6 +11,7 @@ import { PrismaLedgerRepository } from '../repositories/prisma-ledger.repository
 import { PrismaPayoutRepository } from '../repositories/prisma-payout.repository';
 import { ResolveCommissionService } from '../../application/resolve-commission.service';
 import { RecordJournalService } from '../../application/record-journal.service';
+import { PayoutPayableService } from '../../application/payout-payable.service';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
 import { UpdateCommissionRuleUseCase } from '../../application/use-cases/update-commission-rule.use-case';
@@ -23,6 +24,8 @@ import { FailPayoutUseCase } from '../../application/use-cases/fail-payout.use-c
 import { GetTenantFinanceSummaryUseCase } from '../../application/use-cases/get-tenant-finance-summary.use-case';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
 import { GetPlatformFinanceUseCase } from '../../application/use-cases/get-platform-finance.use-case';
+import { GetTenantPayableUseCase } from '../../application/use-cases/get-tenant-payable.use-case';
+import { ListPartnerPayoutsUseCase } from '../../application/use-cases/list-partner-payouts.use-case';
 import { ListTenantLedgerUseCase } from '../../application/use-cases/list-tenant-ledger.use-case';
 import { TenantFinanceController } from './tenant-finance.controller';
 import { PartnerFinanceController } from './partner-finance.controller';
@@ -37,6 +40,7 @@ import { PlatformFinanceController } from './platform-finance.controller';
     { provide: PAYOUT_REPOSITORY, useClass: PrismaPayoutRepository },
     ResolveCommissionService,
     RecordJournalService,
+    PayoutPayableService,
     ListCommissionRulesUseCase,
     CreateCommissionRuleUseCase,
     UpdateCommissionRuleUseCase,
@@ -49,6 +53,8 @@ import { PlatformFinanceController } from './platform-finance.controller';
     GetTenantFinanceSummaryUseCase,
     GetPartnerFinanceUseCase,
     GetPlatformFinanceUseCase,
+    GetTenantPayableUseCase,
+    ListPartnerPayoutsUseCase,
     ListTenantLedgerUseCase,
   ],
   // Exported so the booking module can snapshot the commission at booking time.

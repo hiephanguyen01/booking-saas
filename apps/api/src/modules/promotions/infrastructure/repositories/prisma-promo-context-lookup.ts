@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { PromoAppliesTo } from '../../domain/promotion-discount';
 import type {
   CustomerIdentity,
   IPromoContextLookup,
   ListingScope,
+  PromoCategory,
 } from '../../domain/ports/promo-context-lookup.port';
 
 /** Bookings that never became a real commitment don't count as a prior booking (§12.2). */
@@ -48,6 +50,54 @@ export class PrismaPromoContextLookup implements IPromoContextLookup {
 
     return tx.booking.count({
       where: { customerId: { in: userIds }, status: { notIn: [...NON_COMMITTED] } },
+    });
+  }
+
+  /**
+   * Every branch looks the id up in the table that the declared scope names, so a
+   * cross-type id (a category uuid submitted as a `listing` scope) finds nothing and
+   * yields `null`. Each read runs inside the caller's tenant tx, so RLS also makes a
+   * *cross-tenant* id resolve to `null` — a promotion can never be scoped outside
+   * its own tenant.
+   */
+  async resolveScopeTargetLabel(tx: PrismaTx, appliesTo: PromoAppliesTo, id: string): Promise<string | null> {
+    switch (appliesTo) {
+      case 'all':
+        return null; // no target to resolve
+      case 'listing': {
+        const row = await tx.listing.findUnique({ where: { id }, select: { title: true } });
+        return row?.title ?? null;
+      }
+      case 'listing_group': {
+        const row = await tx.listingGroup.findUnique({ where: { id }, select: { title: true } });
+        return row?.title ?? null;
+      }
+      case 'listing_type': {
+        const row = await tx.listingType.findUnique({ where: { id }, select: { name: true } });
+        return row?.name ?? null;
+      }
+      case 'category': {
+        const row = await tx.category.findUnique({ where: { id }, select: { name: true } });
+        return row?.name ?? null;
+      }
+      case 'partner': {
+        const row = await tx.partner.findUnique({ where: { id }, select: { name: true } });
+        return row?.name ?? null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  async getPartnerName(tx: PrismaTx, partnerId: string): Promise<string | null> {
+    const row = await tx.partner.findUnique({ where: { id: partnerId }, select: { name: true } });
+    return row?.name ?? null;
+  }
+
+  async listCategories(tx: PrismaTx): Promise<PromoCategory[]> {
+    return tx.category.findMany({
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: 'asc' },
     });
   }
 }

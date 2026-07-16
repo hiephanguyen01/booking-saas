@@ -2,7 +2,7 @@ import { cn } from '@booking/ui/lib/utils';
 import {
   SUBSCRIPTION_STATUS_LABELS,
   TENANT_STATUS_LABELS,
-} from '~/routes/admin/lib/format';
+} from '~/lib/format';
 
 type Tone = 'positive' | 'warning' | 'critical' | 'neutral';
 
@@ -10,7 +10,7 @@ const TONE_CLASS: Record<Tone, string> = {
   positive:
     'bg-emerald-500/12 text-emerald-700 ring-emerald-600/25 dark:text-emerald-300 dark:ring-emerald-400/25',
   warning:
-    'bg-amber-500/12 text-amber-700 ring-amber-600/25 dark:text-amber-300 dark:ring-amber-400/25',
+    'bg-warning/15 text-warning-foreground ring-warning/30 dark:text-warning dark:ring-warning/25',
   critical:
     'bg-rose-500/12 text-rose-700 ring-rose-600/25 dark:text-rose-300 dark:ring-rose-400/25',
   neutral: 'bg-muted text-muted-foreground ring-border',
@@ -18,7 +18,7 @@ const TONE_CLASS: Record<Tone, string> = {
 
 const DOT_CLASS: Record<Tone, string> = {
   positive: 'bg-emerald-500',
-  warning: 'bg-amber-500',
+  warning: 'bg-warning',
   critical: 'bg-rose-500',
   neutral: 'bg-muted-foreground/50',
 };

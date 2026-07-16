@@ -22,6 +22,7 @@ export function toListingTypeResponse(t: ListingTypeRecord): ListingTypeResponse
     requiresIdentityVerification: t.requiresIdentityVerification,
     structure: t.structure,
     itemLabel: t.itemLabel,
+    listingCount: t.listingCount,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };
@@ -43,18 +44,38 @@ export function toPublicListingTypeResponse(t: ListingTypeRecord): PublicListing
   };
 }
 
+/**
+ * One `mode_config` price → bigint VND đồng, or null if it isn't a usable amount.
+ *
+ * Accepts BOTH shapes a real row can hold: the contract's digit STRING (anything
+ * written through the API — parsed with `BigInt`, never `Number()`, which loses
+ * precision past 2^53) and a plain integer (`prisma/seed.ts` writes
+ * `basePrice: 300_000` straight to the jsonb, bypassing the contract).
+ *
+ * This used to accept `typeof === 'number'` only, so every listing created
+ * through the API — i.e. every real one — reported `priceFrom: null` and the
+ * storefront card showed no "from" price at all.
+ */
+function toVnd(raw: unknown): bigint | null {
+  if (typeof raw === 'string') return /^\d+$/.test(raw) ? BigInt(raw) : null;
+  if (typeof raw === 'number') return Number.isSafeInteger(raw) && raw >= 0 ? BigInt(raw) : null;
+  return null;
+}
+
 /** Best-effort lowest configured price across booking modes (VND đồng digit string). */
 function priceFrom(modeConfig: Record<string, unknown>): string | null {
-  const prices: number[] = [];
+  const prices: bigint[] = [];
   for (const cfg of Object.values(modeConfig)) {
     if (cfg && typeof cfg === 'object') {
       const c = cfg as Record<string, unknown>;
       for (const key of ['basePrice', 'basePricePerNight']) {
-        if (typeof c[key] === 'number') prices.push(c[key] as number);
+        const price = toVnd(c[key]);
+        if (price !== null && price > 0n) prices.push(price);
       }
     }
   }
-  return prices.length > 0 ? String(Math.min(...prices)) : null;
+  if (prices.length === 0) return null;
+  return prices.reduce((a, b) => (b < a ? b : a)).toString();
 }
 
 export function toPublicListingResponse(l: PublicListingRecord): PublicListingResponse {

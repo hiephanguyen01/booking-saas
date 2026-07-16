@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   uuidSchema,
-  type BookingResponse,
-  type CancelBookingResponse,
+  type BookingStatusHistoryResponse,
+  type PartnerBookingResponse,
+  type PartnerCancelBookingResponse,
   type ReturnBookingResponse,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
@@ -18,22 +19,39 @@ import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking
 import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
 import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
-import { toBookingResponse, toCancelResponse, toReturnResponse } from '../../application/booking.mapper';
+import { GetBookingHistoryUseCase } from '../../application/use-cases/get-booking-history.use-case';
+import { UpdatePartnerNoteUseCase } from '../../application/use-cases/update-partner-note.use-case';
+import {
+  toPartnerBookingResponse,
+  toPartnerCancelResponse,
+  toReturnResponse,
+  toStatusHistoryResponse,
+} from '../../application/booking.mapper';
 import {
   toPartnerCalendarResponse,
   type PartnerCalendarBookingResponse,
 } from '../../application/partner-calendar.mapper';
 import {
-  BookingResponseDto,
+  BookingStatusHistoryResponseDto,
   CalendarRangeQueryDto,
-  CancelBookingResponseDto,
   MarkReturnedDto,
+  PartnerBookingResponseDto,
   PartnerCalendarBookingResponseDto,
+  PartnerCancelBookingResponseDto,
+  PartnerNoteDto,
   ReasonDto,
   ReturnBookingResponseDto,
 } from './dto/booking.dto';
 
-/** Partner-side booking management (§8.2). Scope via x-partner-id. */
+/**
+ * Partner-side booking management (§8.2). Scope via x-partner-id.
+ *
+ * **PII boundary (§7.3):** every response here goes through the PARTNER mapper
+ * (`toPartnerBookingResponse` / `toPartnerCancelResponse` / `toPartnerCalendarResponse`),
+ * never `toBookingResponse` — a partner must not receive the customer's email, nor
+ * their unmasked phone before the booking is confirmed. The partner response types
+ * are structurally incompatible with the tenant ones, so this is compiler-enforced.
+ */
 @ApiTags('partner-bookings')
 @Controller('partner/bookings')
 export class PartnerBookingController {
@@ -43,6 +61,8 @@ export class PartnerBookingController {
     private readonly fulfillment: InventoryFulfillmentUseCase,
     private readonly calendar: PartnerCalendarUseCase,
     private readonly getBooking: GetBookingUseCase,
+    private readonly bookingHistory: GetBookingHistoryUseCase,
+    private readonly partnerNote: UpdatePartnerNoteUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -51,14 +71,52 @@ export class PartnerBookingController {
   @Get(':id')
   @ApiOperation({ summary: "Get one of the partner's bookings by id" })
   @UuidParam()
-  @ApiOkResponse({ type: BookingResponseDto })
+  @ApiOkResponse({ type: PartnerBookingResponseDto })
   async detail(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<BookingResponse> {
+  ): Promise<PartnerBookingResponse> {
     const booking = await this.getBooking.execute(this.tenantContext.tenantIdOrThrow(), id, {
       partnerId: this.tenantContext.partnerIdOrThrow(),
     });
-    return toBookingResponse(booking);
+    return toPartnerBookingResponse(booking);
+  }
+
+  /** Transition audit trail for one of the partner's bookings (§8.2). */
+  @RequirePermissions('partner.bookings.read')
+  @Get(':id/history')
+  @ApiOperation({ summary: "Status history of one of the partner's bookings" })
+  @UuidParam()
+  @ApiOkResponse({ type: [BookingStatusHistoryResponseDto] })
+  async history(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<BookingStatusHistoryResponse[]> {
+    const history = await this.bookingHistory.execute(this.tenantContext.tenantIdOrThrow(), id, {
+      partnerId: this.tenantContext.partnerIdOrThrow(),
+    });
+    return history.map(toStatusHistoryResponse);
+  }
+
+  /** Set/clear the partner's private note on one of their bookings (§8.2). */
+  @RequirePermissions('partner.bookings.write')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Patch(':id/note')
+  @ApiOperation({ summary: "Set or clear the partner's private note on a booking" })
+  @UuidParam()
+  @ApiOkResponse({ type: PartnerBookingResponseDto })
+  async setNote(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() body: PartnerNoteDto,
+  ): Promise<PartnerBookingResponse> {
+    const note = body.note?.trim();
+    const updated = await this.partnerNote.execute(
+      {
+        tenantId: this.tenantContext.tenantIdOrThrow(),
+        partnerId: this.tenantContext.partnerIdOrThrow(),
+      },
+      id,
+      note ? note : null, // blank/omitted clears the note
+    );
+    return toPartnerBookingResponse(updated);
   }
 
   private ctx(principal: SessionPrincipal) {
@@ -96,12 +154,12 @@ export class PartnerBookingController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Approve a pending booking' })
   @UuidParam()
-  @ApiOkResponse({ type: BookingResponseDto })
+  @ApiOkResponse({ type: PartnerBookingResponseDto })
   async approve(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
-  ): Promise<BookingResponse> {
-    return toBookingResponse(await this.partnerBooking.approve(this.ctx(principal), id));
+  ): Promise<PartnerBookingResponse> {
+    return toPartnerBookingResponse(await this.partnerBooking.approve(this.ctx(principal), id));
   }
 
   @RequirePermissions('partner.bookings.approve')
@@ -110,13 +168,15 @@ export class PartnerBookingController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Reject a pending booking' })
   @UuidParam()
-  @ApiOkResponse({ type: BookingResponseDto })
+  @ApiOkResponse({ type: PartnerBookingResponseDto })
   async reject(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
-  ): Promise<BookingResponse> {
-    return toBookingResponse(await this.partnerBooking.reject(this.ctx(principal), id, body.reason));
+  ): Promise<PartnerBookingResponse> {
+    return toPartnerBookingResponse(
+      await this.partnerBooking.reject(this.ctx(principal), id, body.reason),
+    );
   }
 
   @RequirePermissions('partner.bookings.cancel')
@@ -125,13 +185,15 @@ export class PartnerBookingController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Mark a confirmed booking as a no-show' })
   @UuidParam()
-  @ApiOkResponse({ type: BookingResponseDto })
+  @ApiOkResponse({ type: PartnerBookingResponseDto })
   async noShow(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
-  ): Promise<BookingResponse> {
-    return toBookingResponse(await this.partnerBooking.markNoShow(this.ctx(principal), id, body.reason));
+  ): Promise<PartnerBookingResponse> {
+    return toPartnerBookingResponse(
+      await this.partnerBooking.markNoShow(this.ctx(principal), id, body.reason),
+    );
   }
 
   @RequirePermissions('partner.bookings.cancel')
@@ -140,18 +202,18 @@ export class PartnerBookingController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Partner cancels a booking (computes the refund)' })
   @UuidParam()
-  @ApiOkResponse({ type: CancelBookingResponseDto })
+  @ApiOkResponse({ type: PartnerCancelBookingResponseDto })
   async cancel(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() body: ReasonDto,
     @CurrentPrincipal() principal: SessionPrincipal,
-  ): Promise<CancelBookingResponse> {
+  ): Promise<PartnerCancelBookingResponse> {
     const ctx = this.ctx(principal);
     const result = await this.cancelBooking.execute(ctx.tenantId, id, 'partner', {
       actorId: ctx.actorId,
       reason: body.reason,
     });
-    return toCancelResponse(result);
+    return toPartnerCancelResponse(result);
   }
 
   @RequirePermissions('partner.bookings.cancel')
@@ -160,12 +222,12 @@ export class PartnerBookingController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Mark an inventory rental as picked up' })
   @UuidParam()
-  @ApiOkResponse({ type: BookingResponseDto })
+  @ApiOkResponse({ type: PartnerBookingResponseDto })
   async pickUp(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
-  ): Promise<BookingResponse> {
-    return toBookingResponse(await this.fulfillment.markPickedUp(this.ctx(principal), id));
+  ): Promise<PartnerBookingResponse> {
+    return toPartnerBookingResponse(await this.fulfillment.markPickedUp(this.ctx(principal), id));
   }
 
   @RequirePermissions('partner.bookings.cancel')

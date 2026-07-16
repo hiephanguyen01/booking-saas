@@ -1,7 +1,9 @@
 import { Link } from 'react-router';
 import type {
   BookingResponse,
+  BookingStatus,
   ListingResponse,
+  SubscriptionStatusResponse,
   TenantFinanceSummaryResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -16,6 +18,8 @@ import { Separator } from '@booking/ui/components/ui/separator';
 import {
   ArrowUpRight,
   CalendarCheck,
+  CalendarClock,
+  CircleCheck,
   ClipboardList,
   Store,
   Wallet,
@@ -23,18 +27,23 @@ import {
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from './tenant.server';
-import { formatVnd, formatDateTime } from './format';
-import { BarRow, PageHeader, StatCard } from './components/page';
-import { BookingStatusBadge } from './components/status';
+import { formatVnd, formatDateTime, formatNumber, formatDaysLeft } from '~/lib/format';
+import { Money } from '~/components/money';
+import { PageHeader } from '~/components/page-header';
+import { BarRow, StatCard } from '~/components/stat-card';
+import { BookingStatusBadge } from '~/components/status-badge';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tổng quan · Tenant · Bookify' }];
 }
 
+/** Booking counts derived from the tenant's recent-bookings feed, for the KPI strip. */
+const PENDING_STATUSES: BookingStatus[] = ['pending_approval', 'pending_payment'];
+
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, membership, can } = await requireTenant(request);
 
-  const [summaryRes, bookingsRes, listingsRes] = await Promise.all([
+  const [summaryRes, bookingsRes, listingsRes, subRes] = await Promise.all([
     can('tenant.finance.read')
       ? apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth)
       : Promise.resolve(null),
@@ -42,19 +51,33 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? apiGet<BookingResponse[]>('/tenant/bookings', auth)
       : Promise.resolve(null),
     can('tenant.listings.read')
-      ? apiGet<ListingResponse[]>('/tenant/listings', auth)
+      ? apiGet<{ items: ListingResponse[]; total: number }>('/tenant/listings?page=1&pageSize=100', auth)
+      : Promise.resolve(null),
+    can('tenant.settings.manage')
+      ? apiGet<SubscriptionStatusResponse>('/tenant/subscription/status', auth)
       : Promise.resolve(null),
   ]);
 
-  const listings = listingsRes?.ok ? (listingsRes.data ?? []) : null;
+  const listingsPage = listingsRes?.ok ? listingsRes.data : null;
+  const listings = listingsPage?.items ?? (listingsRes?.ok ? [] : null);
+  const bookings = bookingsRes?.ok ? (bookingsRes.data ?? []) : null;
 
   return {
     tenantName: membership.tenantName ?? 'Tenant',
     summary: summaryRes?.ok ? summaryRes.data : null,
-    recentBookings: bookingsRes?.ok ? (bookingsRes.data ?? []).slice(0, 6) : null,
+    recentBookings: bookings ? bookings.slice(0, 6) : null,
+    bookingStats: bookings
+      ? {
+          total: bookings.length,
+          pending: bookings.filter((b) => PENDING_STATUSES.includes(b.status)).length,
+          confirmed: bookings.filter((b) => b.status === 'confirmed').length,
+          completed: bookings.filter((b) => b.status === 'completed').length,
+        }
+      : null,
+    subscription: subRes?.ok ? subRes.data : null,
     pendingReview: listings ? listings.filter((l) => l.status === 'pending_review').length : null,
     publishedCount: listings ? listings.filter((l) => l.status === 'published').length : null,
-    totalListings: listings ? listings.length : null,
+    totalListings: listingsPage ? listingsPage.total : null,
     can: {
       finance: can('tenant.finance.read'),
       bookings: can('tenant.bookings.read'),
@@ -63,15 +86,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
+const SUB_PHASE_LABEL: Record<'active' | 'grace' | 'expired', string> = {
+  active: 'Đang hiệu lực',
+  grace: 'Đang gia hạn',
+  expired: 'Đã hết hạn',
+};
+
 export default function TenantOverview({ loaderData }: Route.ComponentProps) {
-  const { tenantName, summary, recentBookings, pendingReview, publishedCount, totalListings, can } =
-    loaderData;
+  const {
+    tenantName,
+    summary,
+    recentBookings,
+    bookingStats,
+    subscription,
+    pendingReview,
+    publishedCount,
+    totalListings,
+    can,
+  } = loaderData;
 
   const payables = summary
     ? [
         { label: 'Trả đối tác', value: Number(summary.partnerPayable), tone: 'emerald' as const },
         { label: 'Trả affiliate', value: Number(summary.affiliatePayable), tone: 'sky' as const },
-        { label: 'Phí nền tảng', value: Number(summary.platformFeePayable), tone: 'amber' as const },
+        { label: 'Phí nền tảng', value: Number(summary.platformFeePayable), tone: 'warning' as const },
       ]
     : [];
   const payMax = payables.reduce((m, p) => Math.max(m, Math.abs(p.value)), 0);
@@ -87,14 +125,32 @@ export default function TenantOverview({ loaderData }: Route.ComponentProps) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Doanh thu ròng"
-            value={formatVnd(summary.netRevenue)}
+            value={<Money value={summary.netRevenue} />}
             hint="Sau chiết khấu & hoàn tiền"
             icon={<Wallet className="size-4" />}
             tone="positive"
           />
-          <StatCard label="Phải trả đối tác" value={formatVnd(summary.partnerPayable)} tone="default" />
-          <StatCard label="Phải trả affiliate" value={formatVnd(summary.affiliatePayable)} tone="default" />
-          <StatCard label="Phí nền tảng" value={formatVnd(summary.platformFeePayable)} tone="muted" />
+          <StatCard label="Phải trả đối tác" value={<Money value={summary.partnerPayable} />} tone="default" />
+          <StatCard label="Phải trả affiliate" value={<Money value={summary.affiliatePayable} />} tone="default" />
+          <StatCard label="Phí nền tảng" value={<Money value={summary.platformFeePayable} />} tone="muted" />
+        </div>
+      ) : null}
+
+      {bookingStats ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Đơn gần đây"
+            value={formatNumber(bookingStats.total)}
+            hint="Trên toàn hệ thống"
+            icon={<CalendarCheck className="size-4" />}
+          />
+          <StatCard
+            label="Chờ xử lý"
+            value={formatNumber(bookingStats.pending)}
+            tone={bookingStats.pending > 0 ? 'warning' : 'muted'}
+          />
+          <StatCard label="Đã xác nhận" value={formatNumber(bookingStats.confirmed)} tone="positive" />
+          <StatCard label="Hoàn tất" value={formatNumber(bookingStats.completed)} tone="default" />
         </div>
       ) : null}
 
@@ -138,6 +194,8 @@ export default function TenantOverview({ loaderData }: Route.ComponentProps) {
         </Card>
 
         <div className="space-y-6">
+          {subscription ? <SubscriptionCard sub={subscription} /> : null}
+
           {summary ? (
             <Card>
               <CardHeader>
@@ -199,6 +257,58 @@ export default function TenantOverview({ loaderData }: Route.ComponentProps) {
 
 function EmptyLine({ text }: { text: string }) {
   return <p className="py-6 text-center text-sm text-muted-foreground">{text}</p>;
+}
+
+/** Subscription phase + soft booking-quota snapshot (§6.5). The escalation banners live in the layout. */
+function SubscriptionCard({ sub }: { sub: SubscriptionStatusResponse }) {
+  const { phase, daysUntilExpiry, bookingQuota } = sub;
+  const phaseTone = phase === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-warning';
+  const quotaPct =
+    bookingQuota && bookingQuota.limit > 0
+      ? Math.min(100, Math.round((bookingQuota.used / bookingQuota.limit) * 100))
+      : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {phase === 'active' ? (
+            <CircleCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+          ) : (
+            <CalendarClock className="size-4 text-warning" />
+          )}
+          Gói dịch vụ
+        </CardTitle>
+        <CardDescription>Trạng thái đăng ký & hạn mức tháng này</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-baseline justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">Tình trạng</span>
+          <span className={`font-medium ${phaseTone}`}>{SUB_PHASE_LABEL[phase]}</span>
+        </div>
+        {phase === 'active' && daysUntilExpiry >= 0 ? (
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">Hạn gia hạn</span>
+            <span className="font-medium tabular-nums">{formatDaysLeft(daysUntilExpiry)}</span>
+          </div>
+        ) : null}
+        {bookingQuota ? (
+          <BarRow
+            label="Hạn mức đặt chỗ"
+            value={bookingQuota.used}
+            max={Math.max(bookingQuota.limit, bookingQuota.used, 1)}
+            display={`${formatNumber(bookingQuota.used)} / ${formatNumber(bookingQuota.limit)}`}
+            tone={bookingQuota.overLimit ? 'rose' : 'primary'}
+          />
+        ) : (
+          <p className="text-xs text-muted-foreground">Chưa có gói dịch vụ đang hoạt động.</p>
+        )}
+        {quotaPct !== null && !bookingQuota?.overLimit && quotaPct >= 80 ? (
+          <p className="text-xs text-warning">Đã dùng {quotaPct}% hạn mức — cân nhắc nâng cấp gói.</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 }
 
 function QuickLink({

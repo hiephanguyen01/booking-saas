@@ -42,6 +42,15 @@ export const promotionTimeWindowSchema = z.object({
 });
 export type PromotionTimeWindowDto = z.infer<typeof promotionTimeWindowSchema>;
 
+/**
+ * Every optional *condition* on a promotion is `nullish`, not `optional`, and the
+ * distinction is load-bearing on update: **omitted = leave the stored value alone,
+ * explicit `null` = clear it**. When these were plain `optional()` the update
+ * use-cases' `if (x !== undefined)` guards silently skipped a cleared field, so a
+ * cap/limit/window could be set once and never removed. Any new condition field
+ * must follow the same rule, and the matching update use-case must map
+ * `null → null` rather than `?? existing`.
+ */
 const promotionBaseSchema = z.object({
   name: z.string().min(1).max(200),
   /**
@@ -52,23 +61,30 @@ const promotionBaseSchema = z.object({
   discountType: promotionDiscountTypeSchema,
   /** `percent`: whole percent 1–100. `fixed`: VND đồng. Digit string either way. */
   discountValue: vndDigits,
-  /** Cap on the discount for a `percent` code. */
-  maxDiscount: vndDigits.optional(),
+  /** Cap on the discount for a `percent` code. `null` clears the cap. */
+  maxDiscount: vndDigits.nullish(),
   /** Who bears the cost (§12.4). `partner` requires a single-partner scope + opt-in. */
   fundedBy: promotionFundedBySchema.default('tenant'),
   appliesTo: promotionAppliesToSchema.default('all'),
   /** Required for every scope except `all` (the id of the listing/type/group/category/partner). */
   appliesToId: uuidSchema.optional(),
-  minOrderAmount: vndDigits.optional(),
+  /** `null` clears the minimum-order condition. */
+  minOrderAmount: vndDigits.nullish(),
   /** Only applies to a customer's first booking in the tenant (§12.2). */
   firstBookingOnly: z.boolean().default(false),
-  usageLimitTotal: z.number().int().positive().max(1_000_000).optional(),
-  /** Per-customer usage cap (§12.2). */
-  usageLimitPerCustomer: z.number().int().positive().max(100_000).optional(),
-  /** Off-peak windows — the discount only applies when the slot starts inside one of them. */
-  timeWindows: z.array(promotionTimeWindowSchema).optional(),
-  startsAt: z.string().datetime().optional(),
-  endsAt: z.string().datetime().optional(),
+  /** `null` clears the total usage cap (unlimited). */
+  usageLimitTotal: z.number().int().positive().max(1_000_000).nullish(),
+  /** Per-customer usage cap (§12.2). `null` clears it (unlimited). */
+  usageLimitPerCustomer: z.number().int().positive().max(100_000).nullish(),
+  /**
+   * Off-peak windows — the discount only applies when the slot starts inside one of
+   * them. `null` (or `[]`) clears them, making the promotion always-applicable.
+   */
+  timeWindows: z.array(promotionTimeWindowSchema).nullish(),
+  /** `null` clears the start bound (active immediately). */
+  startsAt: z.string().datetime().nullish(),
+  /** `null` clears the end bound (no expiry). */
+  endsAt: z.string().datetime().nullish(),
   status: promotionStatusInputSchema.default('draft'),
 });
 
@@ -109,7 +125,7 @@ function refinePercent(
   }
 }
 
-function refineTimeWindows(data: { timeWindows?: PromotionTimeWindowDto[] }, ctx: z.RefinementCtx): void {
+function refineTimeWindows(data: { timeWindows?: PromotionTimeWindowDto[] | null }, ctx: z.RefinementCtx): void {
   (data.timeWindows ?? []).forEach((w, i) => {
     if (w.from >= w.to) {
       ctx.addIssue({
@@ -260,6 +276,33 @@ export const promotionResponseSchema = z.object({
   createdAt: z.string(),
 });
 export type PromotionResponse = z.infer<typeof promotionResponseSchema>;
+
+/**
+ * Read-one response (`GET /tenant|partner/promotions/:id`). Extends the list shape
+ * with resolved display names so a detail page never has to render a bare uuid —
+ * "waiting for the partner" can actually name the partner. The names are resolved
+ * per-request, so they stay off the (cheap, paginated) list response.
+ *
+ * Each name is `null` when there is nothing to resolve (a tenant-funded promo has
+ * no funding partner) or when the target no longer exists.
+ */
+export const promotionDetailResponseSchema = promotionResponseSchema.extend({
+  /** Display name of `fundingPartnerId`. */
+  fundingPartnerName: z.string().nullable(),
+  /** Display name of `createdByPartnerId` (null for a tenant-created promo). */
+  createdByPartnerName: z.string().nullable(),
+  /** Human label of the `appliesToId` target — always `null` for the `all` scope. */
+  appliesToLabel: z.string().nullable(),
+});
+export type PromotionDetailResponse = z.infer<typeof promotionDetailResponseSchema>;
+
+/** A tenant category — backs the `category` promotion scope picker (§12.2). */
+export const promotionCategoryOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+});
+export type PromotionCategoryOption = z.infer<typeof promotionCategoryOptionSchema>;
 
 export const promoUsageStatsResponseSchema = z.object({
   promotionId: z.string(),

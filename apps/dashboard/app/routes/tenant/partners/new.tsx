@@ -12,7 +12,7 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { PageHeader } from '../components/page';
+import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối tác nội bộ mới · Tenant · Bookify' }];

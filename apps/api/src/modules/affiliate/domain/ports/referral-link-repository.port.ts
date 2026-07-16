@@ -11,6 +11,8 @@ export interface ReferralLinkRecord {
   code: string;
   target: ReferralTarget;
   listingId: string | null;
+  /** Title of the targeted listing; null for a `tenant_home` link or a deleted listing. */
+  listingTitle: string | null;
   clicksCount: number;
   createdAt: Date;
 }

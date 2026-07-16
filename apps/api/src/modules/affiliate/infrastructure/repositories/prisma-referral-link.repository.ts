@@ -7,7 +7,11 @@ import type {
   ReferralLinkRecord,
 } from '../../domain/ports/referral-link-repository.port';
 
-type Row = Prisma.ReferralLinkGetPayload<Record<string, never>>;
+type Row = Prisma.ReferralLinkGetPayload<{ include: typeof WITH_LISTING }>;
+
+// A listing-targeted link is unreadable as a bare uuid — join the title so every
+// read of a link can name what it points at.
+const WITH_LISTING = { listing: { select: { title: true } } } as const;
 
 function toRecord(l: Row): ReferralLinkRecord {
   return {
@@ -17,6 +21,7 @@ function toRecord(l: Row): ReferralLinkRecord {
     code: l.code,
     target: l.target,
     listingId: l.listingId,
+    listingTitle: l.listing?.title ?? null,
     clicksCount: l.clicksCount,
     createdAt: l.createdAt,
   };
@@ -34,23 +39,28 @@ export class PrismaReferralLinkRepository implements IReferralLinkRepository {
           target: data.target,
           listingId: data.listingId,
         },
+        include: WITH_LISTING,
       }),
     );
   }
 
   async findByCode(tx: PrismaTx, code: string): Promise<ReferralLinkRecord | null> {
     // `(tenant_id, code)` is unique; RLS scopes the lookup to the current tenant.
-    const l = await tx.referralLink.findFirst({ where: { code } });
+    const l = await tx.referralLink.findFirst({ where: { code }, include: WITH_LISTING });
     return l ? toRecord(l) : null;
   }
 
   async listByAffiliate(tx: PrismaTx, affiliateId: string): Promise<ReferralLinkRecord[]> {
-    const rows = await tx.referralLink.findMany({ where: { affiliateId }, orderBy: { createdAt: 'desc' } });
+    const rows = await tx.referralLink.findMany({
+      where: { affiliateId },
+      include: WITH_LISTING,
+      orderBy: { createdAt: 'desc' },
+    });
     return rows.map(toRecord);
   }
 
   async findById(tx: PrismaTx, id: string): Promise<ReferralLinkRecord | null> {
-    const l = await tx.referralLink.findUnique({ where: { id } });
+    const l = await tx.referralLink.findUnique({ where: { id }, include: WITH_LISTING });
     return l ? toRecord(l) : null;
   }
 

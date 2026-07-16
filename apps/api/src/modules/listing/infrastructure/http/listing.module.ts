@@ -32,6 +32,7 @@ import { DeletePricingRuleUseCase } from '../../application/use-cases/delete-pri
 import { GetPublicListingUseCase } from '../../application/use-cases/get-public-listing.use-case';
 import { GetPublicQuoteUseCase } from '../../application/use-cases/get-public-quote.use-case';
 import { ReviewListingUseCase } from '../../application/use-cases/moderation/review-listing.use-case';
+import { ReviewListingGroupUseCase } from '../../application/use-cases/moderation/review-listing-group.use-case';
 import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
 import { PublishListingUseCase } from '../../application/use-cases/moderation/publish-listing.use-case';
 import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
@@ -103,6 +104,7 @@ import { PartnerCancellationPolicyController } from './partner-cancellation-poli
     ListCancellationPoliciesUseCase,
     GetPublicQuoteUseCase,
     ReviewListingUseCase,
+    ReviewListingGroupUseCase,
     SubmitListingUseCase,
     PublishListingUseCase,
     HideListingUseCase,

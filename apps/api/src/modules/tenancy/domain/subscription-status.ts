@@ -7,6 +7,18 @@
 
 export type SubscriptionState = 'trial' | 'active' | 'past_due' | 'expired' | 'cancelled';
 
+/**
+ * Statuses whose paid-through date is still honoured (§6.5). `past_due` is in
+ * dunning — payment failed but the paid-through date has not passed — so it stays
+ * live exactly like `active`/`trial`. Being in one of these is necessary but NOT
+ * sufficient for a subscription to be live: the expiry date must also be in the
+ * future (see {@link evaluateSubscription}).
+ *
+ * Exported so revenue aggregates (plan subscriber counts, platform MRR) filter on
+ * the same rule the lifecycle evaluation applies, instead of re-listing it.
+ */
+export const BILLABLE_SUBSCRIPTION_STATUSES = ['trial', 'active', 'past_due'] as const;
+
 export interface SubscriptionSnapshot {
   status: SubscriptionState;
   startsAt: Date;
@@ -43,12 +55,11 @@ export function evaluateSubscription(
   }
 
   const daysUntilExpiry = Math.ceil((sub.expiresAt.getTime() - now.getTime()) / MS_PER_DAY);
-  // Suspension keys off the *expiry date*, not the payment status (§6.5): a
-  // `past_due` sub is in dunning — payment failed but the paid-through date has
-  // not yet passed — so it stays live until it actually expires, exactly like
-  // `active`/`trial`. Only `cancelled` (explicit) and a lapsed date suspend.
-  const activeStatus =
-    sub.status === 'active' || sub.status === 'trial' || sub.status === 'past_due';
+  // Suspension keys off the *expiry date*, not the payment status (§6.5). Only
+  // `cancelled`/`expired` (explicit) and a lapsed date suspend.
+  const activeStatus = (BILLABLE_SUBSCRIPTION_STATUSES as readonly SubscriptionState[]).includes(
+    sub.status,
+  );
 
   if (activeStatus && now < sub.expiresAt) {
     return {

@@ -25,6 +25,8 @@ import { PartnerCalendarUseCase } from '../../application/use-cases/partner-cale
 import { ListTenantBookingsUseCase } from '../../application/use-cases/list-tenant-bookings.use-case';
 import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-booking-stats.use-case';
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
+import { GetBookingHistoryUseCase } from '../../application/use-cases/get-booking-history.use-case';
+import { UpdatePartnerNoteUseCase } from '../../application/use-cases/update-partner-note.use-case';
 import { PublicBookingController } from './public-booking.controller';
 import { PartnerBookingController } from './partner-booking.controller';
 import { TenantBookingController } from './tenant-booking.controller';
@@ -56,6 +58,8 @@ import { TenantBookingController } from './tenant-booking.controller';
     ListTenantBookingsUseCase,
     PartnerBookingStatsUseCase,
     GetBookingUseCase,
+    GetBookingHistoryUseCase,
+    UpdatePartnerNoteUseCase,
     BookingSchedulerWorker,
   ],
   // Exported so Task 1.9 (payments) can confirm a booking + read it for checkout/status.

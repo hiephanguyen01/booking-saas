@@ -11,6 +11,8 @@ export const platformHealthTenantSchema = z.object({
   name: z.string(),
   slug: z.string(),
   status: z.string(),
+  /** Storefront base template (§16.1) — `studio` | `rental` | `classes`. */
+  vertical: z.string(),
   createdAt: z.string(),
   /** VND đồng digit strings. */
   gmv: z.string(),
@@ -41,8 +43,18 @@ export const platformHealthResponseSchema = z.object({
   kpis: z.object({
     tenantCount: z.number(),
     activeTenantCount: z.number(),
+    /**
+     * GMV is *merchant* turnover, not platform income. The platform's own revenue
+     * is {@link mrr} — keep the two apart when reading this board.
+     */
     gmvAllTime: z.string(),
     gmv30d: z.string(),
+    /**
+     * The platform's own monthly recurring subscription revenue (VND đồng digit
+     * string): the summed `price_monthly` of every tenant's current subscription
+     * that is still within its paid-through date (§6.5).
+     */
+    mrr: z.string(),
     publishedListings: z.number(),
     bookings30d: z.number(),
     webhookFailures: z.number(),

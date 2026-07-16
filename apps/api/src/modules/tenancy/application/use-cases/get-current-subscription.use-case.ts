@@ -7,7 +7,7 @@ import {
 import {
   PLAN_REPOSITORY,
   type IPlanRepository,
-  type PlanRecord,
+  type PlanWithSubscribers,
 } from '../../domain/ports/plan-repository.port';
 
 /**
@@ -24,10 +24,16 @@ export class GetCurrentSubscriptionUseCase {
 
   async execute(
     tenantId: string,
-  ): Promise<{ subscription: SubscriptionRecord; plan: PlanRecord | null } | null> {
+  ): Promise<{ subscription: SubscriptionRecord; plan: PlanWithSubscribers | null } | null> {
     const subscription = await this.subscriptions.findCurrentByTenant(tenantId);
     if (!subscription) return null;
-    const plan = await this.plans.findById(subscription.planId);
-    return { subscription, plan };
+    const [plan, counts] = await Promise.all([
+      this.plans.findById(subscription.planId),
+      this.plans.liveSubscriberCounts(),
+    ]);
+    return {
+      subscription,
+      plan: plan ? { plan, subscriberCount: counts.get(plan.id) ?? 0 } : null,
+    };
   }
 }

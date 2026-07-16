@@ -5,6 +5,7 @@ import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   BookingRecord,
+  BookingStatusHistoryRecord,
   FulfillmentPatch,
   IBookingRepository,
   InsertBookingData,
@@ -19,9 +20,13 @@ interface Row {
   id: string;
   tenantId: string;
   listingId: string;
+  listingTitle: string;
   partnerId: string;
   resourceId: string;
   customerId: string;
+  customerFullName: string;
+  customerPhone: string | null;
+  customerEmail: string;
   code: string;
   idempotencyKey: string;
   bookingMode: string;
@@ -39,34 +44,74 @@ interface Row {
   pickedUpAt: Date | null;
   returnedAt: Date | null;
   damageAmount: bigint;
+  additionalCharges: unknown;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
   promotionId: string | null;
+  promoCode: string | null;
+  promotionSnapshot: unknown;
+  commissionSnapshot: unknown;
+  pricingSnapshot: unknown;
+  affiliateId: string | null;
+  referralCode: string | null;
   customerNote: string | null;
+  partnerNote: string | null;
   expiresAt: Date | null;
   createdAt: Date;
+  updatedAt: Date;
 }
 
+/**
+ * Every booking read joins the customer (`users`) and the listing title —
+ * both appear on every booking surface. Notes on the joins:
+ *  - `users` is a global table with NO RLS policy, so the join is unaffected by
+ *    the `app.tenant_id` GUC; `listings` IS tenant-scoped, and the booking's
+ *    listing is always in the same tenant, so RLS never hides it.
+ *  - Both are INNER joins: `customer_id`/`listing_id` are non-null FKs that
+ *    Postgres will not let you delete out from under a booking.
+ *  - Aliased `b` — `id`/`code` would otherwise be ambiguous across the three
+ *    tables. EVERY caller must qualify its WHERE/ORDER BY with `b.`.
+ */
 const SELECT = Prisma.sql`
-  SELECT id,
-         tenant_id AS "tenantId", listing_id AS "listingId", partner_id AS "partnerId",
-         resource_id AS "resourceId", customer_id AS "customerId",
-         code, idempotency_key AS "idempotencyKey",
-         booking_mode::text AS "bookingMode", status::text AS "status",
-         lower(timeslot) AS "startUtc", upper(timeslot) AS "endUtc",
-         guest_count AS "guestCount", quantity,
-         total_amount AS "totalAmount", discount_amount AS "discountAmount",
-         final_amount AS "finalAmount", deposit_amount AS "depositAmount", paid_amount AS "paidAmount",
-         security_deposit AS "securityDeposit", picked_up_at AS "pickedUpAt",
-         returned_at AS "returnedAt", damage_amount AS "damageAmount",
-         cancellation_policy_id AS "cancellationPolicyId",
-         cancellation_policy_snapshot AS "cancellationPolicySnapshot",
-         promotion_id AS "promotionId",
-         customer_note AS "customerNote", expires_at AS "expiresAt", created_at AS "createdAt"
-  FROM bookings`;
+  SELECT b.id,
+         b.tenant_id AS "tenantId", b.listing_id AS "listingId", l.title AS "listingTitle",
+         b.partner_id AS "partnerId",
+         b.resource_id AS "resourceId", b.customer_id AS "customerId",
+         u.full_name AS "customerFullName", u.phone AS "customerPhone", u.email::text AS "customerEmail",
+         b.code, b.idempotency_key AS "idempotencyKey",
+         b.booking_mode::text AS "bookingMode", b.status::text AS "status",
+         lower(b.timeslot) AS "startUtc", upper(b.timeslot) AS "endUtc",
+         b.guest_count AS "guestCount", b.quantity,
+         b.total_amount AS "totalAmount", b.discount_amount AS "discountAmount",
+         b.final_amount AS "finalAmount", b.deposit_amount AS "depositAmount", b.paid_amount AS "paidAmount",
+         b.security_deposit AS "securityDeposit", b.picked_up_at AS "pickedUpAt",
+         b.returned_at AS "returnedAt", b.damage_amount AS "damageAmount",
+         b.additional_charges AS "additionalCharges",
+         b.cancellation_policy_id AS "cancellationPolicyId",
+         b.cancellation_policy_snapshot AS "cancellationPolicySnapshot",
+         b.promotion_id AS "promotionId", b.promo_code AS "promoCode",
+         b.promotion_snapshot AS "promotionSnapshot",
+         b.commission_snapshot AS "commissionSnapshot",
+         b.pricing_snapshot AS "pricingSnapshot",
+         b.affiliate_id AS "affiliateId", b.referral_code AS "referralCode",
+         b.customer_note AS "customerNote", b.partner_note AS "partnerNote",
+         b.expires_at AS "expiresAt", b.created_at AS "createdAt", b.updated_at AS "updatedAt"
+  FROM bookings b
+  JOIN users u ON u.id = b.customer_id
+  JOIN listings l ON l.id = b.listing_id`;
 
 function toRecord(r: Row): BookingRecord {
-  return { ...r, status: r.status as BookingStatus };
+  const { customerFullName, customerPhone, customerEmail, ...rest } = r;
+  return {
+    ...rest,
+    status: r.status as BookingStatus,
+    customer: {
+      id: r.customerId,
+      fullName: customerFullName,
+      phone: customerPhone,
+      email: customerEmail,
+    },
+  };
 }
 
 /** Mentions of the double-booking exclusion constraint in a DB error (§10). */
@@ -161,23 +206,23 @@ export class PrismaBookingRepository implements IBookingRepository {
   }
 
   async findById(tx: PrismaTx, id: string): Promise<BookingRecord | null> {
-    const rows = await tx.$queryRaw<Row[]>(Prisma.sql`${SELECT} WHERE id = ${id}::uuid`);
+    const rows = await tx.$queryRaw<Row[]>(Prisma.sql`${SELECT} WHERE b.id = ${id}::uuid`);
     return rows[0] ? toRecord(rows[0]) : null;
   }
 
   async findByCode(tx: PrismaTx, code: string): Promise<BookingRecord | null> {
-    const rows = await tx.$queryRaw<Row[]>(Prisma.sql`${SELECT} WHERE code = ${code}`);
+    const rows = await tx.$queryRaw<Row[]>(Prisma.sql`${SELECT} WHERE b.code = ${code}`);
     return rows[0] ? toRecord(rows[0]) : null;
   }
 
   async findByIdempotencyKey(tx: PrismaTx, key: string): Promise<BookingRecord | null> {
-    const rows = await tx.$queryRaw<Row[]>(Prisma.sql`${SELECT} WHERE idempotency_key = ${key}`);
+    const rows = await tx.$queryRaw<Row[]>(Prisma.sql`${SELECT} WHERE b.idempotency_key = ${key}`);
     return rows[0] ? toRecord(rows[0]) : null;
   }
 
   async listByCustomer(tx: PrismaTx, customerId: string): Promise<BookingRecord[]> {
     const rows = await tx.$queryRaw<Row[]>(
-      Prisma.sql`${SELECT} WHERE customer_id = ${customerId}::uuid ORDER BY created_at DESC`,
+      Prisma.sql`${SELECT} WHERE b.customer_id = ${customerId}::uuid ORDER BY b.created_at DESC`,
     );
     return rows.map(toRecord);
   }
@@ -203,10 +248,20 @@ export class PrismaBookingRepository implements IBookingRepository {
         endUtc: Date;
         guestCount: number;
         quantity: number;
+        customerId: string;
+        customerFullName: string;
+        customerPhone: string | null;
+        customerEmail: string;
         finalAmount: bigint;
+        discountAmount: bigint;
+        depositAmount: bigint;
+        paidAmount: bigint;
         securityDeposit: bigint;
         pickedUpAt: Date | null;
         returnedAt: Date | null;
+        customerNote: string | null;
+        expiresAt: Date | null;
+        createdAt: Date;
       }[]
     >(Prisma.sql`
       SELECT b.id,
@@ -222,30 +277,88 @@ export class PrismaBookingRepository implements IBookingRepository {
              upper(b.timeslot) AS "endUtc",
              b.guest_count AS "guestCount",
              b.quantity,
+             b.customer_id AS "customerId",
+             u.full_name AS "customerFullName",
+             u.phone AS "customerPhone",
+             u.email::text AS "customerEmail",
              b.final_amount AS "finalAmount",
+             b.discount_amount AS "discountAmount",
+             b.deposit_amount AS "depositAmount",
+             b.paid_amount AS "paidAmount",
              b.security_deposit AS "securityDeposit",
              b.picked_up_at AS "pickedUpAt",
-             b.returned_at AS "returnedAt"
+             b.returned_at AS "returnedAt",
+             b.customer_note AS "customerNote",
+             b.expires_at AS "expiresAt",
+             b.created_at AS "createdAt"
       FROM bookings b
       JOIN listings l ON l.id = b.listing_id
       JOIN listing_types lt ON lt.id = l.listing_type_id
+      JOIN users u ON u.id = b.customer_id
       WHERE b.partner_id = ${partnerId}::uuid
         AND b.status NOT IN ('draft', 'expired')
         AND b.timeslot && tstzrange(${from}, ${to}, '[)')
       ORDER BY lower(b.timeslot) ASC`);
-    return rows.map((r) => ({ ...r, status: r.status as BookingStatus }));
+    return rows.map(({ customerId, customerFullName, customerPhone, customerEmail, ...r }) => ({
+      ...r,
+      status: r.status as BookingStatus,
+      customer: {
+        id: customerId,
+        fullName: customerFullName,
+        phone: customerPhone,
+        email: customerEmail,
+      },
+    }));
   }
 
   async listByTenant(tx: PrismaTx, filters: TenantBookingFilters): Promise<BookingRecord[]> {
     const conds: Prisma.Sql[] = [];
-    if (filters.status) conds.push(Prisma.sql`status = ${filters.status}::booking_status`);
-    if (filters.partnerId) conds.push(Prisma.sql`partner_id = ${filters.partnerId}::uuid`);
+    if (filters.status) conds.push(Prisma.sql`b.status = ${filters.status}::booking_status`);
+    if (filters.partnerId) conds.push(Prisma.sql`b.partner_id = ${filters.partnerId}::uuid`);
     const where = conds.length ? Prisma.sql`WHERE ${Prisma.join(conds, ' AND ')}` : Prisma.empty;
     const limit = Math.min(Math.max(filters.limit ?? 100, 1), 200);
     const rows = await tx.$queryRaw<Row[]>(
-      Prisma.sql`${SELECT} ${where} ORDER BY created_at DESC LIMIT ${limit}`,
+      Prisma.sql`${SELECT} ${where} ORDER BY b.created_at DESC LIMIT ${limit}`,
     );
     return rows.map(toRecord);
+  }
+
+  async listStatusHistory(tx: PrismaTx, bookingId: string): Promise<BookingStatusHistoryRecord[]> {
+    // LEFT JOIN: actor_id is null for system transitions (expiry, auto-complete).
+    const rows = await tx.$queryRaw<
+      {
+        id: string;
+        fromStatus: string | null;
+        toStatus: string;
+        actorId: string | null;
+        actorName: string | null;
+        reason: string | null;
+        createdAt: Date;
+      }[]
+    >(Prisma.sql`
+      SELECT h.id,
+             h.from_status::text AS "fromStatus",
+             h.to_status::text AS "toStatus",
+             h.actor_id AS "actorId",
+             u.full_name AS "actorName",
+             h.reason,
+             h.created_at AS "createdAt"
+      FROM booking_status_history h
+      LEFT JOIN users u ON u.id = h.actor_id
+      WHERE h.booking_id = ${bookingId}::uuid
+      ORDER BY h.created_at ASC`);
+    return rows.map((r) => ({
+      ...r,
+      fromStatus: r.fromStatus as BookingStatus | null,
+      toStatus: r.toStatus as BookingStatus,
+    }));
+  }
+
+  async updatePartnerNote(tx: PrismaTx, id: string, note: string | null): Promise<BookingRecord> {
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE bookings SET partner_note = ${note}, updated_at = now()
+      WHERE id = ${id}::uuid`);
+    return this.byId(tx, id);
   }
 
   async partnerBookingStats(tx: PrismaTx): Promise<PartnerBookingStat[]> {

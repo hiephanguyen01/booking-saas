@@ -8,9 +8,11 @@ import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
 import { useTenantArea } from '../area-context';
-import { formatDiscount } from '../format';
-import { PageHeader } from '../components/page';
-import { PromotionStatusBadge } from '../components/status';
+import { formatDiscount } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { PromotionStatusBadge } from '~/components/status-badge';
+import { EnumValue } from '~/components/enum-value';
+import { SCOPE_LABELS } from '../components/promotion-form';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Tenant · Bookify' }];
@@ -35,14 +37,14 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
       cell: (p) => (
         <div>
           <div className="font-medium">{p.name}</div>
-          <div className="font-mono text-xs text-muted-foreground">{p.code}</div>
+          <div className="font-mono text-xs text-muted-foreground">{p.code ?? 'Tự động áp dụng'}</div>
         </div>
       ),
     },
     { header: 'Giảm', cell: (p) => <span className="tabular-nums">{formatDiscount(p.discountType, p.discountValue)}</span> },
     {
       header: 'Phạm vi',
-      cell: (p) => <span className="text-sm text-muted-foreground">{p.appliesTo === 'all' ? 'Toàn cửa hàng' : 'Listing'}</span>,
+      cell: (p) => <EnumValue map={SCOPE_LABELS} value={p.appliesTo} className="text-sm text-muted-foreground" />,
       className: 'hidden sm:table-cell',
       headClassName: 'hidden sm:table-cell',
     },
@@ -83,7 +85,7 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
       />
 
       {error ? (
-        <Card><CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">{error}</CardContent></Card>
+        <Card><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>
       ) : null}
 
       <DataTable columns={columns} data={promotions} getRowKey={(p) => p.id} emptyMessage="Chưa có mã khuyến mãi nào." />

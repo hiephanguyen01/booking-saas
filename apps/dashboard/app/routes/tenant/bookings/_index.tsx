@@ -10,9 +10,11 @@ import { TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatVnd, formatDateTime, formatRate } from '../format';
-import { PageHeader, StatCard } from '../components/page';
-import { BookingStatusBadge } from '../components/status';
+import { formatDateTime, formatRate } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { StatCard } from '~/components/stat-card';
+import { BookingStatusBadge } from '~/components/status-badge';
+import { Money } from '~/components/money';
 import {
   bookingListQueryOptions,
   parseBookingStatus,
@@ -91,7 +93,16 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useQuery(bookingListQueryOptions(tenantId, status));
   const bookings = query.data?.items ?? [];
-  const kpis = query.data?.summary ?? { total: 0, active: 0, completed: 0, revenue: '0' };
+  const kpis = query.data?.summary ?? {
+    total: 0,
+    active: 0,
+    completed: 0,
+    revenue: '0',
+    capped: false,
+  };
+  // When the row cap is hit the KPIs cover only the latest slice — say so rather
+  // than presenting a truncated count as a cumulative total.
+  const cappedHint = kpis.capped ? 'trong 200 đơn gần nhất' : undefined;
 
   function setStatus(nextStatus: string) {
     const next = new URLSearchParams(searchParams);
@@ -110,15 +121,26 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
         </Link>
       ),
     },
+    {
+      header: 'Khách hàng',
+      cell: (b) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">{b.customer.fullName}</p>
+          {b.customer.phone ? (
+            <p className="text-xs tabular-nums text-muted-foreground">{b.customer.phone}</p>
+          ) : null}
+        </div>
+      ),
+    },
     { header: 'Đối tác', cell: (b) => <span className="text-sm">{partnerNames[b.partnerId] ?? '—'}</span>, className: 'hidden md:table-cell', headClassName: 'hidden md:table-cell' },
-    { header: 'Hình thức', cell: (b) => <span className="text-sm text-muted-foreground">{MODE_LABEL[b.bookingMode] ?? b.bookingMode}</span> },
+    { header: 'Hình thức', cell: (b) => <span className="text-sm text-muted-foreground">{MODE_LABEL[b.bookingMode] ?? b.bookingMode}</span>, className: 'hidden sm:table-cell', headClassName: 'hidden sm:table-cell' },
     { header: 'Bắt đầu', cell: (b) => <span className="text-sm text-muted-foreground">{formatDateTime(b.startUtc)}</span>, className: 'hidden lg:table-cell', headClassName: 'hidden lg:table-cell' },
     { header: 'Trạng thái', cell: (b) => <BookingStatusBadge status={b.status} /> },
     {
       header: 'Giá trị',
       headClassName: 'text-right',
-      className: 'text-right font-medium tabular-nums',
-      cell: (b) => formatVnd(b.finalAmount),
+      className: 'text-right',
+      cell: (b) => <Money className="font-medium" value={b.finalAmount} />,
     },
   ];
 
@@ -135,14 +157,19 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
       <PageHeader title="Đặt chỗ" description="Theo dõi đơn đặt và sức khoẻ vận hành của từng đối tác." />
 
       {query.error ? (
-        <Card><CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">Không thể cập nhật danh sách đặt chỗ.</CardContent></Card>
+        <Card><CardContent className="p-4 text-sm text-destructive">Không thể cập nhật danh sách đặt chỗ.</CardContent></Card>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Tổng đơn" value={kpis.total} />
-        <StatCard label="Đang hoạt động" value={kpis.active} tone="default" />
-        <StatCard label="Đã hoàn tất" value={kpis.completed} tone="positive" />
-        <StatCard label="Doanh thu ghi nhận" value={formatVnd(kpis.revenue)} tone="positive" />
+        <StatCard label="Tổng đơn" value={kpis.total} hint={cappedHint} />
+        <StatCard label="Đang hoạt động" value={kpis.active} tone="default" hint={cappedHint} />
+        <StatCard label="Đã hoàn tất" value={kpis.completed} tone="positive" hint={cappedHint} />
+        <StatCard
+          label="Doanh thu ghi nhận"
+          value={<Money value={kpis.revenue} />}
+          tone="positive"
+          hint={cappedHint}
+        />
       </div>
 
       <Tabs defaultValue="list">
@@ -173,7 +200,7 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TriangleAlert className="size-4 text-amber-500" /> Tỷ lệ huỷ & vắng mặt
+                <TriangleAlert className="size-4 text-warning" /> Tỷ lệ huỷ & vắng mặt
               </CardTitle>
               <CardDescription>
                 Tỷ lệ cao (≥ 20%) được tô đỏ — cân nhắc rà soát hoặc tạm ngưng đối tác.
@@ -192,7 +219,7 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
 function RateCell({ value, count }: { value: number; count: number }) {
   const high = value >= 0.2;
   return (
-    <span className={high ? 'font-medium tabular-nums text-rose-600 dark:text-rose-400' : 'tabular-nums text-muted-foreground'}>
+    <span className={high ? 'font-medium tabular-nums text-destructive' : 'tabular-nums text-muted-foreground'}>
       {formatRate(value)} <span className="text-xs">({count})</span>
     </span>
   );

@@ -8,17 +8,27 @@ import {
   type PromotionRecord,
   type UpdatePromotionData,
 } from '../../domain/ports/promotion-repository.port';
+import { PROMO_CONTEXT_LOOKUP, type IPromoContextLookup } from '../../domain/ports/promo-context-lookup.port';
 import { normalizeCode } from '../apply-promotion.service';
+import { assertScopeTargetValid } from '../assert-scope-target';
 import { assertTenantShareRisk } from '../assert-tenant-share-risk';
 import { resolveFundingPartnerId } from '../resolve-funding-partner';
 
-/** Edit a promotion (§12.2). Historic bookings keep their immutable snapshot. */
+/**
+ * Edit a promotion (§12.2). Historic bookings keep their immutable snapshot.
+ *
+ * Every optional condition distinguishes **absent (leave alone)** from **`null`
+ * (clear)** — see the note on `promotionBaseSchema` in `@booking/contracts`. Mapping
+ * `null` back to `undefined` here would resurrect the bug where a cap, limit or
+ * off-peak window could be set once and never removed.
+ */
 @Injectable()
 export class UpdatePromotionUseCase {
   private readonly logger = new Logger(UpdatePromotionUseCase.name);
 
   constructor(
     @Inject(PROMOTION_REPOSITORY) private readonly promotions: IPromotionRepository,
+    @Inject(PROMO_CONTEXT_LOOKUP) private readonly lookup: IPromoContextLookup,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -49,14 +59,20 @@ export class UpdatePromotionUseCase {
       if (input.name !== undefined) data.name = input.name;
       if (input.discountType !== undefined) data.discountType = input.discountType;
       if (input.discountValue !== undefined) data.discountValue = vnd(input.discountValue);
-      if (input.maxDiscount !== undefined) data.maxDiscount = vnd(input.maxDiscount);
-      if (input.minOrderAmount !== undefined) data.minOrderAmount = vnd(input.minOrderAmount);
+      // `null` → clear the condition; absent → leave the stored value untouched.
+      if (input.maxDiscount !== undefined) data.maxDiscount = input.maxDiscount === null ? null : vnd(input.maxDiscount);
+      if (input.minOrderAmount !== undefined) {
+        data.minOrderAmount = input.minOrderAmount === null ? null : vnd(input.minOrderAmount);
+      }
       if (input.firstBookingOnly !== undefined) data.firstBookingOnly = input.firstBookingOnly;
       if (input.usageLimitTotal !== undefined) data.usageLimitTotal = input.usageLimitTotal;
       if (input.usageLimitPerCustomer !== undefined) data.usageLimitPerCustomer = input.usageLimitPerCustomer;
-      if (input.timeWindows !== undefined) data.timeWindows = input.timeWindows ?? null;
-      if (input.startsAt !== undefined) data.startsAt = new Date(input.startsAt);
-      if (input.endsAt !== undefined) data.endsAt = new Date(input.endsAt);
+      // An empty array is a clear too — "no windows" and "always applicable" are the same state.
+      if (input.timeWindows !== undefined) {
+        data.timeWindows = input.timeWindows === null || input.timeWindows.length === 0 ? null : input.timeWindows;
+      }
+      if (input.startsAt !== undefined) data.startsAt = input.startsAt === null ? null : new Date(input.startsAt);
+      if (input.endsAt !== undefined) data.endsAt = input.endsAt === null ? null : new Date(input.endsAt);
       if (input.status !== undefined) data.status = input.status;
 
       // Scope / funding changes re-resolve the funding partner and may reset the opt-in gate (§12.2).
@@ -66,6 +82,9 @@ export class UpdatePromotionUseCase {
       if (input.appliesTo !== undefined) data.appliesTo = appliesTo;
       if (input.appliesTo !== undefined || input.appliesToId !== undefined) data.appliesToId = appliesToId;
       if (scopeTouched) {
+        // The merged (scope, id) pair is what gets stored — validate that, not the input
+        // alone: a client may change only `appliesTo` and leave a now-cross-type id behind.
+        await assertScopeTargetValid(this.lookup, tx, appliesTo, appliesToId);
         if (fundedBy === 'partner') {
           data.fundedBy = 'partner';
           const fundingPartnerId = await resolveFundingPartnerId(tx, appliesTo, appliesToId);

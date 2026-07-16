@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   uuidSchema,
@@ -14,6 +14,8 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { AffiliateContextService } from '../../application/affiliate-context.service';
 import { ApplyAffiliateUseCase } from '../../application/use-cases/apply-affiliate.use-case';
+import { ListAffiliateMembershipsUseCase } from '../../application/use-cases/list-affiliate-memberships.use-case';
+import { UpdateAffiliatePayoutInfoUseCase } from '../../application/use-cases/update-affiliate-payout-info.use-case';
 import { ListAffiliateLinksUseCase } from '../../application/use-cases/list-affiliate-links.use-case';
 import { CreateReferralLinkUseCase } from '../../application/use-cases/create-referral-link.use-case';
 import { DeleteReferralLinkUseCase } from '../../application/use-cases/delete-referral-link.use-case';
@@ -32,6 +34,7 @@ import {
   ApplyAffiliateDto,
   CreateReferralLinkDto,
   ReferralLinkResponseDto,
+  UpdateAffiliatePayoutInfoDto,
 } from './dto/affiliate.dto';
 
 /**
@@ -46,6 +49,8 @@ export class AffiliateController {
   constructor(
     private readonly context: AffiliateContextService,
     private readonly applyAffiliate: ApplyAffiliateUseCase,
+    private readonly listMemberships: ListAffiliateMembershipsUseCase,
+    private readonly updatePayoutInfo: UpdateAffiliatePayoutInfoUseCase,
     private readonly listLinks: ListAffiliateLinksUseCase,
     private readonly createLink: CreateReferralLinkUseCase,
     private readonly deleteLink: DeleteReferralLinkUseCase,
@@ -58,7 +63,7 @@ export class AffiliateController {
   @ApiOperation({ summary: "List the user's affiliate memberships (one per tenant)" })
   @ApiOkResponse({ type: [AffiliateResponseDto] })
   async me(@CurrentPrincipal() principal: SessionPrincipal): Promise<AffiliateResponse[]> {
-    const memberships = await this.context.memberships(principal.userId);
+    const memberships = await this.listMemberships.execute(principal.userId);
     return memberships.map(toAffiliateResponse);
   }
 
@@ -70,8 +75,22 @@ export class AffiliateController {
     @CurrentPrincipal() principal: SessionPrincipal,
     @Body() input: ApplyAffiliateDto,
   ): Promise<AffiliateResponse> {
-    const { affiliate, tenantName } = await this.applyAffiliate.execute(principal.userId, input);
-    return toAffiliateResponse({ ...affiliate, tenantName });
+    return toAffiliateResponse(await this.applyAffiliate.execute(principal.userId, input));
+  }
+
+  @AuthenticatedOnly()
+  @Patch('payout-info')
+  @ApiOperation({ summary: "Correct the affiliate's own payout (bank) details" })
+  @ApiOkResponse({ type: AffiliateResponseDto })
+  async payoutInfo(
+    @CurrentPrincipal() principal: SessionPrincipal,
+    @Body() input: UpdateAffiliatePayoutInfoDto,
+    @Headers('x-affiliate-tenant') tenantHeader?: string,
+  ): Promise<AffiliateResponse> {
+    // `requireMembership`, not `requireApproved`: a pending applicant must be able
+    // to fix the account number it is to be paid into (see the use case).
+    const ctx = await this.context.requireMembership(principal.userId, tenantHeader);
+    return toAffiliateResponse(await this.updatePayoutInfo.execute(ctx.tenantId, ctx.affiliateId, input));
   }
 
   @AuthenticatedOnly()
@@ -124,10 +143,7 @@ export class AffiliateController {
   ): Promise<AffiliateStatsResponse> {
     const ctx = await this.context.requireApproved(principal.userId, tenantHeader);
     const s = await this.stats.execute(ctx.tenantId, ctx.affiliateId);
-    return toStatsResponse(
-      { pending: s.pending, confirmed: s.confirmed, paid: s.paid, bookings: s.bookings },
-      s.clicks,
-    );
+    return toStatsResponse(s.totals, s.clicks);
   }
 
   @AuthenticatedOnly()

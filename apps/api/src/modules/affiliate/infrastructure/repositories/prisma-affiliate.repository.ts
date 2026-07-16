@@ -11,13 +11,19 @@ import type {
 } from '../../domain/ports/affiliate-repository.port';
 
 type Row = Prisma.AffiliateGetPayload<Record<string, never>>;
-type RowWithRelations = Prisma.AffiliateGetPayload<{
-  include: { user: { select: { fullName: true; email: true } }; tenant: { select: { name: true } } };
-}>;
+type RowWithRelations = Prisma.AffiliateGetPayload<{ include: typeof WITH_RELATIONS }>;
 
 const WITH_RELATIONS = {
-  user: { select: { fullName: true, email: true } },
-  tenant: { select: { name: true } },
+  user: { select: { fullName: true, email: true, phone: true } },
+  tenant: {
+    select: {
+      name: true,
+      // The tenant's primary domain IS the storefront origin a referral link must
+      // point at (§6.1). Joined here so a membership carries its own link origin
+      // and no caller has to invent one from a platform-wide env var.
+      domains: { where: { isPrimary: true }, select: { hostname: true }, take: 1 },
+    },
+  },
 } as const;
 
 function toRecord(a: Row): AffiliateRecord {
@@ -37,7 +43,9 @@ function toWithUser(a: RowWithRelations): AffiliateWithUser {
     ...toRecord(a),
     userName: a.user.fullName,
     userEmail: a.user.email,
+    userPhone: a.user.phone,
     tenantName: a.tenant.name,
+    tenantHostname: a.tenant.domains[0]?.hostname ?? null,
   };
 }
 
@@ -85,6 +93,22 @@ export class PrismaAffiliateRepository implements IAffiliateRepository {
 
   async setCustomRate(tx: PrismaTx, id: string, customRate: bigint | null): Promise<AffiliateRecord> {
     return toRecord(await tx.affiliate.update({ where: { id }, data: { customRate } }));
+  }
+
+  async setPayoutInfo(
+    tx: PrismaTx,
+    id: string,
+    payoutInfo: Record<string, unknown>,
+  ): Promise<AffiliateWithUser> {
+    // Whole-object replace (not a merge): the contract body is the complete payout
+    // record, so an omitted field is a cleared field.
+    return toWithUser(
+      await tx.affiliate.update({
+        where: { id },
+        data: { payoutInfo: payoutInfo as Prisma.InputJsonValue },
+        include: WITH_RELATIONS,
+      }),
+    );
   }
 
   async adminFindMembershipsByUser(userId: string): Promise<AffiliateWithUser[]> {

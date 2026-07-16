@@ -1,0 +1,24 @@
+import { cn } from '@booking/ui/lib/utils';
+import { formatVnd, formatVndCompact } from '~/lib/format';
+
+export interface MoneyProps {
+  /** VND đồng amount — a digit string (preferred), bigint, or number. */
+  value: string | bigint | number | null | undefined;
+  /** Render the compact `1,2 tr` form; the exact amount stays in the tooltip. */
+  compact?: boolean;
+  className?: string;
+}
+
+/**
+ * A VND amount rendered `tabular-nums`, with the exact full amount always in the
+ * `title` (so a compact figure stays auditable on hover). Parsing goes through
+ * `formatVnd` (bigint), never a float.
+ */
+export function Money({ value, compact, className }: MoneyProps) {
+  const exact = formatVnd(value);
+  return (
+    <span className={cn('tabular-nums', className)} title={exact}>
+      {compact ? formatVndCompact(value) : exact}
+    </span>
+  );
+}

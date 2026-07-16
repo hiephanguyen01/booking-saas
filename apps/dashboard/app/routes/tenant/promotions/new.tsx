@@ -1,13 +1,13 @@
 import { Link, redirect, data as routeData } from 'react-router';
-import { createPromotionInputSchema } from '@booking/contracts';
+import { createPromotionInputSchema, type PromotionCategoryOption } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { ArrowLeft, CircleAlert } from 'lucide-react';
 import type { Route } from './+types/new';
-import { apiPost } from '~/lib/api.server';
+import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { PageHeader } from '../components/page';
+import { PageHeader } from '~/components/page-header';
 import { PromotionForm, readPromotionForm } from '../components/promotion-form';
 import { loadScopeOptions } from './scope-options.server';
 
@@ -17,7 +17,15 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.promotions.manage');
-  return { scopeOptions: await loadScopeOptions(auth) };
+  const [scopeOptions, categoriesRes] = await Promise.all([
+    loadScopeOptions(auth),
+    apiGet<PromotionCategoryOption[]>('/tenant/promotions/categories', auth),
+  ]);
+  const categoryOptions = (categoriesRes.ok ? (categoriesRes.data ?? []) : []).map((c) => ({
+    id: c.id,
+    label: c.name,
+  }));
+  return { scopeOptions, categoryOptions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -47,7 +55,12 @@ export default function NewPromotion({ loaderData, actionData }: Route.Component
       <Card>
         <CardHeader><CardTitle>Thông tin khuyến mãi</CardTitle></CardHeader>
         <CardContent>
-          <PromotionForm mode="create" submitLabel="Tạo khuyến mãi" scopeOptions={loaderData.scopeOptions} />
+          <PromotionForm
+            mode="create"
+            submitLabel="Tạo khuyến mãi"
+            scopeOptions={loaderData.scopeOptions}
+            categoryOptions={loaderData.categoryOptions}
+          />
         </CardContent>
       </Card>
     </div>

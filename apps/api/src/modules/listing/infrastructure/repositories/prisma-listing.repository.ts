@@ -5,13 +5,25 @@ import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.servi
 import type {
   CreateListingData,
   IListingRepository,
+  ListingFilter,
   ListingRecord,
   ModerationUpdate,
   PublicListingRecord,
   UpdateListingData,
 } from '../../domain/ports/listing-repository.port';
 
-type Row = Prisma.ListingGetPayload<Record<string, never>>;
+/**
+ * Everything a `ListingRecord` needs beyond the row itself. Applied to EVERY
+ * listing query so the record shape is uniform — the response embeds the resolved
+ * cancellation policy and the partner summary (§7.3: name + verification only,
+ * never partner contact details).
+ */
+const LISTING_INCLUDE = {
+  cancellationPolicy: { select: { id: true, name: true, rules: true } },
+  partner: { select: { name: true, verificationStatus: true } },
+} as const satisfies Prisma.ListingInclude;
+
+type Row = Prisma.ListingGetPayload<{ include: typeof LISTING_INCLUDE }>;
 
 function toRecord(l: Row): ListingRecord {
   return {
@@ -41,13 +53,29 @@ function toRecord(l: Row): ListingRecord {
     approvalRequired: l.approvalRequired,
     depositPercent: l.depositPercent,
     balanceDue: l.balanceDue,
+    rescheduleAllowed: l.rescheduleAllowed,
+    rescheduleDeadlineHours: l.rescheduleDeadlineHours,
+    // bigint → digit string; money never crosses a layer as a JS number.
+    rescheduleFee: l.rescheduleFee === null ? null : l.rescheduleFee.toString(),
     cancellationPolicyId: l.cancellationPolicyId,
+    cancellationPolicy: l.cancellationPolicy,
+    partner: l.partner,
     status: l.status,
     publishedBy: l.publishedBy as ModerationActor | null,
     hiddenBy: l.hiddenBy as ModerationActor | null,
+    submittedAt: l.submittedAt,
+    publishedAt: l.publishedAt,
     createdAt: l.createdAt,
     updatedAt: l.updatedAt,
   };
+}
+
+/** Prisma `where` for the shared listing filter. */
+function toWhere(filter: ListingFilter): Prisma.ListingWhereInput {
+  const where: Prisma.ListingWhereInput = {};
+  if (filter.groupId) where.groupId = filter.groupId;
+  if (filter.partnerId) where.partnerId = filter.partnerId;
+  return where;
 }
 
 @Injectable()
@@ -83,17 +111,18 @@ export class PrismaListingRepository implements IListingRepository {
           balanceDue: data.balanceDue,
           cancellationPolicyId: data.cancellationPolicyId ?? null,
         },
+        include: LISTING_INCLUDE,
       }),
     );
   }
 
   async findById(tx: PrismaTx, id: string): Promise<ListingRecord | null> {
-    const l = await tx.listing.findUnique({ where: { id } });
+    const l = await tx.listing.findUnique({ where: { id }, include: LISTING_INCLUDE });
     return l ? toRecord(l) : null;
   }
 
   async findBySlug(tx: PrismaTx, slug: string): Promise<ListingRecord | null> {
-    const l = await tx.listing.findFirst({ where: { slug } });
+    const l = await tx.listing.findFirst({ where: { slug }, include: LISTING_INCLUDE });
     return l ? toRecord(l) : null;
   }
 
@@ -101,14 +130,16 @@ export class PrismaListingRepository implements IListingRepository {
     const l = await tx.listing.findFirst({
       where: { slug, status: 'published' },
       include: {
+        ...LISTING_INCLUDE,
         resource: { select: { timezone: true } },
         listingType: { select: { slug: true } },
         group: { select: { title: true, slug: true, status: true } },
-        cancellationPolicy: { select: { id: true, name: true, rules: true } },
         // Trust signals (§16.1) — partner display name + verification + tenure.
         // Contact info is deliberately NOT selected: it is revealed only after a
         // booking is confirmed (§7.3 anti-disintermediation).
-        partner: { select: { name: true, verifiedAt: true, createdAt: true } },
+        partner: {
+          select: { name: true, verificationStatus: true, verifiedAt: true, createdAt: true },
+        },
       },
     });
     if (!l) return null;
@@ -134,7 +165,6 @@ export class PrismaListingRepository implements IListingRepository {
         l.group && l.group.status === 'published'
           ? { title: l.group.title, slug: l.group.slug }
           : null,
-      cancellationPolicy: l.cancellationPolicy,
       partnerName: l.partner.name,
       partnerVerifiedAt: l.partner.verifiedAt,
       partnerActiveSince: l.partner.createdAt,
@@ -144,18 +174,32 @@ export class PrismaListingRepository implements IListingRepository {
     };
   }
 
-  async list(
-    tx: PrismaTx,
-    filter: { groupId?: string; partnerId?: string },
-  ): Promise<ListingRecord[]> {
-    const where: { groupId?: string; partnerId?: string } = {};
-    if (filter.groupId) where.groupId = filter.groupId;
-    if (filter.partnerId) where.partnerId = filter.partnerId;
+  async list(tx: PrismaTx, filter: ListingFilter): Promise<ListingRecord[]> {
     const items = await tx.listing.findMany({
-      where,
+      where: toWhere(filter),
       orderBy: { createdAt: 'desc' },
+      include: LISTING_INCLUDE,
     });
     return items.map(toRecord);
+  }
+
+  async listPage(
+    tx: PrismaTx,
+    filter: ListingFilter,
+    page: { page: number; pageSize: number },
+  ): Promise<{ items: ListingRecord[]; total: number }> {
+    const where = toWhere(filter);
+    const [items, total] = await Promise.all([
+      tx.listing.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: LISTING_INCLUDE,
+        skip: (page.page - 1) * page.pageSize,
+        take: page.pageSize,
+      }),
+      tx.listing.count({ where }),
+    ]);
+    return { items: items.map(toRecord), total };
   }
 
   async update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord> {
@@ -186,6 +230,7 @@ export class PrismaListingRepository implements IListingRepository {
           balanceDue: data.balanceDue,
           cancellationPolicyId: data.cancellationPolicyId,
         },
+        include: LISTING_INCLUDE,
       }),
     );
   }
@@ -194,7 +239,15 @@ export class PrismaListingRepository implements IListingRepository {
     return toRecord(
       await tx.listing.update({
         where: { id },
-        data: { status: update.status, publishedBy: update.publishedBy, hiddenBy: update.hiddenBy },
+        data: {
+          status: update.status,
+          publishedBy: update.publishedBy,
+          hiddenBy: update.hiddenBy,
+          // Undefined = leave as stored (Prisma omits the column from the UPDATE).
+          submittedAt: update.submittedAt,
+          publishedAt: update.publishedAt,
+        },
+        include: LISTING_INCLUDE,
       }),
     );
   }

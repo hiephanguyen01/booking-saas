@@ -39,6 +39,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'partner.listings.write', scopeLevel: 'partner' },
   { key: 'partner.listings.publish', scopeLevel: 'partner' },
   { key: 'partner.bookings.read', scopeLevel: 'partner' },
+  { key: 'partner.bookings.write', scopeLevel: 'partner' },
   { key: 'partner.bookings.approve', scopeLevel: 'partner' },
   { key: 'partner.bookings.cancel', scopeLevel: 'partner' },
   { key: 'partner.availability.manage', scopeLevel: 'partner' },
@@ -80,6 +81,12 @@ export const SYSTEM_ROLES: ReadonlyArray<{
   {
     name: 'Staff',
     scopeLevel: 'partner',
-    permissions: ['partner.bookings.read', 'partner.bookings.approve', 'partner.availability.manage'],
+    permissions: [
+      'partner.bookings.read',
+      // Annotating a booking is strictly weaker than the approve/reject Staff already has.
+      'partner.bookings.write',
+      'partner.bookings.approve',
+      'partner.availability.manage',
+    ],
   },
 ];

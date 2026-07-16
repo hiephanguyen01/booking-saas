@@ -3,17 +3,23 @@ import type {
   PartnerPromotionsToggle,
   PlanResponse,
   PublicTenantResponse,
+  SubscriptionHistoryItem,
   SubscriptionResponse,
   SubscriptionStatusResponse,
+  TenantDetailResponse,
   TenantResponse,
   TenantThemeResponse,
   Vertical,
 } from '@booking/contracts';
 import type { TenantRecord } from '../domain/ports/tenant-repository.port';
-import type { PlanRecord } from '../domain/ports/plan-repository.port';
-import type { SubscriptionRecord } from '../domain/ports/subscription-repository.port';
+import type { PlanWithSubscribers } from '../domain/ports/plan-repository.port';
+import type {
+  SubscriptionHistoryRecord,
+  SubscriptionRecord,
+} from '../domain/ports/subscription-repository.port';
 import type { DomainRecord } from '../domain/ports/tenant-domain-repository.port';
 import type { SubscriptionStatusView } from './use-cases/get-subscription-status.use-case';
+import type { TenantDetailView } from './use-cases/get-tenant-detail.use-case';
 
 export function toTenantResponse(t: TenantRecord): TenantResponse {
   return {
@@ -24,7 +30,25 @@ export function toTenantResponse(t: TenantRecord): TenantResponse {
     vertical: t.vertical as Vertical,
     defaultTimezone: t.defaultTimezone,
     defaultLocale: t.defaultLocale as 'vi' | 'en',
+    themeConfig: t.themeConfig,
+    settings: t.settings,
     createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+  };
+}
+
+export function toTenantDetailResponse(v: TenantDetailView): TenantDetailResponse {
+  return {
+    ...toTenantResponse(v.tenant),
+    subscription: v.subscription
+      ? {
+          planName: v.subscription.planName,
+          status: v.subscription.status,
+          expiresAt: v.subscription.expiresAt.toISOString(),
+        }
+      : null,
+    primaryDomain: v.primaryDomain ? toDomainResponse(v.primaryDomain) : null,
+    counts: v.counts,
   };
 }
 
@@ -43,13 +67,18 @@ export function toTenantThemeResponse(t: TenantRecord): TenantThemeResponse {
   };
 }
 
-export function toPlanResponse(p: PlanRecord): PlanResponse {
+export function toPlanResponse({ plan, subscriberCount }: PlanWithSubscribers): PlanResponse {
   return {
-    id: p.id,
-    name: p.name,
-    priceMonthly: p.priceMonthly.toString(),
-    limits: p.limits,
-    isActive: p.isActive,
+    id: plan.id,
+    name: plan.name,
+    priceMonthly: plan.priceMonthly.toString(),
+    limits: plan.limits,
+    isActive: plan.isActive,
+    subscriberCount,
+    // bigint throughout: VND × a subscriber count must never touch a JS float.
+    mrr: (BigInt(subscriberCount) * plan.priceMonthly).toString(),
+    createdAt: plan.createdAt.toISOString(),
+    updatedAt: plan.updatedAt.toISOString(),
   };
 }
 
@@ -63,6 +92,10 @@ export function toSubscriptionResponse(s: SubscriptionRecord): SubscriptionRespo
     expiresAt: s.expiresAt.toISOString(),
     note: s.note,
   };
+}
+
+export function toSubscriptionHistoryItem(s: SubscriptionHistoryRecord): SubscriptionHistoryItem {
+  return { ...toSubscriptionResponse(s), planName: s.planName };
 }
 
 export function toPublicTenantResponse(t: TenantRecord, live: boolean): PublicTenantResponse {

@@ -1,5 +1,5 @@
-import { Form, Link, useNavigation, data as routeData } from 'react-router';
-import type { PartnerResponse } from '@booking/contracts';
+import { Form, Link, useNavigation, useSubmit, data as routeData } from 'react-router';
+import type { IdentityDocumentType, PartnerResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
 import {
@@ -12,24 +12,49 @@ import {
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@booking/ui/components/ui/alert-dialog';
+import {
   ArrowLeft,
   CircleAlert,
+  CircleCheck,
   Check,
   BadgeCheck,
   Ban,
-  ExternalLink,
-  FileImage,
+  TriangleAlert,
 } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDate, formatDateTime, PARTNER_TYPE_LABEL as TYPE_LABEL } from '../format';
-import { PageHeader } from '../components/page';
-import { PartnerStatusBadge, PartnerVerificationBadge } from '../components/status';
+import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { DateTimeValue } from '~/components/date-time-value';
+import { EnumValue } from '~/components/enum-value';
+import { CopyableCode } from '~/components/copyable-code';
+import { PhotoStrip } from '~/components/photo-strip';
+import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
+import { DetailSection } from '@booking/ui/components/detail/detail-section';
+import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
+import { DetailField } from '@booking/ui/components/detail/detail-field';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết đối tác · Tenant · Bookify' }];
 }
+
+/** Identity-document type → Vietnamese label (no shared map exists yet). */
+const DOCUMENT_TYPE_LABEL: Record<IdentityDocumentType, string> = {
+  national_id: 'CCCD/CMND',
+  passport: 'Hộ chiếu',
+  driver_license: 'Giấy phép lái xe',
+};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.partners.read');
@@ -61,16 +86,24 @@ export async function action({ request, params }: Route.ActionArgs) {
   const id = params.partnerId;
   const body =
     intent === 'verify' ? { note: String(form.get('note') ?? '').trim() || undefined } : {};
-  const res = await apiPost(`/tenant/partners/${id}/${intent}`, body, auth);
+  const res = await apiPost<PartnerResponse>(`/tenant/partners/${id}/${intent}`, body, auth);
   if (!res.ok)
     return routeData({ error: res.error ?? 'Thao tác không thành công.' }, { status: 400 });
-  return { ok: true };
+  // Surface the outcome instead of discarding it — the new verification/status
+  // state drives an explicit success banner (loader revalidation refreshes the body).
+  return {
+    ok: true,
+    intent,
+    verificationStatus: res.data?.verificationStatus ?? null,
+  };
 }
 
 export default function PartnerDetail({ loaderData, actionData }: Route.ComponentProps) {
   const { partner, canApprove, canManage } = loaderData;
   const error = actionData && 'error' in actionData ? actionData.error : null;
+  const success = actionData && 'ok' in actionData ? actionData : null;
   const nav = useNavigation();
+  const submit = useSubmit();
   const busy = nav.state !== 'idle';
 
   const payout = partner.payoutInfo as {
@@ -79,7 +112,10 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
     holderName?: string;
   };
   const hasPayout = Boolean(payout?.bank || payout?.accountNumber || payout?.holderName);
-  const businessInfo = readBusinessInfo(partner.businessInfo, partner.partnerType);
+  const contact = partner.contactInfo;
+  const identity = partner.identityInfo;
+  const business = readBusinessInfo(partner.businessInfo);
+  const locality = [contact.wardName, contact.provinceName].filter(Boolean).join(', ');
 
   return (
     <div className="space-y-6">
@@ -95,6 +131,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {partner.isHouse ? <Badge variant="outline">Nội bộ</Badge> : null}
+            <Badge variant="secondary">{TYPE_LABEL[partner.partnerType] ?? partner.partnerType}</Badge>
             <PartnerStatusBadge status={partner.status} />
             <PartnerVerificationBadge status={partner.verificationStatus} />
           </div>
@@ -108,78 +145,191 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
         </Alert>
       ) : null}
 
+      {success ? (
+        <Alert>
+          <CircleCheck className="size-4" />
+          <AlertDescription>{successMessage(success)}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {/* Contact snapshot — who to reach and where the partner operates. */}
       <Card>
         <CardHeader>
-          <CardTitle>Thông tin</CardTitle>
+          <CardTitle>Liên hệ</CardTitle>
+          <CardDescription>Thông tin liên hệ đối tác cung cấp khi đăng ký.</CardDescription>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-            <Field
-              label="Loại đối tác"
-              value={TYPE_LABEL[partner.partnerType] ?? partner.partnerType}
+          <DetailGrid>
+            <DetailField
+              label="Số điện thoại"
+              value={contact.phone ? <TelLink phone={contact.phone} /> : null}
             />
-            <Field label="Ngày tham gia" value={formatDate(partner.createdAt)} />
-            <Field
-              label="Ngày sinh"
-              value={partner.dateOfBirth ? formatDate(partner.dateOfBirth) : '—'}
+            <DetailField
+              label="Email chủ sở hữu"
+              value={partner.owner?.email ? <MailLink email={partner.owner.email} /> : null}
             />
-            <Field
-              label="Đã xác minh lúc"
-              value={partner.verifiedAt ? formatDateTime(partner.verifiedAt) : '—'}
-            />
-            {partner.description ? (
-              <div className="sm:col-span-2">
-                <Field label="Giới thiệu" value={partner.description} />
-              </div>
-            ) : null}
-          </dl>
+            <DetailField label="Khu vực" value={locality || null} />
+            <DetailField label="Địa chỉ" value={contact.address} span={2} />
+          </DetailGrid>
         </CardContent>
       </Card>
 
+      {/* Identity — the whole point: metadata to reconcile against the ID scans. */}
       <Card>
         <CardHeader>
-          <CardTitle>Hồ sơ pháp lý</CardTitle>
-          <CardDescription>Thông tin và giấy tờ đối tác đã cung cấp khi đăng ký.</CardDescription>
+          <CardTitle>Danh tính</CardTitle>
+          <CardDescription>
+            Đối chiếu thông tin dưới đây với ảnh giấy tờ. Hệ thống từ chối nếu dưới 18 tuổi hoặc tên
+            không khớp tài khoản nhận tiền.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {businessInfo.details.length > 0 ? (
-            <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-              {businessInfo.details.map((detail) => (
-                <Field key={detail.label} label={detail.label} value={detail.value} />
-              ))}
-            </dl>
-          ) : null}
+          <DetailGrid>
+            <DetailField
+              label="Loại giấy tờ"
+              value={
+                identity.documentType ? (
+                  <EnumValue map={DOCUMENT_TYPE_LABEL} value={identity.documentType} />
+                ) : null
+              }
+            />
+            <DetailField
+              label="Số giấy tờ"
+              value={
+                identity.documentNumber ? (
+                  <CopyableCode value={identity.documentNumber} label="số giấy tờ" />
+                ) : null
+              }
+            />
+            <DetailField label="Họ tên trên giấy tờ" value={identity.holderName} />
+            <DetailField label="Người đại diện" value={business.representativeName} />
+            <DetailField
+              label="Ngày sinh"
+              value={partner.dateOfBirth ? formatDate(partner.dateOfBirth) : null}
+            />
+            {identity.reviewNote ? (
+              <DetailField
+                span={2}
+                label={partner.verificationStatus === 'rejected' ? 'Lý do từ chối' : 'Ghi chú xét duyệt'}
+                value={
+                  <span
+                    className={
+                      partner.verificationStatus === 'rejected' ? 'text-warning' : undefined
+                    }
+                  >
+                    {identity.reviewNote}
+                  </span>
+                }
+              />
+            ) : null}
+          </DetailGrid>
 
-          {businessInfo.documents.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {businessInfo.documents.map((document) => (
-                <DocumentPreview key={`${document.label}-${document.url}`} {...document} />
-              ))}
-            </div>
+          <DetailSection
+            title="Ảnh giấy tờ tuỳ thân"
+            emptyMessage="Đối tác chưa tải ảnh giấy tờ tuỳ thân."
+          >
+            {business.identityPhotos.length > 0 ? (
+              <PhotoStrip photos={business.identityPhotos} alt="Giấy tờ tuỳ thân" />
+            ) : null}
+          </DetailSection>
+        </CardContent>
+      </Card>
+
+      {/* Payout — ALWAYS rendered: an empty payout hard-fails verification. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tài khoản nhận tiền</CardTitle>
+          <CardDescription>Dùng để chi trả doanh thu — tên chủ tài khoản phải khớp giấy tờ.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {hasPayout ? (
+            <DetailGrid>
+              <DetailField label="Ngân hàng" value={payout.bank} />
+              <DetailField label="Số tài khoản" value={payout.accountNumber} />
+              <DetailField label="Chủ tài khoản" value={payout.holderName} span={2} />
+            </DetailGrid>
           ) : (
-            <div className="flex items-center gap-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-              <FileImage className="size-5 shrink-0" />
-              Đối tác chưa cung cấp giấy tờ pháp lý.
+            <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+              <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />
+              <div className="space-y-1 text-sm">
+                <p className="font-medium text-foreground">Chưa có tài khoản nhận tiền</p>
+                <p className="text-muted-foreground">
+                  Không thể xác minh danh tính khi thiếu — hệ thống sẽ báo lỗi trùng khớp tên
+                  (NAME_MISMATCH). Yêu cầu đối tác bổ sung trước khi duyệt.
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {hasPayout ? (
+      {/* Legal profile — business registration + license documents. Hidden for house partners. */}
+      {!partner.isHouse ? (
         <Card>
           <CardHeader>
-            <CardTitle>Thông tin nhận tiền</CardTitle>
-            <CardDescription>Dùng để chi trả doanh thu cho đối tác.</CardDescription>
+            <CardTitle>Hồ sơ pháp lý</CardTitle>
+            <CardDescription>Thông tin và giấy phép đối tác đã cung cấp khi đăng ký.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-              <Field label="Ngân hàng" value={payout.bank ?? '—'} />
-              <Field label="Số tài khoản" value={payout.accountNumber ?? '—'} />
-              <Field label="Chủ tài khoản" value={payout.holderName ?? '—'} />
-            </dl>
+          <CardContent className="space-y-6">
+            {partner.description ? (
+              <DetailGrid columns={1}>
+                <DetailField label="Giới thiệu" value={partner.description} />
+              </DetailGrid>
+            ) : null}
+
+            <DetailSection
+              title="Thông tin pháp lý"
+              emptyMessage="Đối tác chưa cung cấp thông tin pháp lý."
+            >
+              {business.legalDetails.length > 0 ? (
+                <DetailGrid>
+                  {business.legalDetails.map((detail) => (
+                    <DetailField key={detail.label} label={detail.label} value={detail.value} />
+                  ))}
+                  {business.logoUrl ? (
+                    <DetailField
+                      label="Logo"
+                      value={<PhotoStrip photos={[business.logoUrl]} alt="Logo đối tác" />}
+                      span={2}
+                    />
+                  ) : null}
+                </DetailGrid>
+              ) : business.logoUrl ? (
+                <PhotoStrip photos={[business.logoUrl]} alt="Logo đối tác" />
+              ) : null}
+            </DetailSection>
+
+            <DetailSection
+              title="Giấy phép kinh doanh"
+              emptyMessage="Đối tác chưa cung cấp giấy phép kinh doanh."
+            >
+              {business.licensePhotos.length > 0 ? (
+                <PhotoStrip photos={business.licensePhotos} alt="Giấy phép" />
+              ) : null}
+            </DetailSection>
           </CardContent>
         </Card>
       ) : null}
+
+      {/* Timestamps. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Thông tin hệ thống</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DetailGrid columns={3}>
+            <DetailField label="Ngày tham gia" value={<DateTimeValue iso={partner.createdAt} />} />
+            <DetailField
+              label="Xác minh lúc"
+              value={partner.verifiedAt ? <DateTimeValue iso={partner.verifiedAt} /> : null}
+            />
+            <DetailField
+              label="Cập nhật lúc"
+              value={<DateTimeValue iso={partner.updatedAt} relative />}
+            />
+          </DetailGrid>
+        </CardContent>
+      </Card>
 
       {/* Approve a pending application. */}
       {partner.status === 'pending' && canApprove ? (
@@ -222,7 +372,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
         </Card>
       ) : null}
 
-      {/* Suspend an approved partner. */}
+      {/* Suspend an approved partner — behind a confirmation dialog. */}
       {partner.status === 'approved' && canManage ? (
         <Card>
           <CardHeader>
@@ -232,12 +382,31 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form method="post">
-              <input type="hidden" name="intent" value="suspend" />
-              <Button type="submit" variant="destructive" disabled={busy}>
-                <Ban className="size-4" /> Tạm ngưng
-              </Button>
-            </Form>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={busy}>
+                  <Ban className="size-4" /> Tạm ngưng
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Tạm ngưng đối tác này?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Listing của đối tác sẽ bị ẩn khỏi storefront và không nhận đặt chỗ mới cho tới khi
+                    được khôi phục.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={busy}
+                    onClick={() => submit({ intent: 'suspend' }, { method: 'post' })}
+                  >
+                    Tạm ngưng
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       ) : null}
@@ -245,60 +414,97 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+/** The success banner copy for a completed action. */
+function successMessage(result: { intent: string; verificationStatus: string | null }): string {
+  if (result.intent === 'approve') return 'Đã duyệt đối tác.';
+  if (result.intent === 'suspend') return 'Đã tạm ngưng đối tác.';
+  if (result.intent === 'verify') {
+    return result.verificationStatus === 'verified'
+      ? 'Đã xác minh danh tính đối tác.'
+      : 'Đã ghi nhận kết quả xét duyệt danh tính.';
+  }
+  return 'Thao tác thành công.';
+}
+
+function TelLink({ phone }: { phone: string }) {
   return (
-    <div className="space-y-1">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="text-sm">{value}</dd>
-    </div>
+    <a
+      href={`tel:${phone}`}
+      className="rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      {phone}
+    </a>
   );
 }
 
-interface LegalDocument {
-  label: string;
-  url: string;
+function MailLink({ email }: { email: string }) {
+  return (
+    <a
+      href={`mailto:${email}`}
+      className="rounded-sm break-all font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      {email}
+    </a>
+  );
 }
 
 interface BusinessInfoView {
-  details: { label: string; value: string }[];
-  documents: LegalDocument[];
+  /** Legal text fields, de-duplicated so the same value is never labelled twice. */
+  legalDetails: { label: string; value: string }[];
+  representativeName: string | null;
+  logoUrl: string | null;
+  /** Personal ID card scans (front/back). */
+  identityPhotos: string[];
+  /** Business-license scans + any extra license documents. */
+  licensePhotos: string[];
 }
 
-function readBusinessInfo(
-  raw: Record<string, unknown>,
-  partnerType: PartnerResponse['partnerType'],
-): BusinessInfoView {
-  const details = [
-    { label: 'Tên pháp lý', value: readText(raw.legalName) },
-    { label: 'Mã số thuế', value: readText(raw.taxId) },
-    { label: 'Số giấy phép kinh doanh', value: readText(raw.businessRegistrationNo) },
-    { label: 'Số giấy phép/chứng chỉ', value: readText(raw.licenseNo) },
-  ].filter((item): item is { label: string; value: string } => Boolean(item.value));
-
-  const documents: LegalDocument[] = [];
-  if (partnerType === 'company') {
-    addDocument(documents, 'GPKD mặt trước', raw.businessLicenseFrontUrl);
-    addDocument(documents, 'GPKD mặt sau', raw.businessLicenseBackUrl);
-  }
-  addDocument(documents, 'CCCD mặt trước', raw.identityCardFrontUrl);
-  addDocument(documents, 'CCCD mặt sau', raw.identityCardBackUrl);
-
-  if (documents.length === 0 && Array.isArray(raw.licenseDocs)) {
-    raw.licenseDocs.forEach((value, index) => {
-      addDocument(documents, `Giấy tờ pháp lý ${index + 1}`, value);
-    });
+function readBusinessInfo(raw: Record<string, unknown>): BusinessInfoView {
+  const seenValues = new Set<string>();
+  const legalDetails: { label: string; value: string }[] = [];
+  for (const { label, key } of [
+    { label: 'Tên pháp lý', key: 'legalName' },
+    { label: 'Tên doanh nghiệp', key: 'companyName' },
+    { label: 'Mã số thuế', key: 'taxId' },
+    { label: 'Số giấy phép kinh doanh', key: 'businessRegistrationNo' },
+    { label: 'Số giấy phép/chứng chỉ', key: 'licenseNo' },
+  ]) {
+    const value = readText(raw[key]);
+    if (value && !seenValues.has(value)) {
+      seenValues.add(value);
+      legalDetails.push({ label, value });
+    }
   }
 
-  return { details, documents };
+  const identityPhotos = collectUrls(raw, ['identityCardFrontUrl', 'identityCardBackUrl']);
+  const licensePhotos = collectUrls(raw, ['businessLicenseFrontUrl', 'businessLicenseBackUrl']);
+  if (Array.isArray(raw.licenseDocs)) {
+    for (const value of raw.licenseDocs) {
+      const url = readHttpUrl(value);
+      if (url) licensePhotos.push(url);
+    }
+  }
+
+  return {
+    legalDetails,
+    representativeName: readText(raw.representativeName),
+    logoUrl: readHttpUrl(raw.logoUrl),
+    identityPhotos,
+    licensePhotos,
+  };
+}
+
+function collectUrls(raw: Record<string, unknown>, keys: string[]): string[] {
+  const urls: string[] = [];
+  for (const key of keys) {
+    const url = readHttpUrl(raw[key]);
+    if (url) urls.push(url);
+  }
+  return urls;
 }
 
 function readText(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function addDocument(documents: LegalDocument[], label: string, value: unknown): void {
-  const url = readHttpUrl(value);
-  if (url) documents.push({ label, url });
 }
 
 function readHttpUrl(value: unknown): string | null {
@@ -309,28 +515,4 @@ function readHttpUrl(value: unknown): string | null {
   } catch {
     return null;
   }
-}
-
-function DocumentPreview({ label, url }: LegalDocument) {
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="group overflow-hidden rounded-xl border bg-muted/30 transition-colors hover:border-primary/40"
-    >
-      <div className="aspect-[4/3] overflow-hidden bg-muted">
-        <img
-          src={url}
-          alt={label}
-          loading="lazy"
-          className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-        />
-      </div>
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <span className="text-sm font-medium">{label}</span>
-        <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
-      </div>
-    </a>
-  );
 }
