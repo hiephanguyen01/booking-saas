@@ -5,23 +5,26 @@ import {
 } from '@booking/contracts';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import { Button } from '@booking/ui/components/ui/button';
+import { Field, FieldLabel } from '@booking/ui/components/ui/field';
 import { Form } from '@booking/ui/components/ui/form';
+import { Spinner } from '@booking/ui/components/ui/spinner';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch, type Path } from 'react-hook-form';
 import { useActionData, useFetcher, useLoaderData, useNavigation, useSubmit } from 'react-router';
+import { NsI18n, useTranslation, type ScopedI18n, type ScopedTranslationKey } from '../../lib/i18n';
 import {
   loadPartnerProfile,
   submitPartnerProfile,
   type PartnerOnboardingActionData,
 } from '../../lib/partner-onboarding.server';
-import { FormAlert } from './shared';
 import type { Route } from './+types/profile';
+import { FormAlert, partnerMeta } from './shared';
 
-export const meta = () => [
-  { title: 'Hồ sơ đối tác · Booking Studio' },
-  { name: 'robots', content: 'noindex,nofollow' },
-];
+export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
+  return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'profile');
+}
 export const loader = ({ request, params }: Route.LoaderArgs) =>
   loadPartnerProfile(request, params.locale);
 export const action = ({ request, params }: Route.ActionArgs) =>
@@ -38,6 +41,7 @@ const BANKS = [
   'VPBank',
   'Sacombank',
 ].map((value) => ({ label: value, value }));
+
 const DEFAULTS: PartnerOnboardingProfileInput = {
   name: '',
   partnerType: 'company',
@@ -59,63 +63,63 @@ const DEFAULTS: PartnerOnboardingProfileInput = {
   acceptedTerms: false,
 };
 
-const field = (
+/** Backend application codes → the message shown above the form. */
+const APPLY_ERRORS = {
+  slugTaken: 'common:becomePartner.errors.slugTaken',
+  planLimit: 'common:becomePartner.errors.planLimit',
+  tenantInactive: 'common:becomePartner.errors.tenantInactive',
+  invalidLocation: 'auth:partner.errors.invalidLocation',
+} as const satisfies Record<string, ScopedTranslationKey<[NsI18n.Auth, NsI18n.Common]>>;
+
+type ProfileI18n = ScopedI18n<[NsI18n.Auth, NsI18n.Common]>['t'];
+
+const textField = (
   name: Path<PartnerOnboardingProfileInput>,
   label: string,
-  type: 'text' | 'select' | 'combobox' | 'file' = 'text',
-  required = true,
-): FieldConfig<PartnerOnboardingProfileInput> => {
-  if (type === 'select' || type === 'combobox')
-    return {
-      name,
-      label,
-      type,
-      required,
-      placeholder: 'Chọn ngân hàng',
-      searchPlaceholder: type === 'combobox' ? 'Tìm ngân hàng...' : undefined,
-      options: BANKS,
-    };
-  if (type === 'file')
-    return {
-      name,
-      label,
-      type,
-      required,
-      target: 'partners',
-      presignEndpoint: '/uploads/presign',
-      variant: 'document',
-    };
-  return { name, label, type, required, placeholder: type === 'text' ? 'Nhập' : undefined };
-};
-
-const partnerTypeField: FieldConfig<PartnerOnboardingProfileInput> = {
-  name: 'partnerType',
-  label: 'Đối tượng kinh doanh',
-  type: 'radio',
-  variant: 'segmented',
+  t: ProfileI18n,
+): FieldConfig<PartnerOnboardingProfileInput> => ({
+  name,
+  label,
+  type: 'text',
   required: true,
-  options: [
-    { label: 'Tổ chức', value: 'company' },
-    { label: 'Cá nhân', value: 'individual' },
-  ],
-};
+  placeholder: t('auth:partner.enterPlaceholder'),
+});
 
-function DocumentPair({ company }: { company: boolean }) {
+const documentField = (
+  name: Path<PartnerOnboardingProfileInput>,
+  label: string,
+): FieldConfig<PartnerOnboardingProfileInput> => ({
+  name,
+  label,
+  type: 'file',
+  required: true,
+  target: 'partners',
+  presignEndpoint: '/uploads/presign',
+  variant: 'document',
+});
+
+function DocumentPair({ company, t }: { company: boolean; t: ProfileI18n }) {
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <FieldRenderer
-        field={field(
+        field={documentField(
           company ? 'businessLicenseFrontUrl' : 'identityCardFrontUrl',
-          company ? 'Mặt trước GPKD' : 'Mặt trước CMND/CCCD',
-          'file',
+          t(
+            company
+              ? 'common:becomePartner.businessLicenseFront'
+              : 'common:becomePartner.identityDocumentFront',
+          ),
         )}
         appearance="partner"
       />
       <FieldRenderer
-        field={field(
+        field={documentField(
           company ? 'businessLicenseBackUrl' : 'identityCardBackUrl',
-          company ? 'Mặt sau GPKD' : 'Mặt sau CMND/CCCD',
-          'file',
+          t(
+            company
+              ? 'common:becomePartner.businessLicenseBack'
+              : 'common:becomePartner.identityDocumentBack',
+          ),
         )}
         appearance="partner"
       />
@@ -128,6 +132,7 @@ export default function PartnerProfile() {
   const actionData = useActionData<PartnerOnboardingActionData>();
   const navigation = useNavigation();
   const submit = useSubmit();
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
   const wardsFetcher = useFetcher<{
     provinceCode: string;
     wards: AdministrativeWard[];
@@ -172,18 +177,30 @@ export default function PartnerProfile() {
         });
     }
   }, [actionData?.fieldErrors, form]);
-  const errorMessage =
-    actionData?.error === 'slugTaken'
-      ? 'Tên đối tác này đã được sử dụng. Vui lòng thử tên khác.'
-      : actionData?.error === 'planLimit'
-        ? 'Cửa hàng đã đạt giới hạn số đối tác.'
-        : actionData?.error === 'tenantInactive'
-          ? 'Cửa hàng hiện không nhận thêm hồ sơ đối tác.'
-          : actionData?.error === 'invalidLocation'
-            ? 'Địa chỉ hành chính không hợp lệ. Vui lòng chọn lại tỉnh và phường / xã.'
-            : actionData?.error
-              ? 'Không thể hoàn tất đăng ký. Vui lòng thử lại.'
-              : undefined;
+
+  const errorCode = actionData?.error;
+  const errorMessage = errorCode
+    ? t(
+        APPLY_ERRORS[errorCode as keyof typeof APPLY_ERRORS] ??
+          'common:becomePartner.errors.generic',
+      )
+    : undefined;
+
+  const partnerTypeField = useMemo<FieldConfig<PartnerOnboardingProfileInput>>(
+    () => ({
+      name: 'partnerType',
+      label: t('common:becomePartner.partnerType'),
+      type: 'radio',
+      variant: 'segmented',
+      required: true,
+      options: [
+        { label: t('common:becomePartner.typeCompany'), value: 'company' },
+        { label: t('common:becomePartner.typeIndividual'), value: 'individual' },
+      ],
+    }),
+    [t],
+  );
+
   const provinceOptions = loaderData.provinces.map((province) => ({
     label: province.name,
     value: province.code,
@@ -191,11 +208,14 @@ export default function PartnerProfile() {
   const wardsData = wardsFetcher.data;
   const wards = wardsData?.provinceCode === provinceCode ? wardsData.wards : [];
   const wardOptions = wards.map((ward) => ({ label: ward.name, value: ward.code }));
+  const wardsLoading = wardsFetcher.state !== 'idle';
+  const submitting = navigation.state === 'submitting';
+
   return (
     <main className="mx-auto w-full max-w-[1170px] px-4 pb-16 sm:px-6 lg:px-0">
-      <section className="bg-white p-6 shadow-[0_4px_7.5px_rgba(0,0,0,0.07)] sm:p-10">
+      <section className="bg-card p-6 text-card-foreground shadow-sm sm:p-10">
         <h1 className="mb-6 text-2xl font-semibold uppercase leading-9">
-          Đăng ký trở thành đối tác
+          {t('common:becomePartner.title')}
         </h1>
         <FormAlert>{errorMessage}</FormAlert>
         <Form {...form}>
@@ -206,13 +226,19 @@ export default function PartnerProfile() {
             noValidate
           >
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
-              <label className="block text-sm font-medium text-[#344054]">
-                Email
-                <span className="mt-2 flex h-14 items-center rounded-sm border border-[#d0d5dd] bg-[#f2f4f7] px-4 text-base font-medium text-[#667085]">
+              <Field>
+                <FieldLabel htmlFor="partner-email">{t('common:becomePartner.email')}</FieldLabel>
+                <output
+                  id="partner-email"
+                  className="flex h-14 items-center rounded-sm border border-border bg-muted px-4 text-base font-medium text-muted-foreground"
+                >
                   {loaderData.email}
-                </span>
-              </label>
-              <FieldRenderer field={field('name', 'Tên đối tác')} appearance="partner" />
+                </output>
+              </Field>
+              <FieldRenderer
+                field={textField('name', t('common:becomePartner.partnerName'), t)}
+                appearance="partner"
+              />
             </div>
             <div className="mt-6">
               <FieldRenderer field={partnerTypeField} appearance="partner" />
@@ -222,31 +248,39 @@ export default function PartnerProfile() {
                 {partnerType === 'company' ? (
                   <>
                     <FieldRenderer
-                      field={field('companyName', 'Tên doanh nghiệp')}
+                      field={textField('companyName', t('common:becomePartner.companyName'), t)}
                       appearance="partner"
                     />
                     <FieldRenderer
-                      field={field('businessRegistrationNo', 'Số GPKD')}
+                      field={textField(
+                        'businessRegistrationNo',
+                        t('common:becomePartner.businessRegistrationNo'),
+                        t,
+                      )}
                       appearance="partner"
                     />
                   </>
                 ) : null}
                 <FieldRenderer
-                  field={field('representativeName', 'Người đại diện')}
+                  field={textField(
+                    'representativeName',
+                    t('common:becomePartner.representative'),
+                    t,
+                  )}
                   appearance="partner"
                 />
                 <FieldRenderer
-                  field={field('identityNumber', 'Số CMND/CCCD')}
+                  field={textField('identityNumber', t('common:becomePartner.identityNumber'), t)}
                   appearance="partner"
                 />
                 <FieldRenderer
                   field={{
                     name: 'provinceCode',
-                    label: 'Tỉnh / Thành phố',
+                    label: t('common:becomePartner.province'),
                     type: 'combobox',
                     required: true,
-                    placeholder: 'Chọn tỉnh / thành phố',
-                    searchPlaceholder: 'Tìm tỉnh / thành phố...',
+                    placeholder: t('auth:partner.selectProvince'),
+                    searchPlaceholder: t('auth:partner.searchProvince'),
                     options: provinceOptions,
                   }}
                   appearance="partner"
@@ -254,33 +288,31 @@ export default function PartnerProfile() {
                 <FieldRenderer
                   field={{
                     name: 'wardCode',
-                    label: 'Phường / Xã / Đặc khu',
+                    label: t('auth:partner.wardLabel'),
                     type: 'combobox',
                     required: true,
-                    disabled: !provinceCode || wardsFetcher.state !== 'idle',
-                    placeholder:
-                      wardsFetcher.state !== 'idle'
-                        ? 'Đang tải phường / xã...'
-                        : provinceCode
-                          ? 'Chọn phường / xã / đặc khu'
-                          : 'Chọn tỉnh / thành phố trước',
-                    searchPlaceholder: 'Tìm phường / xã...',
+                    disabled: !provinceCode || wardsLoading,
+                    placeholder: wardsLoading
+                      ? t('auth:partner.wardLoading')
+                      : provinceCode
+                        ? t('auth:partner.selectWard')
+                        : t('auth:partner.wardNeedsProvince'),
+                    searchPlaceholder: t('auth:partner.searchWard'),
                     options: wardOptions,
                   }}
                   appearance="partner"
                 />
-                <FieldRenderer field={field('address', 'Địa chỉ cụ thể')} appearance="partner" />
-                <div className="space-y-4 pt-1 text-base leading-6 text-[#1d2939]">
-                  <p>
-                    Bằng việc nhấn vào nút đăng ký, anh/chị đồng ý rằng Booking Studio có thể thu
-                    thập, sử dụng và tiết lộ thông tin do anh/chị cung cấp. Theo Phụ lục 1 trong{' '}
-                    <span className="text-primary">Hợp đồng đối tác</span>.
-                  </p>
+                <FieldRenderer
+                  field={textField('address', t('common:becomePartner.address'), t)}
+                  appearance="partner"
+                />
+                <div className="space-y-4 pt-1 text-base leading-6 text-foreground">
+                  <p>{t('auth:partner.privacyNotice', { tenant: loaderData.tenantName })}</p>
                   <FieldRenderer
                     field={{
                       name: 'acceptedTerms',
                       type: 'checkbox',
-                      label: 'Tôi đồng ý với Hợp đồng đối tác của Booking Studio',
+                      label: t('auth:partner.acceptTerms', { tenant: loaderData.tenantName }),
                       required: true,
                     }}
                     appearance="partner"
@@ -288,31 +320,51 @@ export default function PartnerProfile() {
                 </div>
               </div>
               <div className="space-y-4">
-                <DocumentPair company={partnerType === 'company'} />
-                {partnerType === 'company' ? <DocumentPair company={false} /> : null}
-                <FieldRenderer field={field('phone', 'Số điện thoại')} appearance="partner" />
+                <DocumentPair company={partnerType === 'company'} t={t} />
+                {partnerType === 'company' ? <DocumentPair company={false} t={t} /> : null}
                 <FieldRenderer
-                  field={field('bank', 'Ngân hàng', 'combobox')}
+                  field={textField('phone', t('common:becomePartner.phone'), t)}
                   appearance="partner"
                 />
                 <FieldRenderer
-                  field={field('bankAccountNumber', 'Số tài khoản')}
+                  field={{
+                    name: 'bank',
+                    label: t('common:becomePartner.bank'),
+                    type: 'combobox',
+                    required: true,
+                    placeholder: t('auth:partner.selectBank'),
+                    searchPlaceholder: t('auth:partner.searchBank'),
+                    options: BANKS,
+                  }}
                   appearance="partner"
                 />
                 <FieldRenderer
-                  field={field('bankAccountHolder', 'Tên người thụ hưởng')}
+                  field={textField(
+                    'bankAccountNumber',
+                    t('common:becomePartner.bankAccountNumber'),
+                    t,
+                  )}
+                  appearance="partner"
+                />
+                <FieldRenderer
+                  field={textField(
+                    'bankAccountHolder',
+                    t('common:becomePartner.bankAccountHolder'),
+                    t,
+                  )}
                   appearance="partner"
                 />
               </div>
             </div>
             <div className="mt-10 flex justify-center">
-              <button
+              <Button
                 type="submit"
-                disabled={navigation.state === 'submitting'}
-                className="h-14 w-full max-w-[400px] rounded-sm bg-primary text-base font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+                disabled={submitting}
+                className="h-14 w-full max-w-[400px] rounded-sm text-base"
               >
-                {navigation.state === 'submitting' ? 'Đang đăng ký…' : 'Đăng ký'}
-              </button>
+                {submitting ? <Spinner data-icon="inline-start" /> : null}
+                {t('common:becomePartner.submit')}
+              </Button>
             </div>
           </form>
         </Form>

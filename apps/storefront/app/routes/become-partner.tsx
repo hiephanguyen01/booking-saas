@@ -1,4 +1,5 @@
 import { Form, useActionData, useOutletContext } from 'react-router';
+import { NsI18n, useTranslation } from '../lib/i18n';
 import {
   startPartnerRegistration,
   type PartnerOnboardingActionData,
@@ -11,31 +12,32 @@ import {
   FormAlert,
   FormHeading,
   LoginPrompt,
+  partnerMeta,
   PrimaryButton,
 } from './partner-onboarding/shared';
 
-export const meta = () => [
-  { title: 'Đăng ký đối tác · Booking Studio' },
-  { name: 'robots', content: 'noindex,nofollow' },
-];
+export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
+  return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'start');
+}
 
 export const action = ({ request, params }: Route.ActionArgs) =>
   startPartnerRegistration(request, params.locale);
 
 export default function PartnerRegistrationStart() {
-  const { locale, currentUser } = useOutletContext<StorefrontContext>();
+  const { tenant, locale, currentUser } = useOutletContext<StorefrontContext>();
   const actionData = useActionData<PartnerOnboardingActionData>();
-  const emailError = actionData?.fieldErrors?.email?.[0];
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
   const duplicate = actionData?.error === 'EMAIL_TAKEN';
+  const emailError = actionData?.fieldErrors?.email?.[0];
   return (
-    <AuthSplit>
+    <AuthSplit tenantName={tenant.name}>
       <FormHeading
-        title={currentUser ? 'Tiếp tục đăng ký đối tác' : 'Đăng ký'}
+        title={t(currentUser ? 'auth:partner.continueTitle' : 'auth:partner.startTitle')}
         description={
           currentUser ? (
             <>
-              Bạn đang đăng nhập bằng{' '}
-              <strong className="font-semibold text-[#344054]">{currentUser.email}</strong>
+              {t('auth:partner.signedInAs')}{' '}
+              <strong className="font-semibold text-foreground">{currentUser.email}</strong>
             </>
           ) : undefined
         }
@@ -43,20 +45,25 @@ export default function PartnerRegistrationStart() {
       <Form method="post" className="flex flex-col gap-10" noValidate>
         <FormAlert>
           {duplicate
-            ? 'Email này đã được sử dụng. Vui lòng đăng nhập tài khoản.'
+            ? t('auth:partner.errors.emailTaken')
             : actionData?.error
-              ? 'Không thể gửi email xác thực. Vui lòng thử lại.'
+              ? t('auth:partner.errors.startFailed')
               : undefined}
         </FormAlert>
         {currentUser ? null : (
           <EmailField
             error={
-              emailError ??
-              (duplicate ? 'Email này đã được sử dụng. Vui lòng đăng nhập tài khoản' : undefined)
+              emailError === 'invalidEmail'
+                ? t('common:becomePartner.errors.invalidEmail')
+                : duplicate
+                  ? t('auth:partner.errors.emailTaken')
+                  : undefined
             }
           />
         )}
-        <PrimaryButton>{currentUser ? 'Tiếp tục' : 'Đăng ký'}</PrimaryButton>
+        <PrimaryButton>
+          {t(currentUser ? 'auth:partner.continue' : 'auth:partner.startTitle')}
+        </PrimaryButton>
       </Form>
       {currentUser ? null : <LoginPrompt locale={locale} />}
     </AuthSplit>

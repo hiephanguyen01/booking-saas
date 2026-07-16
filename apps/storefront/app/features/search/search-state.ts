@@ -151,6 +151,21 @@ export function dateSelectionForMode(nextMode: SearchMode): SearchDateSelection 
   return { mode: nextMode, date: '', from: '', to: '' };
 }
 
+/**
+ * The dates the visitor actually chose. `date`/`from`/`to` carry today/tomorrow
+ * fallbacks so consumers always have a usable value; a form seeding its own
+ * state from them would submit a filter nobody asked for, so gate on the
+ * explicit-selection flags.
+ */
+export function selectedDates(state: StorefrontSearchState): SearchDateSelection {
+  return {
+    mode: state.mode,
+    date: state.hasDateSelection ? state.date : '',
+    from: state.hasDailyRange ? state.from : '',
+    to: state.hasDailyRange ? state.to : '',
+  };
+}
+
 export function validDailyRange(
   from: string | undefined,
   to: string | undefined,

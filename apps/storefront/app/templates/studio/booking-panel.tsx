@@ -11,9 +11,9 @@ import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { NsI18n, type ScopedI18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import {
   DEFAULT_TZ,
@@ -47,7 +47,7 @@ const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
  * availability + the quote on every change (SSR-safe, no client API calls).
  */
 export function BookingPanel({ listing, mode, availability, quote }: PanelProps) {
-  const i18n = useTranslation(NsI18n.Listing);
+  const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const [sp, setSp] = useSearchParams();
   const tz = availability?.timezone ?? DEFAULT_TZ;
@@ -55,9 +55,12 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
     (BOOKABLE_MODES as string[]).includes(m),
   );
 
-  const start = sp.get('start');
-  const end = sp.get('end');
-  const qty = sp.get('qty') ?? '1';
+  // Inventory opens with a complete default window (today → tomorrow, qty 1)
+  // already shown in the picker, so read the selection from the picker's own
+  // defaults instead of the URL — which only carries them after an edit.
+  const inventory = mode === 'inventory' ? inventorySelection(sp, listing.modeConfig, tz) : null;
+  const start = inventory ? inventory.start : sp.get('start');
+  const end = inventory ? inventory.end : sp.get('end');
 
   function switchMode(next: AvailabilityMode): void {
     setSp({ mode: next }); // reset the selection when the mode changes
@@ -66,20 +69,20 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
   const checkoutParams = new URLSearchParams({ listing: listing.slug, mode });
   if (start) checkoutParams.set('start', start);
   if (end) checkoutParams.set('end', end);
-  if (mode === 'inventory') checkoutParams.set('qty', qty);
+  if (inventory) checkoutParams.set('qty', String(inventory.qty));
   const canBook = Boolean(start && end);
 
   return (
     <Card className="sticky top-28 rounded-2xl border-border shadow-lg">
       <CardContent className="space-y-5 p-6">
-        <QuoteHeader quote={quote} listing={listing} i18n={i18n} />
+        <QuoteHeader quote={quote} listing={listing} />
 
         {modes.length > 1 ? (
-          <ModeToggle modes={modes} active={mode} onSelect={switchMode} i18n={i18n} />
+          <ModeToggle modes={modes} active={mode} onSelect={switchMode} />
         ) : null}
 
         {mode === 'hourly' ? (
-          <HourlyPicker availability={availability} sp={sp} setSp={setSp} tz={tz} i18n={i18n} />
+          <HourlyPicker availability={availability} sp={sp} setSp={setSp} tz={tz} />
         ) : mode === 'daily' ? (
           <DailyPicker
             availability={availability}
@@ -87,33 +90,31 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
             sp={sp}
             setSp={setSp}
             tz={tz}
-            i18n={i18n}
           />
-        ) : (
+        ) : inventory ? (
           <InventoryPicker
             availability={availability}
-            listing={listing}
+            selection={inventory}
             sp={sp}
             setSp={setSp}
             tz={tz}
-            i18n={i18n}
           />
-        )}
+        ) : null}
 
         {quote ? (
           <>
             <Separator />
-            <Breakdown quote={quote} i18n={i18n} />
+            <Breakdown quote={quote} />
           </>
         ) : null}
 
         <Button asChild={canBook} className="h-11 w-full text-base" disabled={!canBook}>
           {canBook ? (
             <Link to={`${storefrontPaths.checkout(locale)}?${checkoutParams.toString()}`}>
-              {i18n.t('bookNow')}
+              {t('bookNow')}
             </Link>
           ) : (
-            <span>{i18n.t('selectToContinue')}</span>
+            <span>{t('selectToContinue')}</span>
           )}
         </Button>
       </CardContent>
@@ -124,29 +125,26 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
 function QuoteHeader({
   quote,
   listing,
-  i18n,
 }: {
   quote: QuoteResponse | null;
   listing: PublicListingDetailResponse;
-  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
+  const { t } = useTranslation(NsI18n.Listing);
   const from = formatVnd(fromPrice(listing.modeConfig));
   return (
     <div className="flex items-baseline gap-2">
       {quote ? (
         <>
           <span className="text-2xl font-bold text-foreground">{formatVnd(quote.subtotal)}</span>
-          <span className="text-sm text-muted-foreground">
-            {i18n.t('subtotalEstimate')}
-          </span>
+          <span className="text-sm text-muted-foreground">{t('subtotalEstimate')}</span>
         </>
       ) : from ? (
         <>
           <span className="text-2xl font-bold text-foreground">{from}</span>
-          <span className="text-sm text-muted-foreground">{i18n.t('fromPrice')}</span>
+          <span className="text-sm text-muted-foreground">{t('fromPrice')}</span>
         </>
       ) : (
-        <span className="text-lg font-semibold">{i18n.t('pickScheduleForPrice')}</span>
+        <span className="text-lg font-semibold">{t('pickScheduleForPrice')}</span>
       )}
     </div>
   );
@@ -156,17 +154,16 @@ function ModeToggle({
   modes,
   active,
   onSelect,
-  i18n,
 }: {
   modes: AvailabilityMode[];
   active: AvailabilityMode;
   onSelect: (m: AvailabilityMode) => void;
-  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
+  const { t } = useTranslation(NsI18n.Listing);
   const label: Record<AvailabilityMode, string> = {
-    hourly: i18n.t('modeHourly'),
-    daily: i18n.t('modeDaily'),
-    inventory: i18n.t('modeInventory'),
+    hourly: t('modeHourly'),
+    daily: t('modeDaily'),
+    inventory: t('modeInventory'),
   };
   return (
     <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
@@ -196,14 +193,13 @@ function HourlyPicker({
   sp,
   setSp,
   tz,
-  i18n,
 }: {
   availability: AvailabilityResponse | null;
   sp: URLSearchParams;
   setSp: (next: URLSearchParams) => void;
   tz: string;
-  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
+  const { t } = useTranslation(NsI18n.Listing);
   const today = todayInTz(tz);
   const day = sp.get('day') || today;
   const slots: HourlySlot[] =
@@ -233,7 +229,7 @@ function HourlyPicker({
   return (
     <div className="space-y-3">
       <label className="flex flex-col gap-1.5">
-        <FieldLabel>{i18n.t('pickDay')}</FieldLabel>
+        <PickerLabel>{t('pickDay')}</PickerLabel>
         <input
           type="date"
           value={day}
@@ -243,10 +239,10 @@ function HourlyPicker({
         />
       </label>
 
-      <FieldLabel>{i18n.t('pickSlot')}</FieldLabel>
+      <PickerLabel>{t('pickSlot')}</PickerLabel>
       {available.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-          {i18n.t('noSlots')}
+          {t('noSlots')}
         </p>
       ) : (
         <div className="grid grid-cols-3 gap-2">
@@ -283,15 +279,14 @@ function DailyPicker({
   sp,
   setSp,
   tz,
-  i18n,
 }: {
   availability: AvailabilityResponse | null;
   listing: PublicListingDetailResponse;
   sp: URLSearchParams;
   setSp: (next: URLSearchParams) => void;
   tz: string;
-  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
+  const { t } = useTranslation(NsI18n.Listing);
   const days: DayAvailability[] = availability?.mode === 'daily' ? availability.days : [];
   const dailyCfg = (listing.modeConfig.daily ?? {}) as {
     checkinTime?: string;
@@ -348,7 +343,7 @@ function DailyPicker({
 
   return (
     <div className="space-y-2">
-      <FieldLabel>{i18n.t('pickDates')}</FieldLabel>
+      <PickerLabel>{t('pickDates')}</PickerLabel>
       <Calendar
         mode="range"
         selected={range}
@@ -359,11 +354,11 @@ function DailyPicker({
       />
       {nights > 0 ? (
         <p className="text-sm text-muted-foreground">
-          {i18n.t('nights', { count: nights })}
-          {nights < minNights ? ` · ${i18n.t('minNights', { count: minNights })}` : ''}
+          {t('nights', { count: nights })}
+          {nights < minNights ? ` · ${t('minNights', { count: minNights })}` : ''}
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground">{i18n.t('selectRange')}</p>
+        <p className="text-sm text-muted-foreground">{t('selectRange')}</p>
       )}
     </div>
   );
@@ -371,43 +366,71 @@ function DailyPicker({
 
 // ── Inventory ────────────────────────────────────────────────────────────────
 
+interface InventorySelection {
+  from: string;
+  to: string;
+  qty: number;
+  unit: 'hour' | 'day';
+  start: string;
+  end: string;
+}
+
+/** Rental window: pickup at day start, return at end day start (unit=day) — the
+ *  API validates the exact window; times use the resource zone. */
+function inventoryWindow(
+  from: string,
+  to: string,
+  unit: 'hour' | 'day',
+  tz: string,
+): { start: string; end: string } {
+  return {
+    start: zonedToUtcIso(from, unit === 'day' ? '00:00' : '08:00', tz),
+    end: zonedToUtcIso(to, unit === 'day' ? '00:00' : '18:00', tz),
+  };
+}
+
+function inventorySelection(
+  sp: URLSearchParams,
+  modeConfig: Record<string, unknown>,
+  tz: string,
+): InventorySelection {
+  const unit = ((modeConfig.inventory ?? {}) as { unit?: 'hour' | 'day' }).unit ?? 'day';
+  const from = (sp.get('from') || todayInTz(tz)).slice(0, 10);
+  const to = (sp.get('to') || addDays(from, 1)).slice(0, 10);
+  const parsedQty = Number(sp.get('qty') || '1');
+  const qty = Number.isFinite(parsedQty) && parsedQty >= 1 ? Math.floor(parsedQty) : 1;
+  return { from, to, qty, unit, ...inventoryWindow(from, to, unit, tz) };
+}
+
 function InventoryPicker({
   availability,
-  listing,
+  selection,
   sp,
   setSp,
   tz,
-  i18n,
 }: {
   availability: AvailabilityResponse | null;
-  listing: PublicListingDetailResponse;
+  selection: InventorySelection;
   sp: URLSearchParams;
   setSp: (next: URLSearchParams) => void;
   tz: string;
-  i18n: ScopedI18n<NsI18n.Listing>;
 }) {
+  const { t } = useTranslation(NsI18n.Listing);
   const today = todayInTz(tz);
   const remaining = availability?.mode === 'inventory' ? availability.inventory.remaining : 0;
-  const invCfg = (listing.modeConfig.inventory ?? {}) as { unit?: 'hour' | 'day' };
-  const unit = invCfg.unit ?? 'day';
-
-  const fromDate = (sp.get('from') || today).slice(0, 10);
-  const toDate = (sp.get('to') || addDays(fromDate, 1)).slice(0, 10);
-  const qty = Number(sp.get('qty') || '1');
+  const { from: fromDate, to: toDate, qty, unit } = selection;
 
   function update(patch: { from?: string; to?: string; qty?: number }): void {
     const next = new URLSearchParams(sp);
-    next.set('mode', 'inventory');
     const nf = patch.from ?? fromDate;
     const nt = patch.to ?? toDate;
-    const nq = String(patch.qty ?? qty);
+    const window = inventoryWindow(nf, nt, unit, tz);
+    next.set('mode', 'inventory');
     next.set('from', nf);
     next.set('to', nt);
-    next.set('qty', nq);
-    // Rental window: pickup at day start, return at end day start (unit=day) — the
-    // API validates the exact window; times use the resource zone.
-    next.set('start', zonedToUtcIso(nf, unit === 'day' ? '00:00' : '08:00', tz));
-    next.set('end', zonedToUtcIso(nt, unit === 'day' ? '00:00' : '18:00', tz));
+    next.set('qty', String(patch.qty ?? qty));
+    next.set('start', window.start);
+    next.set('end', window.end);
     setSp(next);
   }
 
@@ -415,7 +438,7 @@ function InventoryPicker({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1.5">
-          <FieldLabel>{i18n.t('checkin')}</FieldLabel>
+          <PickerLabel>{t('checkin')}</PickerLabel>
           <input
             type="date"
             value={fromDate}
@@ -425,7 +448,7 @@ function InventoryPicker({
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <FieldLabel>{i18n.t('checkout')}</FieldLabel>
+          <PickerLabel>{t('checkout')}</PickerLabel>
           <input
             type="date"
             value={toDate}
@@ -437,7 +460,7 @@ function InventoryPicker({
       </div>
 
       <div className="flex items-center justify-between">
-        <FieldLabel>{i18n.t('quantity')}</FieldLabel>
+        <PickerLabel>{t('quantity')}</PickerLabel>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -462,45 +485,38 @@ function InventoryPicker({
           </Button>
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">
-        {i18n.t('remaining', { count: remaining })}
-      </p>
+      <p className="text-sm text-muted-foreground">{t('remaining', { count: remaining })}</p>
     </div>
   );
 }
 
 // ── Shared ───────────────────────────────────────────────────────────────────
 
-function Breakdown({
-  quote,
-  i18n,
-}: {
-  quote: QuoteResponse;
-  i18n: ScopedI18n<NsI18n.Listing>;
-}) {
+function Breakdown({ quote }: { quote: QuoteResponse }) {
+  const { t } = useTranslation(NsI18n.Listing);
   return (
     <dl className="space-y-1.5 text-sm">
       {quote.lineItems.map((line, idx) => (
         <div key={idx} className="flex justify-between text-muted-foreground">
           <dt>
             {line.label}
-            {line.block ? ` (${i18n.t('package')})` : ''}
+            {line.block ? ` (${t('package')})` : ''}
           </dt>
           <dd>{formatVnd(line.amount)}</dd>
         </div>
       ))}
       <Separator className="my-2" />
       <div className="flex justify-between font-semibold text-foreground">
-        <dt>{i18n.t('subtotal')}</dt>
+        <dt>{t('subtotal')}</dt>
         <dd>{formatVnd(quote.subtotal)}</dd>
       </div>
       <div className="flex justify-between text-muted-foreground">
-        <dt>{i18n.t('deposit')}</dt>
+        <dt>{t('deposit')}</dt>
         <dd>{formatVnd(quote.depositAmount)}</dd>
       </div>
       {quote.securityDeposit !== '0' ? (
         <div className="flex justify-between text-muted-foreground">
-          <dt>{i18n.t('securityDeposit')}</dt>
+          <dt>{t('securityDeposit')}</dt>
           <dd>{formatVnd(quote.securityDeposit)}</dd>
         </div>
       ) : null}
@@ -508,7 +524,9 @@ function Breakdown({
   );
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+/** Not `@booking/ui`'s `FieldLabel`: these sit inside `<label>` wrappers, so this
+ *  renders a `<span>` rather than a nested `<label>`. */
+function PickerLabel({ children }: { children: ReactNode }) {
   return (
     <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
       {children}

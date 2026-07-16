@@ -3,7 +3,7 @@ import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { useLocale } from '../lib/use-locale';
-import { SITE_FOOTER_FALLBACK } from './site-footer-fallback';
+import { SOCIAL_PROFILES } from './site-footer-fallback';
 import { TenantBrand } from './tenant-brand';
 
 export function SiteFooter({
@@ -13,54 +13,59 @@ export function SiteFooter({
   tenant: StorefrontTenant;
   className?: string;
 }) {
-  const { t } = useTranslation(NsI18n.Common);
+  const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation]);
   const locale = useLocale();
+
+  const socials = SOCIAL_PROFILES.flatMap((social) => {
+    const href = tenant.social[social.tenantKey];
+    return href ? [{ ...social, href }] : [];
+  });
 
   return (
     <footer className={`${className} bg-background pb-6 font-studio text-foreground`}>
       <div className="mx-auto w-full max-w-292.5 px-4 pt-8 sm:px-6 xl:pb-0 xl:pt-10 xl:px-0">
-        <div className="grid gap-10 sm:grid-cols-2 xl:min-h-[180px] xl:grid-cols-[370px_220px_220px_270px] xl:justify-between xl:gap-0">
-          <section aria-labelledby="footer-download" className="flex flex-col items-start">
-            <h2 id="footer-download" className="text-base font-semibold leading-6">
-              {t('footer.downloadApp')}
+        <div className="grid gap-10 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <section aria-labelledby="footer-brand" className="flex flex-col items-start gap-4">
+            <h2 id="footer-brand" className="sr-only">
+              {tenant.name}
             </h2>
-            <div className="mt-5 flex flex-wrap items-center gap-2.5">
-              {SITE_FOOTER_FALLBACK.appBadges.map((badge) => (
-                <img
-                  key={badge.name}
-                  src={badge.src}
-                  alt={badge.alt}
-                  width={badge.width}
-                  height={badge.height}
-                  className="h-11 w-auto"
-                />
-              ))}
-            </div>
-            <p className="mt-4 text-sm leading-5 text-muted-foreground">{t('footer.followUs')}</p>
-            <div className="mt-3 flex items-center gap-3">
-              {SITE_FOOTER_FALLBACK.socialProfiles.map((social) => {
-                const href = social.tenantKey ? tenant.social[social.tenantKey] : null;
-                const icon = (
-                  <img src={social.src} alt="" width={40} height={40} className="size-10" />
-                );
-                return href ? (
-                  <a
-                    key={social.name}
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    aria-label={social.name}
-                    className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {icon}
-                  </a>
-                ) : (
-                  <span key={social.name} role="img" aria-label={social.name}>
-                    {icon}
-                  </span>
-                );
-              })}
-            </div>
+            <Link
+              to={storefrontPaths.home(locale)}
+              prefetch="intent"
+              aria-label={t('navigation:brandHome', { tenant: tenant.name })}
+              className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <TenantBrand
+                name={tenant.name}
+                logoUrl={tenant.logoUrl}
+                imageClassName="h-12 w-auto max-w-48 object-contain"
+                textClassName="max-w-64 text-xl font-bold text-primary"
+              />
+            </Link>
+            {tenant.contact.address ? (
+              <p className="max-w-80 text-sm leading-5 text-muted-foreground">
+                {tenant.contact.address}
+              </p>
+            ) : null}
+            {socials.length ? (
+              <>
+                <p className="text-sm leading-5 text-muted-foreground">{t('footer.followUs')}</p>
+                <div className="flex items-center gap-3">
+                  {socials.map((social) => (
+                    <a
+                      key={social.name}
+                      href={social.href}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      aria-label={social.name}
+                      className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <img src={social.src} alt="" width={40} height={40} className="size-10" />
+                    </a>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </section>
 
           <FooterList
@@ -79,53 +84,12 @@ export function SiteFooter({
               tenant.contact.phone ?? tenant.contact.email ?? t('footer.supportLinks.contact'),
             ]}
           />
-
-          <section aria-labelledby="footer-company" className="flex flex-col items-start gap-4">
-            <Link
-              to={storefrontPaths.home(locale)}
-              prefetch="intent"
-              aria-label={`${tenant.name} - Trang chủ`}
-              className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <TenantBrand
-                name={tenant.name}
-                logoUrl={tenant.logoUrl}
-                imageClassName="h-12 w-auto max-w-48 object-contain"
-                textClassName="max-w-64 text-xl font-bold text-primary"
-              />
-            </Link>
-            <h2 id="footer-company" className="text-base font-semibold leading-6">
-              {t('footer.companyName')}
-            </h2>
-            <img
-              src={SITE_FOOTER_FALLBACK.legalBadge.src}
-              alt={SITE_FOOTER_FALLBACK.legalBadge.alt}
-              width={SITE_FOOTER_FALLBACK.legalBadge.width}
-              height={SITE_FOOTER_FALLBACK.legalBadge.height}
-              className="h-10 w-32.5 object-contain"
-            />
-          </section>
         </div>
 
-        <div className="relative mt-10 flex min-h-14 items-end justify-center border-t border-border pt-5 xl:min-h-[70px]">
-          <p className="pr-14 text-center text-sm leading-5 text-muted-foreground sm:pr-0">
+        <div className="mt-10 flex min-h-14 items-end justify-center border-t border-border pt-5 xl:min-h-[70px]">
+          <p className="text-center text-sm leading-5 text-muted-foreground">
             {t('footer.copyright')}
           </p>
-          {/* <button
-            type="button"
-            onClick={() =>
-              window.scrollTo({
-                top: 0,
-                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-                  ? 'auto'
-                  : 'smooth',
-              })
-            }
-            aria-label={t('footer.scrollToTop')}
-            className="absolute -top-9 right-0 flex size-17 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-[opacity,transform] hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ArrowUp aria-hidden="true" className="size-8" strokeWidth={1.7} />
-          </button> */}
         </div>
       </div>
     </footer>

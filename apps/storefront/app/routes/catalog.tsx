@@ -1,9 +1,13 @@
 import type { Route } from './+types/catalog';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CatalogPage } from '../features/catalog/catalog-page';
+import { NsI18n, useTranslation } from '../lib/i18n';
 import { fetchListingTypes, fetchListings } from '../lib/catalog.server';
 import { composeSearchResults } from '../lib/search.server';
 import { parseSearchState } from '../features/search/search-state';
+
+/** Search params that make this a filtered view rather than the canonical catalog page. */
+const FILTER_PARAMS = ['q', 'location', 'minPrice', 'maxPrice', 'area', 'amenities'];
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
   return [
@@ -33,8 +37,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     type,
     search,
     state,
-    noIndex: ['q', 'location', 'minPrice', 'maxPrice', 'area', 'amenities'].some((key) =>
-      url.searchParams.has(key),
+    // Presence alone would flag the canonical page too: the filter form submits
+    // every control it owns, so an untouched "Áp dụng" carries empty values.
+    noIndex: FILTER_PARAMS.some((key) =>
+      url.searchParams.getAll(key).some((value) => value.trim() !== ''),
     ),
   };
 }
@@ -45,5 +51,6 @@ export default function CatalogRoute(props: Route.ComponentProps) {
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
-  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel="Về trang chủ" />;
+  const { t } = useTranslation(NsI18n.Error);
+  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel={t('home')} />;
 }

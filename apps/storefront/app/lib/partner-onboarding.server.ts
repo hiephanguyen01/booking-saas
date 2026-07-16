@@ -12,6 +12,7 @@ import {
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
+import { z } from 'zod';
 import { backendLogin, publicPost } from './api.server';
 import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
 import { getOptionalAuth, requireAuth } from './auth.server';
@@ -48,12 +49,17 @@ const failed = (result: { status: number; code?: string; error?: string }) =>
     { status: result.status >= 400 && result.status < 600 ? result.status : 500 },
   );
 
+/**
+ * Placeholder `fullName` for the account created before the profile step asks
+ * for a real one. Derived from the address rather than a canned label, so it is
+ * never a locale-specific string the caller cannot translate.
+ */
 function inferredName(email: string) {
   const local = email
     .split('@')[0]
     ?.replace(/[._-]+/g, ' ')
     .trim();
-  return local || 'Đối tác mới';
+  return local || email;
 }
 
 export type PartnerRegistrationEntry = 'register' | 'profile' | 'dashboard';
@@ -90,7 +96,7 @@ export async function startPartnerRegistration(request: Request, localeParam?: s
   const email = String(form.email ?? '')
     .trim()
     .toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(email)) return invalid({ email: ['Email không hợp lệ'] });
+  if (!/^\S+@\S+\.\S+$/.test(email)) return invalid({ email: ['invalidEmail'] });
   const result = await publicPost<AuthChallengeResponse>(
     '/auth/registration/start',
     { email, fullName: inferredName(email), locale },
@@ -189,20 +195,28 @@ export async function verifyPartnerRegistration(request: Request, localeParam?: 
   return redirect(path(locale, 'password'));
 }
 
-const partnerPasswordSchema = authPasswordCompleteInputSchema
-  .omit({ completionToken: true })
-  .extend({
-    password: authPasswordCompleteInputSchema.shape.password
-      .regex(/[A-Z]/, 'Cần ít nhất một chữ hoa')
-      .regex(/[^A-Za-z0-9]/, 'Cần ít nhất một ký tự đặc biệt'),
-  });
+/**
+ * The partner password policy: the shared `passwordSchema` rules plus an
+ * uppercase and a special character. Every message is an error *code* — the
+ * server cannot know the reader's locale, so the route translates it.
+ */
+const partnerPasswordSchema = z.object({
+  password: z
+    .string()
+    .min(8, 'passwordTooShort')
+    .max(128, 'passwordTooLong')
+    .regex(/[A-Za-z]/, 'passwordNoLetter')
+    .regex(/[0-9]/, 'passwordNoDigit')
+    .regex(/[A-Z]/, 'passwordNoUppercase')
+    .regex(/[^A-Za-z0-9]/, 'passwordNoSpecial'),
+});
 
 export async function completePartnerPassword(request: Request, localeParam?: string) {
   const locale = localeOf(localeParam);
   const flow = await requirePartnerPhase(request, 'partner_registration_password', locale);
   const form = fields(await request.formData());
   if (form.password !== form.confirmPassword) {
-    return invalid({ confirmPassword: ['Mật khẩu nhập lại không khớp'] });
+    return invalid({ confirmPassword: ['passwordMismatch'] });
   }
   const local = partnerPasswordSchema.safeParse({ password: form.password });
   if (!local.success) return invalid(local.error.flatten().fieldErrors);

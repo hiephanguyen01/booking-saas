@@ -1,5 +1,4 @@
 import type {
-  AvailabilityResponse,
   PublicListingDetailResponse,
   PublicListingGroupDetailResponse,
   PublicListingResponse,
@@ -11,13 +10,13 @@ import {
   matchesArea,
   numberAttribute,
   rangeDates,
+  type EnrichedSearchListing,
+  type SearchRoomSummary,
   type StorefrontSearchState,
 } from '../features/search/search-state';
 
 const CAPACITY_KEYS = ['capacity', 'maxGuests', 'guestCapacity', 'sucChua'];
 const AREA_KEYS = ['area', 'areaM2', 'squareMeters', 'dienTich'];
-
-import type { EnrichedSearchListing, SearchRoomSummary } from '../features/search/search-state';
 
 export interface SearchComposition {
   items: EnrichedSearchListing[];
@@ -317,16 +316,4 @@ export async function deriveLocationSuggestions(
         .filter((value): value is string => Boolean(value)),
     ),
   ].slice(0, 20);
-}
-
-export function availabilityForRange(
-  availability: AvailabilityResponse | null,
-  from: string,
-  to: string,
-): boolean {
-  if (!availability || availability.mode !== 'daily') return false;
-  const open = new Set(
-    availability.days.filter((day) => day.status === 'available').map((day) => day.date),
-  );
-  return rangeDates(from, to).every((date) => open.has(date));
 }

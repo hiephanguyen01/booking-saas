@@ -1,10 +1,4 @@
 import { Button } from '@booking/ui/components/ui/button';
-import { Checkbox } from '@booking/ui/components/ui/checkbox';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@booking/ui/components/ui/collapsible';
 import {
   Drawer,
   DrawerContent,
@@ -20,43 +14,40 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from '@booking/ui/components/ui/input-group';
-import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { Skeleton } from '@booking/ui/components/ui/skeleton';
-import { ChevronDown, SlidersHorizontal, Star } from 'lucide-react';
-import { Form, Link, useNavigation, useOutletContext, useSearchParams } from 'react-router';
+import { SlidersHorizontal } from 'lucide-react';
+import { Link, useNavigation, useOutletContext, useSearchParams } from 'react-router';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontContext } from '../../root';
 import type { Route } from '../../routes/+types/catalog';
+import type { SearchSort, StorefrontSearchState } from '../search/search-state';
 import { SearchForm } from '../search/search-form';
-import {
-  MOCK_LOCATIONS,
-  MOCK_ROOM_AMENITIES,
-  MOCK_STUDIO_AMENITIES,
-  type FilterOptionMock,
-} from './catalog-mock-data';
+import { CatalogPagination } from './components/catalog-pagination';
+import { FilterPanel } from './components/filter-panel';
 import { SearchResultCard } from './components/search-result-card';
 
-const AREA_OPTIONS: FilterOptionMock[] = [
-  { value: 'under-25', label: 'Dưới 25 m²', count: 132 },
-  { value: '25-50', label: 'Từ 25 m² đến 50 m²', count: 152 },
-  { value: '50-100', label: 'Từ 50 m² đến 100 m²', count: 314 },
-  { value: 'over-100', label: 'Trên 100 m²', count: 4 },
-];
+/**
+ * Only the orders `composeSearchResults()` actually applies.
+ *
+ * "Đặt nhiều nhất" and "Đánh giá nhiều nhất" chips used to sit here too: they
+ * rewrote the URL and rendered active, but nothing sorted on them — and there is
+ * no booking-count or rating data behind either.
+ */
+const SORT_OPTIONS = [
+  { value: 'relevance', labelKey: 'sort.relevance' },
+  { value: 'price-asc', labelKey: 'sort.priceAsc' },
+] as const satisfies readonly { value: SearchSort; labelKey: string }[];
 
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, search, state } = loaderData;
   const { listingTypes } = useOutletContext<StorefrontContext>();
+  const { t } = useTranslation(NsI18n.Catalog);
   const navigation = useNavigation();
   const pending = navigation.state === 'loading';
 
-  if (!type) return null;
-
   return (
-    <main className="bg-muted/20 pb-20 font-studio">
+    // A plain <div>: root.tsx already wraps the outlet in the page's one <main>.
+    <div className="bg-muted/20 pb-20 font-studio">
       <SearchForm
         listingTypes={listingTypes}
         currentType={params.typeSlug}
@@ -67,32 +58,36 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
 
       <div className="mx-auto grid max-w-292.5 gap-8 px-4 py-8 lg:grid-cols-[270px_minmax(0,1fr)] lg:px-0">
         <aside className="hidden lg:block">
-          <FilterPanel state={state} amenities={search.amenities} />
+          <FilterPanel state={state} locations={search.locations} amenities={search.amenities} />
         </aside>
 
         <section aria-labelledby="search-results-title" className="min-w-0">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <h1 id="search-results-title" className="text-2xl font-semibold text-foreground">
-                {type.name} phù hợp với bạn
+                {t('resultsTitle', { name: type.name })}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {search.total} studio đang khả dụng
+                {t('resultsCount', { count: search.total })}
               </p>
             </div>
             <Drawer>
               <DrawerTrigger asChild>
                 <Button variant="outline" className="lg:hidden">
-                  <SlidersHorizontal data-icon="inline-start" /> Bộ lọc
+                  <SlidersHorizontal data-icon="inline-start" /> {t('filters.open')}
                 </Button>
               </DrawerTrigger>
               <DrawerContent className="max-h-[92vh]">
                 <DrawerHeader>
-                  <DrawerTitle>Bộ lọc tìm kiếm</DrawerTitle>
-                  <DrawerDescription>Thu hẹp kết quả theo nhu cầu của bạn.</DrawerDescription>
+                  <DrawerTitle>{t('filters.drawerTitle')}</DrawerTitle>
+                  <DrawerDescription>{t('filters.drawerDescription')}</DrawerDescription>
                 </DrawerHeader>
                 <div className="overflow-y-auto px-4 pb-8">
-                  <FilterPanel state={state} amenities={search.amenities} hideMap />
+                  <FilterPanel
+                    state={state}
+                    locations={search.locations}
+                    amenities={search.amenities}
+                  />
                 </div>
               </DrawerContent>
             </Drawer>
@@ -101,7 +96,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
           <SortBar state={state} />
 
           {pending ? (
-            <div className="flex flex-col gap-6" aria-live="polite" aria-label="Đang tải kết quả">
+            <div className="flex flex-col gap-6" aria-live="polite" aria-label={t('loadingResults')}>
               {Array.from({ length: 4 }, (_, index) => (
                 <ResultSkeleton key={index} />
               ))}
@@ -112,11 +107,11 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
                 <EmptyMedia variant="icon">
                   <SlidersHorizontal />
                 </EmptyMedia>
-                <EmptyTitle>Không tìm thấy studio phù hợp</EmptyTitle>
-                <EmptyDescription>Hãy thử đổi ngày, khu vực hoặc bỏ bớt bộ lọc.</EmptyDescription>
+                <EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+                <EmptyDescription>{t('emptyDescription')}</EmptyDescription>
               </EmptyHeader>
               <Button asChild variant="outline">
-                <Link to="?">Xóa bộ lọc</Link>
+                <Link to="?">{t('clearFilters')}</Link>
               </Button>
             </Empty>
           ) : (
@@ -136,73 +131,29 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
           ) : null}
         </section>
       </div>
-    </main>
+    </div>
   );
 }
 
-function CatalogPagination({
-  currentPage,
-  totalPages,
-}: {
-  currentPage: number;
-  totalPages: number;
-}) {
+function SortBar({ state }: { state: StorefrontSearchState }) {
   const [searchParams] = useSearchParams();
+  const { t } = useTranslation(NsI18n.Catalog);
   return (
-    <nav className="mt-8 flex justify-center gap-2" aria-label="Phân trang">
-      {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => {
-        const next = new URLSearchParams(searchParams);
-        next.set('page', String(page));
-        return (
-          <Button
-            key={page}
-            asChild
-            variant={page === currentPage ? 'default' : 'outline'}
-            size="icon"
-          >
-            <Link
-              to={`?${next.toString()}`}
-              aria-current={page === currentPage ? 'page' : undefined}
-            >
-              {page}
-            </Link>
-          </Button>
-        );
-      })}
-    </nav>
-  );
-}
-
-function SortBar({ state }: { state: Route.ComponentProps['loaderData']['state'] }) {
-  const [searchParams] = useSearchParams();
-  return (
-    <div className="mb-6 flex items-center gap-4 overflow-x-auto pb-1" aria-label="Sắp xếp kết quả">
-      <span className="shrink-0 text-sm font-medium text-foreground">Sắp xếp:</span>
+    <div
+      className="mb-6 flex items-center gap-4 overflow-x-auto pb-1"
+      aria-label={t('sort.ariaLabel')}
+    >
+      <span className="shrink-0 text-sm font-medium text-foreground">{t('sort.label')}</span>
       <div className="flex gap-3">
-        <SortChip
-          label="Đặt nhiều nhất"
-          value="bookings"
-          active={state.sort === 'bookings'}
-          params={searchParams}
-        />
-        <SortChip
-          label="Đánh giá nhiều nhất"
-          value="rating"
-          active={state.sort === 'rating'}
-          params={searchParams}
-        />
-        <SortChip
-          label="Giá thấp nhất"
-          value="price-asc"
-          active={state.sort === 'price-asc'}
-          params={searchParams}
-        />
-        <SortChip
-          label="Ưu đãi nhiều nhất"
-          value="relevance"
-          active={state.sort === 'relevance'}
-          params={searchParams}
-        />
+        {SORT_OPTIONS.map((option) => (
+          <SortChip
+            key={option.value}
+            label={t(option.labelKey)}
+            value={option.value}
+            active={state.sort === option.value}
+            params={searchParams}
+          />
+        ))}
       </div>
     </div>
   );
@@ -215,12 +166,13 @@ function SortChip({
   params,
 }: {
   label: string;
-  value: string;
+  value: SearchSort;
   active: boolean;
   params: URLSearchParams;
 }) {
   const next = new URLSearchParams(params);
-  next.set('sort', value);
+  if (value === 'relevance') next.delete('sort');
+  else next.set('sort', value);
   next.delete('page');
   return (
     <Button
@@ -239,216 +191,6 @@ function SortChip({
   );
 }
 
-function FilterPanel({
-  state,
-  amenities,
-  hideMap = false,
-}: {
-  state: Route.ComponentProps['loaderData']['state'];
-  amenities: string[];
-  hideMap?: boolean;
-}) {
-  const studioAmenities = new Map(MOCK_STUDIO_AMENITIES.map((item) => [item.value, item]));
-  amenities.forEach((amenity) => {
-    if (!studioAmenities.has(amenity)) {
-      studioAmenities.set(amenity, { value: amenity, label: amenity, count: 0 });
-    }
-  });
-
-  return (
-    <Form method="get" className="flex flex-col gap-6">
-      <input type="hidden" name="q" value={state.q} />
-      <input type="hidden" name="mode" value={state.mode} />
-      <input type="hidden" name="guests" value={state.guests} />
-      {state.mode === 'hourly' && state.hasDateSelection ? (
-        <input type="hidden" name="date" value={state.date} />
-      ) : state.mode === 'daily' && state.hasDailyRange ? (
-        <>
-          <input type="hidden" name="from" value={state.from} />
-          <input type="hidden" name="to" value={state.to} />
-        </>
-      ) : null}
-
-      {!hideMap ? (
-        <div className="h-50 overflow-hidden border border-border bg-muted">
-          <img
-            src="/images/catalog/map.png"
-            alt="Bản đồ khu vực các studio"
-            className="size-full object-cover"
-          />
-        </div>
-      ) : null}
-
-      <h2 className="text-base font-semibold uppercase text-foreground">Bộ lọc</h2>
-
-      <FilterSection title="Khoảng giá">
-        <div className="flex items-center gap-2">
-          <PriceInput name="minPrice" value={state.minPrice ?? 200_000} label="Giá tối thiểu" />
-          <span aria-hidden="true">–</span>
-          <PriceInput name="maxPrice" value={state.maxPrice ?? 400_000} label="Giá tối đa" />
-        </div>
-      </FilterSection>
-
-      <FilterSection title="Khu vực">
-        <FilterCheckList
-          options={MOCK_LOCATIONS}
-          name="location"
-          selected={[state.location]}
-          visibleCount={6}
-        />
-      </FilterSection>
-
-      <FilterSection title="Tiện ích Studio">
-        <FilterCheckList
-          options={[...studioAmenities.values()]}
-          name="amenities"
-          selected={state.amenities}
-        />
-      </FilterSection>
-
-      <FilterSection title="Tiện nghi phòng">
-        <FilterCheckList
-          options={MOCK_ROOM_AMENITIES}
-          name="amenities"
-          selected={state.amenities}
-          visibleCount={8}
-        />
-      </FilterSection>
-
-      <FilterSection title="Diện tích phòng">
-        <FilterCheckList options={AREA_OPTIONS} name="area" selected={[state.area]} />
-      </FilterSection>
-
-      <FilterSection title="Đánh giá sao">
-        <RadioGroup name="rating" defaultValue="all" className="gap-3">
-          <RatingOption value="all" label="Tất cả" />
-          {[5, 4, 3].map((rating) => (
-            <RatingOption key={rating} value={String(rating)} label={`Từ ${rating}`} stars={1} />
-          ))}
-        </RadioGroup>
-      </FilterSection>
-
-      <div className="sticky bottom-0 grid grid-cols-2 gap-2 bg-background/95 py-3 backdrop-blur-sm">
-        <Button asChild variant="ghost">
-          <Link to="?">Xóa tất cả</Link>
-        </Button>
-        <Button type="submit">Áp dụng</Button>
-      </div>
-    </Form>
-  );
-}
-
-function PriceInput({ name, value, label }: { name: string; value: number; label: string }) {
-  return (
-    <InputGroup className="h-11 rounded-sm bg-background shadow-none">
-      <InputGroupInput
-        name={name}
-        defaultValue={new Intl.NumberFormat('vi-VN').format(value)}
-        inputMode="numeric"
-        aria-label={label}
-        className="h-11 px-3 text-sm"
-      />
-      <InputGroupAddon align="inline-end" className="pr-3 font-normal">
-        đ
-      </InputGroupAddon>
-    </InputGroup>
-  );
-}
-
-function FilterCheckList({
-  options,
-  name,
-  selected,
-  visibleCount = options.length,
-}: {
-  options: FilterOptionMock[];
-  name: string;
-  selected: string[];
-  visibleCount?: number;
-}) {
-  const visible = options.slice(0, visibleCount);
-  const hidden = options.slice(visibleCount);
-  return (
-    <Collapsible>
-      <div className="flex flex-col gap-3">
-        {visible.map((option) => (
-          <FilterCheckbox key={option.value} option={option} name={name} selected={selected} />
-        ))}
-        {hidden.length ? (
-          <CollapsibleContent className="flex flex-col gap-3">
-            {hidden.map((option) => (
-              <FilterCheckbox key={option.value} option={option} name={name} selected={selected} />
-            ))}
-          </CollapsibleContent>
-        ) : null}
-        {hidden.length ? (
-          <CollapsibleTrigger className="group flex w-fit items-center gap-1 text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
-            <span className="group-data-[state=open]:hidden">Xem thêm</span>
-            <span className="hidden group-data-[state=open]:inline">Thu gọn</span>
-            <ChevronDown
-              className="size-4 transition-transform group-data-[state=open]:rotate-180"
-              aria-hidden="true"
-            />
-          </CollapsibleTrigger>
-        ) : null}
-      </div>
-    </Collapsible>
-  );
-}
-
-function FilterCheckbox({
-  option,
-  name,
-  selected,
-}: {
-  option: FilterOptionMock;
-  name: string;
-  selected: string[];
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm leading-5 text-foreground">
-      <Checkbox
-        name={name}
-        value={option.value}
-        defaultChecked={selected.includes(option.value) || selected.includes(option.label)}
-        className="size-4 rounded-xs"
-      />
-      <span>
-        {option.label} <span className="text-muted-foreground">({option.count})</span>
-      </span>
-    </label>
-  );
-}
-
-function RatingOption({
-  value,
-  label,
-  stars = 0,
-}: {
-  value: string;
-  label: string;
-  stars?: number;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm">
-      <RadioGroupItem value={value} />
-      <span>{label}</span>
-      {Array.from({ length: stars }, (_, index) => (
-        <Star key={index} className="size-4 fill-yellow-300 text-yellow-300" aria-hidden="true" />
-      ))}
-    </label>
-  );
-}
-
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="mb-3 text-sm font-medium text-foreground">{title}</legend>
-      {children}
-    </fieldset>
-  );
-}
-
 function ResultSkeleton() {
   return (
     <div
@@ -459,7 +201,6 @@ function ResultSkeleton() {
       <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
         <Skeleton className="rounded-none" />
         <Skeleton className="rounded-none" />
-        {/* <Skeleton className="absolute right-3 top-6 size-8 rounded-full bg-background shadow-md" /> */}
       </div>
       <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4">
         <div className="flex flex-col gap-1.5">

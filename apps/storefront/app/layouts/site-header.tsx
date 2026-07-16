@@ -7,12 +7,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@booking/ui/components/ui/sheet';
-import { Globe2, LayoutGrid, Menu, Search } from 'lucide-react';
+import { LayoutGrid, Menu, Search } from 'lucide-react';
 import { Link, NavLink, useFetcher, useLocation } from 'react-router';
 import { type Locale, NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths, switchLocalePath } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { TenantBrand } from './tenant-brand';
+
+/** Shared sizing for the desktop nav controls, which are shorter than the Button default. */
+const NAV_BUTTON = 'h-10 rounded-sm px-4 text-xs font-semibold';
 
 /** Tenant-aware header shared by the storefront, customer auth, and partner flows. */
 export function SiteHeader({
@@ -37,43 +40,39 @@ export function SiteHeader({
           <BrandHomeLink locale={locale} tenant={tenant} />
 
           <nav aria-label={t('mainNavigation')} className="flex items-center gap-4">
-            <Link
-              to={storefrontPaths.bookings(locale)}
-              prefetch="intent"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-foreground px-4 text-xs font-semibold text-foreground shadow-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            <Button asChild variant="outline" className={`${NAV_BUTTON} border-foreground`}>
+              <Link to={storefrontPaths.bookings(locale)} prefetch="intent">
+                <Search aria-hidden="true" className="size-4" />
+                {t('lookup')}
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className={`${NAV_BUTTON} border-primary text-primary hover:bg-primary/10 hover:text-primary`}
             >
-              <Search aria-hidden="true" className="size-4" />
-              {t('lookup')}
-            </Link>
-            <span className="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-foreground px-4 text-xs font-semibold text-foreground shadow-xs">
-              <Globe2 aria-hidden="true" className="size-4" />
-              {t('community')}
-            </span>
-            <Link
-              to={storefrontPaths.becomePartner(locale)}
-              prefetch="intent"
-              className="inline-flex h-10 items-center justify-center rounded-sm border border-primary px-4 text-xs font-semibold text-primary shadow-xs transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {t('becomePartner')}
-            </Link>
+              <Link to={storefrontPaths.becomePartner(locale)} prefetch="intent">
+                {t('becomePartner')}
+              </Link>
+            </Button>
             {currentUser ? (
               <AuthenticatedActions currentUser={currentUser} locale={locale} />
             ) : (
               <>
-                <Link
-                  to={storefrontPaths.login(locale, redirectTo)}
-                  prefetch="intent"
-                  className="inline-flex h-10 items-center justify-center rounded-sm px-4 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                <Button
+                  asChild
+                  variant="ghost"
+                  className={`${NAV_BUTTON} text-primary hover:bg-primary/10 hover:text-primary`}
                 >
-                  {t('login')}
-                </Link>
-                <Link
-                  to={storefrontPaths.register(locale)}
-                  prefetch="intent"
-                  className="inline-flex h-10 items-center justify-center rounded-sm bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {t('register')}
-                </Link>
+                  <Link to={storefrontPaths.login(locale, redirectTo)} prefetch="intent">
+                    {t('login')}
+                  </Link>
+                </Button>
+                <Button asChild className={NAV_BUTTON}>
+                  <Link to={storefrontPaths.register(locale)} prefetch="intent">
+                    {t('register')}
+                  </Link>
+                </Button>
               </>
             )}
           </nav>
@@ -139,11 +138,12 @@ export function SiteHeader({
 }
 
 function BrandHomeLink({ locale, tenant }: { locale: Locale; tenant: StorefrontTenant }) {
+  const { t } = useTranslation(NsI18n.Navigation);
   return (
     <Link
       to={storefrontPaths.home(locale)}
       prefetch="intent"
-      aria-label={`${tenant.name} - Trang chủ`}
+      aria-label={t('brandHome', { tenant: tenant.name })}
       className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <TenantBrand name={tenant.name} logoUrl={tenant.logoUrl} width={133} height={40} />
@@ -185,7 +185,7 @@ function MobileNavLink({
         prefetch="intent"
         className={
           emphasized
-            ? 'flex items-center gap-2 rounded-sm px-3 py-2.5 text-sm font-semibold text-primary hover:bg-accent'
+            ? 'flex items-center gap-2 rounded-sm px-3 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10'
             : 'flex items-center gap-2 rounded-sm px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted'
         }
       >
@@ -207,21 +207,23 @@ function LogoutForm({
   const fetcher = useFetcher();
   return (
     <fetcher.Form method="post" action={storefrontPaths.logout(locale)}>
-      <button
+      <Button
         type="submit"
+        variant="ghost"
         className={
           mobile
-            ? 'rounded-sm px-3 py-2.5 text-sm font-medium text-destructive'
-            : 'px-2 text-xs font-semibold text-destructive'
+            ? 'h-auto justify-start rounded-sm px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 hover:text-destructive'
+            : 'h-10 rounded-sm px-2 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive'
         }
       >
         {label}
-      </button>
+      </Button>
     </fetcher.Form>
   );
 }
 
 function LocaleSwitcher({ current }: { current: Locale }) {
+  const { t } = useTranslation(NsI18n.Navigation);
   const fetcher = useFetcher();
   const location = useLocation();
   const next: Locale = current === 'vi' ? 'en' : 'vi';
@@ -233,13 +235,14 @@ function LocaleSwitcher({ current }: { current: Locale }) {
     <fetcher.Form method="post" action="/set-locale">
       <input type="hidden" name="locale" value={next} />
       <input type="hidden" name="redirectTo" value={redirectTo} />
-      <button
+      <Button
         type="submit"
-        className="rounded-sm px-3 py-2.5 text-sm font-semibold uppercase text-muted-foreground hover:bg-muted"
-        aria-label={`Switch language to ${next}`}
+        variant="ghost"
+        className="h-auto justify-start rounded-sm px-3 py-2.5 text-sm font-semibold uppercase text-muted-foreground"
+        aria-label={t('switchLanguage', { locale: next })}
       >
         {current}
-      </button>
+      </Button>
     </fetcher.Form>
   );
 }

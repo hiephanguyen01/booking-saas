@@ -32,7 +32,7 @@ export function LocationTabs({
           <TabsTrigger
             key={loc.key}
             value={loc.key}
-            className="h-13! flex-none rounded-none border-x-0 border-t-0 border-b-2 border-b-transparent px-10 py-4 text-sm leading-5 font-semibold text-[#667085] shadow-none after:hidden data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+            className="h-13! flex-none rounded-none border-x-0 border-t-0 border-b-2 border-b-transparent px-10 py-4 text-sm leading-5 font-semibold text-muted-foreground shadow-none after:hidden data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
           >
             {loc.label}
           </TabsTrigger>
