@@ -1,3 +1,4 @@
+import type { PublicListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { useState } from 'react';
 import { NsI18n, useTranslation } from '../../lib/i18n';
@@ -5,7 +6,6 @@ import { ListingCard } from '../../features/catalog/components/listing-card';
 import { LocationTabs } from './location-tabs';
 import {
   filterHomeListingsByLocation,
-  type HomeListingViewModel,
   type HomeLocationKey,
 } from './home-listing-presentation';
 
@@ -16,7 +16,7 @@ const PAGE_SIZE = 8;
  * "Xem thêm" reveal. No new fetch/route: it
  * pages through the array already loaded by the home route's SSR loader.
  */
-export function RecommendedSection({ listings }: { listings: HomeListingViewModel[] }) {
+export function RecommendedSection({ listings }: { listings: PublicListingResponse[] }) {
   const { t } = useTranslation(NsI18n.Common);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [location, setLocation] = useState<HomeLocationKey>('hcm');
@@ -33,21 +33,19 @@ export function RecommendedSection({ listings }: { listings: HomeListingViewMode
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="min-h-29 bg-card px-4 pt-6 pb-1 font-studio shadow-[0_4px_5px_rgba(0,0,0,0.04)] sm:px-6">
-        <h2 className="text-lg leading-7 font-semibold text-[#101828]">
-          {t('home.recommended')}
-        </h2>
+      <div className="min-h-29 bg-card px-4 pt-6 pb-1 font-studio shadow-sm sm:px-6">
+        <h2 className="text-lg leading-7 font-semibold text-foreground">{t('home.recommended')}</h2>
         <LocationTabs value={location} onValueChange={changeLocation} />
       </div>
       {shown.length > 0 ? (
         <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {shown.map(({ listing, presentation }) => (
-            <ListingCard key={listing.id} listing={listing} presentation={presentation} />
+          {shown.map((listing) => (
+            <ListingCard key={listing.id} listing={listing} />
           ))}
         </div>
       ) : (
         <p className="rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
-          Chưa có studio tại khu vực này.
+          {t('home.emptyInLocation')}
         </p>
       )}
       {hasMore ? (

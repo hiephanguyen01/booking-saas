@@ -20,9 +20,15 @@ export const viCommon = {
     locationPlaceholder: 'Địa điểm',
     guestsPlaceholder: '1 - 5 khách',
     search: 'Tìm kiếm',
-    topListings: 'Top 10 Studio đặt nhiều nhất',
+    // Was "Top 10 Studio đặt nhiều nhất". The ranking behind that claim was a
+    // booking count hashed from the listing id, so the copy is now neutral
+    // until the public contract exposes real popularity.
+    topListings: 'Studio nổi bật',
     recommended: 'Đề xuất dành cho bạn',
     loadMore: 'Xem thêm',
+    emptyTitle: 'Chưa có studio phù hợp',
+    emptyBody: 'Các studio mới sẽ xuất hiện tại đây ngay khi được xuất bản.',
+    emptyInLocation: 'Chưa có studio tại khu vực này.',
     locations: {
       hcm: 'TP Hồ Chí Minh',
       hanoi: 'Hà Nội',

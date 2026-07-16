@@ -11,6 +11,7 @@ export const enListing = {
   fromPrice: 'and up',
   fromPriceShort: 'from',
   perHour: 'per hour',
+  perDay: 'per day',
   addToFavorites: 'Add to favorites',
   pickScheduleForPrice: 'Pick a schedule to see the price',
   subtotalEstimate: 'estimated total',

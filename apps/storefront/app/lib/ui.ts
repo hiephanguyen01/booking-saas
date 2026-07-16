@@ -21,6 +21,16 @@ export function typeIcon(slug: string): LucideIcon {
   return Tag;
 }
 
+/**
+ * The unit a "from" price is quoted in.
+ *
+ * These were previously the Vietnamese literals `'giờ' | 'ngày'`, produced
+ * server-side and baked into the type, which made the price row untranslatable
+ * on the `/en` routes the storefront already serves. Render them through the
+ * `listing.perHour` / `listing.perDay` i18n keys.
+ */
+export type PriceUnit = 'hour' | 'day';
+
 /** VND đồng digit string → "1.200.000₫". */
 export function formatVnd(amount: string | null | undefined): string | null {
   if (amount == null) return null;

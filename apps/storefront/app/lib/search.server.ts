@@ -221,7 +221,7 @@ async function enrichGroup(
     provinceName: group.provinceName,
     amenities: group.amenities,
     priceFrom: String(priceFrom),
-    priceUnit: state.mode === 'hourly' ? 'giờ' : 'ngày',
+    priceUnit: state.mode === 'hourly' ? 'hour' : 'day',
     matchingRoomCount: evaluated.length,
     rooms: evaluated,
   };
@@ -255,7 +255,7 @@ async function enrichStandalone(
     provinceName: detail.provinceName,
     amenities: [],
     priceFrom: evaluated.price,
-    priceUnit: state.mode === 'hourly' ? 'giờ' : 'ngày',
+    priceUnit: state.mode === 'hourly' ? 'hour' : 'day',
     matchingRoomCount: 1,
     rooms: [evaluated],
   };

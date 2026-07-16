@@ -1,3 +1,4 @@
+import type { PriceUnit } from '../../lib/ui';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
 export type SearchMode = 'hourly' | 'daily';
@@ -41,7 +42,8 @@ export interface EnrichedSearchListing {
   provinceName: string | null;
   amenities: string[];
   priceFrom: string;
-  priceUnit: 'giờ' | 'ngày';
+  /** Locale-independent; rendered via the listing.perHour/perDay i18n keys. */
+  priceUnit: PriceUnit;
   matchingRoomCount: number;
   rooms: SearchRoomSummary[];
 }

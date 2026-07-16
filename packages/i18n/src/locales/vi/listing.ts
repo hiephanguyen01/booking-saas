@@ -8,6 +8,7 @@ export const viListing = {
   fromPrice: 'trở lên',
   fromPriceShort: 'từ',
   perHour: 'cho 1 giờ',
+  perDay: 'cho 1 ngày',
   addToFavorites: 'Thêm vào yêu thích',
   pickScheduleForPrice: 'Chọn lịch để xem giá',
   subtotalEstimate: 'tổng tạm tính',

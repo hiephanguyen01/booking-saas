@@ -13,7 +13,7 @@ import {
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { backendLogin, publicPost } from './api.server';
-import { authFlow, type AuthFlowPhase } from './auth-flow.server';
+import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
 import { getOptionalAuth, requireAuth } from './auth.server';
 import { applyAsPartner, type PartnerApplyPayload, type PartnerErrorCode } from './partner.server';
 import { suppressStorefrontSessionCommit } from './request-auth.server';
@@ -107,6 +107,11 @@ export async function startPartnerRegistration(request: Request, localeParam?: s
   return redirect(path(locale, 'verify'), { headers: { 'Set-Cookie': setCookie } });
 }
 
+/**
+ * Server-side flow accessor: returns the full record, including the
+ * `completionToken`. Safe only inside an action — never return this from a
+ * loader (see `AuthFlowView`); use `requirePartnerView` there instead.
+ */
 export async function requirePartnerPhase(
   request: Request,
   phase: AuthFlowPhase,
@@ -122,6 +127,25 @@ export async function requirePartnerPhase(
       Math.ceil(((flow.record.resendAvailableAt ?? Date.now()) - Date.now()) / 1_000),
     ),
   };
+}
+
+/** Loader-safe flow gate: enforces the phase and returns only client-safe fields. */
+export async function requirePartnerView(
+  request: Request,
+  phase: AuthFlowPhase,
+  localeParam?: string,
+): Promise<AuthFlowView> {
+  return flowView(await requirePartnerPhase(request, phase, localeParam));
+}
+
+/** Loader-safe phase gate for steps that render no flow data at all. */
+export async function requirePartnerPhaseOnly(
+  request: Request,
+  phase: AuthFlowPhase,
+  localeParam?: string,
+): Promise<null> {
+  await requirePartnerPhase(request, phase, localeParam);
+  return null;
 }
 
 export async function verifyPartnerRegistration(request: Request, localeParam?: string) {
@@ -264,13 +288,14 @@ export function partnerApplyPayloadFor(
 
 export async function loadPartnerProfile(request: Request, localeParam?: string) {
   const locale = localeOf(localeParam);
-  const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
+  await requirePartnerPhase(request, 'partner_registration_profile', locale);
   const auth = requireAuth(startPath(locale));
   const [tenant, provinces] = await Promise.all([
     resolveTenant(request),
     loadAdministrativeProvinces(request),
   ]);
-  return { email: auth.info.user.email, tenantName: tenant.name, provinces, flow };
+  // The flow record is deliberately not returned — it holds the completionToken.
+  return { email: auth.info.user.email, tenantName: tenant.name, provinces };
 }
 
 export async function submitPartnerProfile(request: Request, localeParam?: string) {

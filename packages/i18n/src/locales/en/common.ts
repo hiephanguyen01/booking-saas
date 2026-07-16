@@ -23,9 +23,12 @@ export const enCommon = {
     locationPlaceholder: 'Location',
     guestsPlaceholder: '1 - 5 guests',
     search: 'Search',
-    topListings: 'Top 10 most-booked studios',
+    topListings: 'Featured studios',
     recommended: 'Recommended for you',
     loadMore: 'Show more',
+    emptyTitle: 'No studios yet',
+    emptyBody: 'New studios will appear here as soon as they are published.',
+    emptyInLocation: 'No studios in this area yet.',
     locations: {
       hcm: 'Ho Chi Minh City',
       hanoi: 'Hanoi',

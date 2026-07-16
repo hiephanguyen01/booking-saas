@@ -1,10 +1,10 @@
 import { Form, useActionData } from 'react-router';
-import { completePartnerPassword, requirePartnerPhase, type PartnerOnboardingActionData } from '../../lib/partner-onboarding.server';
+import { completePartnerPassword, requirePartnerPhaseOnly, type PartnerOnboardingActionData } from '../../lib/partner-onboarding.server';
 import { AuthSplit, FormAlert, FormHeading, PasswordField, PrimaryButton } from './shared';
 import type { Route } from './+types/password';
 
 export const meta = () => [{ title: 'Thiết lập mật khẩu · Booking Studio' }, { name: 'robots', content: 'noindex,nofollow' }];
-export const loader = ({ request, params }: Route.LoaderArgs) => requirePartnerPhase(request, 'partner_registration_password', params.locale);
+export const loader = ({ request, params }: Route.LoaderArgs) => requirePartnerPhaseOnly(request, 'partner_registration_password', params.locale);
 export const action = ({ request, params }: Route.ActionArgs) => completePartnerPassword(request, params.locale);
 
 export default function PartnerPassword() {
