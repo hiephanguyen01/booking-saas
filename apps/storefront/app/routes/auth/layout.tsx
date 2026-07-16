@@ -16,6 +16,7 @@ export default function AuthLayout() {
       : t('header.login');
   return (
     <AccountFlowLayout
+      showCategories
       context={context}
       section={section}
       contentClassName="flex flex-1 items-center px-4 py-10 sm:px-6 sm:py-16"

@@ -5,14 +5,15 @@ import type { AuthActionData } from '../../lib/auth-types';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontContext } from '../../root';
 import type { Route } from './+types/register-password';
-export const meta = ({ params }: Route.MetaArgs) => [
-  { title: params.locale === 'en' ? 'Create password' : 'Tạo mật khẩu' },
+export const meta = () => [
+  { title: 'Create password' },
   { name: 'robots', content: 'noindex,nofollow' },
 ];
 export const loader = ({ request, params }: Route.LoaderArgs) =>
   requireFlowPhase(request, 'registration_password', `/${params.locale}/auth/register`);
 export const action = ({ request, params }: Route.ActionArgs) =>
   completePasswordAction(request, params.locale, 'registration');
+
 export default function RouteComponent() {
   const { tenant } = useOutletContext<StorefrontContext>();
   const actionData = useActionData<AuthActionData>();

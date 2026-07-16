@@ -43,6 +43,7 @@ export interface PublicListingRecord extends ListingRecord {
   resourceTimezone: string;
   listingTypeSlug: string;
   group: { title: string; slug: string } | null;
+  cancellationPolicy: { id: string; name: string; rules: unknown } | null;
   partnerName: string;
   partnerVerifiedAt: Date | null;
   partnerActiveSince: Date;

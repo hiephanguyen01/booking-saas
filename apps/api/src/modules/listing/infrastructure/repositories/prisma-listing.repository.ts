@@ -104,6 +104,7 @@ export class PrismaListingRepository implements IListingRepository {
         resource: { select: { timezone: true } },
         listingType: { select: { slug: true } },
         group: { select: { title: true, slug: true, status: true } },
+        cancellationPolicy: { select: { id: true, name: true, rules: true } },
         // Trust signals (§16.1) — partner display name + verification + tenure.
         // Contact info is deliberately NOT selected: it is revealed only after a
         // booking is confirmed (§7.3 anti-disintermediation).
@@ -133,6 +134,7 @@ export class PrismaListingRepository implements IListingRepository {
         l.group && l.group.status === 'published'
           ? { title: l.group.title, slug: l.group.slug }
           : null,
+      cancellationPolicy: l.cancellationPolicy,
       partnerName: l.partner.name,
       partnerVerifiedAt: l.partner.verifiedAt,
       partnerActiveSince: l.partner.createdAt,

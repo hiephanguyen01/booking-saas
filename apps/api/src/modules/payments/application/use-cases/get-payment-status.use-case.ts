@@ -4,6 +4,7 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { BOOKING_REPOSITORY, type IBookingRepository } from '../../../booking/domain/ports/booking-repository.port';
 import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../../domain/ports/payment-repository.port';
+import { publicPaymentStatus } from '../../domain/payment-status';
 
 /** Storefront polls payment status here — never trusts the returnUrl (§11.2). */
 @Injectable()
@@ -20,12 +21,11 @@ export class GetPaymentStatusUseCase {
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const booking = await this.bookings.findByCode(tx, code);
       if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
-      const succeeded = await this.payments.findSucceededByBooking(tx, booking.id);
-      const pending = succeeded ? null : await this.payments.findActivePendingByBooking(tx, booking.id);
+      const payment = await this.payments.findLatestByBooking(tx, booking.id);
       return {
         bookingCode: code,
         bookingStatus: booking.status,
-        paymentStatus: succeeded ? 'succeeded' : pending ? 'pending' : 'none',
+        paymentStatus: publicPaymentStatus(payment?.status ?? null),
         paidAmount: booking.paidAmount.toString(),
       };
     });
