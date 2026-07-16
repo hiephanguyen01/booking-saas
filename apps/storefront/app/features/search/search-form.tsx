@@ -25,6 +25,7 @@ import { useLocale } from '../../lib/use-locale';
 import {
   dateSelectionForMode,
   locationSelectOptions,
+  canSubmitSearch,
   parseSearchState,
   type SearchDateSelection,
   type SearchMode,
@@ -82,11 +83,10 @@ export function SearchForm({
     .slice(0, MAX_TYPE_TABS);
   const options = locationSelectOptions(locations, state.location);
   const action = storefrontPaths.catalog(locale, selectedType);
-  const dailyRange = validDailyRange(
-    range.from ? localToDateOnly(range.from) : undefined,
-    range.to ? localToDateOnly(range.to) : undefined,
-  );
-  const canSubmit = mode === 'hourly' ? Boolean(date) : dailyRange !== null;
+  const rangeFrom = range.from ? localToDateOnly(range.from) : undefined;
+  const rangeTo = range.to ? localToDateOnly(range.to) : undefined;
+  const dailyRange = validDailyRange(rangeFrom, rangeTo);
+  const canSubmit = canSubmitSearch(mode, rangeFrom, rangeTo);
 
   function changeMode(nextMode: SearchMode): void {
     if (nextMode === mode) return;

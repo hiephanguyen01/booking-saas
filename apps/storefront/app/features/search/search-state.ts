@@ -174,6 +174,23 @@ export function validDailyRange(
   return { from, to };
 }
 
+/**
+ * Whether the search form may submit its current date selection.
+ *
+ * Submitting with no date at all is legitimate — the form omits the date params
+ * and the catalog applies no date filter. Only a daily range the visitor started
+ * but did not finish blocks submission, because submitting it would silently
+ * drop the half they did pick.
+ */
+export function canSubmitSearch(
+  mode: SearchMode,
+  from: string | undefined,
+  to: string | undefined,
+): boolean {
+  if (mode === 'hourly' || !from) return true;
+  return validDailyRange(from, to) !== null;
+}
+
 export function rangeDates(from: string, to: string): string[] {
   const dates: string[] = [];
   for (let cursor = from; cursor < to; cursor = addDays(cursor, 1)) dates.push(cursor);

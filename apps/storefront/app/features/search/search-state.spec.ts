@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canSubmitSearch,
   dateSelectionForMode,
   locationSelectOptions,
   matchesArea,
@@ -130,5 +131,28 @@ describe('storefront search state', () => {
       from: '2026-08-10',
       to: '2026-08-12',
     });
+  });
+});
+
+describe('canSubmitSearch', () => {
+  // The home page hero mounts the form with no date selected; its Search button
+  // is the primary call to action and must not start out disabled.
+  it('allows searching with no date chosen at all', () => {
+    expect(canSubmitSearch('daily', undefined, undefined)).toBe(true);
+    expect(canSubmitSearch('hourly', undefined, undefined)).toBe(true);
+  });
+
+  it('blocks a daily range the visitor started but did not finish', () => {
+    expect(canSubmitSearch('daily', '2026-08-10', undefined)).toBe(false);
+    expect(canSubmitSearch('daily', '2026-08-10', '2026-08-09')).toBe(false);
+    expect(canSubmitSearch('daily', '2026-08-10', '2026-08-10')).toBe(false);
+  });
+
+  it('allows a complete daily range', () => {
+    expect(canSubmitSearch('daily', '2026-08-10', '2026-08-12')).toBe(true);
+  });
+
+  it('ignores a stale range while in hourly mode', () => {
+    expect(canSubmitSearch('hourly', '2026-08-10', undefined)).toBe(true);
   });
 });
