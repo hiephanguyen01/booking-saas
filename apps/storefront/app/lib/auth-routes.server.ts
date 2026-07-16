@@ -13,7 +13,7 @@ import {
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
-import { authFlow, type AuthFlowPhase } from './auth-flow.server';
+import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
 import { backendLogin, backendLogout, publicPost } from './api.server';
 import { getOptionalAuth } from './auth.server';
 import { suppressStorefrontSessionCommit } from './request-auth.server';
@@ -88,6 +88,11 @@ export async function startResetAction(request: Request, localeParam?: string) {
   });
 }
 
+/**
+ * Server-side flow accessor: returns the full record, including the
+ * `completionToken`. Safe only inside an action — never return this from a
+ * loader (see `AuthFlowView`); use `requireFlowView` there instead.
+ */
 export async function requireFlowPhase(request: Request, phase: AuthFlowPhase, fallback: string) {
   const flow = await authFlow.read(request);
   if (!flow || flow.record.phase !== phase) throw redirect(fallback);
@@ -98,6 +103,25 @@ export async function requireFlowPhase(request: Request, phase: AuthFlowPhase, f
       Math.ceil(((flow.record.resendAvailableAt ?? Date.now()) - Date.now()) / 1_000),
     ),
   };
+}
+
+/** Loader-safe flow gate: enforces the phase and returns only client-safe fields. */
+export async function requireFlowView(
+  request: Request,
+  phase: AuthFlowPhase,
+  fallback: string,
+): Promise<AuthFlowView> {
+  return flowView(await requireFlowPhase(request, phase, fallback));
+}
+
+/** Loader-safe phase gate for steps that render no flow data at all. */
+export async function requireFlowPhaseOnly(
+  request: Request,
+  phase: AuthFlowPhase,
+  fallback: string,
+): Promise<null> {
+  await requireFlowPhase(request, phase, fallback);
+  return null;
 }
 
 export async function verifyAction(

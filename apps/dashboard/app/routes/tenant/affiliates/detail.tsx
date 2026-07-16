@@ -173,6 +173,7 @@ function RateForm({ currentRate }: { currentRate: string | null }) {
           max={100}
           defaultValue={currentRate ?? ''}
           placeholder="Theo quy tắc"
+          // pr-7 trails the control's px-4 so the "%" suffix stays clear.
           className="pr-7"
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">

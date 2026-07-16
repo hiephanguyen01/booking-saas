@@ -1,3 +1,4 @@
+import type { PriceUnit } from '../../lib/ui';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
 export type SearchMode = 'hourly' | 'daily';
@@ -41,7 +42,8 @@ export interface EnrichedSearchListing {
   provinceName: string | null;
   amenities: string[];
   priceFrom: string;
-  priceUnit: 'giờ' | 'ngày';
+  /** Locale-independent; rendered via the listing.perHour/perDay i18n keys. */
+  priceUnit: PriceUnit;
   matchingRoomCount: number;
   rooms: SearchRoomSummary[];
 }
@@ -149,12 +151,44 @@ export function dateSelectionForMode(nextMode: SearchMode): SearchDateSelection 
   return { mode: nextMode, date: '', from: '', to: '' };
 }
 
+/**
+ * The dates the visitor actually chose. `date`/`from`/`to` carry today/tomorrow
+ * fallbacks so consumers always have a usable value; a form seeding its own
+ * state from them would submit a filter nobody asked for, so gate on the
+ * explicit-selection flags.
+ */
+export function selectedDates(state: StorefrontSearchState): SearchDateSelection {
+  return {
+    mode: state.mode,
+    date: state.hasDateSelection ? state.date : '',
+    from: state.hasDailyRange ? state.from : '',
+    to: state.hasDailyRange ? state.to : '',
+  };
+}
+
 export function validDailyRange(
   from: string | undefined,
   to: string | undefined,
 ): { from: string; to: string } | null {
   if (!from || !to || !DATE_RE.test(from) || !DATE_RE.test(to) || to <= from) return null;
   return { from, to };
+}
+
+/**
+ * Whether the search form may submit its current date selection.
+ *
+ * Submitting with no date at all is legitimate — the form omits the date params
+ * and the catalog applies no date filter. Only a daily range the visitor started
+ * but did not finish blocks submission, because submitting it would silently
+ * drop the half they did pick.
+ */
+export function canSubmitSearch(
+  mode: SearchMode,
+  from: string | undefined,
+  to: string | undefined,
+): boolean {
+  if (mode === 'hourly' || !from) return true;
+  return validDailyRange(from, to) !== null;
 }
 
 export function rangeDates(from: string, to: string): string[] {

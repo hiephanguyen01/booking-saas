@@ -2,15 +2,18 @@ import { affiliateRegistrationSchema, type AffiliateRegistrationInput } from '@b
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { CheckCircle2 } from 'lucide-react';
+import { useMemo } from 'react';
 import { data, Link, useRouteLoaderData } from 'react-router';
 import { applyAsAffiliate } from '../lib/affiliate.server';
+import { NsI18n, useTranslation, type ScopedI18n, type ScopedTranslationKey } from '../lib/i18n';
 import { registerOrLogin } from '../lib/partner.server';
 import { resolveTenant } from '../lib/tenant.server';
 import type { loader as rootLoader } from '../root';
 import type { Route } from './+types/become-affiliate';
+import { partnerMeta } from './partner-onboarding/shared';
 
-export function meta() {
-  return [{ title: 'Đăng ký trở thành cộng tác viên' }, { name: 'robots', content: 'noindex' }];
+export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
+  return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'affiliate');
 }
 
 /** Tells root.tsx to hide the SiteHeader and SiteFooter on this page. */
@@ -25,18 +28,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-const APPLY_ERROR_MESSAGES: Record<string, string> = {
-  emailTakenWrongPassword: 'Email đã tồn tại nhưng mật khẩu không đúng.',
-  TENANT_INACTIVE: 'Cửa hàng hiện không nhận đăng ký cộng tác viên.',
-  generic: 'Có lỗi xảy ra, vui lòng thử lại.',
-};
-
 export async function action({ request }: Route.ActionArgs) {
   const tenant = await resolveTenant(request);
 
   const parsed = affiliateRegistrationSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return data({ fieldErrors: parsed.error.flatten().fieldErrors, error: null, ok: false }, { status: 400 });
+    return data(
+      { fieldErrors: parsed.error.flatten().fieldErrors, error: null, ok: false },
+      { status: 400 },
+    );
   }
   const v = parsed.data;
 
@@ -54,29 +54,59 @@ export async function action({ request }: Route.ActionArgs) {
   if (v.accountHolder?.trim()) payoutInfo.accountHolder = v.accountHolder.trim();
 
   const applied = await applyAsAffiliate(auth.token, { tenantId: tenant.id, payoutInfo });
-  if (!applied.ok) return data({ fieldErrors: null, error: applied.code, ok: false }, { status: 400 });
+  if (!applied.ok)
+    return data({ fieldErrors: null, error: applied.code, ok: false }, { status: 400 });
 
   return { fieldErrors: null, error: null, ok: true as const };
 }
 
-const FIELDS: FieldConfig<AffiliateRegistrationInput>[] = [
-  { name: 'fullName', type: 'text', label: 'Họ và tên', autoComplete: 'name', colSpan: 2 },
-  { name: 'email', type: 'email', label: 'Email', autoComplete: 'email' },
-  { name: 'phone', type: 'text', label: 'Số điện thoại', autoComplete: 'tel' },
-  { name: 'password', type: 'password', label: 'Mật khẩu', autoComplete: 'new-password', colSpan: 2 },
-  { name: 'bankName', type: 'text', label: 'Ngân hàng (tuỳ chọn)' },
-  { name: 'accountNo', type: 'text', label: 'Số tài khoản (tuỳ chọn)' },
-  { name: 'accountHolder', type: 'text', label: 'Chủ tài khoản (tuỳ chọn)', colSpan: 2 },
-];
+const APPLY_ERRORS = {
+  emailTakenWrongPassword: 'common:becomePartner.errors.emailTakenWrongPassword',
+  TENANT_INACTIVE: 'auth:affiliate.errors.tenantInactive',
+} as const satisfies Record<string, ScopedTranslationKey<[NsI18n.Auth, NsI18n.Common]>>;
+
+function fields(
+  t: ScopedI18n<[NsI18n.Auth, NsI18n.Common]>['t'],
+): FieldConfig<AffiliateRegistrationInput>[] {
+  return [
+    {
+      name: 'fullName',
+      type: 'text',
+      label: t('common:becomePartner.fullName'),
+      autoComplete: 'name',
+      colSpan: 2,
+    },
+    { name: 'email', type: 'email', label: t('common:becomePartner.email'), autoComplete: 'email' },
+    { name: 'phone', type: 'text', label: t('common:becomePartner.phone'), autoComplete: 'tel' },
+    {
+      name: 'password',
+      type: 'password',
+      label: t('common:becomePartner.password'),
+      autoComplete: 'new-password',
+      colSpan: 2,
+    },
+    { name: 'bankName', type: 'text', label: t('auth:affiliate.bankOptional') },
+    { name: 'accountNo', type: 'text', label: t('auth:affiliate.accountNoOptional') },
+    {
+      name: 'accountHolder',
+      type: 'text',
+      label: t('auth:affiliate.accountHolderOptional'),
+      colSpan: 2,
+    },
+  ];
+}
 
 function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantName: string }) {
   return (
-    <header className="flex h-[72px] items-center border-b border-gray-100 px-6 lg:px-10">
-      <Link to="/" className="flex items-center gap-2">
+    <header className="flex h-18 items-center border-b border-border px-6 lg:px-10">
+      <Link
+        to="/"
+        className="flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
         {logoUrl ? (
           <img src={logoUrl} alt={tenantName} className="h-9 w-auto max-w-40 object-contain" />
         ) : (
-          <span className="text-lg font-semibold text-gray-900">{tenantName}</span>
+          <span className="text-lg font-semibold text-foreground">{tenantName}</span>
         )}
       </Link>
     </header>
@@ -87,30 +117,40 @@ export default function BecomeAffiliate({ loaderData, actionData }: Route.Compon
   const { tenantName, dashboardUrl } = loaderData;
   const rootData = useRouteLoaderData<typeof rootLoader>('root');
   const logoUrl = loaderData.tenantLogoUrl ?? rootData?.tenant?.logoUrl ?? null;
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
+  const formFields = useMemo(() => fields(t), [t]);
 
-  const serverError = actionData?.error
-    ? (APPLY_ERROR_MESSAGES[actionData.error] ?? APPLY_ERROR_MESSAGES.generic)
+  const errorCode = actionData?.error;
+  const serverError = errorCode
+    ? t(
+        APPLY_ERRORS[errorCode as keyof typeof APPLY_ERRORS] ??
+          'common:becomePartner.errors.generic',
+      )
     : null;
 
   if (actionData?.ok) {
     return (
-      <div className="min-h-dvh bg-white">
+      <div className="min-h-dvh bg-background">
         <BrandHeader logoUrl={logoUrl} tenantName={tenantName} />
-        <main className="flex min-h-[calc(100dvh-72px)] items-center justify-center px-6 py-20">
-          <div className="w-full max-w-[570px] rounded-2xl border border-gray-100 bg-white p-10 text-center shadow-sm">
-            <div className="mx-auto mb-6 flex size-[104px] items-center justify-center rounded-full bg-green-50">
-              <CheckCircle2 className="size-12 text-green-500" />
+        <main className="flex min-h-[calc(100dvh-4.5rem)] items-center justify-center px-6 py-20">
+          <div className="w-full max-w-[570px] rounded-2xl border border-border bg-card p-10 text-center text-card-foreground shadow-sm">
+            <div
+              className="mx-auto mb-6 flex size-26 items-center justify-center rounded-full bg-primary/10 text-primary"
+              aria-hidden="true"
+            >
+              <CheckCircle2 className="size-12" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Đăng ký thành công</h1>
-            <p className="mt-3 text-sm text-gray-600">
-              Yêu cầu cộng tác viên của bạn tại {tenantName} đang chờ được duyệt. Sau khi được duyệt, bạn có
-              thể tạo link giới thiệu và theo dõi hoa hồng trong bảng điều khiển.
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {t('auth:affiliate.successTitle')}
+            </h1>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t('auth:affiliate.successBody', { tenant: tenantName })}
             </p>
             <a
               href={`${dashboardUrl}/auth/login`}
-              className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
             >
-              Đến bảng điều khiển
+              {t('common:becomePartner.goToDashboard')}
             </a>
           </div>
         </main>
@@ -119,21 +159,23 @@ export default function BecomeAffiliate({ loaderData, actionData }: Route.Compon
   }
 
   return (
-    <div className="min-h-dvh bg-white">
+    <div className="min-h-dvh bg-background">
       <BrandHeader logoUrl={logoUrl} tenantName={tenantName} />
       <main className="mx-auto max-w-[640px] px-6 py-10 lg:px-10">
-        <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm lg:p-10">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Trở thành cộng tác viên</h1>
-          <p className="mt-1.5 text-sm text-gray-600">
-            Giới thiệu khách hàng cho {tenantName} và nhận hoa hồng trên mỗi lượt đặt thành công.
+        <div className="rounded-2xl border border-border bg-card p-8 text-card-foreground shadow-sm lg:p-10">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {t('auth:affiliate.title')}
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {t('auth:affiliate.subtitle', { tenant: tenantName })}
           </p>
 
           <div className="mt-8">
             <GenericForm
               schema={affiliateRegistrationSchema}
-              fields={FIELDS}
+              fields={formFields}
               columns={2}
-              submitLabel="Đăng ký"
+              submitLabel={t('auth:affiliate.submit')}
               submitFullWidth
               serverError={serverError}
               fieldErrors={actionData?.fieldErrors ?? null}

@@ -1,9 +1,9 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { BookingI18nProvider, type Locale } from '@booking/i18n';
 import { QueryProvider } from '@booking/query';
+import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import {
   data,
-  isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
@@ -16,6 +16,8 @@ import type { Route } from './+types/root';
 import './app.css';
 import { SiteFooter } from './layouts/site-footer';
 import { SiteHeader } from './layouts/site-header';
+import { NsI18n, useTranslation } from './lib/i18n';
+import { storefrontPaths } from './lib/locale-paths';
 import {
   readRefCode,
   refAttributionCookie,
@@ -137,26 +139,17 @@ export default function App({ loaderData }: Route.ComponentProps) {
     (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
   );
 
-  if (!tenant.live) {
-    return (
-      <div className="min-h-screen bg-(--sf-background)">
-        <ThemeStyle theme={tenant.theme} />
-        <SuspendedNotice name={tenant.name} />
-      </div>
-    );
-  }
+  const outletContext: StorefrontContext = { tenant, listingTypes, locale, canonical, currentUser };
 
   return (
     <BookingI18nProvider locale={locale}>
       <QueryProvider>
         <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
           <ThemeStyle theme={tenant.theme} />
-          {isStandalone ? (
-            <Outlet
-              context={
-                { tenant, listingTypes, locale, canonical, currentUser } satisfies StorefrontContext
-              }
-            />
+          {!tenant.live ? (
+            <SuspendedNotice name={tenant.name} />
+          ) : isStandalone ? (
+            <Outlet context={outletContext} />
           ) : (
             <>
               <SiteHeader
@@ -166,17 +159,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
                 currentUser={currentUser}
               />
               <main className="flex-1">
-                <Outlet
-                  context={
-                    {
-                      tenant,
-                      listingTypes,
-                      locale,
-                      canonical,
-                      currentUser,
-                    } satisfies StorefrontContext
-                  }
-                />
+                <Outlet context={outletContext} />
               </main>
               <SiteFooter tenant={tenant} />
             </>
@@ -188,23 +171,30 @@ export default function App({ loaderData }: Route.ComponentProps) {
 }
 
 function SuspendedNotice({ name }: { name: string }) {
+  const { t } = useTranslation(NsI18n.Error);
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-3 p-8 text-center">
-      <h1 className="text-2xl font-semibold">{name} tạm ngưng hoạt động</h1>
-      <p className="text-muted-foreground">
-        Trang đặt chỗ này hiện không khả dụng. Vui lòng liên hệ chủ cửa hàng để biết thêm chi tiết.
-      </p>
+    <main className="mx-auto flex flex-1 max-w-lg flex-col items-center justify-center gap-3 p-8 text-center">
+      <h1 className="text-2xl font-semibold">{t('tenantSuspendedTitle', { tenant: name })}</h1>
+      <p className="text-muted-foreground">{t('tenantSuspendedDescription')}</p>
     </main>
   );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const message = isRouteErrorResponse(error)
-    ? `${error.status} ${error.statusText}`
-    : 'Đã có lỗi xảy ra';
+  // The root loader may be what threw, so fall back to the default locale.
+  const locale = useRouteLoaderData<typeof loader>('root')?.locale ?? 'vi';
   return (
-    <main className="mx-auto max-w-lg p-8 text-center">
-      <h1 className="text-2xl font-semibold">{message}</h1>
+    <BookingI18nProvider locale={locale}>
+      <RootErrorNotice error={error} locale={locale} />
+    </BookingI18nProvider>
+  );
+}
+
+function RootErrorNotice({ error, locale }: { error: unknown; locale: Locale }) {
+  const { t } = useTranslation(NsI18n.Error);
+  return (
+    <main className="flex min-h-dvh flex-col justify-center bg-background text-foreground">
+      <RouteErrorState error={error} homeHref={storefrontPaths.home(locale)} homeLabel={t('home')} />
     </main>
   );
 }

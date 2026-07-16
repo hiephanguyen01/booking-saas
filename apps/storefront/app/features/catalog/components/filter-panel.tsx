@@ -1,0 +1,299 @@
+import { Button } from '@booking/ui/components/ui/button';
+import { Checkbox } from '@booking/ui/components/ui/checkbox';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@booking/ui/components/ui/collapsible';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@booking/ui/components/ui/input-group';
+import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
+import { ChevronDown } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Form, Link } from 'react-router';
+import { NsI18n, useTranslation } from '../../../lib/i18n';
+import {
+  locationSelectOptions,
+  type SearchArea,
+  type StorefrontSearchState,
+} from '../../search/search-state';
+
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+/** Mirrors the ranges `matchesArea()` implements — the only room sizes the search can honour. */
+const AREA_VALUES = ['under-25', '25-50', '50-100', 'over-100'] as const satisfies readonly Exclude<
+  SearchArea,
+  ''
+>[];
+
+/**
+ * The catalog sidebar filters.
+ *
+ * Every option comes from the facets the loader derived from the current result
+ * set. The panel used to be built on a hand-written mock catalogue (invented
+ * locations, two amenity lists and "(132)" counts rendered as if they were real)
+ * whose location values were slugs — `containsLocation()` substring-matches the
+ * listing's address text, so a slug never matched and any location filter
+ * returned nothing.
+ */
+export function FilterPanel({
+  state,
+  locations,
+  amenities,
+}: {
+  state: StorefrontSearchState;
+  locations: string[];
+  amenities: string[];
+}) {
+  const { t } = useTranslation(NsI18n.Catalog);
+  const locationOptions = locationSelectOptions(locations, state.location).map((location) => ({
+    value: location,
+    label: location,
+  }));
+  // Facets are derived from the matching results, so an active amenity has to be
+  // carried in explicitly — otherwise it disappears from the panel and can only
+  // be undone by clearing every filter.
+  const amenityOptions = [...new Set([...state.amenities, ...amenities])].map((amenity) => ({
+    value: amenity,
+    label: amenity,
+  }));
+
+  return (
+    <Form method="get" className="flex flex-col gap-6">
+      <input type="hidden" name="q" value={state.q} />
+      <input type="hidden" name="mode" value={state.mode} />
+      <input type="hidden" name="guests" value={state.guests} />
+      {state.sort !== 'relevance' ? <input type="hidden" name="sort" value={state.sort} /> : null}
+      {state.mode === 'hourly' && state.hasDateSelection ? (
+        <input type="hidden" name="date" value={state.date} />
+      ) : state.mode === 'daily' && state.hasDailyRange ? (
+        <>
+          <input type="hidden" name="from" value={state.from} />
+          <input type="hidden" name="to" value={state.to} />
+        </>
+      ) : null}
+
+      <h2 className="text-base font-semibold uppercase text-foreground">{t('filters.title')}</h2>
+
+      <FilterSection title={t('filters.price')}>
+        <div className="flex items-center gap-2">
+          <PriceInput name="minPrice" value={state.minPrice} label={t('filters.minPrice')} />
+          <span aria-hidden="true">–</span>
+          <PriceInput name="maxPrice" value={state.maxPrice} label={t('filters.maxPrice')} />
+        </div>
+      </FilterSection>
+
+      {locationOptions.length ? (
+        <FilterSection title={t('filters.location')}>
+          <FilterRadioList
+            name="location"
+            options={locationOptions}
+            selected={state.location}
+            allLabel={t('filters.all')}
+            visibleCount={6}
+          />
+        </FilterSection>
+      ) : null}
+
+      {amenityOptions.length ? (
+        <FilterSection title={t('filters.amenities')}>
+          <FilterCheckList
+            name="amenities"
+            options={amenityOptions}
+            selected={state.amenities}
+            visibleCount={8}
+          />
+        </FilterSection>
+      ) : null}
+
+      <FilterSection title={t('filters.area')}>
+        <FilterRadioList
+          name="area"
+          options={AREA_VALUES.map((value) => ({
+            value,
+            label: t(`filters.areaOptions.${value}`),
+          }))}
+          selected={state.area}
+          allLabel={t('filters.all')}
+        />
+      </FilterSection>
+
+      <div className="sticky bottom-0 grid grid-cols-2 gap-2 bg-background/95 py-3 backdrop-blur-sm">
+        <Button asChild variant="ghost">
+          <Link to="?">{t('filters.clearAll')}</Link>
+        </Button>
+        <Button type="submit">{t('filters.apply')}</Button>
+      </div>
+    </Form>
+  );
+}
+
+function PriceInput({
+  name,
+  value,
+  label,
+}: {
+  name: string;
+  value: number | null;
+  label: string;
+}) {
+  return (
+    <InputGroup className="bg-background shadow-none">
+      <InputGroupInput
+        name={name}
+        // Empty unless the URL carries the bound: a pre-filled default submits as
+        // a real filter, silently restricting results the user never narrowed.
+        defaultValue={value === null ? '' : new Intl.NumberFormat('vi-VN').format(value)}
+        inputMode="numeric"
+        aria-label={label}
+        placeholder={label}
+      />
+      <InputGroupAddon align="inline-end" className="pr-3 font-normal">
+        đ
+      </InputGroupAddon>
+    </InputGroup>
+  );
+}
+
+/**
+ * Radix unmounts collapsed `CollapsibleContent`, and an unmounted control submits
+ * nothing — so an active option hidden in the overflow would be dropped the next
+ * time the panel is applied. Keeping the selected options in the visible slice
+ * is what makes the overflow safe.
+ */
+function selectedFirst(
+  options: FilterOption[],
+  isSelected: (option: FilterOption) => boolean,
+  visibleCount: number,
+): { visible: FilterOption[]; hidden: FilterOption[] } {
+  const active = options.filter(isSelected);
+  const rest = options.filter((option) => !isSelected(option));
+  const ordered = [...active, ...rest];
+  const cut = Math.max(visibleCount, active.length);
+  return { visible: ordered.slice(0, cut), hidden: ordered.slice(cut) };
+}
+
+function FilterRadioList({
+  name,
+  options,
+  selected,
+  allLabel,
+  visibleCount = options.length,
+}: {
+  name: string;
+  options: FilterOption[];
+  /** Single-valued: the loader reads one `?{name}=` per request. */
+  selected: string;
+  allLabel: string;
+  visibleCount?: number;
+}) {
+  const { visible, hidden } = selectedFirst(
+    options,
+    (option) => option.value === selected,
+    visibleCount,
+  );
+  const item = (option: FilterOption): ReactNode => (
+    <OptionLabel key={option.value}>
+      <RadioGroupItem value={option.value} />
+      <span>{option.label}</span>
+    </OptionLabel>
+  );
+
+  return (
+    <Collapsible>
+      <RadioGroup name={name} defaultValue={selected} className="gap-3">
+        <OptionLabel>
+          <RadioGroupItem value="" />
+          <span>{allLabel}</span>
+        </OptionLabel>
+        {visible.map(item)}
+        {hidden.length ? (
+          <CollapsibleContent className="flex flex-col gap-3">
+            {hidden.map(item)}
+          </CollapsibleContent>
+        ) : null}
+      </RadioGroup>
+      {hidden.length ? <ShowMoreTrigger /> : null}
+    </Collapsible>
+  );
+}
+
+function FilterCheckList({
+  name,
+  options,
+  selected,
+  visibleCount = options.length,
+}: {
+  name: string;
+  options: FilterOption[];
+  selected: string[];
+  visibleCount?: number;
+}) {
+  const { visible, hidden } = selectedFirst(
+    options,
+    (option) => selected.includes(option.value),
+    visibleCount,
+  );
+  const item = (option: FilterOption): ReactNode => (
+    <OptionLabel key={option.value}>
+      <Checkbox
+        name={name}
+        value={option.value}
+        defaultChecked={selected.includes(option.value)}
+        className="size-4 rounded-xs"
+      />
+      <span>{option.label}</span>
+    </OptionLabel>
+  );
+
+  return (
+    <Collapsible>
+      <div className="flex flex-col gap-3">
+        {visible.map(item)}
+        {hidden.length ? (
+          <CollapsibleContent className="flex flex-col gap-3">
+            {hidden.map(item)}
+          </CollapsibleContent>
+        ) : null}
+      </div>
+      {hidden.length ? <ShowMoreTrigger /> : null}
+    </Collapsible>
+  );
+}
+
+function ShowMoreTrigger() {
+  const { t } = useTranslation(NsI18n.Catalog);
+  return (
+    <CollapsibleTrigger className="group mt-3 flex w-fit items-center gap-1 text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+      <span className="group-data-[state=open]:hidden">{t('filters.showMore')}</span>
+      <span className="hidden group-data-[state=open]:inline">{t('filters.showLess')}</span>
+      <ChevronDown
+        className="size-4 transition-transform group-data-[state=open]:rotate-180"
+        aria-hidden="true"
+      />
+    </CollapsibleTrigger>
+  );
+}
+
+function OptionLabel({ children }: { children: ReactNode }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm leading-5 text-foreground">
+      {children}
+    </label>
+  );
+}
+
+function FilterSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <fieldset className="flex flex-col gap-3">
+      <legend className="mb-3 text-sm font-medium text-foreground">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}

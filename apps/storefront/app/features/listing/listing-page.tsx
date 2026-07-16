@@ -8,7 +8,7 @@ import { BookingPanel } from '../../templates/studio/booking-panel';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { useLocale } from '../../lib/use-locale';
 import { formatListingLocation } from '../../lib/ui';
-import { MapPin } from 'lucide-react';
+import { MapPin, ShieldCheck } from 'lucide-react';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote } = loaderData;
@@ -96,20 +96,8 @@ function TrustSignals({ trust }: { trust: PublicListingDetailResponse['trust'] }
         {t('providedBy', { name: trust.partnerName })}
       </span>
       {trust.identityVerified ? (
-        <Badge className="gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-white hover:bg-emerald-600">
-          <svg
-            viewBox="0 0 24 24"
-            className="size-3.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 12l2 2 4-4M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"
-            />
-          </svg>
+        <Badge className="gap-1 rounded-full px-2.5 py-0.5">
+          <ShieldCheck className="size-3.5" aria-hidden="true" />
           {t('identityVerified')}
         </Badge>
       ) : null}

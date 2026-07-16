@@ -17,6 +17,7 @@ import { requestBookingOtp } from '../lib/booking.server';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import { readRecentCodes } from '../lib/recent.server';
+import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../lib/time';
 import { useLocale } from '../lib/use-locale';
 import type { Route } from './+types/bookings';
 
@@ -91,24 +92,32 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
       <p className="mt-1 text-sm text-muted-foreground">{t('lookup.subtitle')}</p>
 
       {myBookings.length > 0 ? (
-        <ul className="mt-6 divide-y divide-border rounded-xl border border-border bg-background">
-          {myBookings.map((booking) => (
-            <li key={booking.id}>
-              <Link
-                to={storefrontPaths.booking(locale, booking.code)}
-                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted"
-              >
-                <span>
-                  <span className="block font-mono text-sm font-semibold">{booking.code}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(booking.startUtc).toLocaleString(locale)}
+        <section className="mt-6" aria-labelledby="my-bookings-title">
+          <h2 id="my-bookings-title" className="mb-2 text-sm font-semibold text-foreground">
+            {t('lookup.myBookingsTitle')}
+          </h2>
+          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+            {myBookings.map((booking) => (
+              <li key={booking.id}>
+                <Link
+                  to={storefrontPaths.booking(locale, booking.code)}
+                  className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted"
+                >
+                  <span>
+                    <span className="block font-mono text-sm font-semibold">{booking.code}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {dateLabelInTz(booking.startUtc, DEFAULT_TZ, locale)} ·{' '}
+                      {timeInTz(booking.startUtc, DEFAULT_TZ)}
+                    </span>
                   </span>
-                </span>
-                <span className="text-sm font-medium text-primary">{booking.status}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                  <span className="text-sm font-medium text-primary">
+                    {t(`statusLabels.${booking.status}`)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       <Card className="mt-6 rounded-2xl border-border">

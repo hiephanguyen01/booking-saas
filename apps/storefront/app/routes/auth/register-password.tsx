@@ -1,6 +1,6 @@
 import { useActionData, useOutletContext } from 'react-router';
 import { AuthFrame, NewPasswordForm } from '../../features/auth/auth-ui';
-import { completePasswordAction, requireFlowPhase } from '../../lib/auth-routes.server';
+import { completePasswordAction, requireFlowPhaseOnly } from '../../lib/auth-routes.server';
 import type { AuthActionData } from '../../lib/auth-types';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontContext } from '../../root';
@@ -10,7 +10,7 @@ export const meta = () => [
   { name: 'robots', content: 'noindex,nofollow' },
 ];
 export const loader = ({ request, params }: Route.LoaderArgs) =>
-  requireFlowPhase(request, 'registration_password', `/${params.locale}/auth/register`);
+  requireFlowPhaseOnly(request, 'registration_password', `/${params.locale}/auth/register`);
 export const action = ({ request, params }: Route.ActionArgs) =>
   completePasswordAction(request, params.locale, 'registration');
 

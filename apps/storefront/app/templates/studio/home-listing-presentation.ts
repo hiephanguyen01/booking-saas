@@ -1,14 +1,6 @@
 import type { PublicListingResponse } from '@booking/contracts';
-import type { ListingCardPresentation } from '../../features/catalog/components/listing-card';
 
 export type HomeLocationKey = 'hcm' | 'hanoi' | 'danang' | 'sapa' | 'dalat';
-
-export type HomeListingPresentation = ListingCardPresentation;
-
-export interface HomeListingViewModel {
-  listing: PublicListingResponse;
-  presentation: HomeListingPresentation;
-}
 
 const LOCATION_MATCHERS: Record<HomeLocationKey, string[]> = {
   hcm: ['hồ chí minh', 'ho chi minh', 'tp hcm', 'sài gòn', 'sai gon'],
@@ -18,59 +10,21 @@ const LOCATION_MATCHERS: Record<HomeLocationKey, string[]> = {
   dalat: ['đà lạt', 'da lat', 'lâm đồng', 'lam dong'],
 };
 
-function stableHash(value: string): number {
-  let hash = 2166136261;
-  for (const character of value) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function roundedOriginalPrice(price: string | null, discountPercent: number): string | null {
-  if (!price || discountPercent <= 0 || !/^\d+$/.test(price)) return null;
-  const original = Number(price) / (1 - discountPercent / 100);
-  if (!Number.isFinite(original)) return null;
-  return String(Math.round(original / 1_000) * 1_000);
-}
-
 /**
- * The public listing contract does not expose ratings, booking totals, or
- * merchandising discounts yet. These deterministic values are presentation
- * fixtures used to reproduce the approved home-page design in every runtime.
+ * Split the loaded catalog into the two home rails.
+ *
+ * The rails used to be ordered by a booking count hashed from the listing id,
+ * which presented invented popularity as real ranking. Until the public
+ * contract exposes booking totals there is nothing to rank on, so both rails
+ * follow the order the API returned. Recommendations intentionally reuse the
+ * full catalog: a popular studio can also be relevant, and small real catalogs
+ * should not lose the entire recommendation section after filling the top rail.
  */
-export function homeListingPresentation(listing: PublicListingResponse): HomeListingPresentation {
-  const hash = stableHash(`${listing.id}:${listing.slug}`);
-  const discountPercent = hash % 4 === 0 ? 0 : 20;
-  return {
-    rating: 4 + ((hash >>> 4) % 10) / 10,
-    bookingCount: 120 + ((hash >>> 8) % 281),
-    discountPercent,
-    originalPrice: roundedOriginalPrice(listing.priceFrom, discountPercent),
-    priceUnit: hash % 3 === 0 ? 'giờ' : 'ngày',
-  };
-}
-
-export function createHomeListingViewModels(
-  listings: PublicListingResponse[],
-): HomeListingViewModel[] {
-  return listings.map((listing) => ({
-    listing,
-    presentation: homeListingPresentation(listing),
-  }));
-}
-
-export function splitHomeListings(viewModels: HomeListingViewModel[]): {
-  top: HomeListingViewModel[];
-  recommended: HomeListingViewModel[];
+export function splitHomeListings(listings: PublicListingResponse[]): {
+  top: PublicListingResponse[];
+  recommended: PublicListingResponse[];
 } {
-  const sorted = [...viewModels].sort(
-    (left, right) => right.presentation.bookingCount - left.presentation.bookingCount,
-  );
-  // Recommendations intentionally reuse the full catalog. A popular studio can
-  // also be relevant to the selected city, and small real catalogs should not
-  // lose the entire recommendation section after filling the Top 10 rail.
-  return { top: sorted.slice(0, 10), recommended: sorted };
+  return { top: listings.slice(0, 10), recommended: listings };
 }
 
 function normalized(value: string): string {
@@ -78,11 +32,11 @@ function normalized(value: string): string {
 }
 
 export function filterHomeListingsByLocation(
-  listings: HomeListingViewModel[],
+  listings: PublicListingResponse[],
   location: HomeLocationKey,
-): HomeListingViewModel[] {
+): PublicListingResponse[] {
   const matchers = LOCATION_MATCHERS[location];
-  return listings.filter(({ listing }) => {
+  return listings.filter((listing) => {
     const locationText = normalized(
       [listing.address, listing.wardName, listing.provinceName].filter(Boolean).join(' '),
     );

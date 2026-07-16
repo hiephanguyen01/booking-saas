@@ -1,19 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  checkoutAmounts,
-  checkoutListingPresentation,
-  policyLines,
-} from './checkout-presentation';
+import { checkoutAmounts, policyLines } from './checkout-presentation';
 
 describe('checkout presentation', () => {
-  it('creates stable rating and booking metadata from the listing identity', () => {
-    const first = checkoutListingPresentation('listing-1');
-    expect(checkoutListingPresentation('listing-1')).toEqual(first);
-    expect(first.rating).toBeGreaterThanOrEqual(4.6);
-    expect(first.rating).toBeLessThanOrEqual(4.9);
-    expect(first.bookingCount).toBeGreaterThan(100);
-  });
-
   it('keeps VND calculations exact when applying a proportional promo deposit', () => {
     expect(
       checkoutAmounts(
@@ -28,27 +16,37 @@ describe('checkout presentation', () => {
     });
   });
 
-  it('turns real cancellation tiers into customer-facing Vietnamese copy', () => {
+  it('reduces real cancellation tiers to translatable lines, widest window first', () => {
     expect(
       policyLines({
         id: 'policy-1',
         name: 'Linh hoạt',
         rules: [
-          { hoursBefore: 168, refundPercent: 100 },
           { hoursBefore: 48, refundPercent: 50 },
+          { hoursBefore: 168, refundPercent: 100 },
+          { hoursBefore: 6, refundPercent: 20 },
           { hoursBefore: 0, refundPercent: 0 },
         ],
       }),
     ).toEqual([
-      'Hủy trước 7 ngày: hoàn 100%',
-      'Hủy trước 2 ngày: hoàn 50%',
-      'Hủy sát giờ: không hoàn tiền',
+      { kind: 'refund', unit: 'day', amount: 7, refundPercent: 100 },
+      { kind: 'refund', unit: 'day', amount: 2, refundPercent: 50 },
+      { kind: 'refund', unit: 'hour', amount: 6, refundPercent: 20 },
+      { kind: 'noRefund' },
     ]);
   });
 
+  it('clamps a refund percent that the API reports outside 0–100', () => {
+    expect(
+      policyLines({
+        id: 'policy-2',
+        name: 'Broken',
+        rules: [{ hoursBefore: 24, refundPercent: 140 }],
+      }),
+    ).toEqual([{ kind: 'refund', unit: 'day', amount: 1, refundPercent: 100 }]);
+  });
+
   it('uses a truthful fallback when no cancellation policy is configured', () => {
-    expect(policyLines(null)).toEqual([
-      'Chính sách hủy sẽ được xác nhận trong thông tin đặt chỗ.',
-    ]);
+    expect(policyLines(null)).toEqual([{ kind: 'unspecified' }]);
   });
 });

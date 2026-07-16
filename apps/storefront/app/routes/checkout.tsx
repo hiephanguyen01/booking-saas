@@ -12,9 +12,14 @@ import { resolveTenant } from '../lib/tenant.server';
 import { storefrontPaths } from '../lib/locale-paths';
 import { getOptionalAuth } from '../lib/auth.server';
 import { getCheckoutFlowService } from '../lib/checkout-flow.server';
+import { createTranslator } from '../lib/i18n';
 
-export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Checkout' }, { name: 'robots', content: 'noindex' }];
+export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+  return [
+    { title: createTranslator(locale).t('checkout.title') },
+    { name: 'robots', content: 'noindex' },
+  ];
 }
 
 export async function loader({ request, url, params }: Route.LoaderArgs) {

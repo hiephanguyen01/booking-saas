@@ -25,6 +25,14 @@ const buttonVariants = cva(
         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        /**
+         * NOT FROM THE REGISTRY. A button standing in a form-control stack — a
+         * combobox/date trigger, or a submit under the fields — so it matches the
+         * 44px `Input` beside it. `has-[>svg]:px-4` is load-bearing: every trigger
+         * holds an icon, and the other sizes narrow their padding when they do,
+         * which would leave a trigger's box 4px tighter than an input's.
+         */
+        control: "h-11 rounded-md px-4 has-[>svg]:px-4",
         icon: "size-9",
         "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8",

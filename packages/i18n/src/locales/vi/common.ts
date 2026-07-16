@@ -16,13 +16,27 @@ export const viCommon = {
     bookHourly: 'Đặt theo giờ',
     bookDaily: 'Đặt theo ngày',
     bookHourlyHint: 'Dịch vụ được sử dụng trong ngày, tính theo giờ',
+    bookDailyHint: 'Dịch vụ được sử dụng trong một hoặc nhiều ngày',
+    bookingMode: 'Hình thức đặt',
+    dateLabel: 'Ngày sử dụng',
+    endDate: 'Ngày kết thúc',
+    guests: 'Số khách',
+    guestsCount: '{count} khách',
+    listingTypes: 'Loại dịch vụ',
+    pickDate: 'Chọn ngày',
     searchPlaceholder: 'Bạn tìm gì?',
     locationPlaceholder: 'Địa điểm',
     guestsPlaceholder: '1 - 5 khách',
     search: 'Tìm kiếm',
-    topListings: 'Top 10 Studio đặt nhiều nhất',
+    // Was "Top 10 Studio đặt nhiều nhất". The ranking behind that claim was a
+    // booking count hashed from the listing id, so the copy is now neutral
+    // until the public contract exposes real popularity.
+    topListings: 'Studio nổi bật',
     recommended: 'Đề xuất dành cho bạn',
     loadMore: 'Xem thêm',
+    emptyTitle: 'Chưa có studio phù hợp',
+    emptyBody: 'Các studio mới sẽ xuất hiện tại đây ngay khi được xuất bản.',
+    emptyInLocation: 'Chưa có studio tại khu vực này.',
     locations: {
       hcm: 'TP Hồ Chí Minh',
       hanoi: 'Hà Nội',

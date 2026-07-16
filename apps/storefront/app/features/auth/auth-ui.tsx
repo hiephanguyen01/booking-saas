@@ -47,7 +47,7 @@ export function AuthFrame({
 }) {
   const { t } = useTranslation(NsI18n.Auth);
   return (
-    <section className="mx-auto flex w-full max-w-292.5 items-stretch overflow-hidden rounded-sm border bg-background shadow-[0_18px_60px_rgba(26,32,44,0.10)]">
+    <section className="mx-auto flex w-full max-w-292.5 items-stretch overflow-hidden rounded-sm border bg-card shadow-lg">
       {split ? (
         <aside className="relative hidden min-h-157.5 w-1/2 max-w-[585px] overflow-hidden bg-primary/10 p-10 lg:flex lg:flex-col lg:justify-end">
           {tenant.hero.imageUrl ? (
@@ -117,9 +117,13 @@ function FormError({ actionData }: { actionData?: AuthActionData }) {
 
 function SubmitButton({ children }: { children: ReactNode }) {
   const navigation = useNavigation();
-  const pending = navigation.state === 'submitting';
+  // Every auth action redirects on success, so the navigation continues into a
+  // 'loading' phase after the action resolves. Gating on 'submitting' alone
+  // re-enabled the button mid-redirect and left a double-submit window; the
+  // formMethod check keeps this scoped to submission-driven navigations.
+  const pending = navigation.state !== 'idle' && navigation.formMethod != null;
   return (
-    <Button type="submit" className="h-13 w-full rounded-sm text-base" disabled={pending}>
+    <Button type="submit" size="control" className="w-full text-base" disabled={pending}>
       {pending ? <Spinner data-icon="inline-start" /> : null}
       {children}
     </Button>
@@ -140,7 +144,7 @@ export function SocialButtons() {
             key={label}
             type="button"
             variant="outline"
-            className="h-12 rounded-sm"
+            size="control"
             aria-disabled="true"
             disabled
           >
@@ -194,7 +198,7 @@ export function StartForm({
               <Input
                 id="fullName"
                 autoComplete="name"
-                className="h-13 rounded-sm pl-11"
+                className="pl-11"
                 aria-invalid={Boolean(errors.fullName)}
                 {...register('fullName')}
               />
@@ -212,7 +216,7 @@ export function StartForm({
               id="email"
               type="email"
               autoComplete="email"
-              className="h-13 rounded-sm pl-11"
+              className="pl-11"
               aria-invalid={Boolean(errors.email)}
               {...register('email')}
             />
@@ -267,7 +271,7 @@ function PasswordInput({
   const { t } = useTranslation(NsI18n.Auth);
   const [visible, setVisible] = useState(false);
   return (
-    <InputGroup className="h-13 rounded-sm">
+    <InputGroup>
       <InputGroupAddon>
         <LockKeyhole />
       </InputGroupAddon>
@@ -306,9 +310,12 @@ export function OtpForm({
     const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1_000);
     return () => window.clearInterval(timer);
   }, [seconds]);
+  // Keyed on the response object, not on resendAfterSec: the server returns the
+  // same cooldown every time, so depending on the value skipped this effect from
+  // the second resend onward and the countdown never restarted.
   useEffect(() => {
-    if (actionData?.resendAfterSec) setSeconds(actionData.resendAfterSec);
-  }, [actionData?.resendAfterSec]);
+    if (actionData?.resendAfterSec != null) setSeconds(actionData.resendAfterSec);
+  }, [actionData]);
   return (
     <div className="flex flex-col gap-6">
       <FormError actionData={actionData} />
@@ -320,14 +327,18 @@ export function OtpForm({
       >
         <FieldGroup className="gap-6">
           <Field data-invalid={Boolean(actionData?.fieldErrors?.code)}>
-            <FieldLabel className="justify-center">{t('verify.code')}</FieldLabel>
+            <FieldLabel htmlFor="otp-code" className="justify-center">
+              {t('verify.code')}
+            </FieldLabel>
             <InputOTP
+              id="otp-code"
               maxLength={6}
               value={code}
               onChange={setCode}
               inputMode="numeric"
               autoFocus
               containerClassName="justify-center"
+              aria-label={t('verify.code')}
               aria-invalid={Boolean(actionData?.fieldErrors?.code)}
             >
               <InputOTPGroup>
@@ -335,7 +346,7 @@ export function OtpForm({
                   <InputOTPSlot
                     key={index}
                     index={index}
-                    className="h-13 w-11 sm:h-16 sm:w-16 sm:text-xl"
+                    className="h-11 w-11 sm:h-16 sm:w-16 sm:text-xl"
                   />
                 ))}
               </InputOTPGroup>
@@ -345,7 +356,7 @@ export function OtpForm({
                   <InputOTPSlot
                     key={index}
                     index={index}
-                    className="h-13 w-11 sm:h-16 sm:w-16 sm:text-xl"
+                    className="h-11 w-11 sm:h-16 sm:w-16 sm:text-xl"
                   />
                 ))}
               </InputOTPGroup>
@@ -456,7 +467,7 @@ export function SuccessState({
           <CheckCircle2 className="size-10" />
         )}
       </div>
-      <Button asChild className="h-13 w-full rounded-sm text-base">
+      <Button asChild size="control" className="w-full text-base">
         <Link to={storefrontPaths.login(locale)}>{t('success.login')}</Link>
       </Button>
     </div>

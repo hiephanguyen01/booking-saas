@@ -1,15 +1,17 @@
 import { Outlet, useOutletContext } from 'react-router';
 import { AccountFlowLayout } from '../../layouts/account-flow-layout';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontContext } from '../../root';
 
 export const handle = { standalone: true };
 
 export default function PartnerOnboardingLayout() {
   const context = useOutletContext<StorefrontContext>();
+  const { t } = useTranslation(NsI18n.Auth);
   return (
     <AccountFlowLayout
       context={context}
-      section="Đăng ký đối tác"
+      section={t('partner.section')}
       contentAs="div"
       contentClassName="flex flex-1 flex-col py-10 sm:py-16"
     >

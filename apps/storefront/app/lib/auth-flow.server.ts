@@ -26,6 +26,33 @@ export interface AuthFlowRecord {
   resendAvailableAt?: number;
 }
 
+/**
+ * The only flow fields a loader may hand to the client.
+ *
+ * An `AuthFlowRecord` carries `completionToken` — the bearer credential that
+ * `POST /auth/registration/complete` accepts to set an account's password — and
+ * the flow `id` is both the Redis key and the value of the httpOnly
+ * `__storefront_auth_flow` cookie. React Router serializes every loader return
+ * into the SSR hydration payload, so returning the raw record from a loader
+ * publishes both to any script on the page and defeats the httpOnly cookie.
+ * Loaders return this view; only server-side actions touch the record itself.
+ */
+export interface AuthFlowView {
+  maskedDestination: string | null;
+  resendAfterSec: number;
+}
+
+/** Narrow a flow record to the client-safe view. */
+export function flowView(flow: {
+  record: AuthFlowRecord;
+  resendAfterSec: number;
+}): AuthFlowView {
+  return {
+    maskedDestination: flow.record.maskedDestination ?? null,
+    resendAfterSec: flow.resendAfterSec,
+  };
+}
+
 const flowSecret = process.env.SESSION_SECRET_CURRENT ?? process.env.SESSION_SECRET;
 if (!flowSecret || flowSecret.length < 32) {
   throw new Error('SESSION_SECRET_CURRENT must contain at least 32 characters.');

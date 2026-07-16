@@ -3,13 +3,15 @@ import type { viNavigation } from '../vi/navigation';
 
 export const enNavigation = {
   mainNavigation: 'Main navigation',
+  brandHome: '{tenant} - Home',
+  categories: 'Categories',
   all: 'All',
   lookup: 'Find a booking',
   myBookings: 'My bookings',
-  community: 'Community',
   becomePartner: 'Become a partner',
   login: 'Log in',
   register: 'Sign up',
   openMenu: 'Open menu',
   logout: 'Log out',
+  switchLanguage: 'Switch language to {locale}',
 } satisfies TranslationShape<typeof viNavigation>;

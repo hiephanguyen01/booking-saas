@@ -1,7 +1,7 @@
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/register-success';
 import { AuthFrame, SuccessState } from '../../features/auth/auth-ui';
-import { requireFlowPhase } from '../../lib/auth-routes.server';
+import { requireFlowPhaseOnly } from '../../lib/auth-routes.server';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontContext } from '../../root';
 export const meta = ({ params }: Route.MetaArgs) => [
@@ -9,7 +9,7 @@ export const meta = ({ params }: Route.MetaArgs) => [
   { name: 'robots', content: 'noindex,nofollow' },
 ];
 export const loader = ({ request, params }: Route.LoaderArgs) =>
-  requireFlowPhase(request, 'registration_success', `/${params.locale}/auth/register`);
+  requireFlowPhaseOnly(request, 'registration_success', `/${params.locale}/auth/register`);
 export default function RouteComponent() {
   const { tenant, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Auth);

@@ -15,28 +15,38 @@ import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown, Info, MapPin, Search, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Form } from 'react-router';
+import { NsI18n, useTranslation, type Locale } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
-import { dateOnlyToLocal, localToDateOnly } from '../../lib/time';
+import { dateLabelInTz, dateOnlyToLocal, DEFAULT_TZ, localToDateOnly } from '../../lib/time';
 import { typeIcon } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
 import {
   dateSelectionForMode,
   locationSelectOptions,
+  canSubmitSearch,
   parseSearchState,
+  type SearchDateSelection,
   type SearchMode,
   type StorefrontSearchState,
+  selectedDates,
   validDailyRange,
 } from './search-state';
 
 type DateRange = { from: Date | undefined; to?: Date | undefined };
 type SearchFormVariant = 'hero' | 'bar';
-const CALENDAR_FORMATTERS = {
-  formatCaption: (month: Date) =>
-    `Tháng ${String(month.getMonth() + 1).padStart(2, '0')} ${month.getFullYear()}`,
-  formatWeekdayName: (day: Date) => ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][day.getDay()],
-};
+type ModeAppearance = 'pills' | 'tabs';
+
+const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20] as const;
+const MAX_TYPE_TABS = 6;
+
+function toRange(selection: SearchDateSelection): DateRange {
+  return {
+    from: selection.from ? dateOnlyToLocal(selection.from) : undefined,
+    to: selection.to ? dateOnlyToLocal(selection.to) : undefined,
+  };
+}
 
 export function SearchForm({
   listingTypes,
@@ -51,6 +61,7 @@ export function SearchForm({
   locations?: string[];
   variant: SearchFormVariant;
 }) {
+  const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
   const isHero = variant === 'hero';
   const state = initialState ?? parseSearchState(new URLSearchParams());
@@ -60,34 +71,28 @@ export function SearchForm({
     currentType ?? studioType?.slug ?? listingTypes[0]?.slug ?? 'studio',
   );
   const [mode, setMode] = useState<SearchMode>(initialMode);
-  const [date, setDate] = useState(state.date);
-  const [range, setRange] = useState<DateRange>({
-    from: dateOnlyToLocal(state.from),
-    to: dateOnlyToLocal(state.to),
-  });
+  const seed = selectedDates(state);
+  const [date, setDate] = useState(seed.date);
+  const [range, setRange] = useState<DateRange>(toRange(seed));
   const types = [...listingTypes]
     .sort((left, right) => {
       if (left.slug.toLowerCase() === 'studio') return -1;
       if (right.slug.toLowerCase() === 'studio') return 1;
       return 0;
     })
-    .slice(0, 6);
+    .slice(0, MAX_TYPE_TABS);
   const options = locationSelectOptions(locations, state.location);
   const action = storefrontPaths.catalog(locale, selectedType);
-  const dailyRange = validDailyRange(
-    range.from ? localToDateOnly(range.from) : undefined,
-    range.to ? localToDateOnly(range.to) : undefined,
-  );
-  const canSubmit = mode === 'hourly' ? Boolean(date) : dailyRange !== null;
+  const rangeFrom = range.from ? localToDateOnly(range.from) : undefined;
+  const rangeTo = range.to ? localToDateOnly(range.to) : undefined;
+  const dailyRange = validDailyRange(rangeFrom, rangeTo);
+  const canSubmit = canSubmitSearch(mode, rangeFrom, rangeTo);
 
   function changeMode(nextMode: SearchMode): void {
     if (nextMode === mode) return;
     const selection = dateSelectionForMode(nextMode);
     setDate(selection.date);
-    setRange({
-      from: selection.from ? dateOnlyToLocal(selection.from) : undefined,
-      to: selection.to ? dateOnlyToLocal(selection.to) : undefined,
-    });
+    setRange(toRange(selection));
     setMode(selection.mode);
   }
 
@@ -95,11 +100,11 @@ export function SearchForm({
     <Form
       method="get"
       action={action}
-      aria-label={isHero ? 'Tìm kiếm studio tại trang chủ' : 'Tìm kiếm studio'}
+      aria-label={t('home.search')}
       className={cn(
         'font-studio',
         isHero
-          ? 'relative rounded-lg bg-card text-card-foreground shadow-[0_8px_22px_rgba(16,24,40,0.12)]'
+          ? 'relative rounded-lg bg-card text-card-foreground shadow-lg'
           : 'bg-foreground text-background',
       )}
     >
@@ -107,9 +112,8 @@ export function SearchForm({
         <CategoryPicker
           types={types}
           selectedType={selectedType}
-          setSelectedType={setSelectedType}
+          onSelectType={setSelectedType}
           variant={variant}
-          locale={locale}
         />
       ) : null}
 
@@ -121,12 +125,8 @@ export function SearchForm({
       >
         {isHero ? (
           <div className="flex flex-col items-start gap-2">
-            <ModePills mode={mode} onModeChange={changeMode} />
-            <span className="text-xs font-medium text-primary">
-              {mode === 'hourly'
-                ? 'Dịch vụ được sử dụng trong ngày, tính theo giờ'
-                : 'Dịch vụ được sử dụng trong một hoặc nhiều ngày'}
-            </span>
+            <ModeToggle mode={mode} onModeChange={changeMode} appearance="pills" />
+            <span className="text-xs font-medium text-primary">{modeHint(mode, t)}</span>
           </div>
         ) : null}
 
@@ -146,23 +146,23 @@ export function SearchForm({
             isHero ? 'sm:grid-cols-2 lg:grid-cols-4' : 'lg:grid-cols-[1fr_1fr_1fr_1fr_auto]',
           )}
         >
-          <SearchField icon={Search} label="Bạn tìm gì?">
+          <SearchField icon={Search} label={t('home.searchPlaceholder')}>
             <Input
               name="q"
               defaultValue={state.q}
-              placeholder="Bạn tìm gì?"
+              placeholder={t('home.searchPlaceholder')}
               className="h-auto border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
             />
           </SearchField>
 
-          <SearchField icon={MapPin} label="Khu vực">
+          <SearchField icon={MapPin} label={t('home.locationPlaceholder')}>
             <NativeSelect
               name="location"
               defaultValue={state.location}
-              aria-label="Khu vực"
+              aria-label={t('home.locationPlaceholder')}
               className="h-auto border-0 bg-transparent p-0 pr-7 shadow-none focus-visible:ring-0"
             >
-              <NativeSelectOption value="">Địa điểm</NativeSelectOption>
+              <NativeSelectOption value="">{t('home.locationPlaceholder')}</NativeSelectOption>
               {options.map((location) => (
                 <NativeSelectOption key={location} value={location}>
                   {location}
@@ -181,24 +181,32 @@ export function SearchForm({
             showModeTabs={!isHero}
           />
 
-          <SearchField icon={Users} label="Số khách">
+          <SearchField icon={Users} label={t('home.guests')}>
             <NativeSelect
               name="guests"
               defaultValue={String(state.guests)}
-              aria-label="Số khách"
+              aria-label={t('home.guests')}
               className="h-auto border-0 bg-transparent p-0 pr-7 shadow-none focus-visible:ring-0"
             >
-              {[1, 2, 3, 4, 5, 6, 8, 10, 15, 20].map((count) => (
+              {GUEST_OPTIONS.map((count) => (
                 <NativeSelectOption key={count} value={count}>
-                  {count === 1 ? '1 - 5 khách' : `${count} khách`}
+                  {count === 1 ? t('home.guestsPlaceholder') : t('home.guestsCount', { count })}
                 </NativeSelectOption>
               ))}
             </NativeSelect>
           </SearchField>
 
+          {/* `has-[>svg]:px-7` is load-bearing: `size="control"` sets
+              `has-[>svg]:px-4`, and a :has() selector outranks a bare `px-7`,
+              so without it the icon in here would silently narrow the button. */}
           {!isHero ? (
-            <Button type="submit" className="h-11 px-7" disabled={!canSubmit}>
-              <Search data-icon="inline-start" /> Tìm kiếm
+            <Button
+              type="submit"
+              size="control"
+              className="px-7 has-[>svg]:px-7"
+              disabled={!canSubmit}
+            >
+              <Search data-icon="inline-start" /> {t('home.search')}
             </Button>
           ) : null}
         </div>
@@ -207,11 +215,11 @@ export function SearchForm({
           <div className="absolute inset-x-0 -bottom-6 flex justify-center">
             <Button
               type="submit"
-              size="lg"
-              className="min-w-60 rounded-sm shadow-[0_5px_4px_rgba(0,0,0,0.07)]"
+              size="control"
+              className="min-w-60 shadow-md"
               disabled={!canSubmit}
             >
-              Tìm kiếm
+              {t('home.search')}
             </Button>
           </div>
         ) : null}
@@ -220,109 +228,103 @@ export function SearchForm({
   );
 }
 
+type Translate = ReturnType<typeof useTranslation<typeof NsI18n.Common>>['t'];
+
+function modeHint(mode: SearchMode, t: Translate): string {
+  return mode === 'hourly' ? t('home.bookHourlyHint') : t('home.bookDailyHint');
+}
+
 function CategoryPicker({
   types,
   selectedType,
-  setSelectedType,
+  onSelectType,
   variant,
-  locale,
 }: {
   types: PublicListingTypeResponse[];
   selectedType: string;
-  setSelectedType: (value: string) => void;
+  onSelectType: (value: string) => void;
   variant: SearchFormVariant;
-  locale: string;
 }) {
+  const { t } = useTranslation(NsI18n.Common);
   const isHero = variant === 'hero';
   return (
-    <div
+    <ToggleGroup
+      type="single"
+      value={selectedType}
+      onValueChange={(value) => value && onSelectType(value)}
+      aria-label={t('home.listingTypes')}
       className={cn(
-        'flex overflow-x-auto overscroll-x-contain',
-        isHero
-          ? 'rounded-t-lg bg-[#f9fafb] shadow-[0_4px_8px_rgba(16,24,40,0.05)]'
-          : 'mx-auto max-w-292.5 px-4 pt-5 pb-4 lg:px-0',
+        'w-full overflow-x-auto overscroll-x-contain rounded-none',
+        isHero ? 'rounded-t-lg bg-muted shadow-sm' : 'mx-auto max-w-292.5 px-4 pt-5 pb-4 lg:px-0',
       )}
-      aria-label="Loại dịch vụ"
     >
       {types.map((type) => {
         const Icon = typeIcon(type.slug);
-        const active = type.slug === selectedType;
         return (
-          <button
+          <ToggleGroupItem
             key={type.id}
-            type="button"
-            onClick={() => setSelectedType(type.slug)}
+            value={type.slug}
             className={cn(
-              'flex shrink-0 items-center justify-center whitespace-nowrap font-medium transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset cursor-pointer',
+              'font-medium whitespace-nowrap',
               isHero
-                ? 'h-14 min-w-40 flex-1 gap-3 px-6 text-base leading-6 md:min-w-48 md:px-10'
-                : 'min-h-11 gap-2 rounded-full border border-transparent px-4 py-2 text-sm text-background/75',
-              isHero && !active && 'text-foreground hover:bg-foreground/5',
-              active && isHero && 'bg-card text-foreground shadow-[0_3px_8px_rgba(16,24,40,0.08)]',
-              active && !isHero && 'border-background text-background',
+                ? 'h-14 min-w-40 flex-1 gap-3 rounded-none! px-6 text-base leading-6 text-foreground hover:bg-foreground/5 hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm! md:min-w-48 md:px-10'
+                : 'min-h-11 gap-2 rounded-full! border border-transparent px-4 py-2 text-sm text-background/75 hover:bg-background/10 hover:text-background data-[state=on]:border-background data-[state=on]:bg-transparent data-[state=on]:text-background',
             )}
-            aria-pressed={active}
           >
             <Icon
-              className={cn(isHero ? 'text-foreground size-7 md:size-8' : 'size-5')}
+              className={cn(isHero ? 'size-7 text-foreground md:size-8' : 'size-5')}
               strokeWidth={1.7}
               aria-hidden="true"
             />
-            {listingTypeLabel(type, locale)}
-          </button>
+            {type.name}
+          </ToggleGroupItem>
         );
       })}
-    </div>
+    </ToggleGroup>
   );
 }
 
-function listingTypeLabel(type: PublicListingTypeResponse, locale: string): string {
-  if (!locale.toLowerCase().startsWith('vi')) return type.name;
+const MODE_ITEM_CLASS: Record<ModeAppearance, string> = {
+  pills:
+    'h-10 rounded-full border-border px-4 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary',
+  tabs: 'h-14 rounded-none! border-0 border-b-2 border-transparent bg-transparent data-[state=on]:border-primary data-[state=on]:bg-transparent data-[state=on]:text-primary',
+};
 
-  const slug = type.slug.toLowerCase();
-  if (slug.includes('studio')) return 'Studio';
-  if (slug.includes('photo')) return 'Nhiếp ảnh';
-  if (slug.includes('makeup')) return 'Trang điểm';
-  if (slug.includes('model')) return 'Người mẫu';
-  if (slug.includes('equipment')) return 'Thiết bị';
-  if (slug.includes('clothes') || slug.includes('costume') || slug.includes('fashion')) {
-    return 'Trang phục';
-  }
-  return type.name;
-}
-
-function ModePills({
+function ModeToggle({
   mode,
   onModeChange,
+  appearance,
 }: {
   mode: SearchMode;
   onModeChange: (mode: SearchMode) => void;
+  appearance: ModeAppearance;
 }) {
+  const { t } = useTranslation(NsI18n.Common);
+  const isPills = appearance === 'pills';
   return (
     <ToggleGroup
       type="single"
       value={mode}
       onValueChange={(value) => value && onModeChange(value as SearchMode)}
-      variant="outline"
-      spacing={3}
-      aria-label="Hình thức đặt"
+      variant={isPills ? 'outline' : 'default'}
+      spacing={isPills ? 3 : 0}
+      className={cn(!isPills && 'mx-auto grid grid-cols-2 px-6')}
+      aria-label={t('home.bookingMode')}
     >
-      <ToggleGroupItem
-        value="hourly"
-        className="h-10 rounded-full border-border px-4 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-      >
-        Đặt theo giờ
+      <ToggleGroupItem value="hourly" className={MODE_ITEM_CLASS[appearance]}>
+        {t('home.bookHourly')}
       </ToggleGroupItem>
-      <ToggleGroupItem
-        value="daily"
-        className="h-10 rounded-full border-border px-4 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-      >
-        Đặt theo ngày
+      <ToggleGroupItem value="daily" className={MODE_ITEM_CLASS[appearance]}>
+        {t('home.bookDaily')}
       </ToggleGroupItem>
     </ToggleGroup>
   );
 }
 
+/** One bordered box holding an icon + a control: the box IS the form control, so it
+ *  owns the 44px geometry and the control inside is stripped of its own
+ *  border/height/padding (`h-auto border-0 p-0` — merged last, so it beats the
+ *  primitive's own `h-11 px-4`). */
 function SearchField({
   icon: Icon,
   label,
@@ -333,7 +335,7 @@ function SearchField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex h-11 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+    <label className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
       <span className="sr-only">{label}</span>
       <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 [&_[data-slot=native-select-wrapper]]:w-full">
@@ -341,6 +343,19 @@ function SearchField({
       </span>
     </label>
   );
+}
+
+/** Locale-aware month caption + weekday names; `Intl` keeps SSR and client in step. */
+function useCalendarFormatters(locale: Locale) {
+  return useMemo(() => {
+    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
+    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
+    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
+    return {
+      formatCaption: (month: Date) => caption.format(month),
+      formatWeekdayName: (day: Date) => weekday.format(day),
+    };
+  }, [locale]);
 }
 
 function SearchDatePicker({
@@ -360,27 +375,26 @@ function SearchDatePicker({
   setRange: (value: DateRange) => void;
   showModeTabs: boolean;
 }) {
+  const { t } = useTranslation(NsI18n.Common);
+  const locale = useLocale();
+  const formatters = useCalendarFormatters(locale);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const day = (value: Date): string => dateLabelInTz(localToDateOnly(value), DEFAULT_TZ, locale);
   const label =
     mode === 'hourly'
       ? date
-        ? dateOnlyToLocal(date).toLocaleDateString('vi-VN')
-        : 'Chọn ngày'
+        ? dateLabelInTz(date, DEFAULT_TZ, locale)
+        : t('home.pickDate')
       : range.from
-        ? range.to
-          ? `${range.from.toLocaleDateString('vi-VN')} - ${range.to.toLocaleDateString('vi-VN')}`
-          : `${range.from.toLocaleDateString('vi-VN')} - Ngày kết thúc`
-        : 'Chọn ngày';
-  const description =
-    mode === 'hourly'
-      ? 'Dịch vụ được sử dụng trong ngày, tính theo giờ'
-      : 'Dịch vụ được sử dụng trong một hoặc nhiều ngày';
+        ? `${day(range.from)} - ${range.to ? day(range.to) : t('home.endDate')}`
+        : t('home.pickDate');
+  const description = modeHint(mode, t);
   const trigger = (
     <button
       type="button"
-      className="flex h-11 w-full min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-left text-foreground shadow-xs focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
-      aria-label={`Ngày sử dụng: ${label}`}
+      className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-left text-foreground shadow-xs focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+      aria-label={`${t('home.dateLabel')}: ${label}`}
     >
       <CalendarDays className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
@@ -401,7 +415,7 @@ function SearchDatePicker({
           }}
           disabled={{ before: new Date() }}
           numberOfMonths={months}
-          formatters={CALENDAR_FORMATTERS}
+          formatters={formatters}
           className="sf-calendar w-full [--cell-size:2.25rem]"
         />
       ) : (
@@ -417,14 +431,16 @@ function SearchDatePicker({
           numberOfMonths={months}
           min={1}
           resetOnSelect
-          formatters={CALENDAR_FORMATTERS}
+          formatters={formatters}
           className="sf-calendar w-full [--cell-size:2.25rem]"
         />
       );
 
     return (
       <div className="flex flex-col">
-        {showModeTabs ? <CalendarModeTabs mode={mode} onModeChange={onModeChange} /> : null}
+        {showModeTabs ? (
+          <ModeToggle mode={mode} onModeChange={onModeChange} appearance="tabs" />
+        ) : null}
         <div className="overflow-x-auto p-3">{picker}</div>
         <div className="flex items-center gap-2 border-t border-border bg-muted/40 px-6 py-4 text-xs text-muted-foreground">
           <Info className="size-4 shrink-0" aria-hidden="true" />
@@ -452,7 +468,7 @@ function SearchDatePicker({
           <DrawerTrigger asChild>{trigger}</DrawerTrigger>
           <DrawerContent className="max-h-[92vh]">
             <DrawerHeader className="sr-only">
-              <DrawerTitle>Chọn ngày sử dụng</DrawerTitle>
+              <DrawerTitle>{t('home.pickDate')}</DrawerTitle>
               <DrawerDescription>{description}</DrawerDescription>
             </DrawerHeader>
             <div className="overflow-y-auto">{calendar(1, () => setDrawerOpen(false))}</div>
@@ -460,37 +476,5 @@ function SearchDatePicker({
         </Drawer>
       </div>
     </>
-  );
-}
-
-function CalendarModeTabs({
-  mode,
-  onModeChange,
-}: {
-  mode: SearchMode;
-  onModeChange: (mode: SearchMode) => void;
-}) {
-  return (
-    <ToggleGroup
-      type="single"
-      value={mode}
-      onValueChange={(value) => value && onModeChange(value as SearchMode)}
-      spacing={0}
-      className="grid grid-cols-2 px-6 mx-auto"
-      aria-label="Hình thức đặt trong lịch"
-    >
-      <ToggleGroupItem
-        value="hourly"
-        className="h-14 rounded-none! border-0 border-b-2 border-transparent bg-transparent data-[state=on]:border-primary data-[state=on]:bg-transparent data-[state=on]:text-primary "
-      >
-        Đặt theo giờ
-      </ToggleGroupItem>
-      <ToggleGroupItem
-        value="daily"
-        className="h-14 rounded-none! border-0 border-b-2 border-transparent bg-transparent data-[state=on]:border-primary data-[state=on]:bg-transparent data-[state=on]:text-primary"
-      >
-        Đặt theo ngày
-      </ToggleGroupItem>
-    </ToggleGroup>
   );
 }

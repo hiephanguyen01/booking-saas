@@ -95,7 +95,9 @@ export function PromotionForm({
         <div className="space-y-2">
           <Label htmlFor="code">Mã giảm giá</Label>
           {isAuto ? (
-            <p className="flex h-9 items-center text-sm text-muted-foreground">Tự động áp dụng — không cần mã.</p>
+            /* Not a control — a paragraph standing in for the code Input, so it
+               hardcodes the 44px control box to keep the grid row aligned. */
+            <p className="flex h-11 items-center px-4 text-sm text-muted-foreground">Tự động áp dụng — không cần mã.</p>
           ) : (
             <Input id="code" name="code" required maxLength={50} defaultValue={promotion?.code ?? ''} placeholder="WEEKEND20" className="uppercase" />
           )}

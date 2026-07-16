@@ -134,7 +134,7 @@ export function ImageUpload({
           disabled={disabled || uploading}
           onChange={(e) => void handleFiles(e.target.files)}
         />
-        <div className="group relative h-[156px] overflow-hidden rounded-sm border border-dashed border-primary bg-white">
+        <div className="group relative h-[156px] overflow-hidden rounded-md border border-dashed border-primary bg-background">
           {previewUrl ? (
             <>
               <img
@@ -145,7 +145,7 @@ export function ImageUpload({
               <button
                 type="button"
                 onClick={() => removeAt(0)}
-                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-white/95 text-[#344054] shadow-sm transition-colors hover:text-destructive"
+                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-background/95 text-muted-foreground shadow-sm transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label="Xoá ảnh"
               >
                 <XIcon className="size-4" />
@@ -164,7 +164,7 @@ export function ImageUpload({
               type="button"
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
-              className="flex size-full items-center justify-center text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex size-full items-center justify-center text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Chọn ảnh giấy tờ"
             >
               <ImageIcon className="size-8" strokeWidth={1.5} />

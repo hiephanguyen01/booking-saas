@@ -1,11 +1,11 @@
-import { Button } from '@booking/ui/components/ui/button';
-import { Heart, MapPin, Star } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import {
   withSearchContext,
   type EnrichedSearchListing,
   type StorefrontSearchState,
 } from '../../search/search-state';
+import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { formatListingLocation, formatVnd } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
@@ -18,6 +18,7 @@ export function SearchResultCard({
   state: StorefrontSearchState;
 }) {
   const locale = useLocale();
+  const { t } = useTranslation([NsI18n.Catalog, NsI18n.Listing]);
   const detailPath =
     listing.kind === 'group'
       ? storefrontPaths.listingGroup(locale, listing.slug)
@@ -45,15 +46,13 @@ export function SearchResultCard({
         {photos.slice(1, 3).map((photo) => (
           <img key={photo} src={photo} alt="" className="size-full min-h-0 object-cover" />
         ))}
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="absolute right-3 top-6 rounded-full border-0 bg-background text-primary shadow-md hover:bg-primary/10 hover:text-primary"
-          aria-label="Thêm vào danh sách yêu thích"
+        {/* Decorative only — no wishlist backend exists yet, so this doesn't persist state. */}
+        <span
+          aria-hidden
+          className="absolute right-3 top-6 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md"
         >
           <Heart className="size-4" />
-        </Button>
+        </span>
       </div>
 
       <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4">
@@ -73,19 +72,19 @@ export function SearchResultCard({
         </div>
 
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Star className="size-4" aria-hidden="true" /> Chưa có đánh giá
-          </span>
-          <span>{listing.matchingRoomCount} phòng phù hợp</span>
+          <span>{t('catalog:noReviews')}</span>
+          <span>{t('catalog:matchingRooms', { count: listing.matchingRoomCount })}</span>
         </div>
 
         <div className="flex items-end justify-end text-right">
           <p className="text-xs text-muted-foreground">
-            từ{' '}
+            {t('listing:fromPriceShort')}{' '}
             <strong className="text-base font-semibold text-primary">
               {formatVnd(listing.priceFrom)}
             </strong>
-            <span className="block text-primary">cho 1 {listing.priceUnit}</span>
+            <span className="block text-primary">
+              {listing.priceUnit === 'hour' ? t('listing:perHour') : t('listing:perDay')}
+            </span>
           </p>
         </div>
       </div>

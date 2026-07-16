@@ -1,34 +1,24 @@
-import { cn } from '@booking/ui/lib/utils';
-import { Heart, MapPin, Star } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
 import { attributeSummary, formatListingLocation, formatVnd } from '../../../lib/ui';
+import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { useLocale } from '../../../lib/use-locale';
 
 /**
- * Image-forward listing card used on the home + catalog pages. Visual chrome
- * (border, favorite decoration, price row styling) follows the Figma card
- * design. Home may pass deterministic presentation metadata for fields that
- * are not exposed by `PublicListingResponse`; other catalog surfaces remain
- * backed by API data only.
+ * Image-forward listing card used on the home + catalog pages.
+ *
+ * Everything it renders comes from `PublicListingResponse`. It previously also
+ * accepted a `presentation` prop carrying a rating, booking count, discount
+ * percentage and strikethrough "original" price — all four were derived from a
+ * hash of the listing id and shown on real listings, so they were removed
+ * rather than reformatted. Reinstate them here once the public contract
+ * exposes the real values.
  */
-export interface ListingCardPresentation {
-  rating: number;
-  bookingCount: number;
-  discountPercent: number;
-  originalPrice: string | null;
-  priceUnit: 'giờ' | 'ngày';
-}
-
-export function ListingCard({
-  listing,
-  presentation,
-}: {
-  listing: PublicListingResponse;
-  presentation?: ListingCardPresentation;
-}) {
+export function ListingCard({ listing }: { listing: PublicListingResponse }) {
   const locale = useLocale();
+  const { t } = useTranslation(NsI18n.Listing);
   const cover = listing.photos[0] as string | undefined;
   const price = formatVnd(listing.priceFrom);
   const summary = attributeSummary(listing.attributes);
@@ -41,7 +31,7 @@ export function ListingCard({
           ? storefrontPaths.listingGroup(locale, listing.slug)
           : storefrontPaths.listing(locale, listing.slug)
       }
-      className="group flex h-full min-h-98.5 flex-col overflow-hidden rounded-lg border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="group flex h-full min-h-80 flex-col overflow-hidden rounded-lg border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="relative h-46 shrink-0 overflow-hidden bg-muted">
         {cover ? (
@@ -65,14 +55,9 @@ export function ListingCard({
         >
           <Heart className="size-5" />
         </span>
-        {presentation?.discountPercent ? (
-          <span className="absolute top-4 left-0 flex h-10 min-w-18 items-center bg-primary px-3 pr-5 text-sm font-semibold text-primary-foreground [clip-path:polygon(0_0,100%_0,82%_50%,100%_100%,0_100%)]">
-            - {presentation.discountPercent}%
-          </span>
-        ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex min-h-18 flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <h3 className="line-clamp-2 text-lg leading-7 font-semibold text-foreground transition-colors group-hover:text-primary">
             {listing.title}
           </h3>
@@ -83,64 +68,15 @@ export function ListingCard({
             </p>
           ) : null}
         </div>
-        {presentation ? (
-          <div className="mt-auto flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-2">
-              <span
-                className="flex items-center gap-0.5 text-[#f59e0b]"
-                aria-label={`${presentation.rating.toFixed(1)} trên 5 sao`}
-              >
-                {Array.from({ length: 5 }, (_, index) => (
-                  <Star
-                    key={index}
-                    aria-hidden="true"
-                    className="size-4"
-                    fill={index < Math.floor(presentation.rating) ? 'currentColor' : 'none'}
-                  />
-                ))}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {presentation.bookingCount} đã đặt
-              </span>
-            </div>
-            {price ? (
-              <div className="flex flex-col items-end gap-1 text-sm">
-                <div className="flex flex-wrap items-baseline justify-end gap-2">
-                  {presentation.originalPrice ? (
-                    <span className="text-muted-foreground/65 line-through">
-                      {formatVnd(presentation.originalPrice)}
-                    </span>
-                  ) : null}
-                  <span
-                    className={cn(
-                      'font-semibold',
-                      presentation.discountPercent ? 'text-primary' : 'text-foreground',
-                    )}
-                  >
-                    từ {price}
-                  </span>
-                </div>
-                <span
-                  className={cn(
-                    presentation.discountPercent ? 'text-primary' : 'text-muted-foreground',
-                  )}
-                >
-                  cho 1 {presentation.priceUnit}
-                </span>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            {summary ? <p className="line-clamp-1 text-sm text-muted-foreground">{summary}</p> : null}
-            {price ? (
-              <p className="mt-auto text-right text-sm">
-                <span className="font-semibold text-primary">từ {price}</span>{' '}
-                <span className="text-muted-foreground">trở lên</span>
-              </p>
-            ) : null}
-          </>
-        )}
+        {summary ? <p className="line-clamp-1 text-sm text-muted-foreground">{summary}</p> : null}
+        {price ? (
+          <p className="mt-auto text-right text-sm">
+            <span className="font-semibold text-primary">
+              {t('fromPriceShort')} {price}
+            </span>{' '}
+            <span className="text-muted-foreground">{t('fromPrice')}</span>
+          </p>
+        ) : null}
       </div>
     </Link>
   );
