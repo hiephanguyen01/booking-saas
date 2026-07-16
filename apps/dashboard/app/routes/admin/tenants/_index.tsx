@@ -12,7 +12,7 @@ import { platformLoader } from '~/routes/admin/lib/api.server';
 import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
-import { TenantStatusBadge } from '~/routes/admin/components/status-badge';
+import { TenantStatusBadge } from '~/components/status-badge';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tenant · Bookify Admin' }];

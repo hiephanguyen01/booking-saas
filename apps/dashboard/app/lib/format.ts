@@ -1,6 +1,9 @@
+import type { BookingMode } from '@booking/contracts';
+
 /**
  * The one presentation/format module for the whole dashboard (admin · tenant ·
- * partner · affiliate). Pure + client-safe — no framework imports.
+ * partner · affiliate). Pure + client-safe — no framework imports (the only
+ * import is a type, erased at build time).
  *
  * Load-bearing rules this module enforces (CLAUDE.md §2.1 rule 4 + §6):
  * - **Money is bigint VND.** `formatVnd` parses digit strings with `BigInt`,
@@ -240,4 +243,18 @@ export const VERTICAL_LABELS: Record<string, string> = {
   studio: 'Studio',
   rental: 'Cho thuê',
   classes: 'Lớp học',
+};
+
+/**
+ * Booking-mode → Vietnamese label — the ONE map for the whole dashboard.
+ * Keyed by the `BookingMode` zod enum so a new mode is a compile error here.
+ * `inventory` reads "Theo kho" (by stock — the equipment-rental mode); this is
+ * the canonical wording, replacing the former "Cho thuê"/"Kho" variants.
+ */
+export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
+  hourly: 'Theo giờ',
+  daily: 'Theo ngày',
+  appointment: 'Lịch hẹn',
+  class: 'Lớp học',
+  inventory: 'Theo kho',
 };

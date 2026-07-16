@@ -13,7 +13,7 @@ import { apiGet } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
-import { Money } from '~/components/money';
+import { Money, amountToneClass } from '~/components/money';
 import { CopyableCode } from '~/components/copyable-code';
 import { PayoutStatusBadge } from '~/components/status-badge';
 import { formatDate } from '~/lib/format';
@@ -110,7 +110,7 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
               value={amount}
               className={cn(
                 'font-medium',
-                isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground',
+                isCredit ? amountToneClass('positive') : 'text-foreground',
               )}
             />
           </span>

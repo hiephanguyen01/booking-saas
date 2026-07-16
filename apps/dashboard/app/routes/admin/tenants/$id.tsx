@@ -72,10 +72,7 @@ import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { CopyableCode } from '~/components/copyable-code';
-import {
-  SubscriptionStatusBadge,
-  TenantStatusBadge,
-} from '~/routes/admin/components/status-badge';
+import { SubscriptionStatusBadge, TenantStatusBadge } from '~/components/status-badge';
 
 /** `GET /admin/tenants/:id/subscription` — the current subscription with its plan resolved. */
 interface CurrentSubscription {
