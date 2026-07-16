@@ -5,6 +5,7 @@ import {
   SYSTEM_ROLES,
 } from '../src/modules/identity-access/domain/permission-catalog';
 import { seedAdministrativeDivisions } from './seed-administrative-divisions';
+import { removeLegacySeedListing, seedDemoCatalog } from './seed-demo-catalog';
 
 /**
  * Seeds the permission catalog + system roles (idempotent), and in dev a
@@ -74,10 +75,10 @@ async function main() {
 
 /**
  * Demo tenant (TONG-QUAN.md §5 seed.ts): one studio-vertical tenant (StudioHub)
- * with a company partner + a house partner, dynamic listing types, two-tier
- * posts with rooms, an inventory listing with a security deposit, commission
- * rules, and a basic promo. Idempotent — safe to re-run. Runs on the migrate
- * (superuser) connection, which bypasses RLS, so cross-tenant inserts are fine.
+ * with service + inventory partners, six dynamic listing types, 120 complete
+ * listings across five locations, mixed standalone/grouped Studios, commission
+ * rules, and promotions. Idempotent — safe to re-run. Runs on the migrate
+ * connection, which bypasses RLS, so cross-tenant inserts are allowed.
  */
 async function seedDemo(): Promise<void> {
   const password = await argon2.hash(process.env.SEED_DEMO_PASSWORD ?? 'demo-password', {
@@ -324,60 +325,7 @@ async function seedDemo(): Promise<void> {
     },
   });
 
-  // ── Listing types (dynamic, tenant-defined) ─────────────────────────────────
-  const studioType = await upsertListingType(tenant.id, {
-    name: 'Studio',
-    slug: 'studio',
-    structure: 'flexible',
-    allowedModes: ['hourly', 'daily'],
-    defaultModes: ['hourly'],
-    unitLabel: 'giờ',
-    sortOrder: 1,
-    attributeSchema: [
-      { key: 'area', label: 'Diện tích (m²)', type: 'number', filterable: true },
-      {
-        key: 'style',
-        label: 'Phong cách',
-        type: 'select',
-        filterable: true,
-        options: ['Hàn Quốc', 'Vintage', 'Tối giản'],
-      },
-      { key: 'naturalLight', label: 'Ánh sáng tự nhiên', type: 'boolean', filterable: true },
-    ],
-  });
-  await upsertListingType(tenant.id, {
-    name: 'Model Booking',
-    slug: 'model',
-    allowedModes: ['hourly', 'daily'],
-    defaultModes: ['hourly'],
-    unitLabel: 'giờ',
-    sortOrder: 2,
-    // People-booking type: the partner must be identity-verified to serve it (§7.3, Task 1.2).
-    requiresIdentityVerification: true,
-    attributeSchema: [
-      { key: 'height', label: 'Chiều cao (cm)', type: 'number', filterable: true },
-      { key: 'portfolio', label: 'Portfolio', type: 'text' },
-    ],
-  });
-  const equipmentType = await upsertListingType(tenant.id, {
-    name: 'Equipment Rental',
-    slug: 'equipment',
-    allowedModes: ['inventory'],
-    defaultModes: ['inventory'],
-    unitLabel: 'ngày',
-    sortOrder: 3,
-    attributeSchema: [
-      { key: 'brand', label: 'Hãng', type: 'text', filterable: true },
-      { key: 'model', label: 'Model', type: 'text' },
-    ],
-  });
-
-  // ── Categories + cancellation policy ────────────────────────────────────────
-  const category = await prisma.category.upsert({
-    where: { tenantId_slug: { tenantId: tenant.id, slug: 'chup-chan-dung' } },
-    update: {},
-    create: { tenantId: tenant.id, name: 'Chụp chân dung', slug: 'chup-chan-dung' },
-  });
+  // ── Cancellation policy + complete demo catalog ─────────────────────────────
   const cancelPolicy = await ensure(
     () =>
       prisma.cancellationPolicy.findFirst({ where: { tenantId: tenant.id, name: 'Linh hoạt' } }),
@@ -394,121 +342,17 @@ async function seedDemo(): Promise<void> {
         },
       }),
   );
-
-  // ── Two-tier post: a Studio group with two room listings sharing nothing ────
-  const group = await prisma.listingGroup.upsert({
-    where: { tenantId_slug: { tenantId: tenant.id, slug: 'giang-studio-q1' } },
-    update: {
-      provinceCode: '79',
-      provinceName: 'Thành phố Hồ Chí Minh',
-      wardCode: '26740',
-      wardName: 'Phường Sài Gòn',
-      address: '12 Nguyễn Huệ',
-    },
-    create: {
-      tenantId: tenant.id,
-      partnerId: partner.id,
-      listingTypeId: studioType.id,
-      title: 'Giang Studio Q1',
-      slug: 'giang-studio-q1',
-      description: 'Hệ thống 2 phòng studio ánh sáng tự nhiên, ngay trung tâm Q1.',
-      provinceCode: '79',
-      provinceName: 'Thành phố Hồ Chí Minh',
-      wardCode: '26740',
-      wardName: 'Phường Sài Gòn',
-      address: '12 Nguyễn Huệ',
-      status: 'published',
-      publishedBy: 'partner',
-      amenities: ['Lễ tân', 'Chỗ đậu xe', 'Máy lạnh'],
-      photos: [
-        'https://picsum.photos/seed/giang-q1-1/1200/900',
-        'https://picsum.photos/seed/giang-q1-2/1200/900',
-      ],
-    },
-  });
-
-  const studioA = await upsertRoomListing(tenant.id, partner.id, studioType.id, {
-    title: 'Studio A — Hàn Quốc',
-    slug: 'studio-a-han-quoc',
-    provinceCode: '79',
-    provinceName: 'Thành phố Hồ Chí Minh',
-    wardCode: '26740',
-    wardName: 'Phường Sài Gòn',
-    address: '12 Nguyễn Huệ',
-    photos: [
-      'https://picsum.photos/seed/studio-a-1/1200/900',
-      'https://picsum.photos/seed/studio-a-2/1200/900',
-      'https://picsum.photos/seed/studio-a-3/1200/900',
-      'https://picsum.photos/seed/studio-a-4/1200/900',
-      'https://picsum.photos/seed/studio-a-5/1200/900',
-    ],
-    groupId: group.id,
-    categoryId: category.id,
+  const {
+    studioType,
+    equipmentType,
+    primaryStudio: studioA,
+  } = await seedDemoCatalog({
+    prisma,
+    tenantId: tenant.id,
+    servicePartnerId: partner.id,
+    inventoryPartnerId: housePartner.id,
     cancellationPolicyId: cancelPolicy.id,
-    bookingModes: ['hourly', 'daily'],
-    attributes: { area: 40, style: 'Hàn Quốc', naturalLight: true },
-    modeConfig: {
-      hourly: {
-        basePrice: 300_000,
-        blocks: [
-          { hours: 2, price: 500_000 },
-          { hours: 3, price: 700_000 },
-        ],
-        minDuration: 1,
-        maxDuration: 8,
-        granularity: 60,
-        leadTimeMin: 60,
-      },
-      daily: {
-        basePricePerNight: 1_800_000,
-        minNights: 1,
-        maxNights: 7,
-        checkinTime: '08:00',
-        checkoutTime: '20:00',
-        leadTimeMin: 120,
-      },
-    },
-    bufferBefore: 30,
-    bufferAfter: 30,
-    depositPercent: 50,
   });
-  const studioB = await upsertRoomListing(tenant.id, partner.id, studioType.id, {
-    title: 'Studio B — Vintage',
-    slug: 'studio-b-vintage',
-    provinceCode: '79',
-    provinceName: 'Thành phố Hồ Chí Minh',
-    wardCode: '26740',
-    wardName: 'Phường Sài Gòn',
-    address: '12 Nguyễn Huệ',
-    photos: [
-      'https://picsum.photos/seed/studio-b-1/1200/900',
-      'https://picsum.photos/seed/studio-b-2/1200/900',
-      'https://picsum.photos/seed/studio-b-3/1200/900',
-      'https://picsum.photos/seed/studio-b-4/1200/900',
-    ],
-    groupId: group.id,
-    categoryId: category.id,
-    cancellationPolicyId: cancelPolicy.id,
-    bookingModes: ['hourly'],
-    attributes: { area: 25, style: 'Vintage', naturalLight: false },
-    modeConfig: {
-      hourly: {
-        basePrice: 250_000,
-        blocks: [{ hours: 2, price: 450_000 }],
-        minDuration: 1,
-        maxDuration: 6,
-        granularity: 60,
-        leadTimeMin: 60,
-      },
-    },
-    bufferBefore: 30,
-    bufferAfter: 30,
-    depositPercent: 100,
-  });
-
-  // Weekly opening hours so the hourly slot picker has bookable slots (§9.1).
-  await ensureWeeklyRules(tenant.id, studioA.id);
-  await ensureWeeklyRules(tenant.id, studioB.id);
 
   // ── Golden-hour pricing rule on Studio A (18:00–22:00 costs more) ───────────
   if (
@@ -528,32 +372,6 @@ async function seedDemo(): Promise<void> {
       },
     });
   }
-
-  // ── Standalone inventory listing (equipment) with a security deposit ────────
-  await upsertRoomListing(tenant.id, housePartner.id, equipmentType.id, {
-    title: 'Sony FX3 (Cinema camera)',
-    slug: 'sony-fx3',
-    provinceCode: '79',
-    provinceName: 'Thành phố Hồ Chí Minh',
-    wardCode: '26740',
-    wardName: 'Phường Sài Gòn',
-    address: '12 Nguyễn Huệ',
-    photos: [
-      'https://picsum.photos/seed/sony-fx3-1/1200/900',
-      'https://picsum.photos/seed/sony-fx3-2/1200/900',
-      'https://picsum.photos/seed/sony-fx3-3/1200/900',
-    ],
-    groupId: null,
-    categoryId: null,
-    cancellationPolicyId: cancelPolicy.id,
-    bookingModes: ['inventory'],
-    attributes: { brand: 'Sony', model: 'FX3' },
-    modeConfig: { inventory: { unit: 'day', basePrice: 800_000, securityDeposit: 5_000_000 } },
-    stockQuantity: 3,
-    bufferBefore: 120,
-    bufferAfter: 120,
-    depositPercent: 100,
-  });
 
   // ── Commission rules (tenant default + a per-type override) ──────────────────
   await ensure(
@@ -820,7 +638,7 @@ async function seedDemo(): Promise<void> {
     },
   });
   await ensureRoleAssignment(apertureOwner.id, tenantOwnerRole.id, trialTenant.id, null);
-  const aperturePartner = await prisma.partner.upsert({
+  await prisma.partner.upsert({
     where: { tenantId_slug: { tenantId: trialTenant.id, slug: 'aperture-house' } },
     update: {},
     create: {
@@ -833,7 +651,7 @@ async function seedDemo(): Promise<void> {
       verifiedAt: new Date(),
     },
   });
-  const homestayType = await upsertListingType(trialTenant.id, {
+  await upsertListingType(trialTenant.id, {
     name: 'Homestay',
     slug: 'homestay',
     allowedModes: ['daily'],
@@ -851,40 +669,9 @@ async function seedDemo(): Promise<void> {
       },
     ],
   });
-  const homestay = await upsertRoomListing(trialTenant.id, aperturePartner.id, homestayType.id, {
-    title: 'Villa Aperture — Homestay ven biển',
-    slug: 'villa-aperture-ven-bien',
-    provinceCode: '48',
-    provinceName: 'Thành phố Đà Nẵng',
-    wardCode: '20263',
-    wardName: 'Phường Sơn Trà',
-    address: 'Đường Hoàng Sa',
-    photos: [
-      'https://picsum.photos/seed/aperture-1/1200/900',
-      'https://picsum.photos/seed/aperture-2/1200/900',
-      'https://picsum.photos/seed/aperture-3/1200/900',
-    ],
-    groupId: null,
-    categoryId: null,
-    cancellationPolicyId: null,
-    bookingModes: ['daily'],
-    attributes: { bedrooms: 3, view: 'Biển' },
-    modeConfig: {
-      daily: {
-        basePricePerNight: 2_500_000,
-        minNights: 1,
-        maxNights: 14,
-        checkinTime: '14:00',
-        checkoutTime: '12:00',
-        leadTimeMin: 0,
-      },
-    },
-    bufferBefore: 0,
-    bufferAfter: 0,
-    depositPercent: 50,
-  });
-  // Daily mode is open by default without rules, but seed them so the calendar is explicit.
-  await ensureWeeklyRules(trialTenant.id, homestay.id, '00:00', '23:59');
+  // The old Aperture homestay was part of the previous catalog fixture. The
+  // requested replacement catalog lives entirely under StudioHub.
+  await removeLegacySeedListing(prisma, trialTenant.id, 'villa-aperture-ven-bien');
 
   // ── Affiliate (§15) ─────────────────────────────────────────────────────────
   // An approved affiliate + a referral link so both dashboards render non-empty.
@@ -926,7 +713,7 @@ async function seedDemo(): Promise<void> {
   }
 
   console.log(
-    `Seeded demo tenant "${tenant.name}" (3 partners incl. a pending individual, 3 listing types, 3 listings + weekly hours, commission rules, WELCOME10) + a second themed storefront "Aperture Rentals" (aperture.localhost, 1 homestay/daily listing, trial expiring soon) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure) + an approved affiliate (affiliate@studiohub.vn) with referral link R-DEMO01.`,
+    `Seeded demo tenant "${tenant.name}" (6 listing types, 120 listings across 5 locations, 5 studio groups, 10 photos per item, commission rules, WELCOME10) + themed tenant "Aperture Rentals" (trial expiring soon) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure) + an approved affiliate (affiliate@studiohub.vn) with referral link R-DEMO01.`,
   );
 }
 
@@ -989,30 +776,6 @@ async function seedBooking(input: {
   return booking;
 }
 
-/**
- * Weekly opening hours (§7.4). Hourly slot generation needs open windows — with
- * no rules a listing has NO bookable hourly slots (open-windows.ts). Daily mode
- * defaults to open when no rules exist, so this is only required for hourly.
- * Idempotent per listing.
- */
-async function ensureWeeklyRules(
-  tenantId: string,
-  listingId: string,
-  openTime = '08:00',
-  closeTime = '20:00',
-): Promise<void> {
-  if (await prisma.availabilityRule.findFirst({ where: { listingId } })) return;
-  await prisma.availabilityRule.createMany({
-    data: Array.from({ length: 7 }, (_, dayOfWeek) => ({
-      tenantId,
-      listingId,
-      dayOfWeek,
-      openTime,
-      closeTime,
-    })),
-  });
-}
-
 async function ensureRoleAssignment(
   userId: string,
   roleId: string,
@@ -1044,7 +807,14 @@ async function upsertListingType(
   return prisma.listingType.upsert({
     where: { tenantId_slug: { tenantId, slug: input.slug } },
     update: {
+      name: input.name,
       structure: input.structure ?? 'standalone',
+      allowedModes: input.allowedModes as never,
+      defaultModes: input.defaultModes as never,
+      unitLabel: input.unitLabel,
+      sortOrder: input.sortOrder,
+      attributeSchema: input.attributeSchema as never,
+      requiresIdentityVerification: input.requiresIdentityVerification ?? false,
     },
     create: {
       tenantId,
@@ -1057,81 +827,6 @@ async function upsertListingType(
       sortOrder: input.sortOrder,
       attributeSchema: input.attributeSchema as never,
       requiresIdentityVerification: input.requiresIdentityVerification ?? false,
-    },
-  });
-}
-
-async function upsertRoomListing(
-  tenantId: string,
-  partnerId: string,
-  listingTypeId: string,
-  input: {
-    title: string;
-    slug: string;
-    groupId: string | null;
-    categoryId: string | null;
-    cancellationPolicyId: string | null;
-    bookingModes: string[];
-    attributes: unknown;
-    modeConfig: unknown;
-    stockQuantity?: number;
-    bufferBefore: number;
-    bufferAfter: number;
-    depositPercent: number;
-    photos?: string[];
-    provinceCode: string;
-    provinceName: string;
-    wardCode: string;
-    wardName: string;
-    address: string;
-  },
-) {
-  const existing = await prisma.listing.findUnique({
-    where: { tenantId_slug: { tenantId, slug: input.slug } },
-  });
-  if (existing) {
-    return prisma.listing.update({
-      where: { id: existing.id },
-      data: {
-        provinceCode: input.provinceCode,
-        provinceName: input.provinceName,
-        wardCode: input.wardCode,
-        wardName: input.wardName,
-        address: input.address,
-      },
-    });
-  }
-
-  // Each listing gets its own calendar-holding resource 1:1 by default (§7.3).
-  const resource = await prisma.resource.create({
-    data: { tenantId, partnerId, name: input.title },
-  });
-  return prisma.listing.create({
-    data: {
-      tenantId,
-      partnerId,
-      listingTypeId,
-      resourceId: resource.id,
-      groupId: input.groupId,
-      categoryId: input.categoryId,
-      cancellationPolicyId: input.cancellationPolicyId,
-      title: input.title,
-      slug: input.slug,
-      provinceCode: input.provinceCode,
-      provinceName: input.provinceName,
-      wardCode: input.wardCode,
-      wardName: input.wardName,
-      address: input.address,
-      photos: (input.photos ?? []) as never,
-      bookingModes: input.bookingModes as never,
-      attributes: input.attributes as never,
-      modeConfig: input.modeConfig as never,
-      stockQuantity: input.stockQuantity,
-      bufferBefore: input.bufferBefore,
-      bufferAfter: input.bufferAfter,
-      depositPercent: input.depositPercent,
-      status: 'published',
-      publishedBy: 'partner',
     },
   });
 }

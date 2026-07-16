@@ -1,9 +1,7 @@
-import * as Icons from 'lucide-react';
-import { Plus, X } from 'lucide-react';
 import {
   createListingTypeInputSchema,
-  listingTypeIconSchema,
   LISTING_TYPE_ICONS,
+  listingTypeIconSchema,
   type AttributeField,
   type AttributeFieldType,
   type BookingMode,
@@ -11,14 +9,13 @@ import {
   type ListingTypeIcon,
   type ListingTypeResponse,
 } from '@booking/contracts';
+import { GenericForm } from '@booking/ui/components/form/generic-form';
+import { Controller, type UseFormReturn } from '@booking/ui/components/form/rhf';
+import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { GenericForm } from '@booking/ui/components/form/generic-form';
-import { Controller, type UseFormReturn } from '@booking/ui/components/form/rhf';
-import type { FieldConfig } from '@booking/ui/components/form/types';
-import { cn } from '@booking/ui/lib/utils';
 import {
   Select,
   SelectContent,
@@ -26,6 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@booking/ui/components/ui/select';
+import { cn } from '@booking/ui/lib/utils';
+import * as Icons from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { BOOKING_MODE_LABEL } from '~/lib/format';
 
 const ALL_MODES: BookingMode[] = ['hourly', 'daily', 'inventory', 'appointment', 'class'];
@@ -37,8 +37,7 @@ const FIELD_TYPES: { value: AttributeFieldType; label: string }[] = [
   { value: 'boolean', label: 'Có/Không' },
 ];
 
-const isChoice = (type: AttributeFieldType): boolean =>
-  type === 'select' || type === 'multiselect';
+const isChoice = (type: AttributeFieldType): boolean => type === 'select' || type === 'multiselect';
 
 /**
  * `listing_type.icon` is an icon NAME, not an upload. This used to be a `type:
@@ -133,11 +132,7 @@ function IconPicker({
           Hiển thị cạnh tên loại dịch vụ trên storefront.
         </p>
       </div>
-      <div
-        role="radiogroup"
-        aria-label="Biểu tượng"
-        className="flex flex-wrap gap-2"
-      >
+      <div role="radiogroup" aria-label="Biểu tượng" className="flex flex-wrap gap-2">
         {LISTING_TYPE_ICONS.map((name) => {
           const selected = value === name;
           return (
@@ -172,7 +167,13 @@ function IconPicker({
 const fields: FieldConfig<CreateListingTypeInput>[] = [
   { name: 'name', type: 'text', label: 'Tên loại', placeholder: 'VD: Studio', colSpan: 1 },
   { name: 'slug', type: 'text', label: 'Slug', placeholder: 'studio', colSpan: 1 },
-  { name: 'unitLabel', type: 'text', label: 'Đơn vị giá (tuỳ chọn)', placeholder: 'giờ', colSpan: 1 },
+  {
+    name: 'unitLabel',
+    type: 'text',
+    label: 'Đơn vị giá (tuỳ chọn)',
+    placeholder: 'giờ',
+    colSpan: 1,
+  },
   { name: 'sortOrder', type: 'number', label: 'Thứ tự hiển thị', colSpan: 1 },
   { name: 'isActive', type: 'switch', label: 'Đang hoạt động', colSpan: 1 },
   {
@@ -213,7 +214,9 @@ function knownIcon(icon: string | null | undefined): ListingTypeIcon | undefined
   return parsed.success ? parsed.data : undefined;
 }
 
-function defaultValues(t?: ListingTypeResponse): CreateListingTypeInput {
+export function listingTypeFormDefaultValues(t?: ListingTypeResponse): CreateListingTypeInput {
+  const structure = t?.structure ?? 'standalone';
+
   return {
     name: t?.name ?? '',
     slug: t?.slug ?? '',
@@ -224,8 +227,10 @@ function defaultValues(t?: ListingTypeResponse): CreateListingTypeInput {
     sortOrder: t?.sortOrder ?? 0,
     isActive: t?.isActive ?? true,
     requiresIdentityVerification: t?.requiresIdentityVerification ?? false,
-    structure: t?.structure ?? 'standalone',
-    itemLabel: t?.itemLabel ?? '',
+    structure,
+    // A standalone type hides this field. Keep it absent so the schema does not
+    // reject the hidden empty string before `transform` gets a chance to drop it.
+    itemLabel: structure === 'standalone' ? undefined : (t?.itemLabel ?? ''),
     attributeSchema: t?.attributeSchema ?? [],
   };
 }
@@ -246,7 +251,7 @@ export function ListingTypeForm({
       schema={createListingTypeInputSchema}
       fields={fields}
       columns={2}
-      defaultValues={defaultValues(listingType)}
+      defaultValues={listingTypeFormDefaultValues(listingType)}
       submitLabel={isEdit ? 'Lưu thay đổi' : 'Tạo loại dịch vụ'}
       serverError={serverError}
       fieldErrors={fieldErrors}
@@ -387,8 +392,8 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
             <section className="space-y-3 rounded-lg border p-4">
               <h2 className="text-sm font-semibold">Thuộc tính tuỳ biến</h2>
               <p className="text-xs text-muted-foreground">
-                Các trường sẽ hiện khi đối tác tạo listing thuộc loại này. Trường “lọc được” trở thành
-                bộ lọc trên storefront.
+                Các trường sẽ hiện khi đối tác tạo listing thuộc loại này. Trường “lọc được” trở
+                thành bộ lọc trên storefront.
               </p>
               {rootMessage ? (
                 <p className="text-xs text-destructive">{String(rootMessage)}</p>
@@ -430,7 +435,9 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                               update(i, {
                                 type: v as AttributeFieldType,
                                 // Reset options when leaving a choice type.
-                                ...(isChoice(v as AttributeFieldType) ? {} : { options: undefined }),
+                                ...(isChoice(v as AttributeFieldType)
+                                  ? {}
+                                  : { options: undefined }),
                               })
                             }
                           >
