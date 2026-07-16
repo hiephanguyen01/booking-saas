@@ -5,8 +5,11 @@ import type {
   PayoutStatusDto,
   PromotionStatusDto,
   PublishStatus,
+  SubscriptionStatus,
+  TenantStatus,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
+import { SUBSCRIPTION_STATUS_LABELS, TENANT_STATUS_LABELS } from '~/lib/format';
 
 /**
  * The single source of truth for status pills across the whole dashboard
@@ -190,4 +193,39 @@ const PAYOUT: Record<PayoutStatusDto, { label: string; tone: StatusTone }> = {
 export function PayoutStatusBadge({ status }: { status: PayoutStatusDto }) {
   const s = PAYOUT[status] ?? { label: status, tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
+}
+
+// ── Tenant / subscription (platform admin) ────────────────────────────────────
+// Platform responses type these as `z.string()`, so the props accept `string`;
+// the tone maps stay exhaustive over the enum (a new member is a compile error)
+// and labels come from `format.ts`.
+
+const TENANT: Record<TenantStatus, StatusTone> = {
+  active: 'green',
+  suspended: 'rose',
+  expired: 'warning',
+};
+
+export function TenantStatusBadge({ status }: { status: string }) {
+  return (
+    <Pill tone={TENANT[status as TenantStatus] ?? 'slate'}>
+      {TENANT_STATUS_LABELS[status] ?? status}
+    </Pill>
+  );
+}
+
+const SUBSCRIPTION: Record<SubscriptionStatus, StatusTone> = {
+  trial: 'slate',
+  active: 'green',
+  past_due: 'warning',
+  expired: 'warning',
+  cancelled: 'rose',
+};
+
+export function SubscriptionStatusBadge({ status }: { status: string }) {
+  return (
+    <Pill tone={SUBSCRIPTION[status as SubscriptionStatus] ?? 'slate'}>
+      {SUBSCRIPTION_STATUS_LABELS[status] ?? status}
+    </Pill>
+  );
 }

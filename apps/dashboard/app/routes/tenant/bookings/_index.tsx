@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router';
 import { dehydrate, HydrationBoundary, useQuery } from '@tanstack/react-query';
 import { makeQueryClient } from '@booking/query';
-import type { BookingResponse, PartnerResponse, Paginated } from '@booking/contracts';
+import type { BookingMode, BookingResponse, PartnerResponse, Paginated } from '@booking/contracts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -10,7 +10,7 @@ import { TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDateTime, formatRate } from '~/lib/format';
+import { BOOKING_MODE_LABEL, formatDateTime, formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { BookingStatusBadge } from '~/components/status-badge';
@@ -133,7 +133,7 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
       ),
     },
     { header: 'Đối tác', cell: (b) => <span className="text-sm">{partnerNames[b.partnerId] ?? '—'}</span>, className: 'hidden md:table-cell', headClassName: 'hidden md:table-cell' },
-    { header: 'Hình thức', cell: (b) => <span className="text-sm text-muted-foreground">{MODE_LABEL[b.bookingMode] ?? b.bookingMode}</span>, className: 'hidden sm:table-cell', headClassName: 'hidden sm:table-cell' },
+    { header: 'Hình thức', cell: (b) => <span className="text-sm text-muted-foreground">{BOOKING_MODE_LABEL[b.bookingMode as BookingMode] ?? b.bookingMode}</span>, className: 'hidden sm:table-cell', headClassName: 'hidden sm:table-cell' },
     { header: 'Bắt đầu', cell: (b) => <span className="text-sm text-muted-foreground">{formatDateTime(b.startUtc)}</span>, className: 'hidden lg:table-cell', headClassName: 'hidden lg:table-cell' },
     { header: 'Trạng thái', cell: (b) => <BookingStatusBadge status={b.status} /> },
     {
@@ -225,8 +225,3 @@ function RateCell({ value, count }: { value: number; count: number }) {
   );
 }
 
-const MODE_LABEL: Record<string, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  inventory: 'Cho thuê',
-};

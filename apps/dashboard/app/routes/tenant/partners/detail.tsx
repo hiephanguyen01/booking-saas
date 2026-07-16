@@ -35,6 +35,7 @@ import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
 import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/lib/format';
+import { readHttpUrl, readString } from '~/lib/records';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
@@ -469,7 +470,7 @@ function readBusinessInfo(raw: Record<string, unknown>): BusinessInfoView {
     { label: 'Số giấy phép kinh doanh', key: 'businessRegistrationNo' },
     { label: 'Số giấy phép/chứng chỉ', key: 'licenseNo' },
   ]) {
-    const value = readText(raw[key]);
+    const value = readString(raw[key]);
     if (value && !seenValues.has(value)) {
       seenValues.add(value);
       legalDetails.push({ label, value });
@@ -487,7 +488,7 @@ function readBusinessInfo(raw: Record<string, unknown>): BusinessInfoView {
 
   return {
     legalDetails,
-    representativeName: readText(raw.representativeName),
+    representativeName: readString(raw.representativeName),
     logoUrl: readHttpUrl(raw.logoUrl),
     identityPhotos,
     licensePhotos,
@@ -501,18 +502,4 @@ function collectUrls(raw: Record<string, unknown>, keys: string[]): string[] {
     if (url) urls.push(url);
   }
   return urls;
-}
-
-function readText(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function readHttpUrl(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
 }

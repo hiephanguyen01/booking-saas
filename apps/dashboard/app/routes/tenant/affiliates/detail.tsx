@@ -19,7 +19,7 @@ import { ArrowLeft, Ban, Check, CheckCircle2, TriangleAlert } from 'lucide-react
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatRate } from '~/lib/format';
+import { formatDiscount, formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -79,7 +79,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     // Render the resolved rate the backend echoes back — clearing the override
     // falls back to the rule, whose number the caller could not otherwise know.
     const resolved = res.data;
-    const rate = resolved ? describeRate(resolved.effectiveRate, resolved.effectiveRateType) : '';
+    const rate = resolved ? formatDiscount(resolved.effectiveRateType, resolved.effectiveRate) : '';
     const message =
       resolved && resolved.customRate === null
         ? `Đã xoá hoa hồng riêng — áp dụng mức theo quy tắc: ${rate}.`
@@ -108,11 +108,6 @@ const TARGET_LABEL: Record<ReferralTargetDto, string> = {
   tenant_home: 'Trang chủ',
   listing: 'Listing',
 };
-
-/** Resolved rate as a display string: `5%` (percent) or a VND amount (fixed). */
-function describeRate(value: string, type: 'percent' | 'fixed'): string {
-  return type === 'percent' ? `${value}%` : `${value} ₫`;
-}
 
 function CommissionStatusBadge({ status }: { status: AffiliateCommissionStatusDto }) {
   const tone =
@@ -265,7 +260,7 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
                 <DetailField
                   label="Mức áp dụng"
                   emphasis="strong"
-                  value={describeRate(affiliate.effectiveRate, affiliate.effectiveRateType)}
+                  value={formatDiscount(affiliate.effectiveRateType, affiliate.effectiveRate)}
                   hint={RATE_SOURCE_LABEL[affiliate.effectiveRateSource]}
                 />
               </DetailGrid>

@@ -22,6 +22,7 @@ import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
+import { amountToneClass } from '~/components/money';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sổ cái · Tài chính · Tenant · Bookify' }];
@@ -130,7 +131,7 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     className: 'text-right tabular-nums',
     cell: (e) =>
       e.debit && e.debit !== '0' ? (
-        <span className="font-medium text-rose-600 dark:text-rose-400">{formatVnd(e.debit)}</span>
+        <span className={`font-medium ${amountToneClass('negative')}`}>{formatVnd(e.debit)}</span>
       ) : (
         <span className="text-muted-foreground">—</span>
       ),
@@ -141,7 +142,7 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     className: 'text-right tabular-nums',
     cell: (e) =>
       e.credit && e.credit !== '0' ? (
-        <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatVnd(e.credit)}</span>
+        <span className={`font-medium ${amountToneClass('positive')}`}>{formatVnd(e.credit)}</span>
       ) : (
         <span className="text-muted-foreground">—</span>
       ),

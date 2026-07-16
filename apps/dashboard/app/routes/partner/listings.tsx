@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { data, Link, useFetcher } from 'react-router';
 import { Clock, EyeOff, Lock, Pencil, Plus, Send, Undo2 } from 'lucide-react';
-import type { BookingMode, ListingGroupResponse, ListingResponse, ListingTypeResponse } from '@booking/contracts';
+import type { ListingGroupResponse, ListingResponse, ListingTypeResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -20,17 +20,10 @@ import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { formatDate } from '~/lib/format';
+import { BOOKING_MODE_LABEL, formatDate } from '~/lib/format';
 import { listingPriceFrom } from './listing-price';
 
 /** Booking-mode → Vietnamese label (exhaustive, so a new mode is a compile error). */
-const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-  inventory: 'Theo kho',
-};
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng · Đối tác · Bookify' }];
