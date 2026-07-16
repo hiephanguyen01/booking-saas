@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   AFFILIATE_COMMISSION_REPOSITORY,
+  type AffiliateCommissionTotals,
   type IAffiliateCommissionRepository,
 } from '../../domain/ports/affiliate-commission-repository.port';
 import {
@@ -11,10 +12,7 @@ import {
 
 export interface AffiliateStats {
   clicks: number;
-  pending: bigint;
-  confirmed: bigint;
-  paid: bigint;
-  bookings: number;
+  totals: AffiliateCommissionTotals;
 }
 
 /** Aggregate an affiliate's clicks + commission totals for the dashboard (§15.3). */
@@ -32,13 +30,7 @@ export class GetAffiliateStatsUseCase {
         this.commissions.totalsForAffiliate(tx, affiliateId),
         this.links.totalClicksForAffiliate(tx, affiliateId),
       ]);
-      return {
-        clicks,
-        pending: totals.pending,
-        confirmed: totals.confirmed,
-        paid: totals.paid,
-        bookings: totals.bookings,
-      };
+      return { clicks, totals };
     });
   }
 }

@@ -14,6 +14,7 @@ import {
   assertOwnership,
   listingNotFound,
   runModeration,
+  stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
@@ -49,7 +50,11 @@ export class SubmitListingUseCase {
       }
 
       const outcome = runModeration(() => transitionSubmit(listing));
-      const updated = await this.listings.moderate(tx, listingId, outcome);
+      const updated = await this.listings.moderate(
+        tx,
+        listingId,
+        stampModerationTimestamps(listing, outcome),
+      );
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.submitted',
         entityType: 'listing',

@@ -1,5 +1,5 @@
 import { data, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lock } from 'lucide-react';
 import {
   updateListingInputSchema,
   type CancellationPolicySummary,
@@ -10,8 +10,41 @@ import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/listings.$listingId.edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
+import { ListingStatusBadge } from '~/components/status-badge';
 import { ListingForm } from './components/listing-form';
+
+/**
+ * A read-only strip above the edit form: current publish status + who last hid or
+ * published it, so a partner opening a live/locked listing knows the state their
+ * edit lands in (an admin-hidden listing can only be un-hidden by an admin).
+ */
+function ListingStatusStrip({ listing }: { listing: ListingResponse }) {
+  const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
+  const actor = (who: 'partner' | 'admin'): string =>
+    who === 'admin' ? 'quản trị viên' : 'đối tác';
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+      <ListingStatusBadge status={listing.status} />
+      {adminLocked ? (
+        <span className="inline-flex items-center gap-1.5 text-warning">
+          <Lock className="size-3.5" aria-hidden />
+          Bị quản trị viên ẩn — chỉ quản trị viên mới bỏ ẩn được.
+        </span>
+      ) : listing.hiddenBy ? (
+        <span className="text-muted-foreground">Đã ẩn bởi {actor(listing.hiddenBy)}.</span>
+      ) : listing.status === 'published' ? (
+        <span className="text-muted-foreground">
+          Đang hiển thị — hãy ẩn tin đăng trước khi sửa nếu không muốn thay đổi hiện ngay.
+        </span>
+      ) : listing.publishedBy ? (
+        <span className="text-muted-foreground">
+          Đã xuất bản bởi {actor(listing.publishedBy)}.
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sửa tin đăng · Đối tác · Bookify' }];
@@ -60,6 +93,7 @@ export default function EditListingPage({ loaderData, actionData }: Route.Compon
         </Button>
         <PageHeader title="Sửa tin đăng" description={loaderData.listing.title} />
       </div>
+      <ListingStatusStrip listing={loaderData.listing} />
       <ListingForm
         listingTypes={loaderData.listingTypes}
         partnerId={loaderData.partnerId}

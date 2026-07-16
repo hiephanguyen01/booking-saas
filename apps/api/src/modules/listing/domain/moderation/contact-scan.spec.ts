@@ -60,4 +60,39 @@ describe('scanForContactInfo', () => {
     const flags = scanForContactInfo(photoScanFields(['clean-cover.jpg', 'zalo-me.png']));
     expect(flags.some((f) => f.type === 'zalo' && f.field === 'photo[1]')).toBe(true);
   });
+
+  /**
+   * A photo value is always an absolute URL by contract, and the review checklist
+   * requires at least one photo — so flagging the storage URL as an "external
+   * link" made EVERY listing unpublishable without `force`. Only the path is
+   * scanned (§7.3 means image metadata, not the host the platform issued).
+   */
+  it('does not flag a listing own storage photo URL as an external link', () => {
+    const flags = scanForContactInfo(
+      photoScanFields(['https://minio.bookify.vn/listings/studio-a-1.jpg']),
+    );
+    expect(flags).toEqual([]);
+  });
+
+  it('still catches contact info in the filename of a full storage URL', () => {
+    const flags = scanForContactInfo(
+      photoScanFields(['https://minio.bookify.vn/listings/zalo-0901234567.jpg']),
+    );
+    expect(flags.map((f) => f.type).sort()).toEqual(['phone', 'zalo']);
+    expect(flags.every((f) => f.field === 'photo[0]')).toBe(true);
+  });
+
+  it('sees through percent-encoding in a photo path', () => {
+    const flags = scanForContactInfo(
+      photoScanFields(['https://cdn.example.com/uploads/call%2D0901234567.jpg']),
+    );
+    expect(flags.some((f) => f.type === 'phone')).toBe(true);
+  });
+
+  it('catches an off-platform link smuggled into a photo query string', () => {
+    const flags = scanForContactInfo(
+      photoScanFields(['https://cdn.example.com/a.jpg?ref=fb.com/mystudio']),
+    );
+    expect(flags.some((f) => f.type === 'url' && f.match.includes('fb.com'))).toBe(true);
+  });
 });

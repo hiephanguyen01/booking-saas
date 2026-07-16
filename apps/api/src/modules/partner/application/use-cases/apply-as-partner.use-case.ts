@@ -111,7 +111,10 @@ export class ApplyAsPartnerUseCase {
         eventType: 'partner.applied',
         payload: { partnerId: created.id, userId },
       });
-      return created;
+      // `created` was read back before addMember ran, so its `owner` is still
+      // null. Re-read so the applicant's own record carries the owner contact it
+      // just established (the row is in this tx, so this always resolves).
+      return (await this.partners.findById(tx, created.id)) ?? created;
     });
 
     // Evict the applicant's cached permissions so partner scope works immediately.

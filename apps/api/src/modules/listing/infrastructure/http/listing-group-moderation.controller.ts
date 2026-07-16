@@ -1,6 +1,10 @@
-import { Body, Controller, HttpCode, Ip, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Ip, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { uuidSchema, type ListingGroupResponse } from '@booking/contracts';
+import {
+  uuidSchema,
+  type ListingGroupResponse,
+  type ListingGroupReviewResponse,
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -8,9 +12,15 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { GroupModerationUseCase } from '../../application/use-cases/moderation/group-moderation.use-case';
+import { ReviewListingGroupUseCase } from '../../application/use-cases/moderation/review-listing-group.use-case';
 import { toListingGroupResponse } from '../../application/listing.mapper';
 import { UuidParam } from '../../../../shared/openapi/decorators';
-import { ListingGroupResponseDto, ModerationReasonDto, PublishListingDto } from './dto/listing.dto';
+import {
+  ListingGroupResponseDto,
+  ListingGroupReviewResponseDto,
+  ModerationReasonDto,
+  PublishListingDto,
+} from './dto/listing.dto';
 
 /** Tenant-side post (listing_group) moderation (§7.3); the reviewer acts as `admin`. */
 @ApiTags('tenant-listing-group-moderation')
@@ -18,11 +28,24 @@ import { ListingGroupResponseDto, ModerationReasonDto, PublishListingDto } from 
 export class TenantListingGroupModerationController {
   constructor(
     private readonly moderation: GroupModerationUseCase,
+    private readonly reviewGroup: ReviewListingGroupUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
   private ctx(principal: SessionPrincipal, ip: string) {
     return { tenantId: this.tenantContext.tenantIdOrThrow(), actorUserId: principal.userId, ip };
+  }
+
+  /** Mirrors `GET /tenant/listings/:id/review`; covers the post AND its items. */
+  @RequirePermissions('tenant.listings.publish')
+  @Get(':id/review')
+  @ApiOperation({ summary: "Get a listing group's moderation review checklist" })
+  @UuidParam()
+  @ApiOkResponse({ type: ListingGroupReviewResponseDto })
+  async review(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<ListingGroupReviewResponse> {
+    return this.reviewGroup.execute(this.tenantContext.tenantIdOrThrow(), id);
   }
 
   @RequirePermissions('tenant.listings.publish')

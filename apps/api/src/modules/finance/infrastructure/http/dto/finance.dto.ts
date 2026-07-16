@@ -5,12 +5,15 @@ import {
   createPayoutInputSchema,
   failPayoutInputSchema,
   ledgerEntryResponseSchema,
+  ledgerQuerySchema,
   markPayoutPaidInputSchema,
   paginationQuerySchema,
   partnerFinanceResponseSchema,
   payoutResponseSchema,
   platformFinanceResponseSchema,
   tenantFinanceSummaryResponseSchema,
+  tenantPayableQuerySchema,
+  tenantPayableResponseSchema,
   updateCommissionRuleInputSchema,
 } from '@booking/contracts';
 
@@ -23,6 +26,8 @@ export class FailPayoutDto extends createZodDto(failPayoutInputSchema) {}
 
 // Query params
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
+export class LedgerQueryDto extends createZodDto(ledgerQuerySchema) {}
+export class TenantPayableQueryDto extends createZodDto(tenantPayableQuerySchema) {}
 
 // Responses
 export class CommissionRuleResponseDto extends createZodDto(commissionRuleResponseSchema) {}
@@ -31,3 +36,4 @@ export class TenantFinanceSummaryResponseDto extends createZodDto(tenantFinanceS
 export class PartnerFinanceResponseDto extends createZodDto(partnerFinanceResponseSchema) {}
 export class PlatformFinanceResponseDto extends createZodDto(platformFinanceResponseSchema) {}
 export class PayoutResponseDto extends createZodDto(payoutResponseSchema) {}
+export class TenantPayableResponseDto extends createZodDto(tenantPayableResponseSchema) {}

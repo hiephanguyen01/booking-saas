@@ -5,6 +5,8 @@ import {
   createPartnerPromotionInputSchema,
   createPromotionInputSchema,
   promoUsageStatsResponseSchema,
+  promotionCategoryOptionSchema,
+  promotionDetailResponseSchema,
   promotionResponseSchema,
   updatePartnerPromotionInputSchema,
   updatePromotionInputSchema,
@@ -24,4 +26,6 @@ export class AutoCampaignDto extends createZodDto(autoCampaignInputSchema) {}
 export class ValidatePromoResponseDto extends createZodDto(validatePromoResponseSchema) {}
 export class AutoCampaignResponseDto extends createZodDto(autoCampaignSchema) {}
 export class PromotionResponseDto extends createZodDto(promotionResponseSchema) {}
+export class PromotionDetailResponseDto extends createZodDto(promotionDetailResponseSchema) {}
+export class PromotionCategoryOptionDto extends createZodDto(promotionCategoryOptionSchema) {}
 export class PromoUsageStatsResponseDto extends createZodDto(promoUsageStatsResponseSchema) {}

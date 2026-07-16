@@ -41,14 +41,19 @@ export class UpdatePartnerPromotionUseCase {
       if (input.name !== undefined) data.name = input.name;
       if (input.discountType !== undefined) data.discountType = input.discountType;
       if (input.discountValue !== undefined) data.discountValue = vnd(input.discountValue);
-      if (input.maxDiscount !== undefined) data.maxDiscount = vnd(input.maxDiscount);
-      if (input.minOrderAmount !== undefined) data.minOrderAmount = vnd(input.minOrderAmount);
+      // `null` → clear the condition; absent → leave the stored value untouched.
+      if (input.maxDiscount !== undefined) data.maxDiscount = input.maxDiscount === null ? null : vnd(input.maxDiscount);
+      if (input.minOrderAmount !== undefined) {
+        data.minOrderAmount = input.minOrderAmount === null ? null : vnd(input.minOrderAmount);
+      }
       if (input.firstBookingOnly !== undefined) data.firstBookingOnly = input.firstBookingOnly;
       if (input.usageLimitTotal !== undefined) data.usageLimitTotal = input.usageLimitTotal;
       if (input.usageLimitPerCustomer !== undefined) data.usageLimitPerCustomer = input.usageLimitPerCustomer;
-      if (input.timeWindows !== undefined) data.timeWindows = input.timeWindows ?? null;
-      if (input.startsAt !== undefined) data.startsAt = new Date(input.startsAt);
-      if (input.endsAt !== undefined) data.endsAt = new Date(input.endsAt);
+      if (input.timeWindows !== undefined) {
+        data.timeWindows = input.timeWindows === null || input.timeWindows.length === 0 ? null : input.timeWindows;
+      }
+      if (input.startsAt !== undefined) data.startsAt = input.startsAt === null ? null : new Date(input.startsAt);
+      if (input.endsAt !== undefined) data.endsAt = input.endsAt === null ? null : new Date(input.endsAt);
       if (input.status !== undefined) data.status = input.status;
 
       if (input.appliesTo !== undefined || input.appliesToId !== undefined) {

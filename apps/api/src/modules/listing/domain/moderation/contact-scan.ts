@@ -14,7 +14,8 @@ const PHONE_CANDIDATE = /(?:\+?84|0)[\d\s._-]{8,13}\d/g;
 const ZALO = /zalo/gi;
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 // http(s):// or www. links, plus bare domains on common TLDs (fb.com, t.me, …).
-const URL =
+// NOT named `URL`: that shadows the global URL constructor for this whole module.
+const URL_PATTERN =
   /\b(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(?:com|vn|net|org|me|link|info|biz|fb|ig|tk|xyz)\b(?:\/\S*)?/gi;
 
 function digitsOnly(s: string): string {
@@ -43,7 +44,7 @@ function scanField(field: string, text: string | null | undefined): ContactFlag[
   // A URL match that is really just an email's domain would double-report; skip
   // links already covered by an email hit on the same field.
   const emailMatches = flags.filter((f) => f.type === 'email').map((f) => f.match.toLowerCase());
-  for (const m of text.matchAll(URL)) {
+  for (const m of text.matchAll(URL_PATTERN)) {
     const match = m[0];
     if (emailMatches.some((e) => e.includes(match.toLowerCase()))) continue;
     flags.push({ type: 'url', field, match });
@@ -66,16 +67,46 @@ export function scanForContactInfo(
 }
 
 /**
+ * Reduce a photo entry to the part worth scanning: its path + query, decoded.
+ *
+ * A photo value is ALWAYS an absolute URL by contract (`z.string().url()`), so
+ * scanning it whole made the `url` rule fire on every single photo — and since
+ * the review checklist also REQUIRES at least one photo, that combination meant
+ * no listing could ever be published without `force`. §7.3 asks for "images
+ * metadata" — a phone number smuggled into a filename (`call-0901234567.jpg`) —
+ * not the storage host the platform itself issued.
+ *
+ * Dropping scheme+host keeps every phone/zalo/email rule working on the
+ * filename while removing the meaningless self-match. A non-URL entry (a bare
+ * filename) is scanned as-is. Percent-encoding is decoded so `%30%39...` can't
+ * hide a number.
+ */
+function photoScanText(photo: string): string {
+  let candidate = photo;
+  try {
+    const url = new URL(photo);
+    candidate = `${url.pathname}${url.search}`;
+  } catch {
+    // Not an absolute URL — scan the raw value.
+  }
+  try {
+    return decodeURIComponent(candidate);
+  } catch {
+    return candidate;
+  }
+}
+
+/**
  * Turn a listing/post photo list into named scan fields. §7.3 mandates scanning
- * "description/images metadata", so a phone number smuggled into an image URL,
- * filename or alt text (e.g. `call-0901234567.jpg`) is caught like prose is.
+ * "description/images metadata", so a phone number smuggled into an image
+ * filename (e.g. `call-0901234567.jpg`) is caught like prose is.
  */
 export function photoScanFields(
   photos: readonly string[] | null | undefined,
 ): Record<string, string> {
   const fields: Record<string, string> = {};
   (photos ?? []).forEach((photo, index) => {
-    fields[`photo[${index}]`] = photo;
+    fields[`photo[${index}]`] = photoScanText(photo);
   });
   return fields;
 }

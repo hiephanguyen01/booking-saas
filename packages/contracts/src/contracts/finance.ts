@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { paginationQuerySchema, uuidSchema } from './common';
 
 /**
  * Finance contracts (TONG-QUAN.md §3, §7.7, §13): commission rules, the
@@ -147,6 +147,13 @@ export const ledgerEntryResponseSchema = z.object({
   journalId: z.string(),
   ownerType: ledgerOwnerTypeSchema,
   ownerId: z.string().nullable(),
+  /**
+   * Display name of the entry's owner, resolved server-side: `partners.name`,
+   * the affiliate's user full name, or the tenant name. Null for the `platform`
+   * owner (which has no `ownerId`) and for an owner whose record no longer
+   * exists — render the `ownerType` label in that case rather than the raw id.
+   */
+  ownerName: z.string().nullable(),
   entryType: ledgerEntryTypeSchema,
   /** VND đồng digit strings. Exactly one of debit/credit is > 0. */
   debit: z.string(),
@@ -158,6 +165,19 @@ export const ledgerEntryResponseSchema = z.object({
   createdAt: z.string(),
 });
 export type LedgerEntryResponse = z.infer<typeof ledgerEntryResponseSchema>;
+
+/** Filters for the tenant ledger view (§13.3). All optional; ANDed together. */
+export const ledgerQuerySchema = paginationQuerySchema.extend({
+  /** Only entries referencing this booking. */
+  bookingId: uuidSchema.optional(),
+  ownerType: ledgerOwnerTypeSchema.optional(),
+  entryType: ledgerEntryTypeSchema.optional(),
+  /** Inclusive ISO lower bound on the entry's `createdAt`. */
+  from: z.string().datetime().optional(),
+  /** Inclusive ISO upper bound on the entry's `createdAt`. */
+  to: z.string().datetime().optional(),
+});
+export type LedgerQuery = z.infer<typeof ledgerQuerySchema>;
 
 /** Net balance for one ledger owner — `balance` = credit − debit (VND, signed). */
 export const ownerBalanceResponseSchema = z.object({
@@ -245,10 +265,72 @@ export const payoutResponseSchema = z.object({
   periodTo: z.string().nullable(),
   status: payoutStatusSchema,
   paidAt: z.string().nullable(),
+  /** Bank transfer reference, set when the payout is marked paid. */
   reference: z.string().nullable(),
+  /**
+   * Storage key of the uploaded transfer evidence, set alongside `reference`.
+   * Tenant audience only — the partner view nulls it (the key is not fetchable
+   * without a presigned download, and it exposes internal storage layout).
+   */
+  evidenceKey: z.string().nullable(),
+  /**
+   * Why the transfer failed. Set only when `status === 'failed'`, and the only
+   * explanation a failed payout carries — render it wherever a failed payout is
+   * shown, or the row is unexplainable.
+   */
+  failureReason: z.string().nullable(),
+  /**
+   * User id that opened the run; null for automated runs. Tenant audience only —
+   * the partner view nulls it, as it identifies a tenant-internal actor.
+   */
+  createdBy: z.string().nullable(),
   createdAt: z.string(),
 });
 export type PayoutResponse = z.infer<typeof payoutResponseSchema>;
+
+// ── Payable preview ─────────────────────────────────────────────────────────
+
+/** `GET /tenant/finance/payable` selects the payee to preview. */
+export const tenantPayableQuerySchema = z.object({
+  payeeType: payoutPayeeTypeSchema,
+  payeeId: uuidSchema,
+});
+export type TenantPayableQuery = z.infer<typeof tenantPayableQuerySchema>;
+
+/**
+ * The **true payable** for one payee (§7.7): exactly what `POST /tenant/finance/payouts`
+ * would pay right now, plus every input that shaped it.
+ *
+ * `balance` (the raw ledger balance) is NOT what gets paid — a payout run pays
+ * `available` = `maturePayable − outstanding`. The two diverge whenever money is
+ * still inside the holding window or is already claimed by an unsettled run, so a
+ * payout UI must show `available` and use `balance` only as context. Showing
+ * `balance` as the payable is what makes a run fail with a hard
+ * `NOTHING_TO_PAY` / `BELOW_MINIMUM` on a payee that looks flush.
+ */
+export const tenantPayableResponseSchema = z.object({
+  payeeType: payoutPayeeTypeSchema,
+  payeeId: z.string(),
+  /** Raw ledger balance (credit − debit), signed VND. Context only — not payable. */
+  balance: signedVndDigits,
+  /** Net payable that has cleared the holding window, signed VND. */
+  maturePayable: signedVndDigits,
+  /** Already claimed by pending/processing runs, VND. Subtracted from the mature payable. */
+  outstanding: vndDigits,
+  /** `maturePayable − outstanding` — the amount a run opened now would pay. Signed. */
+  available: signedVndDigits,
+  /** Tenant policy: dispute buffer, in days, before payable matures. */
+  holdingDays: z.number().int(),
+  /** Tenant policy: minimum VND a run must reach. */
+  minAmount: vndDigits,
+  /** Tenant policy: the cadence a run covers. */
+  cycle: payoutCycleSchema,
+  /** Whether a payout run would be accepted right now. */
+  eligible: z.boolean(),
+  /** Why not — mirrors the exact code `POST payouts` would reject with. Null when eligible. */
+  ineligibleReason: z.enum(['NOTHING_TO_PAY', 'BELOW_MINIMUM']).nullable(),
+});
+export type TenantPayableResponse = z.infer<typeof tenantPayableResponseSchema>;
 
 // Re-export a couple of helpers so this file documents the shared money shape.
 export { vndDigits as financeVndDigits, signedVndDigits as financeSignedVndDigits };

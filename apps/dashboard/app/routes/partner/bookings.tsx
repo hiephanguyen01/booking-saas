@@ -1,26 +1,7 @@
 import { useMemo, useState } from 'react';
-import { data, Link, useFetcher } from 'react-router';
-import { Ban, Check, PackageCheck, Undo2, UserX, X } from 'lucide-react';
-import {
-  markReturnedInputSchema,
-  reasonInputSchema,
-  type BookingStatus,
-  type PartnerCalendarBookingResponse,
-  type ReturnBookingResponse,
-} from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
+import { Link } from 'react-router';
+import type { BookingStatus, PartnerCalendarBookingResponse } from '@booking/contracts';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@booking/ui/components/ui/dialog';
-import { Input } from '@booking/ui/components/ui/input';
-import { Label } from '@booking/ui/components/ui/label';
-import { Textarea } from '@booking/ui/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -29,12 +10,15 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import type { Route } from './+types/bookings';
-import { apiGet, apiPost } from '~/lib/api.server';
+import { apiGet } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
-import { PageHeader } from './components/page-header';
-import { BookingStatusBadge } from './components/booking-status-badge';
-import { formatDate, formatTime, formatVnd, BOOKING_STATUS } from './components/format';
+import { PageHeader } from '~/components/page-header';
+import { BookingStatusBadge, bookingStatusMeta } from '~/components/status-badge';
+import { Money } from '~/components/money';
+import { formatDate, formatTime } from '~/lib/format';
 import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from './components/calendar-dates';
+import { runPartnerBookingAction } from '~/features/bookings/partner-booking-actions.server';
+import { PartnerBookingActions } from '~/features/bookings/partner-booking-actions';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Lượt đặt · Đối tác · Bookify' }];
@@ -62,89 +46,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-/** Read an optional trimmed string form field, coercing blanks to undefined. */
-function readReason(form: FormData): string | undefined {
-  const v = form.get('reason');
-  const s = typeof v === 'string' ? v.trim() : '';
-  return s === '' ? undefined : s;
-}
-
-type ActionResult = {
-  ok: boolean;
-  error: string | null;
-  settlement: { depositRefund: string; depositShortfall: string; lateFee: string } | null;
-};
-
-const ok = (settlement: ActionResult['settlement'] = null): ActionResult => ({ ok: true, error: null, settlement });
-const fail = (error: string): ActionResult => ({ ok: false, error, settlement: null });
-
 export async function action({ request }: Route.ActionArgs) {
   const { auth, membership } = await requirePartner(request);
-  const form = await request.formData();
-  const id = String(form.get('id') ?? '');
-  const intent = String(form.get('intent') ?? '');
-  if (!id) return data(fail('Thiếu mã lượt đặt.'), { status: 400 });
-
-  const canApprove = canPartner(membership, 'partner.bookings.approve');
-  const canManage = canPartner(membership, 'partner.bookings.cancel');
-
-  if (intent === 'approve') {
-    if (!canApprove) return data(fail('Không có quyền duyệt lượt đặt.'), { status: 403 });
-    const res = await apiPost(`/partner/bookings/${id}/approve`, {}, auth);
-    return res.ok ? data(ok()) : data(fail(res.error ?? 'Duyệt không thành công.'), { status: 400 });
-  }
-
-  if (intent === 'reject') {
-    if (!canApprove) return data(fail('Không có quyền từ chối lượt đặt.'), { status: 403 });
-    const parsed = reasonInputSchema.safeParse({ reason: readReason(form) });
-    if (!parsed.success) return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).'), { status: 400 });
-    const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
-    const res = await apiPost(`/partner/bookings/${id}/reject`, body, auth);
-    return res.ok ? data(ok()) : data(fail(res.error ?? 'Từ chối không thành công.'), { status: 400 });
-  }
-
-  if (intent === 'no-show') {
-    if (!canManage) return data(fail('Không có quyền đánh dấu vắng mặt.'), { status: 403 });
-    const parsed = reasonInputSchema.safeParse({ reason: readReason(form) });
-    if (!parsed.success) return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).'), { status: 400 });
-    const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
-    const res = await apiPost(`/partner/bookings/${id}/no-show`, body, auth);
-    return res.ok ? data(ok()) : data(fail(res.error ?? 'Đánh dấu vắng mặt không thành công.'), { status: 400 });
-  }
-
-  if (intent === 'cancel') {
-    if (!canManage) return data(fail('Không có quyền huỷ lượt đặt.'), { status: 403 });
-    const parsed = reasonInputSchema.safeParse({ reason: readReason(form) });
-    if (!parsed.success) return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).'), { status: 400 });
-    const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
-    const res = await apiPost(`/partner/bookings/${id}/cancel`, body, auth);
-    return res.ok ? data(ok()) : data(fail(res.error ?? 'Huỷ không thành công.'), { status: 400 });
-  }
-
-  if (intent === 'pick-up') {
-    if (!canManage) return data(fail('Không có quyền nhận thiết bị.'), { status: 403 });
-    const res = await apiPost(`/partner/bookings/${id}/pick-up`, {}, auth);
-    return res.ok ? data(ok()) : data(fail(res.error ?? 'Đánh dấu nhận thiết bị không thành công.'), { status: 400 });
-  }
-
-  if (intent === 'return') {
-    if (!canManage) return data(fail('Không có quyền nhận trả thiết bị.'), { status: 403 });
-    const damageAmount = String(form.get('damageAmount') ?? '0').trim() || '0';
-    const parsed = markReturnedInputSchema.safeParse({ damageAmount, reason: readReason(form) });
-    if (!parsed.success) return data(fail('Số tiền hư hỏng không hợp lệ (số nguyên VND).'), { status: 400 });
-    const res = await apiPost<ReturnBookingResponse>(`/partner/bookings/${id}/return`, parsed.data, auth);
-    return res.ok && res.data
-      ? data(
-          ok({
-            depositRefund: res.data.depositRefund,
-            depositShortfall: res.data.depositShortfall,
-            lateFee: res.data.lateFee,
-          }),
-        )
-      : data(fail(res.error ?? 'Nhận trả thiết bị không thành công.'), { status: 400 });
-  }
-
-  return data(fail('Hành động không hợp lệ.'), { status: 400 });
+  return runPartnerBookingAction({ request, auth, can: (key) => canPartner(membership, key) });
 }
 
 const FILTERS: { value: string; label: string }[] = [
@@ -178,6 +82,20 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
       ),
     },
     {
+      header: 'Khách hàng',
+      cell: (b) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">{b.customer.fullName}</p>
+          {b.customer.phone ? (
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {b.customer.phone}
+              {b.customer.phoneMasked ? ' · đã ẩn' : ''}
+            </p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
       header: 'Tin đăng',
       cell: (b) => (
         <div className="min-w-0">
@@ -185,6 +103,8 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
           <p className="text-xs text-muted-foreground">{b.listingTypeName}</p>
         </div>
       ),
+      className: 'hidden md:table-cell',
+      headClassName: 'hidden md:table-cell',
     },
     {
       header: 'Thời gian',
@@ -198,13 +118,14 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
       ),
     },
     {
-      header: 'Khách',
+      header: 'Số khách',
       cell: (b) => <span className="tabular-nums">{b.guestCount}</span>,
-      className: 'tabular-nums',
+      className: 'hidden tabular-nums lg:table-cell',
+      headClassName: 'hidden lg:table-cell',
     },
     {
       header: 'Giá trị',
-      cell: (b) => <span className="font-medium tabular-nums">{formatVnd(b.finalAmount)}</span>,
+      cell: (b) => <Money className="font-medium" value={b.finalAmount} />,
       headClassName: 'text-right',
       className: 'text-right',
     },
@@ -218,7 +139,7 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
       className: 'text-right',
       cell: (b) =>
         canApprove || canManage ? (
-          <RowActions booking={b} canApprove={canApprove} canManage={canManage} />
+          <PartnerBookingActions booking={b} canApprove={canApprove} canManage={canManage} emptyLabel="-" />
         ) : null,
     },
   ];
@@ -263,306 +184,9 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
         emptyMessage={
           filter === 'all'
             ? 'Chưa có lượt đặt nào trong khoảng thời gian này.'
-            : `Không có lượt đặt ở trạng thái “${BOOKING_STATUS[filter as BookingStatus]?.label ?? filter}”.`
+            : `Không có lượt đặt ở trạng thái “${bookingStatusMeta(filter as BookingStatus).label}”.`
         }
       />
-    </div>
-  );
-}
-
-/** 48h after the slot end — matches the backend no-show window (§8.2). */
-const NO_SHOW_AFTER_END_MS = 48 * 60 * 60 * 1000;
-
-/** A confirmed booking whose slot end + the backend's 48h window has elapsed. */
-function isNoShowEligible(booking: PartnerCalendarBookingResponse): boolean {
-  return (
-    booking.status === 'confirmed' &&
-    Date.now() >= new Date(booking.endUtc).getTime() + NO_SHOW_AFTER_END_MS
-  );
-}
-
-type DialogKind = 'reject' | 'no-show' | 'cancel' | 'return';
-
-function RowActions({
-  booking,
-  canApprove,
-  canManage,
-}: {
-  booking: PartnerCalendarBookingResponse;
-  canApprove: boolean;
-  canManage: boolean;
-}) {
-  const fetcher = useFetcher<typeof action>();
-  const [dialog, setDialog] = useState<DialogKind | null>(null);
-  const busy = fetcher.state !== 'idle';
-
-  const isInventory = booking.bookingMode === 'inventory';
-  const submit = (intent: string): void => {
-    fetcher.submit({ id: booking.id, intent }, { method: 'post' });
-  };
-
-  const buttons: React.ReactNode[] = [];
-
-  if (booking.status === 'pending_approval' && canApprove) {
-    buttons.push(
-      <Button key="approve" type="button" size="xs" disabled={busy} onClick={() => submit('approve')}>
-        <Check className="size-3.5" aria-hidden /> Duyệt
-      </Button>,
-      <Button key="reject" type="button" size="xs" variant="outline" disabled={busy} onClick={() => setDialog('reject')}>
-        <X className="size-3.5" aria-hidden /> Từ chối
-      </Button>,
-    );
-  }
-
-  if (booking.status === 'confirmed' && canManage) {
-    if (isInventory && !booking.pickedUpAt) {
-      buttons.push(
-        <Button key="pickup" type="button" size="xs" variant="outline" disabled={busy} onClick={() => submit('pick-up')}>
-          <PackageCheck className="size-3.5" aria-hidden /> Giao thiết bị
-        </Button>,
-      );
-    }
-    if (isInventory && booking.pickedUpAt && !booking.returnedAt) {
-      buttons.push(
-        <Button key="return" type="button" size="xs" variant="outline" disabled={busy} onClick={() => setDialog('return')}>
-          <Undo2 className="size-3.5" aria-hidden /> Nhận trả
-        </Button>,
-      );
-    }
-    if (isNoShowEligible(booking)) {
-      buttons.push(
-        <Button
-          key="no-show"
-          type="button"
-          size="xs"
-          variant="ghost"
-          className="text-muted-foreground hover:text-destructive"
-          disabled={busy}
-          onClick={() => setDialog('no-show')}
-        >
-          <UserX className="size-3.5" aria-hidden /> Vắng mặt
-        </Button>,
-      );
-    }
-  }
-
-  if ((booking.status === 'confirmed' || booking.status === 'pending_payment') && canManage) {
-    buttons.push(
-      <Button
-        key="cancel"
-        type="button"
-        size="xs"
-        variant="ghost"
-        className="text-muted-foreground hover:text-destructive"
-        disabled={busy}
-        onClick={() => setDialog('cancel')}
-      >
-        <Ban className="size-3.5" aria-hidden /> Huỷ
-      </Button>,
-    );
-  }
-
-  if (buttons.length === 0) return <span className="text-xs text-muted-foreground">-</span>;
-
-  return (
-    <div className="flex flex-wrap justify-end gap-1.5">
-      {buttons}
-
-      <ReasonDialog
-        open={dialog === 'reject'}
-        onOpenChange={(o) => setDialog(o ? 'reject' : null)}
-        fetcher={fetcher}
-        booking={booking}
-        intent="reject"
-        title="Từ chối lượt đặt"
-        placeholder="Cho khách biết vì sao lượt đặt bị từ chối…"
-        confirmLabel="Từ chối lượt đặt"
-        busy={busy}
-      />
-      <ReasonDialog
-        open={dialog === 'no-show'}
-        onOpenChange={(o) => setDialog(o ? 'no-show' : null)}
-        fetcher={fetcher}
-        booking={booking}
-        intent="no-show"
-        title="Đánh dấu vắng mặt"
-        placeholder="Ghi chú (tuỳ chọn) về việc khách không đến…"
-        confirmLabel="Đánh dấu vắng mặt"
-        busy={busy}
-      />
-      <ReasonDialog
-        open={dialog === 'cancel'}
-        onOpenChange={(o) => setDialog(o ? 'cancel' : null)}
-        fetcher={fetcher}
-        booking={booking}
-        intent="cancel"
-        title="Huỷ lượt đặt"
-        description="Đối tác huỷ luôn hoàn tiền 100% cho khách (§8.2)."
-        placeholder="Lý do huỷ (tuỳ chọn)…"
-        confirmLabel="Huỷ & hoàn tiền 100%"
-        busy={busy}
-      />
-      <ReturnDialog
-        open={dialog === 'return'}
-        onOpenChange={(o) => setDialog(o ? 'return' : null)}
-        fetcher={fetcher}
-        booking={booking}
-        busy={busy}
-      />
-    </div>
-  );
-}
-
-/**
- * Optional-reason confirmation dialog for reject / no-show / cancel. Submits via
- * the shared fetcher; the route `action` re-validates the reason.
- */
-function ReasonDialog({
-  open,
-  onOpenChange,
-  fetcher,
-  booking,
-  intent,
-  title,
-  description,
-  placeholder,
-  confirmLabel,
-  busy,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  fetcher: ReturnType<typeof useFetcher<typeof action>>;
-  booking: PartnerCalendarBookingResponse;
-  intent: 'reject' | 'no-show' | 'cancel';
-  title: string;
-  description?: string;
-  placeholder: string;
-  confirmLabel: string;
-  busy: boolean;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {description ? <span className="block">{description}</span> : null}
-            Lượt đặt <span className="font-mono">{booking.code}</span> · {booking.listingTitle}
-          </DialogDescription>
-        </DialogHeader>
-        <fetcher.Form method="post" onSubmit={() => onOpenChange(false)} className="space-y-4">
-          <input type="hidden" name="id" value={booking.id} />
-          <input type="hidden" name="intent" value={intent} />
-          <div className="space-y-2">
-            <Label htmlFor={`reason-${intent}-${booking.id}`}>Lý do (tuỳ chọn)</Label>
-            <Textarea
-              id={`reason-${intent}-${booking.id}`}
-              name="reason"
-              rows={3}
-              maxLength={500}
-              placeholder={placeholder}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Đóng
-            </Button>
-            <Button type="submit" variant="destructive" disabled={busy}>
-              {confirmLabel}
-            </Button>
-          </DialogFooter>
-        </fetcher.Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/**
- * Inventory return (§9.4): partner records a damage amount deducted from the
- * security deposit; the action returns the settlement (refund / shortfall / late
- * fee), shown here before the dialog is dismissed.
- */
-function ReturnDialog({
-  open,
-  onOpenChange,
-  fetcher,
-  booking,
-  busy,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  fetcher: ReturnType<typeof useFetcher<typeof action>>;
-  booking: PartnerCalendarBookingResponse;
-  busy: boolean;
-}) {
-  const settlement = fetcher.data && fetcher.data.ok ? fetcher.data.settlement : null;
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Nhận trả thiết bị</DialogTitle>
-          <DialogDescription>
-            Lượt đặt <span className="font-mono">{booking.code}</span> · {booking.listingTitle}
-            <span className="mt-1 block">Cọc thiết bị: {formatVnd(booking.securityDeposit)}</span>
-          </DialogDescription>
-        </DialogHeader>
-
-        {settlement ? (
-          <div className="space-y-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            <SettleRow label="Hoàn cọc" value={formatVnd(settlement.depositRefund)} />
-            {settlement.lateFee !== '0' ? <SettleRow label="Phí trễ hạn" value={formatVnd(settlement.lateFee)} /> : null}
-            {settlement.depositShortfall !== '0' ? (
-              <SettleRow label="Còn thiếu (khách nợ)" value={formatVnd(settlement.depositShortfall)} />
-            ) : null}
-          </div>
-        ) : (
-          <fetcher.Form method="post" className="space-y-4">
-            <input type="hidden" name="id" value={booking.id} />
-            <input type="hidden" name="intent" value="return" />
-            <div className="space-y-2">
-              <Label htmlFor={`damage-${booking.id}`}>Số tiền hư hỏng (VND)</Label>
-              <Input
-                id={`damage-${booking.id}`}
-                name="damageAmount"
-                inputMode="numeric"
-                defaultValue="0"
-                pattern="\d*"
-                placeholder="0"
-              />
-              <p className="text-xs text-muted-foreground">Khấu trừ từ tiền cọc; để 0 nếu thiết bị nguyên vẹn.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`return-reason-${booking.id}`}>Ghi chú (tuỳ chọn)</Label>
-              <Textarea id={`return-reason-${booking.id}`} name="reason" rows={2} maxLength={500} />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                Đóng
-              </Button>
-              <Button type="submit" disabled={busy}>
-                Xác nhận nhận trả
-              </Button>
-            </DialogFooter>
-          </fetcher.Form>
-        )}
-
-        {settlement ? (
-          <DialogFooter>
-            <Button type="button" onClick={() => onOpenChange(false)}>
-              Xong
-            </Button>
-          </DialogFooter>
-        ) : null}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function SettleRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums">{value}</span>
     </div>
   );
 }

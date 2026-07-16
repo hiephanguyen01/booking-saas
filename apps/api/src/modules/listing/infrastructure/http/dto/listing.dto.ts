@@ -6,8 +6,10 @@ import {
   createResourceInputSchema,
   listingGroupResponseSchema,
   listingGroupDetailResponseSchema,
+  listingGroupReviewResponseSchema,
   listingResponseSchema,
   listingReviewResponseSchema,
+  listTenantListingsQuerySchema,
   moderationReasonInputSchema,
   pricingRuleInputSchema,
   pricingRuleResponseSchema,
@@ -30,6 +32,7 @@ export class PricingRuleDto extends createZodDto(pricingRuleInputSchema) {}
 export class QuoteQueryDto extends createZodDto(quoteQuerySchema) {}
 export class ModerationReasonDto extends createZodDto(moderationReasonInputSchema) {}
 export class PublishListingDto extends createZodDto(publishListingInputSchema) {}
+export class ListTenantListingsQueryDto extends createZodDto(listTenantListingsQuerySchema) {}
 
 // ── Responses ─────────────────────────────────────────────────────────────────
 export class ListingGroupResponseDto extends createZodDto(listingGroupResponseSchema) {}
@@ -42,6 +45,7 @@ export class PublicListingDetailResponseDto extends createZodDto(
 ) {}
 export class QuoteResponseDto extends createZodDto(quoteResponseSchema) {}
 export class ListingReviewResponseDto extends createZodDto(listingReviewResponseSchema) {}
+export class ListingGroupReviewResponseDto extends createZodDto(listingGroupReviewResponseSchema) {}
 
 // ── Composed responses ────────────────────────────────────────────────────────
 /** Partner submit-for-review returns the listing plus its review checklist. */

@@ -609,12 +609,14 @@ model AgreementAcceptance {
 }
 
 model SubscriptionPlan {
-  id           String  @id @default(uuid(7)) @db.Uuid
-  name         String  @unique
-  priceMonthly BigInt  @map("price_monthly")
+  id           String   @id @default(uuid(7)) @db.Uuid
+  name         String   @unique
+  priceMonthly BigInt   @map("price_monthly")
   /// { maxPartners, maxListings, maxBookingsPerMonth, customDomain, affiliateModule } (§6.5).
-  limits       Json    @default("{}")
-  isActive     Boolean @default(true) @map("is_active")
+  limits       Json     @default("{}")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   subscriptions TenantSubscription[]
 
@@ -837,6 +839,10 @@ model Listing {
   status                  PublishStatus    @default(draft)
   publishedBy             ModerationActor? @map("published_by")
   hiddenBy                ModerationActor? @map("hidden_by")
+  /// set when the listing enters `pending_review`; null while it is still a draft.
+  submittedAt             DateTime?        @map("submitted_at") @db.Timestamptz(6)
+  /// set when the listing first reaches `published`; survives a later archive/hide.
+  publishedAt             DateTime?        @map("published_at") @db.Timestamptz(6)
   createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 

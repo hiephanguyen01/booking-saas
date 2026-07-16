@@ -20,6 +20,7 @@ import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/updat
 import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partner.use-case';
 import { ListPartnersUseCase } from '../../application/use-cases/list-partners.use-case';
 import { GetPartnerUseCase } from '../../application/use-cases/get-partner.use-case';
+import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
 import { PartnerVerificationService } from '../../application/services/partner-verification.service';
 import { PartnerApplicationController } from './partner-application.controller';
 import { TenantPartnerController } from './tenant-partner.controller';
@@ -48,6 +49,7 @@ import { PartnerProfileController } from './partner-profile.controller';
     SuspendPartnerUseCase,
     ListPartnersUseCase,
     GetPartnerUseCase,
+    GetPartnerProfileUseCase,
     PartnerVerificationService,
   ],
   // Exported so Task 1.4 (listing creation) enforces the identity-verification gate

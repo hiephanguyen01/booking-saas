@@ -16,11 +16,18 @@ export interface AffiliateRecord {
   createdAt: Date;
 }
 
-/** An affiliate joined with its user, for tenant-side listing + the portal. */
+/** An affiliate joined with its user + tenant, for tenant-side listing + the portal. */
 export interface AffiliateWithUser extends AffiliateRecord {
   userName: string;
   userEmail: string;
+  /** The affiliate user's contact phone (§7.1) — null when not provided. */
+  userPhone: string | null;
   tenantName: string;
+  /**
+   * The tenant storefront's primary hostname (§6.1) — the origin this membership's
+   * referral links resolve to. Null when the tenant has no primary domain mapped.
+   */
+  tenantHostname: string | null;
 }
 
 export interface CreateAffiliateData {
@@ -36,6 +43,8 @@ export interface IAffiliateRepository {
   list(tx: PrismaTx): Promise<AffiliateWithUser[]>;
   setStatus(tx: PrismaTx, id: string, status: AffiliateStatus): Promise<AffiliateRecord>;
   setCustomRate(tx: PrismaTx, id: string, customRate: bigint | null): Promise<AffiliateRecord>;
+  /** Replace the affiliate's payout (bank) details — the correction path for a typo'd account. */
+  setPayoutInfo(tx: PrismaTx, id: string, payoutInfo: Record<string, unknown>): Promise<AffiliateWithUser>;
   /**
    * Cross-tenant resolution of a user's affiliate memberships via the BYPASSRLS
    * admin pool — the ONE place that reads affiliates without a tenant scope,

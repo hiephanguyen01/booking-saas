@@ -4,10 +4,14 @@ import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type {
   AssignSubscriptionData,
   ISubscriptionRepository,
+  SubscriptionHistoryRecord,
   SubscriptionRecord,
 } from '../../domain/ports/subscription-repository.port';
 
 type PrismaSubscription = Prisma.TenantSubscriptionGetPayload<Record<string, never>>;
+type PrismaSubscriptionWithPlan = Prisma.TenantSubscriptionGetPayload<{
+  include: { plan: { select: { name: true } } };
+}>;
 
 function toRecord(s: PrismaSubscription): SubscriptionRecord {
   return {
@@ -46,5 +50,19 @@ export class PrismaSubscriptionRepository implements ISubscriptionRepository {
       orderBy: { startsAt: 'desc' },
     });
     return s ? toRecord(s) : null;
+  }
+
+  async listByTenant(tenantId: string): Promise<SubscriptionHistoryRecord[]> {
+    const rows = await this.prisma.admin.tenantSubscription.findMany({
+      where: { tenantId },
+      // Newest first, matching `findCurrentByTenant`'s notion of "current" —
+      // so the first row of the history IS the current subscription.
+      orderBy: [{ startsAt: 'desc' }, { createdAt: 'desc' }],
+      include: { plan: { select: { name: true } } },
+    });
+    return rows.map((s: PrismaSubscriptionWithPlan) => ({
+      ...toRecord(s),
+      planName: s.plan.name,
+    }));
   }
 }

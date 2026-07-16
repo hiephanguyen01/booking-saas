@@ -1,8 +1,9 @@
 import {
   uuidSchema,
-  type BookingResponse,
+  type BookingStatusHistoryResponse,
   type CancelBookingResponse,
   type PartnerBookingStatsResponse,
+  type TenantBookingResponse,
 } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -17,13 +18,16 @@ import {
   toBookingResponse,
   toCancelResponse,
   toPartnerBookingStatsResponse,
+  toStatusHistoryResponse,
 } from '../../application/booking.mapper';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
+import { GetBookingHistoryUseCase } from '../../application/use-cases/get-booking-history.use-case';
 import { ListTenantBookingsUseCase } from '../../application/use-cases/list-tenant-bookings.use-case';
 import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-booking-stats.use-case';
 import {
-  BookingResponseDto,
+  TenantBookingResponseDto,
+  BookingStatusHistoryResponseDto,
   CancelBookingResponseDto,
   PartnerBookingStatsResponseDto,
   ReasonDto,
@@ -43,18 +47,24 @@ export class TenantBookingController {
     private readonly listBookings: ListTenantBookingsUseCase,
     private readonly partnerStats: PartnerBookingStatsUseCase,
     private readonly getBooking: GetBookingUseCase,
+    private readonly bookingHistory: GetBookingHistoryUseCase,
     private readonly cancelBooking: CancelBookingUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
+  /**
+   * `status` / `partnerId` / `limit` are all honoured SERVER-side. Filtering a
+   * truncated page client-side makes every derived count wrong past `limit` rows.
+   */
   @RequirePermissions('tenant.bookings.read')
   @Get()
   @ApiOperation({ summary: 'List bookings across the tenant' })
-  @ApiOkResponse({ type: [BookingResponseDto] })
-  async list(@Query() query: TenantBookingsQueryDto): Promise<BookingResponse[]> {
+  @ApiOkResponse({ type: [TenantBookingResponseDto] })
+  async list(@Query() query: TenantBookingsQueryDto): Promise<TenantBookingResponse[]> {
     const items = await this.listBookings.execute(this.tenantContext.tenantIdOrThrow(), {
       status: query.status,
       partnerId: query.partnerId,
+      limit: query.limit,
     });
     return items.map(toBookingResponse);
   }
@@ -73,13 +83,29 @@ export class TenantBookingController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a tenant booking by id' })
   @UuidParam()
-  @ApiOkResponse({ type: BookingResponseDto })
+  @ApiOkResponse({ type: TenantBookingResponseDto })
   async detail(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<BookingResponse> {
+  ): Promise<TenantBookingResponse> {
     return toBookingResponse(
       await this.getBooking.execute(this.tenantContext.tenantIdOrThrow(), id),
     );
+  }
+
+  /**
+   * Transition audit trail (§8.2) — every status change with its actor and the
+   * reason typed at the time (including the customer's own cancellation reason).
+   */
+  @RequirePermissions('tenant.bookings.read')
+  @Get(':id/history')
+  @ApiOperation({ summary: "Status history of a tenant's booking" })
+  @UuidParam()
+  @ApiOkResponse({ type: [BookingStatusHistoryResponseDto] })
+  async history(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<BookingStatusHistoryResponse[]> {
+    const history = await this.bookingHistory.execute(this.tenantContext.tenantIdOrThrow(), id);
+    return history.map(toStatusHistoryResponse);
   }
 
   /** Tenant cancels a booking — always a 100% refund regardless of policy (§8.2). */

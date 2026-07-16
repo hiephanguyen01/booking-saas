@@ -4,13 +4,30 @@ import {
   type DomainVerificationResult,
   type Paginated,
   type PlanResponse,
+  type SlugAvailabilityResponse,
+  type SubscriptionHistoryItem,
   type SubscriptionResponse,
-  type TenantResponse
+  type TenancyConfigResponse,
+  type TenantDetailResponse,
+  type TenantResponse,
 } from '@booking/contracts';
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiAcceptedResponse,
+  ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -18,18 +35,24 @@ import {
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config';
 import {
   toDomainResponse,
   toPlanResponse,
+  toSubscriptionHistoryItem,
   toSubscriptionResponse,
+  toTenantDetailResponse,
   toTenantResponse,
 } from '../../application/tenancy.mapper';
 import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-case';
 import { AssignSubscriptionUseCase } from '../../application/use-cases/assign-subscription.use-case';
+import { CheckSlugAvailabilityUseCase } from '../../application/use-cases/check-slug-availability.use-case';
 import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
+import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
-import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
+import { GetTenantDetailUseCase } from '../../application/use-cases/get-tenant-detail.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
+import { ListSubscriptionsUseCase } from '../../application/use-cases/list-subscriptions.use-case';
 import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use-case';
 import { UpdateTenantUseCase } from '../../application/use-cases/update-tenant.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
@@ -41,8 +64,13 @@ import {
   CurrentSubscriptionDto,
   DomainResponseDto,
   DomainVerificationResultDto,
-  PaginationQueryDto,
+  ListTenantsQueryDto,
+  SlugAvailabilityResponseDto,
+  SlugCheckQueryDto,
+  SubscriptionHistoryItemDto,
   SubscriptionResponseDto,
+  TenancyConfigResponseDto,
+  TenantDetailResponseDto,
   TenantResponseDto,
   UpdateTenantDto,
 } from './dto/tenancy.dto';
@@ -54,13 +82,17 @@ export class AdminTenantController {
   constructor(
     private readonly createTenant: CreateTenantUseCase,
     private readonly listTenants: ListTenantsUseCase,
-    private readonly getTenant: GetTenantUseCase,
+    private readonly getTenantDetail: GetTenantDetailUseCase,
+    private readonly checkSlug: CheckSlugAvailabilityUseCase,
     private readonly updateTenant: UpdateTenantUseCase,
     private readonly assignSubscription: AssignSubscriptionUseCase,
     private readonly getCurrentSubscription: GetCurrentSubscriptionUseCase,
+    private readonly listSubscriptions: ListSubscriptionsUseCase,
     private readonly addDomain: AddDomainUseCase,
     private readonly verifyDomain: VerifyDomainUseCase,
     private readonly listDomains: ListDomainsUseCase,
+    private readonly deleteDomain: DeleteDomainUseCase,
+    @Inject(TENANCY_CONFIG) private readonly config: TenancyConfig,
   ) {}
 
   @RequirePermissions('platform.tenants.write')
@@ -76,9 +108,9 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.read')
   @Get()
-  @ApiOperation({ summary: 'List tenants (paginated)' })
+  @ApiOperation({ summary: 'List tenants (paginated; filter by search, status, vertical)' })
   @ApiPaginatedResponse(TenantResponseDto)
-  async list(@Query() query: PaginationQueryDto): Promise<Paginated<TenantResponse>> {
+  async list(@Query() query: ListTenantsQueryDto): Promise<Paginated<TenantResponse>> {
     const { items, total } = await this.listTenants.execute(query);
     return {
       items: items.map(toTenantResponse),
@@ -88,13 +120,35 @@ export class AdminTenantController {
     };
   }
 
+  // NOTE: `config` and `slug-check` are declared BEFORE `:id` on purpose — Nest
+  // matches in declaration order, and `:id` would otherwise swallow both and
+  // reject them as malformed uuids.
+
+  @RequirePermissions('platform.tenants.read')
+  @Get('config')
+  @ApiOperation({ summary: 'Platform tenancy config (base domain for tenant subdomains)' })
+  @ApiOkResponse({ type: TenancyConfigResponseDto })
+  tenancyConfig(): TenancyConfigResponse {
+    return { baseDomain: this.config.baseDomain };
+  }
+
+  @RequirePermissions('platform.tenants.read')
+  @Get('slug-check')
+  @ApiOperation({ summary: 'Check whether a tenant slug (and its subdomain) is free' })
+  @ApiOkResponse({ type: SlugAvailabilityResponseDto })
+  async slugCheck(@Query() query: SlugCheckQueryDto): Promise<SlugAvailabilityResponse> {
+    return this.checkSlug.execute(query.slug);
+  }
+
   @RequirePermissions('platform.tenants.read')
   @Get(':id')
-  @ApiOperation({ summary: 'Get a tenant by id' })
+  @ApiOperation({ summary: 'Get a tenant with its subscription, primary domain and counts' })
   @UuidParam()
-  @ApiOkResponse({ type: TenantResponseDto })
-  async get(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<TenantResponse> {
-    return toTenantResponse(await this.getTenant.execute(id));
+  @ApiOkResponse({ type: TenantDetailResponseDto })
+  async get(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<TenantDetailResponse> {
+    return toTenantDetailResponse(await this.getTenantDetail.execute(id));
   }
 
   @RequirePermissions('platform.tenants.write')
@@ -138,6 +192,17 @@ export class AdminTenantController {
   }
 
   @RequirePermissions('platform.tenants.read')
+  @Get(':id/subscriptions')
+  @ApiOperation({ summary: "A tenant's subscription history, newest first" })
+  @UuidParam()
+  @ApiOkResponse({ type: [SubscriptionHistoryItemDto] })
+  async subscriptionHistory(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<SubscriptionHistoryItem[]> {
+    return (await this.listSubscriptions.execute(id)).map(toSubscriptionHistoryItem);
+  }
+
+  @RequirePermissions('platform.tenants.read')
   @Get(':id/domains')
   @ApiOperation({ summary: "List a tenant's custom domains" })
   @UuidParam()
@@ -173,5 +238,26 @@ export class AdminTenantController {
   ): Promise<DomainVerificationResult> {
     const { status, domain } = await this.verifyDomain.execute(id, domainId);
     return { status, domain: toDomainResponse(domain) };
+  }
+
+  /**
+   * Removes a domain mapping. The tenant-facing controller has always had this;
+   * without it a platform admin who mistyped a hostname could add one but never
+   * take it back. Same use case, so the ownership check and the
+   * DOMAIN_PRIMARY_REQUIRED guard (never orphan the live storefront) apply here too.
+   */
+  @RequirePermissions('platform.tenants.write')
+  @Delete(':id/domains/:domainId')
+  @HttpCode(204)
+  @ApiOperation({ summary: "Remove one of a tenant's custom domains" })
+  @UuidParam()
+  @UuidParam('domainId')
+  @ApiNoContentResponse()
+  @ApiConflictResponse({ description: 'DOMAIN_PRIMARY_REQUIRED' })
+  async removeDomain(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Param('domainId', new ZodValidationPipe(uuidSchema)) domainId: string,
+  ): Promise<void> {
+    await this.deleteDomain.execute(id, domainId);
   }
 }

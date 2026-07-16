@@ -12,6 +12,7 @@ import { buildListingReview } from '../../moderation/build-listing-review';
 import {
   listingNotFound,
   runModeration,
+  stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
@@ -55,7 +56,11 @@ export class PublishListingUseCase {
       }
 
       const outcome = runModeration(() => transitionPublish(listing, 'admin'));
-      const updated = await this.listings.moderate(tx, listingId, outcome);
+      const updated = await this.listings.moderate(
+        tx,
+        listingId,
+        stampModerationTimestamps(listing, outcome),
+      );
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.published',
         entityType: 'listing',

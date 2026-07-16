@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Form, useNavigation } from 'react-router';
-import type { PromotionResponse } from '@booking/contracts';
+import type { PromotionResponse, PromotionTimeWindowDto } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
@@ -12,10 +12,11 @@ import {
 import { Trash2, Plus } from 'lucide-react';
 import type { ScopeOptions } from '../promotions/scope-options.server';
 
-type ScopeKey = 'all' | 'listing' | 'listing_type' | 'listing_group' | 'category' | 'partner';
+export type ScopeKey = 'all' | 'listing' | 'listing_type' | 'listing_group' | 'category' | 'partner';
 type TimeWindow = { days: number[]; from: string; to: string };
 
-const SCOPE_LABELS: Record<ScopeKey, string> = {
+/** Scope enum → Vietnamese label — shared with the detail pages (§12.2). */
+export const SCOPE_LABELS: Record<ScopeKey, string> = {
   all: 'Toàn bộ cửa hàng',
   listing: 'Một listing cụ thể',
   listing_type: 'Loại dịch vụ',
@@ -24,6 +25,23 @@ const SCOPE_LABELS: Record<ScopeKey, string> = {
   partner: 'Đối tác',
 };
 const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']; // 0=Sunday … 6=Saturday
+
+/** Read-only off-peak windows as a list; empty → "Mọi khung giờ" (always applicable). */
+export function TimeWindowsSummary({ windows }: { windows: PromotionTimeWindowDto[] | null }) {
+  if (!windows || windows.length === 0) {
+    return <span className="text-muted-foreground">Mọi khung giờ</span>;
+  }
+  return (
+    <ul className="space-y-1">
+      {windows.map((w, i) => (
+        <li key={i} className="tabular-nums">
+          <span className="font-medium">{w.days.map((d) => DAY_LABELS[d] ?? d).join(', ')}</span>
+          <span className="text-muted-foreground"> · {w.from}–{w.to}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * Dedicated (non-GenericForm) promotion editor. The shared create/update schema
@@ -39,6 +57,7 @@ export function PromotionForm({
   promotion,
   submitLabel,
   scopeOptions,
+  categoryOptions,
   scopeChoices,
   restrictPartnerFunded = false,
   selfPartnerId,
@@ -47,6 +66,12 @@ export function PromotionForm({
   promotion?: PromotionResponse;
   submitLabel: string;
   scopeOptions?: ScopeOptions;
+  /**
+   * Options for the `category` scope, from `GET /tenant/promotions/categories`. Passed
+   * separately from `scopeOptions` so the partner surface (which has no category scope)
+   * need not fetch them. Omitted → the scope falls back to a raw uuid input.
+   */
+  categoryOptions?: { id: string; label: string }[];
   /** Which `appliesTo` values to offer (defaults to the full tenant set). */
   scopeChoices?: ScopeKey[];
   restrictPartnerFunded?: boolean;
@@ -66,10 +91,21 @@ export function PromotionForm({
   const [firstBookingOnly, setFirstBookingOnly] = useState<boolean>(promotion?.firstBookingOnly ?? false);
   const [windows, setWindows] = useState<TimeWindow[]>(promotion?.timeWindows ?? []);
 
+  /**
+   * The only way `appliesTo` may change. A target id is meaningful *only* for the scope
+   * it was picked under — carrying a category uuid into a `listing` scope submits a
+   * cross-type id, which the server now rejects (and which used to be stored as a
+   * promotion that silently matched nothing). Never call `setAppliesTo` directly.
+   */
+  const changeAppliesTo = (next: ScopeKey): void => {
+    setAppliesTo(next);
+    setAppliesToId('');
+  };
+
   const choices = scopeChoices ?? (['all', 'listing', 'listing_type', 'listing_group', 'category', 'partner'] as ScopeKey[]);
   // A partner-funded promo must target a single partner (§12.2) — narrow the scope options.
   const effectiveChoices = fundedBy === 'partner' ? choices.filter((c) => c === 'partner' || c === 'listing' || c === 'listing_group') : choices;
-  const optionList = optionsForScope(appliesTo, scopeOptions);
+  const optionList = optionsForScope(appliesTo, scopeOptions, categoryOptions);
   const cleanWindows = windows.filter((w) => w.days.length > 0 && w.from && w.to);
   // The partner "self" scope targets the partner's own id — no picker needed.
   const isSelfPartnerScope = appliesTo === 'partner' && !!selfPartnerId;
@@ -132,7 +168,17 @@ export function PromotionForm({
 
         {!restrictPartnerFunded ? (
           <Field label="Bên chịu chi phí" htmlFor="fundedBy">
-            <Select value={fundedBy} onValueChange={(v) => { setFundedBy(v); if (v === 'partner' && appliesTo !== 'listing' && appliesTo !== 'listing_group' && appliesTo !== 'partner') { setAppliesTo('listing'); } }}>
+            <Select
+              value={fundedBy}
+              onValueChange={(v) => {
+                setFundedBy(v);
+                // Partner-funded needs a single-partner scope (§12.2) — force one, and reset
+                // the target with it, or the previous scope's id rides along as a wrong-type id.
+                if (v === 'partner' && appliesTo !== 'listing' && appliesTo !== 'listing_group' && appliesTo !== 'partner') {
+                  changeAppliesTo('listing');
+                }
+              }}
+            >
               <SelectTrigger id="fundedBy"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="tenant">Cửa hàng (tenant)</SelectItem>
@@ -143,7 +189,7 @@ export function PromotionForm({
         ) : null}
 
         <Field label="Áp dụng cho" htmlFor="appliesTo">
-          <Select value={appliesTo} onValueChange={(v) => { setAppliesTo(v as ScopeKey); setAppliesToId(''); }}>
+          <Select value={appliesTo} onValueChange={(v) => changeAppliesTo(v as ScopeKey)}>
             <SelectTrigger id="appliesTo"><SelectValue /></SelectTrigger>
             <SelectContent>
               {effectiveChoices.map((c) => (
@@ -194,6 +240,14 @@ export function PromotionForm({
               <SelectItem value="paused">Tạm dừng</SelectItem>
             </SelectContent>
           </Select>
+        </Field>
+
+        {/* Date bounds — a blank input clears the bound (active immediately / no expiry). */}
+        <Field label="Bắt đầu (tuỳ chọn)" htmlFor="startsAt">
+          <Input id="startsAt" name="startsAt" type="date" defaultValue={isoToDate(promotion?.startsAt)} />
+        </Field>
+        <Field label="Kết thúc (tuỳ chọn)" htmlFor="endsAt">
+          <Input id="endsAt" name="endsAt" type="date" defaultValue={isoToDate(promotion?.endsAt)} />
         </Field>
       </div>
 
@@ -265,15 +319,26 @@ function TimeWindowsEditor({ windows, onChange }: { windows: TimeWindow[]; onCha
   );
 }
 
-function optionsForScope(scope: ScopeKey, opts?: ScopeOptions): { id: string; label: string }[] | null {
+function optionsForScope(
+  scope: ScopeKey,
+  opts?: ScopeOptions,
+  categories?: { id: string; label: string }[],
+): { id: string; label: string }[] | null {
+  // Categories come from their own endpoint, so they resolve even without `scopeOptions`.
+  if (scope === 'category') return categories ?? null;
   if (!opts) return null;
   switch (scope) {
     case 'listing': return opts.listings;
     case 'listing_type': return opts.listingTypes;
     case 'listing_group': return opts.listingGroups;
     case 'partner': return opts.partners;
-    default: return null; // category has no list endpoint → raw id input
+    default: return null; // `all` has no target to pick
   }
+}
+
+/** ISO instant → the `YYYY-MM-DD` a `type="date"` input expects (UTC day). Blank → ''. */
+function isoToDate(iso: string | null | undefined): string {
+  return iso ? iso.slice(0, 10) : '';
 }
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
@@ -285,42 +350,69 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
   );
 }
 
-/** Builds a promotion input object from submitted form data (blanks → undefined). */
+/**
+ * Builds a promotion input object from submitted form data.
+ *
+ * Blank *conditions* (`maxDiscount`, `minOrderAmount`, both usage limits, `timeWindows`)
+ * submit as **explicit `null`, not `undefined`** — this form renders the promotion's whole
+ * condition set every time, so a field the user emptied means "remove this condition". The
+ * server reads `undefined` as "leave alone", so sending `undefined` here is what made a cap
+ * or limit impossible to clear once set. On create, `null` is simply "no condition".
+ */
 export function readPromotionForm(form: FormData): Record<string, unknown> {
   const str = (k: string) => {
     const v = form.get(k);
     const s = typeof v === 'string' ? v.trim() : '';
     return s === '' ? undefined : s;
   };
-  const num = (k: string) => {
+  /** A clearable condition: blank → null (clear it), never undefined (leave alone). */
+  const clearableStr = (k: string) => str(k) ?? null;
+  const clearableNum = (k: string) => {
     const s = str(k);
-    return s === undefined ? undefined : Number(s);
+    return s === undefined ? null : Number(s);
+  };
+  /**
+   * A clearable date bound: blank → null (clear it). The `type="date"` input submits a
+   * `YYYY-MM-DD` string, which we widen to a UTC-midnight ISO instant (`.datetime()` on the
+   * shared schema requires a `Z` offset). Concatenating the `Z` — rather than `new Date(...)`
+   * — keeps the value timezone-stable regardless of where the action runs.
+   */
+  const clearableDate = (k: string) => {
+    const s = str(k);
+    return s === undefined ? null : `${s}T00:00:00.000Z`;
   };
   const isAuto = form.get('isAuto') === 'true';
-  let timeWindows: unknown = undefined;
+
+  // Blank / unparseable → null: an empty editor means "no off-peak windows" (always applicable).
+  let timeWindows: unknown = null;
   const rawWindows = str('timeWindows');
   if (rawWindows) {
     try {
       timeWindows = JSON.parse(rawWindows);
     } catch {
-      timeWindows = undefined;
+      timeWindows = null;
     }
   }
+
   return {
     name: str('name'),
     // Explicit null → auto-campaign (also clears an existing code on update).
     code: isAuto ? null : str('code'),
     discountType: str('discountType'),
     discountValue: str('discountValue'),
-    maxDiscount: str('maxDiscount'),
+    // Note: the cap input only renders for a `percent` discount, so switching to `fixed`
+    // submits it blank — which correctly clears a cap that no longer has any meaning.
+    maxDiscount: clearableStr('maxDiscount'),
     fundedBy: str('fundedBy'),
     appliesTo: str('appliesTo'),
     appliesToId: str('appliesToId'),
-    minOrderAmount: str('minOrderAmount'),
+    minOrderAmount: clearableStr('minOrderAmount'),
     firstBookingOnly: form.get('firstBookingOnly') === 'true',
-    usageLimitTotal: num('usageLimitTotal'),
-    usageLimitPerCustomer: num('usageLimitPerCustomer'),
+    usageLimitTotal: clearableNum('usageLimitTotal'),
+    usageLimitPerCustomer: clearableNum('usageLimitPerCustomer'),
     timeWindows,
+    startsAt: clearableDate('startsAt'),
+    endsAt: clearableDate('endsAt'),
     status: str('status'),
   };
 }

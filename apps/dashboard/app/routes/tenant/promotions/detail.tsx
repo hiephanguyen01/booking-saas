@@ -1,36 +1,74 @@
-import { Form, Link, redirect, useNavigation, data as routeData } from 'react-router';
+import { Link, redirect, useNavigation, useSubmit, data as routeData } from 'react-router';
 import {
   updatePromotionInputSchema,
-  type PromotionResponse,
+  type PromotionDetailResponse,
+  type PromotionCategoryOption,
+  type PromotionFundedByDto,
   type PromoUsageStatsResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { ArrowLeft, CircleAlert, Ban } from 'lucide-react';
+import { Separator } from '@booking/ui/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@booking/ui/components/ui/alert-dialog';
+import { DetailSection } from '@booking/ui/components/detail/detail-section';
+import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
+import { DetailField } from '@booking/ui/components/detail/detail-field';
+import { ArrowLeft, CircleAlert, Ban, TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatVnd } from '../format';
-import { PageHeader, StatCard } from '../components/page';
-import { PromotionStatusBadge } from '../components/status';
-import { PromotionForm, readPromotionForm } from '../components/promotion-form';
+import { formatDiscount, formatNumber } from '~/lib/format';
+import { StatCard } from '~/components/stat-card';
+import { Money } from '~/components/money';
+import { DateTimeValue } from '~/components/date-time-value';
+import { EnumValue } from '~/components/enum-value';
+import { CopyableCode } from '~/components/copyable-code';
+import { PromotionStatusBadge } from '~/components/status-badge';
+import { PromotionForm, readPromotionForm, SCOPE_LABELS, TimeWindowsSummary } from '../components/promotion-form';
 import { loadScopeOptions } from './scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Tenant · Bookify' }];
 }
 
+const FUNDED_BY_LABELS: Record<PromotionFundedByDto, string> = {
+  tenant: 'Cửa hàng',
+  partner: 'Đối tác',
+};
+
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.promotions.manage');
-  const [listRes, statsRes, scopeOptions] = await Promise.all([
-    apiGet<PromotionResponse[]>('/tenant/promotions', auth),
+  // Read-one endpoint (not list+find) — survives pagination, and resolves the display
+  // names (funding/creator partner, scope target) that the list response omits.
+  const [promoRes, statsRes, scopeOptions, categoriesRes] = await Promise.all([
+    apiGet<PromotionDetailResponse>(`/tenant/promotions/${params.promotionId}`, auth),
     apiGet<PromoUsageStatsResponse>(`/tenant/promotions/${params.promotionId}/usage-stats`, auth),
     loadScopeOptions(auth),
+    apiGet<PromotionCategoryOption[]>('/tenant/promotions/categories', auth),
   ]);
-  const promotion = listRes.ok ? (listRes.data ?? []).find((p) => p.id === params.promotionId) : null;
-  if (!promotion) throw new Response('Không tìm thấy khuyến mãi', { status: 404 });
-  return { promotion, stats: statsRes.ok ? statsRes.data : null, scopeOptions };
+  if (!promoRes.ok || !promoRes.data) throw new Response('Không tìm thấy khuyến mãi', { status: 404 });
+  const categoryOptions = (categoriesRes.ok ? (categoriesRes.data ?? []) : []).map((c) => ({
+    id: c.id,
+    label: c.name,
+  }));
+  return {
+    promotion: promoRes.data,
+    // Stats can fail independently — render the tiles' failed state, never 500 the page.
+    stats: statsRes.ok ? statsRes.data : null,
+    scopeOptions,
+    categoryOptions,
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -56,7 +94,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function PromotionDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { promotion, stats, scopeOptions } = loaderData;
+  const { promotion, stats, scopeOptions, categoryOptions } = loaderData;
   const error = actionData && 'error' in actionData ? actionData.error : null;
   const nav = useNavigation();
   const ended = promotion.status === 'ended';
@@ -68,11 +106,17 @@ export default function PromotionDetail({ loaderData, actionData }: Route.Compon
         <Link to="/tenant/promotions"><ArrowLeft className="size-4" /> Khuyến mãi</Link>
       </Button>
 
-      <PageHeader
-        title={promotion.name}
-        description={promotion.code ?? undefined}
-        actions={<PromotionStatusBadge status={promotion.status} />}
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{promotion.name}</h1>
+          {promotion.code ? (
+            <CopyableCode value={promotion.code} label="mã khuyến mãi" />
+          ) : (
+            <p className="text-sm text-muted-foreground">Tự động áp dụng — không cần mã.</p>
+          )}
+        </div>
+        <PromotionStatusBadge status={promotion.status} />
+      </div>
 
       {error ? (
         <Alert variant="destructive"><CircleAlert className="size-4" /><AlertDescription>{error}</AlertDescription></Alert>
@@ -87,31 +131,128 @@ export default function PromotionDetail({ loaderData, actionData }: Route.Compon
         </Alert>
       ) : null}
 
-      {stats ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Đã áp dụng" value={stats.appliedCount} />
-          <StatCard label="Đang giữ chỗ" value={stats.reservedCount} tone="muted" />
-          <StatCard label="Tổng lượt dùng" value={stats.redeemedCount} hint={stats.usageLimitTotal ? `Giới hạn ${stats.usageLimitTotal}` : 'Không giới hạn'} />
-          <StatCard label="Tổng giảm giá" value={formatVnd(stats.totalDiscount)} tone="positive" />
-        </div>
-      ) : null}
-
+      {/* Section 2 + 3 — read-only facts. Kept rendered even for an ended promo. */}
       <Card>
-        <CardHeader>
-          <CardTitle>Chỉnh sửa</CardTitle>
-          <CardDescription>
-            {ended ? 'Khuyến mãi đã kết thúc và không thể chỉnh sửa.' : 'Cập nhật điều kiện áp dụng.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {ended ? (
-            <p className="text-sm text-muted-foreground">Không còn thao tác nào khả dụng.</p>
-          ) : (
-            <PromotionForm mode="edit" promotion={promotion} submitLabel="Lưu thay đổi" scopeOptions={scopeOptions} />
-          )}
+        <CardContent className="space-y-6 pt-6">
+          <DetailSection title="Tóm tắt" description="Điều kiện áp dụng của khuyến mãi.">
+            <DetailGrid>
+              <DetailField
+                label="Giảm giá"
+                emphasis="strong"
+                value={formatDiscount(promotion.discountType, promotion.discountValue)}
+                hint={
+                  promotion.discountType === 'percent'
+                    ? promotion.maxDiscount
+                      ? <>Tối đa <Money value={promotion.maxDiscount} /></>
+                      : 'Không giới hạn mức giảm'
+                    : undefined
+                }
+              />
+              <DetailField
+                label="Phạm vi"
+                value={
+                  <span>
+                    <EnumValue map={SCOPE_LABELS} value={promotion.appliesTo} />
+                    {promotion.appliesToLabel ? (
+                      <span className="text-muted-foreground"> · {promotion.appliesToLabel}</span>
+                    ) : null}
+                  </span>
+                }
+              />
+              <DetailField
+                label="Thời gian áp dụng"
+                value={
+                  promotion.startsAt || promotion.endsAt ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <DateTimeValue iso={promotion.startsAt} />
+                      <span className="text-muted-foreground">→</span>
+                      <DateTimeValue iso={promotion.endsAt} />
+                    </span>
+                  ) : (
+                    'Không giới hạn thời gian'
+                  )
+                }
+              />
+              <DetailField
+                label="Đơn tối thiểu"
+                value={promotion.minOrderAmount ? <Money value={promotion.minOrderAmount} /> : 'Không yêu cầu'}
+              />
+              <DetailField
+                label="Giới hạn tổng lượt"
+                value={promotion.usageLimitTotal != null ? formatNumber(promotion.usageLimitTotal) : 'Không giới hạn'}
+              />
+              <DetailField
+                label="Giới hạn mỗi khách"
+                value={promotion.usageLimitPerCustomer != null ? formatNumber(promotion.usageLimitPerCustomer) : 'Không giới hạn'}
+              />
+              <DetailField label="Chỉ lần đặt đầu tiên" value={promotion.firstBookingOnly ? 'Có' : 'Không'} />
+              <DetailField label="Ngày tạo" value={<DateTimeValue iso={promotion.createdAt} relative />} />
+              <DetailField
+                label="Khung giờ ưu đãi (off-peak)"
+                span={2}
+                value={<TimeWindowsSummary windows={promotion.timeWindows} />}
+              />
+            </DetailGrid>
+          </DetailSection>
+
+          <Separator />
+
+          <DetailSection title="Tài trợ" description="Bên chịu chi phí giảm giá và trạng thái đồng ý của đối tác.">
+            <DetailGrid>
+              <DetailField label="Bên chịu chi phí" value={<EnumValue map={FUNDED_BY_LABELS} value={promotion.fundedBy} />} />
+              <DetailField label="Đối tác tài trợ" value={promotion.fundingPartnerName ?? undefined} />
+              <DetailField
+                label="Đối tác đồng ý (opt-in)"
+                value={promotion.partnerOptInAt ? <DateTimeValue iso={promotion.partnerOptInAt} relative /> : undefined}
+                hint={promotion.fundedBy === 'partner' && promotion.partnerOptInAt == null ? 'Đang chờ đối tác đồng ý' : undefined}
+              />
+              <DetailField label="Đối tác tạo mã" value={promotion.createdByPartnerName ?? undefined} />
+            </DetailGrid>
+          </DetailSection>
         </CardContent>
       </Card>
 
+      {/* Section 4 — Hiệu quả. Kept rendered even for an ended promo (post-mortem). */}
+      <DetailSection title="Hiệu quả" description="Số liệu sử dụng của mã khuyến mãi.">
+        {stats ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <StatCard label="Đã áp dụng" value={formatNumber(stats.appliedCount)} />
+            <StatCard label="Đang giữ chỗ" value={formatNumber(stats.reservedCount)} tone="muted" />
+            <StatCard label="Đã nhả lại" value={formatNumber(stats.releasedCount)} tone="muted" hint="Giữ chỗ đã huỷ" />
+            <StatCard
+              label="Đã dùng"
+              value={formatNumber(stats.redeemedCount)}
+              hint={stats.usageLimitTotal != null ? `Giới hạn ${formatNumber(stats.usageLimitTotal)}` : 'Không giới hạn'}
+            />
+            <StatCard label="Tổng giảm giá" value={<Money value={stats.totalDiscount} />} tone="positive" />
+          </div>
+        ) : (
+          <p className="inline-flex items-center gap-1.5 text-sm text-warning">
+            <TriangleAlert className="size-4 shrink-0" aria-hidden /> Không tải được số liệu sử dụng.
+          </p>
+        )}
+      </DetailSection>
+
+      {/* Section 5 — Edit. An ended promo can no longer be edited. */}
+      {!ended ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Chỉnh sửa</CardTitle>
+            <CardDescription>Cập nhật điều kiện áp dụng.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PromotionForm
+              mode="edit"
+              promotion={promotion}
+              submitLabel="Lưu thay đổi"
+              scopeOptions={scopeOptions}
+              categoryOptions={categoryOptions}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Section 6 — Danger zone, behind a confirmation dialog (irreversible). */}
       {!ended ? (
         <Card>
           <CardHeader>
@@ -119,15 +260,38 @@ export default function PromotionDetail({ loaderData, actionData }: Route.Compon
             <CardDescription>Ngừng vĩnh viễn — khách hàng sẽ không thể dùng mã này nữa.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Form method="post">
-              <input type="hidden" name="intent" value="end" />
-              <Button type="submit" variant="destructive" disabled={nav.state !== 'idle'}>
-                <Ban className="size-4" /> Kết thúc khuyến mãi
-              </Button>
-            </Form>
+            <EndPromotionDialog busy={nav.state !== 'idle'} />
           </CardContent>
         </Card>
       ) : null}
     </div>
+  );
+}
+
+/** "Kết thúc" gated behind an AlertDialog, submitting the `end` intent to the route action. */
+function EndPromotionDialog({ busy }: { busy: boolean }) {
+  const submit = useSubmit();
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" disabled={busy}>
+          <Ban className="size-4" /> Kết thúc khuyến mãi
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Kết thúc khuyến mãi?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Thao tác này không thể hoàn tác — mã sẽ ngừng vĩnh viễn và khách hàng không thể dùng nữa.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Huỷ</AlertDialogCancel>
+          <AlertDialogAction disabled={busy} onClick={() => submit({ intent: 'end' }, { method: 'post' })}>
+            Kết thúc
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { paginationQuerySchema, uuidSchema } from './common';
-import { provinceCodeSchema, wardCodeSchema } from './administrative-division';
+import {
+  administrativeProvinceTypeSchema,
+  administrativeWardTypeSchema,
+  provinceCodeSchema,
+  wardCodeSchema,
+} from './administrative-division';
 import { slugSchema } from './tenancy';
 
 /** Partner classification (§7.3): a freelancer vs a registered company. */
@@ -245,6 +250,64 @@ export type PartnerOnboardingProfileInput = z.infer<typeof partnerOnboardingProf
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
+/**
+ * The `contact_info` snapshot persisted at apply-time. Province/ward **names**
+ * are resolved from the submitted codes by the API and frozen into the row, so a
+ * later administrative rename never rewrites history — readers get both the code
+ * (for re-selecting in a form) and the name (for display) without a second call.
+ *
+ * Every field is nullable: a **house** partner is created by a tenant admin with
+ * no application, so its `contact_info` is `{}`.
+ */
+export const partnerContactInfoResponseSchema = z.object({
+  phone: z.string().nullable(),
+  provinceCode: provinceCodeSchema.nullable(),
+  provinceName: z.string().nullable(),
+  provinceType: administrativeProvinceTypeSchema.nullable(),
+  wardCode: wardCodeSchema.nullable(),
+  wardName: z.string().nullable(),
+  wardType: administrativeWardTypeSchema.nullable(),
+  address: z.string().nullable(),
+});
+export type PartnerContactInfoResponse = z.infer<typeof partnerContactInfoResponseSchema>;
+
+/**
+ * The `identity_info` snapshot (§7.3 manual eKYC).
+ *
+ * `documentNumber` is PII and is deliberately exposed — the tenant admin
+ * reviewing the submission has to read it to verify it, and the partner reading
+ * their OWN record supplied it. It is safe here only because every route that
+ * returns a `PartnerResponse` is scoped to a single partner the caller is
+ * already entitled to (tenant scope = a partner under that tenant; partner scope
+ * = the caller's own record). There is no public/marketplace route on this shape.
+ *
+ * `reviewNote` is the **rejection reason** written by the reviewing tenant admin —
+ * returning it to the partner is the whole point (otherwise a rejected partner
+ * cannot learn why and can never fix it).
+ */
+export const partnerIdentityInfoResponseSchema = z.object({
+  documentType: identityDocumentTypeSchema.nullable(),
+  documentNumber: z.string().nullable(),
+  holderName: z.string().nullable(),
+  /** userId of the tenant admin who reviewed the submission. */
+  reviewedBy: z.string().nullable(),
+  /** Reviewer's note — on a `rejected` verification this is the reason. */
+  reviewNote: z.string().nullable(),
+});
+export type PartnerIdentityInfoResponse = z.infer<typeof partnerIdentityInfoResponseSchema>;
+
+/**
+ * The partner's owning user (the applicant, resolved via the earliest
+ * `PartnerMember`). Null for a house partner, which has no member. This is the
+ * partner's own business contact, not a customer's — the §7.3
+ * anti-disintermediation masking applies to customer contacts, not to this.
+ */
+export const partnerOwnerResponseSchema = z.object({
+  email: z.string(),
+  phone: z.string().nullable(),
+});
+export type PartnerOwnerResponse = z.infer<typeof partnerOwnerResponseSchema>;
+
 export const partnerResponseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -259,6 +322,10 @@ export const partnerResponseSchema = z.object({
   dateOfBirth: z.string().nullable(),
   payoutInfo: z.record(z.unknown()),
   businessInfo: z.record(z.unknown()),
+  contactInfo: partnerContactInfoResponseSchema,
+  identityInfo: partnerIdentityInfoResponseSchema,
+  owner: partnerOwnerResponseSchema.nullable(),
   createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type PartnerResponse = z.infer<typeof partnerResponseSchema>;

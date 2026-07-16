@@ -5,6 +5,7 @@ import type {
   PublicListingDetailResponse,
   ResourceResponse,
 } from '@booking/contracts';
+import { computeGroupStats } from '../domain/group-stats';
 import type { ListingGroupRecord } from '../domain/ports/listing-group-repository.port';
 import type { ListingRecord, PublicListingRecord } from '../domain/ports/listing-repository.port';
 import type { ResourceRecord } from '../domain/ports/resource-repository.port';
@@ -30,6 +31,9 @@ export function toListingGroupResponse(g: ListingGroupRecord): ListingGroupRespo
     status: g.status,
     publishedBy: g.publishedBy,
     hiddenBy: g.hiddenBy,
+    ...computeGroupStats(g.children),
+    ratingAvg: g.ratingAvg,
+    bookingCount: g.bookingCount,
     createdAt: g.createdAt.toISOString(),
     updatedAt: g.updatedAt.toISOString(),
   };
@@ -63,10 +67,17 @@ export function toListingResponse(l: ListingRecord): ListingResponse {
     approvalRequired: l.approvalRequired,
     depositPercent: l.depositPercent,
     balanceDue: l.balanceDue,
+    rescheduleAllowed: l.rescheduleAllowed,
+    rescheduleDeadlineHours: l.rescheduleDeadlineHours,
+    rescheduleFee: l.rescheduleFee,
     cancellationPolicyId: l.cancellationPolicyId,
+    cancellationPolicy: l.cancellationPolicy,
+    partner: l.partner,
     status: l.status,
     publishedBy: l.publishedBy,
     hiddenBy: l.hiddenBy,
+    submittedAt: l.submittedAt?.toISOString() ?? null,
+    publishedAt: l.publishedAt?.toISOString() ?? null,
     createdAt: l.createdAt.toISOString(),
     updatedAt: l.updatedAt.toISOString(),
   };

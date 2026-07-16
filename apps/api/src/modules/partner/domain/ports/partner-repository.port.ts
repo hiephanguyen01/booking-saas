@@ -3,6 +3,16 @@ import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.servi
 
 export const PARTNER_REPOSITORY = Symbol('PARTNER_REPOSITORY');
 
+/**
+ * The partner's owning user — the applicant, who `applyAsPartner` makes the first
+ * `PartnerMember` and grants the Partner Owner role. Null for a house partner
+ * (created by a tenant admin, no member).
+ */
+export interface PartnerOwnerRecord {
+  email: string;
+  phone: string | null;
+}
+
 export interface PartnerRecord {
   id: string;
   tenantId: string;
@@ -19,7 +29,9 @@ export interface PartnerRecord {
   businessInfo: Record<string, unknown>;
   contactInfo: Record<string, unknown>;
   identityInfo: Record<string, unknown>;
+  owner: PartnerOwnerRecord | null;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CreatePartnerData {

@@ -13,6 +13,17 @@ export interface TenantRecord {
   themeConfig: Record<string, unknown>;
   settings: Record<string, unknown>;
   createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Filters for the platform-admin tenant list. All optional and ANDed. */
+export interface ListTenantsParams {
+  page: number;
+  pageSize: number;
+  /** Case-insensitive partial match on name or slug. */
+  search?: string;
+  status?: 'active' | 'suspended' | 'expired';
+  vertical?: string;
 }
 
 export interface CreateTenantData {
@@ -47,9 +58,15 @@ export interface ITenantRepository {
   runInTransaction<T>(fn: (tx: PrismaTx) => Promise<T>): Promise<T>;
   findById(id: string): Promise<TenantRecord | null>;
   findBySlug(slug: string): Promise<TenantRecord | null>;
-  list(params: { page: number; pageSize: number }): Promise<{ items: TenantRecord[]; total: number }>;
+  list(params: ListTenantsParams): Promise<{ items: TenantRecord[]; total: number }>;
   update(id: string, data: UpdateTenantData): Promise<TenantRecord>;
   countPartners(tenantId: string): Promise<number>;
   countListings(tenantId: string): Promise<number>;
+  /**
+   * Read-only count of the tenant's booking rows in a window. Tenancy owns this
+   * (rather than asking the booking module) precisely so it never has to import a
+   * booking service: it is a plain aggregate over a column tenancy already
+   * filters on, and it is what backs the §6.5 soft monthly quota.
+   */
   countBookingsBetween(tenantId: string, from: Date, to: Date): Promise<number>;
 }

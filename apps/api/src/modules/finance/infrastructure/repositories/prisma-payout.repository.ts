@@ -56,6 +56,18 @@ export class PrismaPayoutRepository implements IPayoutRepository {
     return rows.map(toRecord);
   }
 
+  async listForPayee(
+    tx: PrismaTx,
+    payeeType: PayoutRecord['payeeType'],
+    payeeId: string,
+  ): Promise<PayoutRecord[]> {
+    const rows = await tx.payout.findMany({
+      where: { payeeType, payeeId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map(toRecord);
+  }
+
   async markPaid(tx: PrismaTx, id: string, evidence: { reference: string; evidenceKey?: string }): Promise<PayoutRecord> {
     return toRecord(
       await tx.payout.update({

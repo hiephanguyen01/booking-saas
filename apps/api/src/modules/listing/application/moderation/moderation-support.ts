@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { IAuditWriter } from '../../../../shared/audit/audit-writer.port';
-import { ModerationError } from '../../domain/moderation/listing-moderation';
+import { ModerationError, type ModerationOutcome } from '../../domain/moderation/listing-moderation';
+import type { ModerationUpdate } from '../../domain/ports/listing-repository.port';
 
 /** Who is acting + the audit metadata every moderation use case needs. */
 export interface ModerationContext {
@@ -41,6 +42,35 @@ export function assertOwnership(record: OwnedRecord, partnerId?: string): void {
       message: 'This resource belongs to another partner',
     });
   }
+}
+
+/** The listing timestamps a moderation transition may stamp. */
+interface TimestampedRecord {
+  publishedAt: Date | null;
+}
+
+/**
+ * Turn a pure `ModerationOutcome` into the persisted update, stamping the
+ * moderation milestones the pure transitions can't (they have no clock):
+ *
+ * - `submittedAt` — every entry into `pending_review`, so a reviewer can see how
+ *   long a listing has been waiting (a resubmission legitimately resets it).
+ * - `publishedAt` — only the FIRST time the listing reaches `published`. The
+ *   column means "first published", and per the schema comment it must survive a
+ *   later archive/hide, so a republish must not overwrite it.
+ *
+ * Any other transition leaves both untouched (`undefined` → column omitted).
+ */
+export function stampModerationTimestamps(
+  record: TimestampedRecord,
+  outcome: ModerationOutcome,
+  now: Date = new Date(),
+): ModerationUpdate {
+  return {
+    ...outcome,
+    submittedAt: outcome.status === 'pending_review' ? now : undefined,
+    publishedAt: outcome.status === 'published' && record.publishedAt === null ? now : undefined,
+  };
 }
 
 /** Map a pure-domain ModerationError onto the right HTTP status. */

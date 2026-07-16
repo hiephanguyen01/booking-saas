@@ -5,6 +5,7 @@ import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.servi
 import type {
   CreateTenantData,
   ITenantRepository,
+  ListTenantsParams,
   TenantRecord,
   UpdateTenantData,
 } from '../../domain/ports/tenant-repository.port';
@@ -23,6 +24,7 @@ function toRecord(t: PrismaTenant): TenantRecord {
     themeConfig: (t.themeConfig ?? {}) as Record<string, unknown>,
     settings: (t.settings ?? {}) as Record<string, unknown>,
     createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
   };
 }
 
@@ -51,17 +53,28 @@ export class PrismaTenantRepository implements ITenantRepository {
     return t ? toRecord(t) : null;
   }
 
-  async list(params: {
-    page: number;
-    pageSize: number;
-  }): Promise<{ items: TenantRecord[]; total: number }> {
+  async list(params: ListTenantsParams): Promise<{ items: TenantRecord[]; total: number }> {
+    const where: Prisma.TenantWhereInput = {
+      ...(params.status ? { status: params.status } : {}),
+      ...(params.vertical ? { vertical: params.vertical } : {}),
+      // `total` must be filtered identically to `items` or the pager lies.
+      ...(params.search
+        ? {
+            OR: [
+              { name: { contains: params.search, mode: 'insensitive' } },
+              { slug: { contains: params.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.admin.tenant.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
       }),
-      this.prisma.admin.tenant.count(),
+      this.prisma.admin.tenant.count({ where }),
     ]);
     return { items: items.map(toRecord), total };
   }

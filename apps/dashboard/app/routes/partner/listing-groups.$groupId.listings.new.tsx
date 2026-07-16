@@ -6,7 +6,7 @@ import type { Route } from './+types/listing-groups.$groupId.listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { canPartner, requirePartner } from './partner.server';
 import { ListingForm } from './components/listing-form';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);

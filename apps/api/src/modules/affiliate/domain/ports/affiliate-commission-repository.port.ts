@@ -14,16 +14,40 @@ export interface AffiliateCommissionRecord {
   createdAt: Date;
 }
 
-/** A commission joined with its booking code, for reporting tables. */
+/** A commission joined with the booking it came from, for reporting tables. */
 export interface AffiliateCommissionWithBooking extends AffiliateCommissionRecord {
   bookingCode: string | null;
+  /** The booking's lifecycle state — explains why a commission is pending/reversed. */
+  bookingStatus: BookingLifecycleStatus | null;
+  /** The booking's `final_amount` (what the customer paid), VND đồng. */
+  bookingTotal: bigint | null;
+  listingTitle: string | null;
+  /** When the commission settled; null until `status === 'paid'`. */
+  paidAt: Date | null;
 }
+
+/** Mirrors `BookingStatus` in the Prisma schema / `bookingStatusSchema` in the contracts. */
+export type BookingLifecycleStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'pending_payment'
+  | 'confirmed'
+  | 'cancelled'
+  | 'completed'
+  | 'no_show'
+  | 'rejected'
+  | 'expired'
+  | 'refunded';
 
 /** Aggregated commission totals per status for the affiliate dashboard (§15.3). */
 export interface AffiliateCommissionTotals {
   pending: bigint;
   confirmed: bigint;
   paid: bigint;
+  /** Voided before completion (booking cancelled/rejected/expired) — never payable. */
+  reversed: bigint;
+  /** Taken back after a post-completion dispute/refund (§7.8). */
+  clawedBack: bigint;
   /** Number of distinct bookings that produced a (non-reversed) commission. */
   bookings: number;
 }

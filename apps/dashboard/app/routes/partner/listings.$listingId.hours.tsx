@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { data, Form, Link, useNavigation } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import {
   setAvailabilityRulesInputSchema,
   type AvailabilityRuleResponse,
@@ -12,25 +12,25 @@ import { Switch } from '@booking/ui/components/ui/switch';
 import type { Route } from './+types/listings.$listingId.hours';
 import { apiGet, apiPut } from '~/lib/api.server';
 import { requirePartner, canPartner } from './partner.server';
-import { PageHeader } from './components/page-header';
+import { PageHeader } from '~/components/page-header';
+import {
+  DAYS,
+  DEFAULT_CLOSE,
+  DEFAULT_OPEN,
+  WINDOW_FIELD,
+  decodeWindows,
+  encodeWindow,
+  isValidWindow,
+  overlappingIndices,
+  seedWeek,
+  validateWeek,
+  type HoursWindow,
+  type WeekWindows,
+} from './listing-hours';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Giờ mở cửa · Đối tác · Bookify' }];
 }
-
-// Display order Mon…Sun; `dow` is the backend's 0=Sun…6=Sat value.
-const DAYS: { dow: number; label: string }[] = [
-  { dow: 1, label: 'Thứ 2' },
-  { dow: 2, label: 'Thứ 3' },
-  { dow: 3, label: 'Thứ 4' },
-  { dow: 4, label: 'Thứ 5' },
-  { dow: 5, label: 'Thứ 6' },
-  { dow: 6, label: 'Thứ 7' },
-  { dow: 0, label: 'Chủ nhật' },
-];
-
-const DEFAULT_OPEN = '08:00';
-const DEFAULT_CLOSE = '20:00';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);
@@ -60,11 +60,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
   const form = await request.formData();
 
-  const rules = DAYS.filter((d) => form.get(`enabled_${d.dow}`) === 'on').map((d) => ({
-    dayOfWeek: d.dow,
-    openTime: String(form.get(`open_${d.dow}`) ?? DEFAULT_OPEN),
-    closeTime: String(form.get(`close_${d.dow}`) ?? DEFAULT_CLOSE),
-  }));
+  // Every window of every open weekday — a day may legitimately have several.
+  const rules = decodeWindows(form.getAll(WINDOW_FIELD).map(String));
 
   const parsed = setAvailabilityRulesInputSchema.safeParse({ rules });
   if (!parsed.success) {
@@ -73,16 +70,14 @@ export async function action({ request, params }: Route.ActionArgs) {
       { status: 400 },
     );
   }
-  const res = await apiPut(`/partner/listings/${params.listingId}/availability-rules`, parsed.data, auth);
+  const res = await apiPut(
+    `/partner/listings/${params.listingId}/availability-rules`,
+    parsed.data,
+    auth,
+  );
   return res.ok
     ? data({ ok: true, error: null })
     : data({ ok: false, error: res.error ?? 'Lưu không thành công.' }, { status: 400 });
-}
-
-interface DayState {
-  enabled: boolean;
-  open: string;
-  close: string;
 }
 
 export default function ListingHoursPage({ loaderData, actionData }: Route.ComponentProps) {
@@ -90,33 +85,35 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
   const navigation = useNavigation();
   const saving = navigation.state !== 'idle';
 
-  // Seed each weekday from its first existing rule (a listing may store several
-  // windows/day; the editor manages one contiguous window per day).
-  const [days, setDays] = useState<Record<number, DayState>>(() => {
-    const seed: Record<number, DayState> = {};
-    for (const d of DAYS) {
-      const rule = rules.find((r) => r.dayOfWeek === d.dow);
-      seed[d.dow] = rule
-        ? { enabled: true, open: rule.openTime, close: rule.closeTime }
-        : { enabled: false, open: DEFAULT_OPEN, close: DEFAULT_CLOSE };
-    }
-    return seed;
-  });
+  // Seed EVERY window of every weekday. A listing may store a split shift
+  // (08:00–12:00 + 14:00–18:00); keeping only the first would delete the rest on
+  // save, because the PUT replaces the whole rule set.
+  const [week, setWeek] = useState<WeekWindows>(() => seedWeek(rules));
 
-  const update = (dow: number, patch: Partial<DayState>): void =>
-    setDays((prev) => ({ ...prev, [dow]: { ...prev[dow], ...patch } }));
+  const setDay = (dow: number, windows: HoursWindow[]): void =>
+    setWeek((prev) => ({ ...prev, [dow]: windows }));
+
+  const updateWindow = (dow: number, index: number, patch: Partial<HoursWindow>): void =>
+    setDay(
+      dow,
+      (week[dow] ?? []).map((w, i) => (i === index ? { ...w, ...patch } : w)),
+    );
+
+  const errors = validateWeek(week);
 
   return (
     <div className="space-y-5">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to={listing.groupId ? `/partner/listing-groups/${listing.groupId}` : '/partner/listings'}>
+          <Link
+            to={listing.groupId ? `/partner/listing-groups/${listing.groupId}` : '/partner/listings'}
+          >
             <ArrowLeft className="size-4" aria-hidden /> Tin đăng
           </Link>
         </Button>
         <PageHeader
           title="Giờ mở cửa"
-          description={`Lịch mở cửa hằng tuần cho “${listing.title}”. Cần thiết để tạo khung giờ cho đặt theo giờ.`}
+          description={`Lịch mở cửa hằng tuần cho “${listing.title}”. Cần thiết để tạo khung giờ cho đặt theo giờ. Một ngày có thể có nhiều khung giờ (ví dụ nghỉ trưa).`}
         />
       </div>
 
@@ -132,51 +129,94 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
 
       <Form method="post" className="space-y-3">
         {DAYS.map((d) => {
-          const state = days[d.dow];
-          return (
-            <div
-              key={d.dow}
-              className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3"
-            >
-              <div className="flex w-28 items-center gap-2">
-                <Switch
-                  checked={state.enabled}
-                  onCheckedChange={(v) => update(d.dow, { enabled: v })}
-                  aria-label={`Bật ${d.label}`}
-                />
-                <span className="text-sm font-medium">{d.label}</span>
-              </div>
-              {/* Persist the toggle for the plain form POST. */}
-              {state.enabled ? <input type="hidden" name={`enabled_${d.dow}`} value="on" /> : null}
+          const windows = week[d.dow] ?? [];
+          const open = windows.length > 0;
+          const clashes = overlappingIndices(windows);
 
-              <div className="flex items-center gap-2 text-sm">
-                <Input
-                  type="time"
-                  name={`open_${d.dow}`}
-                  value={state.open}
-                  disabled={!state.enabled}
-                  onChange={(e) => update(d.dow, { open: e.target.value })}
-                  className="w-32"
-                />
-                <span className="text-muted-foreground">→</span>
-                <Input
-                  type="time"
-                  name={`close_${d.dow}`}
-                  value={state.close}
-                  disabled={!state.enabled}
-                  onChange={(e) => update(d.dow, { close: e.target.value })}
-                  className="w-32"
-                />
+          return (
+            <div key={d.dow} className="rounded-lg border px-4 py-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex w-28 items-center gap-2">
+                  <Switch
+                    checked={open}
+                    onCheckedChange={(on) =>
+                      setDay(d.dow, on ? [{ open: DEFAULT_OPEN, close: DEFAULT_CLOSE }] : [])
+                    }
+                    aria-label={`Bật ${d.label}`}
+                  />
+                  <span className="text-sm font-medium">{d.label}</span>
+                </div>
+                {!open ? <span className="text-sm text-muted-foreground">Đóng cửa</span> : null}
               </div>
-              {state.enabled && state.open >= state.close ? (
-                <span className="text-xs text-destructive">Giờ đóng phải sau giờ mở</span>
+
+              {open ? (
+                <div className="mt-3 space-y-2 sm:pl-28">
+                  {windows.map((w, i) => (
+                    <div key={i} className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        {/* Controlled inputs are display-only; the hidden field is
+                            what submits, so add/remove needs no index bookkeeping. */}
+                        <input type="hidden" name={WINDOW_FIELD} value={encodeWindow(d.dow, w)} />
+                        <Input
+                          type="time"
+                          value={w.open}
+                          onChange={(e) => updateWindow(d.dow, i, { open: e.target.value })}
+                          className="w-32"
+                          aria-label={`${d.label} — giờ mở, khung ${i + 1}`}
+                        />
+                        <span className="text-muted-foreground" aria-hidden>
+                          →
+                        </span>
+                        <Input
+                          type="time"
+                          value={w.close}
+                          onChange={(e) => updateWindow(d.dow, i, { close: e.target.value })}
+                          className="w-32"
+                          aria-label={`${d.label} — giờ đóng, khung ${i + 1}`}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDay(d.dow, windows.filter((_, idx) => idx !== i))}
+                          aria-label={`Xoá khung giờ ${i + 1} của ${d.label}`}
+                        >
+                          <X className="size-4" aria-hidden />
+                        </Button>
+                      </div>
+                      {!isValidWindow(w) ? (
+                        <p className="text-xs text-destructive">Giờ đóng phải sau giờ mở</p>
+                      ) : clashes.has(i) ? (
+                        <p className="text-xs text-destructive">Trùng với khung giờ khác</p>
+                      ) : null}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setDay(d.dow, [...windows, { open: DEFAULT_OPEN, close: DEFAULT_CLOSE }])
+                    }
+                  >
+                    <Plus className="size-4" aria-hidden /> Thêm khung giờ
+                  </Button>
+                </div>
               ) : null}
             </div>
           );
         })}
 
+        {errors.length > 0 ? (
+          <ul className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {errors.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        ) : null}
+
         <div className="flex justify-end pt-1">
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving || errors.length > 0}>
             {saving ? 'Đang lưu…' : 'Lưu giờ mở cửa'}
           </Button>
         </div>

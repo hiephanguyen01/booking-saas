@@ -6,13 +6,17 @@ import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.modu
 import { AFFILIATE_REPOSITORY } from '../../domain/ports/affiliate-repository.port';
 import { REFERRAL_LINK_REPOSITORY } from '../../domain/ports/referral-link-repository.port';
 import { AFFILIATE_COMMISSION_REPOSITORY } from '../../domain/ports/affiliate-commission-repository.port';
+import { COMMISSION_RULE_READER } from '../../domain/ports/commission-rule-reader.port';
 import { PrismaAffiliateRepository } from '../repositories/prisma-affiliate.repository';
 import { PrismaReferralLinkRepository } from '../repositories/prisma-referral-link.repository';
 import { PrismaAffiliateCommissionRepository } from '../repositories/prisma-affiliate-commission.repository';
+import { PrismaCommissionRuleReader } from '../repositories/prisma-commission-rule.reader';
 import { ResolveAttributionService } from '../../application/resolve-attribution.service';
 import { RecordCommissionService } from '../../application/record-commission.service';
 import { AffiliateContextService } from '../../application/affiliate-context.service';
 import { ApplyAffiliateUseCase } from '../../application/use-cases/apply-affiliate.use-case';
+import { ListAffiliateMembershipsUseCase } from '../../application/use-cases/list-affiliate-memberships.use-case';
+import { UpdateAffiliatePayoutInfoUseCase } from '../../application/use-cases/update-affiliate-payout-info.use-case';
 import { TrackReferralUseCase } from '../../application/use-cases/track-referral.use-case';
 import { CreateReferralLinkUseCase } from '../../application/use-cases/create-referral-link.use-case';
 import { ListAffiliateLinksUseCase } from '../../application/use-cases/list-affiliate-links.use-case';
@@ -34,10 +38,13 @@ import { TenantAffiliateController } from './tenant-affiliate.controller';
     { provide: AFFILIATE_REPOSITORY, useClass: PrismaAffiliateRepository },
     { provide: REFERRAL_LINK_REPOSITORY, useClass: PrismaReferralLinkRepository },
     { provide: AFFILIATE_COMMISSION_REPOSITORY, useClass: PrismaAffiliateCommissionRepository },
+    { provide: COMMISSION_RULE_READER, useClass: PrismaCommissionRuleReader },
     ResolveAttributionService,
     RecordCommissionService,
     AffiliateContextService,
     ApplyAffiliateUseCase,
+    ListAffiliateMembershipsUseCase,
+    UpdateAffiliatePayoutInfoUseCase,
     TrackReferralUseCase,
     CreateReferralLinkUseCase,
     ListAffiliateLinksUseCase,

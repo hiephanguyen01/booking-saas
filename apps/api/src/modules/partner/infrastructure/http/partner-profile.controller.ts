@@ -1,11 +1,12 @@
 import {
   type PartnerResponse
 } from '@booking/contracts';
-import { Body, Controller, HttpCode, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { toPartnerResponse } from '../../application/partner.mapper';
+import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
 import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
 import { UpdatePayoutInfoUseCase } from '../../application/use-cases/update-payout-info.use-case';
@@ -16,17 +17,32 @@ import {
   UpdatePayoutInfoDto,
 } from './dto/partner.dto';
 
-/** Partner self-service (§7.3) — the partner sets payout details + submits ID.
- *  Scope via x-partner-id; the PermissionsGuard verifies membership. */
+/** Partner self-service (§7.3) — the partner reads its own record, sets payout
+ *  details + submits ID. Scope via x-tenant-id + x-partner-id; the
+ *  PermissionsGuard verifies the caller holds a role assignment on that partner,
+ *  so every route here is inherently own-record-only. */
 @ApiTags('partner-profile')
 @Controller('partner/profile')
 export class PartnerProfileController {
   constructor(
+    private readonly getProfile: GetPartnerProfileUseCase,
     private readonly updatePayoutInfo: UpdatePayoutInfoUseCase,
     private readonly updateDocuments: UpdatePartnerDocumentsUseCase,
     private readonly submitIdentity: SubmitIdentityUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  // Guarded by `manage` rather than a new `read` key on purpose: this response
+  // carries the payout bank account and the ID document number, which only the
+  // Partner Owner should see — the Staff role holds no `partner.profile.*` key.
+  @RequirePermissions('partner.profile.manage')
+  @Get()
+  @ApiOperation({ summary: "Get the calling partner's own profile" })
+  @ApiOkResponse({ type: PartnerResponseDto })
+  async profile(): Promise<PartnerResponse> {
+    const partnerId = this.tenantContext.partnerIdOrThrow();
+    return toPartnerResponse(await this.getProfile.execute(partnerId));
+  }
 
   @RequirePermissions('partner.profile.manage')
   @Patch('payout')

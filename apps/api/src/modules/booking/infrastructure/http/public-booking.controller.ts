@@ -31,7 +31,7 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import { OptionalPrincipal } from '../../../identity-access/infrastructure/http/decorators/optional-principal.decorator';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
-import { toBookingResponse, toCancelResponse } from '../../application/booking.mapper';
+import { toCancelResponse, toCustomerBookingResponse } from '../../application/booking.mapper';
 import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
@@ -74,7 +74,7 @@ export class PublicBookingController {
       customerUserId: principal?.userId,
       idempotencyKey: idempotencyKey ?? randomUUID(),
     });
-    return toBookingResponse(booking);
+    return toCustomerBookingResponse(booking);
   }
 
   @AuthenticatedOnly()
@@ -87,7 +87,7 @@ export class PublicBookingController {
   ): Promise<BookingResponse[]> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const bookings = await this.lookup.listMyBookings(tenant.id, principal.userId);
-    return bookings.map(toBookingResponse);
+    return bookings.map(toCustomerBookingResponse);
   }
 
   @Public()
@@ -117,7 +117,7 @@ export class PublicBookingController {
       otp,
       sessionUserId: principal?.userId,
     });
-    return toBookingResponse(booking);
+    return toCustomerBookingResponse(booking);
   }
 
   @Public()
@@ -158,7 +158,7 @@ export class PublicBookingController {
     }
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const booking = await this.lookup.byCode(tenant.id, code);
-    return toBookingResponse(await this.confirmBooking.execute(tenant.id, booking.id));
+    return toCustomerBookingResponse(await this.confirmBooking.execute(tenant.id, booking.id));
   }
 }
 

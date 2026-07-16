@@ -10,9 +10,9 @@ import { Check, Eye, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '../format';
-import { PageHeader } from '../components/page';
-import { PartnerStatusBadge, PartnerVerificationBadge } from '../components/status';
+import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối tác · Tenant · Bookify' }];
@@ -93,6 +93,22 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
       headClassName: 'hidden sm:table-cell',
     },
     {
+      header: 'Liên hệ',
+      cell: (p) =>
+        p.contactInfo.phone ? (
+          <a
+            href={`tel:${p.contactInfo.phone}`}
+            className="rounded-sm text-sm tabular-nums text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {p.contactInfo.phone}
+          </a>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        ),
+      className: 'hidden lg:table-cell',
+      headClassName: 'hidden lg:table-cell',
+    },
+    {
       header: 'Xác minh',
       cell: (p) => <PartnerVerificationBadge status={p.verificationStatus} />,
       className: 'hidden md:table-cell',
@@ -131,7 +147,7 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
 
       {error ? (
         <Card>
-          <CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">{error}</CardContent>
+          <CardContent className="p-4 text-sm text-destructive">{error}</CardContent>
         </Card>
       ) : null}
 

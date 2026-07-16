@@ -17,6 +17,9 @@ import { ResolveAutoCampaignUseCase } from '../../application/use-cases/resolve-
 import { CreatePromotionUseCase } from '../../application/use-cases/create-promotion.use-case';
 import { UpdatePromotionUseCase } from '../../application/use-cases/update-promotion.use-case';
 import { EndPromotionUseCase } from '../../application/use-cases/end-promotion.use-case';
+import { GetPromotionUseCase } from '../../application/use-cases/get-promotion.use-case';
+import { GetPartnerPromotionUseCase } from '../../application/use-cases/get-partner-promotion.use-case';
+import { ListPromotionCategoriesUseCase } from '../../application/use-cases/list-promotion-categories.use-case';
 import { ListPromotionsUseCase } from '../../application/use-cases/list-promotions.use-case';
 import { PromoUsageStatsUseCase } from '../../application/use-cases/promo-usage-stats.use-case';
 import { CreatePartnerPromotionUseCase } from '../../application/use-cases/create-partner-promotion.use-case';
@@ -44,11 +47,14 @@ import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabl
     CreatePromotionUseCase,
     UpdatePromotionUseCase,
     EndPromotionUseCase,
+    GetPromotionUseCase,
+    ListPromotionCategoriesUseCase,
     ListPromotionsUseCase,
     PromoUsageStatsUseCase,
     CreatePartnerPromotionUseCase,
     UpdatePartnerPromotionUseCase,
     EndPartnerPromotionUseCase,
+    GetPartnerPromotionUseCase,
     ListPartnerPromotionsUseCase,
     ListPendingOptInUseCase,
     OptInPromotionUseCase,

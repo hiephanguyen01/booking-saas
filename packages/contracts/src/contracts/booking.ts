@@ -97,13 +97,101 @@ export const markReturnedInputSchema = z.object({
 });
 export type MarkReturnedInput = z.infer<typeof markReturnedInputSchema>;
 
+/** Partner annotates one of their own bookings (§8.2) — `partner_note`. */
+export const partnerNoteInputSchema = z.object({
+  /** Blank/omitted clears the note. */
+  note: z.string().max(1000).optional(),
+});
+export type PartnerNoteInput = z.infer<typeof partnerNoteInputSchema>;
+
+// ── Query contracts ──────────────────────────────────────────────────────────
+
+/**
+ * Filters for the tenant booking overview (`GET /tenant/bookings`, Task 1.13).
+ * `status`/`partnerId` are honoured SERVER-side — never filter client-side over a
+ * truncated page, or every derived count is wrong past `limit` rows.
+ */
+export const tenantBookingsQuerySchema = z.object({
+  status: bookingStatusSchema.optional(),
+  partnerId: uuidSchema.optional(),
+  /** Row cap (server clamps to 1–200; defaults to 100 when omitted). */
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+export type TenantBookingsQuery = z.infer<typeof tenantBookingsQuerySchema>;
+
 // ── Responses ────────────────────────────────────────────────────────────────
 
-export const bookingResponseSchema = z.object({
+/**
+ * Customer identity as the TENANT (and the customer themselves) sees it — full
+ * contact details. NEVER send this shape to a partner: use
+ * {@link partnerBookingCustomerSchema} (§7.3 anti-disintermediation).
+ */
+export const bookingCustomerSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  phone: z.string().nullable(),
+  email: z.string(),
+});
+export type BookingCustomer = z.infer<typeof bookingCustomerSchema>;
+
+/**
+ * Customer identity as a PARTNER sees it (§7.3 anti-disintermediation). Two
+ * deliberate differences from {@link bookingCustomerSchema}:
+ *  - **No `email`** — ever. Partners must not harvest customer contacts.
+ *  - `phone` is **masked** server-side (e.g. `0912•••678`) until the booking is
+ *    `confirmed`, at which point the partner needs to reach the guest.
+ *
+ * The `phoneMasked` flag is load-bearing beyond the UI: it makes this type
+ * structurally incompatible with {@link bookingResponseSchema}'s customer, so a
+ * partner controller that mistakenly maps with the tenant mapper is a COMPILE
+ * ERROR rather than a silent PII leak (nothing validates responses at runtime).
+ */
+export const partnerBookingCustomerSchema = z.object({
+  fullName: z.string(),
+  /** Masked until `confirmed`; null when the customer has no phone on file. */
+  phone: z.string().nullable(),
+  /** True while `phone` is masked — the single source of truth for the UI hint. */
+  phoneMasked: z.boolean(),
+});
+export type PartnerBookingCustomer = z.infer<typeof partnerBookingCustomerSchema>;
+
+/**
+ * One overtime/surcharge line added before `completed` (§8.3). Commissioned like
+ * an on-arrival amount. Written today only by the inventory late-fee path
+ * (`{ type: 'late_fee', amount: '50000' }`); `amount` is a VND đồng digit string.
+ */
+export const additionalChargeSchema = z.object({
+  type: z.string(),
+  amount: z.string(),
+});
+export type AdditionalCharge = z.infer<typeof additionalChargeSchema>;
+
+/**
+ * One tier of a snapshotted cancellation policy (§11.3), e.g.
+ * `{hoursBefore: 48, refundPercent: 50}`. Structured (rather than opaque) because
+ * the refund domain already requires exactly this shape to compute a refund.
+ */
+export const cancellationTierSchema = z.object({
+  hoursBefore: z.number(),
+  refundPercent: z.number(),
+});
+export type CancellationTier = z.infer<typeof cancellationTierSchema>;
+
+/**
+ * An immutable jsonb snapshot frozen onto the booking at checkout. Deliberately
+ * opaque: these are historical records whose writer shape may have evolved, and
+ * no runtime validation strips them — a strict schema here would over-promise on
+ * rows written by an older release. Known writer shapes are documented per field.
+ */
+const snapshotSchema = z.record(z.unknown()).nullable();
+
+/** Fields common to every booking audience. Contains NO customer PII and NO internal financials. */
+const bookingCoreSchema = z.object({
   id: z.string(),
   code: z.string(),
   status: bookingStatusSchema,
   listingId: z.string(),
+  listingTitle: z.string(),
   resourceId: z.string(),
   partnerId: z.string(),
   bookingMode: z.string(),
@@ -122,11 +210,69 @@ export const bookingResponseSchema = z.object({
   pickedUpAt: z.string().nullable(),
   returnedAt: z.string().nullable(),
   damageAmount: z.string(),
+  /** Overtime/surcharges accrued after checkout (§8.3); `[]` when none. */
+  additionalCharges: z.array(additionalChargeSchema),
+  /** Code entered at checkout (§12.3) — null when no promotion applied. */
+  promoCode: z.string().nullable(),
+  /** Frozen promotion terms: `{promotionId, code, discountType, discountValue, fundedBy, discountAmount}`. */
+  promotionSnapshot: snapshotSchema,
+  /** Refund tiers frozen at checkout (§11.3); `[]` when the listing had no policy. */
+  cancellationPolicySnapshot: z.array(cancellationTierSchema).nullable(),
   customerNote: z.string().nullable(),
   expiresAt: z.string().nullable(),
   createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+/**
+ * Booking as the CUSTOMER sees it — the storefront contract (`/public/bookings*`).
+ * This is the narrowest audience and the base every other one extends.
+ *
+ * It deliberately carries NO `partnerNote` (the partner's private note about the
+ * guest), NO `commissionSnapshot` (the tenant's take-rate), and NO affiliate
+ * attribution: the storefront BFF serialises whatever it receives down to the
+ * customer's browser, so anything here is effectively public to that customer.
+ * `pricingSnapshot` IS included — it is the customer's own price breakdown.
+ */
+export const bookingResponseSchema = bookingCoreSchema.extend({
+  customer: bookingCustomerSchema,
+  /** The customer's own frozen price breakdown (`{currency, mode, subtotal, depositAmount, securityDeposit, lineItems}`). */
+  pricingSnapshot: snapshotSchema,
 });
 export type BookingResponse = z.infer<typeof bookingResponseSchema>;
+
+/**
+ * Booking as the TENANT console sees it — everything the customer sees, plus the
+ * internal detail the tenant owns: the partner's note, the affiliate attribution
+ * and the frozen commission split. Tenant-only; never returned to a storefront
+ * customer or a partner.
+ */
+export const tenantBookingResponseSchema = bookingResponseSchema.extend({
+  /** Partner's private operational note (§8.2) — set via `PATCH /partner/bookings/:id/note`. */
+  partnerNote: z.string().nullable(),
+  /** Affiliate attribution resolved at checkout (§15.1) — null when no referral. */
+  affiliateId: z.string().nullable(),
+  referralCode: z.string().nullable(),
+  /**
+   * Frozen commission split (§13.1):
+   * `{ruleId, appliesTo, tenantRateType, tenantRate, platformRate, affiliateRateType, affiliateRate, isHouse}`.
+   */
+  commissionSnapshot: snapshotSchema,
+});
+export type TenantBookingResponse = z.infer<typeof tenantBookingResponseSchema>;
+
+/**
+ * Booking as a PARTNER sees it (§7.3). The core, plus their OWN note, minus
+ * everything a partner has no business reading: the customer's email, the
+ * customer's unmasked phone before confirmation, the affiliate attribution, and
+ * the commission / pricing snapshots (no partner surface exposes commission today).
+ */
+export const partnerBookingResponseSchema = bookingCoreSchema.extend({
+  customer: partnerBookingCustomerSchema,
+  /** The partner's own private note (§8.2) — theirs to read and write. */
+  partnerNote: z.string().nullable(),
+});
+export type PartnerBookingResponse = z.infer<typeof partnerBookingResponseSchema>;
 
 /** Returned when cancelling — includes the computed (not yet executed) refund. */
 export const cancelBookingResponseSchema = bookingResponseSchema.extend({
@@ -135,13 +281,39 @@ export const cancelBookingResponseSchema = bookingResponseSchema.extend({
 });
 export type CancelBookingResponse = z.infer<typeof cancelBookingResponseSchema>;
 
-/** Returned when an inventory rental is returned — the deposit settlement (§9.4). */
-export const returnBookingResponseSchema = bookingResponseSchema.extend({
+/** Partner-audience cancel result (`POST /partner/bookings/:id/cancel`). */
+export const partnerCancelBookingResponseSchema = partnerBookingResponseSchema.extend({
+  refundAmount: z.string(),
+  refundPercent: z.number(),
+});
+export type PartnerCancelBookingResponse = z.infer<typeof partnerCancelBookingResponseSchema>;
+
+/**
+ * Returned when an inventory rental is returned — the deposit settlement (§9.4).
+ * Partner-audience: `POST /partner/bookings/:id/return` is a partner-only route.
+ */
+export const returnBookingResponseSchema = partnerBookingResponseSchema.extend({
   lateFee: z.string(),
   depositRefund: z.string(),
   depositShortfall: z.string(),
 });
 export type ReturnBookingResponse = z.infer<typeof returnBookingResponseSchema>;
+
+/** One transition in a booking's audit trail (§8.2) — `booking_status_history`. */
+export const bookingStatusHistoryResponseSchema = z.object({
+  id: z.string(),
+  /** Null for the very first row (creation into `draft`). */
+  fromStatus: bookingStatusSchema.nullable(),
+  toStatus: bookingStatusSchema,
+  /** Null for system/automated transitions (expiry, auto-complete). */
+  actorId: z.string().nullable(),
+  /** Resolved display name; null when the actor is the system or was deleted. */
+  actorName: z.string().nullable(),
+  /** Free text supplied by whoever made the transition (e.g. a cancellation reason). */
+  reason: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type BookingStatusHistoryResponse = z.infer<typeof bookingStatusHistoryResponseSchema>;
 
 /** OTP issuance — `devOtp` is only populated outside production for testing. */
 export const bookingOtpResponseSchema = z.object({
@@ -154,6 +326,8 @@ export type BookingOtpResponse = z.infer<typeof bookingOtpResponseSchema>;
 /**
  * Wire shape of the partner master-calendar feed (`GET /partner/bookings`, Task
  * 1.14). Amounts are VND đồng digit strings; instants are UTC ISO strings.
+ * Partner audience — `customer` is masked per §7.3, exactly as on
+ * {@link partnerBookingResponseSchema}.
  */
 export const partnerCalendarBookingResponseSchema = z.object({
   id: z.string(),
@@ -169,11 +343,20 @@ export const partnerCalendarBookingResponseSchema = z.object({
   endUtc: z.string(),
   guestCount: z.number(),
   quantity: z.number(),
+  /** Who is showing up — masked contact until the booking is `confirmed` (§7.3). */
+  customer: partnerBookingCustomerSchema,
   finalAmount: z.string(),
+  discountAmount: z.string(),
+  depositAmount: z.string(),
+  paidAmount: z.string(),
   /** Inventory (§9.4) fulfillment state — drives the partner pick-up/return actions. */
   securityDeposit: z.string(),
   pickedUpAt: z.string().nullable(),
   returnedAt: z.string().nullable(),
+  customerNote: z.string().nullable(),
+  /** Payment/approval deadline while pending — drives the "expires in" countdown. */
+  expiresAt: z.string().nullable(),
+  createdAt: z.string(),
 });
 export type PartnerCalendarBookingResponse = z.infer<typeof partnerCalendarBookingResponseSchema>;
 

@@ -1,5 +1,7 @@
 import {
   uuidSchema,
+  type PromotionCategoryOption,
+  type PromotionDetailResponse,
   type PromotionResponse,
   type PromoUsageStatsResponse,
 } from '@booking/contracts';
@@ -10,14 +12,23 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { toPromotionResponse, toUsageStatsResponse } from '../../application/promotion.mapper';
+import {
+  toPromotionCategoryOption,
+  toPromotionDetailResponse,
+  toPromotionResponse,
+  toUsageStatsResponse,
+} from '../../application/promotion.mapper';
 import { CreatePromotionUseCase } from '../../application/use-cases/create-promotion.use-case';
 import { EndPromotionUseCase } from '../../application/use-cases/end-promotion.use-case';
+import { GetPromotionUseCase } from '../../application/use-cases/get-promotion.use-case';
+import { ListPromotionCategoriesUseCase } from '../../application/use-cases/list-promotion-categories.use-case';
 import { ListPromotionsUseCase } from '../../application/use-cases/list-promotions.use-case';
 import { PromoUsageStatsUseCase } from '../../application/use-cases/promo-usage-stats.use-case';
 import { UpdatePromotionUseCase } from '../../application/use-cases/update-promotion.use-case';
 import {
   CreatePromotionDto,
+  PromotionCategoryOptionDto,
+  PromotionDetailResponseDto,
   PromotionResponseDto,
   PromoUsageStatsResponseDto,
   UpdatePromotionDto,
@@ -32,6 +43,8 @@ export class TenantPromotionController {
     private readonly updatePromotion: UpdatePromotionUseCase,
     private readonly endPromotion: EndPromotionUseCase,
     private readonly listPromotions: ListPromotionsUseCase,
+    private readonly getPromotion: GetPromotionUseCase,
+    private readonly listCategories: ListPromotionCategoriesUseCase,
     private readonly usageStats: PromoUsageStatsUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -43,6 +56,21 @@ export class TenantPromotionController {
   async list(): Promise<PromotionResponse[]> {
     const items = await this.listPromotions.execute(this.tenantContext.tenantIdOrThrow());
     return items.map(toPromotionResponse);
+  }
+
+  /**
+   * Declared before `:id` so the literal segment wins the route match. Lives on this
+   * controller (rather than a `/tenant/categories` resource) because it exists purely to
+   * populate the promotion scope picker and is authorised by the promotion permission;
+   * a canonical category resource belongs to the catalog context.
+   */
+  @RequirePermissions('tenant.promotions.manage')
+  @Get('categories')
+  @ApiOperation({ summary: 'Tenant categories — the options behind the `category` promotion scope' })
+  @ApiOkResponse({ type: [PromotionCategoryOptionDto] })
+  async categories(): Promise<PromotionCategoryOption[]> {
+    const items = await this.listCategories.execute(this.tenantContext.tenantIdOrThrow());
+    return items.map(toPromotionCategoryOption);
   }
 
   @RequirePermissions('tenant.promotions.manage')
@@ -69,6 +97,19 @@ export class TenantPromotionController {
       id,
     );
     return toUsageStatsResponse(promotion, stats);
+  }
+
+  @RequirePermissions('tenant.promotions.manage')
+  @Get(':id')
+  @UuidParam()
+  @ApiOperation({ summary: 'Read one promotion' })
+  @ApiOkResponse({ type: PromotionDetailResponseDto })
+  async detail(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<PromotionDetailResponse> {
+    return toPromotionDetailResponse(
+      await this.getPromotion.execute(this.tenantContext.tenantIdOrThrow(), id),
+    );
   }
 
   @RequirePermissions('tenant.promotions.manage')

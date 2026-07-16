@@ -17,9 +17,9 @@ import { SetAffiliateStatusUseCase } from '../../application/use-cases/set-affil
 import { UpdateAffiliateRateUseCase } from '../../application/use-cases/update-affiliate-rate.use-case';
 import {
   toAffiliateDetailResponse,
-  toAffiliateListItem,
   toAffiliateRateResponse,
   toAffiliateStatusResponse,
+  toTenantAffiliateListItem,
 } from '../../application/affiliate.mapper';
 import {
   AffiliateDetailResponseDto,
@@ -48,7 +48,7 @@ export class TenantAffiliateController {
   @ApiOkResponse({ type: [AffiliateListItemDto] })
   async list(): Promise<AffiliateListItem[]> {
     const rows = await this.listAffiliates.execute(this.tenantContext.tenantIdOrThrow());
-    return rows.map((r) => toAffiliateListItem(r.affiliate, { linksCount: r.linksCount, totalEarned: r.totalEarned }));
+    return rows.map(toTenantAffiliateListItem);
   }
 
   @RequirePermissions('tenant.affiliates.manage')
@@ -87,8 +87,11 @@ export class TenantAffiliateController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() input: TenantUpdateAffiliateDto,
   ): Promise<AffiliateRateResponse> {
-    return toAffiliateRateResponse(
-      await this.updateRate.execute(this.tenantContext.tenantIdOrThrow(), id, input.customRate),
+    const { affiliate, effectiveRate } = await this.updateRate.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      input.customRate,
     );
+    return toAffiliateRateResponse(affiliate, effectiveRate);
   }
 }

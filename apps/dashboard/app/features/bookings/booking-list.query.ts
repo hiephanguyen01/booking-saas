@@ -19,6 +19,8 @@ export interface BookingSummary {
   active: number;
   completed: number;
   revenue: string;
+  /** The row cap was hit — the KPIs cover the latest {@link BOOKING_LIST_LIMIT} only. */
+  capped: boolean;
 }
 
 export interface BookingListData {

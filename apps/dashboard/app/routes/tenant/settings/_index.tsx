@@ -23,9 +23,10 @@ import { Form, data as routeData, useNavigation, useSubmit } from 'react-router'
 import { Switch } from '@booking/ui/components/ui/switch';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { useTenantArea } from '../area-context';
-import { PageHeader } from '../components/page';
-import { formatDate } from '../format';
+import { PageHeader } from '~/components/page-header';
+import { formatDate } from '~/lib/format';
 import { requireTenant } from '../tenant.server';
+import { TENANT_FLAGS_PATH, toPartnerPromotionsState, type TenantFlags } from './flags';
 import type { Route } from './+types/_index';
 
 interface TenantThemeResponse {
@@ -49,7 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? apiGet<DomainResponse[]>('/tenant/domains', auth)
       : Promise.resolve(null),
     can('tenant.settings.manage')
-      ? apiGet<{ partnerPromotionsEnabled: boolean }>('/tenant/settings/flags', auth)
+      ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth)
       : Promise.resolve(null),
   ]);
   return {
@@ -57,7 +58,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     domains: domainsRes?.ok ? (domainsRes.data ?? []) : null,
     canTheme: can('tenant.theme.manage'),
     canDomains: can('tenant.settings.manage'),
-    partnerPromotionsEnabled: flagsRes?.ok ? (flagsRes.data?.partnerPromotionsEnabled ?? false) : false,
+    // An explicit read state, never a bare boolean: a failed read must not be
+    // indistinguishable from a flag that is genuinely off.
+    partnerPromotions: toPartnerPromotionsState(flagsRes),
   };
 }
 
@@ -112,7 +115,11 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === 'toggle-partner-promos') {
     const enabled = formData.get('partnerPromotionsEnabled') === 'true';
-    const res = await apiPatch('/tenant/settings/flags', { partnerPromotionsEnabled: enabled }, auth);
+    const res = await apiPatch<TenantFlags>(
+      TENANT_FLAGS_PATH,
+      { partnerPromotionsEnabled: enabled },
+      auth,
+    );
     if (!res.ok)
       return routeData({ form: 'flags', error: res.error ?? 'Không lưu được cài đặt.' }, { status: 400 });
     return { form: 'flags', ok: true };
@@ -267,7 +274,7 @@ function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
 }
 
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
-  const { theme, domains, canTheme, canDomains, partnerPromotionsEnabled } = loaderData;
+  const { theme, domains, canTheme, canDomains, partnerPromotions } = loaderData;
   const { readOnly } = useTenantArea();
   const nav = useNavigation();
   const busy = nav.state !== 'idle';
@@ -325,7 +332,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               </Alert>
             ) : null}
             {readOnly ? (
-              <Alert className="mb-4 border-amber-500/40 text-amber-700 dark:text-amber-300">
+              <Alert className="mb-4 border-warning/40 bg-warning/10 text-warning-foreground dark:bg-warning/15 dark:text-warning [&>svg]:text-warning">
                 <CircleAlert className="size-4" />
                 <AlertDescription>
                   Chế độ chỉ đọc — gia hạn gói dịch vụ để chỉnh sửa giao diện.
@@ -379,7 +386,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                           {formatDate(d.verifiedAt)}
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                        <span className="flex items-center gap-1 text-xs text-warning">
                           <Clock className="size-3.5" /> Chờ xác minh TXT
                         </span>
                       )}
@@ -450,7 +457,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
         </Card>
       ) : null}
 
-      {canDomains ? (
+      {canDomains && partnerPromotions ? (
         <Card>
           <CardHeader>
             <CardTitle>Marketplace</CardTitle>
@@ -465,22 +472,34 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 <AlertDescription>{errFor('flags')}</AlertDescription>
               </Alert>
             ) : null}
-            <label className="flex items-center justify-between gap-4">
-              <span className="text-sm">
-                Đối tác được tạo khuyến mãi
-                <span className="block text-muted-foreground">{partnerPromotionsEnabled ? 'Đang bật' : 'Đang tắt'}</span>
-              </span>
-              <Switch
-                checked={partnerPromotionsEnabled}
-                disabled={readOnly || busy}
-                onCheckedChange={(checked) => {
-                  const fd = new FormData();
-                  fd.set('intent', 'toggle-partner-promos');
-                  fd.set('partnerPromotionsEnabled', checked ? 'true' : 'false');
-                  submit(fd, { method: 'post' });
-                }}
-              />
-            </label>
+            {partnerPromotions.ok ? (
+              <label className="flex items-center justify-between gap-4">
+                <span className="text-sm">
+                  Đối tác được tạo khuyến mãi
+                  <span className="block text-muted-foreground">
+                    {partnerPromotions.enabled ? 'Đang bật' : 'Đang tắt'}
+                  </span>
+                </span>
+                <Switch
+                  checked={partnerPromotions.enabled}
+                  disabled={readOnly || busy}
+                  onCheckedChange={(checked) => {
+                    const fd = new FormData();
+                    fd.set('intent', 'toggle-partner-promos');
+                    fd.set('partnerPromotionsEnabled', checked ? 'true' : 'false');
+                    submit(fd, { method: 'post' });
+                  }}
+                />
+              </label>
+            ) : (
+              // No Switch at all on a failed read: any rendered toggle would have to
+              // pick a checked state, and picking one would state a setting we do
+              // not actually know.
+              <Alert variant="destructive">
+                <CircleAlert className="size-4" />
+                <AlertDescription>{partnerPromotions.error}</AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
       ) : null}

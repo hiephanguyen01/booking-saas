@@ -29,10 +29,11 @@ import {
   formatHours,
   formatNumber,
   formatVnd,
-  formatVndShort,
-} from '~/routes/admin/lib/format';
-import { PageHeader } from '~/routes/admin/components/page-header';
-import { StatCard } from '~/routes/admin/components/stat-card';
+  formatVndCompact,
+  VERTICAL_LABELS,
+} from '~/lib/format';
+import { PageHeader } from '~/components/page-header';
+import { StatCard } from '~/components/stat-card';
 import { GmvChart } from '~/routes/admin/components/gmv-chart';
 import {
   CountSignal,
@@ -60,6 +61,7 @@ const EMPTY_KPIS: PlatformHealthResponse['kpis'] = {
   activeTenantCount: 0,
   gmvAllTime: '0',
   gmv30d: '0',
+  mrr: '0',
   publishedListings: 0,
   bookings30d: 0,
   webhookFailures: 0,
@@ -82,7 +84,9 @@ export default function AdminOverview({ loaderData }: Route.ComponentProps) {
           className="group inline-flex flex-col gap-0.5"
         >
           <span className="font-medium underline-offset-4 group-hover:underline">{t.name}</span>
-          <span className="text-xs text-muted-foreground">{t.slug}</span>
+          <span className="text-xs text-muted-foreground">
+            {t.slug} · {VERTICAL_LABELS[t.vertical] ?? t.vertical}
+          </span>
         </Link>
       ),
     },
@@ -93,7 +97,7 @@ export default function AdminOverview({ loaderData }: Route.ComponentProps) {
       className: 'text-right tabular-nums',
       cell: (t) => (
         <span title={formatVnd(t.gmv)} className="font-medium">
-          {formatVndShort(t.gmv)}
+          {formatVndCompact(t.gmv)}
         </span>
       ),
     },
@@ -171,30 +175,37 @@ export default function AdminOverview({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <StatCard
+          label="MRR nền tảng"
+          value={formatVnd(kpis.mrr)}
+          hint="Doanh thu đăng ký định kỳ / tháng"
+          icon={<TrendingUp className="size-4" />}
+          tone="positive"
+        />
         <StatCard
           label="GMV toàn thời gian"
           value={formatVnd(kpis.gmvAllTime)}
-          sub={`${formatVnd(kpis.gmv30d)} trong 30 ngày`}
-          icon={Banknote}
+          hint={`${formatVnd(kpis.gmv30d)} trong 30 ngày`}
+          icon={<Banknote className="size-4" />}
         />
         <StatCard
           label="Tenant"
           value={formatNumber(kpis.tenantCount)}
-          sub={`${formatNumber(kpis.activeTenantCount)} đang hoạt động`}
-          icon={Building2}
+          hint={`${formatNumber(kpis.activeTenantCount)} đang hoạt động`}
+          icon={<Building2 className="size-4" />}
         />
         <StatCard
           label="Listing đã đăng"
           value={formatNumber(kpis.publishedListings)}
-          sub={`${formatNumber(kpis.bookings30d)} booking trong 30 ngày`}
-          icon={ListChecks}
+          hint={`${formatNumber(kpis.bookings30d)} booking trong 30 ngày`}
+          icon={<ListChecks className="size-4" />}
         />
         <StatCard
           label="Cảnh báo vận hành"
           value={formatNumber(kpis.webhookFailures + kpis.overduePayouts)}
-          sub={`${formatNumber(kpis.webhookFailures)} webhook · ${formatNumber(kpis.overduePayouts)} payout trễ`}
-          icon={AlertTriangle}
+          hint={`${formatNumber(kpis.webhookFailures)} webhook · ${formatNumber(kpis.overduePayouts)} payout trễ`}
+          icon={<AlertTriangle className="size-4" />}
           tone={kpis.webhookFailures + kpis.overduePayouts > 0 ? 'critical' : 'default'}
         />
       </section>
@@ -239,7 +250,7 @@ export default function AdminOverview({ loaderData }: Route.ComponentProps) {
                     e.daysLeft <= 3
                       ? 'text-rose-600 dark:text-rose-400'
                       : e.daysLeft <= 7
-                        ? 'text-amber-600 dark:text-amber-400'
+                        ? 'text-warning'
                         : 'text-muted-foreground';
                   return (
                     <li key={e.tenantId} className="flex items-center justify-between gap-3 py-2.5">

@@ -6,6 +6,99 @@ import { slugSchema } from './tenancy';
 export const bookingModeSchema = z.enum(['hourly', 'daily', 'appointment', 'class', 'inventory']);
 export type BookingMode = z.infer<typeof bookingModeSchema>;
 
+/**
+ * A listing type's `icon` is an **icon NAME**, not an uploaded image: it is a key
+ * into `lucide-react`, which both frontends already depend on. Storing a name
+ * (rather than a URL) keeps the glyph theme-aware, weightless, and re-tintable
+ * with the tenant's `theme_config` — an uploaded PNG would be none of those.
+ *
+ * The set is curated on purpose: `icon` is written by a tenant admin and rendered
+ * verbatim, so an open string would be both a rendering hazard (a name lucide
+ * doesn't export renders nothing) and unbounded. Every name below is verified to
+ * exist in the pinned lucide-react. To add one: confirm the export exists, add it
+ * here, and add it to `ICON_LABEL` in the dashboard's listing-type form.
+ *
+ * Bounded by design — see `listingTypeIconSchema` (the 60-char cap the column was
+ * always specced with is implied by the enum; no member is close to it).
+ */
+export const LISTING_TYPE_ICONS = [
+  // Studio / media
+  'Camera',
+  'Aperture',
+  'Video',
+  'Clapperboard',
+  'Projector',
+  'Mic',
+  'Music',
+  'Speaker',
+  'Lightbulb',
+  // Space / stay
+  'Building2',
+  'House',
+  'Hotel',
+  'BedDouble',
+  'DoorOpen',
+  'Warehouse',
+  'Store',
+  'Armchair',
+  'Sofa',
+  'Bath',
+  'Landmark',
+  // Transport
+  'Car',
+  'Bike',
+  'Ship',
+  'Plane',
+  // Sport / wellness
+  'Dumbbell',
+  'Trophy',
+  'Waves',
+  'HeartPulse',
+  'Stethoscope',
+  'Footprints',
+  // Beauty / fashion
+  'Palette',
+  'Scissors',
+  'Sparkles',
+  'Brush',
+  'Shirt',
+  'Flower2',
+  // Learning / events
+  'GraduationCap',
+  'BookOpen',
+  'Users',
+  'Drama',
+  'PartyPopper',
+  'Cake',
+  'Utensils',
+  'Coffee',
+  // Outdoors
+  'Tent',
+  'TreePine',
+  'MapPin',
+  // Equipment / misc
+  'Package',
+  'Boxes',
+  'Wrench',
+  'Laptop',
+  'Monitor',
+  'Gamepad2',
+  'Baby',
+  'Dog',
+  'CalendarDays',
+  'Clock',
+  'Tag',
+] as const;
+
+/**
+ * Validates `listing_type.icon` on write. An enum (not a free string) so the
+ * allowed set is enforced server-side and the picker on the client cannot drift
+ * from it. Responses stay `z.string().nullable()` — rows written before this
+ * existed must still be readable.
+ */
+export const listingTypeIconSchema = z.enum(LISTING_TYPE_ICONS);
+export type ListingTypeIcon = z.infer<typeof listingTypeIconSchema>;
+
 export const listingStructureSchema = z.enum(['standalone', 'grouped', 'flexible']);
 export type ListingStructure = z.infer<typeof listingStructureSchema>;
 
@@ -62,7 +155,8 @@ export const attributeSchemaSchema = z.array(attributeFieldSchema).superRefine((
 const listingTypeBaseSchema = z.object({
   name: z.string().min(1).max(120),
   slug: slugSchema,
-  icon: z.string().max(60).optional(),
+  /** A lucide-react icon NAME from `LISTING_TYPE_ICONS` — never a URL. */
+  icon: listingTypeIconSchema.optional(),
   allowedModes: z.array(bookingModeSchema).min(1),
   defaultModes: z.array(bookingModeSchema).default([]),
   attributeSchema: attributeSchemaSchema.default([]),
@@ -140,6 +234,10 @@ export const listingTypeResponseSchema = z.object({
   tenantId: z.string(),
   name: z.string(),
   slug: z.string(),
+  /**
+   * A `LISTING_TYPE_ICONS` name. Deliberately looser than the input schema: rows
+   * written before the enum existed must still deserialize.
+   */
   icon: z.string().nullable(),
   allowedModes: z.array(bookingModeSchema),
   defaultModes: z.array(bookingModeSchema),
@@ -150,6 +248,12 @@ export const listingTypeResponseSchema = z.object({
   requiresIdentityVerification: z.boolean(),
   structure: listingStructureSchema,
   itemLabel: z.string().nullable(),
+  /**
+   * Listings currently using this type. Drives the "N listings" column and lets
+   * the UI explain up-front why a delete will be refused (a type in use cannot be
+   * removed) instead of surfacing it as a failed request.
+   */
+  listingCount: z.number().int().nonnegative(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

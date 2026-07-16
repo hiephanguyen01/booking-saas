@@ -3,16 +3,20 @@ import { z } from 'zod';
 import {
   bookingOtpResponseSchema,
   bookingResponseSchema,
-  bookingStatusSchema,
+  bookingStatusHistoryResponseSchema,
   cancelBookingInputSchema,
   cancelBookingResponseSchema,
   createBookingInputSchema,
   markReturnedInputSchema,
+  partnerBookingResponseSchema,
   partnerBookingStatsResponseSchema,
   partnerCalendarBookingResponseSchema,
+  partnerCancelBookingResponseSchema,
+  partnerNoteInputSchema,
   reasonInputSchema,
   returnBookingResponseSchema,
-  uuidSchema,
+  tenantBookingResponseSchema,
+  tenantBookingsQuerySchema,
 } from '@booking/contracts';
 
 // ── Request bodies ───────────────────────────────────────────────────────────
@@ -20,6 +24,7 @@ export class CreateBookingDto extends createZodDto(createBookingInputSchema) {}
 export class CancelBookingDto extends createZodDto(cancelBookingInputSchema) {}
 export class ReasonDto extends createZodDto(reasonInputSchema) {}
 export class MarkReturnedDto extends createZodDto(markReturnedInputSchema) {}
+export class PartnerNoteDto extends createZodDto(partnerNoteInputSchema) {}
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -39,18 +44,25 @@ const calendarRangeSchema = z
   });
 export class CalendarRangeQueryDto extends createZodDto(calendarRangeSchema) {}
 
-/** Query filters for the tenant booking overview (Task 1.13). */
-const tenantBookingsQuerySchema = z.object({
-  status: bookingStatusSchema.optional(),
-  partnerId: uuidSchema.optional(),
-});
+/** Query filters for the tenant booking overview (Task 1.13) — shared FE↔BE contract. */
 export class TenantBookingsQueryDto extends createZodDto(tenantBookingsQuerySchema) {}
 
 // ── Responses ────────────────────────────────────────────────────────────────
+/** Customer audience (`/public/*`) — no partner note, no commission snapshot. */
 export class BookingResponseDto extends createZodDto(bookingResponseSchema) {}
+/** Tenant audience — the customer shape plus the tenant's internal detail. */
+export class TenantBookingResponseDto extends createZodDto(tenantBookingResponseSchema) {}
+/** Partner audience — masked customer, no email (§7.3). */
+export class PartnerBookingResponseDto extends createZodDto(partnerBookingResponseSchema) {}
 export class CancelBookingResponseDto extends createZodDto(cancelBookingResponseSchema) {}
+export class PartnerCancelBookingResponseDto extends createZodDto(
+  partnerCancelBookingResponseSchema,
+) {}
 export class ReturnBookingResponseDto extends createZodDto(returnBookingResponseSchema) {}
 export class BookingOtpResponseDto extends createZodDto(bookingOtpResponseSchema) {}
+export class BookingStatusHistoryResponseDto extends createZodDto(
+  bookingStatusHistoryResponseSchema,
+) {}
 export class PartnerCalendarBookingResponseDto extends createZodDto(
   partnerCalendarBookingResponseSchema,
 ) {}

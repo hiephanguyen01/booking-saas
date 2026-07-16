@@ -7,7 +7,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import type { Route } from './+types/_index';
 import { apiDelete, apiGet } from '~/lib/api.server';
 import { requireTenant } from '../tenant.server';
-import { PageHeader } from '../components/page';
+import { PageHeader } from '~/components/page-header';
 
 const MODE_LABEL: Record<BookingMode, string> = {
   hourly: 'Giờ',
@@ -68,6 +68,16 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
     },
     { header: 'Thuộc tính', cell: (t) => <span className="tabular-nums text-muted-foreground">{t.attributeSchema.length}</span> },
     {
+      header: 'Đang dùng',
+      cell: (t) => (
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
+          <span className="tabular-nums text-foreground">{t.listingCount}</span> listing
+        </span>
+      ),
+      className: 'hidden sm:table-cell',
+      headClassName: 'hidden sm:table-cell',
+    },
+    {
       header: 'Trạng thái',
       cell: (t) => (t.isActive ? <Badge>Đang bật</Badge> : <Badge variant="outline">Tắt</Badge>),
     },
@@ -105,6 +115,9 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
 function RowActions({ type }: { type: ListingTypeResponse }) {
   const fetcher = useFetcher<typeof action>();
   const busy = fetcher.state !== 'idle';
+  // A type in use cannot be deleted (FK-protected) — disable up-front instead of
+  // firing a request the backend will refuse.
+  const inUse = type.listingCount > 0;
   return (
     <div className="flex justify-end gap-1.5">
       <Button asChild size="xs" variant="ghost">
@@ -118,7 +131,14 @@ function RowActions({ type }: { type: ListingTypeResponse }) {
       >
         <input type="hidden" name="intent" value="delete" />
         <input type="hidden" name="id" value={type.id} />
-        <Button type="submit" size="xs" variant="ghost" className="text-muted-foreground hover:text-destructive" disabled={busy}>
+        <Button
+          type="submit"
+          size="xs"
+          variant="ghost"
+          className="text-muted-foreground hover:text-destructive"
+          disabled={busy || inUse}
+          title={inUse ? `Đang được ${type.listingCount} listing sử dụng — không thể xoá.` : undefined}
+        >
           <Trash2 className="size-3.5" /> Xoá
         </Button>
       </fetcher.Form>

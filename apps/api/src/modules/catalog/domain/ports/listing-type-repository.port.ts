@@ -18,6 +18,8 @@ export interface ListingTypeRecord {
   requiresIdentityVerification: boolean;
   structure: ListingStructure;
   itemLabel: string | null;
+  /** Listings currently using this type (a type in use cannot be deleted). */
+  listingCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
