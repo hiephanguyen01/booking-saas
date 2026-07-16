@@ -181,6 +181,21 @@ export const listingTypeSearchAttributeFacetSchema = z
         message: 'Bucket facets need at least one bucket',
       });
     }
+    if (facet.control !== 'buckets' && facet.buckets?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buckets'],
+        message: 'Buckets are only allowed for bucket facets',
+      });
+    }
+    const bucketIds = facet.buckets?.map((bucket) => bucket.id) ?? [];
+    if (new Set(bucketIds).size !== bucketIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buckets'],
+        message: 'Bucket IDs must be unique within a facet',
+      });
+    }
   });
 export type ListingTypeSearchAttributeFacet = z.infer<typeof listingTypeSearchAttributeFacetSchema>;
 
@@ -191,6 +206,9 @@ export const listingTypeSearchConfigSchema = z
     systemFacets: z
       .array(z.enum(['price', 'location', 'amenities']))
       .max(3)
+      .refine((facets) => new Set(facets).size === facets.length, {
+        message: 'System facets must be unique',
+      })
       .default(['price', 'location']),
     attributeFacets: z.array(listingTypeSearchAttributeFacetSchema).max(30).default([]),
   })

@@ -510,28 +510,29 @@ export class SearchPublicCatalogUseCase {
   private facets(type: ListingTypeRecord, rows: EvaluatedListing[]): PublicCatalogFacet[] {
     const facets: PublicCatalogFacet[] = [];
     const cards = uniqueListingsByCard(rows);
-    if (type.searchConfig.systemFacets.includes('price') && rows.length) {
-      facets.push({ key: 'price', label: 'Khoảng giá', control: 'range', options: [] });
-    }
-    if (type.searchConfig.systemFacets.includes('location')) {
-      facets.push(
-        optionFacet(
-          'location',
-          'Khu vực',
-          cards.map((l) => [l.group?.wardCode ?? l.wardCode, l.group?.wardName ?? l.wardName]),
-        ),
-      );
-    }
-    if (type.searchConfig.systemFacets.includes('amenities')) {
-      facets.push(
-        optionFacet(
-          'amenities',
-          'Tiện ích',
-          cards.flatMap((l) =>
-            stringArrayRaw(l.group?.amenities).map((a) => [a, a] as [string, string]),
+    for (const systemFacet of type.searchConfig.systemFacets) {
+      if (systemFacet === 'price') {
+        if (rows.length)
+          facets.push({ key: 'price', label: 'Khoảng giá', control: 'range', options: [] });
+      } else if (systemFacet === 'location') {
+        facets.push(
+          optionFacet(
+            'location',
+            'Khu vực',
+            cards.map((l) => [l.group?.wardCode ?? l.wardCode, l.group?.wardName ?? l.wardName]),
           ),
-        ),
-      );
+        );
+      } else {
+        facets.push(
+          optionFacet(
+            'amenities',
+            'Tiện ích',
+            cards.flatMap((l) =>
+              stringArrayRaw(l.group?.amenities).map((a) => [a, a] as [string, string]),
+            ),
+          ),
+        );
+      }
     }
     const fields = new Map(type.attributeSchema.map((field) => [field.key, field]));
     for (const config of type.searchConfig.attributeFacets) {

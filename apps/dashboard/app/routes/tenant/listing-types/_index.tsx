@@ -10,6 +10,15 @@ import { requireTenant } from '../tenant.server';
 import { PageHeader } from '~/components/page-header';
 import { BOOKING_MODE_LABEL } from '~/lib/format';
 
+const SEARCH_SCHEDULE_LABEL: Record<
+  ListingTypeResponse['searchConfig']['schedule'],
+  string
+> = {
+  none: 'Không lịch',
+  hourly: 'Theo ngày',
+  daily: 'Khoảng ngày',
+  inventory: 'Thuê kho',
+};
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Loại dịch vụ · Tenant · Bookify' }];
@@ -61,6 +70,25 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
       ),
     },
     { header: 'Thuộc tính', cell: (t) => <span className="tabular-nums text-muted-foreground">{t.attributeSchema.length}</span> },
+    {
+      header: 'Tìm kiếm',
+      cell: (t) => {
+        const facetCount =
+          t.searchConfig.systemFacets.length + t.searchConfig.attributeFacets.length;
+        return (
+          <div className="space-y-1">
+            <Badge variant="outline" className="font-normal">
+              {SEARCH_SCHEDULE_LABEL[t.searchConfig.schedule]}
+            </Badge>
+            <p className="whitespace-nowrap text-xs text-muted-foreground">
+              {facetCount} bộ lọc{t.searchConfig.showGuests ? ' · có số khách' : ''}
+            </p>
+          </div>
+        );
+      },
+      className: 'hidden lg:table-cell',
+      headClassName: 'hidden lg:table-cell',
+    },
     {
       header: 'Đang dùng',
       cell: (t) => (
