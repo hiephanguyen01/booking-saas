@@ -24,6 +24,8 @@ describe('normalizeDailyRange', () => {
     [undefined, undefined],
     ['2026-08-10', undefined],
     ['10-08-2026', '2026-08-10'],
+    ['2026-02-30', '2026-03-01'],
+    ['2026-99-10', '2026-99-11'],
     ['2026-08-11', '2026-08-10'],
   ])('rejects incomplete, malformed, or reversed input: %s → %s', (from, to) => {
     expect(normalizeDailyRange(from, to)).toBeNull();

@@ -2,6 +2,13 @@ import { addDays, nightsBetween } from './time';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+function isValidDateOnly(value: string): boolean {
+  if (!DATE_ONLY_RE.test(value)) return false;
+
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 export interface NormalizedDailyRange {
   selectedFrom: string;
   selectedTo: string;
@@ -14,7 +21,7 @@ export function normalizeDailyRange(
   from: string | undefined,
   to: string | undefined,
 ): NormalizedDailyRange | null {
-  if (!from || !to || !DATE_ONLY_RE.test(from) || !DATE_ONLY_RE.test(to) || to < from) {
+  if (!from || !to || !isValidDateOnly(from) || !isValidDateOnly(to) || to < from) {
     return null;
   }
   const effectiveTo = to === from ? addDays(from, 1) : to;
