@@ -242,7 +242,29 @@ min={1}
 
 Keep `resetOnSelect`, the controlled inclusive `range`, and the existing close condition. With the default zero-night minimum, react-day-picker returns `{ from: day, to: day }`; the label remains one selected date while `validDailyRange` emits the next-day effective boundary.
 
-- [ ] **Step 5: Run focused and full search tests**
+- [ ] **Step 5: Render a same-date range as one date in the trigger label**
+
+Inside `SearchDatePicker`, add a boolean before `label`:
+
+```ts
+const isSingleDayRange =
+  Boolean(range.from && range.to) &&
+  localToDateOnly(range.from!) === localToDateOnly(range.to!);
+```
+
+Replace the daily branch of `label` with:
+
+```ts
+: range.from
+  ? isSingleDayRange
+    ? day(range.from)
+    : `${day(range.from)} - ${range.to ? day(range.to) : t('home.endDate')}`
+  : t('home.pickDate');
+```
+
+This keeps multi-day and incomplete labels unchanged while avoiding a duplicate `10/08 - 10/08` label for a one-day selection.
+
+- [ ] **Step 6: Run focused and full search tests**
 
 Run:
 
@@ -252,7 +274,7 @@ pnpm --filter @booking/storefront test -- app/lib/daily-range.spec.ts app/featur
 
 Expected: both test files PASS.
 
-- [ ] **Step 6: Commit the search behavior**
+- [ ] **Step 7: Commit the search behavior**
 
 ```bash
 git add apps/storefront/app/features/search/search-state.ts apps/storefront/app/features/search/search-state.spec.ts apps/storefront/app/features/search/search-form.tsx
