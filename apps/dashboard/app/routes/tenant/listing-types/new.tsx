@@ -1,12 +1,12 @@
-import { data as routeData, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
 import { createListingTypeInputSchema } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import type { Route } from './+types/new';
-import { apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { ArrowLeft } from 'lucide-react';
+import { Link, redirect, data as routeData } from 'react-router';
 import { PageHeader } from '~/components/page-header';
+import { apiPost } from '~/lib/api.server';
 import { ListingTypeForm } from '../components/listing-type-form';
+import { requireTenant } from '../tenant.server';
+import type { Route } from './+types/new';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Loại dịch vụ mới · Tenant · Bookify' }];
@@ -21,11 +21,17 @@ export async function action({ request }: Route.ActionArgs) {
   const { auth } = await requireTenant(request, 'tenant.listings.write');
   const parsed = createListingTypeInputSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return routeData({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
+    return routeData(
+      { error: null, fieldErrors: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    );
   }
   const res = await apiPost('/tenant/listing-types', parsed.data, auth);
   if (!res.ok) {
-    return routeData({ error: res.error ?? 'Tạo không thành công.', fieldErrors: res.errors ?? null }, { status: 400 });
+    return routeData(
+      { error: res.error ?? 'Tạo không thành công.', fieldErrors: res.errors ?? null },
+      { status: 400 },
+    );
   }
   return redirect('/tenant/listing-types');
 }
@@ -35,11 +41,19 @@ export default function NewListingType({ actionData }: Route.ComponentProps) {
     <div className="space-y-5">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/tenant/listing-types"><ArrowLeft className="size-4" /> Loại dịch vụ</Link>
+          <Link to="/tenant/listing-types">
+            <ArrowLeft className="size-4" /> Loại dịch vụ
+          </Link>
         </Button>
-        <PageHeader title="Loại dịch vụ mới" description="Tạo một loại dịch vụ với hình thức đặt và thuộc tính riêng." />
+        <PageHeader
+          title="Loại dịch vụ mới"
+          description="Tạo một loại dịch vụ với hình thức đặt và thuộc tính riêng."
+        />
       </div>
-      <ListingTypeForm serverError={actionData?.error ?? null} fieldErrors={actionData?.fieldErrors ?? null} />
+      <ListingTypeForm
+        serverError={actionData?.error ?? null}
+        fieldErrors={actionData?.fieldErrors ?? null}
+      />
     </div>
   );
 }
