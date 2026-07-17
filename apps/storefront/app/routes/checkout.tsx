@@ -1,4 +1,8 @@
-import type { CreateBookingInput, ValidatePromoResponse } from '@booking/contracts';
+import {
+  createBookingInputSchema,
+  guestInfoSchema,
+  type ValidatePromoResponse,
+} from '@booking/contracts';
 import { data, redirect } from 'react-router';
 import type { Route } from './+types/checkout';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
@@ -73,25 +77,6 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
   };
 }
 
-type GuestFields = { fullName: string; email: string; phone: string };
-
-function validateGuest(
-  fullNameRaw: FormDataEntryValue | null,
-  emailRaw: FormDataEntryValue | null,
-  phoneRaw: FormDataEntryValue | null,
-): { ok: true; data: GuestFields } | { ok: false; fieldErrors: Record<string, string[]> } {
-  const fullName = String(fullNameRaw ?? '').trim();
-  const email = String(emailRaw ?? '').trim();
-  const phone = String(phoneRaw ?? '').trim();
-  const fieldErrors: Record<string, string[]> = {};
-
-  if (fullName.length < 1 || fullName.length > 200) fieldErrors.fullName = ['Required'];
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fieldErrors.email = ['Invalid email'];
-  if (phone.length < 5 || phone.length > 20) fieldErrors.phone = ['Invalid phone'];
-  if (Object.keys(fieldErrors).length > 0) return { ok: false, fieldErrors };
-  return { ok: true, data: { fullName, email, phone } };
-}
-
 export async function action({ request, params }: Route.ActionArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
   const form = await request.formData();
@@ -99,20 +84,27 @@ export async function action({ request, params }: Route.ActionArgs) {
   const mode = String(form.get('mode') ?? '');
   const start = String(form.get('start') ?? '');
   const end = String(form.get('end') ?? '');
-  const qty = Number(form.get('qty') ?? '1') || 1;
+  const qty = Number(form.get('qty') ?? '1');
   const promoCode = String(form.get('promoCode') ?? '').trim().toUpperCase() || undefined;
   const note = String(form.get('customerNote') ?? '').trim() || undefined;
-  const guest = validateGuest(form.get('fullName'), form.get('email'), form.get('phone'));
+  const guest = guestInfoSchema.safeParse({
+    fullName: String(form.get('fullName') ?? '').trim(),
+    email: String(form.get('email') ?? '').trim(),
+    phone: String(form.get('phone') ?? '').trim(),
+  });
 
-  if (!guest.ok) {
-    return data({ fieldErrors: guest.fieldErrors, error: null }, { status: 400 });
+  if (!guest.success) {
+    return data(
+      { fieldErrors: guest.error.flatten().fieldErrors, error: null },
+      { status: 400 },
+    );
   }
 
   const tenant = await resolveTenant(request);
   const refCode = readRefCode(request, tenant.id) ?? undefined;
-  const input: CreateBookingInput = {
+  const parsed = createBookingInputSchema.safeParse({
     listingId,
-    mode: mode as CreateBookingInput['mode'],
+    mode,
     from: start,
     to: end,
     quantity: qty,
@@ -121,18 +113,27 @@ export async function action({ request, params }: Route.ActionArgs) {
     guest: guest.data,
     promoCode,
     refCode,
-  };
+  });
+
+  if (!parsed.success) {
+    return data(
+      { fieldErrors: null, error: 'INVALID_CHECKOUT_INPUT', code: 'INVALID_CHECKOUT_INPUT' },
+      { status: 400 },
+    );
+  }
+
+  const input = parsed.data;
 
   const idempotencyKey = buildCheckoutIdempotencyKey({
     tenantId: tenant.id,
-    listingId,
-    mode,
-    start,
-    end,
-    quantity: qty,
-    promoCode: promoCode ?? null,
-    email: guest.data.email,
-    phone: guest.data.phone,
+    listingId: input.listingId,
+    mode: input.mode,
+    start: input.from,
+    end: input.to,
+    quantity: input.quantity,
+    promoCode: input.promoCode ?? null,
+    email: input.guest?.email ?? '',
+    phone: input.guest?.phone ?? '',
   });
   const created = await createBooking(request, input, idempotencyKey);
 
