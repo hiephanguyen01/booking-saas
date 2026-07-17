@@ -15,16 +15,14 @@ import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUseCase } from '../../application/use-cases/register.use-case';
 import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
-import {
-  CompletePasswordResetUseCase,
-  CompleteRegistrationUseCase,
-  ResendPasswordResetUseCase,
-  ResendRegistrationUseCase,
-  StartPasswordResetUseCase,
-  StartRegistrationUseCase,
-  VerifyPasswordResetUseCase,
-  VerifyRegistrationUseCase,
-} from '../../application/use-cases/customer-auth-flow.use-cases';
+import { CompletePasswordResetUseCase } from '../../application/use-cases/complete-password-reset.use-case';
+import { CompleteRegistrationUseCase } from '../../application/use-cases/complete-registration.use-case';
+import { ResendPasswordResetUseCase } from '../../application/use-cases/resend-password-reset.use-case';
+import { ResendRegistrationUseCase } from '../../application/use-cases/resend-registration.use-case';
+import { StartPasswordResetUseCase } from '../../application/use-cases/start-password-reset.use-case';
+import { StartRegistrationUseCase } from '../../application/use-cases/start-registration.use-case';
+import { VerifyPasswordResetUseCase } from '../../application/use-cases/verify-password-reset.use-case';
+import { VerifyRegistrationUseCase } from '../../application/use-cases/verify-registration.use-case';
 import type { SessionPrincipal, SessionTokens } from '../../domain/ports/session-store.port';
 import type { UserRecord } from '../../domain/ports/user-repository.port';
 import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './cookies';

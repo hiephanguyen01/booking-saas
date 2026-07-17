@@ -1,4 +1,4 @@
-import type { BookingMode, ModeConfig } from '@booking/contracts';
+import type { BookingMode, ModeConfig, QuoteResponse } from '@booking/contracts';
 import { percentOfBps, vnd, type Vnd } from '../../../../shared/money/money';
 import { wallClockInZone } from '../../../../shared/time/time';
 
@@ -50,6 +50,9 @@ export interface QuoteRequest {
   quantity: number;
   depositPercent: number;
 }
+
+/** Input shape of {@link computeQuoteResponse} (the former quote-service input). */
+export type QuoteInput = QuoteRequest;
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
@@ -204,4 +207,29 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
 
   const depositAmount = percentOfBps(subtotal, req.depositPercent * 100);
   return { mode: req.mode, subtotal, depositAmount, securityDeposit, lineItems };
+}
+
+/**
+ * {@link computeQuote} mapped to the `QuoteResponse` transport shape (VND
+ * bigints → digit strings). Pure; throws {@link PricingError} on invalid input
+ * — HTTP callers go through `application/pricing.ts#priceQuote`, which maps
+ * pricing errors to 400s.
+ */
+export function computeQuoteResponse(input: QuoteInput): QuoteResponse {
+  const result = computeQuote(input);
+  return {
+    currency: 'VND',
+    mode: result.mode,
+    subtotal: result.subtotal.toString(),
+    depositAmount: result.depositAmount.toString(),
+    securityDeposit: result.securityDeposit.toString(),
+    lineItems: result.lineItems.map((l) => ({
+      label: l.label,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice.toString(),
+      amount: l.amount.toString(),
+      ...(l.appliedRuleId ? { appliedRuleId: l.appliedRuleId } : {}),
+      ...(l.block ? { block: true } : {}),
+    })),
+  };
 }

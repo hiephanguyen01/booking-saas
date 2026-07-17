@@ -1,16 +1,15 @@
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { ApplyPromotionService } from '../../../promotions/application/apply-promotion.service';
+import { ReservePromotionUseCase } from '../../../promotions/application/use-cases/reserve-promotion.use-case';
 import { BOOKING_REPOSITORY, type BookingRecord, type IBookingRepository } from '../../domain/ports/booking-repository.port';
 import { assertTransition } from '../../domain/booking-state-machine';
 import { SlotTakenError } from '../../domain/booking-errors';
 
 /**
  * Confirm a paid booking (§8.2 pending_payment → confirmed). Task 1.9's webhook
- * calls {@link confirmInTx} INSIDE the same tenant tx that flips the payment to
- * succeeded, so payment-succeeded and booking-confirmed commit atomically —
- * closing the race where the expiry sweep could expire an already-paid booking.
+ * calls {@link execute} once the payment is durably recorded as succeeded (the
+ * atomic pending→succeeded flip gates it to exactly one confirm attempt).
  *
  * Also handles the **late-webhook restore** edge (§8.2 row 665, expired →
  * confirmed): a success webhook that arrives after the booking expired. If the
@@ -26,7 +25,7 @@ export class ConfirmBookingUseCase {
     @Inject(BOOKING_REPOSITORY) private readonly bookings: IBookingRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
-    private readonly promotions: ApplyPromotionService,
+    private readonly reservePromotion: ReservePromotionUseCase,
   ) {}
 
   async execute(tenantId: string, bookingId: string): Promise<BookingRecord> {
@@ -40,8 +39,8 @@ export class ConfirmBookingUseCase {
     }
   }
 
-  /** Confirm within an existing tenant transaction (caller owns the tx). */
-  async confirmInTx(tx: PrismaTx, tenantId: string, bookingId: string): Promise<BookingRecord> {
+  /** Confirm within the tenant transaction opened by {@link execute}. */
+  private async confirmInTx(tx: PrismaTx, tenantId: string, bookingId: string): Promise<BookingRecord> {
     const booking = await this.bookings.findById(tx, bookingId);
     if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
     assertTransition(booking.status, 'confirmed', 'system');
@@ -65,7 +64,7 @@ export class ConfirmBookingUseCase {
     // itself must not fail for a promo-bookkeeping edge (§8.2 accepts overshoot).
     if (wasExpired && booking.promotionId) {
       try {
-        await this.promotions.reserve(tx, tenantId, {
+        await this.reservePromotion.execute(tx, tenantId, {
           promotionId: booking.promotionId,
           bookingId: booking.id,
           customerId: booking.customerId,

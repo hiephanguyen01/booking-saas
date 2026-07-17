@@ -6,10 +6,12 @@ import { utcNow, addMinutes, DEFAULT_TIMEZONE } from '../../../../shared/time/ti
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { FindOrCreateGuestUseCase } from '../../../identity-access/application/use-cases/find-or-create-guest.use-case';
-import { PricingService } from '../../../listing/application/services/pricing.service';
-import { ApplyPromotionService } from '../../../promotions/application/apply-promotion.service';
-import { ResolveCommissionService } from '../../../finance/application/resolve-commission.service';
-import { ResolveAttributionService } from '../../../affiliate/application/resolve-attribution.service';
+import { priceQuote } from '../../../listing/application/pricing';
+import { PreparePromotionUseCase } from '../../../promotions/application/use-cases/prepare-promotion.use-case';
+import { ReservePromotionUseCase } from '../../../promotions/application/use-cases/reserve-promotion.use-case';
+import { ResolveCommissionUseCase } from '../../../finance/application/use-cases/resolve-commission.use-case';
+import { ResolveAttributionUseCase } from '../../../affiliate/application/use-cases/resolve-attribution.use-case';
+import { applyCustomRate } from '../../../affiliate/domain/affiliate-rate';
 import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../../listing/domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY, type IResourceRepository } from '../../../listing/domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY, type IPricingRuleRepository } from '../../../listing/domain/ports/pricing-rule-repository.port';
@@ -42,10 +44,10 @@ export class CreateBookingUseCase {
     @Inject(HOLD_STORE) private readonly holds: IHoldStore,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly guests: FindOrCreateGuestUseCase,
-    private readonly pricing: PricingService,
-    private readonly promotions: ApplyPromotionService, // Task 1.11 — in-tx promo reservation
-    private readonly commissions: ResolveCommissionService, // Task 1.10 — in-tx commission snapshot
-    private readonly attribution: ResolveAttributionService, // Task 2.1 — in-tx affiliate attribution
+    private readonly preparePromotion: PreparePromotionUseCase, // Task 1.11 — in-tx promo reservation
+    private readonly reservePromotion: ReservePromotionUseCase, // Task 1.11 — in-tx promo reservation
+    private readonly commissions: ResolveCommissionUseCase, // Task 1.10 — in-tx commission snapshot
+    private readonly attribution: ResolveAttributionUseCase, // Task 2.1 — in-tx affiliate attribution
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -84,7 +86,7 @@ export class CreateBookingUseCase {
       const pricingRules = (await this.pricingRules.listByListing(tx, listing.id)).map((r) => ({
         id: r.id, bookingMode: r.bookingMode, ruleType: r.ruleType, params: r.params, price: r.price, priority: r.priority,
       }));
-      const quote = this.pricing.quote({
+      const quote = priceQuote({
         mode: input.mode,
         modeConfig: listing.modeConfig as ModeConfig,
         pricingRules,
@@ -203,7 +205,7 @@ export class CreateBookingUseCase {
     // NOTE (finance wave): deposit is still computed on the pre-discount subtotal
     // — deposit-on-final and commission snapshotting are layered on separately.
     const subtotal = BigInt(args.quote.subtotal);
-    const promo = await this.promotions.prepare(tx, {
+    const promo = await this.preparePromotion.execute(tx, {
       code: args.input.promoCode ?? null,
       listingId: args.listing.id,
       amount: subtotal,
@@ -223,7 +225,7 @@ export class CreateBookingUseCase {
       where: { id: args.listing.partnerId },
       select: { isHouse: true },
     });
-    let commissionSnapshot = await this.commissions.snapshot(tx, {
+    let commissionSnapshot = await this.commissions.execute(tx, {
       partnerId: args.listing.partnerId,
       listingTypeId: args.listing.listingTypeId,
       categoryId: args.listing.categoryId,
@@ -236,15 +238,15 @@ export class CreateBookingUseCase {
     // affiliate's custom_rate into the commission snapshot so BOTH the ledger leg
     // and the tracked affiliate_commissions row use the same rate — keeping the
     // journal balanced. A miss leaves affiliateId null and the booking unchanged.
-    let attribution: Awaited<ReturnType<typeof this.attribution.resolve>> = null;
+    let attribution: Awaited<ReturnType<typeof this.attribution.execute>> = null;
     if (args.input.refCode) {
-      attribution = await this.attribution.resolve(tx, {
+      attribution = await this.attribution.execute(tx, {
         code: args.input.refCode,
         customerId: args.customerId,
         listingPartnerId: args.listing.partnerId,
       });
       if (attribution) {
-        commissionSnapshot = this.attribution.applyCustomRate(commissionSnapshot, attribution.customRate);
+        commissionSnapshot = applyCustomRate(commissionSnapshot, attribution.customRate);
       }
     }
 
@@ -277,7 +279,7 @@ export class CreateBookingUseCase {
       customerNote: args.input.customerNote ?? null,
     });
     if (promo) {
-      await this.promotions.reserve(tx, tenantId, {
+      await this.reservePromotion.execute(tx, tenantId, {
         promotionId: promo.promotionId,
         bookingId: draft.id,
         customerId: args.customerId,

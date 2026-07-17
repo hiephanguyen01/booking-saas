@@ -27,7 +27,11 @@ import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { toExceptionResponse, toRuleResponse } from '../../application/scheduling.mapper';
-import { ManageAvailabilityUseCase } from '../../application/use-cases/manage-availability.use-case';
+import { AddAvailabilityExceptionUseCase } from '../../application/use-cases/add-availability-exception.use-case';
+import { DeleteAvailabilityExceptionUseCase } from '../../application/use-cases/delete-availability-exception.use-case';
+import { ListAvailabilityExceptionsUseCase } from '../../application/use-cases/list-availability-exceptions.use-case';
+import { ListAvailabilityRulesUseCase } from '../../application/use-cases/list-availability-rules.use-case';
+import { SetAvailabilityRulesUseCase } from '../../application/use-cases/set-availability-rules.use-case';
 import {
   AvailabilityExceptionDto,
   AvailabilityExceptionResponseDto,
@@ -40,7 +44,11 @@ import {
 @Controller('tenant')
 export class TenantAvailabilityController {
   constructor(
-    private readonly manage: ManageAvailabilityUseCase,
+    private readonly listRulesUseCase: ListAvailabilityRulesUseCase,
+    private readonly setRulesUseCase: SetAvailabilityRulesUseCase,
+    private readonly listExceptionsUseCase: ListAvailabilityExceptionsUseCase,
+    private readonly addExceptionUseCase: AddAvailabilityExceptionUseCase,
+    private readonly deleteExceptionUseCase: DeleteAvailabilityExceptionUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -56,7 +64,7 @@ export class TenantAvailabilityController {
   async listRules(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<AvailabilityRuleResponse[]> {
-    return (await this.manage.listRules(this.ctx(), id)).map(toRuleResponse);
+    return (await this.listRulesUseCase.execute(this.ctx(), id)).map(toRuleResponse);
   }
 
   @RequirePermissions('tenant.listings.write')
@@ -69,7 +77,7 @@ export class TenantAvailabilityController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() body: SetAvailabilityRulesDto,
   ): Promise<AvailabilityRuleResponse[]> {
-    return (await this.manage.setRules(this.ctx(), id, body.rules)).map(toRuleResponse);
+    return (await this.setRulesUseCase.execute(this.ctx(), id, body.rules)).map(toRuleResponse);
   }
 
   @RequirePermissions('tenant.listings.read')
@@ -80,7 +88,7 @@ export class TenantAvailabilityController {
   async listExceptions(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
   ): Promise<AvailabilityExceptionResponse[]> {
-    return (await this.manage.listExceptions(this.ctx(), id)).map(toExceptionResponse);
+    return (await this.listExceptionsUseCase.execute(this.ctx(), id)).map(toExceptionResponse);
   }
 
   @RequirePermissions('tenant.listings.write')
@@ -93,7 +101,7 @@ export class TenantAvailabilityController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() body: AvailabilityExceptionDto,
   ): Promise<AvailabilityExceptionResponse> {
-    return toExceptionResponse(await this.manage.addException(this.ctx(), id, body));
+    return toExceptionResponse(await this.addExceptionUseCase.execute(this.ctx(), id, body));
   }
 
   @RequirePermissions('tenant.listings.write')
@@ -108,6 +116,6 @@ export class TenantAvailabilityController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Param('exceptionId', new ZodValidationPipe(uuidSchema)) exceptionId: string,
   ): Promise<void> {
-    await this.manage.deleteException(this.ctx(), id, exceptionId);
+    await this.deleteExceptionUseCase.execute(this.ctx(), id, exceptionId);
   }
 }

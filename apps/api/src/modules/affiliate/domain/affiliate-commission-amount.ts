@@ -10,8 +10,8 @@ import { snapshotToRates, type CommissionSnapshot } from '../../finance/domain/c
  * the ledger stays balanced and the affiliate's payable never drifts.
  *
  * The affiliate's `custom_rate` (§15.2) is applied by baking it into the snapshot
- * at booking time (see `ResolveAttributionService`), so it is already reflected
- * here with no special-casing.
+ * at booking time (see `applyCustomRate` in `affiliate-rate.ts`), so it is
+ * already reflected here with no special-casing.
  */
 export interface AffiliateAmountInput {
   snapshot: CommissionSnapshot;

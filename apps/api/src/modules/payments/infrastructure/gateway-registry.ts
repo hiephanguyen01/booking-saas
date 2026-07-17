@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
 import type { GatewayKey, PaymentGatewayPort } from '../domain/ports/payment-gateway.port';
+import type { GatewayRegistryPort } from '../domain/ports/gateway-registry.port';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
@@ -13,7 +14,7 @@ import { PayosGatewayAdapter } from './gateways/payos-gateway.adapter';
  * config is present (dev/test). PayOS is bound to the tenant's decrypted creds.
  */
 @Injectable()
-export class GatewayRegistry {
+export class GatewayRegistry implements GatewayRegistryPort {
   constructor(
     private readonly mock: MockGatewayAdapter,
     @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,

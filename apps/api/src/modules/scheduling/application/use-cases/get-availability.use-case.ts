@@ -17,7 +17,7 @@ import {
   PRICING_RULE_REPOSITORY,
   type IPricingRuleRepository,
 } from '../../../listing/domain/ports/pricing-rule-repository.port';
-import { PricingService } from '../../../listing/application/services/pricing.service';
+import { priceQuote } from '../../../listing/application/pricing';
 import {
   AVAILABILITY_RULE_REPOSITORY,
   type IAvailabilityRuleRepository,
@@ -33,7 +33,11 @@ import { openWindowsForDate, type DateException } from '../../domain/availabilit
 import { applyLiveHolds, generateHourlySlots } from '../../domain/availability/slot-generator';
 import { computeDay } from '../../domain/availability/day-availability';
 import type { Interval } from '../../domain/availability/interval';
-import { AvailabilityCache, type CachedSlot } from '../../infrastructure/availability-cache';
+import {
+  AVAILABILITY_CACHE,
+  type CachedSlot,
+  type IAvailabilityCache,
+} from '../../domain/ports/availability-cache.port';
 
 const DAY_MS = 86_400_000;
 
@@ -55,9 +59,8 @@ export class GetAvailabilityUseCase {
     @Inject(BUSY_READER) private readonly busy: IBusyReader,
     @Inject(HOLD_READER) private readonly holds: IHoldReader,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
-    private readonly pricing: PricingService,
     private readonly tenantDb: TenantDbService,
-    private readonly cache: AvailabilityCache,
+    @Inject(AVAILABILITY_CACHE) private readonly cache: IAvailabilityCache,
   ) {}
 
   async execute(host: string, slug: string, query: AvailabilityQuery): Promise<AvailabilityResponse> {
@@ -109,7 +112,7 @@ export class GetAvailabilityUseCase {
       const liveHolds = await this.holds.activeHolds(listing.resourceId, rangeStart, rangeEnd);
 
       const priceFor = (startUtc: Date, endUtc: Date): string =>
-        this.pricing.quote({
+        priceQuote({
           mode: query.mode,
           modeConfig,
           pricingRules: pv,

@@ -11,9 +11,15 @@ import { PrismaAffiliateRepository } from '../repositories/prisma-affiliate.repo
 import { PrismaReferralLinkRepository } from '../repositories/prisma-referral-link.repository';
 import { PrismaAffiliateCommissionRepository } from '../repositories/prisma-affiliate-commission.repository';
 import { PrismaCommissionRuleReader } from '../repositories/prisma-commission-rule.reader';
-import { ResolveAttributionService } from '../../application/resolve-attribution.service';
-import { RecordCommissionService } from '../../application/record-commission.service';
-import { AffiliateContextService } from '../../application/affiliate-context.service';
+import { ResolveAttributionUseCase } from '../../application/use-cases/resolve-attribution.use-case';
+import { RecordPendingCommissionUseCase } from '../../application/use-cases/record-pending-commission.use-case';
+import { RecordConfirmedCommissionUseCase } from '../../application/use-cases/record-confirmed-commission.use-case';
+import { ReverseCommissionUseCase } from '../../application/use-cases/reverse-commission.use-case';
+import { ClawbackCommissionUseCase } from '../../application/use-cases/clawback-commission.use-case';
+import { MarkCommissionsPaidUseCase } from '../../application/use-cases/mark-commissions-paid.use-case';
+import { GetAffiliateMembershipsUseCase } from '../../application/use-cases/get-affiliate-memberships.use-case';
+import { RequireApprovedAffiliateUseCase } from '../../application/use-cases/require-approved-affiliate.use-case';
+import { RequireAffiliateMembershipUseCase } from '../../application/use-cases/require-affiliate-membership.use-case';
 import { ApplyAffiliateUseCase } from '../../application/use-cases/apply-affiliate.use-case';
 import { ListAffiliateMembershipsUseCase } from '../../application/use-cases/list-affiliate-memberships.use-case';
 import { UpdateAffiliatePayoutInfoUseCase } from '../../application/use-cases/update-affiliate-payout-info.use-case';
@@ -39,9 +45,15 @@ import { TenantAffiliateController } from './tenant-affiliate.controller';
     { provide: REFERRAL_LINK_REPOSITORY, useClass: PrismaReferralLinkRepository },
     { provide: AFFILIATE_COMMISSION_REPOSITORY, useClass: PrismaAffiliateCommissionRepository },
     { provide: COMMISSION_RULE_READER, useClass: PrismaCommissionRuleReader },
-    ResolveAttributionService,
-    RecordCommissionService,
-    AffiliateContextService,
+    ResolveAttributionUseCase,
+    RecordPendingCommissionUseCase,
+    RecordConfirmedCommissionUseCase,
+    ReverseCommissionUseCase,
+    ClawbackCommissionUseCase,
+    MarkCommissionsPaidUseCase,
+    GetAffiliateMembershipsUseCase,
+    RequireApprovedAffiliateUseCase,
+    RequireAffiliateMembershipUseCase,
     ApplyAffiliateUseCase,
     ListAffiliateMembershipsUseCase,
     UpdateAffiliatePayoutInfoUseCase,
@@ -57,12 +69,16 @@ import { TenantAffiliateController } from './tenant-affiliate.controller';
     UpdateAffiliateRateUseCase,
   ],
   // Exported so the booking module can resolve attribution in-tx at booking creation.
-  exports: [ResolveAttributionService],
+  exports: [ResolveAttributionUseCase],
 })
 export class AffiliateModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
-    private readonly commissions: RecordCommissionService,
+    private readonly recordPending: RecordPendingCommissionUseCase,
+    private readonly recordConfirmed: RecordConfirmedCommissionUseCase,
+    private readonly reverseCommission: ReverseCommissionUseCase,
+    private readonly clawbackCommission: ClawbackCommissionUseCase,
+    private readonly markCommissionsPaid: MarkCommissionsPaidUseCase,
   ) {}
 
   /**
@@ -75,27 +91,27 @@ export class AffiliateModule implements OnModuleInit {
    */
   onModuleInit(): void {
     this.registry.register('booking.confirmed', (event) =>
-      this.commissions.recordPending(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.recordPending.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.completed', (event) =>
-      this.commissions.recordConfirmed(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.recordConfirmed.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.cancelled', (event) =>
-      this.commissions.reverse(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.reverseCommission.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.rejected', (event) =>
-      this.commissions.reverse(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.reverseCommission.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.expired', (event) =>
-      this.commissions.reverse(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.reverseCommission.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.refunded', (event) =>
-      this.commissions.clawback(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.clawbackCommission.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('payout.paid', (event) => {
       const p = event.payload as { payeeType?: string; payeeId?: string };
       if (p.payeeType !== 'affiliate' || !p.payeeId) return Promise.resolve();
-      return this.commissions.markPaid(event.tenantId ?? '', p.payeeId);
+      return this.markCommissionsPaid.execute(event.tenantId ?? '', p.payeeId);
     });
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
+  AffiliateCommissionRecord,
   AffiliateCommissionStatus,
   AffiliateCommissionTotals,
   AffiliateCommissionWithBooking,
@@ -40,7 +41,7 @@ function toWithBooking(c: RowWithBooking): AffiliateCommissionWithBooking {
 
 @Injectable()
 export class PrismaAffiliateCommissionRepository implements IAffiliateCommissionRepository {
-  async findByBooking(tx: PrismaTx, bookingId: string) {
+  async findByBooking(tx: PrismaTx, bookingId: string): Promise<AffiliateCommissionRecord | null> {
     const c = await tx.affiliateCommission.findUnique({ where: { bookingId } });
     if (!c) return null;
     return {

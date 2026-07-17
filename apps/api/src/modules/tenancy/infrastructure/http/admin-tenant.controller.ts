@@ -17,7 +17,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  Inject,
   Param,
   Patch,
   Post,
@@ -35,7 +34,6 @@ import {
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config';
 import {
   toDomainResponse,
   toPlanResponse,
@@ -50,6 +48,7 @@ import { CheckSlugAvailabilityUseCase } from '../../application/use-cases/check-
 import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { GetCurrentSubscriptionUseCase } from '../../application/use-cases/get-current-subscription.use-case';
+import { GetTenancyConfigUseCase } from '../../application/use-cases/get-tenancy-config.use-case';
 import { GetTenantDetailUseCase } from '../../application/use-cases/get-tenant-detail.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { ListSubscriptionsUseCase } from '../../application/use-cases/list-subscriptions.use-case';
@@ -92,7 +91,7 @@ export class AdminTenantController {
     private readonly verifyDomain: VerifyDomainUseCase,
     private readonly listDomains: ListDomainsUseCase,
     private readonly deleteDomain: DeleteDomainUseCase,
-    @Inject(TENANCY_CONFIG) private readonly config: TenancyConfig,
+    private readonly getTenancyConfig: GetTenancyConfigUseCase,
   ) {}
 
   @RequirePermissions('platform.tenants.write')
@@ -129,7 +128,7 @@ export class AdminTenantController {
   @ApiOperation({ summary: 'Platform tenancy config (base domain for tenant subdomains)' })
   @ApiOkResponse({ type: TenancyConfigResponseDto })
   tenancyConfig(): TenancyConfigResponse {
-    return { baseDomain: this.config.baseDomain };
+    return this.getTenancyConfig.execute();
   }
 
   @RequirePermissions('platform.tenants.read')

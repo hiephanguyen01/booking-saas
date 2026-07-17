@@ -1,9 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../../domain/ports/payment-repository.port';
 import { REFUND_REPOSITORY, type IRefundRepository } from '../../domain/ports/refund-repository.port';
-import { GatewayRegistry } from '../../infrastructure/gateway-registry';
+import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 
 /**
  * Execute a refund (§11.3). Triggered by `booking.cancelled` / `booking.returned`
@@ -16,17 +15,17 @@ export class ExecuteRefundUseCase {
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
-    private readonly registry: GatewayRegistry,
+    @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async handle(tenantId: string, bookingId: string, amount: bigint): Promise<void> {
+  async execute(tenantId: string, bookingId: string, amount: bigint): Promise<void> {
     if (amount <= 0n) return;
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       // Serialise concurrent refund handlers for a booking (cancelled + returned
       // both trigger this) so two deliveries can't both pass the exists-check and
       // double-refund at the gateway.
-      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('refund:' || ${bookingId}))`);
+      await this.refunds.lockForBooking(tx, bookingId);
       if (await this.refunds.existsForBooking(tx, bookingId)) return; // idempotent
       const payment = await this.payments.findSucceededByBooking(tx, bookingId);
       if (!payment?.gatewayTxnId) return; // nothing was paid to refund

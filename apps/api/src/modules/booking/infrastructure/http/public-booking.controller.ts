@@ -32,10 +32,13 @@ import { OptionalPrincipal } from '../../../identity-access/infrastructure/http/
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { toCancelResponse, toCustomerBookingResponse } from '../../application/booking.mapper';
-import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
 import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
+import { GetBookingByCodeUseCase } from '../../application/use-cases/get-booking-by-code.use-case';
+import { ListMyBookingsUseCase } from '../../application/use-cases/list-my-bookings.use-case';
+import { RequestBookingOtpUseCase } from '../../application/use-cases/request-booking-otp.use-case';
+import { ResolveBookingAccessUseCase } from '../../application/use-cases/resolve-booking-access.use-case';
 import {
   BookingResponseDto,
   CreateBookingDto,
@@ -56,7 +59,10 @@ export class PublicBookingController {
     private readonly createBooking: CreateBookingUseCase,
     private readonly confirmBooking: ConfirmBookingUseCase,
     private readonly cancelBooking: CancelBookingUseCase,
-    private readonly lookup: BookingLookupUseCase,
+    private readonly listMyBookings: ListMyBookingsUseCase,
+    private readonly getBookingByCode: GetBookingByCodeUseCase,
+    private readonly requestBookingOtp: RequestBookingOtpUseCase,
+    private readonly resolveBookingAccess: ResolveBookingAccessUseCase,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
   ) {}
 
@@ -86,7 +92,7 @@ export class PublicBookingController {
     @Req() req: Request,
   ): Promise<BookingResponse[]> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
-    const bookings = await this.lookup.listMyBookings(tenant.id, principal.userId);
+    const bookings = await this.listMyBookings.execute(tenant.id, principal.userId);
     return bookings.map(toCustomerBookingResponse);
   }
 
@@ -98,7 +104,7 @@ export class PublicBookingController {
   @ApiOkResponse({ type: BookingOtpResponseDto })
   async requestOtp(@Param('code') code: string, @Req() req: Request): Promise<BookingOtpResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
-    return this.lookup.requestOtp(tenant.id, code);
+    return this.requestBookingOtp.execute(tenant.id, code);
   }
 
   @Public()
@@ -113,7 +119,7 @@ export class PublicBookingController {
     @Query('otp') otp?: string,
   ): Promise<BookingResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
-    const booking = await this.lookup.resolveForAccess(tenant.id, code, {
+    const booking = await this.resolveBookingAccess.execute(tenant.id, code, {
       otp,
       sessionUserId: principal?.userId,
     });
@@ -134,7 +140,7 @@ export class PublicBookingController {
   ): Promise<CancelBookingResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const sessionUserId = principal?.userId;
-    const booking = await this.lookup.resolveForAccess(tenant.id, code, {
+    const booking = await this.resolveBookingAccess.execute(tenant.id, code, {
       otp: body.otp,
       sessionUserId,
     });
@@ -157,7 +163,7 @@ export class PublicBookingController {
       throw new NotFoundException({ statusCode: 404, code: 'NOT_FOUND', message: 'Not found' });
     }
     const tenant = await this.resolveTenant.execute(hostOf(req));
-    const booking = await this.lookup.byCode(tenant.id, code);
+    const booking = await this.getBookingByCode.execute(tenant.id, code);
     return toCustomerBookingResponse(await this.confirmBooking.execute(tenant.id, booking.id));
   }
 }

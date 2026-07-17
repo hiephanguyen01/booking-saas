@@ -8,6 +8,7 @@ import { CRYPTO } from '../../domain/ports/crypto.port';
 import { PAYMENT_REPOSITORY } from '../../domain/ports/payment-repository.port';
 import { REFUND_REPOSITORY } from '../../domain/ports/refund-repository.port';
 import { GATEWAY_CONFIG_REPOSITORY } from '../../domain/ports/gateway-config-repository.port';
+import { GATEWAY_REGISTRY } from '../../domain/ports/gateway-registry.port';
 import { AesGcmCryptoService } from '../aes-gcm-crypto.service';
 import { PrismaPaymentRepository } from '../repositories/prisma-payment.repository';
 import { PrismaRefundRepository } from '../repositories/prisma-refund.repository';
@@ -33,7 +34,7 @@ import { TenantGatewayController } from './tenant-gateway.controller';
     { provide: REFUND_REPOSITORY, useClass: PrismaRefundRepository },
     { provide: GATEWAY_CONFIG_REPOSITORY, useClass: PrismaGatewayConfigRepository },
     MockGatewayAdapter,
-    GatewayRegistry,
+    { provide: GATEWAY_REGISTRY, useClass: GatewayRegistry },
     ReconciliationWorker,
     CheckoutUseCase,
     HandleWebhookUseCase,
@@ -54,11 +55,11 @@ export class PaymentsModule implements OnModuleInit {
     // rental is returned (deposit refund). Ledger entries are Task 1.10.
     this.registry.register('booking.cancelled', (event) => {
       const p = event.payload as { bookingId: string; refundAmount?: string };
-      return this.refunds.handle(event.tenantId ?? '', p.bookingId, BigInt(p.refundAmount ?? '0'));
+      return this.refunds.execute(event.tenantId ?? '', p.bookingId, BigInt(p.refundAmount ?? '0'));
     });
     this.registry.register('booking.returned', (event) => {
       const p = event.payload as { bookingId: string; depositRefund?: string };
-      return this.refunds.handle(event.tenantId ?? '', p.bookingId, BigInt(p.depositRefund ?? '0'));
+      return this.refunds.execute(event.tenantId ?? '', p.bookingId, BigInt(p.depositRefund ?? '0'));
     });
   }
 }

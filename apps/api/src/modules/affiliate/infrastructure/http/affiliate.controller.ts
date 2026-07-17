@@ -12,7 +12,8 @@ import { UuidParam } from '../../../../shared/openapi/decorators';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
-import { AffiliateContextService } from '../../application/affiliate-context.service';
+import { RequireApprovedAffiliateUseCase } from '../../application/use-cases/require-approved-affiliate.use-case';
+import { RequireAffiliateMembershipUseCase } from '../../application/use-cases/require-affiliate-membership.use-case';
 import { ApplyAffiliateUseCase } from '../../application/use-cases/apply-affiliate.use-case';
 import { ListAffiliateMembershipsUseCase } from '../../application/use-cases/list-affiliate-memberships.use-case';
 import { UpdateAffiliatePayoutInfoUseCase } from '../../application/use-cases/update-affiliate-payout-info.use-case';
@@ -47,7 +48,8 @@ import {
 @Controller('affiliate')
 export class AffiliateController {
   constructor(
-    private readonly context: AffiliateContextService,
+    private readonly requireApproved: RequireApprovedAffiliateUseCase,
+    private readonly requireMembership: RequireAffiliateMembershipUseCase,
     private readonly applyAffiliate: ApplyAffiliateUseCase,
     private readonly listMemberships: ListAffiliateMembershipsUseCase,
     private readonly updatePayoutInfo: UpdateAffiliatePayoutInfoUseCase,
@@ -89,7 +91,7 @@ export class AffiliateController {
   ): Promise<AffiliateResponse> {
     // `requireMembership`, not `requireApproved`: a pending applicant must be able
     // to fix the account number it is to be paid into (see the use case).
-    const ctx = await this.context.requireMembership(principal.userId, tenantHeader);
+    const ctx = await this.requireMembership.execute(principal.userId, tenantHeader);
     return toAffiliateResponse(await this.updatePayoutInfo.execute(ctx.tenantId, ctx.affiliateId, input));
   }
 
@@ -101,7 +103,7 @@ export class AffiliateController {
     @CurrentPrincipal() principal: SessionPrincipal,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<ReferralLinkResponse[]> {
-    const ctx = await this.context.requireApproved(principal.userId, tenantHeader);
+    const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
     const links = await this.listLinks.execute(ctx.tenantId, ctx.affiliateId);
     return links.map(toReferralLinkResponse);
   }
@@ -115,7 +117,7 @@ export class AffiliateController {
     @Body() input: CreateReferralLinkDto,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<ReferralLinkResponse> {
-    const ctx = await this.context.requireApproved(principal.userId, tenantHeader);
+    const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
     return toReferralLinkResponse(await this.createLink.execute(ctx.tenantId, ctx.affiliateId, input));
   }
 
@@ -129,7 +131,7 @@ export class AffiliateController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<void> {
-    const ctx = await this.context.requireApproved(principal.userId, tenantHeader);
+    const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
     await this.deleteLink.execute(ctx.tenantId, ctx.affiliateId, id);
   }
 
@@ -141,7 +143,7 @@ export class AffiliateController {
     @CurrentPrincipal() principal: SessionPrincipal,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<AffiliateStatsResponse> {
-    const ctx = await this.context.requireApproved(principal.userId, tenantHeader);
+    const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
     const s = await this.stats.execute(ctx.tenantId, ctx.affiliateId);
     return toStatsResponse(s.totals, s.clicks);
   }
@@ -154,7 +156,7 @@ export class AffiliateController {
     @CurrentPrincipal() principal: SessionPrincipal,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<AffiliateCommissionResponse[]> {
-    const ctx = await this.context.requireApproved(principal.userId, tenantHeader);
+    const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
     const items = await this.listCommissions.execute(ctx.tenantId, ctx.affiliateId);
     return items.map(toAffiliateCommissionResponse);
   }

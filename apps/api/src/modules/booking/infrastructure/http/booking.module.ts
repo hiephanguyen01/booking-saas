@@ -18,9 +18,15 @@ import { BookingSchedulerWorker } from '../booking-scheduler.worker';
 import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
-import { PartnerBookingUseCase } from '../../application/use-cases/partner-booking.use-case';
-import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
-import { BookingLookupUseCase } from '../../application/use-cases/booking-lookup.use-case';
+import { ApproveBookingUseCase } from '../../application/use-cases/approve-booking.use-case';
+import { RejectBookingUseCase } from '../../application/use-cases/reject-booking.use-case';
+import { MarkNoShowUseCase } from '../../application/use-cases/mark-no-show.use-case';
+import { MarkPickedUpUseCase } from '../../application/use-cases/mark-picked-up.use-case';
+import { MarkReturnedUseCase } from '../../application/use-cases/mark-returned.use-case';
+import { ListMyBookingsUseCase } from '../../application/use-cases/list-my-bookings.use-case';
+import { GetBookingByCodeUseCase } from '../../application/use-cases/get-booking-by-code.use-case';
+import { RequestBookingOtpUseCase } from '../../application/use-cases/request-booking-otp.use-case';
+import { ResolveBookingAccessUseCase } from '../../application/use-cases/resolve-booking-access.use-case';
 import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
 import { ListTenantBookingsUseCase } from '../../application/use-cases/list-tenant-bookings.use-case';
 import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-booking-stats.use-case';
@@ -51,9 +57,15 @@ import { TenantBookingController } from './tenant-booking.controller';
     CreateBookingUseCase,
     ConfirmBookingUseCase,
     CancelBookingUseCase,
-    PartnerBookingUseCase,
-    InventoryFulfillmentUseCase,
-    BookingLookupUseCase,
+    ApproveBookingUseCase,
+    RejectBookingUseCase,
+    MarkNoShowUseCase,
+    MarkPickedUpUseCase,
+    MarkReturnedUseCase,
+    ListMyBookingsUseCase,
+    GetBookingByCodeUseCase,
+    RequestBookingOtpUseCase,
+    ResolveBookingAccessUseCase,
     PartnerCalendarUseCase,
     ListTenantBookingsUseCase,
     PartnerBookingStatsUseCase,

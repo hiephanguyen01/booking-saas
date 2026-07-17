@@ -204,7 +204,7 @@ export interface SelectedAutoCampaign<T extends PromotionSpec = PromotionSpec> {
  * No-stacking winner selection for auto-applied campaigns (§12.1): among the
  * code-less campaigns that apply to this context, pick the one giving the largest
  * actual discount. A customer-entered code takes precedence over any auto-campaign
- * — that short-circuit lives in `ApplyPromotionService`, not here. Returns `null`
+ * — that short-circuit lives in `PreparePromotionUseCase`, not here. Returns `null`
  * when no campaign applies. Generic so callers keep their full record type (e.g.
  * a `PromotionRecord` with `name`).
  */
