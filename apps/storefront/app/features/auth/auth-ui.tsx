@@ -36,7 +36,7 @@ import { z } from 'zod';
 import type { AuthActionData } from '../../lib/auth-types';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
-import type { StorefrontTenant } from '../../lib/tenant-mapper';
+import type { StorefrontTenant } from '../../lib/tenant.server';
 
 export function AuthFrame({
   tenant,
@@ -56,9 +56,9 @@ export function AuthFrame({
     <section className="mx-auto flex w-full max-w-292.5 items-stretch overflow-hidden rounded-sm border bg-card shadow-lg">
       {split ? (
         <aside className="relative hidden min-h-157.5 w-1/2 max-w-[585px] overflow-hidden bg-primary/10 p-10 lg:flex lg:flex-col lg:justify-end">
-          {tenant.hero.imageUrl ? (
+          {tenant.themeConfig.hero?.imageUrl ? (
             <img
-              src={tenant.hero.imageUrl}
+              src={tenant.themeConfig.hero.imageUrl}
               alt=""
               width={1170}
               height={1260}
@@ -67,10 +67,18 @@ export function AuthFrame({
           ) : null}
           <div className="absolute inset-0 bg-linear-to-t from-primary/45 via-primary/12 to-background/20" />
           <div className="relative max-w-md rounded-sm border border-white/40 bg-background/90 p-6 backdrop-blur-sm">
-            {tenant.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} width={150} height={48} className="mb-5 h-10 w-auto object-contain" />
+            {tenant.themeConfig.logoUrl ? (
+              <img
+                src={tenant.themeConfig.logoUrl}
+                alt={tenant.name}
+                width={150}
+                height={48}
+                className="mb-5 h-10 w-auto object-contain"
+              />
             ) : (
-              <p className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-primary">{tenant.name}</p>
+              <p className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-primary">
+                {tenant.name}
+              </p>
             )}
             <p className="text-xl font-semibold tracking-tight">{t('promo.title')}</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('promo.description')}</p>
@@ -142,10 +150,7 @@ export function SocialButtons() {
     <div className="mt-8">
       <FieldSeparator>{t('social.or')}</FieldSeparator>
       <div className="mt-6 grid grid-cols-2 gap-3">
-        {[
-          ['/images/auth/google.svg', t('social.google')],
-          ['/images/auth/facebook.svg', t('social.facebook')],
-        ].map(([icon, label]) => (
+        {[t('social.google'), t('social.facebook')].map((label) => (
           <Button
             key={label}
             type="button"
@@ -154,9 +159,8 @@ export function SocialButtons() {
             aria-disabled="true"
             disabled
           >
-            <img src={icon} alt="" aria-hidden="true" className="size-6 shrink-0" />
             <span>{label}</span>
-            <span className="sr-only">— {t('social.soon')}</span>
+            <span className="sr-only"> - {t('social.soon')}</span>
           </Button>
         ))}
       </div>

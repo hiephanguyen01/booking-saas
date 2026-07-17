@@ -81,15 +81,6 @@ export type ListTenantsQuery = z.infer<typeof listTenantsQuerySchema>;
 export const partnerPromotionsToggleSchema = z.object({ partnerPromotionsEnabled: z.boolean() });
 export type PartnerPromotionsToggle = z.infer<typeof partnerPromotionsToggleSchema>;
 
-/** The storefront theme payload the dashboard reads back to hydrate its form (§16.1). */
-export const tenantThemeResponseSchema = z.object({
-  name: z.string(),
-  vertical: z.string(),
-  defaultLocale: z.string(),
-  themeConfig: z.record(z.unknown()),
-});
-export type TenantThemeResponse = z.infer<typeof tenantThemeResponseSchema>;
-
 export const createPlanInputSchema = z.object({
   name: z.string().min(1).max(120),
   /** VND đồng as a digit string (money never travels as a JS number). */
@@ -204,6 +195,15 @@ export const themeConfigSchema = z.object({
     .optional(),
 });
 export type ThemeConfigInput = z.infer<typeof themeConfigSchema>;
+
+/** The storefront theme payload the dashboard reads back to hydrate its form (§16.1). */
+export const tenantThemeResponseSchema = z.object({
+  name: z.string(),
+  vertical: verticalSchema,
+  defaultLocale: localeSchema,
+  themeConfig: themeConfigSchema,
+});
+export type TenantThemeResponse = z.infer<typeof tenantThemeResponseSchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
@@ -384,7 +384,7 @@ export const publicTenantResponseSchema = z.object({
   slug: z.string(),
   vertical: verticalSchema,
   defaultLocale: localeSchema,
-  themeConfig: z.record(z.unknown()),
+  themeConfig: themeConfigSchema,
   live: z.boolean(),
 });
 export type PublicTenantResponse = z.infer<typeof publicTenantResponseSchema>;

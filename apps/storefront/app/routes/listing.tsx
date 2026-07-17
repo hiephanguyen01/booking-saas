@@ -82,13 +82,14 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   const start = searchParams.get('start');
   const end = searchParams.get('end');
   const quantity = searchParams.get('qty') || '1';
-  const quotePromise = start && end
-    ? fetchQuote(
-        request,
-        params.listingSlug,
-        new URLSearchParams({ mode, from: start, to: end, quantity }),
-      )
-    : Promise.resolve(null);
+  const quotePromise =
+    start && end
+      ? fetchQuote(
+          request,
+          params.listingSlug,
+          new URLSearchParams({ mode, from: start, to: end, quantity }),
+        )
+      : Promise.resolve(null);
 
   const [availability, quote] = await Promise.all([availabilityPromise, quotePromise]);
   return { listing, mode, availability, quote };
@@ -105,7 +106,7 @@ export default function ListingRoute(props: Route.ComponentProps) {
         '@id': `${new URL(canonical).origin}/#organization`,
         name: tenant.name,
         url: new URL(canonical).origin,
-        ...(tenant.logoUrl ? { logo: tenant.logoUrl } : {}),
+        ...(tenant.themeConfig.logoUrl ? { logo: tenant.themeConfig.logoUrl } : {}),
       },
       {
         '@type': 'WebPage',
@@ -119,7 +120,7 @@ export default function ListingRoute(props: Route.ComponentProps) {
       {
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { 
+          {
             '@type': 'ListItem',
             position: 1,
             name: locale === 'vi' ? 'Trang chủ' : 'Home',

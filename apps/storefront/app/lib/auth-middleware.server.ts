@@ -5,7 +5,7 @@ import {
   type StorefrontRequestContextState,
 } from './request-context.server';
 import { getStorefrontSessionService, type StorefrontSessionData } from './session.server';
-import type { StorefrontTenant } from './tenant-mapper';
+import type { StorefrontTenant } from './tenant.server';
 
 type AuthResult =
   | {

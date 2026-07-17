@@ -29,8 +29,6 @@ const STUDIOS = [
   ['Paper Plane Studio', 'Phường Phú Nhuận', 'TP Hồ Chí Minh'],
 ] as const;
 
-const PHOTO_COUNT = 8;
-
 /** Development/test catalog used only when the public listings endpoint is empty or unavailable. */
 export const HOME_LISTING_FIXTURES: PublicListingResponse[] = STUDIOS.map(
   ([title, wardName, provinceName], index) => ({
@@ -40,7 +38,7 @@ export const HOME_LISTING_FIXTURES: PublicListingResponse[] = STUDIOS.map(
     slug: `home-fixture-${index + 1}`,
     listingTypeSlug: 'studio',
     attributes: { style: index % 2 === 0 ? 'Ánh sáng tự nhiên' : 'Phông nền đa dạng' },
-    photos: [`/images/booking-studio/home/studio-${(index % PHOTO_COUNT) + 1}.jpg`],
+    photos: [],
     priceFrom: String(220_000 + (index % 5) * 30_000),
     itemLabel: 'studio',
     provinceCode: null,

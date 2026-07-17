@@ -98,6 +98,19 @@ async function seedDemo(): Promise<void> {
     return d;
   };
   const tenantCreatedAt = daysAgo(45);
+  const storagePublicUrl = (process.env.S3_PUBLIC_URL ?? 'http://localhost:9000/bookify').replace(
+    /\/$/,
+    '',
+  );
+  const studioHubTheme = {
+    colors: { primary: '#E21114', accent: '#F97316', background: '#FFFFFF' },
+    logoUrl: `${storagePublicUrl}/defaults/booking-studio/logo.png`,
+    hero: {
+      title: 'Đặt studio trong 30 giây',
+      subtitle: 'Chụp ảnh chuyên nghiệp',
+      imageUrl: `${storagePublicUrl}/defaults/booking-studio/background.png`,
+    },
+  };
 
   // ── Users ──────────────────────────────────────────────────────────────────
   const owner = await prisma.user.upsert({
@@ -135,16 +148,13 @@ async function seedDemo(): Promise<void> {
   // ── Tenant + domains + subscription ─────────────────────────────────────────
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'studiohub' },
-    update: {},
+    update: { themeConfig: studioHubTheme },
     create: {
       name: 'StudioHub',
       slug: 'studiohub',
       vertical: 'studio',
       createdAt: tenantCreatedAt,
-      themeConfig: {
-        colors: { primary: '#0EA5E9', accent: '#F97316', background: '#FFFFFF' },
-        hero: { title: 'Đặt studio trong 30 giây', subtitle: 'Chụp ảnh chuyên nghiệp' },
-      },
+      themeConfig: studioHubTheme,
     },
   });
   for (const [hostname, isPrimary] of [

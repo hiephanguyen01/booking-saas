@@ -2,7 +2,7 @@
 @import '@booking/ui/globals.css';
 
 @theme inline {
-  --font-studio: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+  --font-studio: var(--font-tenant, 'Montserrat', ui-sans-serif, system-ui, sans-serif);
   --font-promo-script: 'Dancing Script', cursive;
   --font-promo-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
@@ -17,6 +17,7 @@
   /* page canvas: a hair off-white so white cards lift off it */
   --sf-canvas: #ffffff;
   --sf-muted: #6b7280;
+  --font-tenant: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 .sf-calendar button[data-selected-single='true'],
@@ -31,7 +32,10 @@
   color: var(--foreground);
 }
 
-.sf-calendar button:not([data-selected-single='true']):not([data-range-start='true']):not([data-range-end='true']):not(:disabled):hover {
+.sf-calendar
+  button:not([data-selected-single='true']):not([data-range-start='true']):not(
+    [data-range-end='true']
+  ):not(:disabled):hover {
   background: color-mix(in oklch, var(--primary) 10%, var(--background));
   color: var(--foreground);
 }
@@ -50,12 +54,14 @@ html {
 }
 
 body {
-  font-family:
+  font-family: var(
+    --font-tenant,
     'Plus Jakarta Sans',
     ui-sans-serif,
     system-ui,
     -apple-system,
-    sans-serif;
+    sans-serif
+  );
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

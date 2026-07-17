@@ -2,14 +2,6 @@ import type { AddDomainInput, ThemeConfigInput } from '@booking/contracts';
 import { FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 
-/** `GET /tenant/theme` response shape (no contract schema exists for it yet). */
-export interface TenantThemeResponse {
-  name: string;
-  vertical: string;
-  defaultLocale: string;
-  themeConfig: Record<string, unknown>;
-}
-
 export const domainFields: FieldConfig<AddDomainInput>[] = [
   {
     name: 'hostname',
@@ -98,37 +90,37 @@ export const themeFields: FieldConfig<ThemeConfigInput>[] = [
   },
 ];
 
-/** Reads `theme_config` (a free-form JSON blob) into typed form defaults. */
-export function toThemeDefaults(tc: Record<string, unknown>): ThemeConfigInput {
-  const s = (v: unknown): string => (typeof v === 'string' ? v : '');
-  const obj = (v: unknown): Record<string, unknown> =>
-    v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
-  const colors = obj(tc.colors);
-  const hero = obj(tc.hero);
-  const contact = obj(tc.contact);
-  const seo = obj(tc.seo);
-  const social = obj(tc.socialLinks);
-  const carousel = Array.isArray(tc.carousel)
-    ? tc.carousel.filter((x): x is string => typeof x === 'string')
-    : [];
+/** Expands the shared optional theme contract into controlled form defaults. */
+export function toThemeDefaults(tc: ThemeConfigInput): ThemeConfigInput {
   return {
-    logoUrl: s(tc.logoUrl),
-    faviconUrl: s(tc.faviconUrl),
+    logoUrl: tc.logoUrl ?? '',
+    faviconUrl: tc.faviconUrl ?? '',
     colors: {
-      primary: s(colors.primary),
-      accent: s(colors.accent),
-      background: s(colors.background),
+      primary: tc.colors?.primary ?? '',
+      accent: tc.colors?.accent ?? '',
+      background: tc.colors?.background ?? '',
     },
-    font: s(tc.font),
-    hero: { title: s(hero.title), subtitle: s(hero.subtitle), imageUrl: s(hero.imageUrl) },
-    carousel,
-    contact: { email: s(contact.email), phone: s(contact.phone), address: s(contact.address) },
-    seo: { title: s(seo.title), description: s(seo.description) },
+    font: tc.font ?? '',
+    hero: {
+      title: tc.hero?.title ?? '',
+      subtitle: tc.hero?.subtitle ?? '',
+      imageUrl: tc.hero?.imageUrl ?? '',
+    },
+    carousel: tc.carousel ?? [],
+    contact: {
+      email: tc.contact?.email ?? '',
+      phone: tc.contact?.phone ?? '',
+      address: tc.contact?.address ?? '',
+    },
+    seo: {
+      title: tc.seo?.title ?? '',
+      description: tc.seo?.description ?? '',
+    },
     socialLinks: {
-      facebook: s(social.facebook),
-      instagram: s(social.instagram),
-      tiktok: s(social.tiktok),
-      youtube: s(social.youtube),
+      facebook: tc.socialLinks?.facebook ?? '',
+      instagram: tc.socialLinks?.instagram ?? '',
+      tiktok: tc.socialLinks?.tiktok ?? '',
+      youtube: tc.socialLinks?.youtube ?? '',
     },
   };
 }

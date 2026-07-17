@@ -1,4 +1,4 @@
-import type { StorefrontTenant } from '../lib/tenant.server';
+import type { ThemeConfigInput } from '@booking/contracts';
 
 /**
  * Tenant theming via CSS variables (TONG-QUAN.md §16.2). The tenant's
@@ -13,6 +13,18 @@ import type { StorefrontTenant } from '../lib/tenant.server';
  */
 
 const DEFAULTS = { primary: '#0ea5e9', accent: '#f97316', background: '#ffffff' } as const;
+const DEFAULT_FONT = "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif";
+const GENERIC_FONTS = new Set([
+  'cursive',
+  'fantasy',
+  'monospace',
+  'sans-serif',
+  'serif',
+  'system-ui',
+  'ui-monospace',
+  'ui-sans-serif',
+  'ui-serif',
+]);
 
 /** Foreground tokens reused verbatim from `@booking/ui` globals.css. */
 const FG_DARK = 'oklch(0.145 0 0)'; // near-black — on light brand colors
@@ -44,6 +56,23 @@ export function sanitizeColor(value: unknown): string | null {
   if (v.length === 0 || v.length > 64) return null;
   if (HEX_RE.test(v) || FUNC_RE.test(v)) return v;
   return null;
+}
+
+/** Turn a tenant font-family setting into an injection-safe CSS value. */
+function sanitizeFontFamily(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const names = value
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
+  if (names.length === 0 || names.length > 5) return null;
+  if (names.some((name) => name.length > 80 || !/^[\p{L}\p{N} _-]+$/u.test(name))) return null;
+
+  const family = names.map((name) => (GENERIC_FONTS.has(name) ? name : `'${name}'`));
+  if (!names.some((name) => GENERIC_FONTS.has(name))) {
+    family.push('ui-sans-serif', 'system-ui', 'sans-serif');
+  }
+  return family.join(',');
 }
 
 /** Expand `#rgb`/`#rgba` shorthand to full form; returns null for non-hex input. */
@@ -82,7 +111,10 @@ function toRgb(color: string): [number, number, number] | null {
   const args = RGB_RE.exec(color);
   if (!args) return null;
   // Both the legacy `rgb(r, g, b)` and modern `rgb(r g b / a)` forms; alpha is dropped.
-  const parts = args[1].split(/[\s,/]+/).filter(Boolean).slice(0, 3);
+  const parts = args[1]
+    .split(/[\s,/]+/)
+    .filter(Boolean)
+    .slice(0, 3);
   if (parts.length !== 3) return null;
   const [r, g, b] = parts.map(rgbChannel);
   if (r === null || g === null || b === null) return null;
@@ -124,18 +156,20 @@ function swatch(value: unknown, fallback: string): { color: string; foreground: 
 
 /**
  * Build the `:root { … }` CSS that overrides the shadcn base tokens per tenant.
- * Each channel is re-sanitized defensively (idempotent with readTheme).
+ * Each channel is sanitized after the shared contract validates the payload shape.
  */
-export function themeCss(theme: StorefrontTenant['theme']): string {
-  const primary = swatch(theme.primary, DEFAULTS.primary);
-  const accent = swatch(theme.accent, DEFAULTS.accent);
-  const background = swatch(theme.background, DEFAULTS.background);
+export function themeCss(theme: ThemeConfigInput): string {
+  const primary = swatch(theme.colors?.primary, DEFAULTS.primary);
+  const accent = swatch(theme.colors?.accent, DEFAULTS.accent);
+  const background = swatch(theme.colors?.background, DEFAULTS.background);
+  const font = sanitizeFontFamily(theme.font) ?? DEFAULT_FONT;
   const decls = [
     `--background:${background.color}`,
     `--foreground:${background.foreground}`,
     `--primary:${primary.color}`,
     `--primary-foreground:${primary.foreground}`,
     `--ring:${primary.color}`,
+    `--font-tenant:${font}`,
     `--sf-primary:${primary.color}`,
     `--sf-accent:${accent.color}`,
     `--sf-background:${background.color}`,

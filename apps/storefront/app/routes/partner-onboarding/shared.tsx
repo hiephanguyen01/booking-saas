@@ -59,12 +59,6 @@ export function PromoPanel({ tenantName }: { tenantName: string }) {
       <p className="mt-3 max-w-[448px] text-sm font-medium leading-6 text-muted-foreground">
         {t('common:becomePartner.subtitle', { tenant: tenantName })}
       </p>
-      <img
-        src="/images/partner-onboarding/growth-illustration.svg"
-        alt=""
-        aria-hidden="true"
-        className="mx-auto mt-10 w-full"
-      />
     </section>
   );
 }

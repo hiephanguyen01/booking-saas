@@ -41,6 +41,10 @@ export const enCommon = {
     emptyTitle: 'No studios yet',
     emptyBody: 'New studios will appear here as soon as they are published.',
     emptyInLocation: 'No studios in this area yet.',
+    carouselLabel: '{tenant} highlights',
+    carouselPrevious: 'Previous image',
+    carouselNext: 'Next image',
+    carouselGoTo: 'View image {slide}',
     locations: {
       hcm: 'Ho Chi Minh City',
       hanoi: 'Hanoi',

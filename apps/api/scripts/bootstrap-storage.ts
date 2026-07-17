@@ -1,6 +1,7 @@
 import {
   CreateBucketCommand,
   HeadBucketCommand,
+  PutObjectCommand,
   PutBucketPolicyCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -62,6 +63,32 @@ async function main(): Promise<void> {
     }),
   );
   console.log(`applied public-read policy to "${cfg.bucket}" (dev only)`);
+
+  const defaultAssets = [
+    {
+      label: 'logo',
+      key: 'defaults/booking-studio/logo.png',
+      path: resolve(__dirname, '../../storefront/public/images/booking-studio/logo.png'),
+    },
+    {
+      label: 'background',
+      key: 'defaults/booking-studio/background.png',
+      path: resolve(__dirname, '../../storefront/public/images/booking-studio/home/hero.png'),
+    },
+  ] as const;
+
+  for (const asset of defaultAssets) {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: cfg.bucket,
+        Key: asset.key,
+        Body: readFileSync(asset.path),
+        ContentType: 'image/png',
+        CacheControl: 'public, max-age=3600',
+      }),
+    );
+    console.log(`uploaded default storefront ${asset.label} to ${cfg.publicUrl}/${asset.key}`);
+  }
   console.log(`objects served from ${cfg.publicUrl}/<key>`);
 }
 
