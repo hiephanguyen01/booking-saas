@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { Banknote, TrendingUp, Wallet } from 'lucide-react';
 import type {
   LedgerEntryResponse,
-  LedgerEntryTypeDto,
   PartnerFinanceResponse,
   PayoutResponse,
 } from '@booking/contracts';
@@ -11,27 +10,13 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import type { Route } from './+types/revenue';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { LEDGER_ENTRY_LABEL } from '~/constants/finance';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money, amountToneClass } from '~/components/money';
 import { CopyableCode } from '~/components/copyable-code';
 import { PayoutStatusBadge } from '~/components/status-badge';
 import { formatDate } from '~/lib/format';
-
-const ENTRY_LABEL: Record<LedgerEntryTypeDto, string> = {
-  booking_revenue: 'Doanh thu đặt chỗ',
-  partner_share: 'Phần đối tác',
-  platform_fee: 'Phí nền tảng',
-  affiliate_commission: 'Hoa hồng CTV',
-  promo_discount: 'Giảm giá khuyến mãi',
-  cancellation_fee: 'Phí huỷ',
-  additional_charge: 'Phụ phí',
-  security_deposit: 'Tiền đặt cọc',
-  damage_deduction: 'Khấu trừ hư hỏng',
-  clawback: 'Thu hồi',
-  refund: 'Hoàn tiền',
-  payout: 'Chi trả',
-};
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Doanh thu · Đối tác · Bookify' }];
@@ -90,7 +75,7 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
       header: 'Hạng mục',
       cell: (e) => (
         <div className="min-w-0">
-          <p className="font-medium">{ENTRY_LABEL[e.entryType] ?? e.entryType}</p>
+          <p className="font-medium">{LEDGER_ENTRY_LABEL[e.entryType] ?? e.entryType}</p>
           {e.memo ? <p className="truncate text-xs text-muted-foreground">{e.memo}</p> : null}
         </div>
       ),

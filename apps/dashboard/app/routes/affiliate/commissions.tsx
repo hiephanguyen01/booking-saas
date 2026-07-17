@@ -1,35 +1,18 @@
-import type { AffiliateCommissionResponse, AffiliateCommissionStatusDto } from '@booking/contracts';
+import type { AffiliateCommissionResponse } from '@booking/contracts';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/commissions';
 import { apiGet } from '~/lib/api.server';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
-import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
+import { CommissionStatusBadge } from '~/components/status-badge';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
-import { EnumValue } from '~/components/enum-value';
+import { } from '~/components/enum-value';
 import { BookingStatusBadge } from '~/components/status-badge';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
   const res = active ? await apiGet<AffiliateCommissionResponse[]>('/affiliate/commissions', auth) : null;
   return { commissions: res?.ok ? (res.data ?? []) : [] };
-}
-
-/** Commission-status tone via semantic tokens (no dedicated badge in the toolkit). */
-function CommissionStatus({ status }: { status: AffiliateCommissionStatusDto }) {
-  const tone =
-    status === 'paid'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : status === 'confirmed'
-        ? 'text-foreground'
-        : status === 'pending'
-          ? 'text-muted-foreground'
-          : 'text-destructive';
-  return (
-    <span className={`text-sm font-medium ${tone}`}>
-      <EnumValue map={COMMISSION_STATUS_LABEL} value={status} />
-    </span>
-  );
 }
 
 export default function AffiliateCommissions({ loaderData }: Route.ComponentProps) {
@@ -69,7 +52,7 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
       className: 'hidden sm:table-cell',
       headClassName: 'hidden sm:table-cell',
     },
-    { header: 'Trạng thái', cell: (c) => <CommissionStatus status={c.status} /> },
+    { header: 'Trạng thái', cell: (c) => <CommissionStatusBadge status={c.status} /> },
     {
       header: 'Ngày tạo',
       cell: (c) => <DateTimeValue iso={c.createdAt} className="text-sm text-muted-foreground" />,

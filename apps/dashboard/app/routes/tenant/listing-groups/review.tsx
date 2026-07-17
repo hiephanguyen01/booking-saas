@@ -28,19 +28,13 @@ import { apiGet, apiPost } from '~/lib/api.server';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { listingPriceFrom } from '~/lib/listing-price';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { CONTACT_FIELD_LABEL, CONTACT_FLAG_LABEL } from '~/features/tenant/constants';
+import { CONTACT_FIELD_LABEL, CONTACT_FLAG_LABEL, GROUP_CHECKLIST_LABEL } from '~/features/tenant/constants';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { EntityRef } from '~/components/entity-ref';
 import { PhotoStrip } from '~/components/photo-strip';
 import { ListingStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 
-const CHECKLIST_LABEL: Record<string, string> = {
-  photos: 'Có ít nhất 1 ảnh',
-  description: 'Có mô tả',
-  price: 'Mọi hạng mục đều có giá',
-  cancellation_policy: 'Mọi hạng mục có chính sách huỷ',
-};
 
 /** Contact-scan field names are namespaced for children (`listings[0].description`). */
 function contactFieldLabel(field: string): string {
@@ -287,7 +281,7 @@ function ReviewCard({
                 >
                   {item.passed ? <Check className="size-4" /> : <X className="size-4" />}
                 </span>
-                <span className="text-sm">{CHECKLIST_LABEL[item.key] ?? item.label}</span>
+                <span className="text-sm">{GROUP_CHECKLIST_LABEL[item.key] ?? item.label}</span>
               </li>
             ))}
           </ul>

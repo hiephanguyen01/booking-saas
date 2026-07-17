@@ -1,9 +1,7 @@
 import { Link, useFetcher, data as routeData } from 'react-router';
 import type {
   AffiliateDetailResponse,
-  AffiliateCommissionStatusDto,
   AffiliateRateResponse,
-  AffiliateRateSourceDto,
   AffiliateStatusResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -18,7 +16,7 @@ import { ArrowLeft, Ban, Check, CheckCircle2, TriangleAlert } from 'lucide-react
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { COMMISSION_STATUS_LABEL, REFERRAL_TARGET_LABEL } from '~/constants/affiliate';
+import { RATE_SOURCE_LABEL, REFERRAL_TARGET_LABEL } from '~/constants/affiliate';
 import { formatDiscount, formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
@@ -27,7 +25,7 @@ import { EntityRef } from '~/components/entity-ref';
 import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
-import { PartnerStatusBadge } from '~/components/status-badge';
+import { CommissionStatusBadge, PartnerStatusBadge } from '~/components/status-badge';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Chi tiết · Bookify' }];
@@ -35,7 +33,10 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.affiliates.manage');
-  const res = await apiGet<AffiliateDetailResponse>(`/tenant/affiliates/${params.affiliateId}`, auth);
+  const res = await apiGet<AffiliateDetailResponse>(
+    `/tenant/affiliates/${params.affiliateId}`,
+    auth,
+  );
   if (!res.ok || !res.data) {
     throw new Response('Không tìm thấy cộng tác viên', { status: 404 });
   }
@@ -51,11 +52,21 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === 'status') {
     const status = String(form.get('status'));
     if (status !== 'approved' && status !== 'suspended') {
-      return routeData({ ok: false, error: 'Trạng thái không hợp lệ.', message: null }, { status: 400 });
+      return routeData(
+        { ok: false, error: 'Trạng thái không hợp lệ.', message: null },
+        { status: 400 },
+      );
     }
-    const res = await apiPost<AffiliateStatusResponse>(`/tenant/affiliates/${id}/status`, { status }, auth);
+    const res = await apiPost<AffiliateStatusResponse>(
+      `/tenant/affiliates/${id}/status`,
+      { status },
+      auth,
+    );
     if (!res.ok) {
-      return routeData({ ok: false, error: res.error ?? 'Không cập nhật được.', message: null }, { status: 400 });
+      return routeData(
+        { ok: false, error: res.error ?? 'Không cập nhật được.', message: null },
+        { status: 400 },
+      );
     }
     const applied = res.data?.status ?? status;
     return {
@@ -69,12 +80,22 @@ export async function action({ request, params }: Route.ActionArgs) {
     const raw = String(form.get('customRate') ?? '').trim();
     const customRate = raw === '' ? null : raw;
     if (customRate !== null && !/^\d+$/.test(customRate)) {
-      return routeData({ ok: false, error: 'Hoa hồng phải là số nguyên phần trăm.', message: null }, { status: 400 });
+      return routeData(
+        { ok: false, error: 'Hoa hồng phải là số nguyên phần trăm.', message: null },
+        { status: 400 },
+      );
     }
-    const res = await apiPatch<AffiliateRateResponse>(`/tenant/affiliates/${id}`, { customRate }, auth);
+    const res = await apiPatch<AffiliateRateResponse>(
+      `/tenant/affiliates/${id}`,
+      { customRate },
+      auth,
+    );
     if (!res.ok) {
       // The backend guard (platform% + affiliate% ≤ tenant%) returns a clear message.
-      return routeData({ ok: false, error: res.error ?? 'Không lưu được hoa hồng.', message: null }, { status: 400 });
+      return routeData(
+        { ok: false, error: res.error ?? 'Không lưu được hoa hồng.', message: null },
+        { status: 400 },
+      );
     }
     // Render the resolved rate the backend echoes back — clearing the override
     // falls back to the rule, whose number the caller could not otherwise know.
@@ -88,28 +109,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   return routeData({ ok: false, error: 'Thao tác không hợp lệ.', message: null }, { status: 400 });
-}
-
-const RATE_SOURCE_LABEL: Record<AffiliateRateSourceDto, string> = {
-  custom: 'Hoa hồng riêng',
-  rule: 'Theo quy tắc tenant',
-  none: 'Chưa cấu hình',
-};
-
-function CommissionStatusBadge({ status }: { status: AffiliateCommissionStatusDto }) {
-  const tone =
-    status === 'paid'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : status === 'confirmed'
-        ? 'text-foreground'
-        : status === 'pending'
-          ? 'text-muted-foreground'
-          : 'text-destructive';
-  return (
-    <span className={`text-sm font-medium ${tone}`}>
-      <EnumValue map={COMMISSION_STATUS_LABEL} value={status} />
-    </span>
-  );
 }
 
 export default function AffiliateDetail({ loaderData, actionData }: Route.ComponentProps) {
@@ -135,7 +134,12 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
     { header: 'Hoa hồng', cell: (c) => <Money value={c.amount} /> },
     {
       header: 'Giá trị đơn',
-      cell: (c) => (c.bookingTotal ? <Money value={c.bookingTotal} /> : <span className="text-muted-foreground">—</span>),
+      cell: (c) =>
+        c.bookingTotal ? (
+          <Money value={c.bookingTotal} />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
       className: 'hidden lg:table-cell',
       headClassName: 'hidden lg:table-cell',
     },
@@ -229,10 +233,7 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
                 />
                 <DetailField label="Email" value={affiliate.userEmail} />
                 <DetailField label="Điện thoại" value={affiliate.phone ?? ''} />
-                <DetailField
-                  label="Tham gia"
-                  value={<DateTimeValue iso={affiliate.createdAt} />}
-                />
+                <DetailField label="Tham gia" value={<DateTimeValue iso={affiliate.createdAt} />} />
               </DetailGrid>
             </CardContent>
           </Card>
@@ -252,8 +253,8 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
                 />
               </DetailGrid>
               <p className="text-xs text-muted-foreground">
-                Để trống để dùng mức hoa hồng theo quy tắc của tenant. Ưu tiên: hoa hồng riêng &gt; quy
-                tắc &gt; mặc định.
+                Để trống để dùng mức hoa hồng theo quy tắc của tenant. Ưu tiên: hoa hồng riêng &gt;
+                quy tắc &gt; mặc định.
               </p>
             </CardContent>
           </Card>
@@ -275,7 +276,11 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-3">
-                <StatCard label="Chờ xác nhận" value={<Money value={affiliate.pendingCommission} />} tone="muted" />
+                <StatCard
+                  label="Chờ xác nhận"
+                  value={<Money value={affiliate.pendingCommission} />}
+                  tone="muted"
+                />
                 <StatCard
                   label="Cần chi (đã xác nhận)"
                   value={<Money value={affiliate.confirmedCommission} />}
@@ -306,16 +311,28 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
             </CardHeader>
             <CardContent>
               <DetailGrid columns={3}>
-                <DetailField label="Lượt click" value={<span className="tabular-nums">{affiliate.clicks}</span>} />
-                <DetailField label="Đơn đặt" value={<span className="tabular-nums">{affiliate.bookings}</span>} />
-                <DetailField label="Tỷ lệ chuyển đổi" value={formatRate(affiliate.conversionRate)} />
+                <DetailField
+                  label="Lượt click"
+                  value={<span className="tabular-nums">{affiliate.clicks}</span>}
+                />
+                <DetailField
+                  label="Đơn đặt"
+                  value={<span className="tabular-nums">{affiliate.bookings}</span>}
+                />
+                <DetailField
+                  label="Tỷ lệ chuyển đổi"
+                  value={formatRate(affiliate.conversionRate)}
+                />
               </DetailGrid>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="pt-6">
-              <DetailSection title={`Link giới thiệu (${links.length})`} emptyMessage="Chưa có link nào.">
+              <DetailSection
+                title={`Link giới thiệu (${links.length})`}
+                emptyMessage="Chưa có link nào."
+              >
                 {links.length > 0 ? (
                   <DataTable columns={linkColumns} data={links} getRowKey={(l) => l.id} />
                 ) : null}
@@ -330,7 +347,11 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
                 emptyMessage="Chưa có hoa hồng nào."
               >
                 {commissions.length > 0 ? (
-                  <DataTable columns={commissionColumns} data={commissions} getRowKey={(c) => c.id} />
+                  <DataTable
+                    columns={commissionColumns}
+                    data={commissions}
+                    getRowKey={(c) => c.id}
+                  />
                 ) : null}
               </DetailSection>
             </CardContent>
@@ -346,8 +367,14 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
  * warning-toned empty state because a payout cannot be made without an account.
  * `note` alone doesn't count as payable details.
  */
-function PayoutInfo({ payoutInfo }: { payoutInfo: AffiliateDetailResponse['affiliate']['payoutInfo'] }) {
-  const hasAccount = Boolean(payoutInfo.bankName || payoutInfo.accountNo || payoutInfo.accountHolder);
+function PayoutInfo({
+  payoutInfo,
+}: {
+  payoutInfo: AffiliateDetailResponse['affiliate']['payoutInfo'];
+}) {
+  const hasAccount = Boolean(
+    payoutInfo.bankName || payoutInfo.accountNo || payoutInfo.accountHolder,
+  );
   if (!hasAccount) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground dark:text-warning">

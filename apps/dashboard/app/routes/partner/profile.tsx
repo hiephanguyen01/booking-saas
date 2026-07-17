@@ -1,7 +1,6 @@
 import { Form, data as routeData, useNavigation } from 'react-router';
 import { CheckCircle2, CircleAlert, Trash2 } from 'lucide-react';
 import type {
-  IdentityDocumentType,
   PartnerResponse,
   SubmitIdentityInput,
   UpdatePartnerDocumentsInput,
@@ -35,17 +34,11 @@ import { EnumValue } from '~/components/enum-value';
 import { CopyableCode } from '~/components/copyable-code';
 import { PhotoStrip } from '~/components/photo-strip';
 import { formatDate } from '~/lib/format';
-import { PARTNER_TYPE_LABEL } from '~/constants/partner';
+import { IDENTITY_DOCUMENT_LABEL, PARTNER_TYPE_LABEL } from '~/constants/partner';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Hồ sơ đối tác · Đối tác · Bookify' }];
 }
-
-const IDENTITY_DOC_LABEL: Record<IdentityDocumentType, string> = {
-  national_id: 'CCCD / CMND',
-  passport: 'Hộ chiếu',
-  driver_license: 'Giấy phép lái xe',
-};
 
 // ── loader ──────────────────────────────────────────────────────────────────
 
@@ -209,9 +202,9 @@ const identityFields: FieldConfig<SubmitIdentityInput>[] = [
     label: 'Loại giấy tờ',
     required: true,
     options: [
-      { value: 'national_id', label: IDENTITY_DOC_LABEL.national_id },
-      { value: 'passport', label: IDENTITY_DOC_LABEL.passport },
-      { value: 'driver_license', label: IDENTITY_DOC_LABEL.driver_license },
+      { value: 'national_id', label: IDENTITY_DOCUMENT_LABEL.national_id },
+      { value: 'passport', label: IDENTITY_DOCUMENT_LABEL.passport },
+      { value: 'driver_license', label: IDENTITY_DOCUMENT_LABEL.driver_license },
     ],
   },
   { name: 'documentNumber', type: 'text', label: 'Số giấy tờ', required: true },
@@ -450,7 +443,7 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
               label="Loại giấy tờ"
               value={
                 identity.documentType ? (
-                  <EnumValue map={IDENTITY_DOC_LABEL} value={identity.documentType} />
+                  <EnumValue map={IDENTITY_DOCUMENT_LABEL} value={identity.documentType} />
                 ) : null
               }
             />

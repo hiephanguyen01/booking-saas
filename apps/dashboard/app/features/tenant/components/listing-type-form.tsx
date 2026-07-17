@@ -28,19 +28,16 @@ import { cn } from '@booking/ui/lib/utils';
 import * as Icons from 'lucide-react';
 import { Plus, X } from 'lucide-react';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
+import { ATTRIBUTE_FIELD_TYPE_LABEL } from '../constants';
 import {
   ListingTypeSearchConfigFields,
   normalizeSearchConfig,
 } from './listing-type-search-config-fields';
 
 const ALL_MODES: BookingMode[] = ['hourly', 'daily', 'inventory', 'appointment', 'class'];
-const FIELD_TYPES: { value: AttributeFieldType; label: string }[] = [
-  { value: 'text', label: 'Văn bản' },
-  { value: 'number', label: 'Số' },
-  { value: 'select', label: 'Chọn một' },
-  { value: 'multiselect', label: 'Chọn nhiều' },
-  { value: 'boolean', label: 'Có/Không' },
-];
+const FIELD_TYPES: { value: AttributeFieldType; label: string }[] = (
+  ['text', 'number', 'select', 'multiselect', 'boolean'] as const
+).map((value) => ({ value, label: ATTRIBUTE_FIELD_TYPE_LABEL[value] }));
 
 const isChoice = (type: AttributeFieldType): boolean => type === 'select' || type === 'multiselect';
 

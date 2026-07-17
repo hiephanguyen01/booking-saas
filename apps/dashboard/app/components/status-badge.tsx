@@ -1,4 +1,5 @@
 import type {
+  AffiliateCommissionStatusDto,
   BookingStatus,
   PartnerStatus,
   PartnerVerificationStatus,
@@ -10,6 +11,7 @@ import type {
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { SUBSCRIPTION_STATUS_LABELS, TENANT_STATUS_LABELS } from '~/constants/tenancy';
+import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
 
 /**
  * The single source of truth for status pills across the whole dashboard
@@ -193,6 +195,29 @@ const PAYOUT: Record<PayoutStatusDto, { label: string; tone: StatusTone }> = {
 export function PayoutStatusBadge({ status }: { status: PayoutStatusDto }) {
   const s = PAYOUT[status] ?? { label: status, tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
+}
+
+// ── Affiliate commission ─────────────────────────────────────────────────────
+
+/**
+ * Commission-status tone via semantic text tokens (a text treatment, not a
+ * pill — commissions render inside dense tables). One implementation for the
+ * tenant affiliate detail + the affiliate portal.
+ */
+export function CommissionStatusBadge({ status }: { status: AffiliateCommissionStatusDto }) {
+  const tone =
+    status === 'paid'
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : status === 'confirmed'
+        ? 'text-foreground'
+        : status === 'pending'
+          ? 'text-muted-foreground'
+          : 'text-destructive';
+  return (
+    <span className={`text-sm font-medium ${tone}`}>
+      {COMMISSION_STATUS_LABEL[status] ?? status}
+    </span>
+  );
 }
 
 // ── Tenant / subscription (platform admin) ────────────────────────────────────

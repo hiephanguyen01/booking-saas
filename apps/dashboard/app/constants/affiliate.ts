@@ -1,4 +1,8 @@
-import type { AffiliateCommissionStatusDto, ReferralTargetDto } from '@booking/contracts';
+import type {
+  AffiliateCommissionStatusDto,
+  AffiliateRateSourceDto,
+  ReferralTargetDto,
+} from '@booking/contracts';
 
 // Affiliate-domain display constants (tenant affiliates + affiliate portal).
 
@@ -15,4 +19,11 @@ export const COMMISSION_STATUS_LABEL: Record<AffiliateCommissionStatusDto, strin
 export const REFERRAL_TARGET_LABEL: Record<ReferralTargetDto, string> = {
   tenant_home: 'Trang chủ',
   listing: 'Listing',
+};
+
+/** Where the affiliate's effective rate comes from → Vietnamese label. */
+export const RATE_SOURCE_LABEL: Record<AffiliateRateSourceDto, string> = {
+  custom: 'Hoa hồng riêng',
+  rule: 'Theo quy tắc tenant',
+  none: 'Chưa cấu hình',
 };

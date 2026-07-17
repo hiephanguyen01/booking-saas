@@ -18,7 +18,6 @@ import type {
   ListingGroupDetailResponse,
   ListingResponse,
   ListingTypeResponse,
-  ModerationActor,
   PublishStatus,
 } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
@@ -58,6 +57,7 @@ import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { MODERATION_ACTOR_LABEL } from '~/constants/listing';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -224,11 +224,6 @@ function usesOpeningHours(listing: ListingResponse): boolean {
 }
 
 /** Who published / hid the post — an em dash never leaks a raw slug. */
-const MODERATION_ACTOR_LABEL: Record<ModerationActor, string> = {
-  partner: 'Đối tác',
-  admin: 'Quản trị viên',
-};
-
 /** Booking-mode → Vietnamese label (exhaustive, so a new mode is a compile error). */
 
 /** Full address line from the group's stored address snapshot. */

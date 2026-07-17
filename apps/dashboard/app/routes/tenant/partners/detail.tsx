@@ -1,5 +1,5 @@
 import { Form, Link, useNavigation, useSubmit, data as routeData } from 'react-router';
-import type { IdentityDocumentType, PartnerResponse } from '@booking/contracts';
+import type { PartnerResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
 import {
@@ -35,7 +35,7 @@ import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatDate } from '~/lib/format';
-import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
+import { IDENTITY_DOCUMENT_LABEL, PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { readHttpUrl, readString } from '~/lib/records';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
@@ -52,12 +52,6 @@ export function meta(): Route.MetaDescriptors {
 }
 
 /** Identity-document type → Vietnamese label (no shared map exists yet). */
-const DOCUMENT_TYPE_LABEL: Record<IdentityDocumentType, string> = {
-  national_id: 'CCCD/CMND',
-  passport: 'Hộ chiếu',
-  driver_license: 'Giấy phép lái xe',
-};
-
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.partners.read');
   const res = await apiGet<PartnerResponse>(`/tenant/partners/${params.partnerId}`, auth);
@@ -191,7 +185,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
               label="Loại giấy tờ"
               value={
                 identity.documentType ? (
-                  <EnumValue map={DOCUMENT_TYPE_LABEL} value={identity.documentType} />
+                  <EnumValue map={IDENTITY_DOCUMENT_LABEL} value={identity.documentType} />
                 ) : null
               }
             />

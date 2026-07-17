@@ -25,6 +25,7 @@ import {
 import { Switch } from '@booking/ui/components/ui/switch';
 import { ArrowDown, ArrowUp, CalendarRange, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { ATTRIBUTE_FIELD_TYPE_LABEL, SEARCH_SCHEDULE_LABEL } from '../constants';
 
 const EMPTY_CONFIG = listingTypeSearchConfigSchema.parse({});
 const SEARCHABLE_MODES = new Set<BookingMode>(['hourly', 'daily', 'inventory']);
@@ -36,21 +37,6 @@ const SYSTEM_FACETS = [
 
 type SystemFacet = ListingTypeSearchConfig['systemFacets'][number];
 type SearchableSchedule = Exclude<ListingTypeSearchSchedule, 'none'>;
-
-const SCHEDULE_LABEL: Record<ListingTypeSearchSchedule, string> = {
-  none: 'Không dùng lịch',
-  hourly: 'Theo ngày',
-  daily: 'Theo khoảng ngày',
-  inventory: 'Theo khoảng thuê kho',
-};
-
-const TYPE_LABEL: Record<AttributeField['type'], string> = {
-  boolean: 'Có / Không',
-  select: 'Chọn một',
-  multiselect: 'Chọn nhiều',
-  number: 'Số',
-  text: 'Văn bản',
-};
 
 const CONTROL_LABEL: Record<ListingTypeSearchFacetControl, string> = {
   checkbox: 'Checkbox',
@@ -170,7 +156,7 @@ export function ListingTypeSearchConfigFields({
             <SelectContent>
               {scheduleOptions.map((schedule) => (
                 <SelectItem key={schedule} value={schedule}>
-                  {SCHEDULE_LABEL[schedule]}
+                  {SEARCH_SCHEDULE_LABEL[schedule]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -391,7 +377,7 @@ function FacetRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium">{field.label}</p>
-            <Badge variant="outline">{TYPE_LABEL[field.type]}</Badge>
+            <Badge variant="outline">{ATTRIBUTE_FIELD_TYPE_LABEL[field.type]}</Badge>
           </div>
           <p className="mt-1 font-mono text-xs text-muted-foreground">{field.key}</p>
         </div>

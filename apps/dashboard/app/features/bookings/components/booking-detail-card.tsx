@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import type { PartnerBookingResponse, TenantBookingResponse } from '@booking/contracts';
+import type { BookingMode, PartnerBookingResponse, TenantBookingResponse } from '@booking/contracts';
 import { Card, CardContent, CardHeader } from '@booking/ui/components/ui/card';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
@@ -9,7 +9,7 @@ import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { DetailRow, DetailRowTotal } from '@booking/ui/components/detail/detail-row';
 import { BookingStatusBadge } from '~/components/status-badge';
-import { CHARGE_LABEL, PENDING_BOOKING_STATUSES } from '~/constants/booking';
+import { BOOKING_MODE_LABEL, CHARGE_LABEL, PENDING_BOOKING_STATUSES } from '~/constants/booking';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
@@ -17,15 +17,6 @@ import { EntityRef } from '~/components/entity-ref';
 import { CopyableCode } from '~/components/copyable-code';
 import { StatusTimestamp } from './status-timestamp';
 import { Timeline, type TimelineEntry } from '~/components/timeline';
-
-/** Bookable modes → Vietnamese (§9.4); Phase-3 verticals included defensively. */
-const MODE_LABEL: Record<string, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  inventory: 'Cho thuê',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-};
 
 interface BookingDetailCardBaseProps {
   /** Route to the listing when the area exposes one; falls back to plain text. */
@@ -72,7 +63,10 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
     props.audience === 'tenant' ? (
       <PhoneValue phone={props.booking.customer.phone} />
     ) : (
-      <PhoneValue phone={props.booking.customer.phone} masked={props.booking.customer.phoneMasked} />
+      <PhoneValue
+        phone={props.booking.customer.phone}
+        masked={props.booking.customer.phoneMasked}
+      />
     );
   const commissionRows =
     props.audience === 'tenant' ? commissionSummary(props.booking.commissionSnapshot) : [];
@@ -125,16 +119,18 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
             <DetailField
               label="Hình thức"
               value={
-                <EnumValue map={MODE_LABEL} value={booking.bookingMode} fallback={booking.bookingMode} />
+                <EnumValue
+                  map={BOOKING_MODE_LABEL}
+                  value={booking.bookingMode as BookingMode}
+                  fallback={booking.bookingMode}
+                />
               }
             />
             <DetailField label="Thời lượng" value={duration ?? undefined} omitWhenEmpty />
             <DetailField label="Bắt đầu" value={<DateTimeValue iso={booking.startUtc} />} />
             <DetailField label="Kết thúc" value={<DateTimeValue iso={booking.endUtc} />} />
             <DetailField label="Số khách" value={String(booking.guestCount)} />
-            {isInventory ? (
-              <DetailField label="Số lượng" value={String(booking.quantity)} />
-            ) : null}
+            {isInventory ? <DetailField label="Số lượng" value={String(booking.quantity)} /> : null}
           </DetailGrid>
         </DetailSection>
 
@@ -206,11 +202,15 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
                 />
                 <DetailField
                   label="Đã giao"
-                  value={booking.pickedUpAt ? <DateTimeValue iso={booking.pickedUpAt} /> : undefined}
+                  value={
+                    booking.pickedUpAt ? <DateTimeValue iso={booking.pickedUpAt} /> : undefined
+                  }
                 />
                 <DetailField
                   label="Đã nhận trả"
-                  value={booking.returnedAt ? <DateTimeValue iso={booking.returnedAt} /> : undefined}
+                  value={
+                    booking.returnedAt ? <DateTimeValue iso={booking.returnedAt} /> : undefined
+                  }
                 />
                 {booking.damageAmount !== '0' ? (
                   <DetailField
@@ -269,7 +269,10 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
 
         <DetailSection title="Thông tin khác">
           <DetailGrid columns={2}>
-            <DetailField label="Tạo lúc" value={<DateTimeValue iso={booking.createdAt} relative />} />
+            <DetailField
+              label="Tạo lúc"
+              value={<DateTimeValue iso={booking.createdAt} relative />}
+            />
             <DetailField
               label="Cập nhật"
               value={<DateTimeValue iso={booking.updatedAt} relative />}
@@ -333,7 +336,13 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
 }
 
 /** Phone value: a `tel:` link when reachable, a masked read-only value otherwise. */
-function PhoneValue({ phone, masked }: { phone: string | null; masked?: boolean }): React.JSX.Element {
+function PhoneValue({
+  phone,
+  masked,
+}: {
+  phone: string | null;
+  masked?: boolean;
+}): React.JSX.Element {
   if (!phone) return <span className="text-muted-foreground">—</span>;
   if (masked) {
     return (
@@ -433,8 +442,7 @@ function commissionSummary(snapshot: Record<string, unknown> | null): Commission
   if (tenantRate !== null) {
     rows.push({
       label: 'Tenant',
-      value:
-        snapshot.tenantRateType === 'fixed' ? <Money value={tenantRate} /> : `${tenantRate}%`,
+      value: snapshot.tenantRateType === 'fixed' ? <Money value={tenantRate} /> : `${tenantRate}%`,
     });
   }
 

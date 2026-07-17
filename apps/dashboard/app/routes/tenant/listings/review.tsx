@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { data as routeData, Link, redirect, useNavigation, useSubmit } from 'react-router';
 import type {
   AttributeFieldType,
-  BalanceDue,
   BookingMode,
   ListingResponse,
   ListingReviewResponse,
@@ -32,7 +31,9 @@ import { apiGet, apiPost } from '~/lib/api.server';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { asRecord } from '~/lib/records';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { CONTACT_FIELD_LABEL, CONTACT_FLAG_LABEL } from '~/features/tenant/constants';
+import { BALANCE_DUE_LABEL, CONTACT_FIELD_LABEL, CONTACT_FLAG_LABEL, LISTING_CHECKLIST_LABEL } from '~/features/tenant/constants';
+import { INVENTORY_UNIT_LABEL } from '~/constants/listing';
+import { MODERATION_ACTOR_LABEL } from '~/constants/listing';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
@@ -41,23 +42,7 @@ import { EntityRef } from '~/components/entity-ref';
 import { PhotoStrip } from '~/components/photo-strip';
 import { ListingStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 
-const BALANCE_LABEL: Record<BalanceDue, string> = {
-  online_before: 'Trực tuyến trước',
-  on_arrival: 'Tại chỗ',
-};
-/** Moderation actor → Vietnamese; the tenant reviewer acts as `admin` (§7.3). */
-const ACTOR_LABEL: Record<ModerationActor, string> = {
-  partner: 'Đối tác',
-  admin: 'Quản trị',
-};
 /** Translate the backend's English checklist keys — the label ships in English. */
-const CHECKLIST_LABEL: Record<string, string> = {
-  photos: 'Có ít nhất 1 ảnh',
-  description: 'Có mô tả',
-  price: 'Mọi hình thức đặt đều có giá',
-  cancellation_policy: 'Có chính sách huỷ',
-};
-const INVENTORY_UNIT_LABEL: Record<'hour' | 'day', string> = { hour: 'Giờ', day: 'Ngày' };
 
 // ── mode_config readers (the stored config is free-form JSON) ─────────────────
 
@@ -255,7 +240,7 @@ function ReviewCards({ review }: { review: ListingReviewResponse }) {
                 >
                   {item.passed ? <Check className="size-4" /> : <X className="size-4" />}
                 </span>
-                <span className="text-sm">{CHECKLIST_LABEL[item.key] ?? item.label}</span>
+                <span className="text-sm">{LISTING_CHECKLIST_LABEL[item.key] ?? item.label}</span>
               </li>
             ))}
           </ul>
@@ -482,7 +467,7 @@ function PolicyCard({ listing }: { listing: ListingResponse }) {
           <DetailField label="Đặt cọc" value={`${listing.depositPercent}%`} />
           <DetailField
             label="Thanh toán còn lại"
-            value={<EnumValue map={BALANCE_LABEL} value={listing.balanceDue} />}
+            value={<EnumValue map={BALANCE_DUE_LABEL} value={listing.balanceDue} />}
           />
           <DetailField label="Yêu cầu duyệt đặt" value={listing.approvalRequired ? 'Có' : 'Không'} />
           <DetailField label="Đệm trước" value={`${listing.bufferBefore} phút`} />
@@ -633,11 +618,11 @@ function ModerationLogCard({ listing }: { listing: ListingResponse }) {
         <DetailGrid columns={3}>
           <DetailField
             label="Xuất bản bởi"
-            value={listing.publishedBy ? <EnumValue map={ACTOR_LABEL} value={listing.publishedBy} /> : null}
+            value={listing.publishedBy ? <EnumValue map={MODERATION_ACTOR_LABEL} value={listing.publishedBy} /> : null}
           />
           <DetailField
             label="Ẩn bởi"
-            value={listing.hiddenBy ? <EnumValue map={ACTOR_LABEL} value={listing.hiddenBy} /> : null}
+            value={listing.hiddenBy ? <EnumValue map={MODERATION_ACTOR_LABEL} value={listing.hiddenBy} /> : null}
           />
           <DetailField
             label="Gửi duyệt lúc"

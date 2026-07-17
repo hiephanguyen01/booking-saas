@@ -18,6 +18,7 @@ import type { UseFormReturn } from '@booking/ui/components/form/rhf';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Section, Grid, Field } from './form-layout';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
+import { INVENTORY_UNIT_LABEL } from '~/constants/listing';
 import {
   buildModeConfig,
   initialDynamic,
@@ -38,8 +39,6 @@ import { AdministrativeAddressFields } from './administrative-address-fields';
 
 /** Only these modes are bookable in Phase 1 and have a config panel here. */
 const CONFIGURABLE: BookingMode[] = ['hourly', 'daily', 'inventory'];
-
-const INVENTORY_UNIT_LABEL: Record<'hour' | 'day', string> = { hour: 'giờ', day: 'ngày' };
 
 /**
  * The mode-config round-trip (read → edit → write) lives in `listing-mode-config`
@@ -438,7 +437,7 @@ function ListingConfig({
                 onChange={(e) => set('stockQuantity', e.target.value)}
               />
             </Field>
-            <Field label={`Thuê tối thiểu (${INVENTORY_UNIT_LABEL[state.inventory.unit]})`}>
+            <Field label={`Thuê tối thiểu (${INVENTORY_UNIT_LABEL[state.inventory.unit].toLowerCase()})`}>
               <Input
                 type="number"
                 min={1}
@@ -449,7 +448,7 @@ function ListingConfig({
                 }
               />
             </Field>
-            <Field label={`Thuê tối đa (${INVENTORY_UNIT_LABEL[state.inventory.unit]})`}>
+            <Field label={`Thuê tối đa (${INVENTORY_UNIT_LABEL[state.inventory.unit].toLowerCase()})`}>
               <Input
                 type="number"
                 min={1}
@@ -460,7 +459,7 @@ function ListingConfig({
                 }
               />
             </Field>
-            <Field label={`Phí trả trễ / ${INVENTORY_UNIT_LABEL[state.inventory.unit]} (VND)`}>
+            <Field label={`Phí trả trễ / ${INVENTORY_UNIT_LABEL[state.inventory.unit].toLowerCase()} (VND)`}>
               <Input
                 type="number"
                 min={0}

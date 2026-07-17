@@ -10,17 +10,14 @@ import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Label } from '@booking/ui/components/ui/label';
 import { Input } from '@booking/ui/components/ui/input';
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@booking/ui/components/ui/native-select';
+import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { ArrowLeft, Filter } from 'lucide-react';
 import type { Route } from './+types/ledger';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { TZ_OFFSET } from '~/constants/time';
-import { LEDGER_OWNER_LABEL } from '~/constants/finance';
+import { LEDGER_ENTRY_LABEL, LEDGER_OWNER_LABEL } from '~/constants/finance';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { amountToneClass } from '~/components/money';
@@ -75,22 +72,6 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   };
 }
 
-
-const ENTRY_LABEL: Record<LedgerEntryTypeDto, string> = {
-  booking_revenue: 'Doanh thu đặt chỗ',
-  partner_share: 'Chia sẻ đối tác',
-  platform_fee: 'Phí nền tảng',
-  affiliate_commission: 'Hoa hồng affiliate',
-  promo_discount: 'Giảm giá khuyến mãi',
-  cancellation_fee: 'Phí huỷ',
-  additional_charge: 'Phụ thu',
-  security_deposit: 'Tiền cọc',
-  damage_deduction: 'Khấu trừ hư hại',
-  clawback: 'Thu hồi',
-  refund: 'Hoàn tiền',
-  payout: 'Chi trả',
-};
-
 /** First non-null reference on a ledger line, labelled for the table. */
 function refLabel(e: LedgerEntryResponse): string {
   if (e.bookingId) return `Đơn ${e.bookingId.slice(0, 8)}`;
@@ -102,7 +83,9 @@ function refLabel(e: LedgerEntryResponse): string {
 const columns: DataTableColumn<LedgerEntryResponse>[] = [
   {
     header: 'Bút toán',
-    cell: (e) => <span className="font-mono text-xs text-muted-foreground">{e.journalId.slice(0, 8)}</span>,
+    cell: (e) => (
+      <span className="font-mono text-xs text-muted-foreground">{e.journalId.slice(0, 8)}</span>
+    ),
   },
   {
     header: 'Chủ tài khoản',
@@ -110,14 +93,16 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     // (and for a deleted owner) — the ownerType badge already labels the row in that case.
     cell: (e) => (
       <div className="flex flex-col gap-0.5">
-        <Badge variant="secondary" className="w-fit">{LEDGER_OWNER_LABEL[e.ownerType] ?? e.ownerType}</Badge>
+        <Badge variant="secondary" className="w-fit">
+          {LEDGER_OWNER_LABEL[e.ownerType] ?? e.ownerType}
+        </Badge>
         {e.ownerName ? <span className="text-xs text-muted-foreground">{e.ownerName}</span> : null}
       </div>
     ),
   },
   {
     header: 'Loại bút toán',
-    cell: (e) => <span className="text-sm">{ENTRY_LABEL[e.entryType] ?? e.entryType}</span>,
+    cell: (e) => <span className="text-sm">{LEDGER_ENTRY_LABEL[e.entryType] ?? e.entryType}</span>,
   },
   {
     header: 'Nợ',
@@ -194,14 +179,22 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
               <Label htmlFor="entryType">Loại bút toán</Label>
               <NativeSelect id="entryType" name="entryType" defaultValue={filters.entryType}>
                 <NativeSelectOption value="">Tất cả</NativeSelectOption>
-                {(Object.keys(ENTRY_LABEL) as LedgerEntryTypeDto[]).map((t) => (
-                  <NativeSelectOption key={t} value={t}>{ENTRY_LABEL[t]}</NativeSelectOption>
+                {(Object.keys(LEDGER_ENTRY_LABEL) as LedgerEntryTypeDto[]).map((t) => (
+                  <NativeSelectOption key={t} value={t}>
+                    {LEDGER_ENTRY_LABEL[t]}
+                  </NativeSelectOption>
                 ))}
               </NativeSelect>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="from">Từ ngày</Label>
-              <Input id="from" name="from" type="date" defaultValue={filters.from} className="w-auto" />
+              <Input
+                id="from"
+                name="from"
+                type="date"
+                defaultValue={filters.from}
+                className="w-auto"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="to">Đến ngày</Label>
@@ -213,7 +206,9 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
               </Button>
               {hasFilters ? (
                 <Button asChild size="control" variant="ghost">
-                  <Link to="?" prefetch="intent">Xoá lọc</Link>
+                  <Link to="?" prefetch="intent">
+                    Xoá lọc
+                  </Link>
                 </Button>
               ) : null}
             </div>
@@ -242,17 +237,25 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
           <div className="flex gap-2">
             {page > 1 ? (
               <Button asChild variant="outline" size="sm">
-                <Link to={pageHref(page - 1)} prefetch="intent">Trước</Link>
+                <Link to={pageHref(page - 1)} prefetch="intent">
+                  Trước
+                </Link>
               </Button>
             ) : (
-              <Button variant="outline" size="sm" disabled>Trước</Button>
+              <Button variant="outline" size="sm" disabled>
+                Trước
+              </Button>
             )}
             {page < totalPages ? (
               <Button asChild variant="outline" size="sm">
-                <Link to={pageHref(page + 1)} prefetch="intent">Sau</Link>
+                <Link to={pageHref(page + 1)} prefetch="intent">
+                  Sau
+                </Link>
               </Button>
             ) : (
-              <Button variant="outline" size="sm" disabled>Sau</Button>
+              <Button variant="outline" size="sm" disabled>
+                Sau
+              </Button>
             )}
           </div>
         </div>
