@@ -173,6 +173,15 @@ function scaleTenths(abs: bigint, unit: bigint): number {
   return Number((abs * 10n + unit / 2n) / unit) / 10;
 }
 
+/** Exact-bigint `a − b` as a digit string; `null` when either side is unparseable. */
+export function subtractMoney(a: string, b: string): string | null {
+  try {
+    return (BigInt(a) - BigInt(b)).toString();
+  } catch {
+    return null;
+  }
+}
+
 // ── Numbers & percents ───────────────────────────────────────────────────────
 
 const numberFmt = new Intl.NumberFormat('vi-VN');
@@ -212,4 +221,19 @@ export function formatDaysLeft(days: number): string {
   if (days === 0) return 'Hết hạn hôm nay';
   if (days === 1) return 'Còn 1 ngày';
   return `Còn ${days} ngày`;
+}
+
+/** An `hoursBefore` span as `2 ngày` / `12 giờ` (cancellation tiers, §8.4). */
+export function formatHoursBefore(hours: number): string {
+  if (hours >= 24 && hours % 24 === 0) {
+    const days = hours / 24;
+    return `${days} ngày`;
+  }
+  return `${hours} giờ`;
+}
+
+/** Address parts joined as `địa chỉ, phường, tỉnh`; `null` when all are blank. */
+export function formatLocation(...parts: Array<string | null | undefined>): string | null {
+  const present = parts.filter(Boolean);
+  return present.length > 0 ? present.join(', ') : null;
 }

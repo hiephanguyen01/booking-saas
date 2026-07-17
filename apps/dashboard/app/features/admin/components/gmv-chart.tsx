@@ -1,4 +1,12 @@
 import { useId } from 'react';
+import { TrendingUp } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@booking/ui/components/ui/card';
 import { formatDayMonth, formatVnd, formatVndCompact } from '~/lib/format';
 
 interface Point {
@@ -109,5 +117,29 @@ export function GmvChart({ data }: { data: Array<{ date: string; gmv: string }> 
         )}
       </svg>
     </div>
+  );
+}
+
+/** "GMV 14 ngày gần nhất" card wrapping {@link GmvChart}, with the no-data state. */
+export function GmvTrendCard({ trend }: { trend: Array<{ date: string; gmv: string }> }) {
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TrendingUp className="size-4 text-muted-foreground" />
+          GMV 14 ngày gần nhất
+        </CardTitle>
+        <CardDescription>Tổng giá trị booking đã xác nhận theo ngày.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {trend.length > 0 ? (
+          <GmvChart data={trend} />
+        ) : (
+          <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+            Chưa có dữ liệu GMV.
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

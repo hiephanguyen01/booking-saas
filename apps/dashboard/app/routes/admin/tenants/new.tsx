@@ -1,11 +1,11 @@
 import { data, redirect } from 'react-router';
-import { createTenantInputSchema, type CreateTenantInput, type TenantResponse } from '@booking/contracts';
+import { createTenantInputSchema, type TenantResponse } from '@booking/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
-import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
+import { tenantCreateFields } from '~/features/admin/tenant-form-fields';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 
@@ -35,42 +35,6 @@ export async function action({ request }: Route.ActionArgs) {
   return redirect(`/admin/tenants/${res.data.id}`);
 }
 
-const fields: FieldConfig<CreateTenantInput>[] = [
-  { name: 'name', type: 'text', label: 'Tên tenant', placeholder: 'Studio Ánh Dương', colSpan: 2 },
-  {
-    name: 'slug',
-    type: 'text',
-    label: 'Slug',
-    placeholder: 'studio-anh-duong',
-    description: 'Chữ thường, số và dấu gạch ngang. Dùng cho tên miền phụ mặc định.',
-  },
-  {
-    name: 'vertical',
-    type: 'select',
-    label: 'Loại hình',
-    options: [
-      { label: 'Studio', value: 'studio' },
-      { label: 'Cho thuê', value: 'rental' },
-      { label: 'Lớp học', value: 'classes' },
-    ],
-  },
-  {
-    name: 'defaultTimezone',
-    type: 'text',
-    label: 'Múi giờ mặc định',
-    placeholder: 'Asia/Ho_Chi_Minh',
-  },
-  {
-    name: 'defaultLocale',
-    type: 'select',
-    label: 'Ngôn ngữ mặc định',
-    options: [
-      { label: 'Tiếng Việt', value: 'vi' },
-      { label: 'English', value: 'en' },
-    ],
-  },
-];
-
 export default function NewTenant({ actionData }: Route.ComponentProps) {
   const serverError = actionData && 'error' in actionData ? actionData.error : null;
   const fieldErrors = actionData && 'fieldErrors' in actionData ? actionData.fieldErrors : null;
@@ -92,7 +56,7 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
         <CardContent>
           <GenericForm
             schema={createTenantInputSchema}
-            fields={fields}
+            fields={tenantCreateFields}
             columns={2}
             submitLabel="Tạo tenant"
             defaultValues={{
