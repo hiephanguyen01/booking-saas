@@ -15,7 +15,10 @@ export class ListTenantBookingsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, filters: TenantBookingFilters): Promise<BookingRecord[]> {
+  execute(
+    tenantId: string,
+    filters: TenantBookingFilters,
+  ): Promise<{ items: BookingRecord[]; total: number }> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.bookings.listByTenant(tx, filters));
   }
 }

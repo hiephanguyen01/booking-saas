@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { BookingMode, ModerationActor } from '@booking/contracts';
+import type {
+  BookingMode,
+  CancellationPolicySource,
+  CancellationPolicySummary,
+  CancellationTier,
+  ModerationActor,
+} from '@booking/contracts';
+import { toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateListingData,
@@ -18,14 +25,44 @@ import type {
  * cancellation policy and the partner summary (§7.3: name + verification only,
  * never partner contact details).
  */
+const POLICY_SELECT = { select: { id: true, name: true, rules: true } } as const;
+
 const LISTING_INCLUDE = {
-  cancellationPolicy: { select: { id: true, name: true, rules: true } },
-  partner: { select: { name: true, verificationStatus: true } },
+  cancellationPolicy: POLICY_SELECT,
+  partner: {
+    select: { name: true, verificationStatus: true, defaultCancellationPolicy: POLICY_SELECT },
+  },
+  tenant: { select: { defaultCancellationPolicy: POLICY_SELECT } },
 } as const satisfies Prisma.ListingInclude;
 
 type Row = Prisma.ListingGetPayload<{ include: typeof LISTING_INCLUDE }>;
 
+/** jsonb `rules` → typed tier array (the column is validated on write, trusted on read). */
+function toPolicySummary(
+  p: { id: string; name: string; rules: Prisma.JsonValue } | null | undefined,
+): CancellationPolicySummary | null {
+  return p ? { id: p.id, name: p.name, rules: (p.rules ?? []) as unknown as CancellationTier[] } : null;
+}
+
+/** Fallback chain (§11.3): the listing's own policy, else the partner default, else the tenant default. */
+function resolveEffectivePolicy(
+  own: CancellationPolicySummary | null,
+  partnerDefault: CancellationPolicySummary | null,
+  tenantDefault: CancellationPolicySummary | null,
+): { policy: CancellationPolicySummary | null; source: CancellationPolicySource | null } {
+  if (own) return { policy: own, source: 'listing' };
+  if (partnerDefault) return { policy: partnerDefault, source: 'partner' };
+  if (tenantDefault) return { policy: tenantDefault, source: 'tenant' };
+  return { policy: null, source: null };
+}
+
 function toRecord(l: Row): ListingRecord {
+  const own = toPolicySummary(l.cancellationPolicy);
+  const effective = resolveEffectivePolicy(
+    own,
+    toPolicySummary(l.partner.defaultCancellationPolicy),
+    toPolicySummary(l.tenant.defaultCancellationPolicy),
+  );
   return {
     id: l.id,
     tenantId: l.tenantId,
@@ -58,8 +95,10 @@ function toRecord(l: Row): ListingRecord {
     // bigint → digit string; money never crosses a layer as a JS number.
     rescheduleFee: l.rescheduleFee === null ? null : l.rescheduleFee.toString(),
     cancellationPolicyId: l.cancellationPolicyId,
-    cancellationPolicy: l.cancellationPolicy,
-    partner: l.partner,
+    cancellationPolicy: own,
+    effectiveCancellationPolicy: effective.policy,
+    effectiveCancellationPolicySource: effective.source,
+    partner: { name: l.partner.name, verificationStatus: l.partner.verificationStatus },
     status: l.status,
     publishedBy: l.publishedBy as ModerationActor | null,
     hiddenBy: l.hiddenBy as ModerationActor | null,
@@ -70,11 +109,16 @@ function toRecord(l: Row): ListingRecord {
   };
 }
 
-/** Prisma `where` for the shared listing filter. */
+/**
+ * Prisma `where` for the shared listing filter, EXCLUDING `status` — so it doubles
+ * as the `baseWhere` the per-status counts are grouped over. `listPage` layers the
+ * active `status` on top for `items`/`total`.
+ */
 function toWhere(filter: ListingFilter): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {};
   if (filter.groupId) where.groupId = filter.groupId;
   if (filter.partnerId) where.partnerId = filter.partnerId;
+  if (filter.q) where.title = { contains: filter.q, mode: 'insensitive' };
   return where;
 }
 
@@ -138,7 +182,13 @@ export class PrismaListingRepository implements IListingRepository {
         // Contact info is deliberately NOT selected: it is revealed only after a
         // booking is confirmed (§7.3 anti-disintermediation).
         partner: {
-          select: { name: true, verificationStatus: true, verifiedAt: true, createdAt: true },
+          select: {
+            name: true,
+            verificationStatus: true,
+            verifiedAt: true,
+            createdAt: true,
+            defaultCancellationPolicy: POLICY_SELECT,
+          },
         },
       },
     });
@@ -187,9 +237,16 @@ export class PrismaListingRepository implements IListingRepository {
     tx: PrismaTx,
     filter: ListingFilter,
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingRecord[]; total: number }> {
-    const where = toWhere(filter);
-    const [items, total] = await Promise.all([
+  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }> {
+    // `baseWhere` carries every filter EXCEPT status, so each status tab's count
+    // reflects the group/search scope while ignoring the active tab. `items`/`total`
+    // use the full `where` (status included) — filtered identically or the pager lies.
+    const baseWhere = toWhere(filter);
+    const where: Prisma.ListingWhereInput = {
+      ...baseWhere,
+      ...(filter.status ? { status: filter.status } : {}),
+    };
+    const [items, total, countRows] = await Promise.all([
       tx.listing.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -198,8 +255,9 @@ export class PrismaListingRepository implements IListingRepository {
         take: page.pageSize,
       }),
       tx.listing.count({ where }),
+      tx.listing.groupBy({ by: ['status'], where: baseWhere, _count: true }),
     ]);
-    return { items: items.map(toRecord), total };
+    return { items: items.map(toRecord), total, counts: toStatusCounts(countRows) };
   }
 
   async update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord> {

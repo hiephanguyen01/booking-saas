@@ -13,6 +13,7 @@ import {
   type DomainVerificationResult,
   type PartnerPromotionsToggle,
   type SubscriptionStatusResponse,
+  type TenantResponse,
   type TenantThemeResponse,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
@@ -28,10 +29,12 @@ import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.u
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
 import { SetPartnerPromotionsUseCase } from '../../application/use-cases/set-partner-promotions.use-case';
+import { SetTenantDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-tenant-default-cancellation-policy.use-case';
 import {
   toDomainResponse,
   toPartnerPromotionsToggle,
   toSubscriptionStatusResponse,
+  toTenantResponse,
   toTenantThemeResponse,
 } from '../../application/tenancy.mapper';
 import {
@@ -39,7 +42,9 @@ import {
   DomainResponseDto,
   DomainVerificationResultDto,
   PartnerPromotionsToggleDto,
+  SetDefaultCancellationPolicyDto,
   SubscriptionStatusResponseDto,
+  TenantResponseDto,
   TenantThemeResponseDto,
   UpdateThemeDto,
 } from './dto/tenancy.dto';
@@ -61,6 +66,7 @@ export class TenantSettingsController {
     private readonly deleteDomain: DeleteDomainUseCase,
     private readonly getSubscriptionStatus: GetSubscriptionStatusUseCase,
     private readonly setPartnerPromotions: SetPartnerPromotionsUseCase,
+    private readonly setDefaultPolicy: SetTenantDefaultCancellationPolicyUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -130,6 +136,21 @@ export class TenantSettingsController {
       await this.updateTenant.execute(this.tenantContext.tenantIdOrThrow(), {
         themeConfig: input.themeConfig,
       }),
+    );
+  }
+
+  // ── Cancellation policy default (§11.3) ───────────────────────────────────────
+
+  @RequirePermissions('tenant.settings.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Patch('settings/default-cancellation-policy')
+  @ApiOperation({ summary: "Set the tenant's fallback cancellation policy" })
+  @ApiOkResponse({ type: TenantResponseDto })
+  async setDefaultCancellationPolicy(
+    @Body() input: SetDefaultCancellationPolicyDto,
+  ): Promise<TenantResponse> {
+    return toTenantResponse(
+      await this.setDefaultPolicy.execute(this.tenantContext.tenantIdOrThrow(), input.policyId),
     );
   }
 

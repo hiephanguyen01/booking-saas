@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   uuidSchema,
@@ -6,9 +6,11 @@ import {
   type AffiliateListItem,
   type AffiliateRateResponse,
   type AffiliateStatusResponse,
+  type PaginatedWithCounts,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { ListTenantAffiliatesUseCase } from '../../application/use-cases/list-tenant-affiliates.use-case';
@@ -26,6 +28,7 @@ import {
   AffiliateListItemDto,
   AffiliateRateResponseDto,
   AffiliateStatusResponseDto,
+  ListAffiliatesQueryDto,
   TenantAffiliateStatusDto,
   TenantUpdateAffiliateDto,
 } from './dto/affiliate.dto';
@@ -45,10 +48,12 @@ export class TenantAffiliateController {
   @RequirePermissions('tenant.affiliates.manage')
   @Get()
   @ApiOperation({ summary: 'List the tenant affiliates' })
-  @ApiOkResponse({ type: [AffiliateListItemDto] })
-  async list(): Promise<AffiliateListItem[]> {
-    const rows = await this.listAffiliates.execute(this.tenantContext.tenantIdOrThrow());
-    return rows.map(toTenantAffiliateListItem);
+  @ApiPaginatedResponse(AffiliateListItemDto)
+  async list(
+    @Query() query: ListAffiliatesQueryDto,
+  ): Promise<PaginatedWithCounts<AffiliateListItem>> {
+    const result = await this.listAffiliates.execute(this.tenantContext.tenantIdOrThrow(), query);
+    return { ...toPaginated(query, result, toTenantAffiliateListItem), counts: result.counts };
   }
 
   @RequirePermissions('tenant.affiliates.manage')

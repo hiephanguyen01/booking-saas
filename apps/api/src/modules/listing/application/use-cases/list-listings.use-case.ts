@@ -7,6 +7,11 @@ import {
   type ListingRecord,
 } from '../../domain/ports/listing-repository.port';
 
+/**
+ * One page of a single partner's listings (scoped by `filter.partnerId`),
+ * filterable by status + a title search, with per-status row counts for the
+ * filter tabs. `GET /partner/listings`.
+ */
 @Injectable()
 export class ListListingsUseCase {
   constructor(
@@ -14,7 +19,11 @@ export class ListListingsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, filter: ListingFilter): Promise<ListingRecord[]> {
-    return this.tenantDb.forTenant(tenantId, (tx) => this.listings.list(tx, filter));
+  execute(
+    tenantId: string,
+    filter: ListingFilter,
+    page: { page: number; pageSize: number },
+  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }> {
+    return this.tenantDb.forTenant(tenantId, (tx) => this.listings.listPage(tx, filter, page));
   }
 }

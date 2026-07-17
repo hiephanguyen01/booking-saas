@@ -35,12 +35,27 @@ export interface CreateAffiliateData {
   payoutInfo: unknown;
 }
 
+/** Filter + offset paging for the tenant-side affiliate list (§15.3). */
+export interface ListAffiliatesFilter {
+  status?: AffiliateStatus;
+  page: number;
+  pageSize: number;
+}
+
 export interface IAffiliateRepository {
   create(tx: PrismaTx, tenantId: string, data: CreateAffiliateData): Promise<AffiliateRecord>;
   findById(tx: PrismaTx, id: string): Promise<AffiliateRecord | null>;
   findByUser(tx: PrismaTx, userId: string): Promise<AffiliateRecord | null>;
   findByUserWithTenant(tx: PrismaTx, id: string): Promise<AffiliateWithUser | null>;
-  list(tx: PrismaTx): Promise<AffiliateWithUser[]>;
+  /**
+   * One page of the tenant's affiliates (newest first), the matching `total`, and
+   * per-status `counts` computed over every membership regardless of `filter.status`
+   * (so the filter-tab chips always show their own totals).
+   */
+  list(
+    tx: PrismaTx,
+    filter: ListAffiliatesFilter,
+  ): Promise<{ items: AffiliateWithUser[]; total: number; counts: Record<string, number> }>;
   setStatus(tx: PrismaTx, id: string, status: AffiliateStatus): Promise<AffiliateRecord>;
   setCustomRate(tx: PrismaTx, id: string, customRate: bigint | null): Promise<AffiliateRecord>;
   /** Replace the affiliate's payout (bank) details — the correction path for a typo'd account. */

@@ -38,10 +38,12 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.availability.manage');
   const id = params.listingId;
-  // Own-listings list also enforces ownership: a listing not in it → 404.
-  const listingsRes = await apiGet<ListingResponse[]>('/partner/listings', auth);
-  const listing = (listingsRes.data ?? []).find((l) => l.id === id);
-  if (!listing) throw new Response('Không tìm thấy tin đăng.', { status: 404 });
+  // The single partner listing endpoint enforces ownership (404 if not this partner's).
+  const listingRes = await apiGet<ListingResponse>(`/partner/listings/${id}`, auth);
+  if (!listingRes.ok || !listingRes.data) {
+    throw new Response('Không tìm thấy tin đăng.', { status: 404 });
+  }
+  const listing = listingRes.data;
 
   const rulesRes = await apiGet<AvailabilityRuleResponse[]>(
     `/partner/listings/${id}/availability-rules`,

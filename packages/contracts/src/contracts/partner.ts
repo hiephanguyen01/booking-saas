@@ -108,6 +108,8 @@ export type UpdatePartnerDocumentsInput = z.infer<typeof updatePartnerDocumentsI
 
 export const listPartnersQuerySchema = paginationQuerySchema.extend({
   status: partnerStatusSchema.optional(),
+  /** Case-insensitive search over partner name/slug (approval queue search box). */
+  q: z.string().trim().max(200).optional(),
 });
 export type ListPartnersQuery = z.infer<typeof listPartnersQuerySchema>;
 
@@ -325,6 +327,8 @@ export const partnerResponseSchema = z.object({
   contactInfo: partnerContactInfoResponseSchema,
   identityInfo: partnerIdentityInfoResponseSchema,
   owner: partnerOwnerResponseSchema.nullable(),
+  /** Partner-level fallback cancellation policy (§11.3); null = fall back to the tenant default. */
+  defaultCancellationPolicyId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

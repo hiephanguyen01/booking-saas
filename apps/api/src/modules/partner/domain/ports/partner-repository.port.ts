@@ -29,6 +29,8 @@ export interface PartnerRecord {
   businessInfo: Record<string, unknown>;
   contactInfo: Record<string, unknown>;
   identityInfo: Record<string, unknown>;
+  /** Partner-level fallback cancellation policy (§11.3); null = fall back to the tenant default. */
+  defaultCancellationPolicyId: string | null;
   owner: PartnerOwnerRecord | null;
   createdAt: Date;
   updatedAt: Date;
@@ -55,10 +57,14 @@ export interface UpdatePartnerData {
   identityInfo?: Record<string, unknown>;
   /** Logo + license/business documents live here (§7.3 — partners have no image column). */
   businessInfo?: Record<string, unknown>;
+  /** null clears the partner default; a value must reference a policy the partner may use. */
+  defaultCancellationPolicyId?: string | null;
 }
 
 export interface ListPartnersFilter {
   status?: PartnerStatus;
+  /** Case-insensitive search over partner name/slug. Applied to items + counts. */
+  q?: string;
   page: number;
   pageSize: number;
 }
@@ -82,7 +88,7 @@ export interface IPartnerRepository {
   list(
     tx: PrismaTx,
     filter: ListPartnersFilter,
-  ): Promise<{ items: PartnerRecord[]; total: number }>;
+  ): Promise<{ items: PartnerRecord[]; total: number; counts: Record<string, number> }>;
   update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord>;
   addMember(
     tx: PrismaTx,

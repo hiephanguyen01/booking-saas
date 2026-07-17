@@ -1,4 +1,4 @@
-import { uuidSchema, type ListingResponse, type Paginated } from '@booking/contracts';
+import { uuidSchema, type ListingResponse, type PaginatedWithCounts } from '@booking/contracts';
 import {
   Body,
   Controller,
@@ -19,6 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -51,25 +52,23 @@ export class TenantListingController {
   ) {}
 
   /**
-   * The tenant's listings, paginated (§13). Unlike a partner's own list, this
-   * spans every partner on the tenant and grows without bound, so it is paged.
+   * The tenant's listings, paginated (§13), across every partner on the tenant.
+   * Filterable by `status` and a `q` title search, with per-status row counts for
+   * the filter tabs; `groupId` narrows to one post's items.
    */
   @RequirePermissions('tenant.listings.read')
   @Get()
   @ApiOperation({ summary: "List the tenant's listings" })
   @ApiPaginatedResponse(ListingResponseDto)
-  async list(@Query() query: ListTenantListingsQueryDto): Promise<Paginated<ListingResponse>> {
-    const { items, total } = await this.listListingsPage.execute(
+  async list(
+    @Query() query: ListTenantListingsQueryDto,
+  ): Promise<PaginatedWithCounts<ListingResponse>> {
+    const result = await this.listListingsPage.execute(
       this.tenantContext.tenantIdOrThrow(),
-      { groupId: query.groupId },
+      { groupId: query.groupId, status: query.status, q: query.q },
       { page: query.page, pageSize: query.pageSize },
     );
-    return {
-      items: items.map(toListingResponse),
-      page: query.page,
-      pageSize: query.pageSize,
-      total,
-    };
+    return { ...toPaginated(query, result, toListingResponse), counts: result.counts };
   }
 
   @RequirePermissions('tenant.listings.write')

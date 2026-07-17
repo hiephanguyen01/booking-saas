@@ -342,6 +342,12 @@ async function seedDemo(): Promise<void> {
         },
       }),
   );
+  // Make "Linh hoạt" the tenant-level fallback default (§11.3): any listing (or
+  // partner) that sets no policy inherits it. It has partner_id null → tenant-level.
+  await prisma.tenant.update({
+    where: { id: tenant.id },
+    data: { defaultCancellationPolicyId: cancelPolicy.id },
+  });
   const {
     studioType,
     equipmentType,

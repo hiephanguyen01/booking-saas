@@ -17,10 +17,11 @@ import {
 } from '@nestjs/swagger';
 import {
   uuidSchema,
-  type Paginated,
+  type PaginatedWithCounts,
   type PartnerResponse,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import {
   ApiPaginatedResponse,
@@ -67,15 +68,10 @@ export class TenantPartnerController {
   @ApiPaginatedResponse(PartnerResponseDto)
   async list(
     @Query() query: ListPartnersQueryDto,
-  ): Promise<Paginated<PartnerResponse>> {
+  ): Promise<PaginatedWithCounts<PartnerResponse>> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
-    const { items, total } = await this.listPartners.execute(tenantId, query);
-    return {
-      items: items.map(toPartnerResponse),
-      page: query.page,
-      pageSize: query.pageSize,
-      total,
-    };
+    const result = await this.listPartners.execute(tenantId, query);
+    return { ...toPaginated(query, result, toPartnerResponse), counts: result.counts };
   }
 
   @RequirePermissions('tenant.partners.manage')

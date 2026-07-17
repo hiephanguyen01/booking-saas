@@ -1,5 +1,5 @@
-import { useFetcher, data as routeData } from 'react-router';
-import type { ReferralLinkResponse } from '@booking/contracts';
+import { useFetcher, useSearchParams, data as routeData } from 'react-router';
+import type { Paginated, ReferralLinkResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
@@ -12,6 +12,8 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
 /**
  * The origin an affiliate's referral links must point at.
@@ -31,11 +33,16 @@ function storefrontOrigin(tenantHostname: string | null): string {
   return `${isLocal ? 'http' : 'https'}://${tenantHostname}`;
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
-  const links = active ? await apiGet<ReferralLinkResponse[]>('/affiliate/links', auth) : null;
+  const { toApiQuery } = readListParams(url.searchParams);
+  const links = active
+    ? await apiGet<Paginated<ReferralLinkResponse>>('/affiliate/links', auth, {
+        query: toApiQuery(),
+      })
+    : null;
   return {
-    links: links?.ok ? (links.data ?? []) : [],
+    result: links?.ok ? links.data : null,
     storefrontUrl: storefrontOrigin(active?.tenantHostname ?? null),
   };
 }
@@ -67,7 +74,11 @@ function referralUrl(storefrontUrl: string, code: string): string {
 }
 
 export default function AffiliateLinks({ loaderData, actionData }: Route.ComponentProps) {
-  const { links, storefrontUrl } = loaderData;
+  const { result, storefrontUrl } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
+  const links = result?.items ?? [];
+  const total = result?.total ?? 0;
   const createFetcher = useFetcher<typeof action>();
 
   return (
@@ -99,6 +110,8 @@ export default function AffiliateLinks({ loaderData, actionData }: Route.Compone
           ))}
         </div>
       )}
+
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

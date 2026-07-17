@@ -1,4 +1,4 @@
-import type { DomainResponse } from '@booking/contracts';
+import type { CancellationPolicyResponse, DomainResponse } from '@booking/contracts';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/settings';
 import { apiGet } from '~/lib/api.server';
@@ -9,6 +9,7 @@ import type { TenantThemeResponse } from '~/features/tenant/components/settings/
 import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { PageHeader } from '~/components/page-header';
 import { PartnerPromotionsCard } from '~/features/tenant/components/settings/partner-promotions-card';
+import { TenantDefaultCancellationPolicyCard } from '~/features/tenant/components/settings/tenant-default-cancellation-policy-card';
 import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-domains-card';
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
 
@@ -18,7 +19,7 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request);
-  const [themeRes, domainsRes, flagsRes] = await Promise.all([
+  const [themeRes, domainsRes, flagsRes, policiesRes] = await Promise.all([
     can('tenant.theme.manage')
       ? apiGet<TenantThemeResponse>('/tenant/theme', auth)
       : Promise.resolve(null),
@@ -27,6 +28,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       : Promise.resolve(null),
     can('tenant.settings.manage')
       ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth)
+      : Promise.resolve(null),
+    can('tenant.settings.manage')
+      ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
       : Promise.resolve(null),
   ]);
   return {
@@ -37,6 +41,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     // An explicit read state, never a bare boolean: a failed read must not be
     // indistinguishable from a flag that is genuinely off.
     partnerPromotions: toPartnerPromotionsState(flagsRes),
+    cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : [],
   };
 }
 
@@ -46,7 +51,8 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
-  const { theme, domains, canTheme, canDomains, partnerPromotions } = loaderData;
+  const { theme, domains, canTheme, canDomains, partnerPromotions, cancellationPolicies } =
+    loaderData;
   const { readOnly } = useTenantArea();
 
   // Feedback narrowing: every action branch tags its result with `form`, so each
@@ -103,6 +109,15 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
           state={partnerPromotions}
           readOnly={readOnly}
           error={errFor('flags')}
+        />
+      ) : null}
+
+      {canDomains ? (
+        <TenantDefaultCancellationPolicyCard
+          policies={cancellationPolicies}
+          readOnly={readOnly}
+          error={errFor('cancellation-default')}
+          saved={okFor('cancellation-default')}
         />
       ) : null}
 

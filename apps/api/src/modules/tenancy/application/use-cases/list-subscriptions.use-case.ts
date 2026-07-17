@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { PaginationQuery } from '@booking/contracts';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -22,8 +23,11 @@ export class ListSubscriptionsUseCase {
     @Inject(SUBSCRIPTION_REPOSITORY) private readonly subscriptions: ISubscriptionRepository,
   ) {}
 
-  async execute(tenantId: string): Promise<SubscriptionHistoryRecord[]> {
-    // Distinguish "tenant does not exist" (404) from "tenant never subscribed" ([]).
+  async execute(
+    tenantId: string,
+    query: PaginationQuery,
+  ): Promise<{ items: SubscriptionHistoryRecord[]; total: number }> {
+    // Distinguish "tenant does not exist" (404) from "tenant never subscribed" (empty page).
     if (!(await this.tenants.findById(tenantId))) {
       throw new NotFoundException({
         statusCode: 404,
@@ -31,6 +35,6 @@ export class ListSubscriptionsUseCase {
         message: `Tenant ${tenantId} not found`,
       });
     }
-    return this.subscriptions.listByTenant(tenantId);
+    return this.subscriptions.listByTenant(tenantId, query);
   }
 }

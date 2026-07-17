@@ -545,6 +545,9 @@ model Tenant {
   vertical        String       @default("studio")
   themeConfig     Json         @default("{}") @map("theme_config")
   settings        Json         @default("{}")
+  /// Tenant-level fallback cancellation policy (§11.3) applied when a listing and its
+  /// partner set none. Points at a tenant-level policy (partner_id null).
+  defaultCancellationPolicyId String? @map("default_cancellation_policy_id") @db.Uuid
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -559,7 +562,8 @@ model Tenant {
   resources            Resource[]
   listings             Listing[]
   categories           Category[]
-  cancellationPolicies CancellationPolicy[]
+  cancellationPolicies CancellationPolicy[] @relation("TenantPolicies")
+  defaultCancellationPolicy CancellationPolicy? @relation("TenantDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
   bookings             Booking[]
   payments             Payment[]
   gatewayConfigs       TenantGatewayConfig[]
@@ -668,6 +672,8 @@ model Partner {
   dateOfBirth        DateTime?                 @map("date_of_birth") @db.Date
   /// { documentType, documentNumber, holderName, reviewedBy, reviewNote } — manual eKYC (Phase 3 automates).
   identityInfo       Json                      @default("{}") @map("identity_info")
+  /// Partner-level fallback cancellation policy (§11.3) applied when a listing sets none.
+  defaultCancellationPolicyId String?          @map("default_cancellation_policy_id") @db.Uuid
   createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -682,9 +688,12 @@ model Partner {
   promotions           Promotion[]           @relation("PartnerCreatedPromotions")
   fundedPromotions     Promotion[]           @relation("PartnerFundedPromotions")
   agreementAcceptances AgreementAcceptance[]
+  cancellationPolicies CancellationPolicy[]  @relation("PartnerPolicies")
+  defaultCancellationPolicy CancellationPolicy? @relation("PartnerDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([defaultCancellationPolicyId])
   @@map("partners")
 }
 
@@ -1074,16 +1083,22 @@ model BookingStatusHistory {
 model CancellationPolicy {
   id        String   @id @default(uuid(7)) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
+  /// null ⇒ tenant-level shared policy; set ⇒ owned by this partner.
+  partnerId String?  @map("partner_id") @db.Uuid
   name      String
   rules     Json     @default("[]")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  listings Listing[]
-  bookings Booking[]
+  tenant            Tenant    @relation("TenantPolicies", fields: [tenantId], references: [id], onDelete: Cascade)
+  partner           Partner?  @relation("PartnerPolicies", fields: [partnerId], references: [id], onDelete: Cascade)
+  listings          Listing[]
+  bookings          Booking[]
+  defaultOfTenants  Tenant[]  @relation("TenantDefaultPolicy")
+  defaultOfPartners Partner[] @relation("PartnerDefaultPolicy")
 
   @@index([tenantId])
+  @@index([partnerId])
   @@map("cancellation_policies")
 }
 

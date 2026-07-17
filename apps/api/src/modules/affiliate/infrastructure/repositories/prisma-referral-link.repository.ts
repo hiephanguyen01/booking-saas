@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateReferralLinkData,
@@ -57,6 +58,20 @@ export class PrismaReferralLinkRepository implements IReferralLinkRepository {
       orderBy: { createdAt: 'desc' },
     });
     return rows.map(toRecord);
+  }
+
+  async listByAffiliatePaginated(
+    tx: PrismaTx,
+    affiliateId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: ReferralLinkRecord[]; total: number }> {
+    const where = { affiliateId };
+    const { skip, take } = pageOffset(params);
+    const [rows, total] = await Promise.all([
+      tx.referralLink.findMany({ where, include: WITH_LISTING, orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.referralLink.count({ where }),
+    ]);
+    return { items: rows.map(toRecord), total };
   }
 
   async findById(tx: PrismaTx, id: string): Promise<ReferralLinkRecord | null> {

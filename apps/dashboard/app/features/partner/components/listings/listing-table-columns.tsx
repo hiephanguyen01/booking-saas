@@ -1,12 +1,15 @@
 import { Lock } from 'lucide-react';
+import { Link } from 'react-router';
 import type { ListingResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
+import { EffectiveCancellationPolicyCell } from '~/components/cancellation-tiers';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { formatDate } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
+import { dashboardPaths } from '~/constants/paths';
 import { listingPriceFrom } from '~/lib/listing-price';
 import { ListingRowActions } from './listing-row-actions';
 
@@ -22,7 +25,9 @@ export function buildListingColumns(opts: {
       header: 'Tin đăng',
       cell: (l) => (
         <div className="min-w-0">
-          <p className="truncate font-medium">{l.title}</p>
+          <Link to={dashboardPaths.partner.listing(l.id)} className="truncate font-medium hover:underline">
+            {l.title}
+          </Link>
           <p className="truncate font-mono text-xs text-muted-foreground">/{l.slug}</p>
         </div>
       ),
@@ -49,6 +54,17 @@ export function buildListingColumns(opts: {
           <span className="text-sm text-muted-foreground">Chưa có giá</span>
         );
       },
+    },
+    {
+      header: 'Chính sách huỷ',
+      cell: (l) => (
+        <EffectiveCancellationPolicyCell
+          policy={l.effectiveCancellationPolicy}
+          source={l.effectiveCancellationPolicySource}
+        />
+      ),
+      className: 'hidden lg:table-cell',
+      headClassName: 'hidden lg:table-cell',
     },
     {
       header: 'Cập nhật',

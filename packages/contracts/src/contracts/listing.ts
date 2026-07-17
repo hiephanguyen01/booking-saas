@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { paginationQuerySchema, uuidSchema } from './common';
+import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
 import { slugSchema } from './tenancy';
 import { bookingModeSchema, type BookingMode } from './listing-type';
 import { partnerVerificationStatusSchema } from './partner';
@@ -221,17 +221,73 @@ export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
 /** `GET /tenant/listings` — paginated; `groupId` narrows to one post's items. */
 export const listTenantListingsQuerySchema = paginationQuerySchema.extend({
   groupId: uuidSchema.optional(),
+  status: publishStatusSchema.optional(),
+  /** Case-insensitive search over the listing title. Applied to items + counts. */
+  q: z.string().trim().max(200).optional(),
 });
 export type ListTenantListingsQuery = z.infer<typeof listTenantListingsQuerySchema>;
+
+/** `GET /partner/listings` — paginated; always scoped to the calling partner. */
+export const listPartnerListingsQuerySchema = paginationQuerySchema.extend({
+  groupId: uuidSchema.optional(),
+  status: publishStatusSchema.optional(),
+  /** Case-insensitive search over the listing title. Applied to items + counts. */
+  q: z.string().trim().max(200).optional(),
+});
+export type ListPartnerListingsQuery = z.infer<typeof listPartnerListingsQuerySchema>;
 
 // ── Responses ──────────────────────────────────────────────────────────────
 
 export const cancellationPolicySummarySchema = z.object({
   id: z.string(),
   name: z.string(),
-  rules: z.unknown(),
+  rules: z.array(cancellationTierSchema),
 });
 export type CancellationPolicySummary = z.infer<typeof cancellationPolicySummarySchema>;
+
+/** Where the policy governing a listing came from after fallback resolution. */
+export const cancellationPolicySourceSchema = z.enum(['listing', 'partner', 'tenant']);
+export type CancellationPolicySource = z.infer<typeof cancellationPolicySourceSchema>;
+
+// ── Partner-managed cancellation policies (CRUD) ─────────────────────────────
+
+/** Refund tiers as accepted from a partner form (stricter than the shared snapshot shape). */
+const cancellationTierInputSchema = z.object({
+  hoursBefore: z.number().int().min(0),
+  refundPercent: z.number().int().min(0).max(100),
+});
+
+export const createCancellationPolicyInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  rules: z.array(cancellationTierInputSchema).min(1),
+});
+export type CreateCancellationPolicyInput = z.infer<typeof createCancellationPolicyInputSchema>;
+
+export const updateCancellationPolicyInputSchema = createCancellationPolicyInputSchema.partial();
+export type UpdateCancellationPolicyInput = z.infer<typeof updateCancellationPolicyInputSchema>;
+
+/** Full policy row returned to the partner management screen. */
+export const cancellationPolicyResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  /** null ⇒ tenant-level shared policy; set ⇒ owned by this partner. */
+  partnerId: z.string().nullable(),
+  name: z.string(),
+  rules: z.array(cancellationTierSchema),
+  /** True when this is the caller partner's default policy. */
+  isDefault: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type CancellationPolicyResponse = z.infer<typeof cancellationPolicyResponseSchema>;
+
+/** Body of `PATCH …/default-cancellation-policy` (partner + tenant); null clears the default. */
+export const setDefaultCancellationPolicyInputSchema = z.object({
+  policyId: uuidSchema.nullable(),
+});
+export type SetDefaultCancellationPolicyInput = z.infer<
+  typeof setDefaultCancellationPolicyInputSchema
+>;
 
 /**
  * The partner a listing belongs to, as a reviewer needs to see them. Name +
@@ -309,6 +365,14 @@ export const listingResponseSchema = z
      * needs the same rules in front of them, not just an opaque id.
      */
     cancellationPolicy: cancellationPolicySummarySchema.nullable(),
+    /**
+     * The policy that actually governs this listing after the fallback chain
+     * (listing → partner default → tenant default); null when none applies. Read this
+     * for display; `cancellationPolicy` is only the listing's own explicit choice.
+     */
+    effectiveCancellationPolicy: cancellationPolicySummarySchema.nullable(),
+    /** Origin of `effectiveCancellationPolicy`; null when no policy applies. */
+    effectiveCancellationPolicySource: cancellationPolicySourceSchema.nullable(),
     partner: listingPartnerSummarySchema,
     status: publishStatusSchema,
     publishedBy: moderationActorSchema.nullable(),
@@ -391,6 +455,9 @@ export const publicListingDetailResponseSchema = z
     listingTypeSlug: z.string(),
     group: z.object({ title: z.string(), slug: z.string() }).nullable(),
     cancellationPolicy: cancellationPolicySummarySchema.nullable(),
+    /** Policy actually applied after fallback (listing → partner default → tenant default). */
+    effectiveCancellationPolicy: cancellationPolicySummarySchema.nullable(),
+    effectiveCancellationPolicySource: cancellationPolicySourceSchema.nullable(),
     trust: trustSignalsSchema,
   })
   .merge(administrativeAddressSnapshotSchema);

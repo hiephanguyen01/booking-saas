@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
+import { pageOffset, toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   AffiliateRecord,
@@ -8,6 +9,7 @@ import type {
   AffiliateWithUser,
   CreateAffiliateData,
   IAffiliateRepository,
+  ListAffiliatesFilter,
 } from '../../domain/ports/affiliate-repository.port';
 
 type Row = Prisma.AffiliateGetPayload<Record<string, never>>;
@@ -82,9 +84,22 @@ export class PrismaAffiliateRepository implements IAffiliateRepository {
     return a ? toWithUser(a) : null;
   }
 
-  async list(tx: PrismaTx): Promise<AffiliateWithUser[]> {
-    const rows = await tx.affiliate.findMany({ include: WITH_RELATIONS, orderBy: { createdAt: 'desc' } });
-    return rows.map(toWithUser);
+  async list(
+    tx: PrismaTx,
+    filter: ListAffiliatesFilter,
+  ): Promise<{ items: AffiliateWithUser[]; total: number; counts: Record<string, number> }> {
+    // `counts` are computed over every membership (the tenant scope RLS already
+    // applies), NOT the active `status` filter — so each filter-tab chip shows its
+    // own total. The page itself is narrowed by `where`.
+    const baseWhere: Prisma.AffiliateWhereInput = {};
+    const where: Prisma.AffiliateWhereInput = filter.status ? { status: filter.status } : {};
+    const { skip, take } = pageOffset(filter);
+    const [rows, total, grouped] = await Promise.all([
+      tx.affiliate.findMany({ where, include: WITH_RELATIONS, orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.affiliate.count({ where }),
+      tx.affiliate.groupBy({ by: ['status'], where: baseWhere, _count: true }),
+    ]);
+    return { items: rows.map(toWithUser), total, counts: toStatusCounts(grouped) };
   }
 
   async setStatus(tx: PrismaTx, id: string, status: AffiliateStatus): Promise<AffiliateRecord> {

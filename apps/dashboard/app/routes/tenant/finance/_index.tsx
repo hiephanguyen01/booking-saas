@@ -1,4 +1,4 @@
-import { Link, data as routeData } from 'react-router';
+import { Link, useSearchParams, data as routeData } from 'react-router';
 import {
   createPayoutInputSchema,
   failPayoutInputSchema,
@@ -20,7 +20,9 @@ import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { formatVnd } from '~/lib/format';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { PaginationBar } from '~/components/pagination-bar';
 import { StatCard } from '~/components/stat-card';
+import { readListParams } from '~/lib/pagination';
 import { BalanceCards } from '~/features/tenant/components/finance/balance-cards';
 import { CreatePayoutDialog } from '~/features/tenant/components/finance/create-payout-dialog';
 import { PayoutsTable } from '~/features/tenant/components/finance/payouts-table';
@@ -48,6 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     return {
       summary: null as TenantFinanceSummaryResponse | null,
       payouts: [] as PayoutResponse[],
+      payoutsTotal: 0,
       partnerNames: {} as Record<string, string>,
       canPayouts,
       payable: res.ok ? res.data : null,
@@ -56,9 +59,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     };
   }
 
+  const { toApiQuery } = readListParams(url.searchParams);
   const [summaryRes, payoutsRes, partnersRes] = await Promise.all([
     apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth),
-    canPayouts ? apiGet<PayoutResponse[]>('/tenant/finance/payouts', auth) : Promise.resolve(null),
+    canPayouts
+      ? apiGet<Paginated<PayoutResponse>>('/tenant/finance/payouts', auth, { query: toApiQuery() })
+      : Promise.resolve(null),
     can('tenant.partners.read')
       ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
       : Promise.resolve(null),
@@ -69,7 +75,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     summary: summaryRes.ok ? summaryRes.data : null,
-    payouts: payoutsRes?.ok ? (payoutsRes.data ?? []) : [],
+    payouts: payoutsRes?.ok ? (payoutsRes.data?.items ?? []) : [],
+    payoutsTotal: payoutsRes?.ok ? (payoutsRes.data?.total ?? 0) : 0,
     partnerNames,
     canPayouts,
     payable: null as TenantPayableResponse | null,
@@ -126,8 +133,10 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantFinance({ loaderData, actionData }: Route.ComponentProps) {
-  const { summary, payouts, partnerNames, canPayouts, error } = loaderData;
+  const { summary, payouts, payoutsTotal, partnerNames, canPayouts, error } = loaderData;
   const { readOnly } = useTenantArea();
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
 
   const partnerBalances = summary?.partnerBalances ?? [];
@@ -186,6 +195,7 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         {canPayouts ? (
           <TabsContent value="payouts" className="space-y-4">
             <PayoutsTable payouts={payouts} partnerNames={partnerNames} readOnly={readOnly} />
+            <PaginationBar page={page} pageSize={pageSize} total={payoutsTotal} hrefFor={pageHref} />
           </TabsContent>
         ) : null}
       </Tabs>

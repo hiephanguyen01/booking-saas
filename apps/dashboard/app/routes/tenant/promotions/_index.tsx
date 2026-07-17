@@ -1,5 +1,5 @@
-import { Link } from 'react-router';
-import type { PromotionResponse } from '@booking/contracts';
+import { Link, useSearchParams } from 'react-router';
+import type { Paginated, PromotionResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -13,23 +13,32 @@ import { PageHeader } from '~/components/page-header';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { EnumValue } from '~/components/enum-value';
 import { SCOPE_LABELS } from '~/constants/promotion';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.promotions.manage');
-  const res = await apiGet<PromotionResponse[]>('/tenant/promotions', auth);
+  const { toApiQuery } = readListParams(url.searchParams);
+  const res = await apiGet<Paginated<PromotionResponse>>('/tenant/promotions', auth, {
+    query: toApiQuery(),
+  });
   return {
-    promotions: res.ok ? (res.data ?? []) : [],
+    result: res.ok ? res.data : null,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách khuyến mãi.'),
   };
 }
 
 export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
-  const { promotions, error } = loaderData;
+  const { result, error } = loaderData;
   const { readOnly } = useTenantArea();
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
+  const promotions = result?.items ?? [];
+  const total = result?.total ?? 0;
 
   const columns: DataTableColumn<PromotionResponse>[] = [
     {
@@ -89,6 +98,8 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       <DataTable columns={columns} data={promotions} getRowKey={(p) => p.id} emptyMessage="Chưa có mã khuyến mãi nào." />
+
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

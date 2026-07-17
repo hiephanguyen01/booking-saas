@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { ListAffiliatesQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveEffectiveAffiliateRate, type EffectiveAffiliateRate } from '../../domain/affiliate-rate';
 import {
@@ -47,14 +48,18 @@ export class ListTenantAffiliatesUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async execute(tenantId: string): Promise<TenantAffiliateRow[]> {
+  async execute(
+    tenantId: string,
+    query: ListAffiliatesQuery,
+  ): Promise<{ items: TenantAffiliateRow[]; total: number; counts: Record<string, number> }> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       // One rule read for the whole page — the baseline is per tenant, not per row.
-      const [affiliates, rule] = await Promise.all([
-        this.affiliates.list(tx),
+      const [{ items: affiliates, total, counts }, rule] = await Promise.all([
+        this.affiliates.list(tx, query),
         this.rules.findTenantDefault(tx),
       ]);
-      return Promise.all(
+      // Enrichment (links/clicks/commission totals) runs only for the page's rows.
+      const items = await Promise.all(
         affiliates.map(async (affiliate) => {
           const [linksCount, clicks, totals] = await Promise.all([
             this.links.countByAffiliate(tx, affiliate.id),
@@ -70,6 +75,7 @@ export class ListTenantAffiliatesUseCase {
           };
         }),
       );
+      return { items, total, counts };
     });
   }
 }

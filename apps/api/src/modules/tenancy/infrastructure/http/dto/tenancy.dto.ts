@@ -13,6 +13,7 @@ import {
   planResponseSchema,
   platformHealthResponseSchema,
   publicTenantResponseSchema,
+  setDefaultCancellationPolicyInputSchema,
   slugAvailabilityResponseSchema,
   slugSchema,
   subscriptionHistoryItemSchema,
@@ -31,6 +32,9 @@ export class CreatePlanDto extends createZodDto(createPlanInputSchema) {}
 export class UpdatePlanDto extends createZodDto(updatePlanInputSchema) {}
 export class CreateTenantDto extends createZodDto(createTenantInputSchema) {}
 export class UpdateTenantDto extends createZodDto(updateTenantInputSchema) {}
+export class SetDefaultCancellationPolicyDto extends createZodDto(
+  setDefaultCancellationPolicyInputSchema,
+) {}
 export class AssignSubscriptionDto extends createZodDto(assignSubscriptionInputSchema) {}
 export class AddDomainDto extends createZodDto(addDomainInputSchema) {}
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}

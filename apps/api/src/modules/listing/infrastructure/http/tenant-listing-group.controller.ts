@@ -2,6 +2,7 @@ import {
   uuidSchema,
   type ListingGroupDetailResponse,
   type ListingGroupResponse,
+  type Paginated,
 } from '@booking/contracts';
 import {
   Body,
@@ -12,6 +13,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -21,7 +23,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
+import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -56,10 +60,10 @@ export class TenantListingGroupController {
   @RequirePermissions('tenant.listings.read')
   @Get()
   @ApiOperation({ summary: "List the tenant's listing groups" })
-  @ApiOkResponse({ type: [ListingGroupResponseDto] })
-  async list(): Promise<ListingGroupResponse[]> {
-    const items = await this.listGroups.execute(this.tenantContext.tenantIdOrThrow());
-    return items.map(toListingGroupResponse);
+  @ApiPaginatedResponse(ListingGroupResponseDto)
+  async list(@Query() query: PaginationQueryDto): Promise<Paginated<ListingGroupResponse>> {
+    const result = await this.listGroups.execute(this.tenantContext.tenantIdOrThrow(), {}, query);
+    return toPaginated(query, result, toListingGroupResponse);
   }
 
   @RequirePermissions('tenant.listings.write')

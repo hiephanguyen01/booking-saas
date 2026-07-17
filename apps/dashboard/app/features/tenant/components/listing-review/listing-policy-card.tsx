@@ -9,10 +9,8 @@ import {
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
-import { DetailRow } from '@booking/ui/components/detail/detail-row';
 import { BALANCE_DUE_LABEL } from '~/features/tenant/constants';
-import { formatHoursBefore } from '~/lib/format';
-import { asRecord, readNumber } from '~/lib/records';
+import { CancellationTiers } from '~/components/cancellation-tiers';
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
 
@@ -50,7 +48,7 @@ export function ListingPolicyCard({ listing }: { listing: ListingResponse }) {
           {listing.cancellationPolicy ? (
             <div className="space-y-2">
               <p className="text-sm font-medium">{listing.cancellationPolicy.name}</p>
-              <CancellationRules rules={listing.cancellationPolicy.rules} />
+              <CancellationTiers rules={listing.cancellationPolicy.rules} />
             </div>
           ) : null}
         </DetailSection>
@@ -90,35 +88,3 @@ export function ListingPolicyCard({ listing }: { listing: ListingResponse }) {
   );
 }
 
-function CancellationRules({ rules }: { rules: unknown }) {
-  const tiers = (Array.isArray(rules) ? rules : [])
-    .map(asRecord)
-    .map((r) =>
-      r ? { hoursBefore: readNumber(r.hoursBefore), refundPercent: readNumber(r.refundPercent) } : null,
-    )
-    .filter(
-      (t): t is { hoursBefore: number; refundPercent: number } =>
-        t !== null && t.hoursBefore !== null && t.refundPercent !== null,
-    )
-    .sort((a, b) => b.hoursBefore - a.hoursBefore);
-
-  if (tiers.length === 0) {
-    return <p className="text-sm text-muted-foreground">Không có mốc hoàn tiền cụ thể.</p>;
-  }
-  return (
-    <div className="space-y-1">
-      {tiers.map((t, i) => (
-        <DetailRow
-          key={i}
-          label={cancellationTierLabel(t.hoursBefore)}
-          value={`Hoàn ${Math.max(0, Math.min(100, t.refundPercent))}%`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function cancellationTierLabel(hoursBefore: number): string {
-  if (hoursBefore <= 0) return 'Sát giờ / sau khi bắt đầu';
-  return `Huỷ trước ${formatHoursBefore(hoursBefore)}`;
-}

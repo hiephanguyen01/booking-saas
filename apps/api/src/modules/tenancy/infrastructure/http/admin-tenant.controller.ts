@@ -32,6 +32,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
+import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import {
@@ -192,13 +194,15 @@ export class AdminTenantController {
 
   @RequirePermissions('platform.tenants.read')
   @Get(':id/subscriptions')
-  @ApiOperation({ summary: "A tenant's subscription history, newest first" })
+  @ApiOperation({ summary: "A tenant's subscription history, newest first (paginated)" })
   @UuidParam()
-  @ApiOkResponse({ type: [SubscriptionHistoryItemDto] })
+  @ApiPaginatedResponse(SubscriptionHistoryItemDto)
   async subscriptionHistory(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<SubscriptionHistoryItem[]> {
-    return (await this.listSubscriptions.execute(id)).map(toSubscriptionHistoryItem);
+    @Query() query: PaginationQueryDto,
+  ): Promise<Paginated<SubscriptionHistoryItem>> {
+    const result = await this.listSubscriptions.execute(id, query);
+    return toPaginated(query, result, toSubscriptionHistoryItem);
   }
 
   @RequirePermissions('platform.tenants.read')

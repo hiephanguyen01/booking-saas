@@ -46,13 +46,15 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       `/partner/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
       auth,
     ),
-    canReadListings ? apiGet<ListingResponse[]>('/partner/listings', auth) : Promise.resolve(null),
+    canReadListings
+      ? apiGet<{ items: ListingResponse[] }>('/partner/listings?page=1&pageSize=100', auth)
+      : Promise.resolve(null),
   ]);
 
   const bookings = feed.ok && feed.data ? feed.data : [];
   const listings: BlockableListing[] =
     listingsRes && listingsRes.ok && listingsRes.data
-      ? listingsRes.data.map((l) => ({ id: l.id, title: l.title, resourceId: l.resourceId }))
+      ? listingsRes.data.items.map((l) => ({ id: l.id, title: l.title, resourceId: l.resourceId }))
       : [];
 
   // Listing types for the client-side filter - derived from the feed so it works

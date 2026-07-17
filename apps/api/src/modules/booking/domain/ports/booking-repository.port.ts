@@ -156,8 +156,8 @@ export interface FulfillmentPatch {
 export interface TenantBookingFilters {
   status?: BookingStatus;
   partnerId?: string;
-  /** Row cap for the overview list (defaults applied in the repository). */
-  limit?: number;
+  page: number;
+  pageSize: number;
 }
 
 /**
@@ -209,8 +209,11 @@ export interface IBookingRepository {
     from: Date,
     to: Date,
   ): Promise<PartnerCalendarBooking[]>;
-  /** Tenant-wide booking list (RLS-scoped by `forTenant`) for the dashboard. */
-  listByTenant(tx: PrismaTx, filters: TenantBookingFilters): Promise<BookingRecord[]>;
+  /** Tenant-wide booking list (RLS-scoped by `forTenant`) for the dashboard, offset-paginated. */
+  listByTenant(
+    tx: PrismaTx,
+    filters: TenantBookingFilters,
+  ): Promise<{ items: BookingRecord[]; total: number }>;
   /** Full transition audit trail for one booking, oldest first (§8.2). */
   listStatusHistory(tx: PrismaTx, bookingId: string): Promise<BookingStatusHistoryRecord[]>;
   /** Set/clear the partner's private note (§8.2). `null` clears it. */

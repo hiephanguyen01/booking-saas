@@ -10,10 +10,9 @@ export async function resolveListingResource(
   auth: ApiAuth,
   listingId: string,
 ): Promise<string | null> {
-  const listingsRes = await apiGet<ListingResponse[]>('/partner/listings', auth);
-  const listing =
-    listingsRes.ok && listingsRes.data
-      ? listingsRes.data.find((l) => l.id === listingId)
-      : undefined;
-  return listing?.resourceId ?? null;
+  // Fetch the single partner-scoped listing (the endpoint 404s if it isn't this
+  // partner's, so ownership is still enforced) — cheaper + correct now that the
+  // list feed is paginated.
+  const listingRes = await apiGet<ListingResponse>(`/partner/listings/${listingId}`, auth);
+  return listingRes.ok && listingRes.data ? (listingRes.data.resourceId ?? null) : null;
 }

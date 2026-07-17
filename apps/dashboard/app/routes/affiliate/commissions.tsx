@@ -1,4 +1,5 @@
-import type { AffiliateCommissionResponse } from '@booking/contracts';
+import { useSearchParams } from 'react-router';
+import type { AffiliateCommissionResponse, Paginated } from '@booking/contracts';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/commissions';
 import { apiGet } from '~/lib/api.server';
@@ -6,15 +7,26 @@ import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { BookingStatusBadge, CommissionStatusBadge } from '~/components/status-badge';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
-  const res = active ? await apiGet<AffiliateCommissionResponse[]>('/affiliate/commissions', auth) : null;
-  return { commissions: res?.ok ? (res.data ?? []) : [] };
+  const { toApiQuery } = readListParams(url.searchParams);
+  const res = active
+    ? await apiGet<Paginated<AffiliateCommissionResponse>>('/affiliate/commissions', auth, {
+        query: toApiQuery(),
+      })
+    : null;
+  return { result: res?.ok ? res.data : null };
 }
 
 export default function AffiliateCommissions({ loaderData }: Route.ComponentProps) {
-  const { commissions } = loaderData;
+  const { result } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
+  const commissions = result?.items ?? [];
+  const total = result?.total ?? 0;
 
   const columns: DataTableColumn<AffiliateCommissionResponse>[] = [
     {
@@ -71,11 +83,15 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
   ];
 
   return (
-    <DataTable
-      columns={columns}
-      data={commissions}
-      getRowKey={(c) => c.id}
-      emptyMessage="Chưa có hoa hồng nào."
-    />
+    <div className="space-y-4">
+      <DataTable
+        columns={columns}
+        data={commissions}
+        getRowKey={(c) => c.id}
+        emptyMessage="Chưa có hoa hồng nào."
+      />
+
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
+    </div>
   );
 }

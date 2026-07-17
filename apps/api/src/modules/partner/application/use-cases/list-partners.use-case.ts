@@ -18,10 +18,11 @@ export class ListPartnersUseCase {
   async execute(
     tenantId: string,
     query: ListPartnersQuery,
-  ): Promise<{ items: PartnerRecord[]; total: number }> {
+  ): Promise<{ items: PartnerRecord[]; total: number; counts: Record<string, number> }> {
     return this.tenantDb.forTenant(tenantId, (tx) =>
       this.partners.list(tx, {
         status: query.status,
+        q: query.q,
         page: query.page,
         pageSize: query.pageSize,
       }),

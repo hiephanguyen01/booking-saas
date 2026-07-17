@@ -1,5 +1,5 @@
-import { Link, useFetcher, data as routeData } from 'react-router';
-import type { AffiliateListItem, AffiliateStatusDto } from '@booking/contracts';
+import { Link, useFetcher, useSearchParams, data as routeData } from 'react-router';
+import type { AffiliateListItem, AffiliateStatusDto, PaginatedWithCounts } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Check, Eye, Ban } from 'lucide-react';
@@ -11,19 +11,28 @@ import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { PartnerStatusBadge } from '~/components/status-badge';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
-import { useStatusFilter } from '~/hooks/use-status-filter';
 import { ErrorBanner } from '~/components/action-feedback';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+const STATUS_VALUES: AffiliateStatusDto[] = ['pending', 'approved', 'suspended'];
+
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.affiliates.manage');
-  const res = await apiGet<AffiliateListItem[]>('/tenant/affiliates', auth);
+  const { toApiQuery } = readListParams(url.searchParams);
+  const statusRaw = url.searchParams.get('status') ?? '';
+  const status = STATUS_VALUES.includes(statusRaw as AffiliateStatusDto) ? statusRaw : '';
+  const res = await apiGet<PaginatedWithCounts<AffiliateListItem>>('/tenant/affiliates', auth, {
+    query: toApiQuery({ status }),
+  });
   return {
-    affiliates: res.ok ? (res.data ?? []) : [],
+    result: res.ok ? res.data : null,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách cộng tác viên.'),
+    filters: { status },
   };
 }
 
@@ -49,11 +58,14 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'suspended', label: 'Tạm ngưng' },
 ];
 
-const getStatus = (a: AffiliateListItem): string => a.status;
-
 export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
-  const { affiliates, error } = loaderData;
-  const { filter, setFilter, rows, counts } = useStatusFilter(affiliates, getStatus);
+  const { result, error, filters } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
+  const affiliates = result?.items ?? [];
+  const total = result?.total ?? 0;
+  const counts = result?.counts;
+  const statusValue = filters.status || 'all';
 
   const columns: DataTableColumn<AffiliateListItem>[] = [
     {
@@ -120,14 +132,21 @@ export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
-      <StatusFilterTabs filters={FILTERS} counts={counts} value={filter} onChange={setFilter} />
+      <StatusFilterTabs
+        filters={FILTERS}
+        value={statusValue}
+        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
+        counts={counts}
+      />
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={affiliates}
         getRowKey={(a) => a.id}
         emptyMessage="Chưa có cộng tác viên nào trong nhóm này."
       />
+
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

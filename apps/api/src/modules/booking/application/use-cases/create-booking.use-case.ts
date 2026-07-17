@@ -74,7 +74,7 @@ export class CreateBookingUseCase {
     if (existing) return existing;
 
     // Read the listing, price the slot, snapshot the policy.
-    const { listing, quote, policyRules } = await this.tenantDb.forTenant(tenant.id, async (tx) => {
+    const { listing, quote, effectivePolicyId, policyRules } = await this.tenantDb.forTenant(tenant.id, async (tx) => {
       const listing = await this.listings.findById(tx, input.listingId);
       if (!listing || listing.status !== 'published') {
         throw new NotFoundException({ statusCode: 404, code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
@@ -96,14 +96,19 @@ export class CreateBookingUseCase {
         quantity: input.mode === 'inventory' ? input.quantity : 1,
         depositPercent: listing.depositPercent,
       });
-      const policy = listing.cancellationPolicyId
-        ? await tx.cancellationPolicy.findUnique({ where: { id: listing.cancellationPolicyId } })
-        : null;
-      return { listing, quote, policyRules: policy?.rules ?? [] };
+      // §11.3 fallback (listing → partner default → tenant default) is already resolved
+      // onto the listing record; snapshot the RESOLVED policy id + its rules so the
+      // persisted id and the frozen tiers stay consistent.
+      return {
+        listing,
+        quote,
+        effectivePolicyId: listing.effectiveCancellationPolicy?.id ?? null,
+        policyRules: listing.effectiveCancellationPolicy?.rules ?? [],
+      };
     });
     const timeslot = { start: startUtc, end: endUtc };
     const blocked = blockedPeriod(timeslot, listing.bufferBefore, listing.bufferAfter);
-    const common = { listing, quote, policyRules, customerId, input, timeslot, blocked, idempotencyKey: ctx.idempotencyKey };
+    const common = { listing, quote, effectivePolicyId, policyRules, customerId, input, timeslot, blocked, idempotencyKey: ctx.idempotencyKey };
 
     // Inventory (§9.4): multi-unit, so no exclusion constraint. An advisory lock
     // per listing + an atomic stock count guarantees stock is never oversold.
@@ -185,6 +190,7 @@ export class CreateBookingUseCase {
     args: {
       listing: ListingRecord;
       quote: QuoteResponse;
+      effectivePolicyId: string | null;
       policyRules: unknown;
       customerId: string;
       input: CreateBookingInput;
@@ -273,7 +279,7 @@ export class CreateBookingUseCase {
       commissionSnapshot,
       affiliateId: attribution?.affiliateId ?? null,
       referralCode: attribution?.referralCode ?? null,
-      cancellationPolicyId: args.listing.cancellationPolicyId,
+      cancellationPolicyId: args.effectivePolicyId,
       cancellationPolicySnapshot: args.policyRules,
       pricingSnapshot: args.quote,
       customerNote: args.input.customerNote ?? null,

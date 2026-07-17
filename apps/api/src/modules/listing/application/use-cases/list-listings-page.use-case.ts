@@ -8,10 +8,9 @@ import {
 } from '../../domain/ports/listing-repository.port';
 
 /**
- * One page of the tenant's listings. A tenant accumulates listings across every
- * partner, so `GET /tenant/listings` must not stream the whole table — the
- * partner-scoped list (`ListListingsUseCase`) stays unpaginated (a partner owns
- * few, and the dashboard pickers read them whole).
+ * One page of the tenant's listings across every partner, filterable by status +
+ * a title search, with per-status row counts for the filter tabs. A tenant
+ * accumulates listings without bound, so `GET /tenant/listings` is always paged.
  */
 @Injectable()
 export class ListListingsPageUseCase {
@@ -24,7 +23,7 @@ export class ListListingsPageUseCase {
     tenantId: string,
     filter: ListingFilter,
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingRecord[]; total: number }> {
+  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.listings.listPage(tx, filter, page));
   }
 }

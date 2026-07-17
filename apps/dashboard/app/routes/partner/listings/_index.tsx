@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
 import { data, Link } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { Plus } from 'lucide-react';
 import type {
   ListingGroupResponse,
   ListingResponse,
   ListingTypeResponse,
+  Paginated,
+  PaginatedWithCounts,
+  PublishStatus,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable } from '@booking/ui/components/data-table/data-table';
@@ -17,23 +20,35 @@ import type { ListingsActionResult } from '~/features/partner/components/listing
 import { PageHeader } from '~/components/page-header';
 import { ErrorBanner } from '~/components/action-feedback';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
-import { useStatusFilter } from '~/hooks/use-status-filter';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng · Đối tác · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+const STATUS_VALUES: PublishStatus[] = ['published', 'draft', 'pending_review', 'archived'];
+
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
+  const { toApiQuery } = readListParams(url.searchParams);
+  const statusRaw = url.searchParams.get('status') ?? '';
+  const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
   const [res, groupsRes, typesRes] = await Promise.all([
-    apiGet<ListingResponse[]>('/partner/listings', auth),
-    apiGet<ListingGroupResponse[]>('/partner/listing-groups', auth),
+    apiGet<PaginatedWithCounts<ListingResponse>>('/partner/listings', auth, {
+      query: toApiQuery({ status }),
+    }),
+    // Groups are few and shown as navigation cards — pull them all (bounded).
+    apiGet<Paginated<ListingGroupResponse>>('/partner/listing-groups', auth, {
+      query: { pageSize: 100 },
+    }),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
   ]);
   return {
-    listings: res.ok && res.data ? res.data : [],
-    groups: groupsRes.data ?? [],
+    result: res.ok ? res.data : null,
+    groups: groupsRes.ok ? (groupsRes.data?.items ?? []) : [],
     listingTypes: typesRes.data ?? [],
+    filters: { status },
     canWrite: can('partner.listings.write'),
     canPublish: can('partner.listings.publish'),
     canAvailability: can('partner.availability.manage'),
@@ -91,16 +106,15 @@ const FILTERS: { value: string; label: string }[] = [
   { value: 'archived', label: 'Đã ẩn' },
 ];
 
-const getStatus = (l: ListingResponse): string => l.status;
-
 export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
-  const { listings, groups, listingTypes, canWrite, canPublish, canAvailability, loadError } =
+  const { result, groups, listingTypes, canWrite, canPublish, canAvailability, loadError, filters } =
     loaderData;
-
-  // Grouped children live in their group's workspace; the table (and the filter
-  // counts) only cover standalone listings.
-  const standalone = useMemo(() => listings.filter((l) => !l.groupId), [listings]);
-  const { filter, setFilter, rows, counts } = useStatusFilter(standalone, getStatus);
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
+  const listings = result?.items ?? [];
+  const total = result?.total ?? 0;
+  const counts = result?.counts;
+  const statusValue = filters.status || 'all';
 
   const columns = buildListingColumns({ canWrite, canPublish, canAvailability });
 
@@ -120,7 +134,12 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
         }
       />
 
-      <StatusFilterTabs filters={FILTERS} counts={counts} value={filter} onChange={setFilter} />
+      <StatusFilterTabs
+        filters={FILTERS}
+        value={statusValue}
+        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
+        counts={counts}
+      />
 
       <ErrorBanner error={loadError} />
 
@@ -138,10 +157,12 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={listings}
         getRowKey={(l) => l.id}
-        emptyMessage="Chưa có tin đăng độc lập nào."
+        emptyMessage="Chưa có tin đăng nào."
       />
+
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

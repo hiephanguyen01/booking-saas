@@ -67,6 +67,12 @@ export interface IListingGroupRepository {
   findById(tx: PrismaTx, id: string): Promise<ListingGroupRecord | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingGroupRecord | null>;
   list(tx: PrismaTx, filter?: { partnerId?: string }): Promise<ListingGroupRecord[]>;
+  /** One page of `list`, plus the unpaginated total (§13 pagination shape). */
+  listPage(
+    tx: PrismaTx,
+    filter: { partnerId?: string },
+    page: { page: number; pageSize: number },
+  ): Promise<{ items: ListingGroupRecord[]; total: number }>;
   update(tx: PrismaTx, id: string, data: UpdateListingGroupData): Promise<ListingGroupRecord>;
   moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingGroupRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;

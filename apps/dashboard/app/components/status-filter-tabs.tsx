@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router';
 import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 
 export interface StatusFilterOption {
@@ -6,29 +7,34 @@ export interface StatusFilterOption {
 }
 
 /**
- * The status-filter Tabs row with per-status count chips used by list pages.
- * Pair with `useStatusFilter` for the client-side filtering + counts.
+ * URL-driven status-filter Tabs row. Selecting a tab navigates to `hrefFor(value)`
+ * (built from `readListParams(...).filterHref`, resetting to page 1) so the loader
+ * re-runs and filtering stays correct across a server-paginated list. `counts` is
+ * optional — pass a server-computed map to show the chips, omit to hide them.
  */
 export function StatusFilterTabs({
   filters,
-  counts,
   value,
-  onChange,
+  hrefFor,
+  counts,
 }: {
   filters: readonly StatusFilterOption[];
-  counts: Record<string, number>;
   value: string;
-  onChange: (value: string) => void;
+  hrefFor: (value: string) => string;
+  counts?: Record<string, number>;
 }) {
+  const navigate = useNavigate();
   return (
-    <Tabs value={value} onValueChange={onChange}>
+    <Tabs value={value} onValueChange={(v) => navigate(hrefFor(v))}>
       <TabsList className="flex-wrap">
         {filters.map((f) => (
           <TabsTrigger key={f.value} value={f.value} className="gap-2">
             {f.label}
-            <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
-              {counts[f.value] ?? 0}
-            </span>
+            {counts ? (
+              <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
+                {counts[f.value] ?? 0}
+              </span>
+            ) : null}
           </TabsTrigger>
         ))}
       </TabsList>

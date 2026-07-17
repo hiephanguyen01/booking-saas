@@ -3,6 +3,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 import type {
   BookingRecord,
   BookingStatusHistoryRecord,
@@ -311,16 +312,28 @@ export class PrismaBookingRepository implements IBookingRepository {
     }));
   }
 
-  async listByTenant(tx: PrismaTx, filters: TenantBookingFilters): Promise<BookingRecord[]> {
+  async listByTenant(
+    tx: PrismaTx,
+    filters: TenantBookingFilters,
+  ): Promise<{ items: BookingRecord[]; total: number }> {
     const conds: Prisma.Sql[] = [];
     if (filters.status) conds.push(Prisma.sql`b.status = ${filters.status}::booking_status`);
     if (filters.partnerId) conds.push(Prisma.sql`b.partner_id = ${filters.partnerId}::uuid`);
     const where = conds.length ? Prisma.sql`WHERE ${Prisma.join(conds, ' AND ')}` : Prisma.empty;
-    const limit = Math.min(Math.max(filters.limit ?? 100, 1), 200);
-    const rows = await tx.$queryRaw<Row[]>(
-      Prisma.sql`${SELECT} ${where} ORDER BY b.created_at DESC LIMIT ${limit}`,
-    );
-    return rows.map(toRecord);
+    const { skip, take } = pageOffset(filters);
+    // COUNT over the SAME joins + WHERE as SELECT so `total` filters identically.
+    const [rows, counted] = await Promise.all([
+      tx.$queryRaw<Row[]>(
+        Prisma.sql`${SELECT} ${where} ORDER BY b.created_at DESC LIMIT ${take} OFFSET ${skip}`,
+      ),
+      tx.$queryRaw<{ total: bigint }[]>(Prisma.sql`
+        SELECT COUNT(*)::bigint AS total
+        FROM bookings b
+        JOIN users u ON u.id = b.customer_id
+        JOIN listings l ON l.id = b.listing_id
+        ${where}`),
+    ]);
+    return { items: rows.map(toRecord), total: Number(counted[0]?.total ?? 0n) };
   }
 
   async listStatusHistory(tx: PrismaTx, bookingId: string): Promise<BookingStatusHistoryRecord[]> {

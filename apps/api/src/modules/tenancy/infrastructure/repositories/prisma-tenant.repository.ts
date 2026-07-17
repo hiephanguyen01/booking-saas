@@ -23,6 +23,7 @@ function toRecord(t: PrismaTenant): TenantRecord {
     defaultLocale: t.defaultLocale,
     themeConfig: (t.themeConfig ?? {}) as Record<string, unknown>,
     settings: (t.settings ?? {}) as Record<string, unknown>,
+    defaultCancellationPolicyId: t.defaultCancellationPolicyId,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
   };
@@ -91,9 +92,19 @@ export class PrismaTenantRepository implements ITenantRepository {
           status: data.status,
           themeConfig: data.themeConfig as Prisma.InputJsonValue | undefined,
           settings: data.settings as Prisma.InputJsonValue | undefined,
+          defaultCancellationPolicyId: data.defaultCancellationPolicyId,
         },
       }),
     );
+  }
+
+  /** True when `policyId` is a tenant-level (partner_id null) policy of this tenant. */
+  async isTenantLevelPolicy(tenantId: string, policyId: string): Promise<boolean> {
+    const policy = await this.prisma.admin.cancellationPolicy.findFirst({
+      where: { id: policyId, tenantId, partnerId: null },
+      select: { id: true },
+    });
+    return policy !== null;
   }
 
   countPartners(tenantId: string): Promise<number> {

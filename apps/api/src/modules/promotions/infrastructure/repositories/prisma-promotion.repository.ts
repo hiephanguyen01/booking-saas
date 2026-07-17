@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 import type { PromoTimeWindow } from '../../domain/promotion-discount';
 import type {
   CreatePromotionData,
@@ -99,17 +100,30 @@ export class PrismaPromotionRepository implements IPromotionRepository {
     return p ? toRecord(p) : null;
   }
 
-  async list(tx: PrismaTx): Promise<PromotionRecord[]> {
-    const rows = await tx.promotion.findMany({ orderBy: { createdAt: 'desc' } });
-    return rows.map(toRecord);
+  async list(
+    tx: PrismaTx,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PromotionRecord[]; total: number }> {
+    const { skip, take } = pageOffset(params);
+    const [rows, total] = await Promise.all([
+      tx.promotion.findMany({ orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.promotion.count(),
+    ]);
+    return { items: rows.map(toRecord), total };
   }
 
-  async listByPartner(tx: PrismaTx, partnerId: string): Promise<PromotionRecord[]> {
-    const rows = await tx.promotion.findMany({
-      where: { createdByPartnerId: partnerId },
-      orderBy: { createdAt: 'desc' },
-    });
-    return rows.map(toRecord);
+  async listByPartner(
+    tx: PrismaTx,
+    partnerId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PromotionRecord[]; total: number }> {
+    const where: Prisma.PromotionWhereInput = { createdByPartnerId: partnerId };
+    const { skip, take } = pageOffset(params);
+    const [rows, total] = await Promise.all([
+      tx.promotion.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.promotion.count({ where }),
+    ]);
+    return { items: rows.map(toRecord), total };
   }
 
   async listActiveAutoCampaigns(tx: PrismaTx): Promise<PromotionRecord[]> {

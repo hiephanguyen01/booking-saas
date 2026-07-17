@@ -26,16 +26,16 @@ export interface ScopeOptions {
  */
 export async function loadTenantScopeOptions(auth: Auth): Promise<ScopeOptions> {
   const [listings, listingTypes, listingGroups, partners] = await Promise.all([
-    // `/tenant/listings` is paginated ({ items, total }); the others still return bare arrays.
+    // Paginated list endpoints ({ items, total }) — pull a bounded page for the picker.
     apiGet<{ items: ListingResponse[] }>('/tenant/listings?page=1&pageSize=100', auth),
     apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
-    apiGet<ListingGroupResponse[]>('/tenant/listing-groups', auth),
+    apiGet<{ items: ListingGroupResponse[] }>('/tenant/listing-groups?page=1&pageSize=100', auth),
     apiGet<{ items: PartnerResponse[] }>('/tenant/partners?page=1&pageSize=100', auth),
   ]);
   return {
     listings: (listings.ok ? (listings.data?.items ?? []) : []).map((l) => ({ id: l.id, label: l.title })),
     listingTypes: (listingTypes.ok ? (listingTypes.data ?? []) : []).map((t) => ({ id: t.id, label: t.name })),
-    listingGroups: (listingGroups.ok ? (listingGroups.data ?? []) : []).map((g) => ({ id: g.id, label: g.title })),
+    listingGroups: (listingGroups.ok ? (listingGroups.data?.items ?? []) : []).map((g) => ({ id: g.id, label: g.title })),
     partners: (partners.ok ? (partners.data?.items ?? []) : []).map((p) => ({ id: p.id, label: p.name })),
   };
 }
@@ -48,13 +48,13 @@ export async function loadTenantScopeOptions(auth: Auth): Promise<ScopeOptions> 
  */
 export async function loadPartnerScopeOptions(auth: Auth): Promise<ScopeOptions> {
   const [listings, groups] = await Promise.all([
-    apiGet<ListingResponse[]>('/partner/listings', auth),
-    apiGet<ListingGroupResponse[]>('/partner/listing-groups', auth),
+    apiGet<{ items: ListingResponse[] }>('/partner/listings?page=1&pageSize=100', auth),
+    apiGet<{ items: ListingGroupResponse[] }>('/partner/listing-groups?page=1&pageSize=100', auth),
   ]);
   return {
-    listings: (listings.ok ? (listings.data ?? []) : []).map((l) => ({ id: l.id, label: l.title })),
+    listings: (listings.ok ? (listings.data?.items ?? []) : []).map((l) => ({ id: l.id, label: l.title })),
     listingTypes: [],
-    listingGroups: (groups.ok ? (groups.data ?? []) : []).map((g) => ({ id: g.id, label: g.title })),
+    listingGroups: (groups.ok ? (groups.data?.items ?? []) : []).map((g) => ({ id: g.id, label: g.title })),
     partners: [],
   };
 }

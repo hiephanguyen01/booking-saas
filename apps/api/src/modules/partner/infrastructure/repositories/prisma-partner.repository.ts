@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
+import { toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreatePartnerData,
@@ -45,6 +46,7 @@ function toRecord(p: PrismaPartner): PartnerRecord {
     businessInfo: (p.businessInfo ?? {}) as Record<string, unknown>,
     contactInfo: (p.contactInfo ?? {}) as Record<string, unknown>,
     identityInfo: (p.identityInfo ?? {}) as Record<string, unknown>,
+    defaultCancellationPolicyId: p.defaultCancellationPolicyId,
     owner: owner ? { email: owner.email, phone: owner.phone } : null,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
@@ -105,9 +107,23 @@ export class PrismaPartnerRepository implements IPartnerRepository {
   async list(
     tx: PrismaTx,
     filter: ListPartnersFilter,
-  ): Promise<{ items: PartnerRecord[]; total: number }> {
-    const where: Prisma.PartnerWhereInput = filter.status ? { status: filter.status } : {};
-    const [items, total] = await Promise.all([
+  ): Promise<{ items: PartnerRecord[]; total: number; counts: Record<string, number> }> {
+    // `baseWhere` carries every filter EXCEPT status, so each status tab's count
+    // reflects the search box while ignoring the active tab. `items`/`total` use
+    // the full `where` (status included) — filtered identically or the pager lies.
+    const baseWhere: Prisma.PartnerWhereInput = filter.q
+      ? {
+          OR: [
+            { name: { contains: filter.q, mode: 'insensitive' } },
+            { slug: { contains: filter.q, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+    const where: Prisma.PartnerWhereInput = {
+      ...baseWhere,
+      ...(filter.status ? { status: filter.status } : {}),
+    };
+    const [items, total, countRows] = await Promise.all([
       tx.partner.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -116,8 +132,9 @@ export class PrismaPartnerRepository implements IPartnerRepository {
         include: partnerInclude,
       }),
       tx.partner.count({ where }),
+      tx.partner.groupBy({ by: ['status'], where: baseWhere, _count: true }),
     ]);
-    return { items: items.map(toRecord), total };
+    return { items: items.map(toRecord), total, counts: toStatusCounts(countRows) };
   }
 
   async update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord> {
@@ -132,6 +149,7 @@ export class PrismaPartnerRepository implements IPartnerRepository {
           payoutInfo: data.payoutInfo as Prisma.InputJsonValue | undefined,
           identityInfo: data.identityInfo as Prisma.InputJsonValue | undefined,
           businessInfo: data.businessInfo as Prisma.InputJsonValue | undefined,
+          defaultCancellationPolicyId: data.defaultCancellationPolicyId,
         },
         include: partnerInclude,
       }),

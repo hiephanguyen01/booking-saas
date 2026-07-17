@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
 import { passwordSchema } from './auth';
 
 /** Booking state machine (§8). Terminal-ish branches: completed/no_show/rejected/expired/refunded. */
@@ -108,14 +108,13 @@ export type PartnerNoteInput = z.infer<typeof partnerNoteInputSchema>;
 
 /**
  * Filters for the tenant booking overview (`GET /tenant/bookings`, Task 1.13).
- * `status`/`partnerId` are honoured SERVER-side — never filter client-side over a
- * truncated page, or every derived count is wrong past `limit` rows.
+ * Offset-paginated: `status`/`partnerId` are honoured SERVER-side alongside
+ * `page`/`pageSize` — never filter client-side over one page, or every derived
+ * count is wrong past the page boundary.
  */
-export const tenantBookingsQuerySchema = z.object({
+export const tenantBookingsQuerySchema = paginationQuerySchema.extend({
   status: bookingStatusSchema.optional(),
   partnerId: uuidSchema.optional(),
-  /** Row cap (server clamps to 1–200; defaults to 100 when omitted). */
-  limit: z.coerce.number().int().min(1).max(200).optional(),
 });
 export type TenantBookingsQuery = z.infer<typeof tenantBookingsQuerySchema>;
 
@@ -166,16 +165,8 @@ export const additionalChargeSchema = z.object({
 });
 export type AdditionalCharge = z.infer<typeof additionalChargeSchema>;
 
-/**
- * One tier of a snapshotted cancellation policy (§11.3), e.g.
- * `{hoursBefore: 48, refundPercent: 50}`. Structured (rather than opaque) because
- * the refund domain already requires exactly this shape to compute a refund.
- */
-export const cancellationTierSchema = z.object({
-  hoursBefore: z.number(),
-  refundPercent: z.number(),
-});
-export type CancellationTier = z.infer<typeof cancellationTierSchema>;
+// `cancellationTierSchema` / `CancellationTier` now live in ./common (shared with the
+// listing-policy contract); still re-exported package-wide via the barrel.
 
 /**
  * An immutable jsonb snapshot frozen onto the booking at checkout. Deliberately

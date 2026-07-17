@@ -44,9 +44,16 @@ export interface IPromotionRepository {
   update(tx: PrismaTx, id: string, data: UpdatePromotionData): Promise<PromotionRecord>;
   findById(tx: PrismaTx, id: string): Promise<PromotionRecord | null>;
   findByCode(tx: PrismaTx, code: string): Promise<PromotionRecord | null>;
-  list(tx: PrismaTx): Promise<PromotionRecord[]>;
+  list(
+    tx: PrismaTx,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PromotionRecord[]; total: number }>;
   /** Promotions created by a given partner (their own codes, §12.2 Phase 2). */
-  listByPartner(tx: PrismaTx, partnerId: string): Promise<PromotionRecord[]>;
+  listByPartner(
+    tx: PrismaTx,
+    partnerId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PromotionRecord[]; total: number }>;
   /** Active, code-less auto-applied campaigns for the tenant (§12.1 Phase 2). */
   listActiveAutoCampaigns(tx: PrismaTx): Promise<PromotionRecord[]>;
   /** Tenant-created partner-funded promos awaiting this partner's opt-in (§12.2). */

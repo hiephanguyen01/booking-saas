@@ -179,6 +179,18 @@ export const ledgerQuerySchema = paginationQuerySchema.extend({
 });
 export type LedgerQuery = z.infer<typeof ledgerQuerySchema>;
 
+/**
+ * Partner ledger view filters (`GET /partner/finance/ledger`). Same shape as the
+ * tenant ledger minus `ownerType`/`bookingId`: the owner is FORCED to the partner
+ * in scope server-side, never taken from the client.
+ */
+export const partnerLedgerQuerySchema = paginationQuerySchema.extend({
+  entryType: ledgerEntryTypeSchema.optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+export type PartnerLedgerQuery = z.infer<typeof partnerLedgerQuerySchema>;
+
 /** Net balance for one ledger owner — `balance` = credit − debit (VND, signed). */
 export const ownerBalanceResponseSchema = z.object({
   ownerType: ledgerOwnerTypeSchema,

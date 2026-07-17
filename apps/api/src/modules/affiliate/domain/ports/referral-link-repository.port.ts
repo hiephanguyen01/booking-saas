@@ -28,6 +28,12 @@ export interface IReferralLinkRepository {
   create(tx: PrismaTx, tenantId: string, data: CreateReferralLinkData): Promise<ReferralLinkRecord>;
   findByCode(tx: PrismaTx, code: string): Promise<ReferralLinkRecord | null>;
   listByAffiliate(tx: PrismaTx, affiliateId: string): Promise<ReferralLinkRecord[]>;
+  /** One page of an affiliate's referral links (newest first) + the matching total. */
+  listByAffiliatePaginated(
+    tx: PrismaTx,
+    affiliateId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: ReferralLinkRecord[]; total: number }>;
   findById(tx: PrismaTx, id: string): Promise<ReferralLinkRecord | null>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   incrementClicks(tx: PrismaTx, id: string): Promise<void>;

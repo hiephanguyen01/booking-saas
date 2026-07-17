@@ -31,8 +31,11 @@ export interface ISubscriptionRepository {
   /** The most recently started subscription for a tenant (the current one). */
   findCurrentByTenant(tenantId: string): Promise<SubscriptionRecord | null>;
   /**
-   * Every subscription ever assigned to the tenant, newest first. Assignment is
+   * A page of the tenant's subscription history, newest first. Assignment is
    * append-only (§3.1), so this is the tenant's billing history.
    */
-  listByTenant(tenantId: string): Promise<SubscriptionHistoryRecord[]>;
+  listByTenant(
+    tenantId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: SubscriptionHistoryRecord[]; total: number }>;
 }

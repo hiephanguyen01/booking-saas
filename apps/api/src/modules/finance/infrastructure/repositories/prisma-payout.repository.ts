@@ -7,6 +7,7 @@ import type {
   PayoutRecord,
 } from '../../domain/ports/payout-repository.port';
 import { utcNow } from '../../../../shared/time/time';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 type Row = Prisma.PayoutGetPayload<Record<string, never>>;
 
@@ -51,21 +52,31 @@ export class PrismaPayoutRepository implements IPayoutRepository {
     return p ? toRecord(p) : null;
   }
 
-  async list(tx: PrismaTx): Promise<PayoutRecord[]> {
-    const rows = await tx.payout.findMany({ orderBy: { createdAt: 'desc' } });
-    return rows.map(toRecord);
+  async list(
+    tx: PrismaTx,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PayoutRecord[]; total: number }> {
+    const { skip, take } = pageOffset(params);
+    const [rows, total] = await Promise.all([
+      tx.payout.findMany({ orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.payout.count(),
+    ]);
+    return { items: rows.map(toRecord), total };
   }
 
   async listForPayee(
     tx: PrismaTx,
     payeeType: PayoutRecord['payeeType'],
     payeeId: string,
-  ): Promise<PayoutRecord[]> {
-    const rows = await tx.payout.findMany({
-      where: { payeeType, payeeId },
-      orderBy: { createdAt: 'desc' },
-    });
-    return rows.map(toRecord);
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PayoutRecord[]; total: number }> {
+    const where: Prisma.PayoutWhereInput = { payeeType, payeeId };
+    const { skip, take } = pageOffset(params);
+    const [rows, total] = await Promise.all([
+      tx.payout.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.payout.count({ where }),
+    ]);
+    return { items: rows.map(toRecord), total };
   }
 
   async markPaid(tx: PrismaTx, id: string, evidence: { reference: string; evidenceKey?: string }): Promise<PayoutRecord> {

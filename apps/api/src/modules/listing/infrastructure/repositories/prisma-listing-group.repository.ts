@@ -107,6 +107,27 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
     return items.map(toRecord);
   }
 
+  async listPage(
+    tx: PrismaTx,
+    filter: { partnerId?: string },
+    page: { page: number; pageSize: number },
+  ): Promise<{ items: ListingGroupRecord[]; total: number }> {
+    const where: Prisma.ListingGroupWhereInput = filter.partnerId
+      ? { partnerId: filter.partnerId }
+      : {};
+    const [items, total] = await Promise.all([
+      tx.listingGroup.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: GROUP_INCLUDE,
+        skip: (page.page - 1) * page.pageSize,
+        take: page.pageSize,
+      }),
+      tx.listingGroup.count({ where }),
+    ]);
+    return { items: items.map(toRecord), total };
+  }
+
   async update(
     tx: PrismaTx,
     id: string,

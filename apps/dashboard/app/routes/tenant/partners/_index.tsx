@@ -1,5 +1,5 @@
-import { Link, useFetcher, data as routeData } from 'react-router';
-import type { PartnerResponse, Paginated, PartnerStatus } from '@booking/contracts';
+import { Link, useFetcher, useSearchParams, data as routeData } from 'react-router';
+import type { PartnerResponse, PaginatedWithCounts, PartnerStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -12,20 +12,29 @@ import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
-import { useStatusFilter } from '~/hooks/use-status-filter';
 import { PhoneLink } from '~/components/contact-link';
 import { ErrorBanner } from '~/components/action-feedback';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối tác · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+const STATUS_VALUES: PartnerStatus[] = ['pending', 'approved', 'suspended'];
+
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.partners.read');
-  const res = await apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth);
+  const { toApiQuery } = readListParams(url.searchParams);
+  const statusRaw = url.searchParams.get('status') ?? '';
+  const status = STATUS_VALUES.includes(statusRaw as PartnerStatus) ? statusRaw : '';
+  const res = await apiGet<PaginatedWithCounts<PartnerResponse>>('/tenant/partners', auth, {
+    query: toApiQuery({ status }),
+  });
   return {
-    partners: res.ok ? (res.data?.items ?? []) : [],
+    result: res.ok ? res.data : null,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách đối tác.'),
+    filters: { status },
     canApprove: can('tenant.partners.approve'),
     canManage: can('tenant.partners.manage'),
   };
@@ -52,11 +61,14 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'suspended', label: 'Tạm ngưng' },
 ];
 
-const getStatus = (p: PartnerResponse): string => p.status;
-
 export default function TenantPartners({ loaderData }: Route.ComponentProps) {
-  const { partners, error, canApprove, canManage } = loaderData;
-  const { filter, setFilter, rows, counts } = useStatusFilter(partners, getStatus);
+  const { result, error, canApprove, canManage, filters } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
+  const partners = result?.items ?? [];
+  const total = result?.total ?? 0;
+  const counts = result?.counts;
+  const statusValue = filters.status || 'all';
 
   const columns: DataTableColumn<PartnerResponse>[] = [
     {
@@ -130,14 +142,21 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
-      <StatusFilterTabs filters={FILTERS} counts={counts} value={filter} onChange={setFilter} />
+      <StatusFilterTabs
+        filters={FILTERS}
+        value={statusValue}
+        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
+        counts={counts}
+      />
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={partners}
         getRowKey={(p) => p.id}
         emptyMessage="Chưa có đối tác nào trong nhóm này."
       />
+
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

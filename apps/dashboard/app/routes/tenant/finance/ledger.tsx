@@ -1,4 +1,4 @@
-import { Form, Link } from 'react-router';
+import { Form, Link, useSearchParams } from 'react-router';
 import {
   ledgerEntryTypeSchema,
   type LedgerEntryResponse,
@@ -21,15 +21,13 @@ import { LEDGER_ENTRY_LABEL, LEDGER_OWNER_LABEL } from '~/constants/finance';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { amountToneClass } from '~/components/money';
-import { parsePage, pageHref } from '~/lib/pagination';
+import { readListParams } from '~/lib/pagination';
 import { PaginationBar } from '~/components/pagination-bar';
 import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sổ cái · Tài chính · Tenant · Bookify' }];
 }
-
-const PAGE_SIZE = 25;
 
 /** VN market timezone offset — pins a `YYYY-MM-DD` filter bound to the local calendar day. */
 
@@ -49,26 +47,23 @@ function parseEntryType(raw: string | null): LedgerEntryTypeDto | '' {
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.finance.read');
-  const page = parsePage(url.searchParams);
+  const { toApiQuery } = readListParams(url.searchParams);
   const entryType = parseEntryType(url.searchParams.get('entryType'));
   // Keep the raw `YYYY-MM-DD` for the date inputs; send ISO bounds to the API.
   const fromDay = url.searchParams.get('from') ?? '';
   const toDay = url.searchParams.get('to') ?? '';
-
-  const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
-  if (entryType) params.set('entryType', entryType);
   const fromIso = boundIso(fromDay, 'start');
   const toIso = boundIso(toDay, 'end');
-  if (fromIso) params.set('from', fromIso);
-  if (toIso) params.set('to', toIso);
 
-  const res = await apiGet<Paginated<LedgerEntryResponse>>(
-    `/tenant/finance/ledger?${params.toString()}`,
-    auth,
-  );
+  const res = await apiGet<Paginated<LedgerEntryResponse>>('/tenant/finance/ledger', auth, {
+    query: toApiQuery({
+      entryType: entryType || undefined,
+      from: fromIso ?? undefined,
+      to: toIso ?? undefined,
+    }),
+  });
 
   return {
-    page,
     filters: { entryType, from: fromDay, to: toDay },
     result: res.ok ? res.data : null,
     error: res.ok ? null : (res.error ?? 'Không tải được sổ cái.'),
@@ -144,16 +139,11 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
 ];
 
 export default function TenantLedger({ loaderData }: Route.ComponentProps) {
-  const { result, error, page, filters } = loaderData;
+  const { result, error, filters } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  // Preserve the active filters when paging (a bare `?page=` link would drop them).
-  const filterQs = new URLSearchParams();
-  if (filters.entryType) filterQs.set('entryType', filters.entryType);
-  if (filters.from) filterQs.set('from', filters.from);
-  if (filters.to) filterQs.set('to', filters.to);
   const hasFilters = filters.entryType !== '' || filters.from !== '' || filters.to !== '';
 
   return (
@@ -174,6 +164,8 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         <CardContent className="p-4">
           {/* GET filter form — submitting drops `page`, so any filter change returns to page 1. */}
           <Form method="get" className="flex flex-wrap items-end gap-3">
+            {/* Keep the chosen page size across a filter change. */}
+            <input type="hidden" name="pageSize" value={pageSize} />
             <div className="space-y-1.5">
               <Label htmlFor="entryType">Loại bút toán</Label>
               <NativeSelect id="entryType" name="entryType" defaultValue={filters.entryType}>
@@ -224,7 +216,7 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         emptyMessage={hasFilters ? 'Không có bút toán khớp bộ lọc.' : 'Chưa có bút toán nào.'}
       />
 
-      <PaginationBar page={page} totalPages={totalPages} hrefFor={(p) => pageHref(filterQs, p)} />
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }
