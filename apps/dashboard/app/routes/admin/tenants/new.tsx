@@ -20,23 +20,20 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth, refreshedCookie } = await platformSession(request, 'platform.tenants.write');
+  const { auth } = await platformSession(request, 'platform.tenants.write');
   const parsed = createTenantInputSchema.safeParse(await request.json());
   if (!parsed.success) {
     return data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
   const res = await apiPost<TenantResponse>('/admin/tenants', parsed.data, auth);
-  const cookie = await refreshedCookie();
-  const headers = cookie ? { 'Set-Cookie': cookie } : undefined;
-
   if (!res.ok || !res.data) {
     return data(
       { error: res.error ?? 'Không tạo được tenant.', fieldErrors: res.errors },
-      { status: 400, ...(headers ? { headers } : {}) },
+      { status: 400 },
     );
   }
-  return redirect(`/admin/tenants/${res.data.id}`, headers ? { headers } : undefined);
+  return redirect(`/admin/tenants/${res.data.id}`);
 }
 
 const fields: FieldConfig<CreateTenantInput>[] = [

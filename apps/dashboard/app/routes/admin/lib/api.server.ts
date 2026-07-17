@@ -4,8 +4,6 @@ import type { ApiAuth } from '~/lib/api.server';
 export interface PlatformSession {
   ctx: AuthContext;
   auth: ApiAuth;
-  /** @deprecated Refresh is owned by the root middleware. */
-  refreshedCookie: () => Promise<null>;
 }
 
 export async function platformSession(
@@ -19,7 +17,6 @@ export async function platformSession(
   return {
     ctx,
     auth: { token: ctx.user.accessToken },
-    refreshedCookie: async () => null,
   };
 }
 

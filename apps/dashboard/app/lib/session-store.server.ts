@@ -1,3 +1,5 @@
+import { createClient } from 'redis';
+
 export interface DashboardSessionRecord {
   accessToken: string;
   refreshToken: string;
@@ -130,4 +132,3 @@ export function getDashboardSessionStore(): DashboardSessionStore {
   }
   return defaultDashboardSessionStore;
 }
-import { createClient } from 'redis';
