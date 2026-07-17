@@ -1,5 +1,6 @@
 import { storefrontAuthMiddleware } from './auth-middleware.server';
 import { storefrontEnv } from './env.server';
+import { resolveTenant } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
@@ -52,10 +53,12 @@ export async function storefrontRequestMiddleware(
   args: { request: Request },
   next: () => Promise<Response>,
 ): Promise<Response> {
-  const pathname = new URL(args.request.url).pathname;
+  const { request } = args;
+  const pathname = new URL(request.url).pathname;
   if (OPERATIONAL_PATHS.has(pathname)) return next();
 
-  const rejected = csrfFailure(args.request);
+  const rejected = csrfFailure(request);
   if (rejected) return rejected;
-  return storefrontAuthMiddleware(args, next);
+  const tenant = await resolveTenant(request);
+  return storefrontAuthMiddleware({ request }, next, tenant);
 }

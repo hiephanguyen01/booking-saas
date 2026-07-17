@@ -12,7 +12,7 @@ import { checkoutBooking, createBooking, validatePromo } from '../lib/booking.se
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
 import { buildCheckoutIdempotencyKey } from '../lib/checkout-idempotency.server';
 import { appendRecentCookie } from '../lib/recent.server';
-import { resolveTenant } from '../lib/tenant.server';
+import { getCurrentStorefrontTenant } from '../lib/request-context.server';
 import { storefrontPaths } from '../lib/locale-paths';
 import { getOptionalAuth } from '../lib/auth.server';
 import { getCheckoutFlowService } from '../lib/checkout-flow.server';
@@ -100,7 +100,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
   }
 
-  const tenant = await resolveTenant(request);
+  const tenant = getCurrentStorefrontTenant();
   const refCode = readRefCode(request, tenant.id) ?? undefined;
   const parsed = createBookingInputSchema.safeParse({
     listingId,

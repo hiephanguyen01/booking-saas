@@ -16,7 +16,7 @@ import { data, redirect } from 'react-router';
 import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
 import { backendLogin, backendLogout, publicPost } from './api.server';
 import { getOptionalAuth } from './auth.server';
-import { suppressStorefrontSessionCommit } from './request-auth.server';
+import { suppressStorefrontSessionCommit } from './request-context.server';
 import { safeRedirectPath } from './safe-redirect';
 import { createUserSession, destroyUserSession } from './session.server';
 import type { AuthActionData } from './auth-types';

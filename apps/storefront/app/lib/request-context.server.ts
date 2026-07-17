@@ -1,22 +1,31 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { SessionInfoResponse } from '@booking/contracts';
 import type { StorefrontSessionData } from './session.server';
+import type { StorefrontTenant } from './tenant-mapper';
 
 export interface StorefrontAuthContext {
   session: StorefrontSessionData;
   info: SessionInfoResponse;
 }
 
-export interface StorefrontRequestAuthState {
+export interface StorefrontRequestContextState {
+  tenant: StorefrontTenant;
   auth: StorefrontAuthContext | null;
   suppressSessionCommit: boolean;
 }
 
-const storage = new AsyncLocalStorage<StorefrontRequestAuthState>();
-export const runWithStorefrontRequestAuth = <T>(
-  state: StorefrontRequestAuthState,
+const storage = new AsyncLocalStorage<StorefrontRequestContextState>();
+export const runWithStorefrontRequestContext = <T>(
+  state: StorefrontRequestContextState,
   callback: () => T,
 ) => storage.run(state, callback);
+export const getCurrentStorefrontTenant = (): StorefrontTenant => {
+  const state = storage.getStore();
+  if (!state) {
+    throw new Error('Storefront tenant accessed outside the request context');
+  }
+  return state.tenant;
+};
 export const getCurrentStorefrontAuth = () => storage.getStore()?.auth ?? null;
 export const suppressStorefrontSessionCommit = () => {
   const state = storage.getStore();

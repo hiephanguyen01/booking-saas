@@ -31,6 +31,7 @@ for (const file of repositoryFiles) {
 const storefrontRoot = join(root, 'apps/storefront/app');
 const storefrontFiles = walk(storefrontRoot).filter((file) => sourceExtensions.has(extname(file)));
 let otpCompatibilityExceptions = 0;
+let tenantResolutionCallSites = 0;
 
 for (const file of storefrontFiles) {
   const path = relative(root, file);
@@ -41,6 +42,17 @@ for (const file of storefrontFiles) {
   }
   if (/http:\/\/localhost:(3000|5174)/.test(source) && !path.endsWith('/lib/env.server.ts')) {
     failures.push(`${path}: production-sensitive localhost fallback`);
+  }
+  if (path.endsWith('/lib/request-auth.server.ts')) {
+    failures.push(`${path}: use request-context.server.ts; compatibility shims are forbidden`);
+  }
+  const tenantResolutionCalls = source.match(/\bresolveTenant\s*\(/g) ?? [];
+  if (path.endsWith('/lib/request-security.server.ts')) {
+    tenantResolutionCallSites += tenantResolutionCalls.length;
+  } else if (!path.endsWith('/lib/tenant.server.ts') && tenantResolutionCalls.length > 0) {
+    failures.push(
+      `${path}: resolve tenant only in request-security.server.ts; use getCurrentStorefrontTenant()`,
+    );
   }
   for (const form of source.matchAll(/<Form\b[^>]*method=["']get["'][^>]*>[\s\S]*?<\/Form>/gi)) {
     if (/name=["'](otp|token|password|challengeId)["']/i.test(form[0])) {
@@ -61,6 +73,12 @@ for (const file of storefrontFiles) {
 if (otpCompatibilityExceptions !== 1) {
   failures.push(
     'apps/storefront/app/lib/booking.server.ts: expected exactly one documented API-DEP-01 compatibility exception',
+  );
+}
+
+if (tenantResolutionCallSites !== 1) {
+  failures.push(
+    `apps/storefront/app/lib/request-security.server.ts: expected exactly one resolveTenant() call, found ${tenantResolutionCallSites}`,
   );
 }
 

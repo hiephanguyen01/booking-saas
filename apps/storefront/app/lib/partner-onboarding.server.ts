@@ -17,9 +17,11 @@ import { backendLogin, publicPost } from './api.server';
 import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
 import { getOptionalAuth, requireAuth } from './auth.server';
 import { applyAsPartner, type PartnerApplyPayload, type PartnerErrorCode } from './partner.server';
-import { suppressStorefrontSessionCommit } from './request-auth.server';
+import {
+  getCurrentStorefrontTenant,
+  suppressStorefrontSessionCommit,
+} from './request-context.server';
 import { createUserSession } from './session.server';
-import { resolveTenant } from './tenant.server';
 import { loadAdministrativeProvinces } from './administrative-divisions.server';
 import { storefrontEnv } from './env.server';
 import { errorStatus } from './http-status';
@@ -82,7 +84,7 @@ export async function startPartnerRegistration(request: Request, localeParam?: s
   const locale = localeOf(localeParam);
   const auth = getOptionalAuth();
   if (auth) {
-    const tenant = await resolveTenant(request);
+    const tenant = getCurrentStorefrontTenant();
     const entry = partnerRegistrationEntry(auth, tenant.id);
     if (entry === 'dashboard') {
       return redirect(`${storefrontEnv.dashboardUrl}/partner`);
@@ -306,10 +308,8 @@ export async function loadPartnerProfile(request: Request, localeParam?: string)
   const locale = localeOf(localeParam);
   await requirePartnerPhase(request, 'partner_registration_profile', locale);
   const auth = requireAuth(startPath(locale));
-  const [tenant, provinces] = await Promise.all([
-    resolveTenant(request),
-    loadAdministrativeProvinces(request),
-  ]);
+  const tenant = getCurrentStorefrontTenant();
+  const provinces = await loadAdministrativeProvinces(request);
   // The flow record is deliberately not returned — it holds the completionToken.
   return { email: auth.info.user.email, tenantName: tenant.name, provinces };
 }
@@ -318,7 +318,7 @@ export async function submitPartnerProfile(request: Request, localeParam?: strin
   const locale = localeOf(localeParam);
   const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
   const auth = requireAuth(startPath(locale));
-  const tenant = await resolveTenant(request);
+  const tenant = getCurrentStorefrontTenant();
   const parsed = partnerOnboardingProfileSchema.safeParse(await request.json());
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const payload = partnerApplyPayloadFor(parsed.data, tenant.id, auth.session.userId);

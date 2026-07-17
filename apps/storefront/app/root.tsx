@@ -25,7 +25,8 @@ import {
 } from './lib/affiliate.server';
 import { fetchListingTypes } from './lib/catalog.server';
 import { resolveLocale } from './lib/i18n.server';
-import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
+import { getCurrentStorefrontTenant } from './lib/request-context.server';
+import type { StorefrontTenant } from './lib/tenant.server';
 import { themeCss } from './theme/theme';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
 import { storefrontRequestMiddleware } from './lib/request-security.server';
@@ -43,7 +44,7 @@ export interface StorefrontContext {
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const tenant = await resolveTenant(request);
+  const tenant = getCurrentStorefrontTenant();
   const locale = resolveLocale(request, tenant.defaultLocale);
   const publicUrl = requestPublicUrl(request, url);
   const canonical = canonicalUrl(publicUrl);

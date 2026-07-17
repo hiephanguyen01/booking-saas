@@ -7,7 +7,7 @@ import { data, Link, useRouteLoaderData } from 'react-router';
 import { applyAsAffiliate } from '../lib/affiliate.server';
 import { NsI18n, useTranslation, type ScopedI18n, type ScopedTranslationKey } from '../lib/i18n';
 import { registerOrLogin } from '../lib/partner.server';
-import { resolveTenant } from '../lib/tenant.server';
+import { getCurrentStorefrontTenant } from '../lib/request-context.server';
 import type { loader as rootLoader } from '../root';
 import type { Route } from './+types/become-affiliate';
 import { partnerMeta } from './partner-onboarding/shared';
@@ -21,8 +21,8 @@ export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors
 /** Tells root.tsx to hide the SiteHeader and SiteFooter on this page. */
 export const handle = { standalone: true };
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const tenant = await resolveTenant(request);
+export async function loader() {
+  const tenant = getCurrentStorefrontTenant();
   return {
     tenantName: tenant.name,
     tenantLogoUrl: tenant.logoUrl ?? null,
@@ -31,7 +31,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const tenant = await resolveTenant(request);
+  const tenant = getCurrentStorefrontTenant();
 
   const parsed = affiliateRegistrationSchema.safeParse(await request.json());
   if (!parsed.success) {

@@ -1,10 +1,11 @@
 import { sessionInfoResponseSchema, type SessionInfoResponse } from '@booking/contracts';
 import { apiGet, backendRefresh } from './api.server';
 import {
-  runWithStorefrontRequestAuth,
-  type StorefrontRequestAuthState,
-} from './request-auth.server';
+  runWithStorefrontRequestContext,
+  type StorefrontRequestContextState,
+} from './request-context.server';
 import { getStorefrontSessionService, type StorefrontSessionData } from './session.server';
+import type { StorefrontTenant } from './tenant-mapper';
 
 type AuthResult =
   | {
@@ -44,6 +45,7 @@ async function authenticate(data: StorefrontSessionData, signal: AbortSignal): P
 export async function storefrontAuthMiddleware(
   { request }: { request: Request },
   next: () => Promise<Response>,
+  tenant: StorefrontTenant,
 ) {
   const service = getStorefrontSessionService();
   let stored: Awaited<ReturnType<typeof service.read>>;
@@ -53,25 +55,29 @@ export async function storefrontAuthMiddleware(
     throw new Response('Session service temporarily unavailable', { status: 503 });
   }
   if (!stored) {
-    return runWithStorefrontRequestAuth({ auth: null, suppressSessionCommit: false }, next);
+    return runWithStorefrontRequestContext(
+      { tenant, auth: null, suppressSessionCommit: false },
+      next,
+    );
   }
   const result = await authenticate(stored.data, request.signal);
   if (result.kind === 'unavailable') {
     throw new Response('Authentication service temporarily unavailable', { status: 503 });
   }
   if (result.kind === 'invalid') {
-    const response = await runWithStorefrontRequestAuth(
-      { auth: null, suppressSessionCommit: false },
+    const response = await runWithStorefrontRequestContext(
+      { tenant, auth: null, suppressSessionCommit: false },
       next,
     );
     response.headers.append('Set-Cookie', await service.destroy(request));
     return response;
   }
-  const state: StorefrontRequestAuthState = {
+  const state: StorefrontRequestContextState = {
+    tenant,
     auth: { session: result.data, info: result.info },
     suppressSessionCommit: false,
   };
-  const response = await runWithStorefrontRequestAuth(state, next);
+  const response = await runWithStorefrontRequestContext(state, next);
   if (result.rotated && !state.suppressSessionCommit) await service.rotate(stored.id, result.data);
   return response;
 }

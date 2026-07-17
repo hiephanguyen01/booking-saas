@@ -1,5 +1,5 @@
 import { redirect } from 'react-router';
-import { getCurrentStorefrontAuth } from './request-auth.server';
+import { getCurrentStorefrontAuth } from './request-context.server';
 
 export const getOptionalAuth = () => getCurrentStorefrontAuth();
 export function requireAuth(redirectTo: string) {
