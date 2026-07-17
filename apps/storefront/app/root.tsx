@@ -1,6 +1,5 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { BookingI18nProvider, type Locale } from '@booking/i18n';
-import { QueryProvider } from '@booking/query';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import {
   data,
@@ -143,29 +142,27 @@ export default function App({ loaderData }: Route.ComponentProps) {
 
   return (
     <BookingI18nProvider locale={locale}>
-      <QueryProvider>
-        <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
-          <ThemeStyle theme={tenant.theme} />
-          {!tenant.live ? (
-            <SuspendedNotice name={tenant.name} />
-          ) : isStandalone ? (
-            <Outlet context={outletContext} />
-          ) : (
-            <>
-              <SiteHeader
-                tenant={tenant}
-                listingTypes={listingTypes}
-                locale={locale}
-                currentUser={currentUser}
-              />
-              <main className="flex-1">
-                <Outlet context={outletContext} />
-              </main>
-              <SiteFooter tenant={tenant} />
-            </>
-          )}
-        </div>
-      </QueryProvider>
+      <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
+        <ThemeStyle theme={tenant.theme} />
+        {!tenant.live ? (
+          <SuspendedNotice name={tenant.name} />
+        ) : isStandalone ? (
+          <Outlet context={outletContext} />
+        ) : (
+          <>
+            <SiteHeader
+              tenant={tenant}
+              listingTypes={listingTypes}
+              locale={locale}
+              currentUser={currentUser}
+            />
+            <main className="flex-1">
+              <Outlet context={outletContext} />
+            </main>
+            <SiteFooter tenant={tenant} />
+          </>
+        )}
+      </div>
     </BookingI18nProvider>
   );
 }
