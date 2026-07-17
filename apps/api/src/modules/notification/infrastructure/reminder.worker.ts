@@ -2,7 +2,7 @@ import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
 import { addMinutes, utcNow } from '../../../shared/time/time';
-import { DispatchNotificationService } from '../application/dispatch-notification.service';
+import { DispatchReminderUseCase } from '../application/use-cases/dispatch-reminder.use-case';
 import { NOTIFICATION_READER, type INotificationReader } from '../domain/ports/notification-reader.port';
 
 export const REMINDER_QUEUE = 'notification-reminder';
@@ -25,7 +25,7 @@ export class ReminderWorker implements OnModuleInit, OnApplicationShutdown {
 
   constructor(
     @Inject(NOTIFICATION_READER) private readonly reader: INotificationReader,
-    private readonly dispatcher: DispatchNotificationService,
+    private readonly dispatchReminder: DispatchReminderUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -50,7 +50,7 @@ export class ReminderWorker implements OnModuleInit, OnApplicationShutdown {
     let sent = 0;
     for (const { tenantId, bookingId } of due) {
       try {
-        await this.dispatcher.dispatchReminder(tenantId, bookingId);
+        await this.dispatchReminder.execute(tenantId, bookingId);
         sent++;
       } catch (err) {
         this.logger.warn(`reminder for booking ${bookingId} failed: ${err instanceof Error ? err.message : String(err)}`);

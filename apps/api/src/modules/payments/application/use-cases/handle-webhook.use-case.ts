@@ -4,8 +4,8 @@ import { utcNow } from '../../../../shared/time/time';
 import { ConfirmBookingUseCase } from '../../../booking/application/use-cases/confirm-booking.use-case';
 import type { GatewayKey } from '../../domain/ports/payment-gateway.port';
 import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../../domain/ports/payment-repository.port';
+import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 import { amountMatches } from '../../domain/payment-status';
-import { GatewayRegistry } from '../../infrastructure/gateway-registry';
 
 /**
  * The webhook — the single source of truth for payment (§11.2). Resolves the
@@ -19,7 +19,7 @@ export class HandleWebhookUseCase {
 
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
-    private readonly registry: GatewayRegistry,
+    @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly confirmBooking: ConfirmBookingUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}

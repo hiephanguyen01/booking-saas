@@ -1,19 +1,25 @@
 import { data as routeData } from 'react-router';
 import type {
-  AffiliateRateSourceDto,
   AffiliateStatsResponse,
   UpdateAffiliatePayoutInfoInput,
 } from '@booking/contracts';
 import { updateAffiliatePayoutInfoInputSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { CheckCircle2, MousePointerClick, Percent, ShoppingBag, Wallet } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@booking/ui/components/ui/card';
+import { MousePointerClick, Percent, ShoppingBag, Wallet } from 'lucide-react';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { formatDiscount, formatRate } from '~/lib/format';
 import type { Route } from './+types/_index';
-import { requireAffiliate } from './affiliate.server';
+import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
+import { RATE_SOURCE_LABEL } from '~/constants/affiliate';
+import { SuccessBanner } from '~/components/action-feedback';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
@@ -37,7 +43,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   const { auth, active } = await requireAffiliate(request);
-  if (!active) return routeData({ fieldErrors: null, error: 'Chưa được duyệt.', ok: false }, { status: 403 });
+  if (!active)
+    return routeData({ fieldErrors: null, error: 'Chưa được duyệt.', ok: false }, { status: 403 });
 
   const parsed = updateAffiliatePayoutInfoInputSchema.safeParse(await request.json());
   if (!parsed.success) {
@@ -56,17 +63,35 @@ export async function action({ request }: Route.ActionArgs) {
   return { fieldErrors: null, error: null, ok: true as const };
 }
 
-const RATE_SOURCE_LABEL: Record<AffiliateRateSourceDto, string> = {
-  custom: 'Mức riêng dành cho bạn',
-  rule: 'Theo quy tắc của tenant',
-  none: 'Chưa được cấu hình',
-};
-
 const payoutFields: FieldConfig<UpdateAffiliatePayoutInfoInput>[] = [
-  { name: 'bankName', type: 'text', label: 'Ngân hàng', placeholder: 'VD: Vietcombank', colSpan: 1 },
-  { name: 'accountNo', type: 'text', label: 'Số tài khoản', placeholder: 'VD: 0123456789', colSpan: 1 },
-  { name: 'accountHolder', type: 'text', label: 'Chủ tài khoản', placeholder: 'VD: NGUYEN VAN A', colSpan: 2 },
-  { name: 'note', type: 'textarea', label: 'Ghi chú', placeholder: 'Thông tin thêm cho tenant khi chi trả', colSpan: 2 },
+  {
+    name: 'bankName',
+    type: 'text',
+    label: 'Ngân hàng',
+    placeholder: 'VD: Vietcombank',
+    colSpan: 1,
+  },
+  {
+    name: 'accountNo',
+    type: 'text',
+    label: 'Số tài khoản',
+    placeholder: 'VD: 0123456789',
+    colSpan: 1,
+  },
+  {
+    name: 'accountHolder',
+    type: 'text',
+    label: 'Chủ tài khoản',
+    placeholder: 'VD: NGUYEN VAN A',
+    colSpan: 2,
+  },
+  {
+    name: 'note',
+    type: 'textarea',
+    label: 'Ghi chú',
+    placeholder: 'Thông tin thêm cho tenant khi chi trả',
+    colSpan: 2,
+  },
 ];
 
 export default function AffiliateOverview({ loaderData, actionData }: Route.ComponentProps) {
@@ -91,8 +116,16 @@ export default function AffiliateOverview({ loaderData, actionData }: Route.Comp
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={<MousePointerClick className="size-4" />} label="Lượt click" value={stats.clicks} />
-        <StatCard icon={<ShoppingBag className="size-4" />} label="Đơn đặt" value={stats.bookings} />
+        <StatCard
+          icon={<MousePointerClick className="size-4" />}
+          label="Lượt click"
+          value={stats.clicks}
+        />
+        <StatCard
+          icon={<ShoppingBag className="size-4" />}
+          label="Đơn đặt"
+          value={stats.bookings}
+        />
         <StatCard
           icon={<Percent className="size-4" />}
           label="Tỷ lệ chuyển đổi"
@@ -106,8 +139,16 @@ export default function AffiliateOverview({ loaderData, actionData }: Route.Comp
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Chờ xác nhận" value={<Money value={stats.pendingCommission} />} tone="muted" />
-        <StatCard label="Đã xác nhận (sẽ trả)" value={<Money value={stats.confirmedCommission} />} tone="positive" />
+        <StatCard
+          label="Chờ xác nhận"
+          value={<Money value={stats.pendingCommission} />}
+          tone="muted"
+        />
+        <StatCard
+          label="Đã xác nhận (sẽ trả)"
+          value={<Money value={stats.confirmedCommission} />}
+          tone="positive"
+        />
         <StatCard label="Đã trả" value={<Money value={stats.paidCommission} />} />
       </div>
 
@@ -128,7 +169,8 @@ export default function AffiliateOverview({ loaderData, actionData }: Route.Comp
                 label="Hoa hồng đã huỷ / thu hồi"
                 value={
                   <span className="tabular-nums">
-                    <Money value={stats.reversedCommission} /> · <Money value={stats.clawedBackCommission} />
+                    <Money value={stats.reversedCommission} /> ·{' '}
+                    <Money value={stats.clawedBackCommission} />
                   </span>
                 }
                 emphasis="muted"
@@ -141,15 +183,12 @@ export default function AffiliateOverview({ loaderData, actionData }: Route.Comp
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Tài khoản nhận tiền</CardTitle>
-            <CardDescription>Tenant dùng thông tin này để chi trả hoa hồng cho bạn.</CardDescription>
+            <CardDescription>
+              Tenant dùng thông tin này để chi trả hoa hồng cho bạn.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {ok ? (
-              <Alert className="mb-4 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
-                <CheckCircle2 className="size-4" />
-                <AlertDescription>Đã lưu thông tin tài khoản.</AlertDescription>
-              </Alert>
-            ) : null}
+          <CardContent className="space-y-4">
+            <SuccessBanner message={ok ? 'Đã lưu thông tin tài khoản.' : null} />
             <GenericForm
               schema={updateAffiliatePayoutInfoInputSchema}
               fields={payoutFields}

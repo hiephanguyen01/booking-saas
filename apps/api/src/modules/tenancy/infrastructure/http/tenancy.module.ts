@@ -18,6 +18,7 @@ import { NodeDnsVerifier } from '../services/node-dns-verifier';
 import { DomainVerificationWorker } from '../domain-verification.worker';
 import { CreateTenantUseCase } from '../../application/use-cases/create-tenant.use-case';
 import { ListTenantsUseCase } from '../../application/use-cases/list-tenants.use-case';
+import { GetTenancyConfigUseCase } from '../../application/use-cases/get-tenancy-config.use-case';
 import { GetTenantUseCase } from '../../application/use-cases/get-tenant.use-case';
 import { GetTenantDetailUseCase } from '../../application/use-cases/get-tenant-detail.use-case';
 import { CheckSlugAvailabilityUseCase } from '../../application/use-cases/check-slug-availability.use-case';
@@ -37,7 +38,11 @@ import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
 import { GetPlatformHealthUseCase } from '../../application/use-cases/get-platform-health.use-case';
-import { PlanLimitService } from '../../application/services/plan-limit.service';
+import { GetPlanLimitsUseCase } from '../../application/use-cases/get-plan-limits.use-case';
+import { AssertCanAddPartnerUseCase } from '../../application/use-cases/assert-can-add-partner.use-case';
+import { AssertCanAddListingUseCase } from '../../application/use-cases/assert-can-add-listing.use-case';
+import { AssertCustomDomainAllowedUseCase } from '../../application/use-cases/assert-custom-domain-allowed.use-case';
+import { CheckBookingQuotaUseCase } from '../../application/use-cases/check-booking-quota.use-case';
 import { PlanLimitGuard } from './guards/plan-limit.guard';
 import { RequireActiveSubscriptionGuard } from './guards/require-active-subscription.guard';
 import { AdminTenantController } from './admin-tenant.controller';
@@ -70,6 +75,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     },
     CreateTenantUseCase,
     ListTenantsUseCase,
+    GetTenancyConfigUseCase,
     GetTenantUseCase,
     GetTenantDetailUseCase,
     CheckSlugAvailabilityUseCase,
@@ -89,7 +95,11 @@ import { TenantSettingsController } from './tenant-settings.controller';
     DeleteDomainUseCase,
     ResolveTenantByHostUseCase,
     GetPlatformHealthUseCase,
-    PlanLimitService,
+    GetPlanLimitsUseCase,
+    AssertCanAddPartnerUseCase,
+    AssertCanAddListingUseCase,
+    AssertCustomDomainAllowedUseCase,
+    CheckBookingQuotaUseCase,
     PlanLimitGuard,
     RequireActiveSubscriptionGuard,
   ],
@@ -98,7 +108,10 @@ import { TenantSettingsController } from './tenant-settings.controller';
   // SUBSCRIPTION_REPOSITORY is exported too so RequireActiveSubscriptionGuard can
   // be re-instantiated in a consuming module's injector via @UseGuards.
   exports: [
-    PlanLimitService,
+    // The two hard-limit asserts back PlanLimitGuard (re-instantiated in the
+    // consuming module's injector) and the partner application flow.
+    AssertCanAddPartnerUseCase,
+    AssertCanAddListingUseCase,
     PlanLimitGuard,
     RequireActiveSubscriptionGuard,
     TENANT_REPOSITORY,

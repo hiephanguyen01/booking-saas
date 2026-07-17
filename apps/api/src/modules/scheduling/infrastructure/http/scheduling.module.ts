@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Inject, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
@@ -8,14 +8,21 @@ import { AVAILABILITY_RULE_REPOSITORY } from '../../domain/ports/availability-ru
 import { AVAILABILITY_EXCEPTION_REPOSITORY } from '../../domain/ports/availability-exception-repository.port';
 import { BUSY_READER } from '../../domain/ports/busy-reader.port';
 import { HOLD_READER } from '../../domain/ports/hold-reader.port';
+import {
+  AVAILABILITY_CACHE,
+  type IAvailabilityCache,
+} from '../../domain/ports/availability-cache.port';
 import { PrismaAvailabilityRuleRepository } from '../repositories/prisma-availability-rule.repository';
 import { PrismaAvailabilityExceptionRepository } from '../repositories/prisma-availability-exception.repository';
 import { PrismaBusyReader } from '../repositories/prisma-busy-reader';
 import { RedisHoldReader } from '../repositories/redis-hold-reader';
-import { AvailabilityCache } from '../availability-cache';
-import { AvailabilityCacheInvalidator } from '../../application/availability-cache-invalidator';
+import { RedisAvailabilityCache } from '../redis-availability-cache';
 import { GetAvailabilityUseCase } from '../../application/use-cases/get-availability.use-case';
-import { ManageAvailabilityUseCase } from '../../application/use-cases/manage-availability.use-case';
+import { ListAvailabilityRulesUseCase } from '../../application/use-cases/list-availability-rules.use-case';
+import { SetAvailabilityRulesUseCase } from '../../application/use-cases/set-availability-rules.use-case';
+import { ListAvailabilityExceptionsUseCase } from '../../application/use-cases/list-availability-exceptions.use-case';
+import { AddAvailabilityExceptionUseCase } from '../../application/use-cases/add-availability-exception.use-case';
+import { DeleteAvailabilityExceptionUseCase } from '../../application/use-cases/delete-availability-exception.use-case';
 import { PublicAvailabilityController } from './public-availability.controller';
 import { TenantAvailabilityController } from './tenant-availability.controller';
 import { PartnerAvailabilityController } from './partner-availability.controller';
@@ -44,16 +51,19 @@ const BOOKING_BUSY_EVENTS = [
     { provide: AVAILABILITY_EXCEPTION_REPOSITORY, useClass: PrismaAvailabilityExceptionRepository },
     { provide: BUSY_READER, useClass: PrismaBusyReader },
     { provide: HOLD_READER, useClass: RedisHoldReader },
-    AvailabilityCache,
-    AvailabilityCacheInvalidator,
+    { provide: AVAILABILITY_CACHE, useClass: RedisAvailabilityCache },
     GetAvailabilityUseCase,
-    ManageAvailabilityUseCase,
+    ListAvailabilityRulesUseCase,
+    SetAvailabilityRulesUseCase,
+    ListAvailabilityExceptionsUseCase,
+    AddAvailabilityExceptionUseCase,
+    DeleteAvailabilityExceptionUseCase,
   ],
 })
 export class SchedulingModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
-    private readonly invalidator: AvailabilityCacheInvalidator,
+    @Inject(AVAILABILITY_CACHE) private readonly cache: IAvailabilityCache,
   ) {}
 
   /**
@@ -66,7 +76,7 @@ export class SchedulingModule implements OnModuleInit {
     for (const eventType of BOOKING_BUSY_EVENTS) {
       this.registry.register(eventType, (event) => {
         const { bookingId } = event.payload as { bookingId: string };
-        return this.invalidator.invalidateByBooking(event.tenantId ?? '', bookingId);
+        return this.cache.invalidateByBooking(event.tenantId ?? '', bookingId);
       });
     }
   }

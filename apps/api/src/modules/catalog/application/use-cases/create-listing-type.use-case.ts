@@ -7,7 +7,7 @@ import {
   type IListingTypeRepository,
   type ListingTypeRecord,
 } from '../../domain/ports/listing-type-repository.port';
-import { assertValidListingTypeSearchConfig } from '../services/listing-type-search-config.validator';
+import { assertValidListingTypeSearchConfig } from '../listing-type-search-config.validator';
 
 /** Tenant admin defines a new listing type with its typed attribute schema (§7.3). */
 @Injectable()

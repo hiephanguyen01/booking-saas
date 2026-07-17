@@ -3,7 +3,7 @@ import { Building2, Store } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/workspaces';
 import { requireSessionInfo } from '~/lib/auth.server';
-import { dashboardPaths } from '~/lib/paths';
+import { dashboardPaths } from '~/constants/paths';
 import { firstPartnerMembership, firstTenantMembership } from '~/lib/workspace';
 
 export async function loader({ request }: Route.LoaderArgs) {

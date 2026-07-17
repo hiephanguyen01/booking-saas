@@ -4,7 +4,7 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { BOOKING_REPOSITORY, type IBookingRepository } from '../../../booking/domain/ports/booking-repository.port';
 import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../../domain/ports/payment-repository.port';
-import { GatewayRegistry } from '../../infrastructure/gateway-registry';
+import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
 
 /**
  * The tenant's OWN storefront origin — each tenant serves on its own dynamic
@@ -26,7 +26,7 @@ export class CheckoutUseCase {
   constructor(
     @Inject(BOOKING_REPOSITORY) private readonly bookings: IBookingRepository,
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
-    private readonly registry: GatewayRegistry,
+    @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}

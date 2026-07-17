@@ -29,7 +29,7 @@ import { toListingResponse } from '../../application/listing.mapper';
 import { CreateListingUseCase } from '../../application/use-cases/create-listing.use-case';
 import { DeleteListingUseCase } from '../../application/use-cases/delete-listing.use-case';
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
-import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
+import { ListListingsPageUseCase } from '../../application/use-cases/list-listings-page.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
 import {
   CreateListingDto,
@@ -43,7 +43,7 @@ import {
 export class TenantListingController {
   constructor(
     private readonly createListing: CreateListingUseCase,
-    private readonly listListings: ListListingsUseCase,
+    private readonly listListingsPage: ListListingsPageUseCase,
     private readonly getListing: GetListingUseCase,
     private readonly updateListing: UpdateListingUseCase,
     private readonly deleteListing: DeleteListingUseCase,
@@ -59,7 +59,7 @@ export class TenantListingController {
   @ApiOperation({ summary: "List the tenant's listings" })
   @ApiPaginatedResponse(ListingResponseDto)
   async list(@Query() query: ListTenantListingsQueryDto): Promise<Paginated<ListingResponse>> {
-    const { items, total } = await this.listListings.executePage(
+    const { items, total } = await this.listListingsPage.execute(
       this.tenantContext.tenantIdOrThrow(),
       { groupId: query.groupId },
       { page: query.page, pageSize: query.pageSize },

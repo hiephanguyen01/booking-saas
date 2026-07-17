@@ -4,7 +4,7 @@ import {
   type AdministrativeProvince,
   type AdministrativeWard,
 } from '@booking/contracts';
-import { apiGet, type ApiAuth } from './api.server';
+import { apiGet, unwrapApiResult, type ApiAuth } from './api.server';
 
 export async function loadAdministrativeProvinces(
   auth: ApiAuth,
@@ -15,12 +15,7 @@ export async function loadAdministrativeProvinces(
     auth,
     { signal, schema: administrativeProvinceListSchema },
   );
-  if (!result.ok || !result.data) {
-    throw new Response(result.error ?? 'Không thể tải danh sách tỉnh/thành phố.', {
-      status: result.status || 502,
-    });
-  }
-  return result.data;
+  return unwrapApiResult(result, 'Không thể tải danh sách tỉnh/thành phố.');
 }
 
 export async function loadAdministrativeWards(
@@ -33,10 +28,5 @@ export async function loadAdministrativeWards(
     auth,
     { signal, schema: administrativeWardListSchema },
   );
-  if (!result.ok || !result.data) {
-    throw new Response(result.error ?? 'Không thể tải danh sách phường/xã.', {
-      status: result.status || 502,
-    });
-  }
-  return result.data;
+  return unwrapApiResult(result, 'Không thể tải danh sách phường/xã.');
 }

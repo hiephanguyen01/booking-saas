@@ -27,35 +27,28 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
-    "@nestjs/testing": "^11.1.0",
     "@swc/core": "^1.12.0",
-    "@testcontainers/postgresql": "^11.0.0",
-    "@testcontainers/redis": "^11.0.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.0",
     "@types/node": "^20.19.0",
     "@types/nodemailer": "^8.0.1",
-    "@types/supertest": "^6.0.3",
     "prisma": "^6.11.0",
-    "supertest": "^7.1.0",
     "ts-node": "^10.9.2",
-    "unplugin-swc": "^1.5.5",
-    "vitest": "^3.2.0"
+    "unplugin-swc": "^1.5.5"
   },
   "name": "@booking/api",
   "private": true,
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.build.json",
-    "lint": "eslint src test",
+    "lint": "eslint src",
     "typecheck": "prisma generate && tsc --noEmit",
-    "test": "vitest run --config vitest.config.ts",
-    "test:integration": "vitest run --config vitest.integration.config.ts",
     "dev": "prisma generate && nest start --watch",
     "start:dev": "prisma generate && nest start --watch",
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",
     "seed": "ts-node --transpile-only prisma/seed.ts",
-    "storage:init": "ts-node --transpile-only scripts/bootstrap-storage.ts"
+    "storage:init": "ts-node --transpile-only scripts/bootstrap-storage.ts",
+    "check:rls": "ts-node --transpile-only scripts/check-rls.ts"
   },
   "version": "0.0.1"
 }

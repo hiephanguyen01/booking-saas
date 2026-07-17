@@ -9,7 +9,7 @@ import {
   type IPromotionRepository,
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
-import { normalizeCode } from '../apply-promotion.service';
+import { normalizeCode } from '../../domain/promotion-application';
 import { assertPartnerOwnsScope } from '../assert-partner-owns-scope';
 
 /**

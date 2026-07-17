@@ -1,6 +1,4 @@
 import { Link, useSearchParams } from 'react-router';
-import { dehydrate, HydrationBoundary, useQuery } from '@tanstack/react-query';
-import { makeQueryClient } from '@booking/query';
 import type { BookingMode, BookingResponse, PartnerResponse, Paginated } from '@booking/contracts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
@@ -9,19 +7,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
-import { BOOKING_MODE_LABEL, formatDateTime, formatRate } from '~/lib/format';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { formatDateTime, formatRate } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { BookingStatusBadge } from '~/components/status-badge';
 import { Money } from '~/components/money';
 import {
-  bookingListQueryOptions,
   parseBookingStatus,
   type BookingStatusFilter,
-} from '~/features/bookings/booking-list.query';
-import { fetchBookingList } from '~/features/bookings/booking-list.server';
-import { dashboardPaths } from '~/lib/paths';
+  type BookingSummary,
+} from '~/features/bookings/lib/booking-list';
+import { fetchBookingList } from '~/features/bookings/server/booking-list.server';
+import { dashboardPaths } from '~/constants/paths';
 
 interface PartnerStat {
   partnerId: string;
@@ -39,15 +38,10 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const { auth, can, tenantId } = await requireTenant(request, 'tenant.bookings.read');
+  const { auth, can } = await requireTenant(request, 'tenant.bookings.read');
   const status = parseBookingStatus(url.searchParams.get('status'));
-  const queryClient = makeQueryClient();
-  const [, statsRes, partnersRes] = await Promise.all([
-    queryClient.fetchQuery({
-      ...bookingListQueryOptions(tenantId, status),
-      queryFn: ({ signal }) =>
-        fetchBookingList(auth, status, AbortSignal.any([request.signal, signal])),
-    }),
+  const [list, statsRes, partnersRes] = await Promise.all([
+    fetchBookingList(auth, status, request.signal),
     apiGet<PartnerStat[]>('/tenant/bookings/partner-stats', auth, { signal: request.signal }),
     can('tenant.partners.read')
       ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth, {
@@ -61,9 +55,9 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   for (const p of partners) partnerNames[p.id] = p.name;
 
   return {
-    tenantId,
     status,
-    dehydratedState: dehydrate(queryClient),
+    bookings: list.items,
+    summary: list.summary,
     stats: statsRes.ok ? (statsRes.data ?? []) : [],
     partnerNames,
   };
@@ -71,35 +65,27 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 
 export default function TenantBookings({ loaderData }: Route.ComponentProps) {
   return (
-    <HydrationBoundary state={loaderData.dehydratedState}>
-      <TenantBookingsPage
-        tenantId={loaderData.tenantId}
-        status={loaderData.status}
-        stats={loaderData.stats}
-        partnerNames={loaderData.partnerNames}
-      />
-    </HydrationBoundary>
+    <TenantBookingsPage
+      status={loaderData.status}
+      bookings={loaderData.bookings}
+      summary={loaderData.summary}
+      stats={loaderData.stats}
+      partnerNames={loaderData.partnerNames}
+    />
   );
 }
 
 interface TenantBookingsPageProps {
-  tenantId: string;
   status: BookingStatusFilter;
+  bookings: BookingResponse[];
+  summary: BookingSummary;
   stats: PartnerStat[];
   partnerNames: Record<string, string>;
 }
 
-function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBookingsPageProps) {
+function TenantBookingsPage({ status, bookings, summary, stats, partnerNames }: TenantBookingsPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const query = useQuery(bookingListQueryOptions(tenantId, status));
-  const bookings = query.data?.items ?? [];
-  const kpis = query.data?.summary ?? {
-    total: 0,
-    active: 0,
-    completed: 0,
-    revenue: '0',
-    capped: false,
-  };
+  const kpis = summary;
   // When the row cap is hit the KPIs cover only the latest slice — say so rather
   // than presenting a truncated count as a cumulative total.
   const cappedHint = kpis.capped ? 'trong 200 đơn gần nhất' : undefined;
@@ -155,10 +141,6 @@ function TenantBookingsPage({ tenantId, status, stats, partnerNames }: TenantBoo
   return (
     <div className="space-y-6">
       <PageHeader title="Đặt chỗ" description="Theo dõi đơn đặt và sức khoẻ vận hành của từng đối tác." />
-
-      {query.error ? (
-        <Card><CardContent className="p-4 text-sm text-destructive">Không thể cập nhật danh sách đặt chỗ.</CardContent></Card>
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Tổng đơn" value={kpis.total} hint={cappedHint} />

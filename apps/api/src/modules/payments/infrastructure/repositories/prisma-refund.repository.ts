@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateRefundData,
@@ -40,5 +40,9 @@ export class PrismaRefundRepository implements IRefundRepository {
 
   async existsForBooking(tx: PrismaTx, bookingId: string): Promise<boolean> {
     return (await tx.refund.count({ where: { bookingId } })) > 0;
+  }
+
+  async lockForBooking(tx: PrismaTx, bookingId: string): Promise<void> {
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('refund:' || ${bookingId}))`);
   }
 }

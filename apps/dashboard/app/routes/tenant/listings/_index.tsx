@@ -8,26 +8,14 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { ClipboardCheck, Eye } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
-import { BOOKING_MODE_LABEL, formatDateTime } from '~/lib/format';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { formatDateTime } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
+import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { asRecord } from '~/lib/records';
-
-/** Lowest configured base price across a listing's modes (VND đồng digit string). */
-function listingPriceFrom(modeConfig: Record<string, unknown>): string | null {
-  let min: bigint | null = null;
-  for (const [mode, cfg] of Object.entries(modeConfig)) {
-    const c = asRecord(cfg);
-    if (!c) continue;
-    const raw = mode === 'daily' ? c.basePricePerNight : c.basePrice;
-    if (typeof raw !== 'string' || !/^\d+$/.test(raw)) continue;
-    const value = BigInt(raw);
-    if (min === null || value < min) min = value;
-  }
-  return min === null ? null : min.toString();
-}
+import { listingPriceFrom } from '~/lib/listing-price';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Listing · Tenant · Bookify' }];
@@ -112,7 +100,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
     {
       header: 'Giá từ',
       cell: (l) => {
-        const price = listingPriceFrom(l.modeConfig);
+        const price = listingPriceFrom(l);
         return price ? (
           <Money value={price} className="text-sm" />
         ) : (
@@ -159,11 +147,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         description="Quản lý và kiểm duyệt các listing của đối tác trong marketplace."
       />
 
-      {error ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      ) : null}
+      <ErrorBanner error={error} />
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
         <TabsList className="flex-wrap">

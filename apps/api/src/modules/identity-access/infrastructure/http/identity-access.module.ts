@@ -12,16 +12,14 @@ import { RefreshSessionUseCase } from '../../application/use-cases/refresh-sessi
 import { RegisterUseCase } from '../../application/use-cases/register.use-case';
 import { FindOrCreateGuestUseCase } from '../../application/use-cases/find-or-create-guest.use-case';
 import { UpgradeGuestUseCase } from '../../application/use-cases/upgrade-guest.use-case';
-import {
-  CompletePasswordResetUseCase,
-  CompleteRegistrationUseCase,
-  ResendPasswordResetUseCase,
-  ResendRegistrationUseCase,
-  StartPasswordResetUseCase,
-  StartRegistrationUseCase,
-  VerifyPasswordResetUseCase,
-  VerifyRegistrationUseCase,
-} from '../../application/use-cases/customer-auth-flow.use-cases';
+import { CompletePasswordResetUseCase } from '../../application/use-cases/complete-password-reset.use-case';
+import { CompleteRegistrationUseCase } from '../../application/use-cases/complete-registration.use-case';
+import { ResendPasswordResetUseCase } from '../../application/use-cases/resend-password-reset.use-case';
+import { ResendRegistrationUseCase } from '../../application/use-cases/resend-registration.use-case';
+import { StartPasswordResetUseCase } from '../../application/use-cases/start-password-reset.use-case';
+import { StartRegistrationUseCase } from '../../application/use-cases/start-registration.use-case';
+import { VerifyPasswordResetUseCase } from '../../application/use-cases/verify-password-reset.use-case';
+import { VerifyRegistrationUseCase } from '../../application/use-cases/verify-registration.use-case';
 import { AUTH_CHALLENGE_STORE } from '../../domain/ports/auth-challenge-store.port';
 import { AUTH_EMAIL_SENDER } from '../../domain/ports/auth-email-sender.port';
 import { PrismaUserRepository } from '../repositories/prisma-user.repository';

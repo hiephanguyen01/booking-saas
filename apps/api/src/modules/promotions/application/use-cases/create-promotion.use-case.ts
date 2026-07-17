@@ -9,7 +9,7 @@ import {
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
 import { PROMO_CONTEXT_LOOKUP, type IPromoContextLookup } from '../../domain/ports/promo-context-lookup.port';
-import { normalizeCode } from '../apply-promotion.service';
+import { normalizeCode } from '../../domain/promotion-application';
 import { assertScopeTargetValid } from '../assert-scope-target';
 import { assertTenantShareRisk } from '../assert-tenant-share-risk';
 import { resolveFundingPartnerId } from '../resolve-funding-partner';

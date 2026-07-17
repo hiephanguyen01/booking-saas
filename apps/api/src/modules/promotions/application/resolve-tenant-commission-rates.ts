@@ -3,7 +3,7 @@ import { utcNow } from '../../../shared/time/time';
 
 /**
  * The tenant's default commission rates, read straight from `commission_rules`
- * in-tenant (RLS-scoped). The finance module's `ResolveCommissionService` is
+ * in-tenant (RLS-scoped). The finance module's commission resolution is
  * booking-target-scoped (it needs a partner/listing-type) whereas a promotion is
  * tenant-wide with no single partner, so the §12.4 guard resolves the
  * `tenant_default` rule directly rather than crossing the module boundary — this

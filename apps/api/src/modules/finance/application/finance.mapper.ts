@@ -11,7 +11,7 @@ import type {
 import type { CommissionRuleRecord } from '../domain/ports/commission-rule-repository.port';
 import type { LedgerEntryView, OwnerBalance } from '../domain/ports/ledger-repository.port';
 import type { PayoutRecord } from '../domain/ports/payout-repository.port';
-import type { PayableSnapshot } from './payout-payable.service';
+import type { PayableSnapshot } from './use-cases/compute-payout-payable.use-case';
 import type { TenantFinanceSummary } from './use-cases/get-tenant-finance-summary.use-case';
 import type { PartnerFinance } from './use-cases/get-partner-finance.use-case';
 import type { PlatformFinance } from './use-cases/get-platform-finance.use-case';

@@ -11,7 +11,7 @@ import {
   type ITenantDomainRepository,
   type DomainRecord,
 } from '../../domain/ports/tenant-domain-repository.port';
-import { PlanLimitService } from '../services/plan-limit.service';
+import { AssertCustomDomainAllowedUseCase } from './assert-custom-domain-allowed.use-case';
 
 /**
  * Maps a custom domain to a tenant (§6.1). Gated by the plan's `customDomain`
@@ -23,7 +23,7 @@ export class AddDomainUseCase {
   constructor(
     @Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository,
     @Inject(TENANT_DOMAIN_REPOSITORY) private readonly domains: ITenantDomainRepository,
-    private readonly planLimits: PlanLimitService,
+    private readonly assertCustomDomainAllowed: AssertCustomDomainAllowedUseCase,
   ) {}
 
   async execute(tenantId: string, input: AddDomainInput): Promise<DomainRecord> {
@@ -34,7 +34,7 @@ export class AddDomainUseCase {
         message: `Tenant ${tenantId} not found`,
       });
     }
-    await this.planLimits.assertCustomDomainAllowed(tenantId);
+    await this.assertCustomDomainAllowed.execute(tenantId);
 
     const hostname = normalizeHostname(input.hostname);
     if (await this.domains.findByHostname(hostname)) {

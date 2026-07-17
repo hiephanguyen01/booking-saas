@@ -8,7 +8,7 @@ import {
   type PromotionRecord,
   type UpdatePromotionData,
 } from '../../domain/ports/promotion-repository.port';
-import { normalizeCode } from '../apply-promotion.service';
+import { normalizeCode } from '../../domain/promotion-application';
 import { assertPartnerOwnsScope } from '../assert-partner-owns-scope';
 
 /** A partner edits one of its own promotions (§12.2). Scope stays within its inventory. */

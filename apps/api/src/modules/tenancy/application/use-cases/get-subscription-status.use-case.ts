@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GetCurrentSubscriptionUseCase } from './get-current-subscription.use-case';
-import { PlanLimitService } from '../services/plan-limit.service';
+import { CheckBookingQuotaUseCase } from './check-booking-quota.use-case';
 import {
   evaluateSubscription,
   type SubscriptionEvaluation,
@@ -26,7 +26,7 @@ export interface SubscriptionStatusView {
 export class GetSubscriptionStatusUseCase {
   constructor(
     private readonly getCurrent: GetCurrentSubscriptionUseCase,
-    private readonly planLimits: PlanLimitService,
+    private readonly checkBookingQuota: CheckBookingQuotaUseCase,
   ) {}
 
   async execute(tenantId: string, now: Date): Promise<SubscriptionStatusView> {
@@ -40,7 +40,7 @@ export class GetSubscriptionStatusUseCase {
       : null;
     const evaluation = evaluateSubscription(snapshot, now);
 
-    const quota = await this.planLimits.checkBookingQuota(tenantId, now);
+    const quota = await this.checkBookingQuota.execute(tenantId, now);
     const bookingQuota = current
       ? { used: quota.current, limit: quota.limit, overLimit: quota.overLimit }
       : null;

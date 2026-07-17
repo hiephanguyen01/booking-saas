@@ -1,13 +1,14 @@
 import { useFetcher, data as routeData } from 'react-router';
-import type { ReferralLinkResponse, ReferralTargetDto } from '@booking/contracts';
+import type { ReferralLinkResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Route } from './+types/links';
 import { apiGet, apiPost, apiDelete } from '~/lib/api.server';
-import { requireAffiliate } from './affiliate.server';
+import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
+import { REFERRAL_TARGET_LABEL } from '~/constants/affiliate';
+import { ErrorBanner } from '~/components/action-feedback';
 import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
@@ -29,11 +30,6 @@ function storefrontOrigin(tenantHostname: string | null): string {
     tenantHostname.endsWith('.localhost');
   return `${isLocal ? 'http' : 'https'}://${tenantHostname}`;
 }
-
-const TARGET_LABEL: Record<ReferralTargetDto, string> = {
-  tenant_home: 'Trang chủ',
-  listing: 'Listing',
-};
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
@@ -88,11 +84,7 @@ export default function AffiliateLinks({ loaderData, actionData }: Route.Compone
         </createFetcher.Form>
       </div>
 
-      {actionData?.error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{actionData.error}</AlertDescription>
-        </Alert>
-      ) : null}
+      <ErrorBanner error={actionData?.error} />
 
       {links.length === 0 ? (
         <Card>
@@ -125,7 +117,7 @@ function LinkRow({ link, storefrontUrl }: { link: ReferralLinkResponse; storefro
               {link.code}
             </Badge>
             <span>
-              <EnumValue map={TARGET_LABEL} value={link.target} />
+              <EnumValue map={REFERRAL_TARGET_LABEL} value={link.target} />
               {link.target === 'listing' && link.listingTitle ? ` · ${link.listingTitle}` : ''}
             </span>
             <span className="tabular-nums">{link.clicksCount} click</span>

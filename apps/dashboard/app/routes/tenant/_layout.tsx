@@ -6,8 +6,8 @@ import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CalendarClock, CreditCard, Lock, TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_layout';
 import { apiGet } from '~/lib/api.server';
-import { requireTenant } from './tenant.server';
-import type { TenantAreaContext } from './area-context';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import type { TenantAreaContext } from '~/features/tenant/lib/area-context';
 import { formatDate } from '~/lib/format';
 
 /** Show the pre-expiry nudge once the subscription is this close to lapsing. */

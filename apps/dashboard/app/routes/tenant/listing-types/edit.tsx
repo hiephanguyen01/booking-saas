@@ -1,12 +1,11 @@
-import { data as routeData, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { data as routeData, redirect } from 'react-router';
 import { updateListingTypeInputSchema, type ListingTypeResponse } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
-import { ListingTypeForm } from '../components/listing-type-form';
+import { ListingTypeForm } from '~/features/tenant/components/listing-type-form';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sửa loại dịch vụ · Tenant · Bookify' }];
@@ -38,9 +37,7 @@ export default function EditListingType({ loaderData, actionData }: Route.Compon
   return (
     <div className="space-y-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/tenant/listing-types"><ArrowLeft className="size-4" /> Loại dịch vụ</Link>
-        </Button>
+        <BackLink to="/tenant/listing-types" label="Loại dịch vụ" className="mb-2" />
         <PageHeader title="Sửa loại dịch vụ" description={loaderData.listingType.name} />
       </div>
       <ListingTypeForm

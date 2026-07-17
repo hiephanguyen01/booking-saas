@@ -6,7 +6,7 @@ import {
   COMMISSION_RULE_READER,
   type ICommissionRuleReader,
 } from '../../domain/ports/commission-rule-reader.port';
-import { AffiliateContextService } from '../affiliate-context.service';
+import { GetAffiliateMembershipsUseCase } from './get-affiliate-memberships.use-case';
 
 export interface AffiliateMembership {
   affiliate: AffiliateWithUser;
@@ -25,13 +25,13 @@ export interface AffiliateMembership {
 @Injectable()
 export class ListAffiliateMembershipsUseCase {
   constructor(
-    private readonly context: AffiliateContextService,
+    private readonly getMemberships: GetAffiliateMembershipsUseCase,
     @Inject(COMMISSION_RULE_READER) private readonly rules: ICommissionRuleReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 
   async execute(userId: string): Promise<AffiliateMembership[]> {
-    const memberships = await this.context.memberships(userId);
+    const memberships = await this.getMemberships.execute(userId);
     const result: AffiliateMembership[] = [];
     for (const affiliate of memberships) {
       const rule = await this.tenantDb.forTenant(affiliate.tenantId, (tx) =>

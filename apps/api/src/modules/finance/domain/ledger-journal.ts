@@ -66,6 +66,23 @@ const owner = (ownerType: OwnerType, ownerId: string | null): LedgerOwnerRef => 
 const debit = (o: LedgerOwnerRef, entryType: LedgerEntryType, amount: Vnd): JournalLeg => ({ owner: o, entryType, debit: amount, credit: 0n });
 const credit = (o: LedgerOwnerRef, entryType: LedgerEntryType, amount: Vnd): JournalLeg => ({ owner: o, entryType, debit: 0n, credit: amount });
 
+/** Entry types that mark a booking as already having its terminal revenue journal. */
+const REVENUE_TYPES: ReadonlySet<LedgerEntryType> = new Set([
+  'booking_revenue',
+  'partner_share',
+  'platform_fee',
+  'cancellation_fee',
+]);
+
+/**
+ * Idempotency guard for the booking-lifecycle journals: the outbox delivers at
+ * least once, so a terminal revenue journal is only written when the booking's
+ * existing entries contain none of the {@link REVENUE_TYPES}.
+ */
+export function hasRevenueJournal(entries: ReadonlyArray<{ entryType: LedgerEntryType }>): boolean {
+  return entries.some((e) => REVENUE_TYPES.has(e.entryType));
+}
+
 export function sumDebit(legs: JournalLeg[]): Vnd {
   return legs.reduce((acc, l) => acc + l.debit, 0n);
 }

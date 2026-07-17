@@ -34,7 +34,7 @@ export class UpdatePartnerNoteUseCase {
           message: 'Booking not found',
         });
       }
-      // Matches the 403 the other partner write paths return (PartnerBookingUseCase.load).
+      // Matches the 403 the other partner write paths return (loadOwnedBooking).
       if (booking.partnerId !== ctx.partnerId) {
         throw new ForbiddenException({
           statusCode: 403,

@@ -1,4 +1,5 @@
 import type { RateType } from '../../finance/domain/commission-split';
+import type { CommissionSnapshot } from '../../finance/domain/commission-snapshot';
 
 /**
  * Resolving the rate an affiliate is actually paid at (§15.2 priority:
@@ -33,7 +34,7 @@ export interface EffectiveAffiliateRate {
  * The effective affiliate rate for one affiliate under one rule.
  *
  * `custom_rate` is always a whole **percent** — that is the only shape the column
- * can hold and exactly how `ResolveAttributionService.applyCustomRate` bakes it
+ * can hold and exactly how `applyCustomRate` (below) bakes it
  * into a booking's commission snapshot, so an override always reports as
  * `percent`. With no override the rule's own affiliate leg applies verbatim
  * (it may legitimately be `fixed`). With neither, the affiliate earns nothing —
@@ -46,4 +47,15 @@ export function resolveEffectiveAffiliateRate(
   if (customRate !== null) return { rate: customRate, rateType: 'percent', source: 'custom' };
   if (rule !== null) return { rate: rule.affiliateRate, rateType: rule.affiliateRateType, source: 'rule' };
   return { rate: 0n, rateType: 'percent', source: 'none' };
+}
+
+/**
+ * Bake the affiliate's `custom_rate` into the commission snapshot so BOTH the
+ * ledger leg and the tracked `affiliate_commissions` row use the same rate
+ * (§15.2 priority: custom_rate > rule rate). `custom_rate` is always a whole
+ * percent. When null the snapshot's rule rate is left untouched.
+ */
+export function applyCustomRate(snapshot: CommissionSnapshot, customRate: bigint | null): CommissionSnapshot {
+  if (customRate === null) return snapshot;
+  return { ...snapshot, affiliateRateType: 'percent', affiliateRate: customRate.toString() };
 }

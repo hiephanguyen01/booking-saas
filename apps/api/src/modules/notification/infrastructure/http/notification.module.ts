@@ -15,7 +15,12 @@ import { SmtpEmailSender } from '../smtp-email-sender';
 import { PrismaNotificationLogRepository } from '../repositories/prisma-notification-log.repository';
 import { PrismaNotificationReader } from '../prisma-notification.reader';
 import { ReminderWorker } from '../reminder.worker';
-import { DispatchNotificationService } from '../../application/dispatch-notification.service';
+import { DispatchBookingEventUseCase } from '../../application/use-cases/dispatch-booking-event.use-case';
+import { DispatchListingEventUseCase } from '../../application/use-cases/dispatch-listing-event.use-case';
+import { DispatchPartnerEventUseCase } from '../../application/use-cases/dispatch-partner-event.use-case';
+import { DispatchPayoutEventUseCase } from '../../application/use-cases/dispatch-payout-event.use-case';
+import { DispatchReminderUseCase } from '../../application/use-cases/dispatch-reminder.use-case';
+import { SendBookingOtpUseCase } from '../../application/use-cases/send-booking-otp.use-case';
 
 /**
  * Notifications (TONG-QUAN.md §17). Every notification is produced from a domain
@@ -31,37 +36,45 @@ import { DispatchNotificationService } from '../../application/dispatch-notifica
     { provide: EMAIL_SENDER, useClass: SmtpEmailSender },
     { provide: NOTIFICATION_LOG_REPOSITORY, useClass: PrismaNotificationLogRepository },
     { provide: NOTIFICATION_READER, useClass: PrismaNotificationReader },
-    DispatchNotificationService,
+    DispatchBookingEventUseCase,
+    DispatchListingEventUseCase,
+    DispatchPartnerEventUseCase,
+    DispatchPayoutEventUseCase,
+    DispatchReminderUseCase,
+    SendBookingOtpUseCase,
     ReminderWorker,
   ],
   // Exported so the booking module can send the guest-lookup OTP synchronously (§8.6).
-  exports: [DispatchNotificationService, EMAIL_SENDER],
+  exports: [SendBookingOtpUseCase, EMAIL_SENDER],
 })
 export class NotificationModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
-    private readonly dispatcher: DispatchNotificationService,
+    private readonly dispatchBookingEvent: DispatchBookingEventUseCase,
+    private readonly dispatchListingEvent: DispatchListingEventUseCase,
+    private readonly dispatchPartnerEvent: DispatchPartnerEventUseCase,
+    private readonly dispatchPayoutEvent: DispatchPayoutEventUseCase,
   ) {}
 
   onModuleInit(): void {
     for (const eventType of BOOKING_NOTIFICATION_EVENTS) {
       this.registry.register(eventType, (event) =>
-        this.dispatcher.dispatchBookingEvent(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
+        this.dispatchBookingEvent.execute(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
       );
     }
     for (const eventType of LISTING_NOTIFICATION_EVENTS) {
       this.registry.register(eventType, (event) =>
-        this.dispatcher.dispatchListingEvent(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
+        this.dispatchListingEvent.execute(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
       );
     }
     for (const eventType of PARTNER_NOTIFICATION_EVENTS) {
       this.registry.register(eventType, (event) =>
-        this.dispatcher.dispatchPartnerEvent(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
+        this.dispatchPartnerEvent.execute(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
       );
     }
     for (const eventType of PAYOUT_NOTIFICATION_EVENTS) {
       this.registry.register(eventType, (event) =>
-        this.dispatcher.dispatchPayoutEvent(event.tenantId ?? '', payoutPayloadOf(event.payload)),
+        this.dispatchPayoutEvent.execute(event.tenantId ?? '', payoutPayloadOf(event.payload)),
       );
     }
   }

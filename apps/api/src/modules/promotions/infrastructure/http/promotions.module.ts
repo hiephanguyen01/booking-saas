@@ -11,7 +11,10 @@ import { PROMO_CONTEXT_LOOKUP } from '../../domain/ports/promo-context-lookup.po
 import { PrismaPromotionRepository } from '../repositories/prisma-promotion.repository';
 import { PrismaPromoRedemptionRepository } from '../repositories/prisma-promo-redemption.repository';
 import { PrismaPromoContextLookup } from '../repositories/prisma-promo-context-lookup';
-import { ApplyPromotionService } from '../../application/apply-promotion.service';
+import { PreparePromotionUseCase } from '../../application/use-cases/prepare-promotion.use-case';
+import { ReservePromotionUseCase } from '../../application/use-cases/reserve-promotion.use-case';
+import { MarkPromotionAppliedUseCase } from '../../application/use-cases/mark-promotion-applied.use-case';
+import { ReleasePromotionUseCase } from '../../application/use-cases/release-promotion.use-case';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';
 import { ResolveAutoCampaignUseCase } from '../../application/use-cases/resolve-auto-campaign.use-case';
 import { CreatePromotionUseCase } from '../../application/use-cases/create-promotion.use-case';
@@ -41,7 +44,10 @@ import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabl
     { provide: PROMO_REDEMPTION_REPOSITORY, useClass: PrismaPromoRedemptionRepository },
     { provide: PROMO_CONTEXT_LOOKUP, useClass: PrismaPromoContextLookup },
     { provide: AGREEMENT_REPOSITORY, useClass: PrismaAgreementRepository },
-    ApplyPromotionService,
+    PreparePromotionUseCase,
+    ReservePromotionUseCase,
+    MarkPromotionAppliedUseCase,
+    ReleasePromotionUseCase,
     ValidatePromoUseCase,
     ResolveAutoCampaignUseCase,
     CreatePromotionUseCase,
@@ -60,13 +66,15 @@ import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabl
     OptInPromotionUseCase,
     PartnerPromotionsEnabledGuard,
   ],
-  // Exported so the booking module can reserve a redemption in-tx at booking creation.
-  exports: [ApplyPromotionService],
+  // Exported so the booking module can prepare + reserve a redemption in-tx at booking creation
+  // (and drive the applied/released lifecycle transitions).
+  exports: [PreparePromotionUseCase, ReservePromotionUseCase, MarkPromotionAppliedUseCase, ReleasePromotionUseCase],
 })
 export class PromotionsModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
-    private readonly apply: ApplyPromotionService,
+    private readonly markPromotionApplied: MarkPromotionAppliedUseCase,
+    private readonly releasePromotion: ReleasePromotionUseCase,
   ) {}
 
   /**
@@ -76,18 +84,18 @@ export class PromotionsModule implements OnModuleInit {
    */
   onModuleInit(): void {
     this.registry.register('booking.confirmed', (event) =>
-      this.apply.markApplied(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.markPromotionApplied.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.expired', (event) =>
-      this.apply.release(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.releasePromotion.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.rejected', (event) =>
-      this.apply.release(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.releasePromotion.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.cancelled', (event) => {
       const p = event.payload as { bookingId: string; refundPercent?: number };
       // Only a full refund returns the usage; a partial refund keeps it `applied` (§12.5).
-      if (p.refundPercent === 100) return this.apply.release(event.tenantId ?? '', p.bookingId);
+      if (p.refundPercent === 100) return this.releasePromotion.execute(event.tenantId ?? '', p.bookingId);
       return Promise.resolve();
     });
   }

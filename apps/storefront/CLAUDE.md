@@ -1,0 +1,47 @@
+# apps/storefront — @booking/storefront (React Router 8 SSR, customer-facing)
+
+Local rules for the customer storefront. Root context: [`../../AGENTS.md`](../../AGENTS.md). Frontend
+conventions shared with the dashboard: [`../../docs/conventions.md`](../../docs/conventions.md).
+
+## What's different from the dashboard
+
+- **Multi-tenant by `Host` header.** The tenant is resolved per-request from the hostname via a backend
+  call in `app/lib/tenant.server.ts` (not from a login). One storefront serves every tenant's domain.
+- **Bilingual.** Every page nests under a `/:locale` (`vi` | `en`) layout backed by `@booking/i18n`;
+  unlocalized legacy paths are kept as redirect route modules for inbound links. The dashboard, by
+  contrast, is Vietnamese-hardcoded.
+- **Public + guest flows.** Most pages are public; authenticated bits (bookings, checkout) use a
+  Redis-backed session; guest checkout authenticates by booking code + email OTP.
+- **Relative imports** are the storefront's convention (the `~/` alias is declared in tsconfig but code
+  uses relative paths). Match surrounding files; don't introduce `~/` here.
+
+## Tenant theming (untrusted input — handle with care)
+
+`app/theme/theme.ts` turns the tenant's `theme_config.colors` into a `:root{…}` block injected once at
+SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--primary`, `--ring`) so every
+`@booking/ui` component renders in the tenant brand. Rules:
+
+- Tenant color strings are **untrusted** (tenant jsonb). Always pass them through `sanitizeColor()`
+  before they enter CSS — it rejects anything but hex / a safe color function and defeats
+  `</style>`/CSS injection. Never interpolate a raw tenant value into a style.
+- Derive readable text with `contrastToken()` (WCAG luminance pick); never hardcode a foreground.
+- Override the **base** token (`--primary`), not `--color-primary`. `--accent` is deliberately NOT
+  tenant-driven (it's shadcn's neutral hover surface). Legacy `--sf-primary` / `--sf-accent` /
+  `--sf-background` are still emitted for hand-rolled classNames — prefer semantic tokens for new work.
+
+## BFF & data
+
+Server-only `app/lib/*.server.ts` modules wrap `@booking/api-client`; loaders/actions call the backend
+server-to-server. **Never fetch the backend from the browser** and never import a `*.server.ts` into
+browser code. Forms use `GenericForm` with a zod schema from `@booking/contracts`
+(see [`../../docs/conventions.md`](../../docs/conventions.md) → Forms).
+
+Image upload works: `app/routes/uploads.presign.tsx` is a same-origin presign proxy that replays the
+auth cookie to the backend `POST /uploads/presign`, then the browser PUTs bytes straight to MinIO/S3.
+(The dashboard has its own presign route; the storefront's is real — older docs claimed it had none.)
+
+## Scripts (verified)
+
+`dev` (`react-router dev`, port `STOREFRONT_PORT`/5173) · `build` · `start`
+(`react-router-serve ./build/server/index.js`) · `lint` (`eslint app`) · `typecheck`
+(`react-router typegen && tsc`). Requires Node ≥ 22.22.0.
