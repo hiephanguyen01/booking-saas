@@ -19,6 +19,7 @@ function toRecord(p: Row): PricingRuleRecord {
     ruleType: p.ruleType as RuleType,
     params: (p.params ?? {}) as Record<string, unknown>,
     price: p.price.toString(),
+    salePrice: p.salePrice?.toString() ?? null,
     priority: p.priority,
     createdAt: p.createdAt,
   };
@@ -40,6 +41,7 @@ export class PrismaPricingRuleRepository implements IPricingRuleRepository {
           ruleType: data.ruleType as never,
           params: data.params as Prisma.InputJsonValue,
           price: BigInt(data.price),
+          salePrice: data.salePrice ? BigInt(data.salePrice) : null,
           priority: data.priority,
         },
       }),

@@ -44,11 +44,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
 
   const [listing, quote] = await Promise.all([
     fetchListing(request, slug),
-    fetchQuote(
-      request,
-      slug,
-      new URLSearchParams({ mode, from: start, to: end, quantity: qty }),
-    ),
+    fetchQuote(request, slug, new URLSearchParams({ mode, from: start, to: end, quantity: qty })),
   ]);
 
   if (!listing) throw redirect(storefrontPaths.home(locale));
@@ -85,8 +81,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   const start = String(form.get('start') ?? '');
   const end = String(form.get('end') ?? '');
   const qty = Number(form.get('qty') ?? '1');
-  const promoCode = String(form.get('promoCode') ?? '').trim().toUpperCase() || undefined;
+  const promoCode =
+    String(form.get('promoCode') ?? '')
+      .trim()
+      .toUpperCase() || undefined;
   const note = String(form.get('customerNote') ?? '').trim() || undefined;
+  const expectedSubtotal = String(form.get('expectedSubtotal') ?? '');
   const guest = guestInfoSchema.safeParse({
     fullName: String(form.get('fullName') ?? '').trim(),
     email: String(form.get('email') ?? '').trim(),
@@ -94,10 +94,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   });
 
   if (!guest.success) {
-    return data(
-      { fieldErrors: guest.error.flatten().fieldErrors, error: null },
-      { status: 400 },
-    );
+    return data({ fieldErrors: guest.error.flatten().fieldErrors, error: null }, { status: 400 });
   }
 
   const tenant = getCurrentStorefrontTenant();
@@ -108,6 +105,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     from: start,
     to: end,
     quantity: qty,
+    expectedSubtotal,
     guestCount: 1,
     customerNote: note,
     guest: guest.data,
@@ -192,10 +190,6 @@ export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
   const homeLabel = createTranslator(locale).t('errors.home');
   return (
-    <RouteErrorState
-      error={error}
-      homeHref={storefrontPaths.home(locale)}
-      homeLabel={homeLabel}
-    />
+    <RouteErrorState error={error} homeHref={storefrontPaths.home(locale)} homeLabel={homeLabel} />
   );
 }

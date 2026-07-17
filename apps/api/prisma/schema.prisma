@@ -155,6 +155,7 @@ enum PricingRuleType {
   day_of_week
   date_range
   time_range
+  date_time_range
 
   @@map("pricing_rule_type")
 }
@@ -891,6 +892,8 @@ model PricingRule {
   params      Json            @default("{}")
   /// replaces the mode's per-unit price when matched; never overrides block pricing.
   price       BigInt
+  /// optional partner-funded calendar sale; must be lower than price.
+  salePrice   BigInt?         @map("sale_price")
   priority    Int             @default(0)
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -958,6 +961,7 @@ model AvailabilityException {
 
   @@index([tenantId])
   @@index([resourceId, date])
+  @@unique([resourceId, date])
   @@map("availability_exceptions")
 }
 

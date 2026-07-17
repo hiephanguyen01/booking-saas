@@ -9,7 +9,6 @@ import { ListingStatusBadge } from '~/components/status-badge';
 import { formatNumber } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { listingPriceFrom } from '~/lib/listing-price';
-import { usesOpeningHours } from '../../lib/listing-hours';
 import { GroupedListingActions } from './grouped-listing-actions';
 
 /** A child's price (Money) or the muted "Chưa có giá" when none is configured. */
@@ -27,9 +26,10 @@ export function buildGroupedListingColumns(opts: {
   groupId: string;
   itemLabel: string;
   canEdit: boolean;
+  canWrite: boolean;
   canAvailability: boolean;
 }): DataTableColumn<ListingResponse>[] {
-  const { groupId, itemLabel, canEdit, canAvailability } = opts;
+  const { groupId, itemLabel, canEdit, canWrite, canAvailability } = opts;
   return [
     {
       header: itemLabel,
@@ -108,7 +108,7 @@ export function buildGroupedListingColumns(opts: {
           listing={listing}
           itemLabel={itemLabel}
           canEdit={canEdit}
-          canManageHours={canAvailability && usesOpeningHours(listing)}
+          canManageCalendar={canWrite || canAvailability}
         />
       ),
     },
@@ -121,13 +121,13 @@ export function GroupedListingCard({
   listing,
   itemLabel,
   canEdit,
-  canManageHours,
+  canManageCalendar,
 }: {
   groupId: string;
   listing: ListingResponse;
   itemLabel: string;
   canEdit: boolean;
-  canManageHours: boolean;
+  canManageCalendar: boolean;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-3 rounded-lg border p-3">
@@ -193,7 +193,7 @@ export function GroupedListingCard({
         listing={listing}
         itemLabel={itemLabel}
         canEdit={canEdit}
-        canManageHours={canManageHours}
+        canManageCalendar={canManageCalendar}
       />
     </div>
   );

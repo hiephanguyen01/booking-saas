@@ -63,7 +63,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
             ? availability.days.flatMap((day) => day.slots).filter((slot) => slot.available)
             : [];
         const price = slots.length
-          ? String(Math.min(...slots.map((slot) => Number(slot.price))))
+          ? slots.reduce(
+              (lowest, slot) => (BigInt(slot.price) < BigInt(lowest) ? slot.price : lowest),
+              slots[0]!.price,
+            )
           : null;
         return {
           child,

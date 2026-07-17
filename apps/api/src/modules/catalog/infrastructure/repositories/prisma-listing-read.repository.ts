@@ -62,6 +62,7 @@ export class PrismaListingReadRepository implements IListingReadRepository {
             ruleType: true,
             params: true,
             price: true,
+            salePrice: true,
             priority: true,
           },
         },
@@ -112,6 +113,7 @@ export class PrismaListingReadRepository implements IListingReadRepository {
         bookingMode: r.bookingMode as BookingMode,
         params: (r.params ?? {}) as Record<string, unknown>,
         price: r.price.toString(),
+        salePrice: r.salePrice?.toString() ?? null,
       })),
       availabilityExceptions: l.resource.availabilityExceptions.map((e) => ({
         date: e.date.toISOString().slice(0, 10),

@@ -30,9 +30,10 @@ export interface PublicListingRecord {
   pricingRules: Array<{
     id: string;
     bookingMode: BookingMode;
-    ruleType: 'day_of_week' | 'time_range' | 'date_range';
+    ruleType: 'day_of_week' | 'time_range' | 'date_range' | 'date_time_range';
     params: Record<string, unknown>;
     price: string;
+    salePrice: string | null;
     priority: number;
   }>;
   availabilityExceptions: Array<{

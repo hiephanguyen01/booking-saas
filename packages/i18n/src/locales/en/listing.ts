@@ -14,6 +14,7 @@ export const enListing = {
   perDay: 'per day',
   perItem: 'per item',
   perSession: 'per session',
+  forSelectedDays: 'total for {count} days',
   addToFavorites: 'Add to favorites',
   pickScheduleForPrice: 'Pick a schedule to see the price',
   subtotalEstimate: 'estimated total',

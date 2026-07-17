@@ -1,7 +1,17 @@
 import { randomInt } from 'node:crypto';
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { CreateBookingInput, ModeConfig, QuoteResponse } from '@booking/contracts';
-import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import {
+  TenantDbService,
+  type PrismaTx,
+} from '../../../../shared/tenant-context/tenant-db.service';
 import { utcNow, addMinutes, DEFAULT_TIMEZONE } from '../../../../shared/time/time';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
@@ -12,15 +22,38 @@ import { ReservePromotionUseCase } from '../../../promotions/application/use-cas
 import { ResolveCommissionUseCase } from '../../../finance/application/use-cases/resolve-commission.use-case';
 import { ResolveAttributionUseCase } from '../../../affiliate/application/use-cases/resolve-attribution.use-case';
 import { applyCustomRate } from '../../../affiliate/domain/affiliate-rate';
-import { LISTING_REPOSITORY, type IListingRepository, type ListingRecord } from '../../../listing/domain/ports/listing-repository.port';
-import { RESOURCE_REPOSITORY, type IResourceRepository } from '../../../listing/domain/ports/resource-repository.port';
-import { PRICING_RULE_REPOSITORY, type IPricingRuleRepository } from '../../../listing/domain/ports/pricing-rule-repository.port';
-import { BOOKING_REPOSITORY, type BookingRecord, type IBookingRepository } from '../../domain/ports/booking-repository.port';
+import {
+  LISTING_REPOSITORY,
+  type IListingRepository,
+  type ListingRecord,
+} from '../../../listing/domain/ports/listing-repository.port';
+import {
+  RESOURCE_REPOSITORY,
+  type IResourceRepository,
+} from '../../../listing/domain/ports/resource-repository.port';
+import {
+  PRICING_RULE_REPOSITORY,
+  type IPricingRuleRepository,
+} from '../../../listing/domain/ports/pricing-rule-repository.port';
+import {
+  BOOKING_REPOSITORY,
+  type BookingRecord,
+  type IBookingRepository,
+} from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE, type IHoldStore } from '../../domain/ports/hold-store.port';
 import { generateBookingCode } from '../../domain/booking-code';
 import { blockedPeriod } from '../../domain/blocked-period';
 import { hasCapacity } from '../../domain/inventory-stock';
-import { IdempotencyConflictError, SlotTakenError, SlotHeldError } from '../../domain/booking-errors';
+import {
+  IdempotencyConflictError,
+  SlotTakenError,
+  SlotHeldError,
+} from '../../domain/booking-errors';
+import {
+  BOOKING_AVAILABILITY_READER,
+  type IBookingAvailabilityReader,
+} from '../../domain/ports/booking-availability-reader.port';
+import { validateSlotPolicy } from '../../domain/slot-policy';
 
 export interface CreateBookingContext {
   /** Logged-in customer's user id, if any (else `input.guest` is required). */
@@ -42,6 +75,7 @@ export class CreateBookingUseCase {
     @Inject(PRICING_RULE_REPOSITORY) private readonly pricingRules: IPricingRuleRepository,
     @Inject(BOOKING_REPOSITORY) private readonly bookings: IBookingRepository,
     @Inject(HOLD_STORE) private readonly holds: IHoldStore,
+    @Inject(BOOKING_AVAILABILITY_READER) private readonly availability: IBookingAvailabilityReader,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly guests: FindOrCreateGuestUseCase,
     private readonly preparePromotion: PreparePromotionUseCase, // Task 1.11 — in-tx promo reservation
@@ -52,19 +86,35 @@ export class CreateBookingUseCase {
     private readonly outbox: OutboxService,
   ) {}
 
-  async execute(host: string, input: CreateBookingInput, ctx: CreateBookingContext): Promise<BookingRecord> {
+  async execute(
+    host: string,
+    input: CreateBookingInput,
+    ctx: CreateBookingContext,
+  ): Promise<BookingRecord> {
     const tenant = await this.resolveTenant.execute(host);
     if (!tenant.live) {
-      throw new ForbiddenException({ statusCode: 403, code: 'STOREFRONT_SUSPENDED', message: 'This storefront is not accepting bookings' });
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'STOREFRONT_SUSPENDED',
+        message: 'This storefront is not accepting bookings',
+      });
     }
     const customerId = await this.resolveCustomer(input, ctx);
     const startUtc = new Date(input.from);
     const endUtc = new Date(input.to);
     if (!(startUtc < endUtc)) {
-      throw new BadRequestException({ statusCode: 400, code: 'INVALID_RANGE', message: 'from must be before to' });
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'INVALID_RANGE',
+        message: 'from must be before to',
+      });
     }
     if (startUtc < utcNow()) {
-      throw new BadRequestException({ statusCode: 400, code: 'SLOT_IN_PAST', message: 'Cannot book a past slot' });
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'SLOT_IN_PAST',
+        message: 'Cannot book a past slot',
+      });
     }
 
     // Idempotent retry → return the existing booking.
@@ -74,41 +124,93 @@ export class CreateBookingUseCase {
     if (existing) return existing;
 
     // Read the listing, price the slot, snapshot the policy.
-    const { listing, quote, effectivePolicyId, policyRules } = await this.tenantDb.forTenant(tenant.id, async (tx) => {
-      const listing = await this.listings.findById(tx, input.listingId);
-      if (!listing || listing.status !== 'published') {
-        throw new NotFoundException({ statusCode: 404, code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
-      }
-      if (!listing.bookingModes.includes(input.mode)) {
-        throw new BadRequestException({ statusCode: 400, code: 'MODE_NOT_ENABLED', message: `Listing does not enable "${input.mode}"` });
-      }
-      const resource = await this.resources.findById(tx, listing.resourceId);
-      const pricingRules = (await this.pricingRules.listByListing(tx, listing.id)).map((r) => ({
-        id: r.id, bookingMode: r.bookingMode, ruleType: r.ruleType, params: r.params, price: r.price, priority: r.priority,
-      }));
-      const quote = priceQuote({
-        mode: input.mode,
-        modeConfig: listing.modeConfig as ModeConfig,
-        pricingRules,
-        timezone: resource?.timezone ?? DEFAULT_TIMEZONE,
-        startUtc,
-        endUtc,
-        quantity: input.mode === 'inventory' ? input.quantity : 1,
-        depositPercent: listing.depositPercent,
-      });
-      // §11.3 fallback (listing → partner default → tenant default) is already resolved
-      // onto the listing record; snapshot the RESOLVED policy id + its rules so the
-      // persisted id and the frozen tiers stay consistent.
-      return {
-        listing,
-        quote,
-        effectivePolicyId: listing.effectiveCancellationPolicy?.id ?? null,
-        policyRules: listing.effectiveCancellationPolicy?.rules ?? [],
-      };
-    });
+    const { listing, quote, effectivePolicyId, policyRules } = await this.tenantDb.forTenant(
+      tenant.id,
+      async (tx) => {
+        const listing = await this.listings.findById(tx, input.listingId);
+        if (!listing || listing.status !== 'published') {
+          throw new NotFoundException({
+            statusCode: 404,
+            code: 'LISTING_NOT_FOUND',
+            message: 'Listing not found',
+          });
+        }
+        if (!listing.bookingModes.includes(input.mode)) {
+          throw new BadRequestException({
+            statusCode: 400,
+            code: 'MODE_NOT_ENABLED',
+            message: `Listing does not enable "${input.mode}"`,
+          });
+        }
+        const resource = await this.resources.findById(tx, listing.resourceId);
+        const schedule = await this.availability.read(tx, listing.id, listing.resourceId);
+        const slotError = validateSlotPolicy({
+          mode: input.mode,
+          modeConfig: listing.modeConfig as ModeConfig,
+          timezone: resource?.timezone ?? DEFAULT_TIMEZONE,
+          startUtc,
+          endUtc,
+          now: utcNow(),
+          schedule,
+        });
+        if (slotError) {
+          throw new BadRequestException({
+            statusCode: 400,
+            code: slotError,
+            message: 'The requested slot is outside the listing availability policy',
+          });
+        }
+        const pricingRules = (await this.pricingRules.listByListing(tx, listing.id)).map((r) => ({
+          id: r.id,
+          bookingMode: r.bookingMode,
+          ruleType: r.ruleType,
+          params: r.params,
+          price: r.price,
+          salePrice: r.salePrice,
+          priority: r.priority,
+        }));
+        const quote = priceQuote({
+          mode: input.mode,
+          modeConfig: listing.modeConfig as ModeConfig,
+          pricingRules,
+          timezone: resource?.timezone ?? DEFAULT_TIMEZONE,
+          startUtc,
+          endUtc,
+          quantity: input.mode === 'inventory' ? input.quantity : 1,
+          depositPercent: listing.depositPercent,
+        });
+        if (input.expectedSubtotal && quote.subtotal !== input.expectedSubtotal) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: 'PRICE_CHANGED',
+            message: 'The price changed after this checkout was opened',
+            details: { expectedSubtotal: input.expectedSubtotal, currentSubtotal: quote.subtotal },
+          });
+        }
+        // §11.3 fallback (listing → partner default → tenant default) is already resolved
+        // onto the listing record; snapshot the RESOLVED policy id + its rules so the
+        // persisted id and the frozen tiers stay consistent.
+        return {
+          listing,
+          quote,
+          effectivePolicyId: listing.effectiveCancellationPolicy?.id ?? null,
+          policyRules: listing.effectiveCancellationPolicy?.rules ?? [],
+        };
+      },
+    );
     const timeslot = { start: startUtc, end: endUtc };
     const blocked = blockedPeriod(timeslot, listing.bufferBefore, listing.bufferAfter);
-    const common = { listing, quote, effectivePolicyId, policyRules, customerId, input, timeslot, blocked, idempotencyKey: ctx.idempotencyKey };
+    const common = {
+      listing,
+      quote,
+      effectivePolicyId,
+      policyRules,
+      customerId,
+      input,
+      timeslot,
+      blocked,
+      idempotencyKey: ctx.idempotencyKey,
+    };
 
     // Inventory (§9.4): multi-unit, so no exclusion constraint. An advisory lock
     // per listing + an atomic stock count guarantees stock is never oversold.
@@ -118,7 +220,12 @@ export class CreateBookingUseCase {
           const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
           if (again) return again;
           const stock = listing.stockQuantity ?? 0;
-          const used = await this.bookings.lockAndCountInventory(tx, listing.id, blocked.start, blocked.end);
+          const used = await this.bookings.lockAndCountInventory(
+            tx,
+            listing.id,
+            blocked.start,
+            blocked.end,
+          );
           if (!hasCapacity(stock, used, input.quantity)) {
             throw new ConflictException({
               statusCode: 409,
@@ -143,7 +250,11 @@ export class CreateBookingUseCase {
         this.tenantDb.forTenant(tenant.id, async (tx) => {
           const again = await this.bookings.findByIdempotencyKey(tx, ctx.idempotencyKey);
           if (again) return again;
-          return this.insertAndActivate(tx, tenant.id, { ...common, quantity: 1, securityDeposit: 0n });
+          return this.insertAndActivate(tx, tenant.id, {
+            ...common,
+            quantity: 1,
+            securityDeposit: 0n,
+          });
         }),
       );
       // Success: release the hold now — the DB row (pending_payment) + the
@@ -294,7 +405,9 @@ export class CreateBookingUseCase {
       });
     }
     const toStatus = args.listing.approvalRequired ? 'pending_approval' : 'pending_payment';
-    const expiresAt = args.listing.approvalRequired ? addMinutes(utcNow(), 24 * 60) : addMinutes(utcNow(), 15);
+    const expiresAt = args.listing.approvalRequired
+      ? addMinutes(utcNow(), 24 * 60)
+      : addMinutes(utcNow(), 15);
     const booking = await this.bookings.applyTransition(tx, {
       id: draft.id,
       from: 'draft',
@@ -311,7 +424,10 @@ export class CreateBookingUseCase {
     return booking;
   }
 
-  private async resolveCustomer(input: CreateBookingInput, ctx: CreateBookingContext): Promise<string> {
+  private async resolveCustomer(
+    input: CreateBookingInput,
+    ctx: CreateBookingContext,
+  ): Promise<string> {
     if (ctx.customerUserId) return ctx.customerUserId;
     if (input.guest) {
       const user = await this.guests.execute(input.guest);
@@ -325,10 +441,18 @@ export class CreateBookingUseCase {
   }
 
   private slotHeld(): ConflictException {
-    return new ConflictException({ statusCode: 409, code: 'SLOT_HELD', message: new SlotHeldError().message });
+    return new ConflictException({
+      statusCode: 409,
+      code: 'SLOT_HELD',
+      message: new SlotHeldError().message,
+    });
   }
 
   private slotTaken(): ConflictException {
-    return new ConflictException({ statusCode: 409, code: 'SLOT_TAKEN', message: new SlotTakenError().message });
+    return new ConflictException({
+      statusCode: 409,
+      code: 'SLOT_TAKEN',
+      message: new SlotTakenError().message,
+    });
   }
 }

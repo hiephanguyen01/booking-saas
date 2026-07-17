@@ -47,6 +47,7 @@
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",
     "seed": "ts-node --transpile-only prisma/seed.ts",
+    "quick:start": "prisma generate && prisma migrate deploy && ts-node --transpile-only prisma/seed.ts",
     "storage:init": "ts-node --transpile-only scripts/bootstrap-storage.ts",
     "check:rls": "ts-node --transpile-only scripts/check-rls.ts"
   },

@@ -11,6 +11,7 @@ export const viListing = {
   perDay: 'cho 1 ngày',
   perItem: 'mỗi sản phẩm',
   perSession: 'mỗi buổi',
+  forSelectedDays: 'tổng cho {count} ngày',
   addToFavorites: 'Thêm vào yêu thích',
   pickScheduleForPrice: 'Chọn lịch để xem giá',
   subtotalEstimate: 'tổng tạm tính',

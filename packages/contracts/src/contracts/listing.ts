@@ -26,7 +26,12 @@ export type BalanceDue = z.infer<typeof balanceDueSchema>;
 export const moderationActorSchema = z.enum(['partner', 'admin']);
 export type ModerationActor = z.infer<typeof moderationActorSchema>;
 
-export const pricingRuleTypeSchema = z.enum(['day_of_week', 'time_range', 'date_range']);
+export const pricingRuleTypeSchema = z.enum([
+  'day_of_week',
+  'time_range',
+  'date_range',
+  'date_time_range',
+]);
 export type PricingRuleType = z.infer<typeof pricingRuleTypeSchema>;
 
 // ── mode_config (§7.3) ───────────────────────────────────────────────────────
@@ -184,6 +189,16 @@ export const timeRangeParamsSchema = z.object({
   days: z.array(weekdaySchema).optional(),
 });
 export const dateRangeParamsSchema = z.object({ from: dateStringSchema, to: dateStringSchema });
+export const dateTimeRangeParamsSchema = z
+  .object({
+    date: dateStringSchema,
+    from: timeStringSchema,
+    to: timeStringSchema,
+  })
+  .refine((value) => value.from < value.to, {
+    path: ['to'],
+    message: 'to must be after from',
+  });
 
 export const pricingRuleInputSchema = z
   .object({
@@ -191,6 +206,7 @@ export const pricingRuleInputSchema = z
     ruleType: pricingRuleTypeSchema,
     params: z.record(z.unknown()),
     price: vndAmountSchema,
+    salePrice: vndAmountSchema.optional(),
     priority: z.number().int().default(0),
   })
   .superRefine((rule, ctx) => {
@@ -199,12 +215,21 @@ export const pricingRuleInputSchema = z
         ? dayOfWeekParamsSchema
         : rule.ruleType === 'time_range'
           ? timeRangeParamsSchema
-          : dateRangeParamsSchema;
+          : rule.ruleType === 'date_range'
+            ? dateRangeParamsSchema
+            : dateTimeRangeParamsSchema;
     if (!schema.safeParse(rule.params).success) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['params'],
         message: `Invalid params for ruleType "${rule.ruleType}"`,
+      });
+    }
+    if (rule.salePrice !== undefined && BigInt(rule.salePrice) >= BigInt(rule.price)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['salePrice'],
+        message: 'Sale price must be lower than regular price',
       });
     }
   });
@@ -411,6 +436,7 @@ export const pricingRuleResponseSchema = z.object({
   ruleType: pricingRuleTypeSchema,
   params: z.record(z.unknown()),
   price: z.string(),
+  salePrice: z.string().nullable(),
   priority: z.number(),
   createdAt: z.string(),
 });
@@ -497,7 +523,9 @@ export const quoteLineItemSchema = z.object({
   quantity: z.number(),
   /** VND đồng digit strings. */
   unitPrice: z.string(),
+  regularUnitPrice: z.string(),
   amount: z.string(),
+  regularAmount: z.string(),
   appliedRuleId: z.string().optional(),
   block: z.boolean().optional(),
 });
@@ -507,6 +535,8 @@ export const quoteResponseSchema = z.object({
   currency: z.literal('VND'),
   mode: bookingModeSchema,
   subtotal: z.string(),
+  regularSubtotal: z.string(),
+  savingsAmount: z.string(),
   depositAmount: z.string(),
   securityDeposit: z.string(),
   lineItems: z.array(quoteLineItemSchema),

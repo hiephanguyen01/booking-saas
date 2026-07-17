@@ -1,5 +1,5 @@
 import { Link, useFetcher } from 'react-router';
-import { CalendarClock, Copy, Pencil, Trash2 } from 'lucide-react';
+import { CalendarDays, Copy, Pencil, Trash2 } from 'lucide-react';
 import type { ListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { ConfirmButton } from '~/components/confirm-button';
@@ -11,23 +11,23 @@ export function GroupedListingActions({
   listing,
   itemLabel,
   canEdit,
-  canManageHours,
+  canManageCalendar,
 }: {
   groupId: string;
   listing: ListingResponse;
   itemLabel: string;
   canEdit: boolean;
-  canManageHours: boolean;
+  canManageCalendar: boolean;
 }) {
   const fetcher = useFetcher<GroupActionResult>();
   const busy = fetcher.state !== 'idle';
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex flex-wrap justify-end gap-1">
-        {canManageHours ? (
+        {canManageCalendar ? (
           <Button asChild size="xs" variant="ghost">
-            <Link to={`/partner/listings/${listing.id}/hours`} title="Giờ hoạt động">
-              <CalendarClock /> Giờ hoạt động
+            <Link to={`/partner/listings/${listing.id}?tab=calendar`} title="Lịch và giá">
+              <CalendarDays /> Lịch và giá
             </Link>
           </Button>
         ) : null}

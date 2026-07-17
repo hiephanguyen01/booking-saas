@@ -53,6 +53,10 @@ import {
 } from './listing-group-moderation.controller';
 import { TenantResourceController } from './tenant-resource.controller';
 import { TenantPricingRuleController } from './tenant-pricing-rule.controller';
+import { PartnerPricingRuleController } from './partner-pricing-rule.controller';
+import { CreatePartnerPricingRuleUseCase } from '../../application/use-cases/create-partner-pricing-rule.use-case';
+import { DeletePartnerPricingRuleUseCase } from '../../application/use-cases/delete-partner-pricing-rule.use-case';
+import { ListPartnerPricingRulesUseCase } from '../../application/use-cases/list-partner-pricing-rules.use-case';
 import { PublicListingController } from './public-listing.controller';
 import { PartnerListingGroupController } from './partner-listing-group.controller';
 import { GetListingGroupDetailUseCase } from '../../application/use-cases/get-listing-group-detail.use-case';
@@ -85,6 +89,7 @@ import { TenantCancellationPolicyController } from './tenant-cancellation-policy
     PartnerListingGroupController,
     TenantResourceController,
     TenantPricingRuleController,
+    PartnerPricingRuleController,
     PublicListingController,
     PartnerCancellationPolicyController,
     TenantCancellationPolicyController,
@@ -112,6 +117,9 @@ import { TenantCancellationPolicyController } from './tenant-cancellation-policy
     CreatePricingRuleUseCase,
     ListPricingRulesUseCase,
     DeletePricingRuleUseCase,
+    CreatePartnerPricingRuleUseCase,
+    DeletePartnerPricingRuleUseCase,
+    ListPartnerPricingRulesUseCase,
     GetPublicListingUseCase,
     GetPublicListingGroupUseCase,
     ListCancellationPoliciesUseCase,

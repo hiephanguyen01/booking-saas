@@ -13,6 +13,8 @@ export interface PricingRuleRecord {
   params: Record<string, unknown>;
   /** VND đồng digit string (stored as BigInt). */
   price: string;
+  /** Optional partner-funded sale price; lower than `price`. */
+  salePrice: string | null;
   priority: number;
   createdAt: Date;
 }
@@ -23,6 +25,7 @@ export interface CreatePricingRuleData {
   ruleType: RuleType;
   params: Record<string, unknown>;
   price: string;
+  salePrice?: string | null;
   priority: number;
 }
 

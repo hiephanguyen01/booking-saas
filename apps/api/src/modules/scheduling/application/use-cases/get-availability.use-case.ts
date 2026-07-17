@@ -63,12 +63,20 @@ export class GetAvailabilityUseCase {
     @Inject(AVAILABILITY_CACHE) private readonly cache: IAvailabilityCache,
   ) {}
 
-  async execute(host: string, slug: string, query: AvailabilityQuery): Promise<AvailabilityResponse> {
+  async execute(
+    host: string,
+    slug: string,
+    query: AvailabilityQuery,
+  ): Promise<AvailabilityResponse> {
     const tenant = await this.resolveTenant.execute(host);
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const listing = await this.listings.findPublicBySlug(tx, slug);
       if (!listing) {
-        throw new NotFoundException({ statusCode: 404, code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'LISTING_NOT_FOUND',
+          message: 'Listing not found',
+        });
       }
       if (!listing.bookingModes.includes(query.mode)) {
         throw new BadRequestException({
@@ -84,9 +92,15 @@ export class GetAvailabilityUseCase {
       if (query.mode === 'inventory') {
         const stock = listing.stockQuantity ?? 0;
         const from = zonedTimeToUtc({ ...parseDate(query.from), hour: 0, minute: 0 }, tz);
-        const to = new Date(zonedTimeToUtc({ ...parseDate(query.to), hour: 0, minute: 0 }, tz).getTime() + DAY_MS);
+        const to = new Date(
+          zonedTimeToUtc({ ...parseDate(query.to), hour: 0, minute: 0 }, tz).getTime() + DAY_MS,
+        );
         const used = await this.busy.inventoryUsage(tx, listing.id, from, to);
-        return { mode: 'inventory', timezone: tz, inventory: { stock, remaining: Math.max(0, stock - used) } };
+        return {
+          mode: 'inventory',
+          timezone: tz,
+          inventory: { stock, remaining: Math.max(0, stock - used) },
+        };
       }
 
       const modeConfig = listing.modeConfig as ModeConfig;
@@ -96,12 +110,21 @@ export class GetAvailabilityUseCase {
         ruleType: r.ruleType,
         params: r.params,
         price: r.price,
+        salePrice: r.salePrice,
         priority: r.priority,
       }));
       const ruleRows = await this.rules.listByListing(tx, listing.id);
-      const excRows = await this.exceptions.listByResource(tx, listing.resourceId, query.from, query.to);
+      const excRows = await this.exceptions.listByResource(
+        tx,
+        listing.resourceId,
+        query.from,
+        query.to,
+      );
       const excByDate = new Map<string, DateException>(
-        excRows.map((e) => [e.date, { type: e.type, openTime: e.openTime, closeTime: e.closeTime }]),
+        excRows.map((e) => [
+          e.date,
+          { type: e.type, openTime: e.openTime, closeTime: e.closeTime },
+        ]),
       );
 
       const dayZero = (d: string) => zonedTimeToUtc({ ...parseDate(d), hour: 0, minute: 0 }, tz);
@@ -135,7 +158,12 @@ export class GetAvailabilityUseCase {
         for (const date of dates) {
           let cached = hourly ? await this.cache.get(listing.id, date) : [];
           if (hourly && cached === null) {
-            bookingBusy ??= await this.busy.busyBookings(tx, listing.resourceId, rangeStart, rangeEnd);
+            bookingBusy ??= await this.busy.busyBookings(
+              tx,
+              listing.resourceId,
+              rangeStart,
+              rangeEnd,
+            );
             const windows = openWindowsForDate(date, tz, ruleRows, excByDate.get(date));
             const generated = generateHourlySlots({
               openWindows: windows,
@@ -210,7 +238,9 @@ export class GetAvailabilityUseCase {
   ): DayAvailability {
     const daily = modeConfig.daily;
     const hasAnyRule = ruleRows.length > 0;
-    const weekdayOpen = hasAnyRule ? ruleRows.some((r) => r.dayOfWeek === weekdayOf(date)) : true;
+    const weekdayOpen =
+      exception?.type === 'custom_hours' ||
+      (hasAnyRule ? ruleRows.some((r) => r.dayOfWeek === weekdayOf(date)) : true);
     const closedByException = exception?.type === 'closed';
 
     let night: Interval | null = null;
@@ -222,7 +252,13 @@ export class GetAvailabilityUseCase {
       const checkin = zonedTimeToUtc({ year, month, day, hour: inH, minute: inM }, tz);
       const next = new Date(Date.UTC(year, month - 1, day) + DAY_MS);
       const checkout = zonedTimeToUtc(
-        { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate(), hour: outH, minute: outM },
+        {
+          year: next.getUTCFullYear(),
+          month: next.getUTCMonth() + 1,
+          day: next.getUTCDate(),
+          hour: outH,
+          minute: outM,
+        },
         tz,
       );
       night = { start: checkin, end: checkout };

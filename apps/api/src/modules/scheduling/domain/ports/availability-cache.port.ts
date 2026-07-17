@@ -22,6 +22,8 @@ export interface IAvailabilityCache {
   set(resourceId: string, listingId: string, date: string, slots: CachedSlot[]): Promise<void>;
   /** Drop every cached `(listing, date)` entry for a resource (all listings on it). */
   invalidateResource(resourceId: string): Promise<void>;
+  /** Drop cached priced slots for one listing after a pricing-rule change. */
+  invalidateListing(listingId: string): Promise<void>;
   /**
    * Invalidate by booking: booking outbox events carry only a `bookingId`, so the
    * booking's `resource_id` is resolved in-tenant before invalidating the resource.

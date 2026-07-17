@@ -46,6 +46,7 @@ export interface EnrichedSearchListing {
   provinceName: string | null;
   amenities: string[];
   priceFrom: string;
+  regularPriceFrom: string;
   /** Locale-independent; rendered via the listing.perHour/perDay i18n keys. */
   priceUnit: PriceUnit;
   matchingRoomCount: number;

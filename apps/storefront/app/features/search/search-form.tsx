@@ -40,6 +40,13 @@ type ModeAppearance = 'pills' | 'tabs';
 
 const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20] as const;
 
+function searchableModes(type: PublicListingTypeResponse | undefined): SearchMode[] {
+  if (!type || type.searchConfig.schedule === 'none') return [];
+  return (['hourly', 'daily', 'inventory'] as const).filter((mode) =>
+    type.allowedModes.includes(mode),
+  );
+}
+
 function toRange(selection: SearchDateSelection): DateRange {
   return {
     from: selection.from ? dateOnlyToLocal(selection.from) : undefined,
@@ -71,7 +78,7 @@ export function SearchForm({
   const [selectedType, setSelectedType] = useState(initialType);
   const initialConfig = listingTypes.find((type) => type.slug === initialType)?.searchConfig;
   const [mode, setMode] = useState<SearchMode>(
-    (initialConfig?.schedule ?? (initialState ? state.mode : 'none')) as SearchMode,
+    (initialState ? state.mode : (initialConfig?.schedule ?? 'none')) as SearchMode,
   );
   const seed = selectedDates(state);
   const [date, setDate] = useState(seed.date);
@@ -81,7 +88,9 @@ export function SearchForm({
     if (right.slug.toLowerCase() === 'studio') return 1;
     return 0;
   });
-  const selectedConfig = listingTypes.find((type) => type.slug === selectedType)?.searchConfig;
+  const selectedListingType = listingTypes.find((type) => type.slug === selectedType);
+  const selectedConfig = selectedListingType?.searchConfig;
+  const availableModes = searchableModes(selectedListingType);
   const optionMap = new Map<string, string>();
   for (const option of locations) {
     if (typeof option === 'string') optionMap.set(option, option);
@@ -142,9 +151,14 @@ export function SearchForm({
           isHero ? 'px-5 pt-5 pb-12 md:px-6' : 'mx-auto max-w-292.5 px-4 pb-6 lg:px-0',
         )}
       >
-        {isHero ? (
+        {isHero && availableModes.length ? (
           <div className="flex flex-col items-start gap-2">
-            <ModeToggle mode={mode} onModeChange={changeMode} appearance="pills" />
+            <ModeToggle
+              mode={mode}
+              modes={availableModes}
+              onModeChange={changeMode}
+              appearance="pills"
+            />
             <span className="text-xs font-medium text-primary">{modeHint(mode, t)}</span>
           </div>
         ) : null}
@@ -199,6 +213,7 @@ export function SearchForm({
               range={range}
               setRange={setRange}
               showModeTabs={!isHero}
+              availableModes={availableModes}
             />
           ) : null}
 
@@ -330,10 +345,12 @@ const MODE_ITEM_CLASS: Record<ModeAppearance, string> = {
 
 function ModeToggle({
   mode,
+  modes,
   onModeChange,
   appearance,
 }: {
   mode: SearchMode;
+  modes: SearchMode[];
   onModeChange: (mode: SearchMode) => void;
   appearance: ModeAppearance;
 }) {
@@ -349,12 +366,11 @@ function ModeToggle({
       className={cn(!isPills && 'mx-auto grid grid-cols-2 px-6')}
       aria-label={t('home.bookingMode')}
     >
-      <ToggleGroupItem value="hourly" className={MODE_ITEM_CLASS[appearance]}>
-        {t('home.bookHourly')}
-      </ToggleGroupItem>
-      <ToggleGroupItem value="daily" className={MODE_ITEM_CLASS[appearance]}>
-        {t('home.bookDaily')}
-      </ToggleGroupItem>
+      {modes.map((item) => (
+        <ToggleGroupItem key={item} value={item} className={MODE_ITEM_CLASS[appearance]}>
+          {item === 'hourly' ? t('home.bookHourly') : t('home.bookDaily')}
+        </ToggleGroupItem>
+      ))}
     </ToggleGroup>
   );
 }
@@ -404,6 +420,7 @@ function SearchDatePicker({
   range,
   setRange,
   showModeTabs,
+  availableModes,
 }: {
   mode: SearchMode;
   onModeChange: (mode: SearchMode) => void;
@@ -412,6 +429,7 @@ function SearchDatePicker({
   range: DateRange;
   setRange: (value: DateRange) => void;
   showModeTabs: boolean;
+  availableModes: SearchMode[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
@@ -479,8 +497,13 @@ function SearchDatePicker({
 
     return (
       <div className="flex flex-col">
-        {showModeTabs ? (
-          <ModeToggle mode={mode} onModeChange={onModeChange} appearance="tabs" />
+        {showModeTabs && availableModes.length > 1 ? (
+          <ModeToggle
+            mode={mode}
+            modes={availableModes}
+            onModeChange={onModeChange}
+            appearance="tabs"
+          />
         ) : null}
         <div className="overflow-x-auto p-3">{picker}</div>
         <div className="flex items-center gap-2 border-t border-border bg-muted/40 px-6 py-4 text-xs text-muted-foreground">

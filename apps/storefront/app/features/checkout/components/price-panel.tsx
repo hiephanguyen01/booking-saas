@@ -24,9 +24,18 @@ export function PricePanel({
   const { t: tListing } = useTranslation(NsI18n.Listing);
   const hasDiscount = amounts.discount !== '0';
   const quantity = mode === 'inventory' ? qty : '1';
+  const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
 
   return (
     <div className="mt-3 rounded-lg bg-primary/10 px-5 py-4 text-sm leading-5 text-foreground">
+      {hasCalendarSale ? (
+        <div className="mb-2 flex items-center justify-between gap-4">
+          <Badge className="rounded-sm bg-emerald-600 text-white">Sale</Badge>
+          <span className="text-muted-foreground line-through">
+            {formatVnd(quote.regularSubtotal)}
+          </span>
+        </div>
+      ) : null}
       {hasDiscount ? (
         <div className="flex items-center justify-between gap-4">
           <Badge variant="destructive" className="rounded-sm font-semibold">
