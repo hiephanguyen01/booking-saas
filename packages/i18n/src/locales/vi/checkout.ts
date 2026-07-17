@@ -19,6 +19,8 @@ export const viCheckout = {
   promoRemove: 'Bỏ mã',
   discount: 'Giảm giá',
   quantityLine: '{rooms} phòng × {slots} khung giờ',
+  dailyQuantityLine: '{rooms} phòng × {days} ngày',
+  inventoryQuantityLine: 'Số lượng: {quantity}',
   totalIncludes: 'Giá đã bao gồm: Thuế 8%, Phí dịch vụ 5%',
   total: 'Tổng cộng',
   payNow: 'Đặt & thanh toán',

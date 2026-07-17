@@ -74,6 +74,21 @@ export function todayInTz(tz: string): string {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+/** Calendar date of a UTC instant in `tz`, as `YYYY-MM-DD`. */
+export function dateOnlyInTz(utcIso: string, tz: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(new Date(utcIso))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 /** `YYYY-MM-DD` → local `Date` at noon (avoids off-by-one from tz when feeding a calendar). */
 export function dateOnlyToLocal(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);

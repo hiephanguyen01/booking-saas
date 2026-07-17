@@ -12,6 +12,7 @@ export function PricePanel({
   qty,
   mode,
   slotCount,
+  dayCount,
 }: {
   quote: QuoteResponse;
   promo: ValidatePromoResponse | null;
@@ -19,11 +20,18 @@ export function PricePanel({
   qty: string;
   mode: string;
   slotCount: number;
+  dayCount: number;
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   const { t: tListing } = useTranslation(NsI18n.Listing);
   const hasDiscount = amounts.discount !== '0';
   const quantity = mode === 'inventory' ? qty : '1';
+  const quantityLabel =
+    mode === 'daily'
+      ? t('dailyQuantityLine', { rooms: quantity, days: dayCount })
+      : mode === 'inventory'
+        ? t('inventoryQuantityLine', { quantity })
+        : t('quantityLine', { rooms: quantity, slots: slotCount });
   const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
 
   return (
@@ -45,7 +53,7 @@ export function PricePanel({
         </div>
       ) : null}
       <PriceRow
-        label={t('quantityLine', { rooms: quantity, slots: slotCount })}
+        label={quantityLabel}
         value={formatVnd(amounts.subtotal)}
         className={hasDiscount ? 'mt-2' : ''}
       />

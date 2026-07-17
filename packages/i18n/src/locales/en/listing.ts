@@ -13,6 +13,7 @@ export const enListing = {
   perHour: 'per hour',
   forHours: 'for {count} hours',
   perDay: 'per day',
+  forDays: 'for {count} days',
   perItem: 'per item',
   perSession: 'per session',
   forSelectedDays: 'total for {count} days',

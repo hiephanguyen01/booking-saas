@@ -21,6 +21,8 @@ export const enCheckout = {
   promoRemove: 'Remove',
   discount: 'Discount',
   quantityLine: '{rooms} room × {slots} time slots',
+  dailyQuantityLine: '{rooms} room × {days} days',
+  inventoryQuantityLine: 'Quantity: {quantity}',
   totalIncludes: 'Price includes 8% tax and 5% service fee',
   total: 'Total',
   payNow: 'Book & pay',

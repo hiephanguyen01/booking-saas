@@ -22,12 +22,19 @@ import {
   dateOnlyToLocal,
   hoursBetween,
   localToDateOnly,
+  nightsBetween,
   timeInTz,
   todayInTz,
   zonedToUtcIso,
 } from '../../lib/time';
 import { formatVnd } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
+import {
+  atomicHourlySlots,
+  contiguousSlotsForInterval,
+  slotInterval,
+  toggleContiguousSlot,
+} from '../../features/listing-group/listing-group-utils';
 
 /** Local mirror of react-day-picker's DateRange (not a direct storefront dep). */
 type DateRange = { from: Date | undefined; to?: Date | undefined };
@@ -71,6 +78,10 @@ export function BookingPanel({
   const inventory = mode === 'inventory' ? inventorySelection(sp, listing.modeConfig, tz) : null;
   const start = inventory ? inventory.start : (sp.get('start') ?? initialStart ?? null);
   const end = inventory ? inventory.end : (sp.get('end') ?? initialEnd ?? null);
+  const selectedDays =
+    mode === 'daily' && sp.get('from') && sp.get('to')
+      ? nightsBetween(sp.get('from')!, sp.get('to')!)
+      : null;
 
   function switchMode(next: AvailabilityMode): void {
     setSp({ mode: next }); // reset the selection when the mode changes
@@ -92,7 +103,14 @@ export function BookingPanel({
   return (
     <div className="rounded-lg bg-card p-5 text-card-foreground shadow-sm">
       <div className="space-y-5">
-        <QuoteHeader quote={quote} listing={listing} mode={mode} start={start} end={end} />
+        <QuoteHeader
+          quote={quote}
+          listing={listing}
+          mode={mode}
+          start={start}
+          end={end}
+          selectedDays={selectedDays}
+        />
 
         {modes.length > 1 ? <ModeToggle modes={modes} active={mode} onSelect={switchMode} /> : null}
 
@@ -150,19 +168,21 @@ function QuoteHeader({
   mode,
   start,
   end,
+  selectedDays,
 }: {
   quote: QuoteResponse | null;
   listing: PublicListingDetailResponse;
   mode: AvailabilityMode;
   start: string | null;
   end: string | null;
+  selectedDays: number | null;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const from = formatVnd(fromPrice(listing.modeConfig));
   const selectedHours = start && end ? hoursBetween(start, end) : null;
   const unitLabel: Record<AvailabilityMode, string> = {
     hourly: quote && selectedHours ? t('forHours', { count: selectedHours }) : t('perHour'),
-    daily: t('perDay'),
+    daily: quote && selectedDays ? t('forDays', { count: selectedDays }) : t('perDay'),
     inventory: t('perItem'),
   };
 
@@ -241,9 +261,18 @@ function HourlyPicker({
   const { t } = useTranslation(NsI18n.Listing);
   const today = todayInTz(tz);
   const day = sp.get('day') || sp.get('date') || today;
-  const slots: HourlySlot[] =
+  const durationSlots: HourlySlot[] =
     availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
+  const slots = useMemo(() => atomicHourlySlots(durationSlots), [durationSlots]);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [selectionError, setSelectionError] = useState('');
+  const selected = useMemo(
+    () =>
+      selectedStart && selectedEnd
+        ? contiguousSlotsForInterval(slots, selectedStart, selectedEnd)
+        : [],
+    [selectedEnd, selectedStart, slots],
+  );
 
   function pickDay(nextDay: string): void {
     const next = new URLSearchParams(sp);
@@ -252,30 +281,43 @@ function HourlyPicker({
     next.set('date', nextDay);
     next.delete('start');
     next.delete('end');
+    next.delete('startTime');
+    next.delete('endTime');
+    setSelectionError('');
     setSp(next);
   }
 
   function pickSlot(slot: HourlySlot): void {
+    if (!slot.available) return;
+    const result = toggleContiguousSlot(selected, slot);
+    if (!result.changed) {
+      setSelectionError(t('group.contiguousOnly'));
+      return;
+    }
+
     const next = new URLSearchParams(sp);
     next.set('mode', 'hourly');
     next.set('day', day);
     next.set('date', day);
-    next.set('startTime', timeInTz(slot.startUtc, tz));
-    next.set('endTime', timeInTz(slot.endUtc, tz));
-    next.set('start', slot.startUtc);
-    next.set('end', slot.endUtc);
+    const interval = slotInterval(result.slots);
+    if (interval) {
+      next.set('startTime', timeInTz(interval.start, tz));
+      next.set('endTime', timeInTz(interval.end, tz));
+      next.set('start', interval.start);
+      next.set('end', interval.end);
+    } else {
+      next.delete('startTime');
+      next.delete('endTime');
+      next.delete('start');
+      next.delete('end');
+    }
+    setSelectionError('');
     setSp(next);
   }
 
   const available = slots.filter((slot) => slot.available);
   const visibleSlots = onlyAvailable ? available : slots;
-  const selectedUnavailable = Boolean(
-    selectedStart &&
-    selectedEnd &&
-    !slots.some(
-      (slot) => slot.startUtc === selectedStart && slot.endUtc === selectedEnd && slot.available,
-    ),
-  );
+  const selectedUnavailable = Boolean(selectedStart && selectedEnd && selected.length === 0);
 
   return (
     <div className="space-y-3">
@@ -290,7 +332,14 @@ function HourlyPicker({
       </label>
 
       <div className="flex items-center justify-between gap-3">
-        <PickerLabel>{t('pickSlot')}</PickerLabel>
+        <div>
+          <PickerLabel>{t('pickSlot')}</PickerLabel>
+          {selected.length ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t('group.slotsChosen', { count: selected.length })}
+            </p>
+          ) : null}
+        </div>
         {slots.some((slot) => !slot.available) ? (
           <button
             type="button"
@@ -308,7 +357,7 @@ function HourlyPicker({
       ) : (
         <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pr-1">
           {visibleSlots.map((slot, slotIndex) => {
-            const isSelected = slot.startUtc === selectedStart && slot.endUtc === selectedEnd;
+            const isSelected = selected.some((item) => item.startUtc === slot.startUtc);
             return (
               <button
                 key={`${slot.startUtc}-${slot.endUtc}-${slotIndex}`}
@@ -335,6 +384,28 @@ function HourlyPicker({
           })}
         </div>
       )}
+      {selected.length ? (
+        <button
+          type="button"
+          onClick={() => {
+            const next = new URLSearchParams(sp);
+            next.delete('startTime');
+            next.delete('endTime');
+            next.delete('start');
+            next.delete('end');
+            setSelectionError('');
+            setSp(next);
+          }}
+          className="text-left text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {t('group.clearAll')}
+        </button>
+      ) : null}
+      {selectionError ? (
+        <p role="alert" className="text-xs text-destructive">
+          {selectionError}
+        </p>
+      ) : null}
       {selectedUnavailable ? (
         <p role="alert" className="text-xs text-destructive">
           {t('selectedSlotUnavailable')}
