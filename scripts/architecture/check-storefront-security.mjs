@@ -30,6 +30,10 @@ for (const file of repositoryFiles) {
 
 const storefrontRoot = join(root, 'apps/storefront/app');
 const storefrontFiles = walk(storefrontRoot).filter((file) => sourceExtensions.has(extname(file)));
+const directFetchAllowlist = new Set([
+  'apps/storefront/app/routes/readyz.ts',
+  'apps/storefront/app/routes/uploads.presign.tsx',
+]);
 let otpCompatibilityExceptions = 0;
 let tenantResolutionCallSites = 0;
 
@@ -37,6 +41,11 @@ for (const file of storefrontFiles) {
   const path = relative(root, file);
   const source = readFileSync(file, 'utf8');
 
+  if (/\bfetch\s*\(/.test(source) && !directFetchAllowlist.has(path)) {
+    failures.push(
+      `${path}: direct fetch is forbidden; use apps/storefront/app/lib/api.server.ts`,
+    );
+  }
   if (source.includes('process.env') && !path.endsWith('/lib/env.server.ts')) {
     failures.push(`${path}: read runtime environment through env.server.ts`);
   }
