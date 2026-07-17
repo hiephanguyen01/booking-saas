@@ -6,6 +6,7 @@ import {
   type BackendRegisterCredentials,
 } from '@booking/api-client';
 import type { ZodType, ZodTypeDef } from 'zod';
+import { getOptionalAccessToken } from './auth.server';
 import { storefrontEnv } from './env.server';
 
 const client = () => createApiClient(storefrontEnv.backendUrl);
@@ -63,7 +64,11 @@ export async function publicGetData<T>(
   path: string,
   options: StorefrontJsonOptions<T> & { allowNotFound?: boolean },
 ): Promise<T | null> {
-  const result = await client().publicGet(path, requestOptions(request, options));
+  const accessToken = getOptionalAccessToken();
+  const requestOptionsForCall = requestOptions(request, options);
+  const result = accessToken
+    ? await client().get(path, accessToken, requestOptionsForCall)
+    : await client().publicGet(path, requestOptionsForCall);
   if (result.status === 404 && options.allowNotFound) return null;
   if (!result.ok || result.data === null) throw readFailure(result);
   return result.data;
