@@ -1,3 +1,9 @@
+import {
+  loginInputSchema,
+  passwordResetStartInputSchema,
+  passwordSchema,
+  registrationStartInputSchema,
+} from '@booking/contracts';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -171,9 +177,15 @@ export function StartForm({
   const { t } = useTranslation(NsI18n.Auth);
   const submit = useSubmit();
   const schema = z.object({
-    fullName: mode === 'register' ? z.string().trim().min(1) : z.string().optional(),
-    email: z.string().email(),
-    password: mode === 'login' ? z.string().min(1) : z.string().optional(),
+    fullName:
+      mode === 'register' ? registrationStartInputSchema.shape.fullName : z.string().optional(),
+    email:
+      mode === 'login'
+        ? loginInputSchema.shape.email
+        : mode === 'reset'
+          ? passwordResetStartInputSchema.shape.email
+          : registrationStartInputSchema.shape.email,
+    password: mode === 'login' ? loginInputSchema.shape.password : z.string().optional(),
   });
   type Values = z.infer<typeof schema>;
   const {
@@ -390,12 +402,7 @@ export function NewPasswordForm({
   const submit = useSubmit();
   const schema = z
     .object({
-      password: z
-        .string()
-        .min(8)
-        .max(128)
-        .regex(/[A-Za-z]/)
-        .regex(/[0-9]/),
+      password: passwordSchema,
       confirmPassword: z.string(),
     })
     .refine((value) => value.password === value.confirmPassword, {
