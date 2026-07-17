@@ -34,6 +34,7 @@ export function toTenantResponse(t: TenantRecord): TenantResponse {
     defaultLocale: t.defaultLocale as 'vi' | 'en',
     themeConfig: t.themeConfig,
     settings: t.settings,
+    defaultCancellationPolicyId: t.defaultCancellationPolicyId,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };

@@ -327,6 +327,8 @@ export const partnerResponseSchema = z.object({
   contactInfo: partnerContactInfoResponseSchema,
   identityInfo: partnerIdentityInfoResponseSchema,
   owner: partnerOwnerResponseSchema.nullable(),
+  /** Partner-level fallback cancellation policy (§11.3); null = fall back to the tenant default. */
+  defaultCancellationPolicyId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

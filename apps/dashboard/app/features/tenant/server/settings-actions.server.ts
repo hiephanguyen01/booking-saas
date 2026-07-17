@@ -69,6 +69,21 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     return { form: 'flags', ok: true };
   }
 
+  if (intent === 'set-default-cancellation-policy') {
+    const raw = String(formData.get('policyId') ?? '');
+    const res = await apiPatch(
+      '/tenant/settings/default-cancellation-policy',
+      { policyId: raw === '' ? null : raw },
+      auth,
+    );
+    if (!res.ok)
+      return routeData(
+        { form: 'cancellation-default', error: res.error ?? 'Không lưu được chính sách mặc định.' },
+        { status: 400 },
+      );
+    return { form: 'cancellation-default', ok: true };
+  }
+
   if (intent === 'verify-domain') {
     const id = String(formData.get('domainId'));
     const res = await apiPost<DomainResponse>(`/tenant/domains/${id}/verify`, {}, auth);

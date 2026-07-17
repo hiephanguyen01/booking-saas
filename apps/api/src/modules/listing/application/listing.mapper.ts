@@ -1,4 +1,5 @@
 import type {
+  CancellationPolicyResponse,
   ListingGroupResponse,
   ListingResponse,
   PricingRuleResponse,
@@ -6,10 +7,31 @@ import type {
   ResourceResponse,
 } from '@booking/contracts';
 import { computeGroupStats } from '../domain/group-stats';
+import type { CancellationPolicyRecord } from '../domain/ports/cancellation-policy-repository.port';
 import type { ListingGroupRecord } from '../domain/ports/listing-group-repository.port';
 import type { ListingRecord, PublicListingRecord } from '../domain/ports/listing-repository.port';
 import type { ResourceRecord } from '../domain/ports/resource-repository.port';
 import type { PricingRuleRecord } from '../domain/ports/pricing-rule-repository.port';
+
+/**
+ * A cancellation policy for the partner management screen. `defaultPolicyId` is the
+ * caller's current default (partner-level or tenant-level) so the row can flag itself.
+ */
+export function toCancellationPolicyResponse(
+  p: CancellationPolicyRecord,
+  defaultPolicyId: string | null,
+): CancellationPolicyResponse {
+  return {
+    id: p.id,
+    tenantId: p.tenantId,
+    partnerId: p.partnerId,
+    name: p.name,
+    rules: p.rules,
+    isDefault: defaultPolicyId !== null && p.id === defaultPolicyId,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+  };
+}
 
 export function toListingGroupResponse(g: ListingGroupRecord): ListingGroupResponse {
   return {
@@ -72,6 +94,8 @@ export function toListingResponse(l: ListingRecord): ListingResponse {
     rescheduleFee: l.rescheduleFee,
     cancellationPolicyId: l.cancellationPolicyId,
     cancellationPolicy: l.cancellationPolicy,
+    effectiveCancellationPolicy: l.effectiveCancellationPolicy,
+    effectiveCancellationPolicySource: l.effectiveCancellationPolicySource,
     partner: l.partner,
     status: l.status,
     publishedBy: l.publishedBy,
@@ -127,6 +151,8 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
     listingTypeSlug: l.listingTypeSlug,
     group: l.group,
     cancellationPolicy: l.cancellationPolicy,
+    effectiveCancellationPolicy: l.effectiveCancellationPolicy,
+    effectiveCancellationPolicySource: l.effectiveCancellationPolicySource,
     trust: {
       identityVerified: l.partnerVerifiedAt !== null,
       partnerActiveSince: l.partnerActiveSince.toISOString(),

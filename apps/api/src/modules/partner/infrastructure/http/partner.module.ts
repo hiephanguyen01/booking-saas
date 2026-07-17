@@ -21,6 +21,7 @@ import { SuspendPartnerUseCase } from '../../application/use-cases/suspend-partn
 import { ListPartnersUseCase } from '../../application/use-cases/list-partners.use-case';
 import { GetPartnerUseCase } from '../../application/use-cases/get-partner.use-case';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
+import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
 import { PartnerApplicationController } from './partner-application.controller';
 import { TenantPartnerController } from './tenant-partner.controller';
 import { PartnerProfileController } from './partner-profile.controller';
@@ -49,6 +50,7 @@ import { PartnerProfileController } from './partner-profile.controller';
     ListPartnersUseCase,
     GetPartnerUseCase,
     GetPartnerProfileUseCase,
+    SetPartnerDefaultCancellationPolicyUseCase,
   ],
   // Exported so Task 1.4 (listing creation) reads the partner's verification status.
   // The identity-verification gate itself is a plain function

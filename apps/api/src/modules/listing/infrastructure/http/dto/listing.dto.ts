@@ -1,6 +1,8 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 import {
+  cancellationPolicyResponseSchema,
+  createCancellationPolicyInputSchema,
   createListingGroupInputSchema,
   createListingInputSchema,
   createResourceInputSchema,
@@ -19,6 +21,7 @@ import {
   quoteQuerySchema,
   quoteResponseSchema,
   resourceResponseSchema,
+  updateCancellationPolicyInputSchema,
   updateListingGroupInputSchema,
   updateListingInputSchema,
 } from '@booking/contracts';
@@ -35,6 +38,8 @@ export class ModerationReasonDto extends createZodDto(moderationReasonInputSchem
 export class PublishListingDto extends createZodDto(publishListingInputSchema) {}
 export class ListTenantListingsQueryDto extends createZodDto(listTenantListingsQuerySchema) {}
 export class ListPartnerListingsQueryDto extends createZodDto(listPartnerListingsQuerySchema) {}
+export class CreateCancellationPolicyDto extends createZodDto(createCancellationPolicyInputSchema) {}
+export class UpdateCancellationPolicyDto extends createZodDto(updateCancellationPolicyInputSchema) {}
 
 // ── Responses ─────────────────────────────────────────────────────────────────
 export class ListingGroupResponseDto extends createZodDto(listingGroupResponseSchema) {}
@@ -48,6 +53,7 @@ export class PublicListingDetailResponseDto extends createZodDto(
 export class QuoteResponseDto extends createZodDto(quoteResponseSchema) {}
 export class ListingReviewResponseDto extends createZodDto(listingReviewResponseSchema) {}
 export class ListingGroupReviewResponseDto extends createZodDto(listingGroupReviewResponseSchema) {}
+export class CancellationPolicyResponseDto extends createZodDto(cancellationPolicyResponseSchema) {}
 
 // ── Composed responses ────────────────────────────────────────────────────────
 /** Partner submit-for-review returns the listing plus its review checklist. */

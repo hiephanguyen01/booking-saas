@@ -5,6 +5,7 @@ import {
   listPartnersQuerySchema,
   partnerApplyInputSchema,
   partnerResponseSchema,
+  setDefaultCancellationPolicyInputSchema,
   submitIdentityInputSchema,
   updatePartnerDocumentsInputSchema,
   updatePayoutInfoInputSchema,
@@ -19,6 +20,9 @@ export class UpdatePayoutInfoDto extends createZodDto(updatePayoutInfoInputSchem
 export class UpdatePartnerDocumentsDto extends createZodDto(updatePartnerDocumentsInputSchema) {}
 export class SubmitIdentityDto extends createZodDto(submitIdentityInputSchema) {}
 export class VerifyIdentityDto extends createZodDto(verifyIdentityInputSchema) {}
+export class SetDefaultCancellationPolicyDto extends createZodDto(
+  setDefaultCancellationPolicyInputSchema,
+) {}
 
 // Query
 export class ListPartnersQueryDto extends createZodDto(listPartnersQuerySchema) {}

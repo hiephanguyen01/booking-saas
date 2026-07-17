@@ -7,11 +7,13 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { toPartnerResponse } from '../../application/partner.mapper';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
+import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
 import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
 import { UpdatePayoutInfoUseCase } from '../../application/use-cases/update-payout-info.use-case';
 import {
   PartnerResponseDto,
+  SetDefaultCancellationPolicyDto,
   SubmitIdentityDto,
   UpdatePartnerDocumentsDto,
   UpdatePayoutInfoDto,
@@ -29,6 +31,7 @@ export class PartnerProfileController {
     private readonly updatePayoutInfo: UpdatePayoutInfoUseCase,
     private readonly updateDocuments: UpdatePartnerDocumentsUseCase,
     private readonly submitIdentity: SubmitIdentityUseCase,
+    private readonly setDefaultPolicy: SetPartnerDefaultCancellationPolicyUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -70,5 +73,16 @@ export class PartnerProfileController {
   async identity(@Body() input: SubmitIdentityDto): Promise<PartnerResponse> {
     const partnerId = this.tenantContext.partnerIdOrThrow();
     return toPartnerResponse(await this.submitIdentity.execute(partnerId, input));
+  }
+
+  @RequirePermissions('partner.listings.write')
+  @Patch('default-cancellation-policy')
+  @ApiOperation({ summary: "Set the partner's fallback cancellation policy (§11.3)" })
+  @ApiOkResponse({ type: PartnerResponseDto })
+  async defaultCancellationPolicy(
+    @Body() input: SetDefaultCancellationPolicyDto,
+  ): Promise<PartnerResponse> {
+    const partnerId = this.tenantContext.partnerIdOrThrow();
+    return toPartnerResponse(await this.setDefaultPolicy.execute(partnerId, input.policyId));
   }
 }
