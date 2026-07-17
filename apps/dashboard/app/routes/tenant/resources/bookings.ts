@@ -1,7 +1,7 @@
 import type { Route } from './+types/bookings';
 import { fetchBookingList } from '~/features/bookings/booking-list.server';
 import { parseBookingStatus } from '~/features/bookings/booking-list.query';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.bookings.read');

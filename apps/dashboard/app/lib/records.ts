@@ -32,3 +32,21 @@ export function readHttpUrl(value: unknown): string | null {
     return null;
   }
 }
+
+/** A finite number, else `null`. */
+export function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+// `…U` variants return `undefined` on a miss — for building a form's
+// `defaultValues` (a controlled input can't take `null`; see the note above).
+
+/** Trimmed non-empty string, else `undefined`. */
+export function readStringU(value: unknown): string | undefined {
+  return readString(value) ?? undefined;
+}
+
+/** A boolean, else `undefined`. */
+export function readBooleanU(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}

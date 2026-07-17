@@ -1,9 +1,9 @@
-import type { BookingMode } from '@booking/contracts';
+import { TZ } from '~/constants/time';
 
 /**
  * The one presentation/format module for the whole dashboard (admin · tenant ·
- * partner · affiliate). Pure + client-safe — no framework imports (the only
- * import is a type, erased at build time).
+ * partner · affiliate). Pure functions only — display CONSTANTS (label maps,
+ * timezone data) live in `~/constants/*`. Client-safe, no framework imports.
  *
  * Load-bearing rules this module enforces (CLAUDE.md §2.1 rule 4 + §6):
  * - **Money is bigint VND.** `formatVnd` parses digit strings with `BigInt`,
@@ -16,9 +16,6 @@ import type { BookingMode } from '@booking/contracts';
  */
 
 // ── Timezone-pinned date/time ────────────────────────────────────────────────
-
-/** VN market timezone — every calendar bucket and clock renders in this zone. */
-export const TZ = 'Asia/Ho_Chi_Minh';
 
 const fmtCache = new Map<string, Intl.DateTimeFormat>();
 
@@ -176,6 +173,15 @@ function scaleTenths(abs: bigint, unit: bigint): number {
   return Number((abs * 10n + unit / 2n) / unit) / 10;
 }
 
+/** Exact-bigint `a − b` as a digit string; `null` when either side is unparseable. */
+export function subtractMoney(a: string, b: string): string | null {
+  try {
+    return (BigInt(a) - BigInt(b)).toString();
+  } catch {
+    return null;
+  }
+}
+
 // ── Numbers & percents ───────────────────────────────────────────────────────
 
 const numberFmt = new Intl.NumberFormat('vi-VN');
@@ -217,44 +223,17 @@ export function formatDaysLeft(days: number): string {
   return `Còn ${days} ngày`;
 }
 
-// ── Label maps (enum → Vietnamese) ───────────────────────────────────────────
+/** An `hoursBefore` span as `2 ngày` / `12 giờ` (cancellation tiers, §8.4). */
+export function formatHoursBefore(hours: number): string {
+  if (hours >= 24 && hours % 24 === 0) {
+    const days = hours / 24;
+    return `${days} ngày`;
+  }
+  return `${hours} giờ`;
+}
 
-/** Partner legal-type → Vietnamese label. */
-export const PARTNER_TYPE_LABEL: Record<string, string> = {
-  individual: 'Cá nhân',
-  company: 'Doanh nghiệp',
-};
-
-export const TENANT_STATUS_LABELS: Record<string, string> = {
-  active: 'Đang hoạt động',
-  suspended: 'Tạm ngưng',
-  expired: 'Hết hạn',
-};
-
-export const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {
-  trial: 'Dùng thử',
-  active: 'Đang hiệu lực',
-  past_due: 'Quá hạn thanh toán',
-  expired: 'Hết hạn',
-  cancelled: 'Đã huỷ',
-};
-
-export const VERTICAL_LABELS: Record<string, string> = {
-  studio: 'Studio',
-  rental: 'Cho thuê',
-  classes: 'Lớp học',
-};
-
-/**
- * Booking-mode → Vietnamese label — the ONE map for the whole dashboard.
- * Keyed by the `BookingMode` zod enum so a new mode is a compile error here.
- * `inventory` reads "Theo kho" (by stock — the equipment-rental mode); this is
- * the canonical wording, replacing the former "Cho thuê"/"Kho" variants.
- */
-export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
-  hourly: 'Theo giờ',
-  daily: 'Theo ngày',
-  appointment: 'Lịch hẹn',
-  class: 'Lớp học',
-  inventory: 'Theo kho',
-};
+/** Address parts joined as `địa chỉ, phường, tỉnh`; `null` when all are blank. */
+export function formatLocation(...parts: Array<string | null | undefined>): string | null {
+  const present = parts.filter(Boolean);
+  return present.length > 0 ? present.join(', ') : null;
+}

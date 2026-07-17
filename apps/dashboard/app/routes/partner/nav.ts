@@ -8,7 +8,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
-import { dashboardPaths } from '~/lib/paths';
+import { dashboardPaths } from '~/constants/paths';
 
 // Sidebar nav for the partner area (Task 1.14). OWNED by the partner agent -
 // append one entry per list screen. Keep the overview item first.

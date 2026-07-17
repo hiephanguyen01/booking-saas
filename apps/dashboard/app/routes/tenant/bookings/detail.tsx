@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { data as routeData, Form, Link, useNavigation } from 'react-router';
-import { ArrowLeft, Ban, CircleAlert, CircleCheck } from 'lucide-react';
+import { data as routeData, Form } from 'react-router';
+import { Ban } from 'lucide-react';
 import {
   reasonInputSchema,
   type BookingStatusHistoryResponse,
@@ -21,13 +21,15 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
-import { useTenantArea } from '../area-context';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { useTenantArea } from '~/features/tenant/lib/area-context';
+import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
-import { BookingDetailCard } from '~/components/booking-detail-card';
+import { useBusy } from '~/hooks/use-busy';
+import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import { Money } from '~/components/money';
 import { toTimelineEntries } from '~/features/bookings/booking-history';
 
@@ -90,30 +92,22 @@ export default function TenantBookingDetail({ loaderData, actionData }: Route.Co
   return (
     <div className="space-y-6">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/tenant/bookings">
-            <ArrowLeft className="size-4" /> Đặt chỗ
-          </Link>
-        </Button>
+        <BackLink to="/tenant/bookings" label="Đặt chỗ" className="mb-2" />
         <PageHeader title="Chi tiết đặt chỗ" description="Toàn bộ thông tin của đơn đặt." />
       </div>
 
-      {actionError ? (
-        <Alert variant="destructive">
-          <CircleAlert className="size-4" />
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      ) : null}
+      <ErrorBanner error={actionError} />
 
-      {cancelled ? (
-        <Alert>
-          <CircleCheck className="size-4" />
-          <AlertDescription>
-            Đã huỷ đơn · hoàn {cancelled.refundPercent}% cho khách ={' '}
-            <Money className="font-medium" value={cancelled.refundAmount} />
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <SuccessBanner
+        message={
+          cancelled ? (
+            <>
+              Đã huỷ đơn · hoàn {cancelled.refundPercent}% cho khách ={' '}
+              <Money className="font-medium" value={cancelled.refundAmount} />
+            </>
+          ) : null
+        }
+      />
 
       <BookingDetailCard
         audience="tenant"
@@ -130,8 +124,7 @@ export default function TenantBookingDetail({ loaderData, actionData }: Route.Co
 
 function CancelDialog({ booking }: { booking: TenantBookingResponse }) {
   const [open, setOpen] = useState(false);
-  const nav = useNavigation();
-  const busy = nav.state !== 'idle';
+  const busy = useBusy();
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

@@ -585,6 +585,21 @@ HTTP exceptions thrown from use cases. Never leak Prisma errors to the HTTP laye
 > the `Host` header; the dashboard from the login session. Some example file paths in older snippets
 > (e.g. `routes/dashboard/items/*`) are illustrative placeholders from the removed template.
 
+> **Dashboard layout (post structure-refactor)** — `apps/dashboard/app/` is organized as:
+> `routes/<area>/` holds ONLY route modules in nested resource folders with semantic names
+> (`bookings/{_index,detail}.tsx`, `listings/{_index,new,edit}.tsx`; singletons stay flat, e.g.
+> `profile.tsx`) plus `_layout.tsx` · `routes.ts` · `nav.ts`. All non-route code lives in
+> `features/<area>/{components,server,lib,constants.ts}` (area guards are
+> `features/<area>/server/<area>.server.ts` returning `{ctx, membership, auth, can}`) or in
+> cross-area domain features (`features/bookings`, `features/promotions`). Shared display
+> constants live in `app/constants/` (one file per domain, keys typed from `@booking/contracts`
+> enums, no barrel); route URLs in `~/constants/paths` (`dashboardPaths`). `app/components/` is
+> for multi-area primitives only (BackLink, ErrorBanner/SuccessBanner, StatusFilterTabs,
+> PaginationBar, ContactLink, status badges…); `app/lib/` is infrastructure + pure helpers.
+> These rules are CI-enforced by `app/architecture.spec.ts` — a route file is the only place
+> `./+types/*` may be imported; features/components never import from `routes/**`; browser-
+> reachable modules may only `import type` from `*.server` files.
+
 ### Philosophy
 
 React Router 7 in framework mode acts as a full-stack framework. Each route file exports:

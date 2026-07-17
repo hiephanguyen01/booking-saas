@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionInfoResponse } from '@booking/contracts';
-import { dashboardPaths } from './paths';
+import { dashboardPaths } from '~/constants/paths';
 import { defaultDashboardPath, findPartnerMembership, findTenantMembership } from './workspace';
 import { dashboardAreasFor } from './navigation';
 

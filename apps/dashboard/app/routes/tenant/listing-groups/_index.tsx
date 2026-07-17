@@ -6,8 +6,10 @@ import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { moderationErrorMessage } from '~/features/tenant/server/moderation-action.server';
 import { formatDate } from '~/lib/format';
+import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
@@ -36,10 +38,10 @@ export async function action({ request }: Route.ActionArgs) {
   }
   const res = await apiPost(`/tenant/listing-groups/${id}/${intent}`, {}, auth);
   if (!res.ok) {
-    const error =
-      res.code === 'LISTING_HAS_CONTACT_INFO'
-        ? 'Có thông tin liên hệ. Chọn “Xem” để kiểm tra và duyệt bất chấp cảnh báo.'
-        : (res.error ?? 'Thao tác không thành công.');
+    const error = moderationErrorMessage(
+      res,
+      'Có thông tin liên hệ. Chọn “Xem” để kiểm tra và duyệt bất chấp cảnh báo.',
+    );
     return routeData({ error, code: res.code }, { status: 400 });
   }
   return { ok: true };
@@ -123,11 +125,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
             : 'Duyệt, ẩn hoặc mở lại các bài đăng nhóm của đối tác.'
         }
       />
-      {error || actionError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error ?? actionError}
-        </div>
-      ) : null}
+      <ErrorBanner error={error ?? actionError} />
       <DataTable
         columns={columns}
         data={groups}

@@ -4,7 +4,7 @@ import { adminNavSections } from '~/routes/admin/nav';
 import { partnerNavSections } from '~/routes/partner/nav';
 import { tenantNavSections } from '~/routes/tenant/nav';
 import type { DashboardArea, DashboardNavItem, DashboardNavSection } from './navigation-types';
-import { dashboardPaths } from './paths';
+import { dashboardPaths } from '~/constants/paths';
 import { firstPartnerMembership, firstTenantMembership } from './workspace';
 
 export type { DashboardArea, DashboardNavItem, DashboardNavSection } from './navigation-types';

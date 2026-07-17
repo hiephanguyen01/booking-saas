@@ -6,19 +6,10 @@ import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiDelete, apiGet } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
-import { BOOKING_MODE_LABEL } from '~/lib/format';
-
-const SEARCH_SCHEDULE_LABEL: Record<
-  ListingTypeResponse['searchConfig']['schedule'],
-  string
-> = {
-  none: 'Không lịch',
-  hourly: 'Theo ngày',
-  daily: 'Khoảng ngày',
-  inventory: 'Thuê kho',
-};
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
+import { SEARCH_SCHEDULE_LABEL } from '~/features/tenant/constants';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Loại dịch vụ · Tenant · Bookify' }];
