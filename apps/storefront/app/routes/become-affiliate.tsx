@@ -42,7 +42,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
   const v = parsed.data;
 
-  const auth = await registerOrLogin({
+  const auth = await registerOrLogin(request, {
     email: v.email.trim(),
     password: v.password,
     fullName: v.fullName.trim(),
@@ -60,7 +60,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (v.accountNo?.trim()) payoutInfo.accountNo = v.accountNo.trim();
   if (v.accountHolder?.trim()) payoutInfo.accountHolder = v.accountHolder.trim();
 
-  const applied = await applyAsAffiliate(auth.token, { tenantId: tenant.id, payoutInfo });
+  const applied = await applyAsAffiliate(request, auth.token, { tenantId: tenant.id, payoutInfo });
   if (!applied.ok)
     return data(
       { fieldErrors: null, error: applied.code, ok: false },

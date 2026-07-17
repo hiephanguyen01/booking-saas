@@ -325,7 +325,7 @@ export async function submitPartnerProfile(request: Request, localeParam?: strin
   const parsed = partnerOnboardingProfileSchema.safeParse(await request.json());
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const payload = partnerApplyPayloadFor(parsed.data, tenant.id, auth.session.userId);
-  const applied = await applyAsPartner(auth.session.accessToken, payload);
+  const applied = await applyAsPartner(request, auth.session.accessToken, payload);
   if (!applied.ok) {
     return data<PartnerOnboardingActionData>(
       { error: applied.code satisfies PartnerErrorCode },

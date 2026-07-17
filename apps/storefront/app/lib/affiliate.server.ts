@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { TrackReferralResponse } from '@booking/contracts';
-import { storefrontEnv } from './env.server';
+import { affiliateResponseSchema, trackReferralResponseSchema } from '@booking/contracts';
+import { apiPost, publicPost } from './api.server';
 
 /**
  * Server-only affiliate attribution (§15.1). The storefront reads `?ref=CODE`,
@@ -13,12 +13,6 @@ const VISITOR_COOKIE = 'sf_visitor';
 /** 30-day attribution window (§15.1). Configurable per tenant is a later phase. */
 const AFF_MAX_AGE = 60 * 60 * 24 * 30;
 const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
-
-const backendUrl = (): string => storefrontEnv.backendUrl;
-
-function hostOf(request: Request): string {
-  return (request.headers.get('host') ?? 'localhost').split(':')[0];
-}
 
 function readCookie(request: Request, name: string): string | null {
   const match = (request.headers.get('cookie') ?? '').match(
@@ -58,22 +52,21 @@ export async function trackReferral(
   code: string,
   visitorId: string,
 ): Promise<boolean> {
-  try {
-    const res = await fetch(`${backendUrl()}/public/referrals/track`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        accept: 'application/json',
-        'x-forwarded-host': hostOf(request),
-      },
-      body: JSON.stringify({ code, visitorId }),
+  const result = await publicPost(
+    request,
+    '/public/referrals/track',
+    { code, visitorId },
+    { schema: trackReferralResponseSchema },
+  );
+  if (!result.ok || !result.data) {
+    console.warn('Storefront referral tracking failed', {
+      status: result.status,
+      failure: result.failure,
+      requestId: result.requestId,
     });
-    if (!res.ok) return false;
-    const body = (await res.json()) as TrackReferralResponse;
-    return body.valid === true;
-  } catch {
     return false;
   }
+  return result.data.valid;
 }
 
 export interface AffiliateApplyPayload {
@@ -87,20 +80,13 @@ export interface AffiliateApplyPayload {
  * persisted — the affiliate re-authenticates on the dashboard.
  */
 export async function applyAsAffiliate(
+  request: Request,
   token: string,
   input: AffiliateApplyPayload,
 ): Promise<{ ok: true } | { ok: false; code: string; status: number }> {
-  let res: Response;
-  try {
-    res = await fetch(`${backendUrl()}/affiliate/apply`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json', cookie: `sid=${token}` },
-      body: JSON.stringify(input),
-    });
-  } catch {
-    return { ok: false, code: 'generic', status: 503 };
-  }
-  if (res.ok) return { ok: true };
-  const body = (await res.json().catch(() => ({}))) as { code?: string };
-  return { ok: false, code: body.code ?? 'generic', status: res.status };
+  const result = await apiPost(request, '/affiliate/apply', input, token, {
+    schema: affiliateResponseSchema,
+  });
+  if (result.ok) return { ok: true };
+  return { ok: false, code: result.code ?? 'generic', status: result.status };
 }

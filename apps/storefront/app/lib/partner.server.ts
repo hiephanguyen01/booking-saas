@@ -8,24 +8,8 @@
  * storefront stays stateless; the partner re-authenticates on the dashboard).
  */
 
-import type { PartnerApplyInput } from '@booking/contracts';
-import { storefrontEnv } from './env.server';
-
-const backendUrl = (): string => storefrontEnv.backendUrl;
-
-const JSON_HEADERS = { 'content-type': 'application/json', accept: 'application/json' } as const;
-
-/** Lift cookie name→value pairs from a fetch Response's Set-Cookie headers. */
-function parseSetCookies(res: Response): Record<string, string> {
-  const out: Record<string, string> = {};
-  const list = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
-  for (const raw of list) {
-    const [pair] = raw.split(';');
-    const idx = pair.indexOf('=');
-    if (idx > -1) out[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
-  }
-  return out;
-}
+import { partnerResponseSchema, type PartnerApplyInput } from '@booking/contracts';
+import { apiPost, backendLogin, backendRegister } from './api.server';
 
 export interface RegisterCredentials {
   email: string;
@@ -53,48 +37,25 @@ type TokenResult =
  * Register a fresh account, or — if the email already exists (register 409) —
  * log in with the supplied password. Either way returns the `sid` access token.
  */
-export async function registerOrLogin(creds: RegisterCredentials): Promise<TokenResult> {
-  let reg: Response;
-  try {
-    reg = await fetch(`${backendUrl()}/auth/register`, {
-      method: 'POST',
-      headers: JSON_HEADERS,
-      body: JSON.stringify({
-        email: creds.email,
-        password: creds.password,
-        fullName: creds.fullName,
-        ...(creds.phone ? { phone: creds.phone } : {}),
-      }),
-    });
-  } catch {
-    return { ok: false, code: 'generic', status: 503 };
+export async function registerOrLogin(
+  request: Request,
+  creds: RegisterCredentials,
+): Promise<TokenResult> {
+  const registration = await backendRegister(request, creds);
+  if (registration.ok && registration.tokens) {
+    return { ok: true, token: registration.tokens.accessToken };
   }
-
-  if (reg.ok) {
-    const sid = parseSetCookies(reg).sid;
-    return sid ? { ok: true, token: sid } : { ok: false, code: 'generic', status: 502 };
+  if (registration.status !== 409) {
+    return { ok: false, code: 'generic', status: registration.status };
   }
-
-  // A 409 means the email is already registered → try logging in instead.
-  if (reg.status === 409) {
-    let login: Response;
-    try {
-      login = await fetch(`${backendUrl()}/auth/login`, {
-        method: 'POST',
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ email: creds.email, password: creds.password }),
-      });
-    } catch {
-      return { ok: false, code: 'generic', status: 503 };
-    }
-    if (!login.ok) {
-      return { ok: false, code: 'emailTakenWrongPassword', status: login.status };
-    }
-    const sid = parseSetCookies(login).sid;
-    return sid ? { ok: true, token: sid } : { ok: false, code: 'generic', status: 502 };
+  const login = await backendLogin(request, {
+    email: creds.email,
+    password: creds.password,
+  });
+  if (!login.ok || !login.tokens) {
+    return { ok: false, code: 'emailTakenWrongPassword', status: login.status };
   }
-
-  return { ok: false, code: 'generic', status: reg.status };
+  return { ok: true, token: login.tokens.accessToken };
 }
 
 const APPLY_ERROR_CODES: Record<string, ErrorCode> = {
@@ -107,21 +68,14 @@ const APPLY_ERROR_CODES: Record<string, ErrorCode> = {
 
 /** Submit the partner application with the just-minted session token. */
 export async function applyAsPartner(
+  request: Request,
   token: string,
   input: PartnerApplyPayload,
 ): Promise<{ ok: true } | { ok: false; code: ErrorCode; status: number }> {
-  let res: Response;
-  try {
-    res = await fetch(`${backendUrl()}/partners/apply`, {
-      method: 'POST',
-      headers: { ...JSON_HEADERS, cookie: `sid=${token}` },
-      body: JSON.stringify(input),
-    });
-  } catch {
-    return { ok: false, code: 'generic', status: 503 };
-  }
-  if (res.ok) return { ok: true };
-  const body = (await res.json().catch(() => ({}))) as { code?: string };
-  const code = body.code ? APPLY_ERROR_CODES[body.code] : undefined;
-  return { ok: false, code: code ?? 'generic', status: res.status };
+  const result = await apiPost(request, '/partners/apply', input, token, {
+    schema: partnerResponseSchema,
+  });
+  if (result.ok) return { ok: true };
+  const code = result.code ? APPLY_ERROR_CODES[result.code] : undefined;
+  return { ok: false, code: code ?? 'generic', status: result.status };
 }
