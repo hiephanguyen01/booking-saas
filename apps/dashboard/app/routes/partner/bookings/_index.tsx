@@ -9,14 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@booking/ui/components/ui/select';
-import type { Route } from './+types/bookings';
+import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from './partner.server';
+import { requirePartner, canPartner } from '../partner.server';
 import { PageHeader } from '~/components/page-header';
 import { BookingStatusBadge, bookingStatusMeta } from '~/components/status-badge';
 import { Money } from '~/components/money';
 import { formatDate, formatTime } from '~/lib/format';
-import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from './components/calendar-dates';
+import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from '../components/calendar-dates';
 import { runPartnerBookingAction } from '~/features/bookings/partner-booking-actions.server';
 import { PartnerBookingActions } from '~/features/bookings/partner-booking-actions';
 

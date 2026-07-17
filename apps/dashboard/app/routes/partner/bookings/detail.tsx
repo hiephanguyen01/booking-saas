@@ -4,9 +4,9 @@ import type { BookingStatusHistoryResponse, PartnerBookingResponse } from '@book
 import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
-import type { Route } from './+types/bookings.$bookingId';
+import type { Route } from './+types/detail';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from './partner.server';
+import { requirePartner, canPartner } from '../partner.server';
 import { PageHeader } from '~/components/page-header';
 import { BookingDetailCard } from '~/components/booking-detail-card';
 import {

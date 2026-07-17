@@ -62,7 +62,7 @@ import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import type { Route } from './+types/$id';
+import type { Route } from './+types/detail';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { platformLoader, platformSession } from '~/routes/admin/lib/api.server';
 import { SUBSCRIPTION_STATUS_LABELS } from '~/lib/format';

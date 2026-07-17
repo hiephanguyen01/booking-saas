@@ -3,10 +3,10 @@ import { ArrowLeft, Lock, TriangleAlert } from 'lucide-react';
 import { createListingGroupInputSchema, type ListingGroupDetailResponse, type ListingTypeResponse } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
-import type { Route } from './+types/listing-groups.$groupId.edit';
+import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { canPartner, requirePartner } from './partner.server';
-import { ListingGroupForm } from './components/listing-group-form';
+import { canPartner, requirePartner } from '../partner.server';
+import { ListingGroupForm } from '../components/listing-group-form';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
 

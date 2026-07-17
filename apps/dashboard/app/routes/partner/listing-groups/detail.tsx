@@ -52,12 +52,12 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { Progress } from '@booking/ui/components/ui/progress';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import type { Route } from './+types/listing-groups.$groupId';
+import type { Route } from './+types/detail';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { canPartner, requirePartner } from './partner.server';
+import { canPartner, requirePartner } from '../partner.server';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -68,7 +68,7 @@ import { PhotoStrip } from '~/components/photo-strip';
 import { CopyableCode } from '~/components/copyable-code';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { BOOKING_MODE_LABEL, formatNumber } from '~/lib/format';
-import { listingPriceFrom } from './listing-price';
+import { listingPriceFrom } from '../listing-price';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);

@@ -8,12 +8,12 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { ArrowLeft, CircleAlert } from 'lucide-react';
-import type { Route } from './+types/promotions.new';
+import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from './partner.server';
+import { requirePartner, canPartner } from '../partner.server';
 import { PageHeader } from '~/components/page-header';
-import { PromotionForm, readPromotionForm } from '../tenant/components/promotion-form';
-import type { ScopeOptions } from '../tenant/promotions/scope-options.server';
+import { PromotionForm, readPromotionForm } from '~/routes/tenant/components/promotion-form';
+import type { ScopeOptions } from '~/routes/tenant/promotions/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tạo khuyến mãi · Đối tác · Bookify' }];

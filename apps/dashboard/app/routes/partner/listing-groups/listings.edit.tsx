@@ -9,10 +9,10 @@ import { Button } from '@booking/ui/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { data, Link, redirect } from 'react-router';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import type { Route } from './+types/listing-groups.$groupId.listings.$listingId.edit';
-import { ListingForm } from './components/listing-form';
+import type { Route } from './+types/listings.edit';
+import { ListingForm } from '../components/listing-form';
 import { PageHeader } from '~/components/page-header';
-import { canPartner, requirePartner } from './partner.server';
+import { canPartner, requirePartner } from '../partner.server';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);

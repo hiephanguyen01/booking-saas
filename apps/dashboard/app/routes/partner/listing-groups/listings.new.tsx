@@ -2,10 +2,10 @@ import { data, Link, redirect } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { createListingInputSchema, type CancellationPolicySummary, type ListingGroupDetailResponse, type ListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import type { Route } from './+types/listing-groups.$groupId.listings.new';
+import type { Route } from './+types/listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { canPartner, requirePartner } from './partner.server';
-import { ListingForm } from './components/listing-form';
+import { canPartner, requirePartner } from '../partner.server';
+import { ListingForm } from '../components/listing-form';
 import { PageHeader } from '~/components/page-header';
 
 export async function loader({ request, params }: Route.LoaderArgs) {

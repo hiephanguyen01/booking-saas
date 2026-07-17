@@ -7,12 +7,12 @@ import {
   type ListingTypeResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import type { Route } from './+types/listings.$listingId.edit';
+import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { requirePartner, canPartner } from './partner.server';
+import { requirePartner, canPartner } from '../partner.server';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { ListingForm } from './components/listing-form';
+import { ListingForm } from '../components/listing-form';
 
 /**
  * A read-only strip above the edit form: current publish status + who last hid or
