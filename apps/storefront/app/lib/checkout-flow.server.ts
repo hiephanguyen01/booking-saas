@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createCookie } from 'react-router';
 import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
+import { storefrontEnv } from './env.server';
 
 const TTL_SECONDS = 30 * 60;
 const PREFIX = 'bookify:storefront:checkout-flow:';
@@ -10,16 +11,8 @@ export interface CheckoutFlowRecord {
   bookingCode: string;
   listingSlug: string;
   locale: 'vi' | 'en';
-}
-
-function sessionSecrets(): string[] {
-  const current = process.env.SESSION_SECRET_CURRENT ?? process.env.SESSION_SECRET;
-  if (!current || current.length < 32) {
-    throw new Error('SESSION_SECRET_CURRENT must contain at least 32 characters.');
-  }
-  return [current, process.env.SESSION_SECRET_PREVIOUS].filter(
-    (value): value is string => Boolean(value && value.length >= 32),
-  );
+  /** Guest access credential; Redis-only and never serialized into a URL or loader payload. */
+  otp?: string;
 }
 
 export function createCheckoutFlowService(store: RedisJsonStore = storefrontRedisStore) {
@@ -27,10 +20,8 @@ export function createCheckoutFlowService(store: RedisJsonStore = storefrontRedi
     httpOnly: true,
     path: '/',
     sameSite: 'lax',
-    secure: process.env.SESSION_COOKIE_SECURE
-      ? process.env.SESSION_COOKIE_SECURE !== 'false'
-      : process.env.NODE_ENV === 'production',
-    secrets: sessionSecrets(),
+    secure: storefrontEnv.secureCookies,
+    secrets: [...storefrontEnv.sessionSecrets],
     maxAge: TTL_SECONDS,
   });
 

@@ -42,12 +42,14 @@ import {
   mockPaymentsEnabled,
 } from '../lib/booking.server';
 import { getCheckoutFlowService } from '../lib/checkout-flow.server';
+import { errorStatus } from '../lib/http-status';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
+import { allowedPaymentRedirect } from '../lib/payment-redirect.server';
 import { formatVnd } from '../lib/ui';
 import { useLocale } from '../lib/use-locale';
-import type { Route } from './+types/booking-detail';
 import type { StorefrontContext } from '../root';
+import type { Route } from './+types/booking-detail';
 
 export function meta() {
   return [{ title: 'Booking' }, { name: 'robots', content: 'noindex' }];
@@ -90,10 +92,31 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export async function action({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+
+  if (intent === 'verify-access') {
+    const otp = String(form.get('otp') ?? '').trim();
+    if (!otp) return data({ ok: false, error: 'OTP_REQUIRED' }, { status: 400 });
+    const booking = await fetchBookingByCode(request, params.code, otp).catch(() => null);
+    if (!booking) return data({ ok: false, error: 'INVALID_OTP' }, { status: 403 });
+    const setCookie = await getCheckoutFlowService().create(request, {
+      bookingId: booking.id,
+      bookingCode: booking.code,
+      listingSlug: '',
+      locale,
+      otp,
+    });
+    return redirect(storefrontPaths.booking(locale, params.code), {
+      headers: { 'Set-Cookie': setCookie },
+    });
+  }
 
   if (intent === 'mock-pay') {
     const result = await mockPay(request, params.code);
-    return data({ ok: result.ok, error: result.error ?? null });
+    return data(
+      { ok: result.ok, error: result.error ?? null },
+      { status: result.ok ? 200 : errorStatus(result.status) },
+    );
   }
   if (intent === 'retry-payment') {
     const flow = await getCheckoutFlowService().readForCode(request, params.code);
@@ -114,21 +137,32 @@ export async function action({ request, params }: Route.ActionArgs) {
       return data({ ok: false, error: 'PAYMENT_RETRY_UNAVAILABLE' }, { status: 403 });
     }
     const checkout = await checkoutBooking(request, bookingId);
-    if (checkout.ok && checkout.data && /^https?:/i.test(checkout.data.paymentUrl)) {
-      return redirect(checkout.data.paymentUrl);
+    const paymentUrl = allowedPaymentRedirect(checkout.data?.paymentUrl);
+    if (checkout.ok && paymentUrl) {
+      return redirect(paymentUrl);
     }
     return data(
-      { ok: false, error: checkout.error ?? checkout.code ?? 'PAYMENT_RETRY_FAILED' },
-      { status: checkout.status || 400 },
+      {
+        ok: false,
+        error:
+          checkout.ok && !paymentUrl
+            ? 'INVALID_PAYMENT_REDIRECT'
+            : (checkout.error ?? checkout.code ?? 'PAYMENT_RETRY_FAILED'),
+      },
+      { status: checkout.ok ? 502 : errorStatus(checkout.status) },
     );
   }
   if (intent === 'cancel') {
-    const otp = String(form.get('otp') ?? '') || undefined;
+    const flow = await getCheckoutFlowService().readForCode(request, params.code);
+    const otp = String(form.get('otp') ?? '').trim() || flow?.record.otp;
     const reason = String(form.get('reason') ?? '').trim() || undefined;
     const result = await cancelBooking(request, params.code, { reason, otp });
-    return data({ ok: result.ok, error: result.error ?? null });
+    return data(
+      { ok: result.ok, error: result.error ?? null },
+      { status: result.ok ? 200 : errorStatus(result.status) },
+    );
   }
-  return data({ ok: false, error: 'UNKNOWN_INTENT' });
+  return data({ ok: false, error: 'UNKNOWN_INTENT' }, { status: 400 });
 }
 
 export default function BookingDetail({ loaderData, actionData }: Route.ComponentProps) {
@@ -150,7 +184,8 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
     bookingStatus === 'rejected';
   const isSuccess =
     !paymentFailed &&
-    (status.paymentStatus === 'succeeded' || (bookingStatus !== null && SUCCESS.has(bookingStatus)));
+    (status.paymentStatus === 'succeeded' ||
+      (bookingStatus !== null && SUCCESS.has(bookingStatus)));
   const isPending =
     !paymentFailed && !isSuccess && bookingStatus !== null && PENDING.has(bookingStatus);
 
@@ -211,7 +246,6 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
           {paymentFailed && canRetry ? (
             <Form method="post">
               <input type="hidden" name="intent" value="retry-payment" />
-              {sp.get('otp') ? <input type="hidden" name="otp" value={sp.get('otp') ?? ''} /> : null}
               <Button
                 type="submit"
                 className="h-12 w-full rounded-sm text-base"

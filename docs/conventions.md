@@ -56,7 +56,8 @@ on react-hook-form + zod + shadcn. Rules:
    (`schema.safeParse(await request.json())`) before calling the backend.
 4. Return errors as data, not throws: on zod failure
    `data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 })`; on backend error
-   `data({ error }, { status: 400 })`. Pass `actionData` into `serverError`/`fieldErrors`.
+   preserve the upstream `4xx`/`5xx` status (use `errorStatus`) instead of flattening it to `400`.
+   Pass `actionData` into `serverError`/`fieldErrors`.
 5. Field types: `text | email | password | url | number | textarea | select | combobox | radio |
    checkbox | switch | date | file`. `type:'file'` uploads to object storage and submits the URL
    string(s) — the schema uses `z.string().url()` / `z.array(z.string().url())`.

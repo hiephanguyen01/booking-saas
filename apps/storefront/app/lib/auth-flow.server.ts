@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createCookie } from 'react-router';
 import { storefrontRedisStore } from './redis-store.server';
+import { storefrontEnv } from './env.server';
 
 const FLOW_TTL_SECONDS = 30 * 60;
 const PREFIX = 'bookify:storefront:auth-flow:';
@@ -53,19 +54,12 @@ export function flowView(flow: {
   };
 }
 
-const flowSecret = process.env.SESSION_SECRET_CURRENT ?? process.env.SESSION_SECRET;
-if (!flowSecret || flowSecret.length < 32) {
-  throw new Error('SESSION_SECRET_CURRENT must contain at least 32 characters.');
-}
-
 const cookie = createCookie('__storefront_auth_flow', {
   httpOnly: true,
   path: '/',
   sameSite: 'lax',
-  secure: process.env.SESSION_COOKIE_SECURE
-    ? process.env.SESSION_COOKIE_SECURE !== 'false'
-    : process.env.NODE_ENV === 'production',
-  secrets: [flowSecret],
+  secure: storefrontEnv.secureCookies,
+  secrets: [...storefrontEnv.sessionSecrets],
   maxAge: FLOW_TTL_SECONDS,
 });
 

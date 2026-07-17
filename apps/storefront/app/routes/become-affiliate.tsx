@@ -11,6 +11,8 @@ import { resolveTenant } from '../lib/tenant.server';
 import type { loader as rootLoader } from '../root';
 import type { Route } from './+types/become-affiliate';
 import { partnerMeta } from './partner-onboarding/shared';
+import { storefrontEnv } from '../lib/env.server';
+import { errorStatus } from '../lib/http-status';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
   return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'affiliate');
@@ -24,7 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     tenantName: tenant.name,
     tenantLogoUrl: tenant.logoUrl ?? null,
-    dashboardUrl: process.env.DASHBOARD_URL ?? 'http://localhost:5174',
+    dashboardUrl: storefrontEnv.dashboardUrl,
   };
 }
 
@@ -46,7 +48,12 @@ export async function action({ request }: Route.ActionArgs) {
     fullName: v.fullName.trim(),
     ...(v.phone?.trim() ? { phone: v.phone.trim() } : {}),
   });
-  if (!auth.ok) return data({ fieldErrors: null, error: auth.code, ok: false }, { status: 400 });
+  if (!auth.ok) {
+    return data(
+      { fieldErrors: null, error: auth.code, ok: false },
+      { status: errorStatus(auth.status) },
+    );
+  }
 
   const payoutInfo: { bankName?: string; accountNo?: string; accountHolder?: string } = {};
   if (v.bankName?.trim()) payoutInfo.bankName = v.bankName.trim();
@@ -55,7 +62,10 @@ export async function action({ request }: Route.ActionArgs) {
 
   const applied = await applyAsAffiliate(auth.token, { tenantId: tenant.id, payoutInfo });
   if (!applied.ok)
-    return data({ fieldErrors: null, error: applied.code, ok: false }, { status: 400 });
+    return data(
+      { fieldErrors: null, error: applied.code, ok: false },
+      { status: errorStatus(applied.status) },
+    );
 
   return { fieldErrors: null, error: null, ok: true as const };
 }

@@ -36,6 +36,11 @@ server-to-server. **Never fetch the backend from the browser** and never import 
 browser code. Forms use `GenericForm` with a zod schema from `@booking/contracts`
 (see [`../../docs/conventions.md`](../../docs/conventions.md) → Forms).
 
+Runtime environment reads are centralized in `app/lib/env.server.ts`. Production startup fails when
+the API, Redis, session secret, dashboard URL or payment-origin allowlist is missing/unsafe. Unsafe
+HTTP methods pass through the root same-origin guard before auth; `/healthz` and `/readyz` are exact
+operational exceptions and must never resolve a tenant or session.
+
 Image upload works: `app/routes/uploads.presign.tsx` is a same-origin presign proxy that replays the
 auth cookie to the backend `POST /uploads/presign`, then the browser PUTs bytes straight to MinIO/S3.
 (The dashboard has its own presign route; the storefront's is real — older docs claimed it had none.)
@@ -43,5 +48,6 @@ auth cookie to the backend `POST /uploads/presign`, then the browser PUTs bytes 
 ## Scripts (verified)
 
 `dev` (`react-router dev`, port `STOREFRONT_PORT`/5173) · `build` · `start`
-(`react-router-serve ./build/server/index.js`) · `lint` (`eslint app`) · `typecheck`
+(`react-router-serve ./build/server/index.js`) · `lint` (`eslint app`) · `security` (static policy
+gate) · `typecheck`
 (`react-router typegen && tsc`). Requires Node ≥ 22.22.0.

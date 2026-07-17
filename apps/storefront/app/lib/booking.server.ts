@@ -12,6 +12,7 @@ import type {
 } from '@booking/contracts';
 import { requestPublicJson } from './public-api.server';
 import { getOptionalAccessToken } from './auth.server';
+import { storefrontEnv } from './env.server';
 
 /**
  * Server-only booking BFF (§20): the storefront never calls the API from the
@@ -31,7 +32,7 @@ export interface ApiResult<T> {
   fieldErrors?: Record<string, string[]>;
 }
 
-const backendUrl = (): string => process.env.BACKEND_URL ?? 'http://localhost:3000';
+const backendUrl = (): string => storefrontEnv.backendUrl;
 
 function hostOf(request: Request): string {
   return (request.headers.get('host') ?? 'localhost').split(':')[0];
@@ -142,6 +143,9 @@ export function fetchBookingByCode(
   code: string,
   otp?: string,
 ): Promise<BookingResponse | null> {
+  // SECURITY_EXCEPTION API-DEP-01: the current API only accepts this credential
+  // on GET. The browser now POSTs it to the BFF and it remains server-side; SF-05
+  // removes this final upstream URL use when the API exposes an opaque grant.
   const qs = otp ? `?otp=${encodeURIComponent(otp)}` : '';
   return requestPublicJson<BookingResponse>(
     request,
@@ -197,5 +201,5 @@ export function mockPay(request: Request, code: string): Promise<ApiResult<Booki
 
 /** Exposed to routes so the confirmation page can render the dev mock-pay button. */
 export function mockPaymentsEnabled(): boolean {
-  return process.env.ALLOW_MOCK_PAYMENTS === 'true';
+  return storefrontEnv.allowMockPayments;
 }

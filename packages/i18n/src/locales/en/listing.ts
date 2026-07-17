@@ -42,6 +42,7 @@ export const enListing = {
   minDuration: 'Minimum {count} hours',
   minNights: 'Minimum {count} nights',
   package: 'bundle',
+  descriptionTitle: 'About',
   group: {
     viewMap: 'View map',
     save: 'Save {title}',

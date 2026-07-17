@@ -29,10 +29,10 @@ import { resolveLocale } from './lib/i18n.server';
 import { resolveTenant, type StorefrontTenant } from './lib/tenant.server';
 import { themeCss } from './theme/theme';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
-import { storefrontAuthMiddleware } from './lib/auth-middleware.server';
+import { storefrontRequestMiddleware } from './lib/request-security.server';
 import { getOptionalAuth } from './lib/auth.server';
 
-export const middleware: Route.MiddlewareFunction[] = [storefrontAuthMiddleware];
+export const middleware: Route.MiddlewareFunction[] = [storefrontRequestMiddleware];
 
 /** Shared route context: the resolved tenant + its auto-generated menu + locale. */
 export interface StorefrontContext {

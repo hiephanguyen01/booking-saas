@@ -1,4 +1,5 @@
 import type { PublicListingResponse } from '@booking/contracts';
+import { storefrontEnv } from '../../lib/env.server';
 import { fetchListings } from '../../lib/catalog.server';
 import { HOME_LISTING_FIXTURES } from './home-listing-fixtures';
 
@@ -14,7 +15,7 @@ export interface HomeCatalogResult {
 
 export async function loadHomeCatalog(
   request: Request,
-  environment = process.env.NODE_ENV,
+  environment = storefrontEnv.nodeEnv,
   fetcher: ListingFetcher = fetchListings,
 ): Promise<HomeCatalogResult> {
   try {

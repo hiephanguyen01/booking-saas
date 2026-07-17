@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { createCookie, redirect } from 'react-router';
 import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
+import { storefrontEnv } from './env.server';
+import { safeRedirectPath } from './safe-redirect';
 
 const TTL_SECONDS = 60 * 60 * 24 * 30;
 const PREFIX = 'bookify:storefront:session:';
@@ -11,25 +13,13 @@ export interface StorefrontSessionData {
   userId: string;
 }
 
-function secrets(): string[] {
-  const current = process.env.SESSION_SECRET_CURRENT ?? process.env.SESSION_SECRET;
-  if (!current || current.length < 32) {
-    throw new Error('SESSION_SECRET_CURRENT must contain at least 32 characters.');
-  }
-  return [current, process.env.SESSION_SECRET_PREVIOUS].filter((value): value is string =>
-    Boolean(value && value.length >= 32),
-  );
-}
-
 export function createStorefrontSessionService(store: RedisJsonStore = storefrontRedisStore) {
   const cookie = createCookie('__storefront_session', {
     httpOnly: true,
     path: '/',
     sameSite: 'lax',
-    secure: process.env.SESSION_COOKIE_SECURE
-      ? process.env.SESSION_COOKIE_SECURE !== 'false'
-      : process.env.NODE_ENV === 'production',
-    secrets: secrets(),
+    secure: storefrontEnv.secureCookies,
+    secrets: [...storefrontEnv.sessionSecrets],
     maxAge: TTL_SECONDS,
   });
   return {
@@ -67,11 +57,13 @@ export async function createUserSession(
 ) {
   const service = getStorefrontSessionService();
   await service.destroy(request);
-  return redirect(redirectTo, { headers: { 'Set-Cookie': await service.create(data) } });
+  return redirect(safeRedirectPath(redirectTo), {
+    headers: { 'Set-Cookie': await service.create(data) },
+  });
 }
 
 export async function destroyUserSession(request: Request, redirectTo: string) {
-  return redirect(redirectTo, {
+  return redirect(safeRedirectPath(redirectTo), {
     headers: { 'Set-Cookie': await getStorefrontSessionService().destroy(request) },
   });
 }

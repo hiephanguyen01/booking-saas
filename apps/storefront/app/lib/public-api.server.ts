@@ -1,4 +1,5 @@
 import { getOptionalAccessToken } from './auth.server';
+import { storefrontEnv } from './env.server';
 
 export interface PublicJsonOptions {
   allowNotFound?: boolean;
@@ -10,7 +11,7 @@ interface NullablePublicJsonOptions extends PublicJsonOptions {
   allowNotFound: true;
 }
 
-const backendUrl = (): string => process.env.BACKEND_URL ?? 'http://localhost:3000';
+const backendUrl = (): string => storefrontEnv.backendUrl;
 
 function forwardedHost(request: Request): string {
   return (request.headers.get('host') ?? 'localhost').split(':')[0];

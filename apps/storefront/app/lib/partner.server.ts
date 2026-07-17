@@ -9,8 +9,9 @@
  */
 
 import type { PartnerApplyInput } from '@booking/contracts';
+import { storefrontEnv } from './env.server';
 
-const backendUrl = (): string => process.env.BACKEND_URL ?? 'http://localhost:3000';
+const backendUrl = (): string => storefrontEnv.backendUrl;
 
 const JSON_HEADERS = { 'content-type': 'application/json', accept: 'application/json' } as const;
 
@@ -44,7 +45,9 @@ export type PartnerErrorCode =
   | 'invalidLocation'
   | 'generic';
 type ErrorCode = PartnerErrorCode;
-type TokenResult = { ok: true; token: string } | { ok: false; code: ErrorCode };
+type TokenResult =
+  | { ok: true; token: string }
+  | { ok: false; code: ErrorCode; status: number };
 
 /**
  * Register a fresh account, or — if the email already exists (register 409) —
@@ -64,12 +67,12 @@ export async function registerOrLogin(creds: RegisterCredentials): Promise<Token
       }),
     });
   } catch {
-    return { ok: false, code: 'generic' };
+    return { ok: false, code: 'generic', status: 503 };
   }
 
   if (reg.ok) {
     const sid = parseSetCookies(reg).sid;
-    return sid ? { ok: true, token: sid } : { ok: false, code: 'generic' };
+    return sid ? { ok: true, token: sid } : { ok: false, code: 'generic', status: 502 };
   }
 
   // A 409 means the email is already registered → try logging in instead.
@@ -82,14 +85,16 @@ export async function registerOrLogin(creds: RegisterCredentials): Promise<Token
         body: JSON.stringify({ email: creds.email, password: creds.password }),
       });
     } catch {
-      return { ok: false, code: 'generic' };
+      return { ok: false, code: 'generic', status: 503 };
     }
-    if (!login.ok) return { ok: false, code: 'emailTakenWrongPassword' };
+    if (!login.ok) {
+      return { ok: false, code: 'emailTakenWrongPassword', status: login.status };
+    }
     const sid = parseSetCookies(login).sid;
-    return sid ? { ok: true, token: sid } : { ok: false, code: 'generic' };
+    return sid ? { ok: true, token: sid } : { ok: false, code: 'generic', status: 502 };
   }
 
-  return { ok: false, code: 'generic' };
+  return { ok: false, code: 'generic', status: reg.status };
 }
 
 const APPLY_ERROR_CODES: Record<string, ErrorCode> = {
@@ -104,7 +109,7 @@ const APPLY_ERROR_CODES: Record<string, ErrorCode> = {
 export async function applyAsPartner(
   token: string,
   input: PartnerApplyPayload,
-): Promise<{ ok: true } | { ok: false; code: ErrorCode }> {
+): Promise<{ ok: true } | { ok: false; code: ErrorCode; status: number }> {
   let res: Response;
   try {
     res = await fetch(`${backendUrl()}/partners/apply`, {
@@ -113,10 +118,10 @@ export async function applyAsPartner(
       body: JSON.stringify(input),
     });
   } catch {
-    return { ok: false, code: 'generic' };
+    return { ok: false, code: 'generic', status: 503 };
   }
   if (res.ok) return { ok: true };
   const body = (await res.json().catch(() => ({}))) as { code?: string };
   const code = body.code ? APPLY_ERROR_CODES[body.code] : undefined;
-  return { ok: false, code: code ?? 'generic' };
+  return { ok: false, code: code ?? 'generic', status: res.status };
 }

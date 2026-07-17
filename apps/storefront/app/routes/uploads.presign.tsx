@@ -9,8 +9,9 @@ import {
   type PresignUploadResponse,
 } from '@booking/contracts';
 import type { Route } from './+types/uploads.presign';
+import { storefrontEnv } from '../lib/env.server';
 
-const backendUrl = (): string => process.env.BACKEND_URL ?? 'http://localhost:3000';
+const backendUrl = (): string => storefrontEnv.backendUrl;
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {

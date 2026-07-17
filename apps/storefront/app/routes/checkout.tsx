@@ -13,6 +13,8 @@ import { storefrontPaths } from '../lib/locale-paths';
 import { getOptionalAuth } from '../lib/auth.server';
 import { getCheckoutFlowService } from '../lib/checkout-flow.server';
 import { createTranslator } from '../lib/i18n';
+import { allowedPaymentRedirect } from '../lib/payment-redirect.server';
+import { errorStatus } from '../lib/http-status';
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
   const locale = params.locale === 'en' ? 'en' : 'vi';
@@ -137,7 +139,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!created.ok || !created.data) {
     return data(
       { fieldErrors: null, error: created.error ?? 'BOOKING_FAILED', code: created.code },
-      { status: 400 },
+      { status: errorStatus(created.status) },
     );
   }
 
@@ -156,9 +158,24 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (booking.status === 'pending_payment') {
     const checkout = await checkoutBooking(request, booking.id);
-    if (checkout.ok && checkout.data && /^https?:/i.test(checkout.data.paymentUrl)) {
-      return redirect(checkout.data.paymentUrl, { headers });
+    if (!checkout.ok) {
+      return data(
+        {
+          fieldErrors: checkout.fieldErrors ?? null,
+          error: checkout.error ?? 'PAYMENT_CHECKOUT_FAILED',
+          code: checkout.code,
+        },
+        { status: errorStatus(checkout.status), headers },
+      );
     }
+    const paymentUrl = allowedPaymentRedirect(checkout.data?.paymentUrl);
+    if (!paymentUrl) {
+      return data(
+        { fieldErrors: null, error: 'INVALID_PAYMENT_REDIRECT', code: 'INVALID_PAYMENT_REDIRECT' },
+        { status: 502, headers },
+      );
+    }
+    return redirect(paymentUrl, { headers });
   }
 
   return redirect(storefrontPaths.booking(locale, booking.code), {

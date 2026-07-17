@@ -1,6 +1,7 @@
 import { createApiClient, type ApiRequestOptions, type Auth } from '@booking/api-client';
+import { storefrontEnv } from './env.server';
 
-const client = () => createApiClient(process.env.BACKEND_URL ?? 'http://localhost:3000');
+const client = () => createApiClient(storefrontEnv.backendUrl);
 
 export const apiGet = <T>(path: string, auth: Auth, options?: ApiRequestOptions<T>) =>
   client().get<T>(path, auth, options);

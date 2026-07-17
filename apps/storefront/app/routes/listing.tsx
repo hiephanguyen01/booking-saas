@@ -60,7 +60,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   let availabilityPromise: ReturnType<typeof fetchAvailability>;
 
   if (mode === 'hourly') {
-    const day = searchParams.get('day') || today;
+    const day = searchParams.get('day') || searchParams.get('date') || today;
     availabilityPromise = fetchAvailability(request, params.listingSlug, {
       mode,
       from: day,

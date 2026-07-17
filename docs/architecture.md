@@ -81,19 +81,22 @@ the payload before calling `forTenant`.
 ## Frontend internals
 
 React Router 8 framework mode: each route exports `loader` (server data), `action` (server mutation),
-and a default component. A root `middleware` authenticates every request into AsyncLocalStorage that
-auth/area guards read. The storefront resolves its tenant from the `Host` header and injects per-tenant
-theme CSS at SSR; the dashboard resolves scope from the login session and is organized `routes/<area>`
-(route modules) + `features/<name>/{components,server,lib}`. Shared UI is `@booking/ui` (raw TSX,
-Tailwind v4 CSS-first); the FE↔BE contract is `@booking/contracts` (zod). See the per-app `CLAUDE.md`
-and [`conventions.md`](./conventions.md).
+and a default component. Storefront root middleware rejects cross-origin unsafe methods before it
+authenticates the request into AsyncLocalStorage; exact liveness/readiness paths bypass auth and tenant
+resolution. Storefront runtime configuration is validated once at its server boundary and production
+cannot use loopback fallbacks. The storefront resolves its tenant from the `Host` header and injects
+per-tenant theme CSS at SSR; the dashboard resolves scope from the login session and is organized
+`routes/<area>` (route modules) + `features/<name>/{components,server,lib}`. Shared UI is `@booking/ui`
+(raw TSX, Tailwind v4 CSS-first); the FE↔BE contract is `@booking/contracts` (zod). See the per-app
+`CLAUDE.md` and [`conventions.md`](./conventions.md).
 
 ## Build & CI
 
 Turborepo tasks: `build` (`^build`, outputs `dist`/`build`/`.react-router`), `dev`, `lint`, `typecheck`
 (`^build`). **No test task** ([ADR 0005](./decisions/0005-no-tests-policy.md)). CI
 (`.github/workflows/ci.yml`, "Frontend CI") runs `pnpm turbo run lint typecheck build` for the **two
-frontends** + `pnpm --filter=@booking/api check:rls`, then docker-builds the two frontend images
+frontends**, the Storefront static security gate, and `pnpm --filter=@booking/api check:rls`, then
+docker-builds the two frontend images
 (`push: false`). The API is **not** compiled or linted directly in CI — run `pnpm typecheck`/`build`
 locally after backend changes.
 

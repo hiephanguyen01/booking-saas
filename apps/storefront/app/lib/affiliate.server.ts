@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { TrackReferralResponse } from '@booking/contracts';
+import { storefrontEnv } from './env.server';
 
 /**
  * Server-only affiliate attribution (§15.1). The storefront reads `?ref=CODE`,
@@ -13,7 +14,7 @@ const VISITOR_COOKIE = 'sf_visitor';
 const AFF_MAX_AGE = 60 * 60 * 24 * 30;
 const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
 
-const backendUrl = (): string => process.env.BACKEND_URL ?? 'http://localhost:3000';
+const backendUrl = (): string => storefrontEnv.backendUrl;
 
 function hostOf(request: Request): string {
   return (request.headers.get('host') ?? 'localhost').split(':')[0];
@@ -88,7 +89,7 @@ export interface AffiliateApplyPayload {
 export async function applyAsAffiliate(
   token: string,
   input: AffiliateApplyPayload,
-): Promise<{ ok: true } | { ok: false; code: string }> {
+): Promise<{ ok: true } | { ok: false; code: string; status: number }> {
   let res: Response;
   try {
     res = await fetch(`${backendUrl()}/affiliate/apply`, {
@@ -97,9 +98,9 @@ export async function applyAsAffiliate(
       body: JSON.stringify(input),
     });
   } catch {
-    return { ok: false, code: 'generic' };
+    return { ok: false, code: 'generic', status: 503 };
   }
   if (res.ok) return { ok: true };
   const body = (await res.json().catch(() => ({}))) as { code?: string };
-  return { ok: false, code: body.code ?? 'generic' };
+  return { ok: false, code: body.code ?? 'generic', status: res.status };
 }

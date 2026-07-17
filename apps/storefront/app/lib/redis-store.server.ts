@@ -1,9 +1,11 @@
 import { createClient } from 'redis';
+import { storefrontEnv } from './env.server';
 
 export interface RedisJsonStore {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttlSeconds: number): Promise<void>;
   delete(key: string): Promise<void>;
+  ping(): Promise<void>;
 }
 
 type StorefrontRedisClient = ReturnType<typeof createClient>;
@@ -11,7 +13,7 @@ let clientPromise: Promise<StorefrontRedisClient> | undefined;
 
 async function client() {
   if (!clientPromise) {
-    const instance = createClient({ url: process.env.REDIS_URL ?? 'redis://localhost:6379' });
+    const instance = createClient({ url: storefrontEnv.redisUrl });
     instance.on('error', (error: Error) =>
       console.error('Storefront Redis connection error', error),
     );
@@ -36,5 +38,8 @@ export const storefrontRedisStore: RedisJsonStore = {
   },
   async delete(key) {
     await (await client()).del(key);
+  },
+  async ping() {
+    await (await client()).ping();
   },
 };

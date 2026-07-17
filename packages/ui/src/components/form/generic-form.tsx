@@ -138,7 +138,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
       }
     }
     // Let the caller assemble/coerce nested shapes (e.g. modeConfig) last.
-    if (transform) payload = transform(data)
+    if (transform) payload = transform(payload as Values)
     submit(payload as never, {
       method,
       action,

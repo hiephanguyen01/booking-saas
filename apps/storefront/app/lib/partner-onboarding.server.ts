@@ -21,6 +21,8 @@ import { suppressStorefrontSessionCommit } from './request-auth.server';
 import { createUserSession } from './session.server';
 import { resolveTenant } from './tenant.server';
 import { loadAdministrativeProvinces } from './administrative-divisions.server';
+import { storefrontEnv } from './env.server';
+import { errorStatus } from './http-status';
 
 export interface PartnerOnboardingActionData {
   error?: string;
@@ -83,7 +85,7 @@ export async function startPartnerRegistration(request: Request, localeParam?: s
     const tenant = await resolveTenant(request);
     const entry = partnerRegistrationEntry(auth, tenant.id);
     if (entry === 'dashboard') {
-      return redirect(`${process.env.DASHBOARD_URL ?? 'http://localhost:5174'}/partner`);
+      return redirect(`${storefrontEnv.dashboardUrl}/partner`);
     }
     const setCookie = await authFlow.create(request, {
       phase: 'partner_registration_profile',
@@ -324,7 +326,7 @@ export async function submitPartnerProfile(request: Request, localeParam?: strin
   if (!applied.ok) {
     return data<PartnerOnboardingActionData>(
       { error: applied.code satisfies PartnerErrorCode },
-      { status: 400 },
+      { status: errorStatus(applied.status) },
     );
   }
   await authFlow.update(flow.id, {
@@ -340,6 +342,6 @@ export async function loadPartnerDone(request: Request, localeParam?: string) {
   const flow = await requirePartnerPhase(request, 'partner_registration_done', locale);
   return {
     maskedEmail: flow.record.maskedDestination ?? flow.record.email ?? '',
-    dashboardUrl: process.env.DASHBOARD_URL ?? 'http://localhost:5174',
+    dashboardUrl: storefrontEnv.dashboardUrl,
   };
 }

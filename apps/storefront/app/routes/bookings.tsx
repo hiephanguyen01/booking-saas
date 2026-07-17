@@ -20,6 +20,7 @@ import { readRecentCodes } from '../lib/recent.server';
 import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../lib/time';
 import { useLocale } from '../lib/use-locale';
 import type { Route } from './+types/bookings';
+import { errorStatus } from '../lib/http-status';
 
 export function meta() {
   return [{ title: 'Bookings' }, { name: 'robots', content: 'noindex' }];
@@ -63,13 +64,16 @@ export async function action({ request }: Route.ActionArgs) {
 
   const result = await requestBookingOtp(request, code);
   if (!result.ok) {
-    return data({
-      sent: false,
-      code,
-      devOtp: null,
-      error: result.error ?? 'INVALID_CODE',
-      fieldErrors: null,
-    });
+    return data(
+      {
+        sent: false,
+        code,
+        devOtp: null,
+        error: result.error ?? 'INVALID_CODE',
+        fieldErrors: null,
+      },
+      { status: errorStatus(result.status) },
+    );
   }
   return data({
     sent: true,
@@ -172,7 +176,7 @@ function RequestForm({
   );
 }
 
-/** After the OTP email is sent, submit code+OTP as a GET to the detail page. */
+/** Verify via POST so the OTP never enters browser history, referrers or access logs. */
 function VerifyForm({
   code,
   devOtp,
@@ -191,7 +195,8 @@ function VerifyForm({
       {devOtp ? (
         <p className="text-xs text-muted-foreground">{t('lookup.otpHintDev', { otp: devOtp })}</p>
       ) : null}
-      <Form method="get" action={storefrontPaths.booking(locale, code)} className="space-y-3">
+      <Form method="post" action={storefrontPaths.booking(locale, code)} className="space-y-3">
+        <input type="hidden" name="intent" value="verify-access" />
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
           <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />

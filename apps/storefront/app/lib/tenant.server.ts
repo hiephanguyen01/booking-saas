@@ -1,5 +1,6 @@
 import type { PublicTenantResponse } from '@booking/contracts';
 import { toStorefrontTenant, type StorefrontTenant } from './tenant-mapper';
+import { storefrontEnv } from './env.server';
 
 export type { StorefrontTenant } from './tenant-mapper';
 
@@ -11,7 +12,7 @@ export type { StorefrontTenant } from './tenant-mapper';
  *   - unmapped host        → 404 (API returns UNKNOWN_HOST)
  *   - suspended / expired  → `live: false` → root renders the suspended page
  */
-const backendUrl = (): string => process.env.BACKEND_URL ?? 'http://localhost:3000';
+const backendUrl = (): string => storefrontEnv.backendUrl;
 
 export async function resolveTenant(request: Request): Promise<StorefrontTenant> {
   const hostname = (request.headers.get('host') ?? 'localhost').split(':')[0];

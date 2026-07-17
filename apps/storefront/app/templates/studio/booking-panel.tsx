@@ -8,7 +8,6 @@ import type {
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
@@ -74,9 +73,9 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
   const canBook = Boolean(start && end);
 
   return (
-    <Card className="sticky top-28 rounded-2xl border-border shadow-lg">
-      <CardContent className="space-y-5 p-6">
-        <QuoteHeader quote={quote} listing={listing} />
+    <div className="rounded-lg bg-card p-5 text-card-foreground shadow-sm">
+      <div className="space-y-5">
+        <QuoteHeader quote={quote} listing={listing} mode={mode} />
 
         {modes.length > 1 ? (
           <ModeToggle modes={modes} active={mode} onSelect={switchMode} />
@@ -109,7 +108,7 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
           </>
         ) : null}
 
-        <Button asChild={canBook} size="control" className="w-full text-base" disabled={!canBook}>
+        <Button asChild={canBook} className="w-full" disabled={!canBook}>
           {canBook ? (
             <Link to={`${storefrontPaths.checkout(locale)}?${checkoutParams.toString()}`}>
               {t('bookNow')}
@@ -118,35 +117,43 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
             <span>{t('selectToContinue')}</span>
           )}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
 function QuoteHeader({
   quote,
   listing,
+  mode,
 }: {
   quote: QuoteResponse | null;
   listing: PublicListingDetailResponse;
+  mode: AvailabilityMode;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const from = formatVnd(fromPrice(listing.modeConfig));
+  const unitLabel: Record<AvailabilityMode, string> = {
+    hourly: t('perHour'),
+    daily: t('perDay'),
+    inventory: t('perItem'),
+  };
+
   return (
-    <div className="flex items-baseline gap-2">
+    <div className="text-right">
       {quote ? (
-        <>
-          <span className="text-2xl font-bold text-foreground">{formatVnd(quote.subtotal)}</span>
-          <span className="text-sm text-muted-foreground">{t('subtotalEstimate')}</span>
-        </>
+        <p className="text-sm text-muted-foreground">
+          {t('subtotalEstimate')}{' '}
+          <strong className="text-xl text-primary">{formatVnd(quote.subtotal)}</strong>
+        </p>
       ) : from ? (
-        <>
-          <span className="text-2xl font-bold text-foreground">{from}</span>
-          <span className="text-sm text-muted-foreground">{t('fromPrice')}</span>
-        </>
+        <p className="text-sm text-muted-foreground">
+          {t('fromPriceShort')} <strong className="text-xl text-primary">{from}</strong>
+        </p>
       ) : (
-        <span className="text-lg font-semibold">{t('pickScheduleForPrice')}</span>
+        <p className="font-semibold text-foreground">{t('pickScheduleForPrice')}</p>
       )}
+      <p className="mt-1 text-xs text-muted-foreground">{unitLabel[mode]}</p>
     </div>
   );
 }
@@ -167,16 +174,16 @@ function ModeToggle({
     inventory: t('modeInventory'),
   };
   return (
-    <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+    <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/70 p-1">
       {modes.map((m) => (
         <button
           key={m}
           type="button"
           onClick={() => onSelect(m)}
           className={cn(
-            'rounded-lg px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'rounded-md px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             m === active
-              ? 'bg-background text-foreground shadow-sm'
+              ? 'bg-card text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -202,7 +209,7 @@ function HourlyPicker({
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const today = todayInTz(tz);
-  const day = sp.get('day') || today;
+  const day = sp.get('day') || sp.get('date') || today;
   const slots: HourlySlot[] =
     availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
   const selectedStart = sp.get('start');
@@ -211,6 +218,7 @@ function HourlyPicker({
     const next = new URLSearchParams(sp);
     next.set('mode', 'hourly');
     next.set('day', nextDay);
+    next.set('date', nextDay);
     next.delete('start');
     next.delete('end');
     setSp(next);
@@ -245,22 +253,24 @@ function HourlyPicker({
           {t('noSlots')}
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {available.map((slot) => {
+        <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pr-1">
+          {available.map((slot, slotIndex) => {
             const isSelected = slot.startUtc === selectedStart;
             return (
               <button
-                key={slot.startUtc}
+                key={`${slot.startUtc}-${slot.endUtc}-${slotIndex}`}
                 type="button"
                 onClick={() => pickSlot(slot)}
                 className={cn(
                   'flex flex-col items-center rounded-lg border px-1 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isSelected
                     ? 'border-primary bg-primary/10 font-semibold text-primary'
-                    : 'border-border hover:border-primary/50',
+                    : 'border-border bg-background/40 hover:border-primary/50 hover:bg-muted/40',
                 )}
               >
-                <span>{timeInTz(slot.startUtc, tz)}</span>
+                <span>
+                  {timeInTz(slot.startUtc, tz)}–{timeInTz(slot.endUtc, tz)}
+                </span>
                 <span className="text-[11px] text-muted-foreground">{formatVnd(slot.price)}</span>
               </button>
             );
@@ -361,7 +371,7 @@ function DailyPicker({
         selected={range}
         onSelect={onSelect}
         disabled={isDisabled}
-        className="rounded-lg border border-border p-2"
+        className="rounded-lg border border-border bg-background/40 p-2"
       />
       {nights > 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -504,9 +514,9 @@ function InventoryPicker({
 function Breakdown({ quote }: { quote: QuoteResponse }) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
-    <dl className="space-y-1.5 text-sm">
+    <dl className="rounded-lg bg-muted/40 p-3 text-sm">
       {quote.lineItems.map((line, idx) => (
-        <div key={idx} className="flex justify-between text-muted-foreground">
+        <div key={idx} className="flex justify-between gap-3 py-0.5 text-muted-foreground">
           <dt>
             {line.label}
             {line.block ? ` (${t('package')})` : ''}
@@ -514,17 +524,17 @@ function Breakdown({ quote }: { quote: QuoteResponse }) {
           <dd>{formatVnd(line.amount)}</dd>
         </div>
       ))}
-      <Separator className="my-2" />
-      <div className="flex justify-between font-semibold text-foreground">
+      <Separator className="my-2.5" />
+      <div className="flex justify-between gap-3 font-semibold text-foreground">
         <dt>{t('subtotal')}</dt>
         <dd>{formatVnd(quote.subtotal)}</dd>
       </div>
-      <div className="flex justify-between text-muted-foreground">
+      <div className="mt-1 flex justify-between gap-3 text-muted-foreground">
         <dt>{t('deposit')}</dt>
         <dd>{formatVnd(quote.depositAmount)}</dd>
       </div>
       {quote.securityDeposit !== '0' ? (
-        <div className="flex justify-between text-muted-foreground">
+        <div className="mt-1 flex justify-between gap-3 text-muted-foreground">
           <dt>{t('securityDeposit')}</dt>
           <dd>{formatVnd(quote.securityDeposit)}</dd>
         </div>

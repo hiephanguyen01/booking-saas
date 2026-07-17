@@ -39,6 +39,7 @@ export const viListing = {
   minDuration: 'Tối thiểu {count} giờ',
   minNights: 'Tối thiểu {count} đêm',
   package: 'gói',
+  descriptionTitle: 'Giới thiệu',
   /** The listing-group ("studio") page — a group of bookable child listings. */
   group: {
     viewMap: 'Xem bản đồ',

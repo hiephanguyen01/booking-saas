@@ -8,6 +8,7 @@
     "build": "react-router build",
     "start": "react-router-serve ./build/server/index.js",
     "lint": "eslint app",
+    "security": "pnpm --workspace-root check:storefront-security",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {

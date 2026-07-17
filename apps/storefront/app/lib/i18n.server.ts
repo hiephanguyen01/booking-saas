@@ -1,4 +1,5 @@
 import type { Locale } from '@booking/i18n';
+import { storefrontEnv } from './env.server';
 const COOKIE = 'sf_locale';
 
 /**
@@ -14,7 +15,7 @@ export function resolveLocale(request: Request, fallback: Locale): Locale {
 
 /** `Set-Cookie` value for the language switcher (1 year, lax, path=/). */
 export function localeCookie(locale: Locale): string {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  const secure = storefrontEnv.secureCookies ? '; Secure' : '';
   return `${COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly${secure}`;
 }
 
