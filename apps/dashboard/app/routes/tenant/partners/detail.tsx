@@ -34,7 +34,8 @@ import {
 import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/lib/format';
+import { formatDate } from '~/lib/format';
+import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { readHttpUrl, readString } from '~/lib/records';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';

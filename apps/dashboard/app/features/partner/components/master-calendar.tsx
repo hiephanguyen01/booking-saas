@@ -19,6 +19,7 @@ import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import { dayKey, formatTime, formatVnd, minutesOfDay } from '~/lib/format';
 import { bookingStatusMeta } from '~/components/status-badge';
 import { parseDay } from '~/lib/calendar-dates';
+import { WEEKDAY_SHORT } from '~/constants/time';
 
 interface ListingType {
   id: string;
@@ -36,7 +37,6 @@ interface MasterCalendarProps {
   onQuickBlock: (day: string) => void;
 }
 
-const WEEKDAY = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 function bucketByDay(bookings: PartnerCalendarBookingResponse[]): Map<string, PartnerCalendarBookingResponse[]> {
   const map = new Map<string, PartnerCalendarBookingResponse[]>();
@@ -54,7 +54,7 @@ function bucketByDay(bookings: PartnerCalendarBookingResponse[]): Map<string, Pa
 
 function dayHeader(day: string): { weekday: string; date: string } {
   const d = parseDay(day);
-  return { weekday: WEEKDAY[d.getUTCDay()], date: String(d.getUTCDate()).padStart(2, '0') };
+  return { weekday: WEEKDAY_SHORT[d.getUTCDay()], date: String(d.getUTCDate()).padStart(2, '0') };
 }
 
 /** The master calendar: every booking across the partner's resources, week/day. */

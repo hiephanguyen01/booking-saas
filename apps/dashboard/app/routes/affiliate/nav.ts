@@ -1,3 +1,5 @@
+import { dashboardPaths } from '~/constants/paths';
+
 // Affiliate portal tab nav (§15.3). Per-area convention: each area's nav items
 // live in routes/<area>/nav.ts (see app/routes.ts). The affiliate portal is
 // membership-gated (not RBAC-scoped), so its nav is a flat tab list rather
@@ -10,7 +12,7 @@ export interface AffiliateTab {
 }
 
 export const affiliateTabs: AffiliateTab[] = [
-  { to: '/affiliate', label: 'Tổng quan', end: true },
-  { to: '/affiliate/links', label: 'Link giới thiệu', end: false },
-  { to: '/affiliate/commissions', label: 'Hoa hồng', end: false },
+  { to: dashboardPaths.affiliate.home, label: 'Tổng quan', end: true },
+  { to: dashboardPaths.affiliate.links, label: 'Link giới thiệu', end: false },
+  { to: dashboardPaths.affiliate.commissions, label: 'Hoa hồng', end: false },
 ];

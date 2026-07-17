@@ -11,20 +11,11 @@ import {
 } from '@booking/ui/components/ui/select';
 import { Trash2, Plus } from 'lucide-react';
 import type { ScopeOptions } from './scope-options.server';
+import { SCOPE_LABELS, type ScopeKey } from '~/constants/promotion';
+import { WEEKDAY_SHORT } from '~/constants/time';
 
-export type ScopeKey = 'all' | 'listing' | 'listing_type' | 'listing_group' | 'category' | 'partner';
 type TimeWindow = { days: number[]; from: string; to: string };
 
-/** Scope enum → Vietnamese label — shared with the detail pages (§12.2). */
-export const SCOPE_LABELS: Record<ScopeKey, string> = {
-  all: 'Toàn bộ cửa hàng',
-  listing: 'Một listing cụ thể',
-  listing_type: 'Loại dịch vụ',
-  listing_group: 'Bài đăng (nhóm)',
-  category: 'Danh mục',
-  partner: 'Đối tác',
-};
-const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']; // 0=Sunday … 6=Saturday
 
 /** Read-only off-peak windows as a list; empty → "Mọi khung giờ" (always applicable). */
 export function TimeWindowsSummary({ windows }: { windows: PromotionTimeWindowDto[] | null }) {
@@ -35,7 +26,7 @@ export function TimeWindowsSummary({ windows }: { windows: PromotionTimeWindowDt
     <ul className="space-y-1">
       {windows.map((w, i) => (
         <li key={i} className="tabular-nums">
-          <span className="font-medium">{w.days.map((d) => DAY_LABELS[d] ?? d).join(', ')}</span>
+          <span className="font-medium">{w.days.map((d) => WEEKDAY_SHORT[d] ?? d).join(', ')}</span>
           <span className="text-muted-foreground"> · {w.from}–{w.to}</span>
         </li>
       ))}
@@ -287,7 +278,7 @@ function TimeWindowsEditor({ windows, onChange }: { windows: TimeWindow[]; onCha
           <div className="space-y-1">
             <Label className="text-xs">Ngày trong tuần</Label>
             <div className="flex gap-1">
-              {DAY_LABELS.map((lbl, day) => (
+              {WEEKDAY_SHORT.map((lbl, day) => (
                 <button
                   key={day}
                   type="button"

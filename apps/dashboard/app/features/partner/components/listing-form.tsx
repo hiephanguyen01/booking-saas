@@ -17,7 +17,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { UseFormReturn } from '@booking/ui/components/form/rhf';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Section, Grid, Field } from './form-layout';
-import { BOOKING_MODE_LABEL } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import {
   buildModeConfig,
   initialDynamic,

@@ -26,7 +26,6 @@ import {
   type SubscriptionResponse,
   type TenantDetailResponse,
   type UpdateTenantInput,
-  type Vertical,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -65,7 +64,7 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/detail';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
-import { SUBSCRIPTION_STATUS_LABELS } from '~/lib/format';
+import { LOCALE_LABELS, SUBSCRIPTION_STATUS_LABELS, VERTICAL_LABELS } from '~/constants/tenancy';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -80,12 +79,6 @@ interface CurrentSubscription {
   plan: PlanResponse | null;
 }
 
-const LOCALE_LABELS: Record<Locale, string> = { vi: 'Tiếng Việt', en: 'English' };
-const VERTICAL_LABEL_MAP: Record<Vertical, string> = {
-  studio: 'Studio',
-  rental: 'Cho thuê',
-  classes: 'Lớp học',
-};
 
 /** Which form/card an action result belongs to, so an error stays in its own card. */
 type ActionScope = 'tenant' | 'domain' | 'subscription' | 'status';
@@ -317,7 +310,7 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
           <div className="flex items-center gap-2">
             <dt className="text-muted-foreground">Loại hình</dt>
             <dd className="font-medium">
-              <EnumValue map={VERTICAL_LABEL_MAP} value={tenant.vertical} />
+              <EnumValue map={VERTICAL_LABELS} value={tenant.vertical} />
             </dd>
           </div>
           <div className="flex items-center gap-2">

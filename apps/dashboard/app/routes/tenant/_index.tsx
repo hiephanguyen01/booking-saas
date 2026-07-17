@@ -1,7 +1,6 @@
 import { Link } from 'react-router';
 import type {
   BookingResponse,
-  BookingStatus,
   ListingResponse,
   SubscriptionStatusResponse,
   TenantFinanceSummaryResponse,
@@ -27,6 +26,8 @@ import {
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { PENDING_BOOKING_STATUSES } from '~/constants/booking';
+import { SUB_PHASE_LABEL } from '~/constants/tenancy';
 import { formatVnd, formatDateTime, formatNumber, formatDaysLeft } from '~/lib/format';
 import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
@@ -38,7 +39,6 @@ export function meta(): Route.MetaDescriptors {
 }
 
 /** Booking counts derived from the tenant's recent-bookings feed, for the KPI strip. */
-const PENDING_STATUSES: BookingStatus[] = ['pending_approval', 'pending_payment'];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, membership, can } = await requireTenant(request);
@@ -69,7 +69,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     bookingStats: bookings
       ? {
           total: bookings.length,
-          pending: bookings.filter((b) => PENDING_STATUSES.includes(b.status)).length,
+          pending: bookings.filter((b) => PENDING_BOOKING_STATUSES.includes(b.status)).length,
           confirmed: bookings.filter((b) => b.status === 'confirmed').length,
           completed: bookings.filter((b) => b.status === 'completed').length,
         }
@@ -86,11 +86,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-const SUB_PHASE_LABEL: Record<'active' | 'grace' | 'expired', string> = {
-  active: 'Đang hiệu lực',
-  grace: 'Đang gia hạn',
-  expired: 'Đã hết hạn',
-};
 
 export default function TenantOverview({ loaderData }: Route.ComponentProps) {
   const {

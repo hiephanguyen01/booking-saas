@@ -27,7 +27,7 @@ import {
 import { cn } from '@booking/ui/lib/utils';
 import * as Icons from 'lucide-react';
 import { Plus, X } from 'lucide-react';
-import { BOOKING_MODE_LABEL } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import {
   ListingTypeSearchConfigFields,
   normalizeSearchConfig,

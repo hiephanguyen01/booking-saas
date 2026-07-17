@@ -6,6 +6,7 @@ import {
   type DashboardAuthContext as AuthContext,
 } from './request-auth.server';
 import type { DashboardSessionData as AuthedUser } from './session.server';
+import { dashboardPaths } from '~/constants/paths';
 
 export { defaultAreaFor, hasPermission, hasScope };
 export type { AuthContext, AuthedUser };
@@ -16,7 +17,7 @@ export async function getOptionalUser(_request?: Request): Promise<AuthedUser | 
 
 export async function requireUser(request?: Request): Promise<AuthedUser> {
   const user = await getOptionalUser(request);
-  if (!user) throw redirect('/auth/login');
+  if (!user) throw redirect(dashboardPaths.auth.login);
   return user;
 }
 
@@ -26,7 +27,7 @@ export async function loadSessionInfo(_request?: Request): Promise<SessionInfoRe
 
 export async function requireSessionInfo(_request?: Request): Promise<AuthContext> {
   const auth = getCurrentDashboardAuth();
-  if (!auth) throw redirect('/auth/login');
+  if (!auth) throw redirect(dashboardPaths.auth.login);
   return auth;
 }
 

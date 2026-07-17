@@ -37,9 +37,9 @@ import { PromotionStatusBadge } from '~/components/status-badge';
 import {
   PromotionForm,
   readPromotionForm,
-  SCOPE_LABELS,
   TimeWindowsSummary,
 } from '~/features/promotions/promotion-form';
+import { SCOPE_LABELS } from '~/constants/promotion';
 import type { ScopeOptions } from '~/features/promotions/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {

@@ -5,7 +5,6 @@ import type {
   AffiliateRateResponse,
   AffiliateRateSourceDto,
   AffiliateStatusResponse,
-  ReferralTargetDto,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
@@ -19,6 +18,7 @@ import { ArrowLeft, Ban, Check, CheckCircle2, TriangleAlert } from 'lucide-react
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { COMMISSION_STATUS_LABEL, REFERRAL_TARGET_LABEL } from '~/constants/affiliate';
 import { formatDiscount, formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
@@ -90,23 +90,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   return routeData({ ok: false, error: 'Thao tác không hợp lệ.', message: null }, { status: 400 });
 }
 
-const COMMISSION_STATUS_LABEL: Record<AffiliateCommissionStatusDto, string> = {
-  pending: 'Chờ xác nhận',
-  confirmed: 'Đã xác nhận',
-  paid: 'Đã trả',
-  reversed: 'Đã huỷ',
-  clawed_back: 'Đã thu hồi',
-};
-
 const RATE_SOURCE_LABEL: Record<AffiliateRateSourceDto, string> = {
   custom: 'Hoa hồng riêng',
   rule: 'Theo quy tắc tenant',
   none: 'Chưa cấu hình',
-};
-
-const TARGET_LABEL: Record<ReferralTargetDto, string> = {
-  tenant_home: 'Trang chủ',
-  listing: 'Listing',
 };
 
 function CommissionStatusBadge({ status }: { status: AffiliateCommissionStatusDto }) {
@@ -178,7 +165,7 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
       header: 'Đích',
       cell: (l) => (
         <span className="text-sm text-muted-foreground">
-          <EnumValue map={TARGET_LABEL} value={l.target} />
+          <EnumValue map={REFERRAL_TARGET_LABEL} value={l.target} />
           {l.target === 'listing' && l.listingTitle ? ` · ${l.listingTitle}` : ''}
         </span>
       ),

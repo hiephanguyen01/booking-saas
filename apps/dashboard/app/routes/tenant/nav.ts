@@ -12,7 +12,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
-import { dashboardPaths } from '~/lib/paths';
+import { dashboardPaths } from '~/constants/paths';
 
 // Sidebar nav for the tenant area (Task 1.13), grouped into labelled sections so
 // the 11 screens stay scannable. OWNED by the tenant agent — add a screen to the

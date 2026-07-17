@@ -3,6 +3,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import type { Route } from './+types/commissions';
 import { apiGet } from '~/lib/api.server';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
+import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
@@ -13,14 +14,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   const res = active ? await apiGet<AffiliateCommissionResponse[]>('/affiliate/commissions', auth) : null;
   return { commissions: res?.ok ? (res.data ?? []) : [] };
 }
-
-const STATUS_LABEL: Record<AffiliateCommissionStatusDto, string> = {
-  pending: 'Chờ xác nhận',
-  confirmed: 'Đã xác nhận',
-  paid: 'Đã trả',
-  reversed: 'Đã huỷ',
-  clawed_back: 'Đã thu hồi',
-};
 
 /** Commission-status tone via semantic tokens (no dedicated badge in the toolkit). */
 function CommissionStatus({ status }: { status: AffiliateCommissionStatusDto }) {
@@ -34,7 +27,7 @@ function CommissionStatus({ status }: { status: AffiliateCommissionStatusDto }) 
           : 'text-destructive';
   return (
     <span className={`text-sm font-medium ${tone}`}>
-      <EnumValue map={STATUS_LABEL} value={status} />
+      <EnumValue map={COMMISSION_STATUS_LABEL} value={status} />
     </span>
   );
 }

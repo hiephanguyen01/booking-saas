@@ -10,7 +10,8 @@ import { TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { BOOKING_MODE_LABEL, formatDateTime, formatRate } from '~/lib/format';
+import { formatDateTime, formatRate } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { BookingStatusBadge } from '~/components/status-badge';
@@ -21,7 +22,7 @@ import {
   type BookingStatusFilter,
 } from '~/features/bookings/booking-list.query';
 import { fetchBookingList } from '~/features/bookings/booking-list.server';
-import { dashboardPaths } from '~/lib/paths';
+import { dashboardPaths } from '~/constants/paths';
 
 interface PartnerStat {
   partnerId: string;

@@ -3,7 +3,6 @@ import { CheckCircle2, CircleAlert, Trash2 } from 'lucide-react';
 import type {
   IdentityDocumentType,
   PartnerResponse,
-  PartnerType,
   SubmitIdentityInput,
   UpdatePartnerDocumentsInput,
   UpdatePayoutInfoInput,
@@ -35,7 +34,8 @@ import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { CopyableCode } from '~/components/copyable-code';
 import { PhotoStrip } from '~/components/photo-strip';
-import { formatDate, PARTNER_TYPE_LABEL } from '~/lib/format';
+import { formatDate } from '~/lib/format';
+import { PARTNER_TYPE_LABEL } from '~/constants/partner';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Hồ sơ đối tác · Đối tác · Bookify' }];
@@ -45,11 +45,6 @@ const IDENTITY_DOC_LABEL: Record<IdentityDocumentType, string> = {
   national_id: 'CCCD / CMND',
   passport: 'Hộ chiếu',
   driver_license: 'Giấy phép lái xe',
-};
-
-const PARTNER_TYPE_MAP: Record<PartnerType, string> = {
-  individual: PARTNER_TYPE_LABEL.individual,
-  company: PARTNER_TYPE_LABEL.company,
 };
 
 // ── loader ──────────────────────────────────────────────────────────────────
@@ -405,7 +400,7 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
               <DetailField label="Tên đối tác" value={partner.name} emphasis="strong" />
               <DetailField
                 label="Loại đối tác"
-                value={<EnumValue map={PARTNER_TYPE_MAP} value={partner.partnerType} />}
+                value={<EnumValue map={PARTNER_TYPE_LABEL} value={partner.partnerType} />}
               />
               <DetailField
                 label="Đường dẫn"

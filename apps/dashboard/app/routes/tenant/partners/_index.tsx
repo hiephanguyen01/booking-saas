@@ -10,7 +10,8 @@ import { Check, Eye, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/lib/format';
+import { formatDate } from '~/lib/format';
+import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 

@@ -30,8 +30,8 @@ import {
   formatNumber,
   formatVnd,
   formatVndCompact,
-  VERTICAL_LABELS,
 } from '~/lib/format';
+import { VERTICAL_LABELS } from '~/constants/tenancy';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { GmvChart } from '~/features/admin/components/gmv-chart';

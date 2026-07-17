@@ -8,7 +8,7 @@ import type { Route } from './+types/_index';
 import { apiDelete, apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
-import { BOOKING_MODE_LABEL } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 
 const SEARCH_SCHEDULE_LABEL: Record<
   ListingTypeResponse['searchConfig']['schedule'],

@@ -4,7 +4,6 @@ import type {
   AttributeFieldType,
   BalanceDue,
   BookingMode,
-  ContactFlag,
   ListingResponse,
   ListingReviewResponse,
   ListingTypeResponse,
@@ -30,9 +29,10 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { DetailRow } from '@booking/ui/components/detail/detail-row';
 import type { Route } from './+types/review';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { BOOKING_MODE_LABEL } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { asRecord } from '~/lib/records';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { CONTACT_FIELD_LABEL, CONTACT_FLAG_LABEL } from '~/features/tenant/constants';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
@@ -56,16 +56,6 @@ const CHECKLIST_LABEL: Record<string, string> = {
   description: 'Có mô tả',
   price: 'Mọi hình thức đặt đều có giá',
   cancellation_policy: 'Có chính sách huỷ',
-};
-const CONTACT_FLAG_LABEL: Record<ContactFlag['type'], string> = {
-  phone: 'Số điện thoại',
-  zalo: 'Zalo',
-  url: 'Liên kết',
-  email: 'Email',
-};
-const CONTACT_FIELD_LABEL: Record<string, string> = {
-  title: 'Tiêu đề',
-  description: 'Mô tả',
 };
 const INVENTORY_UNIT_LABEL: Record<'hour' | 'day', string> = { hour: 'Giờ', day: 'Ngày' };
 

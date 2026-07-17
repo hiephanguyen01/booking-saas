@@ -28,6 +28,7 @@ import { Banknote, BookText, CircleAlert, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { PAYOUT_INELIGIBLE_REASON } from '~/constants/finance';
 import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { formatVnd } from '~/lib/format';
 import { Money } from '~/components/money';
@@ -43,11 +44,6 @@ export function meta(): Route.MetaDescriptors {
  * Why a payout run would be rejected — mirrors the exact codes `POST /tenant/finance/payouts`
  * returns, so the dialog can gray out its submit before the user hits a hard 400.
  */
-const INELIGIBLE_REASON: Record<NonNullable<TenantPayableResponse['ineligibleReason']>, string> = {
-  NOTHING_TO_PAY:
-    'Chưa có số dư đủ điều kiện để chi — toàn bộ đang trong thời gian giữ hoặc đã nằm trong lệnh chi chờ xử lý.',
-  BELOW_MINIMUM: 'Số tiền đủ điều kiện chưa đạt mức tối thiểu của một kỳ chi trả.',
-};
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.finance.read');
@@ -439,7 +435,7 @@ function PayablePreview({
       {!payable.eligible && payable.ineligibleReason ? (
         <p className="flex items-start gap-1.5 text-xs text-warning-foreground">
           <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden />
-          {INELIGIBLE_REASON[payable.ineligibleReason]}
+          {PAYOUT_INELIGIBLE_REASON[payable.ineligibleReason]}
         </p>
       ) : null}
     </div>

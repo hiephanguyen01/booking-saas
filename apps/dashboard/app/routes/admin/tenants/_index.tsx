@@ -9,7 +9,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
-import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/lib/format';
+import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/constants/tenancy';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
 import { TenantStatusBadge } from '~/components/status-badge';

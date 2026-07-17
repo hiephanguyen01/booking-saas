@@ -1,5 +1,5 @@
 import type { ScopeMembership, SessionInfoResponse } from '@booking/contracts';
-import { dashboardPaths } from './paths';
+import { dashboardPaths } from '~/constants/paths';
 
 export type TenantMembership = ScopeMembership & { scope: 'tenant'; tenantId: string };
 export type PartnerMembership = ScopeMembership & {

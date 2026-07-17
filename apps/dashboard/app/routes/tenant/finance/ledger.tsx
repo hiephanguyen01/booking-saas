@@ -3,7 +3,6 @@ import {
   ledgerEntryTypeSchema,
   type LedgerEntryResponse,
   type LedgerEntryTypeDto,
-  type LedgerOwnerTypeDto,
   type Paginated,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -20,6 +19,8 @@ import { ArrowLeft, Filter } from 'lucide-react';
 import type { Route } from './+types/ledger';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { TZ_OFFSET } from '~/constants/time';
+import { LEDGER_OWNER_LABEL } from '~/constants/finance';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { amountToneClass } from '~/components/money';
@@ -31,7 +32,6 @@ export function meta(): Route.MetaDescriptors {
 const PAGE_SIZE = 25;
 
 /** VN market timezone offset — pins a `YYYY-MM-DD` filter bound to the local calendar day. */
-const TZ_OFFSET = '+07:00';
 
 /** Turn a `YYYY-MM-DD` form value into an ISO instant at the start/end of that local day. */
 function boundIso(day: string, edge: 'start' | 'end'): string | null {
@@ -75,12 +75,6 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   };
 }
 
-const OWNER_LABEL: Record<LedgerOwnerTypeDto, string> = {
-  platform: 'Nền tảng',
-  tenant: 'Cửa hàng',
-  partner: 'Đối tác',
-  affiliate: 'Affiliate',
-};
 
 const ENTRY_LABEL: Record<LedgerEntryTypeDto, string> = {
   booking_revenue: 'Doanh thu đặt chỗ',
@@ -116,7 +110,7 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     // (and for a deleted owner) — the ownerType badge already labels the row in that case.
     cell: (e) => (
       <div className="flex flex-col gap-0.5">
-        <Badge variant="secondary" className="w-fit">{OWNER_LABEL[e.ownerType] ?? e.ownerType}</Badge>
+        <Badge variant="secondary" className="w-fit">{LEDGER_OWNER_LABEL[e.ownerType] ?? e.ownerType}</Badge>
         {e.ownerName ? <span className="text-xs text-muted-foreground">{e.ownerName}</span> : null}
       </div>
     ),

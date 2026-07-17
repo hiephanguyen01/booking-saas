@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { data as routeData, Link, redirect, useNavigation, useSubmit } from 'react-router';
 import type {
-  ContactFlag,
   ListingGroupDetailResponse,
   ListingGroupReviewResponse,
   ListingResponse,
@@ -26,9 +25,10 @@ import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import type { Route } from './+types/review';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { BOOKING_MODE_LABEL } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { listingPriceFrom } from '~/lib/listing-price';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { CONTACT_FIELD_LABEL, CONTACT_FLAG_LABEL } from '~/features/tenant/constants';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { EntityRef } from '~/components/entity-ref';
@@ -40,16 +40,6 @@ const CHECKLIST_LABEL: Record<string, string> = {
   description: 'Có mô tả',
   price: 'Mọi hạng mục đều có giá',
   cancellation_policy: 'Mọi hạng mục có chính sách huỷ',
-};
-const CONTACT_FLAG_LABEL: Record<ContactFlag['type'], string> = {
-  phone: 'Số điện thoại',
-  zalo: 'Zalo',
-  url: 'Liên kết',
-  email: 'Email',
-};
-const CONTACT_FIELD_LABEL: Record<string, string> = {
-  title: 'Tiêu đề',
-  description: 'Mô tả',
 };
 
 /** Contact-scan field names are namespaced for children (`listings[0].description`). */

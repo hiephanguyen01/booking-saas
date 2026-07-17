@@ -67,7 +67,8 @@ import { EntityRef } from '~/components/entity-ref';
 import { PhotoStrip } from '~/components/photo-strip';
 import { CopyableCode } from '~/components/copyable-code';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { BOOKING_MODE_LABEL, formatNumber } from '~/lib/format';
+import { formatNumber } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { listingPriceFrom } from '~/lib/listing-price';
 
 export async function loader({ request, params }: Route.LoaderArgs) {

@@ -12,7 +12,7 @@ import { formatDiscount } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { EnumValue } from '~/components/enum-value';
-import { SCOPE_LABELS } from '~/features/promotions/promotion-form';
+import { SCOPE_LABELS } from '~/constants/promotion';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Tenant · Bookify' }];

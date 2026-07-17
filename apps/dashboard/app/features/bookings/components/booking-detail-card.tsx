@@ -9,6 +9,7 @@ import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { DetailRow, DetailRowTotal } from '@booking/ui/components/detail/detail-row';
 import { BookingStatusBadge } from '~/components/status-badge';
+import { CHARGE_LABEL, PENDING_BOOKING_STATUSES } from '~/constants/booking';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
@@ -25,17 +26,6 @@ const MODE_LABEL: Record<string, string> = {
   appointment: 'Lịch hẹn',
   class: 'Lớp học',
 };
-
-/** Additional-charge type → Vietnamese label (§8.3). */
-const CHARGE_LABEL: Record<string, string> = {
-  late_fee: 'Phí trễ hạn',
-  overtime: 'Phụ trội giờ',
-  cleaning: 'Phí vệ sinh',
-  damage: 'Đền bù hư hỏng',
-};
-
-/** Statuses that are still holding the slot — their `expiresAt` is worth surfacing. */
-const PENDING_STATUSES = new Set(['pending_approval', 'pending_payment']);
 
 interface BookingDetailCardBaseProps {
   /** Route to the listing when the area exposes one; falls back to plain text. */
@@ -73,7 +63,7 @@ export type BookingDetailCardProps = BookingDetailCardBaseProps &
 export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Element {
   const { booking, listingHref, history, historyFailed, actions, footer } = props;
   const isInventory = booking.bookingMode === 'inventory';
-  const isPending = PENDING_STATUSES.has(booking.status);
+  const isPending = PENDING_BOOKING_STATUSES.includes(booking.status);
   const duration = describeDuration(booking.startUtc, booking.endUtc, booking.bookingMode);
   const remaining = subtractMoney(booking.finalAmount, booking.paidAmount);
   const tiers = booking.cancellationPolicySnapshot ?? [];

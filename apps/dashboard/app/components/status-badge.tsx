@@ -9,7 +9,7 @@ import type {
   TenantStatus,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { SUBSCRIPTION_STATUS_LABELS, TENANT_STATUS_LABELS } from '~/lib/format';
+import { SUBSCRIPTION_STATUS_LABELS, TENANT_STATUS_LABELS } from '~/constants/tenancy';
 
 /**
  * The single source of truth for status pills across the whole dashboard

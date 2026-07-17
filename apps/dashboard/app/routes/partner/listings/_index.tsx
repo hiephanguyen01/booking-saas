@@ -30,7 +30,8 @@ import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { BOOKING_MODE_LABEL, formatDate } from '~/lib/format';
+import { formatDate } from '~/lib/format';
+import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { listingPriceFrom } from '~/lib/listing-price';
 
 /** Booking-mode → Vietnamese label (exhaustive, so a new mode is a compile error). */

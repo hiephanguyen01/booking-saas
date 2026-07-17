@@ -3,7 +3,6 @@ import {
   updatePromotionInputSchema,
   type PromotionDetailResponse,
   type PromotionCategoryOption,
-  type PromotionFundedByDto,
   type PromoUsageStatsResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -35,17 +34,14 @@ import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { CopyableCode } from '~/components/copyable-code';
 import { PromotionStatusBadge } from '~/components/status-badge';
-import { PromotionForm, readPromotionForm, SCOPE_LABELS, TimeWindowsSummary } from '~/features/promotions/promotion-form';
+import { PromotionForm, readPromotionForm, TimeWindowsSummary } from '~/features/promotions/promotion-form';
+import { FUNDED_BY_LABELS, SCOPE_LABELS } from '~/constants/promotion';
 import { loadScopeOptions } from '~/features/promotions/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Tenant · Bookify' }];
 }
 
-const FUNDED_BY_LABELS: Record<PromotionFundedByDto, string> = {
-  tenant: 'Cửa hàng',
-  partner: 'Đối tác',
-};
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.promotions.manage');
