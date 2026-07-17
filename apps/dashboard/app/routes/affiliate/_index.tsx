@@ -13,13 +13,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { CheckCircle2, MousePointerClick, Percent, ShoppingBag, Wallet } from 'lucide-react';
+import { MousePointerClick, Percent, ShoppingBag, Wallet } from 'lucide-react';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { formatDiscount, formatRate } from '~/lib/format';
 import type { Route } from './+types/_index';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { RATE_SOURCE_LABEL } from '~/constants/affiliate';
+import { SuccessBanner } from '~/components/action-feedback';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
@@ -187,13 +187,8 @@ export default function AffiliateOverview({ loaderData, actionData }: Route.Comp
               Tenant dùng thông tin này để chi trả hoa hồng cho bạn.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {ok ? (
-              <Alert className="mb-4 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
-                <CheckCircle2 className="size-4" />
-                <AlertDescription>Đã lưu thông tin tài khoản.</AlertDescription>
-              </Alert>
-            ) : null}
+          <CardContent className="space-y-4">
+            <SuccessBanner message={ok ? 'Đã lưu thông tin tài khoản.' : null} />
             <GenericForm
               schema={updateAffiliatePayoutInfoInputSchema}
               fields={payoutFields}

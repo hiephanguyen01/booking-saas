@@ -13,6 +13,9 @@ import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/constants/tenancy';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
 import { TenantStatusBadge } from '~/components/status-badge';
+import { parsePage, pageHref } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
+import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tenant · Bookify Admin' }];
@@ -24,7 +27,7 @@ const STATUS_VALUES: TenantStatus[] = ['active', 'suspended', 'expired'];
 const VERTICAL_VALUES: Vertical[] = ['studio', 'rental', 'classes'];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
+  const page = parsePage(url.searchParams);
   const search = url.searchParams.get('search')?.trim() ?? '';
   const status = url.searchParams.get('status') ?? '';
   const vertical = url.searchParams.get('vertical') ?? '';
@@ -86,11 +89,6 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
   const total = result?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const filterQs = keepFilters(filters);
-  const pageQs = (p: number): string => {
-    const q = new URLSearchParams(filterQs);
-    q.set('page', String(p));
-    return `?${q}`;
-  };
 
   return (
     <div className="space-y-6">
@@ -151,14 +149,7 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
         ) : null}
       </Form>
 
-      {error ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-        >
-          Không tải được danh sách tenant: {error}
-        </div>
-      ) : null}
+      <ErrorBanner error={error ? <>Không tải được danh sách tenant: {error}</> : null} />
 
       <DataTable
         columns={columns}
@@ -171,37 +162,7 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Trang {page} / {totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              aria-disabled={page <= 1}
-            >
-              <Link to={pageQs(page - 1)} prefetch="intent">
-                Trước
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              aria-disabled={page >= totalPages}
-            >
-              <Link to={pageQs(page + 1)} prefetch="intent">
-                Sau
-              </Link>
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <PaginationBar page={page} totalPages={totalPages} hrefFor={(p) => pageHref(filterQs, p)} />
     </div>
   );
 }

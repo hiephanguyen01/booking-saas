@@ -1,13 +1,12 @@
-import { data, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { data, redirect } from 'react-router';
 import { createTenantInputSchema, type CreateTenantInput, type TenantResponse } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
@@ -79,12 +78,7 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-          <Link to="/admin/tenants">
-            <ArrowLeft className="size-4" />
-            Danh sách tenant
-          </Link>
-        </Button>
+        <BackLink to="/admin/tenants" label="Danh sách tenant" />
         <PageHeader
           title="Tạo tenant"
           description="Khởi tạo một tenant mới cùng tên miền phụ mặc định."

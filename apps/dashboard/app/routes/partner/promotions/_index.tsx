@@ -1,8 +1,7 @@
-import { data, Form, Link, useNavigation } from 'react-router';
+import { data, Form, Link } from 'react-router';
 import type { PromotionResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import {
   Card,
   CardContent,
@@ -11,11 +10,13 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { CircleAlert, HandCoins, Pencil, Plus } from 'lucide-react';
+import { HandCoins, Pencil, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { useBusy } from '~/hooks/use-busy';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { formatDiscount } from '~/lib/format';
 
@@ -50,8 +51,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function PartnerPromotions({ loaderData, actionData }: Route.ComponentProps) {
   const { promotions, pending, error } = loaderData;
-  const nav = useNavigation();
-  const busy = nav.state !== 'idle';
+  const busy = useBusy();
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
 
   const columns: DataTableColumn<PromotionResponse>[] = [
@@ -101,12 +101,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
         }
       />
 
-      {actionError ? (
-        <Alert variant="destructive">
-          <CircleAlert className="size-4" />
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      ) : null}
+      <ErrorBanner error={actionError} />
 
       {pending.length > 0 ? (
         <Card>
@@ -153,10 +148,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
         </CardHeader>
         <CardContent>
           {error ? (
-            <Alert variant="destructive">
-              <CircleAlert className="size-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <ErrorBanner error={error} />
           ) : (
             <DataTable data={promotions} columns={columns} emptyMessage="Chưa có khuyến mãi nào." />
           )}

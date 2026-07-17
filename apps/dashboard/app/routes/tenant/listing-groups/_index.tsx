@@ -8,6 +8,7 @@ import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatDate } from '~/lib/format';
+import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
@@ -123,11 +124,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
             : 'Duyệt, ẩn hoặc mở lại các bài đăng nhóm của đối tác.'
         }
       />
-      {error || actionError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error ?? actionError}
-        </div>
-      ) : null}
+      <ErrorBanner error={error ?? actionError} />
       <DataTable
         columns={columns}
         data={groups}

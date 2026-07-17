@@ -1,17 +1,16 @@
-import { data as routeData, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { data as routeData, redirect } from 'react-router';
 import {
   createHousePartnerInputSchema,
   type CreateHousePartnerInput,
   type PartnerResponse,
 } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
@@ -62,11 +61,7 @@ export default function NewHousePartner({ actionData }: Route.ComponentProps) {
   return (
     <div className="space-y-6">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/tenant/partners">
-            <ArrowLeft className="size-4" /> Đối tác
-          </Link>
-        </Button>
+        <BackLink to="/tenant/partners" label="Đối tác" className="mb-2" />
         <PageHeader
           title="Đối tác nội bộ mới"
           description="Tạo đối tác nội bộ (house) để tenant tự bán inventory của mình — được duyệt sẵn, không cần xác minh danh tính."

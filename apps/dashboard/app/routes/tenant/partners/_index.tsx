@@ -1,10 +1,7 @@
-import { useMemo, useState } from 'react';
 import { Link, useFetcher, data as routeData } from 'react-router';
 import type { PartnerResponse, Paginated, PartnerStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Check, Eye, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
@@ -14,6 +11,10 @@ import { formatDate } from '~/lib/format';
 import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
+import { StatusFilterTabs } from '~/components/status-filter-tabs';
+import { useStatusFilter } from '~/hooks/use-status-filter';
+import { PhoneLink } from '~/components/contact-link';
+import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối tác · Tenant · Bookify' }];
@@ -51,20 +52,11 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'suspended', label: 'Tạm ngưng' },
 ];
 
+const getStatus = (p: PartnerResponse): string => p.status;
+
 export default function TenantPartners({ loaderData }: Route.ComponentProps) {
   const { partners, error, canApprove, canManage } = loaderData;
-  const [filter, setFilter] = useState<Filter>('all');
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: partners.length };
-    for (const p of partners) c[p.status] = (c[p.status] ?? 0) + 1;
-    return c;
-  }, [partners]);
-
-  const rows = useMemo(
-    () => (filter === 'all' ? partners : partners.filter((p) => p.status === filter)),
-    [filter, partners],
-  );
+  const { filter, setFilter, rows, counts } = useStatusFilter(partners, getStatus);
 
   const columns: DataTableColumn<PartnerResponse>[] = [
     {
@@ -95,17 +87,7 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
     },
     {
       header: 'Liên hệ',
-      cell: (p) =>
-        p.contactInfo.phone ? (
-          <a
-            href={`tel:${p.contactInfo.phone}`}
-            className="rounded-sm text-sm tabular-nums text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            {p.contactInfo.phone}
-          </a>
-        ) : (
-          <span className="text-sm text-muted-foreground">—</span>
-        ),
+      cell: (p) => <PhoneLink phone={p.contactInfo.phone} />,
       className: 'hidden lg:table-cell',
       headClassName: 'hidden lg:table-cell',
     },
@@ -146,24 +128,9 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      {error ? (
-        <Card>
-          <CardContent className="p-4 text-sm text-destructive">{error}</CardContent>
-        </Card>
-      ) : null}
+      <ErrorBanner error={error} />
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-        <TabsList className="flex-wrap">
-          {FILTERS.map((f) => (
-            <TabsTrigger key={f.value} value={f.value} className="gap-2">
-              {f.label}
-              <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
-                {counts[f.value] ?? 0}
-              </span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <StatusFilterTabs filters={FILTERS} counts={counts} value={filter} onChange={setFilter} />
 
       <DataTable
         columns={columns}

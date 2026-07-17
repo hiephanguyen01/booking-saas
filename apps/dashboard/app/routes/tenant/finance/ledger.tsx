@@ -21,6 +21,9 @@ import { LEDGER_ENTRY_LABEL, LEDGER_OWNER_LABEL } from '~/constants/finance';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { amountToneClass } from '~/components/money';
+import { parsePage, pageHref } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
+import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sổ cái · Tài chính · Tenant · Bookify' }];
@@ -46,7 +49,7 @@ function parseEntryType(raw: string | null): LedgerEntryTypeDto | '' {
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.finance.read');
-  const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
+  const page = parsePage(url.searchParams);
   const entryType = parseEntryType(url.searchParams.get('entryType'));
   // Keep the raw `YYYY-MM-DD` for the date inputs; send ISO bounds to the API.
   const fromDay = url.searchParams.get('from') ?? '';
@@ -147,14 +150,10 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // Preserve the active filters when paging (a bare `?page=` link would drop them).
-  const pageHref = (p: number): string => {
-    const q = new URLSearchParams();
-    if (filters.entryType) q.set('entryType', filters.entryType);
-    if (filters.from) q.set('from', filters.from);
-    if (filters.to) q.set('to', filters.to);
-    q.set('page', String(p));
-    return `?${q.toString()}`;
-  };
+  const filterQs = new URLSearchParams();
+  if (filters.entryType) filterQs.set('entryType', filters.entryType);
+  if (filters.from) filterQs.set('from', filters.from);
+  if (filters.to) filterQs.set('to', filters.to);
   const hasFilters = filters.entryType !== '' || filters.from !== '' || filters.to !== '';
 
   return (
@@ -216,11 +215,7 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         </CardContent>
       </Card>
 
-      {error ? (
-        <Card>
-          <CardContent className="p-4 text-sm text-destructive">{error}</CardContent>
-        </Card>
-      ) : null}
+      <ErrorBanner error={error} />
 
       <DataTable
         columns={columns}
@@ -229,37 +224,7 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         emptyMessage={hasFilters ? 'Không có bút toán khớp bộ lọc.' : 'Chưa có bút toán nào.'}
       />
 
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Trang {page} / {totalPages}
-          </span>
-          <div className="flex gap-2">
-            {page > 1 ? (
-              <Button asChild variant="outline" size="sm">
-                <Link to={pageHref(page - 1)} prefetch="intent">
-                  Trước
-                </Link>
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" disabled>
-                Trước
-              </Button>
-            )}
-            {page < totalPages ? (
-              <Button asChild variant="outline" size="sm">
-                <Link to={pageHref(page + 1)} prefetch="intent">
-                  Sau
-                </Link>
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" disabled>
-                Sau
-              </Button>
-            )}
-          </div>
-        </div>
-      ) : null}
+      <PaginationBar page={page} totalPages={totalPages} hrefFor={(p) => pageHref(filterQs, p)} />
     </div>
   );
 }

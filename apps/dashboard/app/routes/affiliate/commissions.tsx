@@ -3,11 +3,9 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import type { Route } from './+types/commissions';
 import { apiGet } from '~/lib/api.server';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
-import { CommissionStatusBadge } from '~/components/status-badge';
+import { BookingStatusBadge, CommissionStatusBadge } from '~/components/status-badge';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
-import { } from '~/components/enum-value';
-import { BookingStatusBadge } from '~/components/status-badge';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);

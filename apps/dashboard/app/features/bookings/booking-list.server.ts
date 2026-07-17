@@ -1,6 +1,6 @@
 import type { BookingResponse } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
-import { apiGet } from '~/lib/api.server';
+import { apiGet, unwrapApiResult } from '~/lib/api.server';
 import type { BookingListData, BookingStatusFilter } from './booking-list.query';
 
 /**
@@ -20,13 +20,7 @@ export async function fetchBookingList(
     signal,
     query: { limit: BOOKING_LIST_LIMIT },
   });
-  if (!result.ok || !result.data) {
-    throw new Response(result.error ?? 'Không tải được đặt chỗ.', {
-      status: result.status >= 400 ? result.status : 502,
-    });
-  }
-
-  const all = result.data;
+  const all = unwrapApiResult(result, 'Không tải được đặt chỗ.');
   const items = status === 'all' ? all : all.filter((booking) => booking.status === status);
   const active = all.filter(
     (booking) => booking.status === 'confirmed' || booking.status === 'pending_approval',

@@ -11,6 +11,7 @@
 import {
   createApiClient,
   type ApiRequestOptions,
+  type ApiResult,
   type Auth,
 } from '@booking/api-client';
 
@@ -63,6 +64,43 @@ export function apiPut<T>(
 
 export function apiDelete<T>(path: string, auth: Auth, options?: ApiRequestOptions<T>) {
   return client().delete<T>(path, auth, options);
+}
+
+// ── ApiResult unwrap helpers (the BFF-side throw/fallback idioms) ────────────
+// These are React-Router concerns (throwing a Response), so they live here and
+// NOT in @booking/api-client, which stays transport-only.
+
+/**
+ * Unwrap a result or throw a Response — for loaders where the data is the page
+ * (`throw` renders the ErrorBoundary with the backend's status).
+ */
+export function unwrapApiResult<T>(result: ApiResult<T>, fallbackMessage: string): T {
+  if (!result.ok || result.data === null) {
+    throw new Response(result.error ?? fallbackMessage, { status: result.status || 502 });
+  }
+  return result.data;
+}
+
+/** Like {@link unwrapApiResult} but for detail pages: a miss is a 404. */
+export function requireData<T>(result: ApiResult<T>, notFoundMessage: string): T {
+  if (!result.ok || result.data === null) {
+    throw new Response(notFoundMessage, { status: result.status || 404 });
+  }
+  return result.data;
+}
+
+/**
+ * Unwrap a list call into `{ items, error }` — the degrade-gracefully idiom for
+ * list pages that render an error banner instead of an ErrorBoundary.
+ */
+export function unwrapList<T>(
+  result: ApiResult<T[]>,
+  fallbackError: string,
+): { items: T[]; error: string | null } {
+  return {
+    items: result.ok ? (result.data ?? []) : [],
+    error: result.ok ? null : (result.error ?? fallbackError),
+  };
 }
 
 export function backendLogin(credentials: { email: string; password: string }) {

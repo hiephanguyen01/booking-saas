@@ -1,5 +1,4 @@
 import { data, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
 import {
   createListingInputSchema,
   type CancellationPolicySummary,
@@ -16,6 +15,7 @@ import {
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingForm } from '~/features/partner/components/listing-form';
 
@@ -139,11 +139,7 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
   return (
     <div className="space-y-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/partner/listings">
-            <ArrowLeft className="size-4" aria-hidden /> Tin đăng
-          </Link>
-        </Button>
+        <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
         <PageHeader
           title="Tin đăng mới"
           description="Tạo tin đăng mới; sau khi tạo hãy gửi duyệt để hiển thị."

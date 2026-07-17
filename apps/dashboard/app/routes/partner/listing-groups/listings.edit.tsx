@@ -5,12 +5,11 @@ import {
   type ListingResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { data, Link, redirect } from 'react-router';
+import { data, redirect } from 'react-router';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import type { Route } from './+types/listings.edit';
 import { ListingForm } from '~/features/partner/components/listing-form';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { requirePartner } from '~/features/partner/server/partner.server';
 
@@ -64,11 +63,11 @@ export default function EditGroupedListingPage({ loaderData, actionData }: Route
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to={`/partner/listing-groups/${loaderData.group.id}`}>
-            <ArrowLeft data-icon="inline-start" /> {loaderData.group.title}
-          </Link>
-        </Button>
+        <BackLink
+          to={`/partner/listing-groups/${loaderData.group.id}`}
+          label={loaderData.group.title}
+          className="mb-2"
+        />
         <PageHeader title={`Sửa ${label}`} description={loaderData.listing.title} />
       </div>
       <ListingForm

@@ -1,9 +1,6 @@
-import { useMemo, useState } from 'react';
 import { Link, useFetcher, data as routeData } from 'react-router';
 import type { AffiliateListItem, AffiliateStatusDto } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Check, Eye, Ban } from 'lucide-react';
 import type { Route } from './+types/_index';
@@ -13,6 +10,9 @@ import { formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { PartnerStatusBadge } from '~/components/status-badge';
+import { StatusFilterTabs } from '~/components/status-filter-tabs';
+import { useStatusFilter } from '~/hooks/use-status-filter';
+import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Tenant · Bookify' }];
@@ -49,20 +49,11 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'suspended', label: 'Tạm ngưng' },
 ];
 
+const getStatus = (a: AffiliateListItem): string => a.status;
+
 export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
   const { affiliates, error } = loaderData;
-  const [filter, setFilter] = useState<Filter>('all');
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: affiliates.length };
-    for (const a of affiliates) c[a.status] = (c[a.status] ?? 0) + 1;
-    return c;
-  }, [affiliates]);
-
-  const rows = useMemo(
-    () => (filter === 'all' ? affiliates : affiliates.filter((a) => a.status === filter)),
-    [filter, affiliates],
-  );
+  const { filter, setFilter, rows, counts } = useStatusFilter(affiliates, getStatus);
 
   const columns: DataTableColumn<AffiliateListItem>[] = [
     {
@@ -127,24 +118,9 @@ export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
         description="Duyệt cộng tác viên, đặt hoa hồng riêng và theo dõi hoa hồng cần chi trả."
       />
 
-      {error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+      <ErrorBanner error={error} />
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-        <TabsList className="flex-wrap">
-          {FILTERS.map((f) => (
-            <TabsTrigger key={f.value} value={f.value} className="gap-2">
-              {f.label}
-              <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
-                {counts[f.value] ?? 0}
-              </span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <StatusFilterTabs filters={FILTERS} counts={counts} value={filter} onChange={setFilter} />
 
       <DataTable
         columns={columns}

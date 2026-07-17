@@ -1,15 +1,15 @@
-import { data, Link, redirect } from 'react-router';
-import { ArrowLeft, Lock } from 'lucide-react';
+import { data, redirect } from 'react-router';
+import { Lock } from 'lucide-react';
 import {
   updateListingInputSchema,
   type CancellationPolicySummary,
   type ListingResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { ListingForm } from '~/features/partner/components/listing-form';
@@ -91,11 +91,7 @@ export default function EditListingPage({ loaderData, actionData }: Route.Compon
   return (
     <div className="space-y-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/partner/listings">
-            <ArrowLeft className="size-4" aria-hidden /> Tin đăng
-          </Link>
-        </Button>
+        <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
         <PageHeader title="Sửa tin đăng" description={loaderData.listing.title} />
       </div>
       <ListingStatusStrip listing={loaderData.listing} />

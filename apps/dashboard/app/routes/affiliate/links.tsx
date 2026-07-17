@@ -2,13 +2,13 @@ import { useFetcher, data as routeData } from 'react-router';
 import type { ReferralLinkResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Route } from './+types/links';
 import { apiGet, apiPost, apiDelete } from '~/lib/api.server';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { REFERRAL_TARGET_LABEL } from '~/constants/affiliate';
+import { ErrorBanner } from '~/components/action-feedback';
 import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
@@ -84,11 +84,7 @@ export default function AffiliateLinks({ loaderData, actionData }: Route.Compone
         </createFetcher.Form>
       </div>
 
-      {actionData?.error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{actionData.error}</AlertDescription>
-        </Alert>
-      ) : null}
+      <ErrorBanner error={actionData?.error} />
 
       {links.length === 0 ? (
         <Card>

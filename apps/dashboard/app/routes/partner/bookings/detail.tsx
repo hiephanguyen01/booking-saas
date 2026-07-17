@@ -1,5 +1,4 @@
-import { Link, useFetcher } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { useFetcher } from 'react-router';
 import type { BookingStatusHistoryResponse, PartnerBookingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
@@ -7,6 +6,7 @@ import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import type { Route } from './+types/detail';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import {
@@ -77,11 +77,7 @@ export default function PartnerBookingDetail({ loaderData }: Route.ComponentProp
   return (
     <div className="space-y-6">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/partner/bookings">
-            <ArrowLeft className="size-4" /> Lượt đặt
-          </Link>
-        </Button>
+        <BackLink to="/partner/bookings" label="Lượt đặt" className="mb-2" />
         <PageHeader
           title="Chi tiết lượt đặt"
           description="Toàn bộ thông tin và thao tác cho lượt đặt này."

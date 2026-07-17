@@ -1,16 +1,16 @@
-import { data, Link, redirect } from 'react-router';
-import { ArrowLeft, Lock, TriangleAlert } from 'lucide-react';
+import { data, redirect } from 'react-router';
+import { Lock, TriangleAlert } from 'lucide-react';
 import {
   createListingGroupInputSchema,
   type ListingGroupDetailResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
-import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingGroupForm } from '~/features/partner/components/listing-group-form';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
 
@@ -55,11 +55,7 @@ export default function EditListingGroupPage({ loaderData, actionData }: Route.C
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to={`/partner/listing-groups/${group.id}`}>
-            <ArrowLeft data-icon="inline-start" /> Bài đăng
-          </Link>
-        </Button>
+        <BackLink to={`/partner/listing-groups/${group.id}`} label="Bài đăng" className="mb-2" />
         <PageHeader title="Sửa thông tin chung" description={group.title} />
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">

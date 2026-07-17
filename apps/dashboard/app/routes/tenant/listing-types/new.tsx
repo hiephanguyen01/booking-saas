@@ -1,7 +1,6 @@
 import { createListingTypeInputSchema } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { Link, redirect, data as routeData } from 'react-router';
+import { redirect, data as routeData } from 'react-router';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { apiPost } from '~/lib/api.server';
 import { ListingTypeForm } from '~/features/tenant/components/listing-type-form';
@@ -40,11 +39,7 @@ export default function NewListingType({ actionData }: Route.ComponentProps) {
   return (
     <div className="space-y-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/tenant/listing-types">
-            <ArrowLeft className="size-4" /> Loại dịch vụ
-          </Link>
-        </Button>
+        <BackLink to="/tenant/listing-types" label="Loại dịch vụ" className="mb-2" />
         <PageHeader
           title="Loại dịch vụ mới"
           description="Tạo một loại dịch vụ với hình thức đặt và thuộc tính riêng."

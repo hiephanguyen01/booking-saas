@@ -11,6 +11,7 @@ import type { Route } from './+types/revenue';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { LEDGER_ENTRY_LABEL } from '~/constants/finance';
+import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money, amountToneClass } from '~/components/money';
@@ -44,14 +45,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 function sumBig(values: string[]): string {
   return values.reduce((acc, v) => acc + BigInt(v || '0'), 0n).toString();
-}
-
-function LoadError({ message }: { message: string }) {
-  return (
-    <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-      {message}
-    </div>
-  );
 }
 
 export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps) {
@@ -157,7 +150,7 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
     <div className="space-y-5">
       <PageHeader title="Doanh thu" description="Số dư, sổ cái và lịch sử chi trả của bạn." />
 
-      {financeError ? <LoadError message={financeError} /> : null}
+      <ErrorBanner error={financeError} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -195,7 +188,7 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">Lịch sử chi trả</h2>
         </div>
-        {payoutsError ? <LoadError message={payoutsError} /> : null}
+        <ErrorBanner error={payoutsError} />
         <DataTable
           columns={payoutColumns}
           data={payouts}

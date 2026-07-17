@@ -1,16 +1,15 @@
-import { data, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { data, redirect } from 'react-router';
 import {
   createListingInputSchema,
   type CancellationPolicySummary,
   type ListingGroupDetailResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingForm } from '~/features/partner/components/listing-form';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -59,11 +58,11 @@ export default function NewGroupedListingPage({ loaderData, actionData }: Route.
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to={`/partner/listing-groups/${loaderData.group.id}`}>
-            <ArrowLeft data-icon="inline-start" /> {loaderData.group.title}
-          </Link>
-        </Button>
+        <BackLink
+          to={`/partner/listing-groups/${loaderData.group.id}`}
+          label={loaderData.group.title}
+          className="mb-2"
+        />
         <PageHeader
           title={`Thêm ${label}`}
           description={`Tạo một ${label} mà khách hàng có thể chọn và đặt.`}

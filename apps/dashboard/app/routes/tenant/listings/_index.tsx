@@ -11,6 +11,7 @@ import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatDateTime } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
+import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
@@ -146,11 +147,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         description="Quản lý và kiểm duyệt các listing của đối tác trong marketplace."
       />
 
-      {error ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      ) : null}
+      <ErrorBanner error={error} />
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
         <TabsList className="flex-wrap">

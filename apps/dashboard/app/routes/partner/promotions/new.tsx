@@ -1,16 +1,15 @@
-import { Link, redirect, data as routeData } from 'react-router';
+import { redirect, data as routeData } from 'react-router';
 import {
   createPartnerPromotionInputSchema,
   type ListingGroupResponse,
   type ListingResponse,
 } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
-import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
-import { ArrowLeft, CircleAlert } from 'lucide-react';
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { ErrorBanner } from '~/components/action-feedback';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { PromotionForm, readPromotionForm } from '~/features/promotions/promotion-form';
 import type { ScopeOptions } from '~/features/promotions/scope-options.server';
@@ -52,13 +51,9 @@ export default function NewPartnerPromotion({ loaderData, actionData }: Route.Co
   const error = actionData && 'error' in actionData ? actionData.error : null;
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="w-fit">
-        <Link to="/partner/promotions"><ArrowLeft className="size-4" /> Khuyến mãi</Link>
-      </Button>
+      <BackLink to="/partner/promotions" label="Khuyến mãi" />
       <PageHeader title="Tạo khuyến mãi" description="Bạn tài trợ chi phí giảm giá cho listing của mình." />
-      {error ? (
-        <Alert variant="destructive"><CircleAlert className="size-4" /><AlertDescription>{error}</AlertDescription></Alert>
-      ) : null}
+      <ErrorBanner error={error} />
       <Card>
         <CardHeader><CardTitle>Thông tin khuyến mãi</CardTitle></CardHeader>
         <CardContent>

@@ -1,10 +1,9 @@
-import { data, Link, redirect } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { data, redirect } from 'react-router';
 import { createListingGroupInputSchema, type ListingTypeResponse } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingGroupForm } from '~/features/partner/components/listing-group-form';
 
@@ -43,11 +42,7 @@ export default function NewListingGroupPage({ loaderData, actionData }: Route.Co
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/partner/listings">
-            <ArrowLeft data-icon="inline-start" /> Bài đăng
-          </Link>
-        </Button>
+        <BackLink to="/partner/listings" label="Bài đăng" className="mb-2" />
         <PageHeader
           title="Thông tin chung"
           description={`Tạo bài đăng ${loaderData.listingType.name} chứa nhiều ${loaderData.listingType.itemLabel || 'hạng mục'}.`}
