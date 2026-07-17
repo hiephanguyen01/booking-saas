@@ -12,12 +12,10 @@ import { apiGet, apiPatch } from '~/lib/api.server';
 import type { Route } from './+types/listings.edit';
 import { ListingForm } from '~/features/partner/components/listing-form';
 import { PageHeader } from '~/components/page-header';
-import { canPartner, requirePartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.listings.write'))
-    throw new Response('Không có quyền sửa hạng mục.', { status: 403 });
+  const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [groupRes, listingRes, typesRes, policiesRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),

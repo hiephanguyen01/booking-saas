@@ -21,7 +21,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { Empty, EmptyDescription, EmptyTitle } from '@booking/ui/components/ui/empty';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { platformLoader } from '~/features/admin/server/admin.server';
+import { requirePlatform } from '~/features/admin/server/admin.server';
 import type { PlatformHealthResponse, PlatformHealthTenant } from '@booking/contracts';
 import {
   formatDate,
@@ -43,14 +43,9 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  return platformLoader(
-    request,
-    async (auth) => {
-      const res = await apiGet<PlatformHealthResponse>('/platform/health', auth);
-      return { health: res.ok ? res.data : null, error: res.ok ? null : res.error };
-    },
-    'platform.tenants.read',
-  );
+  const { auth } = await requirePlatform(request, 'platform.tenants.read');
+  const res = await apiGet<PlatformHealthResponse>('/platform/health', auth);
+  return { health: res.ok ? res.data : null, error: res.ok ? null : res.error };
 }
 
 const EMPTY_KPIS: PlatformHealthResponse['kpis'] = {

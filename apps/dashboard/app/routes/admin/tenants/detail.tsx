@@ -64,7 +64,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/detail';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { platformLoader, platformSession } from '~/features/admin/server/admin.server';
+import { requirePlatform } from '~/features/admin/server/admin.server';
 import { SUBSCRIPTION_STATUS_LABELS } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
@@ -104,30 +104,25 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const id = params.id;
-  return platformLoader(
-    request,
-    async (auth) => {
-      const [tenantRes, subRes, historyRes, domainsRes, plansRes] = await Promise.all([
-        apiGet<TenantDetailResponse>(`/admin/tenants/${id}`, auth),
-        apiGet<CurrentSubscription | null>(`/admin/tenants/${id}/subscription`, auth),
-        apiGet<SubscriptionHistoryItem[]>(`/admin/tenants/${id}/subscriptions`, auth),
-        apiGet<DomainResponse[]>(`/admin/tenants/${id}/domains`, auth),
-        apiGet<PlanResponse[]>('/admin/plans', auth),
-      ]);
-      if (!tenantRes.ok || !tenantRes.data) {
-        throw new Response('Không tìm thấy tenant', { status: tenantRes.status || 404 });
-      }
-      return {
-        tenant: tenantRes.data,
-        subscription: subRes.ok ? subRes.data : null,
-        // null → the history fetch itself failed (render the failed state); [] → no history yet.
-        history: historyRes.ok ? (historyRes.data ?? []) : null,
-        domains: domainsRes.ok ? (domainsRes.data ?? []) : [],
-        plans: plansRes.ok ? (plansRes.data ?? []) : [],
-      };
-    },
-    'platform.tenants.read',
-  );
+  const { auth } = await requirePlatform(request, 'platform.tenants.read');
+  const [tenantRes, subRes, historyRes, domainsRes, plansRes] = await Promise.all([
+    apiGet<TenantDetailResponse>(`/admin/tenants/${id}`, auth),
+    apiGet<CurrentSubscription | null>(`/admin/tenants/${id}/subscription`, auth),
+    apiGet<SubscriptionHistoryItem[]>(`/admin/tenants/${id}/subscriptions`, auth),
+    apiGet<DomainResponse[]>(`/admin/tenants/${id}/domains`, auth),
+    apiGet<PlanResponse[]>('/admin/plans', auth),
+  ]);
+  if (!tenantRes.ok || !tenantRes.data) {
+    throw new Response('Không tìm thấy tenant', { status: tenantRes.status || 404 });
+  }
+  return {
+    tenant: tenantRes.data,
+    subscription: subRes.ok ? subRes.data : null,
+    // null → the history fetch itself failed (render the failed state); [] → no history yet.
+    history: historyRes.ok ? (historyRes.data ?? []) : null,
+    domains: domainsRes.ok ? (domainsRes.data ?? []) : [],
+    plans: plansRes.ok ? (plansRes.data ?? []) : [],
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -139,7 +134,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   // submit urlencoded FormData.
   if (contentType.includes('application/json')) {
     const body: unknown = await request.json();
-    const { auth } = await platformSession(request, 'platform.tenants.write');
+    const { auth } = await requirePlatform(request, 'platform.tenants.write');
 
     // Discriminate on `hostname`, which exists only in the add-domain payload.
     if (body && typeof body === 'object' && 'hostname' in body) {
@@ -181,7 +176,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const intent = String(form.get('intent') ?? '');
   const permission =
     intent === 'assign-subscription' ? 'platform.subscriptions.manage' : 'platform.tenants.write';
-  const { auth } = await platformSession(request, permission);
+  const { auth } = await requirePlatform(request, permission);
 
   if (intent === 'verify-domain') {
     const domainId = String(form.get('domainId') ?? '');

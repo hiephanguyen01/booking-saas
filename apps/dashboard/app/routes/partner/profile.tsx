@@ -15,14 +15,20 @@ import {
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import type { Route } from './+types/profile';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 import { DateTimeValue } from '~/components/date-time-value';
@@ -49,8 +55,8 @@ const PARTNER_TYPE_MAP: Record<PartnerType, string> = {
 // ── loader ──────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  const canManage = canPartner(membership, 'partner.profile.manage');
+  const { auth, can } = await requirePartner(request);
+  const canManage = can('partner.profile.manage');
   // GET /partner/profile is guarded by `partner.profile.manage` (it exposes the
   // payout account + ID number). Only fetch when the caller holds it.
   if (!canManage) {
@@ -101,7 +107,12 @@ export async function action({ request }: Route.ActionArgs) {
       const res = await apiPatch('/partner/profile/payout', parsed.data, auth);
       if (!res.ok) {
         return routeData<ActionResult>(
-          { intent, ok: false, error: res.error ?? 'Không lưu được tài khoản nhận tiền.', fieldErrors: null },
+          {
+            intent,
+            ok: false,
+            error: res.error ?? 'Không lưu được tài khoản nhận tiền.',
+            fieldErrors: null,
+          },
           { status: 400 },
         );
       }
@@ -119,7 +130,12 @@ export async function action({ request }: Route.ActionArgs) {
       const res = await apiPost('/partner/profile/identity', parsed.data, auth);
       if (!res.ok) {
         return routeData<ActionResult>(
-          { intent, ok: false, error: res.error ?? 'Không gửi được thông tin định danh.', fieldErrors: null },
+          {
+            intent,
+            ok: false,
+            error: res.error ?? 'Không gửi được thông tin định danh.',
+            fieldErrors: null,
+          },
           { status: 400 },
         );
       }
@@ -259,7 +275,10 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
   if (!canManage) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Hồ sơ đối tác" description="Thông tin, định danh và tài khoản nhận tiền." />
+        <PageHeader
+          title="Hồ sơ đối tác"
+          description="Thông tin, định danh và tài khoản nhận tiền."
+        />
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
             Bạn không có quyền xem và chỉnh sửa hồ sơ đối tác.
@@ -272,7 +291,10 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
   if (!partner) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Hồ sơ đối tác" description="Thông tin, định danh và tài khoản nhận tiền." />
+        <PageHeader
+          title="Hồ sơ đối tác"
+          description="Thông tin, định danh và tài khoản nhận tiền."
+        />
         <Alert variant="destructive">
           <CircleAlert className="size-4" />
           <AlertDescription>{loadError ?? 'Không tải được hồ sơ đối tác.'}</AlertDescription>
@@ -330,7 +352,10 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
         </CardHeader>
         <CardContent className="space-y-4">
           <DetailGrid columns={3}>
-            <DetailField label="Trạng thái đối tác" value={<PartnerStatusBadge status={partner.status} />} />
+            <DetailField
+              label="Trạng thái đối tác"
+              value={<PartnerStatusBadge status={partner.status} />}
+            />
             <DetailField
               label="Xác minh danh tính"
               value={<PartnerVerificationBadge status={partner.verificationStatus} />}
@@ -420,7 +445,8 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
         <CardHeader>
           <CardTitle>Danh tính</CardTitle>
           <CardDescription>
-            Gửi thông tin giấy tờ tuỳ thân để tenant xác minh. Cần thiết cho các loại listing gắn với con người.
+            Gửi thông tin giấy tờ tuỳ thân để tenant xác minh. Cần thiết cho các loại listing gắn
+            với con người.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

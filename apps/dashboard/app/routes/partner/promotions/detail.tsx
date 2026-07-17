@@ -26,7 +26,7 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { ArrowLeft, Ban, CircleAlert } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { formatDiscount, formatNumber } from '~/lib/format';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -47,10 +47,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.promotions.manage')) {
-    throw new Response('Không có quyền.', { status: 403 });
-  }
+  const { auth, membership } = await requirePartner(request, 'partner.promotions.manage');
   // Read-one endpoint — survives pagination and carries the resolved display names.
   const [promoRes, listings, groups] = await Promise.all([
     apiGet<PromotionDetailResponse>(`/partner/promotions/${params.promotionId}`, auth),
@@ -69,10 +66,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.promotions.manage')) {
-    throw new Response('Không có quyền.', { status: 403 });
-  }
+  const { auth } = await requirePartner(request, 'partner.promotions.manage');
   const form = await request.formData();
   const id = params.promotionId;
   if (String(form.get('intent')) === 'end') {

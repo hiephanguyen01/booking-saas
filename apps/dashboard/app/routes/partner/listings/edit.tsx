@@ -9,7 +9,7 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { ListingForm } from '~/features/partner/components/listing-form';
@@ -38,9 +38,7 @@ function ListingStatusStrip({ listing }: { listing: ListingResponse }) {
           Đang hiển thị — hãy ẩn tin đăng trước khi sửa nếu không muốn thay đổi hiện ngay.
         </span>
       ) : listing.publishedBy ? (
-        <span className="text-muted-foreground">
-          Đã xuất bản bởi {actor(listing.publishedBy)}.
-        </span>
+        <span className="text-muted-foreground">Đã xuất bản bởi {actor(listing.publishedBy)}.</span>
       ) : null}
     </div>
   );
@@ -51,24 +49,28 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.listings.write')) {
-    throw new Response('Không có quyền sửa tin đăng.', { status: 403 });
-  }
+  const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [listingRes, typesRes, policiesRes] = await Promise.all([
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
     apiGet<CancellationPolicySummary[]>('/partner/cancellation-policies', auth),
   ]);
   if (!listingRes.ok || !listingRes.data) {
-    throw new Response('Không tìm thấy tin đăng.', { status: listingRes.status === 403 ? 403 : 404 });
+    throw new Response('Không tìm thấy tin đăng.', {
+      status: listingRes.status === 403 ? 403 : 404,
+    });
   }
-  return { listing: listingRes.data, listingTypes: typesRes.data ?? [], cancellationPolicies: policiesRes.data ?? [], partnerId: membership.partnerId };
+  return {
+    listing: listingRes.data,
+    listingTypes: typesRes.data ?? [],
+    cancellationPolicies: policiesRes.data ?? [],
+    partnerId: membership.partnerId,
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.listings.write')) {
+  const { auth, can } = await requirePartner(request);
+  if (!can('partner.listings.write')) {
     return data({ error: 'Không có quyền sửa tin đăng.', fieldErrors: null }, { status: 403 });
   }
   const parsed = updateListingInputSchema.safeParse(await request.json());
@@ -77,7 +79,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
   const res = await apiPatch(`/partner/listings/${params.listingId}`, parsed.data, auth);
   if (!res.ok) {
-    return data({ error: res.error ?? 'Lưu không thành công.', fieldErrors: res.errors ?? null }, { status: 400 });
+    return data(
+      { error: res.error ?? 'Lưu không thành công.', fieldErrors: res.errors ?? null },
+      { status: 400 },
+    );
   }
   return redirect('/partner/listings');
 }

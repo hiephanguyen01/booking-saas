@@ -39,7 +39,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/_index';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { platformLoader, platformSession } from '~/features/admin/server/admin.server';
+import { requirePlatform } from '~/features/admin/server/admin.server';
 import { formatNumber } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
@@ -60,18 +60,13 @@ interface ActionResult {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  return platformLoader(
-    request,
-    async (auth) => {
-      const res = await apiGet<PlanResponse[]>('/admin/plans', auth);
-      return { plans: res.ok ? (res.data ?? []) : [], error: res.ok ? null : res.error };
-    },
-    'platform.plans.manage',
-  );
+  const { auth } = await requirePlatform(request, 'platform.plans.manage');
+  const res = await apiGet<PlanResponse[]>('/admin/plans', auth);
+  return { plans: res.ok ? (res.data ?? []) : [], error: res.ok ? null : res.error };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth } = await platformSession(request, 'platform.plans.manage');
+  const { auth } = await requirePlatform(request, 'platform.plans.manage');
   const contentType = request.headers.get('content-type') ?? '';
 
   if (contentType.includes('application/json')) {

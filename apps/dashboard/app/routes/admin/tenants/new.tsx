@@ -7,7 +7,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
-import { platformSession } from '~/features/admin/server/admin.server';
+import { requirePlatform } from '~/features/admin/server/admin.server';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
@@ -15,12 +15,12 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  await platformSession(request, 'platform.tenants.write');
+  await requirePlatform(request, 'platform.tenants.write');
   return null;
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth } = await platformSession(request, 'platform.tenants.write');
+  const { auth } = await requirePlatform(request, 'platform.tenants.write');
   const parsed = createTenantInputSchema.safeParse(await request.json());
   if (!parsed.success) {
     return data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });

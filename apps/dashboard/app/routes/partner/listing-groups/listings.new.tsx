@@ -9,14 +9,12 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/listings.new';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { canPartner, requirePartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingForm } from '~/features/partner/components/listing-form';
 import { PageHeader } from '~/components/page-header';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.listings.write'))
-    throw new Response('Không có quyền thêm hạng mục.', { status: 403 });
+  const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [groupRes, typesRes, policiesRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),

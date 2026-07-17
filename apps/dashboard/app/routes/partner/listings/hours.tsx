@@ -11,7 +11,7 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Switch } from '@booking/ui/components/ui/switch';
 import type { Route } from './+types/hours';
 import { apiGet, apiPut } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import {
   DAYS,
@@ -33,10 +33,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.availability.manage')) {
-    throw new Response('Không có quyền quản lý lịch.', { status: 403 });
-  }
+  const { auth } = await requirePartner(request, 'partner.availability.manage');
   const id = params.listingId;
   // Own-listings list also enforces ownership: a listing not in it → 404.
   const listingsRes = await apiGet<ListingResponse[]>('/partner/listings', auth);
@@ -54,8 +51,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.availability.manage')) {
+  const { auth, can } = await requirePartner(request);
+  if (!can('partner.availability.manage')) {
     return data({ ok: false, error: 'Không có quyền quản lý lịch.' }, { status: 403 });
   }
   const form = await request.formData();
@@ -106,7 +103,9 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
           <Link
-            to={listing.groupId ? `/partner/listing-groups/${listing.groupId}` : '/partner/listings'}
+            to={
+              listing.groupId ? `/partner/listing-groups/${listing.groupId}` : '/partner/listings'
+            }
           >
             <ArrowLeft className="size-4" aria-hidden /> Tin đăng
           </Link>
@@ -178,7 +177,12 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => setDay(d.dow, windows.filter((_, idx) => idx !== i))}
+                          onClick={() =>
+                            setDay(
+                              d.dow,
+                              windows.filter((_, idx) => idx !== i),
+                            )
+                          }
                           aria-label={`Xoá khung giờ ${i + 1} của ${d.label}`}
                         >
                           <X className="size-4" aria-hidden />

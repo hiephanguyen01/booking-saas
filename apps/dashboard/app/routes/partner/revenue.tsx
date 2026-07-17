@@ -10,7 +10,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/revenue';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money, amountToneClass } from '~/components/money';
@@ -38,10 +38,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.finance.read')) {
-    throw new Response('Không có quyền xem tài chính.', { status: 403 });
-  }
+  const { auth } = await requirePartner(request, 'partner.finance.read');
   // The payout runs come from their own endpoint so pending/failed runs are
   // visible (the ledger only records settled payouts). Each fetch can fail
   // independently — a payout-feed error must not blank out the ledger.
@@ -84,7 +81,9 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
     {
       header: 'Ngày',
       cell: (e) => (
-        <span className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(e.createdAt)}</span>
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
+          {formatDate(e.createdAt)}
+        </span>
       ),
     },
     {
@@ -123,7 +122,9 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
     {
       header: 'Ngày',
       cell: (p) => (
-        <span className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(p.createdAt)}</span>
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
+          {formatDate(p.createdAt)}
+        </span>
       ),
     },
     {

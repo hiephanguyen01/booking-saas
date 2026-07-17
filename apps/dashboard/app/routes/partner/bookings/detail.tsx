@@ -6,7 +6,7 @@ import { Textarea } from '@booking/ui/components/ui/textarea';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import type { Route } from './+types/detail';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import {
@@ -21,13 +21,15 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.bookings.read')) {
-    throw new Response('Không có quyền xem lượt đặt.', { status: 403 });
-  }
-  const bookingRes = await apiGet<PartnerBookingResponse>(`/partner/bookings/${params.bookingId}`, auth);
+  const { auth, can } = await requirePartner(request, 'partner.bookings.read');
+  const bookingRes = await apiGet<PartnerBookingResponse>(
+    `/partner/bookings/${params.bookingId}`,
+    auth,
+  );
   if (!bookingRes.ok || !bookingRes.data) {
-    throw new Response('Không tìm thấy lượt đặt.', { status: bookingRes.status === 403 ? 403 : 404 });
+    throw new Response('Không tìm thấy lượt đặt.', {
+      status: bookingRes.status === 403 ? 403 : 404,
+    });
   }
   // Status history is a secondary fetch — degrade to a "failed" panel, never 500.
   const historyRes = await apiGet<BookingStatusHistoryResponse[]>(
@@ -38,15 +40,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     booking: bookingRes.data,
     history: historyRes.ok && historyRes.data ? toTimelineEntries(historyRes.data) : undefined,
     historyFailed: !historyRes.ok,
-    canApprove: canPartner(membership, 'partner.bookings.approve'),
-    canManage: canPartner(membership, 'partner.bookings.cancel'),
-    canWrite: canPartner(membership, 'partner.bookings.write'),
+    canApprove: can('partner.bookings.approve'),
+    canManage: can('partner.bookings.cancel'),
+    canWrite: can('partner.bookings.write'),
   };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
-  return runPartnerBookingAction({ request, auth, can: (key) => canPartner(membership, key) });
+  const { auth, can } = await requirePartner(request);
+  return runPartnerBookingAction({ request, auth, can });
 }
 
 export default function PartnerBookingDetail({ loaderData }: Route.ComponentProps) {
@@ -80,7 +82,10 @@ export default function PartnerBookingDetail({ loaderData }: Route.ComponentProp
             <ArrowLeft className="size-4" /> Lượt đặt
           </Link>
         </Button>
-        <PageHeader title="Chi tiết lượt đặt" description="Toàn bộ thông tin và thao tác cho lượt đặt này." />
+        <PageHeader
+          title="Chi tiết lượt đặt"
+          description="Toàn bộ thông tin và thao tác cho lượt đặt này."
+        />
       </div>
       <BookingDetailCard
         audience="partner"
@@ -100,7 +105,10 @@ function PartnerNoteEditor({ booking }: { booking: PartnerBookingResponse }) {
   const result = fetcher.data && fetcher.data.intent === 'set-note' ? fetcher.data : null;
 
   return (
-    <DetailSection title="Ghi chú nội bộ" description="Chỉ đối tác thấy — không hiển thị cho khách.">
+    <DetailSection
+      title="Ghi chú nội bộ"
+      description="Chỉ đối tác thấy — không hiển thị cho khách."
+    >
       <fetcher.Form method="post" className="space-y-2">
         <input type="hidden" name="id" value={booking.id} />
         <input type="hidden" name="intent" value="set-note" />

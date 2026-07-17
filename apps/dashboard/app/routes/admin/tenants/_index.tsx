@@ -8,7 +8,7 @@ import { NativeSelect } from '@booking/ui/components/ui/native-select';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { platformLoader } from '~/features/admin/server/admin.server';
+import { requirePlatform } from '~/features/admin/server/admin.server';
 import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
@@ -34,19 +34,14 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   if (STATUS_VALUES.includes(status as TenantStatus)) query.set('status', status);
   if (VERTICAL_VALUES.includes(vertical as Vertical)) query.set('vertical', vertical);
 
-  return platformLoader(
-    request,
-    async (auth) => {
-      const res = await apiGet<Paginated<TenantResponse>>(`/admin/tenants?${query}`, auth);
-      return {
-        page,
-        filters: { search, status, vertical },
-        result: res.ok ? res.data : null,
-        error: res.ok ? null : res.error,
-      };
-    },
-    'platform.tenants.read',
-  );
+  const { auth } = await requirePlatform(request, 'platform.tenants.read');
+  const res = await apiGet<Paginated<TenantResponse>>(`/admin/tenants?${query}`, auth);
+  return {
+    page,
+    filters: { search, status, vertical },
+    result: res.ok ? res.data : null,
+    error: res.ok ? null : res.error,
+  };
 }
 
 const columns: DataTableColumn<TenantResponse>[] = [

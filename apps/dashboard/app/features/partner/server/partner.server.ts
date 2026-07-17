@@ -1,38 +1,48 @@
 import type { ScopeMembership } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
-import { requireScope } from '~/lib/auth.server';
+import { requireScope, type AuthContext } from '~/lib/auth.server';
 import { firstPartnerMembership } from '~/lib/workspace';
 
-/** The resolved partner context every partner loader/action needs. */
+/**
+ * Resolved partner request context for a loader/action. Mirrors the tenant
+ * guard's contract ({@link ~/features/tenant/server/tenant.server}): every area
+ * guard returns `{ ctx, membership, auth, can }`.
+ */
 export interface PartnerContext {
-  /** api.server auth descriptor carrying the scope headers the backend requires. */
-  auth: ApiAuth;
+  ctx: AuthContext;
   /** The partner scope membership (tenant/partner ids, roles, permissions). */
   membership: ScopeMembership & { tenantId: string; partnerId: string };
+  /** api.server auth descriptor carrying the scope headers the backend requires. */
+  auth: ApiAuth;
+  /** UI gate — true when the signed-in user holds `permission` in the partner scope. */
+  can: (permission: string) => boolean;
 }
 
 /**
- * Guards a partner route and returns the api-auth descriptor (token + tenant +
- * partner scope headers) plus the membership. Redirects to login / 403 via
- * `requireScope`. Throws 403 when the partner membership lacks tenant/partner
- * ids (a malformed session).
+ * Guards a partner route. Pass a `permission` key to require it (deny-by-default,
+ * mirrors `requireTenant`); omit it to only require partner-scope membership.
+ * Use the returned `can` for soft checks (hiding buttons, action-level form
+ * errors) — those must NOT throw.
  */
-export async function requirePartner(request: Request): Promise<PartnerContext> {
-  const { user, info } = await requireScope(request, 'partner');
-  const membership = firstPartnerMembership(info);
+export async function requirePartner(
+  request: Request,
+  permission?: string,
+): Promise<PartnerContext> {
+  const ctx = await requireScope(request, 'partner');
+  const membership = firstPartnerMembership(ctx.info);
   if (!membership) throw new Response('Không tìm thấy partner.', { status: 404 });
+  if (permission && !membership.permissions.includes(permission)) {
+    throw new Response(`Bạn không có quyền truy cập (${permission}).`, { status: 403 });
+  }
   const auth: ApiAuth = {
-    token: user.accessToken,
+    token: ctx.user.accessToken,
     tenantId: membership.tenantId,
     partnerId: membership.partnerId,
   };
   return {
-    auth,
+    ctx,
     membership: { ...membership, tenantId: membership.tenantId, partnerId: membership.partnerId },
+    auth,
+    can: (key) => membership.permissions.includes(key),
   };
-}
-
-/** True when the partner membership holds the given permission key. */
-export function canPartner(membership: ScopeMembership, key: string): boolean {
-  return membership.permissions.includes(key);
 }

@@ -9,15 +9,13 @@ import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/a
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { canPartner, requirePartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingGroupForm } from '~/features/partner/components/listing-group-form';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.listings.write'))
-    throw new Response('Không có quyền sửa bài đăng.', { status: 403 });
+  const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [groupRes, typesRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),

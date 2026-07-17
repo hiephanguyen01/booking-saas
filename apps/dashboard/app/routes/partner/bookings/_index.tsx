@@ -11,7 +11,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { BookingStatusBadge, bookingStatusMeta } from '~/components/status-badge';
 import { Money } from '~/components/money';
@@ -25,10 +25,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.bookings.read')) {
-    throw new Response('Không có quyền xem lượt đặt.', { status: 403 });
-  }
+  const { auth, can } = await requirePartner(request, 'partner.bookings.read');
   // Window kept under the backend's 62-day feed cap: 14 days back, 45 forward.
   const today = parseDay(todayString());
   const from = startOfDayUtc(toDayString(addDays(today, -14)));
@@ -39,16 +36,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   );
   return {
     bookings: feed.ok && feed.data ? feed.data : [],
-    canApprove: canPartner(membership, 'partner.bookings.approve'),
+    canApprove: can('partner.bookings.approve'),
     // partner.bookings.cancel backs no-show, cancel, and inventory pick-up/return.
-    canManage: canPartner(membership, 'partner.bookings.cancel'),
+    canManage: can('partner.bookings.cancel'),
     loadError: feed.ok ? null : (feed.error ?? 'Không tải được danh sách lượt đặt.'),
   };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
-  return runPartnerBookingAction({ request, auth, can: (key) => canPartner(membership, key) });
+  const { auth, can } = await requirePartner(request);
+  return runPartnerBookingAction({ request, auth, can });
 }
 
 const FILTERS: { value: string; label: string }[] = [
@@ -76,7 +73,10 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
     {
       header: 'Mã',
       cell: (b) => (
-        <Link to={`/partner/bookings/${b.id}`} className="font-mono text-xs font-medium text-primary hover:underline">
+        <Link
+          to={`/partner/bookings/${b.id}`}
+          className="font-mono text-xs font-medium text-primary hover:underline"
+        >
           {b.code}
         </Link>
       ),
@@ -139,7 +139,12 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
       className: 'text-right',
       cell: (b) =>
         canApprove || canManage ? (
-          <PartnerBookingActions booking={b} canApprove={canApprove} canManage={canManage} emptyLabel="-" />
+          <PartnerBookingActions
+            booking={b}
+            canApprove={canApprove}
+            canManage={canManage}
+            emptyLabel="-"
+          />
         ) : null,
     },
   ];

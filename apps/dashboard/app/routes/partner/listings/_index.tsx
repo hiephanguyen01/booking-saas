@@ -1,11 +1,21 @@
 import { useMemo, useState } from 'react';
 import { data, Link, useFetcher } from 'react-router';
 import { Clock, EyeOff, Lock, Pencil, Plus, Send, Undo2 } from 'lucide-react';
-import type { ListingGroupResponse, ListingResponse, ListingTypeResponse } from '@booking/contracts';
+import type {
+  ListingGroupResponse,
+  ListingResponse,
+  ListingTypeResponse,
+} from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@booking/ui/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -15,7 +25,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
@@ -30,10 +40,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.listings.read')) {
-    throw new Response('Không có quyền xem tin đăng.', { status: 403 });
-  }
+  const { auth, can } = await requirePartner(request, 'partner.listings.read');
   const [res, groupsRes, typesRes] = await Promise.all([
     apiGet<ListingResponse[]>('/partner/listings', auth),
     apiGet<ListingGroupResponse[]>('/partner/listing-groups', auth),
@@ -43,9 +50,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     listings: res.ok && res.data ? res.data : [],
     groups: groupsRes.data ?? [],
     listingTypes: typesRes.data ?? [],
-    canWrite: canPartner(membership, 'partner.listings.write'),
-    canPublish: canPartner(membership, 'partner.listings.publish'),
-    canAvailability: canPartner(membership, 'partner.availability.manage'),
+    canWrite: can('partner.listings.write'),
+    canPublish: can('partner.listings.publish'),
+    canAvailability: can('partner.availability.manage'),
     loadError: res.ok ? null : (res.error ?? 'Không tải được tin đăng.'),
   };
 }
@@ -56,7 +63,7 @@ function usesOpeningHours(listing: ListingResponse): boolean {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
+  const { auth, can } = await requirePartner(request);
   const form = await request.formData();
   const id = String(form.get('id') ?? '');
   const intent = String(form.get('intent') ?? '');
@@ -65,14 +72,16 @@ export async function action({ request }: Route.ActionArgs) {
   const publish = (path: string, body: unknown = {}) => apiPost(path, body, auth);
 
   if (intent === 'submit') {
-    if (!canPartner(membership, 'partner.listings.write')) {
+    if (!can('partner.listings.write')) {
       return data({ ok: false, error: 'Không có quyền gửi duyệt.' }, { status: 403 });
     }
     const res = await publish(`/partner/listings/${id}/submit`);
-    return res.ok ? data({ ok: true, error: null }) : data({ ok: false, error: res.error ?? 'Gửi duyệt không thành công.' }, { status: 400 });
+    return res.ok
+      ? data({ ok: true, error: null })
+      : data({ ok: false, error: res.error ?? 'Gửi duyệt không thành công.' }, { status: 400 });
   }
   if (intent === 'hide' || intent === 'republish') {
-    if (!canPartner(membership, 'partner.listings.publish')) {
+    if (!can('partner.listings.publish')) {
       return data({ ok: false, error: 'Không có quyền xuất bản.' }, { status: 403 });
     }
     const res = await publish(`/partner/listings/${id}/${intent}`);
@@ -92,7 +101,8 @@ const FILTERS: { value: string; label: string }[] = [
 ];
 
 export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
-  const { listings, groups, listingTypes, canWrite, canPublish, canAvailability, loadError } = loaderData;
+  const { listings, groups, listingTypes, canWrite, canPublish, canAvailability, loadError } =
+    loaderData;
   const [filter, setFilter] = useState<string>('all');
 
   const rows = useMemo(
@@ -135,7 +145,11 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
     },
     {
       header: 'Cập nhật',
-      cell: (l) => <span className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(l.updatedAt)}</span>,
+      cell: (l) => (
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
+          {formatDate(l.updatedAt)}
+        </span>
+      ),
     },
     {
       header: 'Trạng thái',
@@ -145,7 +159,10 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
           <div className="flex items-center gap-1.5">
             <ListingStatusBadge status={l.status} />
             {adminLocked ? (
-              <span className="inline-flex items-center gap-1 text-xs text-warning" title="Bị quản trị viên ẩn">
+              <span
+                className="inline-flex items-center gap-1 text-xs text-warning"
+                title="Bị quản trị viên ẩn"
+              >
                 <Lock className="size-3" aria-hidden /> Khoá
               </span>
             ) : null}

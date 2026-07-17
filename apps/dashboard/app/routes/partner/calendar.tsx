@@ -21,7 +21,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/calendar';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { MasterCalendar } from '~/features/partner/components/master-calendar';
 import { PageHeader } from '~/components/page-header';
 import { dayKey, formatDate } from '~/lib/format';
@@ -46,32 +46,26 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.bookings.read')) {
-    throw new Response('Không có quyền xem lịch đặt.', { status: 403 });
-  }
+  const { auth, can } = await requirePartner(request, 'partner.bookings.read');
 
   const view = url.searchParams.get('view') === 'day' ? 'day' : 'week';
   const today = todayString();
   const anchorParam = url.searchParams.get(view === 'day' ? 'day' : 'week');
   const anchor = anchorParam && /^\d{4}-\d{2}-\d{2}$/.test(anchorParam) ? anchorParam : today;
 
-  const days =
-    view === 'day' ? [anchor] : weekDays(mondayOf(parseDay(anchor))).map(toDayString);
+  const days = view === 'day' ? [anchor] : weekDays(mondayOf(parseDay(anchor))).map(toDayString);
   const from = startOfDayUtc(days[0]);
   const to = startOfDayUtc(toDayString(addDays(parseDay(days[days.length - 1]), 1)));
 
-  const canBlock = canPartner(membership, 'partner.availability.manage');
-  const canReadListings = canPartner(membership, 'partner.listings.read');
+  const canBlock = can('partner.availability.manage');
+  const canReadListings = can('partner.listings.read');
 
   const [feed, listingsRes] = await Promise.all([
     apiGet<PartnerCalendarBookingResponse[]>(
       `/partner/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
       auth,
     ),
-    canReadListings
-      ? apiGet<ListingResponse[]>('/partner/listings', auth)
-      : Promise.resolve(null),
+    canReadListings ? apiGet<ListingResponse[]>('/partner/listings', auth) : Promise.resolve(null),
   ]);
 
   const bookings = feed.ok && feed.data ? feed.data : [];
@@ -100,8 +94,8 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
-  if (!canPartner(membership, 'partner.availability.manage')) {
+  const { auth, can } = await requirePartner(request);
+  if (!can('partner.availability.manage')) {
     return data({ ok: false as const, error: 'Không có quyền chặn lịch.' }, { status: 403 });
   }
 
@@ -138,7 +132,10 @@ export async function action({ request }: Route.ActionArgs) {
     auth,
   );
   if (!res.ok) {
-    return data({ ok: false as const, error: res.error ?? 'Không chặn được lịch.' }, { status: 400 });
+    return data(
+      { ok: false as const, error: res.error ?? 'Không chặn được lịch.' },
+      { status: 400 },
+    );
   }
   return data({ ok: true as const, error: null });
 }
@@ -181,8 +178,12 @@ export default function PartnerCalendarPage({ loaderData, actionData }: Route.Co
       : `${formatDate(startOfDayUtc(days[0]))} - ${formatDate(startOfDayUtc(days[6]))}`;
 
   const monday = mondayOf(parseDay(anchor));
-  const prevAnchor = toDayString(addDays(view === 'day' ? parseDay(anchor) : monday, view === 'day' ? -1 : -7));
-  const nextAnchor = toDayString(addDays(view === 'day' ? parseDay(anchor) : monday, view === 'day' ? 1 : 7));
+  const prevAnchor = toDayString(
+    addDays(view === 'day' ? parseDay(anchor) : monday, view === 'day' ? -1 : -7),
+  );
+  const nextAnchor = toDayString(
+    addDays(view === 'day' ? parseDay(anchor) : monday, view === 'day' ? 1 : 7),
+  );
   const anchorKey = view === 'day' ? 'day' : 'week';
 
   const openBlock = (day: string): void => {
@@ -235,11 +236,18 @@ export default function PartnerCalendarPage({ loaderData, actionData }: Route.Co
           {(['week', 'day'] as const).map((v) => (
             <Link
               key={v}
-              to={link({ view: v, ...(v === 'day' ? { day: view === 'day' ? anchor : today } : { week: view === 'week' ? anchor : today }) })}
+              to={link({
+                view: v,
+                ...(v === 'day'
+                  ? { day: view === 'day' ? anchor : today }
+                  : { week: view === 'week' ? anchor : today }),
+              })}
               prefetch="intent"
               className={cn(
                 'rounded px-3 py-1 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                view === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                view === v
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {v === 'week' ? 'Tuần' : 'Ngày'}
@@ -300,7 +308,13 @@ function QuickBlockDialog({
       options: listings.map((l) => ({ value: l.id, label: l.title })),
     },
     { name: 'date', type: 'date', label: 'Ngày', placeholder: 'Chọn ngày' },
-    { name: 'reason', type: 'textarea', label: 'Lý do (tuỳ chọn)', placeholder: 'Bảo trì, nghỉ lễ…', rows: 2 },
+    {
+      name: 'reason',
+      type: 'textarea',
+      label: 'Lý do (tuỳ chọn)',
+      placeholder: 'Bảo trì, nghỉ lễ…',
+      rows: 2,
+    },
   ];
 
   return (
@@ -309,7 +323,8 @@ function QuickBlockDialog({
         <DialogHeader>
           <DialogTitle>Chặn lịch</DialogTitle>
           <DialogDescription>
-            Đánh dấu một ngày là đóng cho một tài nguyên. Ngày bị chặn sẽ không còn hiển thị để khách đặt.
+            Đánh dấu một ngày là đóng cho một tài nguyên. Ngày bị chặn sẽ không còn hiển thị để
+            khách đặt.
           </DialogDescription>
         </DialogHeader>
         <GenericForm

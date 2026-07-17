@@ -57,7 +57,7 @@ import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { canPartner, requirePartner } from '~/features/partner/server/partner.server';
+import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -71,7 +71,7 @@ import { BOOKING_MODE_LABEL, formatNumber } from '~/lib/format';
 import { listingPriceFrom } from '~/lib/listing-price';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { auth, membership } = await requirePartner(request);
+  const { auth, can } = await requirePartner(request);
   const [groupRes, typesRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
@@ -82,18 +82,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     group: groupRes.data,
     listingType:
       (typesRes.data ?? []).find((type) => type.id === groupRes.data?.listingTypeId) ?? null,
-    canWrite: canPartner(membership, 'partner.listings.write'),
-    canPublish: canPartner(membership, 'partner.listings.publish'),
-    canAvailability: canPartner(membership, 'partner.availability.manage'),
+    canWrite: can('partner.listings.write'),
+    canPublish: can('partner.listings.publish'),
+    canAvailability: can('partner.availability.manage'),
   };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const { auth, membership } = await requirePartner(request);
+  const { auth, can } = await requirePartner(request);
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
-  const canWrite = canPartner(membership, 'partner.listings.write');
-  const canPublish = canPartner(membership, 'partner.listings.publish');
+  const canWrite = can('partner.listings.write');
+  const canPublish = can('partner.listings.publish');
 
   if (
     ['submit', 'reopen', 'delete-group', 'delete-child', 'duplicate-child'].includes(intent) &&
