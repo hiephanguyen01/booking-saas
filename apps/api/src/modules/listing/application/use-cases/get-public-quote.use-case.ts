@@ -10,7 +10,7 @@ import {
   PRICING_RULE_REPOSITORY,
   type IPricingRuleRepository,
 } from '../../domain/ports/pricing-rule-repository.port';
-import { PricingService } from '../services/pricing.service';
+import { priceQuote } from '../pricing';
 
 /** Storefront quote for a listing + mode + time range (read-only, host-resolved). */
 @Injectable()
@@ -19,7 +19,6 @@ export class GetPublicQuoteUseCase {
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     @Inject(PRICING_RULE_REPOSITORY) private readonly rules: IPricingRuleRepository,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
-    private readonly pricing: PricingService,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -42,7 +41,7 @@ export class GetPublicQuoteUseCase {
         });
       }
       const pricingRules = await this.rules.listByListing(tx, listing.id);
-      return this.pricing.quote({
+      return priceQuote({
         mode: query.mode,
         modeConfig: listing.modeConfig as ModeConfig,
         pricingRules: pricingRules.map((r) => ({

@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type Redis from 'ioredis';
 import {
   modeConfigSchema,
   type AttributeField,
@@ -11,7 +10,6 @@ import {
   type PublicCatalogSearchQuery,
   type PublicCatalogSearchResponse,
 } from '@booking/contracts';
-import { REDIS } from '../../../../shared/redis/redis.module';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { addMinutes, zonedTimeToUtc } from '../../../../shared/time/time';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
@@ -24,6 +22,7 @@ import {
 } from '../../../scheduling/domain/availability/interval';
 import { openWindowsForDate } from '../../../scheduling/domain/availability/open-windows';
 import { toPublicListingTypeResponse } from '../catalog.mapper';
+import { HOLD_READER, type IHoldReader } from '../../domain/ports/hold-reader.port';
 import {
   LISTING_READ_REPOSITORY,
   type IListingReadRepository,
@@ -54,7 +53,7 @@ export class SearchPublicCatalogUseCase {
   constructor(
     @Inject(LISTING_READ_REPOSITORY) private readonly listings: IListingReadRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
-    @Inject(REDIS) private readonly redis: Redis,
+    @Inject(HOLD_READER) private readonly holdReader: IHoldReader,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -112,7 +111,7 @@ export class SearchPublicCatalogUseCase {
           : [];
       const holds =
         window && mode !== 'inventory'
-          ? await this.readHolds(resourceIds, window.start, window.end)
+          ? await this.holdReader.activeHoldsByResource(resourceIds, window.start, window.end)
           : new Map<string, Interval[]>();
       const busy = groupIntervals(
         busyRows.map((r) => ({ key: r.resourceId, interval: { start: r.start, end: r.end } })),
@@ -435,30 +434,6 @@ export class SearchPublicCatalogUseCase {
       listing.availabilityRules.length === 0 ||
       listing.availabilityRules.some((r) => r.dayOfWeek === weekdayOf(date))
     );
-  }
-
-  private async readHolds(
-    resourceIds: string[],
-    from: Date,
-    to: Date,
-  ): Promise<Map<string, Interval[]>> {
-    if (!resourceIds.length) return new Map();
-    const pipeline = this.redis.pipeline();
-    const now = Date.now();
-    for (const id of resourceIds) pipeline.zrangebyscore(`holds:${id}`, `(${now}`, '+inf');
-    const result = await pipeline.exec();
-    const grouped = new Map<string, Interval[]>();
-    resourceIds.forEach((id, index) => {
-      const members = (result?.[index]?.[1] as string[] | undefined) ?? [];
-      const intervals = members.flatMap((member) => {
-        const match = /^(\d+):(\d+):/.exec(member);
-        if (!match) return [];
-        const interval = { start: new Date(Number(match[1])), end: new Date(Number(match[2])) };
-        return interval.start < to && from < interval.end ? [interval] : [];
-      });
-      grouped.set(id, intervals);
-    });
-    return grouped;
   }
 
   private toCards(rows: EvaluatedListing[]): PublicCatalogSearchItem[] {

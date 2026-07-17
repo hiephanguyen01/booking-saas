@@ -1,0 +1,46 @@
+import type { AuthChallengeResponse, RegistrationStartInput } from '@booking/contracts';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  AUTH_CHALLENGE_STORE,
+  type IAuthChallengeStore,
+} from '../../domain/ports/auth-challenge-store.port';
+import {
+  AUTH_EMAIL_SENDER,
+  type IAuthEmailSender,
+} from '../../domain/ports/auth-email-sender.port';
+import { USER_REPOSITORY, type IUserRepository } from '../../domain/ports/user-repository.port';
+import { toResponse } from './auth-challenge.helpers';
+
+@Injectable()
+export class StartRegistrationUseCase {
+  constructor(
+    @Inject(USER_REPOSITORY) private readonly users: IUserRepository,
+    @Inject(AUTH_CHALLENGE_STORE) private readonly challenges: IAuthChallengeStore,
+    @Inject(AUTH_EMAIL_SENDER) private readonly email: IAuthEmailSender,
+  ) {}
+
+  async execute(input: RegistrationStartInput): Promise<AuthChallengeResponse> {
+    if (await this.users.findByEmail(input.email)) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'EMAIL_TAKEN',
+        message: 'Email is already registered',
+      });
+    }
+    const challenge = await this.challenges.issue({
+      purpose: 'registration',
+      email: input.email,
+      fullName: input.fullName,
+      locale: input.locale,
+    });
+    await this.email.sendOtp({
+      purpose: 'registration',
+      email: input.email,
+      fullName: input.fullName,
+      locale: input.locale,
+      otp: challenge.otp,
+      expiresInSec: challenge.expiresInSec,
+    });
+    return toResponse(challenge, input.email);
+  }
+}

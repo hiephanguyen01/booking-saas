@@ -4,7 +4,7 @@ Multi-tenant booking SaaS (design: `TONG-QUAN.md`, task breakdown: `tasks/`).
 
 ## Stack
 
-pnpm + Turborepo · NestJS 11 (hexagonal) · Prisma + PostgreSQL 16 (RLS) · Redis + BullMQ · Zod contracts (`@booking/shared`) · Vitest + Testcontainers.
+pnpm + Turborepo · NestJS 11 (hexagonal) · Prisma + PostgreSQL 16 (RLS) · Redis + BullMQ · Zod contracts (`@booking/contracts`). **No tests — by design** (see `CLAUDE.md`).
 
 ## Getting started
 
@@ -47,14 +47,13 @@ Project-level skills in `.agents/skills/` (symlinked into `.claude/skills/`), in
 ## Commands
 
 ```bash
-pnpm turbo lint typecheck test  # fast checks (unit tests need no DB)
-pnpm turbo test:integration     # Testcontainers: RLS isolation/coverage, auth e2e, outbox
+pnpm turbo lint typecheck build  # the full check suite (there are no tests — by design)
 ```
 
 ## Architecture notes (Phase 0)
 
 - **Two DB pools**: `app_user` (RLS-FORCED) for tenant work, `app_admin` (BYPASSRLS) for platform admin/workers. Business code must run inside `TenantDbService.forTenant()` — one interactive transaction per use case with `app.tenant_id` set via `SET LOCAL`.
-- **RLS convention**: every table with a `tenant_id` column needs FORCE RLS + a policy in a hand-written migration; `test/rls-coverage.integration.spec.ts` fails CI otherwise.
+- **RLS convention**: every table with a `tenant_id` column needs FORCE RLS + a policy in a hand-written migration; `pnpm --filter=@booking/api check:rls` (static script, runs in CI) fails otherwise.
 - **Deny-by-default authz**: routes must be `@Public()`, `@AuthenticatedOnly()`, or declare `@RequirePermissions(...)`; anything else is 403. Permission catalog + system roles live in `modules/identity-access/domain/permission-catalog.ts` and are seeded, never edited via UI.
 - **Outbox**: modules communicate via `OutboxService.emit(tx, ...)` inside the business transaction; the BullMQ relay delivers with retry/backoff. Time comparisons for the outbox run on the **DB clock** (`now()`), never `Date.now()`.
 - **Money/time**: VND is `bigint` đồng (`shared/money`), DB timestamps are UTC `timestamptz`; timezone math at the edges only (`shared/time`).

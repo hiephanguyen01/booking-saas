@@ -13,7 +13,7 @@ import {
   type IPromoContextLookup,
 } from '../../domain/ports/promo-context-lookup.port';
 import { evaluatePromo } from '../../domain/promotion-discount';
-import { normalizeCode } from '../apply-promotion.service';
+import { normalizeCode } from '../../domain/promotion-application';
 
 /**
  * Storefront checkout preview (§12.3): validate a code against a slot subtotal.

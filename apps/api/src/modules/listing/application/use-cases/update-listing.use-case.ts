@@ -13,7 +13,7 @@ import {
   LISTING_TYPE_REPOSITORY,
   type IListingTypeRepository,
 } from '../../../catalog/domain/ports/listing-type-repository.port';
-import { AttributeValidatorService } from '../../../catalog/application/services/attribute-validator.service';
+import { assertValidAttributes } from '../../../catalog/application/assert-valid-attributes';
 import {
   LISTING_REPOSITORY,
   type IListingRepository,
@@ -31,7 +31,6 @@ export class UpdateListingUseCase {
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
-    private readonly attributeValidator: AttributeValidatorService,
     private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
@@ -140,7 +139,7 @@ export class UpdateListingUseCase {
           });
         }
         if (input.attributes !== undefined) {
-          this.attributeValidator.assertValidAttributes(type.attributeSchema, input.attributes);
+          assertValidAttributes(type.attributeSchema, input.attributes);
         }
         if (input.bookingModes !== undefined) {
           const invalid = input.bookingModes.filter((m) => !type.allowedModes.includes(m));

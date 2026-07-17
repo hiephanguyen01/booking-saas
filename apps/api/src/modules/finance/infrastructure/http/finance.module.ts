@@ -9,9 +9,12 @@ import { PAYOUT_REPOSITORY } from '../../domain/ports/payout-repository.port';
 import { PrismaCommissionRuleRepository } from '../repositories/prisma-commission-rule.repository';
 import { PrismaLedgerRepository } from '../repositories/prisma-ledger.repository';
 import { PrismaPayoutRepository } from '../repositories/prisma-payout.repository';
-import { ResolveCommissionService } from '../../application/resolve-commission.service';
-import { RecordJournalService } from '../../application/record-journal.service';
-import { PayoutPayableService } from '../../application/payout-payable.service';
+import { ResolveCommissionUseCase } from '../../application/use-cases/resolve-commission.use-case';
+import { RecordCompletionJournalUseCase } from '../../application/use-cases/record-completion-journal.use-case';
+import { RecordNoShowJournalUseCase } from '../../application/use-cases/record-no-show-journal.use-case';
+import { RecordCancellationFeeJournalUseCase } from '../../application/use-cases/record-cancellation-fee-journal.use-case';
+import { RecordClawbackJournalUseCase } from '../../application/use-cases/record-clawback-journal.use-case';
+import { ComputePayoutPayableUseCase } from '../../application/use-cases/compute-payout-payable.use-case';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
 import { UpdateCommissionRuleUseCase } from '../../application/use-cases/update-commission-rule.use-case';
@@ -38,9 +41,12 @@ import { PlatformFinanceController } from './platform-finance.controller';
     { provide: COMMISSION_RULE_REPOSITORY, useClass: PrismaCommissionRuleRepository },
     { provide: LEDGER_REPOSITORY, useClass: PrismaLedgerRepository },
     { provide: PAYOUT_REPOSITORY, useClass: PrismaPayoutRepository },
-    ResolveCommissionService,
-    RecordJournalService,
-    PayoutPayableService,
+    ResolveCommissionUseCase,
+    RecordCompletionJournalUseCase,
+    RecordNoShowJournalUseCase,
+    RecordCancellationFeeJournalUseCase,
+    RecordClawbackJournalUseCase,
+    ComputePayoutPayableUseCase,
     ListCommissionRulesUseCase,
     CreateCommissionRuleUseCase,
     UpdateCommissionRuleUseCase,
@@ -58,12 +64,15 @@ import { PlatformFinanceController } from './platform-finance.controller';
     ListTenantLedgerUseCase,
   ],
   // Exported so the booking module can snapshot the commission at booking time.
-  exports: [ResolveCommissionService],
+  exports: [ResolveCommissionUseCase],
 })
 export class FinanceModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
-    private readonly journals: RecordJournalService,
+    private readonly completionJournal: RecordCompletionJournalUseCase,
+    private readonly noShowJournal: RecordNoShowJournalUseCase,
+    private readonly cancellationFeeJournal: RecordCancellationFeeJournalUseCase,
+    private readonly clawbackJournal: RecordClawbackJournalUseCase,
   ) {}
 
   /**
@@ -76,17 +85,17 @@ export class FinanceModule implements OnModuleInit {
    */
   onModuleInit(): void {
     this.registry.register('booking.completed', (event) =>
-      this.journals.recordCompletion(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.completionJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.no_show', (event) =>
-      this.journals.recordNoShow(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.noShowJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.cancelled', (event) => {
       const p = event.payload as { bookingId: string; refundAmount?: string };
-      return this.journals.recordCancellationFee(event.tenantId ?? '', p.bookingId, BigInt(p.refundAmount ?? '0'));
+      return this.cancellationFeeJournal.execute(event.tenantId ?? '', p.bookingId, BigInt(p.refundAmount ?? '0'));
     });
     this.registry.register('booking.refunded', (event) =>
-      this.journals.recordClawback(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.clawbackJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
   }
 }

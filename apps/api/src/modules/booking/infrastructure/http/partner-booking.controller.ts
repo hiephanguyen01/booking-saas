@@ -14,9 +14,12 @@ import { RequirePermissions } from '../../../identity-access/infrastructure/http
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { PartnerBookingUseCase } from '../../application/use-cases/partner-booking.use-case';
+import { ApproveBookingUseCase } from '../../application/use-cases/approve-booking.use-case';
+import { RejectBookingUseCase } from '../../application/use-cases/reject-booking.use-case';
+import { MarkNoShowUseCase } from '../../application/use-cases/mark-no-show.use-case';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
-import { InventoryFulfillmentUseCase } from '../../application/use-cases/inventory-fulfillment.use-case';
+import { MarkPickedUpUseCase } from '../../application/use-cases/mark-picked-up.use-case';
+import { MarkReturnedUseCase } from '../../application/use-cases/mark-returned.use-case';
 import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { GetBookingHistoryUseCase } from '../../application/use-cases/get-booking-history.use-case';
@@ -56,9 +59,12 @@ import {
 @Controller('partner/bookings')
 export class PartnerBookingController {
   constructor(
-    private readonly partnerBooking: PartnerBookingUseCase,
+    private readonly approveBooking: ApproveBookingUseCase,
+    private readonly rejectBooking: RejectBookingUseCase,
+    private readonly markNoShow: MarkNoShowUseCase,
     private readonly cancelBooking: CancelBookingUseCase,
-    private readonly fulfillment: InventoryFulfillmentUseCase,
+    private readonly markPickedUp: MarkPickedUpUseCase,
+    private readonly markReturned: MarkReturnedUseCase,
     private readonly calendar: PartnerCalendarUseCase,
     private readonly getBooking: GetBookingUseCase,
     private readonly bookingHistory: GetBookingHistoryUseCase,
@@ -159,7 +165,7 @@ export class PartnerBookingController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PartnerBookingResponse> {
-    return toPartnerBookingResponse(await this.partnerBooking.approve(this.ctx(principal), id));
+    return toPartnerBookingResponse(await this.approveBooking.execute(this.ctx(principal), id));
   }
 
   @RequirePermissions('partner.bookings.approve')
@@ -175,7 +181,7 @@ export class PartnerBookingController {
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PartnerBookingResponse> {
     return toPartnerBookingResponse(
-      await this.partnerBooking.reject(this.ctx(principal), id, body.reason),
+      await this.rejectBooking.execute(this.ctx(principal), id, body.reason),
     );
   }
 
@@ -192,7 +198,7 @@ export class PartnerBookingController {
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PartnerBookingResponse> {
     return toPartnerBookingResponse(
-      await this.partnerBooking.markNoShow(this.ctx(principal), id, body.reason),
+      await this.markNoShow.execute(this.ctx(principal), id, body.reason),
     );
   }
 
@@ -227,7 +233,7 @@ export class PartnerBookingController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<PartnerBookingResponse> {
-    return toPartnerBookingResponse(await this.fulfillment.markPickedUp(this.ctx(principal), id));
+    return toPartnerBookingResponse(await this.markPickedUp.execute(this.ctx(principal), id));
   }
 
   @RequirePermissions('partner.bookings.cancel')
@@ -242,6 +248,6 @@ export class PartnerBookingController {
     @Body() body: MarkReturnedDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ReturnBookingResponse> {
-    return toReturnResponse(await this.fulfillment.markReturned(this.ctx(principal), id, BigInt(body.damageAmount)));
+    return toReturnResponse(await this.markReturned.execute(this.ctx(principal), id, BigInt(body.damageAmount)));
   }
 }

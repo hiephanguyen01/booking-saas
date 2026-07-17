@@ -2,7 +2,8 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TenantContextService } from '../../../../../shared/tenant-context/tenant-context.service';
-import { PlanLimitService } from '../../../application/services/plan-limit.service';
+import { AssertCanAddPartnerUseCase } from '../../../application/use-cases/assert-can-add-partner.use-case';
+import { AssertCanAddListingUseCase } from '../../../application/use-cases/assert-can-add-listing.use-case';
 import { PLAN_LIMIT_RESOURCE, type PlanLimitResource } from '../decorators/enforce-plan-limit.decorator';
 
 /**
@@ -14,7 +15,8 @@ import { PLAN_LIMIT_RESOURCE, type PlanLimitResource } from '../decorators/enfor
 export class PlanLimitGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly planLimits: PlanLimitService,
+    private readonly assertCanAddPartner: AssertCanAddPartnerUseCase,
+    private readonly assertCanAddListing: AssertCanAddListingUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -27,9 +29,9 @@ export class PlanLimitGuard implements CanActivate {
 
     const tenantId = this.tenantContext.tenantIdOrThrow();
     if (resource === 'partner') {
-      await this.planLimits.assertCanAddPartner(tenantId);
+      await this.assertCanAddPartner.execute(tenantId);
     } else {
-      await this.planLimits.assertCanAddListing(tenantId);
+      await this.assertCanAddListing.execute(tenantId);
     }
     return true;
   }

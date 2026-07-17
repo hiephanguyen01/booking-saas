@@ -14,12 +14,12 @@ import {
   LISTING_TYPE_REPOSITORY,
   type IListingTypeRepository,
 } from '../../../catalog/domain/ports/listing-type-repository.port';
-import { AttributeValidatorService } from '../../../catalog/application/services/attribute-validator.service';
+import { assertValidAttributes } from '../../../catalog/application/assert-valid-attributes';
 import {
   PARTNER_REPOSITORY,
   type IPartnerRepository,
 } from '../../../partner/domain/ports/partner-repository.port';
-import { PartnerVerificationService } from '../../../partner/application/services/partner-verification.service';
+import { assertCanServeListingType } from '../../../partner/application/assert-can-serve-listing-type';
 import {
   LISTING_REPOSITORY,
   type IListingRepository,
@@ -49,8 +49,6 @@ export class CreateListingUseCase {
     @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
     @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
-    private readonly attributeValidator: AttributeValidatorService,
-    private readonly partnerVerification: PartnerVerificationService,
     private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
@@ -86,7 +84,7 @@ export class CreateListingUseCase {
           message: `Modes not allowed by the listing type: ${invalidModes.join(', ')}`,
         });
       }
-      this.attributeValidator.assertValidAttributes(type.attributeSchema, input.attributes);
+      assertValidAttributes(type.attributeSchema, input.attributes);
 
       const partner = await this.partners.findById(tx, input.partnerId);
       if (!partner) {
@@ -96,7 +94,7 @@ export class CreateListingUseCase {
           message: 'Partner not found',
         });
       }
-      this.partnerVerification.assertCanServeListingType(
+      assertCanServeListingType(
         { verificationStatus: partner.verificationStatus },
         { requiresIdentityVerification: type.requiresIdentityVerification },
       );

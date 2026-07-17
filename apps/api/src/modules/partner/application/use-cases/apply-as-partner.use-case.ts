@@ -12,7 +12,7 @@ import {
   TENANT_REPOSITORY,
   type ITenantRepository,
 } from '../../../tenancy/domain/ports/tenant-repository.port';
-import { PlanLimitService } from '../../../tenancy/application/services/plan-limit.service';
+import { AssertCanAddPartnerUseCase } from '../../../tenancy/application/use-cases/assert-can-add-partner.use-case';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 import {
   PARTNER_REPOSITORY,
@@ -34,7 +34,7 @@ export class ApplyAsPartnerUseCase {
     @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
     @Inject(PARTNER_ROLES) private readonly roles: IPartnerRoles,
     @Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository,
-    private readonly planLimits: PlanLimitService,
+    private readonly assertCanAddPartner: AssertCanAddPartnerUseCase,
     private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
@@ -64,7 +64,7 @@ export class ApplyAsPartnerUseCase {
 
     // Hard plan limit (this route has no tenant context, so enforce here rather
     // than via PlanLimitGuard).
-    await this.planLimits.assertCanAddPartner(input.tenantId);
+    await this.assertCanAddPartner.execute(input.tenantId);
 
     const ownerRoleId = await this.roles.partnerOwnerRoleId();
 

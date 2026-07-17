@@ -8,7 +8,7 @@ import {
   type PayoutRecord,
 } from '../../domain/ports/payout-repository.port';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
-import { PayoutPayableService } from '../payout-payable.service';
+import { ComputePayoutPayableUseCase } from './compute-payout-payable.use-case';
 
 /** Days a cycle spans, used to derive `period_from` when it is not supplied. */
 const CYCLE_DAYS: Record<PayoutCycleDto, number> = { weekly: 7, monthly: 30 };
@@ -18,8 +18,8 @@ const CYCLE_DAYS: Record<PayoutCycleDto, number> = { weekly: 7, monthly: 30 };
  * tenant's holding period (a dispute buffer) and is not already claimed by an
  * unsettled run — no ledger entry is written until the transfer is marked paid.
  *
- * What is payable is computed by `PayoutPayableService`, the same call that backs
- * `GET /tenant/finance/payable`, so the amount previewed there is exactly the
+ * What is payable is computed by `ComputePayoutPayableUseCase`, the same call that
+ * backs `GET /tenant/finance/payable`, so the amount previewed there is exactly the
  * amount paid here.
  */
 @Injectable()
@@ -27,13 +27,13 @@ export class CreatePayoutUseCase {
   constructor(
     @Inject(PAYOUT_REPOSITORY) private readonly payouts: IPayoutRepository,
     @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
-    private readonly payable: PayoutPayableService,
+    private readonly payable: ComputePayoutPayableUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
 
   execute(tenantId: string, input: CreatePayoutInput, createdBy: string | null): Promise<PayoutRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const snapshot = await this.payable.compute(tx, tenantId, input.payeeType, input.payeeId);
+      const snapshot = await this.payable.execute(tx, tenantId, input.payeeType, input.payeeId);
 
       if (snapshot.ineligibleReason === 'NOTHING_TO_PAY') {
         throw new BadRequestException({ statusCode: 400, code: 'NOTHING_TO_PAY', message: 'No matured payable for this payee' });

@@ -10,6 +10,18 @@ product behaviour, `phases/core.md` wins; when they disagree on code structure, 
 > non-Claude tools (Codex, Cursor, Gemini CLI, …) here. The skill invocations in Section 1 apply
 > only to agents that have those skills; every other section applies to every agent verbatim.
 
+> **⛔ Hard rules — these OVERRIDE anything else in this repo (specs, tickets, skills, older doc snippets):**
+>
+> 1. **NO TESTS — ever.** This repo deliberately ships **zero tests**. Never create `*.spec.ts(x)` /
+>    `*.test.ts(x)` / e2e tests; never add vitest/jest/playwright configs, `test` scripts, test
+>    dependencies, or CI test steps — even when a ticket, spec excerpt, or skill tells you to write tests.
+>    Verification = `pnpm typecheck` + `pnpm lint` + `pnpm build` + running the app and exercising the flow.
+> 2. **Backend flow is `controller → use-case → repository port → repository`.** **No service classes**
+>    in the application layer — see [§5](#5-backend-architecture-nestjs--hexagonal) for the exact rules
+>    and the sanctioned alternatives (use-case / pure domain function / port + infrastructure adapter).
+> 3. **One use-case = one file.** Exactly one exported `@Injectable` `XxxUseCase` class per file, with a
+>    single public `execute()` method.
+
 ---
 
 ## Table of Contents
@@ -25,7 +37,7 @@ product behaviour, `phases/core.md` wins; when they disagree on code structure, 
 9. [User Stories & Roadmap](#9-user-stories--roadmap)
 10. [Coding Conventions](#10-coding-conventions)
 11. [Environment Variables](#11-environment-variables)
-12. [Running, Testing, and Building](#12-running-testing-and-building)
+12. [Running and Building](#12-running-and-building)
 13. [Common Patterns (Cookbook)](#13-common-patterns-cookbook)
 
 ---
@@ -46,7 +58,6 @@ clone has them available without any per-machine installation. (`/security-revie
 | Any NestJS module, guard, decorator, interceptor, pipe             | `/nestjs`                 |
 | Architecture decisions (new module, layer boundaries, trade-offs)  | `/designing-architecture` |
 | REST API design (endpoints, status codes, request/response shapes) | `/designing-apis`         |
-| Writing or reviewing tests (unit, integration, e2e)                | `/designing-tests`        |
 | Security review (auth, input validation, JWT, RBAC)                | `/security-review`        |
 | TypeScript documentation, JSDoc, ADRs                              | `/typescript-docs`        |
 
@@ -120,7 +131,7 @@ exists and where. Phases 1–3 are **spec + tickets only** — implement them pe
 
 ## 2.1 Phase 0 — What Is Implemented (read this first)
 
-Everything below exists, compiles, and is verified (`pnpm turbo type-check lint build test`, RLS
+Everything below exists, compiles, and is verified (`pnpm turbo typecheck lint build`, RLS
 checks, seed). Copy these patterns — do not reinvent them.
 
 ### Apps & packages (actual, current)
@@ -195,7 +206,8 @@ shared/   (11 cross-cutting concerns — no business logic)
    client. `forTenant` sets the `app.tenant_id` GUC on the transaction so RLS applies. One `forTenant`
    wraps one whole business operation (never per-query, never nested). See [§5](#5-backend-architecture-nestjs--hexagonal).
 2. **Every new tenant-scoped table needs `tenant_id uuid NOT NULL` + a hand-written RLS migration**
-   (FORCE RLS + `tenant_isolation` policy). `db:check-rls` fails CI if you forget. See the cookbook.
+   (FORCE RLS + `tenant_isolation` policy). `pnpm --filter=@booking/api check:rls` (a static script,
+   not a test — runs in CI) fails if you forget. See the cookbook.
 3. **Every protected endpoint declares `@RequirePermissions('scope.resource.action')`.** The global
    guard is deny-by-default: a non-`@Public()` endpoint with no permission fails closed.
 4. **Money is `bigint` VND, percents are integer basis points; time is `timestamptz` UTC.** Use the
@@ -267,18 +279,18 @@ This project uses **pnpm** with pnpm workspaces. Never use npm or yarn directly.
 ```json
 {
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --ui=tui",
     "build": "turbo run build",
-    "test": "turbo run test",
     "lint": "turbo run lint",
-    "type-check": "turbo run type-check",
-    "db:migrate": "turbo run db:migrate --filter=api",
-    "db:generate": "turbo run db:generate --filter=api",
-    "db:seed": "turbo run db:seed --filter=api",
-    "db:studio": "turbo run db:studio --filter=api"
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write ."
   }
 }
 ```
+
+There is **no `test` script anywhere** — see the hard rules at the top of this file. DB tasks are
+per-app scripts on `@booking/api` (`prisma:generate`, `prisma:deploy`, `seed`, `storage:init`), run
+via `pnpm --filter=@booking/api <script>`.
 
 ### Per-App Commands
 
@@ -305,16 +317,11 @@ pnpm --filter=api exec prisma studio
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".react-router/**"]
+      "outputs": ["dist/**", "build/**", ".react-router/**"]
     },
-    "dev": { "cache": false, "persistent": true },
-    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
+    "dev": { "dependsOn": ["^build"], "cache": false, "persistent": true },
     "lint": {},
-    "type-check": { "dependsOn": ["^build"] },
-    "db:migrate": { "cache": false },
-    "db:generate": { "cache": false, "outputs": ["node_modules/.prisma/**"] },
-    "db:seed": { "cache": false },
-    "db:studio": { "cache": false, "persistent": true }
+    "typecheck": { "dependsOn": ["^build"] }
   }
 }
 ```
@@ -336,6 +343,38 @@ The key rule: **domain logic never imports from NestJS, Prisma, or any framework
 - **Infrastructure layer**: Concrete implementations (Prisma repositories, NestJS controllers, guards)
 
 Dependencies always point **inward**: `Infrastructure → Application → Domain`
+
+### The request flow — `controller → use-case → repository port → repository` (NO services)
+
+Every request follows exactly this chain. The rules (hard — violations get rejected in review):
+
+1. **No service classes.** There is no `*.service.ts` and no `@Injectable` class in `application/`
+   other than use-cases. When you are tempted to write a service, use the sanctioned alternative:
+   - **Pure computation** (no ports, no DI) → a **pure function in `domain/`** (e.g. pricing quote,
+     attribute validation, journal-line math). Callers plain-import it — no DI, no wiring.
+   - **A reusable operation that needs ports** → a **use-case** that other use-cases inject
+     (existing pattern: `ResolveTenantByHostUseCase`, `ResolveCommissionUseCase`).
+   - **A technical capability** (cache wrapper, crypto, external API) → a **port in `domain/ports/`
+     + adapter class in `infrastructure/`**, bound in the Nest module.
+   - The ONLY allowed `*.service.ts` files are cross-cutting infrastructure in `src/shared/*`
+     (PrismaService, OutboxService, TenantDbService, RedisService, S3StorageService…) and
+     port-implementing adapters in `infrastructure/` (e.g. `permission-resolver.service.ts`).
+2. **One use-case = one file**: exactly one exported `@Injectable` class named `XxxUseCase`, whose
+   only public method is `execute(...)`. Private helpers are fine; logic shared between use-cases
+   moves to `domain/` pure functions (preferred) or a plain non-`@Injectable` function file in
+   `application/`.
+3. **Controllers inject use-cases only** (plus mappers/pipes). Never a repository, port token,
+   `PrismaService`/`TenantDbService`, or any other class. *One sanctioned exception:*
+   `TenantContextService` (request-scope reader populated by the shared interceptor) — the
+   established pattern for resolving `tenantId`/`partnerId`; it is plumbing, not data access.
+4. **Use-cases inject only**: port tokens (`@Inject(TOKEN)`), other use-cases (same or cross
+   module), and `src/shared` infra (`TenantDbService`, `OutboxService`, `RedisService`). Never a
+   concrete repository/adapter class.
+5. **Repositories** live in `infrastructure/repositories/`, implement a `domain/ports/` interface,
+   and every method takes a `PrismaTx` — never the raw client. *Exception:* repositories over
+   **global, non-tenant reference data** (users/sessions, administrative divisions, tenants
+   themselves) have no `forTenant()` flow and may use `PrismaService`/`PrismaAdminService`
+   directly — the `PrismaTx` rule is about tenant-scoped data.
 
 ### Directory Layout
 
@@ -373,16 +412,16 @@ Guards/decorators/filters are NOT global folders — auth lives in
 ```
 modules/users/
 ├── domain/
-│   ├── user.entity.ts (+ user.entity.spec.ts)   # pure domain + co-located spec; zero framework imports
-│   ├── <sub>/                                    # optional grouping, e.g. listing/domain/moderation/
+│   ├── user.entity.ts               # pure domain (+ pure helper functions); zero framework imports
+│   ├── <sub>/                        # optional grouping, e.g. listing/domain/moderation/
 │   └── ports/
 │       └── user-repository.port.ts  # interface IUserRepository + USER_REPOSITORY token (methods take a PrismaTx)
 ├── application/
 │   ├── use-cases/
-│   │   ├── create-user.use-case.ts  # one class per file; inject ports only; one forTenant() per operation
+│   │   ├── create-user.use-case.ts  # ONE exported XxxUseCase per file; single public execute(); one forTenant() per operation
 │   │   └── ...                       # optional sub-folder, e.g. use-cases/moderation/
-│   ├── users.mapper.ts              # domain → response DTO — the ONLY place mapping lives
-│   └── services/                    # optional app-layer helpers (validators, pricing)
+│   └── users.mapper.ts              # domain → response DTO — the ONLY place mapping lives
+│                                     # NO services/ folder, NO other @Injectable here — see the request-flow rules above
 └── infrastructure/
     ├── repositories/
     │   └── prisma-user.repository.ts # implements IUserRepository; every method takes a PrismaTx
@@ -499,15 +538,15 @@ export class UsersModule {}
 1. Create folder `modules/{feature}/`
 2. Add `domain/entities/{feature}.entity.ts`
 3. Add `domain/ports/{feature}-repository.port.ts` with interface + injection token
-4. Add `application/use-cases/*.use-case.ts` (one file per use case)
-5. Add `application/dtos/*.dto.ts`
+4. Add `application/use-cases/*.use-case.ts` (**one file per use case, one exported class, single public `execute()` — never a service**)
+5. Add `infrastructure/http/dto/*.dto.ts` (`createZodDto` from `@booking/contracts` schemas)
 6. Add `infrastructure/repositories/prisma-{feature}.repository.ts` — **methods accept a `PrismaTx`, not the raw client** (see Multi-tenancy below)
-7. Add `infrastructure/mappers/{feature}.mapper.ts`
-8. Add `infrastructure/http/{feature}.controller.ts` — apply `@RequirePermissions(...)` on every non-public route
+7. Add `application/{feature}.mapper.ts`
+8. Add `infrastructure/http/{feature}.controller.ts` — apply `@RequirePermissions(...)` on every non-public route; **inject use-cases only**
 9. Add `infrastructure/http/{feature}.module.ts` (binds port → impl)
 10. Import the new module in `app.module.ts`
 11. Add Prisma model to `schema.prisma` (with `tenant_id` if tenant-scoped) and run `pnpm db:migrate`
-12. **If the model is tenant-scoped:** add a hand-written RLS migration (FORCE RLS + policy) — `db:check-rls` fails CI otherwise
+12. **If the model is tenant-scoped:** add a hand-written RLS migration (FORCE RLS + policy) — `pnpm --filter=@booking/api check:rls` fails CI otherwise
 
 ### Multi-tenancy: `forTenant()` + RLS (the most important backend rule)
 
@@ -596,7 +635,8 @@ HTTP exceptions thrown from use cases. Never leak Prisma errors to the HTTP laye
 > enums, no barrel); route URLs in `~/constants/paths` (`dashboardPaths`). `app/components/` is
 > for multi-area primitives only (BackLink, ErrorBanner/SuccessBanner, StatusFilterTabs,
 > PaginationBar, ContactLink, status badges…); `app/lib/` is infrastructure + pure helpers.
-> These rules are CI-enforced by `app/architecture.spec.ts` — a route file is the only place
+> These rules are enforced by this documentation and code review (the old `app/architecture.spec.ts`
+> CI test was removed with the no-tests policy — do not recreate it): a route file is the only place
 > `./+types/*` may be imported; features/components never import from `routes/**`; browser-
 > reachable modules may only `import type` from `*.server` files.
 
@@ -904,7 +944,7 @@ modules/identity-access/
 │   └── token-service.port.ts         # ITokenService + TOKEN_SERVICE
 ├── application/use-cases/
 │   ├── register.use-case.ts
-│   ├── login.use-case.ts             # + login.use-case.spec.ts (lockout tests)
+│   ├── login.use-case.ts             # 5-attempt lockout logic
 │   ├── refresh-token.use-case.ts
 │   └── logout.use-case.ts
 └── infrastructure/
@@ -938,8 +978,7 @@ packages/contracts/
 │   ├── contracts/                     # one file per bounded context, zod schema + z.infer type
 │   │   ├── common.ts   auth.ts   tenancy.ts   partner.ts   listing-type.ts   listing.ts
 │   │   ├── availability.ts   booking.ts   payment.ts   promotion.ts   finance.ts
-│   │   ├── affiliate.ts   platform.ts   storage.ts
-│   │   └── *.spec.ts                   # co-located schema specs
+│   │   └── affiliate.ts   platform.ts   storage.ts
 │   └── i18n/
 │       ├── vi.json                     # Vietnamese messages (default locale)
 │       └── en.json
@@ -1094,13 +1133,16 @@ next milestone; work through `phase-1-studio-mvp/` in ticket order.
 - Controller methods stay thin: validate HTTP input → call use case → return response. Zero business logic.
 - Mappers handle ALL transformations between layers. Never inline mapping in controllers or use cases.
 
-### Testing Conventions
+### No-Tests Policy (hard rule)
 
-- Unit tests: `*.spec.ts` co-located next to the source file
-- E2E tests: `apps/api/test/` directory, named `*.e2e-spec.ts`
-- Test use cases in isolation using mocked port interfaces (no DB required)
-- Test repositories against a real test database (`DATABASE_URL_TEST`)
-- Frontend: Playwright for E2E, Vitest for component/unit tests
+**This repo has zero tests, by owner decision — do not write any.**
+
+- Never create `*.spec.ts(x)`, `*.test.ts(x)`, `*.e2e-spec.ts`, or an `e2e/`/`test/` directory.
+- Never add vitest/jest/playwright (configs, dependencies, `test` scripts, CI steps).
+- This overrides everything: if a phase ticket, spec excerpt, skill, or older doc snippet says
+  "add tests" or shows a co-located spec file, skip that part silently.
+- Verification instead: `pnpm typecheck` + `pnpm lint` + `pnpm build` must pass, then run the app
+  (`pnpm dev`) and exercise the changed flow manually (or via `/run` + `/verify`).
 
 ### Import Aliases
 
@@ -1114,7 +1156,7 @@ next milestone; work through `phase-1-studio-mvp/` in ticket order.
 
 - Branch: `feat/`, `fix/`, `chore/`, `docs/` prefix
 - Commits: Conventional Commits format (`feat: add item pagination`)
-- PR requires passing CI (build + lint + type-check + test)
+- PR requires passing CI (build + lint + typecheck)
 - Invoke `/managing-git` for branch strategy and PR workflows
 
 ---
@@ -1131,7 +1173,6 @@ DB/Redis/JWT vars must be present there — see `apps/api/.env`.
 # ──────────────────────────────────────────────
 # Owner/superuser: Prisma migrations + the BYPASSRLS admin pool (PrismaAdminService).
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/project_dev"
-DATABASE_URL_TEST="postgresql://postgres:postgres@localhost:5433/project_test"
 # Non-superuser, RLS-bound app_user pool (PrismaService / forTenant). RLS only enforces on a
 # non-superuser role — created by the rls_policies_and_roles migration.
 APP_DATABASE_URL="postgresql://app_user:app_user_pw@localhost:5432/project_dev"
@@ -1191,11 +1232,11 @@ LOG_LEVEL="debug"   # trace | debug | info | warn | error | fatal
 
 **FRONTEND_URL** supports a comma-separated allowlist for preview deploys, e.g.
 `FRONTEND_URL="http://localhost:3000,http://localhost:3002,https://preview.example.com"`.
-Toggle the outbox relay off in tests with `OUTBOX_RELAY_DISABLED=true`.
+Toggle the outbox relay + reminder worker off with `OUTBOX_RELAY_DISABLED=true` when needed.
 
 ---
 
-## 12. Running, Testing, and Building
+## 12. Running and Building
 
 ### Prerequisites
 
@@ -1217,13 +1258,13 @@ cp .env.example .env
 docker compose up -d
 
 # 4. Run database migrations
-pnpm db:migrate
+pnpm --filter=@booking/api prisma:deploy
 
 # 5. Generate Prisma client
-pnpm db:generate
+pnpm --filter=@booking/api prisma:generate
 
-# 6. Seed database with test data
-pnpm db:seed
+# 6. Seed database with demo data
+pnpm --filter=@booking/api seed
 
 # 7. Start all apps
 pnpm dev
@@ -1232,44 +1273,34 @@ pnpm dev
 ### Development
 
 ```bash
-pnpm dev                                     # All apps in parallel
-pnpm turbo run dev --filter=api          # Backend only (port 3001)
-pnpm turbo run dev --filter=storefront       # Storefront only (port 3000)
-pnpm turbo run dev --filter=dashboard        # Dashboard only (port 3002)
+pnpm dev                                         # All apps in parallel
+pnpm turbo run dev --filter=@booking/api         # Backend only (port 3001)
+pnpm turbo run dev --filter=@booking/storefront  # Storefront only (port 3000)
+pnpm turbo run dev --filter=@booking/dashboard   # Dashboard only (port 3002)
 ```
 
 ### Database
 
 ```bash
-pnpm db:migrate                              # Run pending migrations
-pnpm db:generate                             # Regenerate Prisma client after schema changes
-pnpm db:seed                                 # Seed permissions + system roles + demo tenant
-pnpm db:studio                               # Open Prisma Studio GUI
-pnpm --filter=api db:check-rls           # CI: every tenant_id table has FORCE RLS + policy
-pnpm --filter=api db:check-rls:isolation # CI: prove tenant A can't read tenant B
+pnpm --filter=@booking/api prisma:deploy     # Run pending migrations
+pnpm --filter=@booking/api prisma:generate   # Regenerate Prisma client after schema changes
+pnpm --filter=@booking/api seed              # Seed permissions + system roles + demo tenant
+pnpm --filter=@booking/api exec prisma studio # Open Prisma Studio GUI
+pnpm --filter=@booking/api check:rls         # Static check: every tenant_id table has FORCE RLS + policy
 
 # Create a new migration after editing schema.prisma:
-pnpm --filter=api exec prisma migrate dev --name add-listings-table
+pnpm --filter=@booking/api exec prisma migrate dev --name add-listings-table
 # Tenant-scoped tables ALSO need a hand-written RLS migration (see the cookbook).
 ```
 
-### Testing
-
-```bash
-pnpm test                                   # All unit tests
-pnpm turbo run test --filter=api        # Backend unit tests (jest)
-pnpm turbo run test --filter=@booking/shared # Shared unit tests (vitest — money/time)
-
-# E2E (requires running apps + test DB):
-pnpm --filter=api run test:e2e
-pnpm --filter=storefront run test:e2e       # Playwright
-```
+> There is **no test step** — see the [No-Tests Policy](#no-tests-policy-hard-rule). Verification is
+> typecheck + lint + build + running the app.
 
 ### Linting & Type Checking
 
 ```bash
 pnpm lint                                   # ESLint across all packages
-pnpm type-check                             # tsc --noEmit across all packages
+pnpm typecheck                              # tsc --noEmit across all packages
 ```
 
 ### Building
@@ -1310,7 +1341,7 @@ pnpm --filter=dashboard start
 ### How to Add a Tenant-Scoped Feature (RLS)
 
 1. Add the Prisma model with `tenantId String @map("tenant_id") @db.Uuid` + `@@index([tenantId])`.
-   Run `pnpm --filter=api exec prisma migrate dev --name add-{feature}`.
+   Run `pnpm --filter=@booking/api exec prisma migrate dev --name add-{feature}`.
 2. **Add a hand-written RLS migration** (Prisma can't express RLS). Create a new migration folder and
    `migration.sql` with (copy the shape from `*_rls_policies_and_roles/migration.sql`):
    ```sql
@@ -1320,10 +1351,13 @@ pnpm --filter=dashboard start
      USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
      WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
    ```
-   Apply with `pnpm --filter=api exec prisma migrate deploy`.
+   Apply with `pnpm --filter=@booking/api exec prisma migrate deploy`.
 3. In the repository, methods take a `PrismaTx` (never the raw client). In the use case, wrap the whole
    operation in `this.tenantDb.forTenant(tenantId, async (tx) => { ... })`.
-4. Verify: `pnpm --filter=api db:check-rls` (policy present) and `db:check-rls:isolation` (it works).
+4. Verify: `pnpm --filter=@booking/api check:rls` — a static script (schema.prisma ↔ migrations SQL,
+   no DB, not a test) that fails when a tenant-scoped table is missing FORCE RLS or the policy. It runs
+   in CI. Note it cannot prove the policy *works* at runtime (the old live isolation test is gone with
+   the no-tests policy) — sanity-check manually against the dev DB when touching RLS itself.
 
 ### How to Add a Permission
 

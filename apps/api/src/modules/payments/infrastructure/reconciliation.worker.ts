@@ -5,8 +5,8 @@ import { TenantDbService } from '../../../shared/tenant-context/tenant-db.servic
 import { utcNow } from '../../../shared/time/time';
 import { ConfirmBookingUseCase } from '../../booking/application/use-cases/confirm-booking.use-case';
 import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../domain/ports/payment-repository.port';
+import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../domain/ports/gateway-registry.port';
 import { amountMatches } from '../domain/payment-status';
-import { GatewayRegistry } from './gateway-registry';
 
 export const RECONCILIATION_QUEUE = 'payment-reconciliation';
 const POLL_EVERY_MS = 30_000;
@@ -25,7 +25,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
 
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
-    private readonly registry: GatewayRegistry,
+    @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly confirmBooking: ConfirmBookingUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}

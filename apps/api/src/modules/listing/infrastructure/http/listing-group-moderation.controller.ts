@@ -11,7 +11,10 @@ import { RequirePermissions } from '../../../identity-access/infrastructure/http
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { GroupModerationUseCase } from '../../application/use-cases/moderation/group-moderation.use-case';
+import { SubmitListingGroupUseCase } from '../../application/use-cases/moderation/submit-listing-group.use-case';
+import { PublishListingGroupUseCase } from '../../application/use-cases/moderation/publish-listing-group.use-case';
+import { HideListingGroupUseCase } from '../../application/use-cases/moderation/hide-listing-group.use-case';
+import { RepublishListingGroupUseCase } from '../../application/use-cases/moderation/republish-listing-group.use-case';
 import { ReviewListingGroupUseCase } from '../../application/use-cases/moderation/review-listing-group.use-case';
 import { toListingGroupResponse } from '../../application/listing.mapper';
 import { UuidParam } from '../../../../shared/openapi/decorators';
@@ -27,7 +30,9 @@ import {
 @Controller('tenant/listing-groups')
 export class TenantListingGroupModerationController {
   constructor(
-    private readonly moderation: GroupModerationUseCase,
+    private readonly publishGroup: PublishListingGroupUseCase,
+    private readonly hideGroup: HideListingGroupUseCase,
+    private readonly republishGroup: RepublishListingGroupUseCase,
     private readonly reviewGroup: ReviewListingGroupUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -62,7 +67,7 @@ export class TenantListingGroupModerationController {
     @Ip() ip: string,
   ): Promise<ListingGroupResponse> {
     return toListingGroupResponse(
-      await this.moderation.publish(this.ctx(principal, ip), id, body.force),
+      await this.publishGroup.execute(this.ctx(principal, ip), id, body.force),
     );
   }
 
@@ -80,7 +85,7 @@ export class TenantListingGroupModerationController {
     @Ip() ip: string,
   ): Promise<ListingGroupResponse> {
     return toListingGroupResponse(
-      await this.moderation.hide(this.ctx(principal, ip), id, 'admin', body.reason),
+      await this.hideGroup.execute(this.ctx(principal, ip), id, 'admin', body.reason),
     );
   }
 
@@ -97,7 +102,7 @@ export class TenantListingGroupModerationController {
     @Ip() ip: string,
   ): Promise<ListingGroupResponse> {
     return toListingGroupResponse(
-      await this.moderation.republish(this.ctx(principal, ip), id, 'admin'),
+      await this.republishGroup.execute(this.ctx(principal, ip), id, 'admin'),
     );
   }
 }
@@ -107,7 +112,9 @@ export class TenantListingGroupModerationController {
 @Controller('partner/listing-groups')
 export class PartnerListingGroupModerationController {
   constructor(
-    private readonly moderation: GroupModerationUseCase,
+    private readonly submitGroup: SubmitListingGroupUseCase,
+    private readonly hideGroup: HideListingGroupUseCase,
+    private readonly republishGroup: RepublishListingGroupUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -132,7 +139,7 @@ export class PartnerListingGroupModerationController {
     @CurrentPrincipal() principal: SessionPrincipal,
     @Ip() ip: string,
   ): Promise<ListingGroupResponse> {
-    return toListingGroupResponse(await this.moderation.submit(this.ctx(principal, ip), id));
+    return toListingGroupResponse(await this.submitGroup.execute(this.ctx(principal, ip), id));
   }
 
   @RequirePermissions('partner.listings.publish')
@@ -149,7 +156,7 @@ export class PartnerListingGroupModerationController {
     @Ip() ip: string,
   ): Promise<ListingGroupResponse> {
     return toListingGroupResponse(
-      await this.moderation.hide(this.ctx(principal, ip), id, 'partner', body.reason),
+      await this.hideGroup.execute(this.ctx(principal, ip), id, 'partner', body.reason),
     );
   }
 
@@ -166,7 +173,7 @@ export class PartnerListingGroupModerationController {
     @Ip() ip: string,
   ): Promise<ListingGroupResponse> {
     return toListingGroupResponse(
-      await this.moderation.republish(this.ctx(principal, ip), id, 'partner'),
+      await this.republishGroup.execute(this.ctx(principal, ip), id, 'partner'),
     );
   }
 }

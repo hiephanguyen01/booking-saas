@@ -9,11 +9,12 @@ import { LISTING_GROUP_REPOSITORY } from '../../domain/ports/listing-group-repos
 import { LISTING_REPOSITORY } from '../../domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY } from '../../domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY } from '../../domain/ports/pricing-rule-repository.port';
+import { CANCELLATION_POLICY_REPOSITORY } from '../../domain/ports/cancellation-policy-repository.port';
 import { PrismaListingGroupRepository } from '../repositories/prisma-listing-group.repository';
 import { PrismaListingRepository } from '../repositories/prisma-listing.repository';
 import { PrismaResourceRepository } from '../repositories/prisma-resource.repository';
 import { PrismaPricingRuleRepository } from '../repositories/prisma-pricing-rule.repository';
-import { PricingService } from '../../application/services/pricing.service';
+import { PrismaCancellationPolicyRepository } from '../repositories/prisma-cancellation-policy.repository';
 import { CreateListingGroupUseCase } from '../../application/use-cases/create-listing-group.use-case';
 import { ListListingGroupsUseCase } from '../../application/use-cases/list-listing-groups.use-case';
 import { GetListingGroupUseCase } from '../../application/use-cases/get-listing-group.use-case';
@@ -23,6 +24,7 @@ import { CreateResourceUseCase } from '../../application/use-cases/create-resour
 import { ListResourcesUseCase } from '../../application/use-cases/list-resources.use-case';
 import { CreateListingUseCase } from '../../application/use-cases/create-listing.use-case';
 import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
+import { ListListingsPageUseCase } from '../../application/use-cases/list-listings-page.use-case';
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
 import { DeleteListingUseCase } from '../../application/use-cases/delete-listing.use-case';
@@ -37,7 +39,10 @@ import { SubmitListingUseCase } from '../../application/use-cases/moderation/sub
 import { PublishListingUseCase } from '../../application/use-cases/moderation/publish-listing.use-case';
 import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
 import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
-import { GroupModerationUseCase } from '../../application/use-cases/moderation/group-moderation.use-case';
+import { SubmitListingGroupUseCase } from '../../application/use-cases/moderation/submit-listing-group.use-case';
+import { PublishListingGroupUseCase } from '../../application/use-cases/moderation/publish-listing-group.use-case';
+import { HideListingGroupUseCase } from '../../application/use-cases/moderation/hide-listing-group.use-case';
+import { RepublishListingGroupUseCase } from '../../application/use-cases/moderation/republish-listing-group.use-case';
 import { TenantListingGroupController } from './tenant-listing-group.controller';
 import { TenantListingController } from './tenant-listing.controller';
 import { TenantListingModerationController } from './tenant-listing-moderation.controller';
@@ -82,7 +87,7 @@ import { PartnerCancellationPolicyController } from './partner-cancellation-poli
     { provide: LISTING_REPOSITORY, useClass: PrismaListingRepository },
     { provide: RESOURCE_REPOSITORY, useClass: PrismaResourceRepository },
     { provide: PRICING_RULE_REPOSITORY, useClass: PrismaPricingRuleRepository },
-    PricingService,
+    { provide: CANCELLATION_POLICY_REPOSITORY, useClass: PrismaCancellationPolicyRepository },
     CreateListingGroupUseCase,
     ListListingGroupsUseCase,
     GetListingGroupUseCase,
@@ -93,6 +98,7 @@ import { PartnerCancellationPolicyController } from './partner-cancellation-poli
     ListResourcesUseCase,
     CreateListingUseCase,
     ListListingsUseCase,
+    ListListingsPageUseCase,
     GetListingUseCase,
     UpdateListingUseCase,
     DeleteListingUseCase,
@@ -109,10 +115,14 @@ import { PartnerCancellationPolicyController } from './partner-cancellation-poli
     PublishListingUseCase,
     HideListingUseCase,
     RepublishListingUseCase,
-    GroupModerationUseCase,
+    SubmitListingGroupUseCase,
+    PublishListingGroupUseCase,
+    HideListingGroupUseCase,
+    RepublishListingGroupUseCase,
   ],
-  // Exported for Task 1.6 (scheduling) + 1.7 (bookings): the quote calculator and
-  // the listing/resource/pricing repositories they read from.
-  exports: [PricingService, LISTING_REPOSITORY, RESOURCE_REPOSITORY, PRICING_RULE_REPOSITORY],
+  // Exported for Task 1.6 (scheduling) + 1.7 (bookings): the listing/resource/pricing
+  // repositories they read from. (Quote pricing is a plain function now —
+  // `priceQuote` in application/pricing.ts — imported directly, not injected.)
+  exports: [LISTING_REPOSITORY, RESOURCE_REPOSITORY, PRICING_RULE_REPOSITORY],
 })
 export class ListingModule {}

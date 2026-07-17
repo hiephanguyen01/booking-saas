@@ -2,10 +2,8 @@ import type { PlatformHealthResponse } from '@booking/contracts';
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
-import {
-  GetPlatformHealthUseCase,
-  type PlatformHealth,
-} from '../../application/use-cases/get-platform-health.use-case';
+import { toPlatformHealthResponse } from '../../application/tenancy.mapper';
+import { GetPlatformHealthUseCase } from '../../application/use-cases/get-platform-health.use-case';
 import { PlatformHealthResponseDto } from './dto/tenancy.dto';
 
 /**
@@ -23,53 +21,6 @@ export class PlatformHealthController {
   @ApiOperation({ summary: 'Platform-admin health and KPI board' })
   @ApiOkResponse({ type: PlatformHealthResponseDto })
   async health(): Promise<PlatformHealthResponse> {
-    return toResponse(await this.getHealth.execute());
+    return toPlatformHealthResponse(await this.getHealth.execute());
   }
-}
-
-function toResponse(h: PlatformHealth): PlatformHealthResponse {
-  return {
-    kpis: {
-      tenantCount: h.kpis.tenantCount,
-      activeTenantCount: h.kpis.activeTenantCount,
-      gmvAllTime: h.kpis.gmvAllTime.toString(),
-      gmv30d: h.kpis.gmv30d.toString(),
-      mrr: h.kpis.mrr.toString(),
-      publishedListings: h.kpis.publishedListings,
-      bookings30d: h.kpis.bookings30d,
-      webhookFailures: h.kpis.webhookFailures,
-      overduePayouts: h.kpis.overduePayouts,
-    },
-    gmvTrend: h.gmvTrend.map((p) => ({ date: p.date, gmv: p.gmv.toString() })),
-    tenants: h.tenants.map((t) => ({
-      tenantId: t.tenantId,
-      name: t.name,
-      slug: t.slug,
-      status: t.status,
-      vertical: t.vertical,
-      createdAt: t.createdAt.toISOString(),
-      gmv: t.gmv.toString(),
-      gmv30d: t.gmv30d.toString(),
-      bookings30d: t.bookings30d,
-      firstBookingHours: t.firstBookingHours,
-      publishedListings: t.publishedListings,
-      webhookFailures: t.webhookFailures,
-      overduePayouts: t.overduePayouts,
-      subscription: t.subscription
-        ? {
-            status: t.subscription.status,
-            expiresAt: t.subscription.expiresAt.toISOString(),
-            planName: t.subscription.planName,
-          }
-        : null,
-    })),
-    expiring: h.expiring.map((e) => ({
-      tenantId: e.tenantId,
-      tenantName: e.tenantName,
-      planName: e.planName,
-      status: e.status,
-      expiresAt: e.expiresAt.toISOString(),
-      daysLeft: e.daysLeft,
-    })),
-  };
 }

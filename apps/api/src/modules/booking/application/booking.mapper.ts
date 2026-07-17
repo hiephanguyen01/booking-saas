@@ -20,7 +20,7 @@ import type {
 } from '../domain/ports/booking-repository.port';
 import { maskPhone } from '../domain/mask-phone';
 import type { CancelResult } from './use-cases/cancel-booking.use-case';
-import type { ReturnResult } from './use-cases/inventory-fulfillment.use-case';
+import type { ReturnResult } from './use-cases/mark-returned.use-case';
 
 /**
  * Booking → wire, split by AUDIENCE. There are three entry points and the caller
