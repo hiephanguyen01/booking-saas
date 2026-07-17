@@ -22,12 +22,12 @@ import { CheckCircle2, CircleAlert, Clock, Globe, Trash2 } from 'lucide-react';
 import { Form, data as routeData, useNavigation, useSubmit } from 'react-router';
 import { Switch } from '@booking/ui/components/ui/switch';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { useTenantArea } from '../area-context';
+import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { PageHeader } from '~/components/page-header';
 import { formatDate } from '~/lib/format';
-import { requireTenant } from '../tenant.server';
-import { TENANT_FLAGS_PATH, toPartnerPromotionsState, type TenantFlags } from './flags';
-import type { Route } from './+types/_index';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { TENANT_FLAGS_PATH, toPartnerPromotionsState, type TenantFlags } from '~/features/tenant/lib/flags';
+import type { Route } from './+types/settings';
 
 interface TenantThemeResponse {
   name: string;

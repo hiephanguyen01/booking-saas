@@ -26,7 +26,7 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { ArrowLeft, Ban, CircleAlert } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '../partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { formatDiscount, formatNumber } from '~/lib/format';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -39,8 +39,8 @@ import {
   readPromotionForm,
   SCOPE_LABELS,
   TimeWindowsSummary,
-} from '~/routes/tenant/components/promotion-form';
-import type { ScopeOptions } from '~/routes/tenant/promotions/scope-options.server';
+} from '~/features/promotions/promotion-form';
+import type { ScopeOptions } from '~/features/promotions/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Đối tác · Bookify' }];

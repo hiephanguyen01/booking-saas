@@ -21,7 +21,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { Empty, EmptyDescription, EmptyTitle } from '@booking/ui/components/ui/empty';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { platformLoader } from '~/routes/admin/lib/api.server';
+import { platformLoader } from '~/features/admin/server/admin.server';
 import type { PlatformHealthResponse, PlatformHealthTenant } from '@booking/contracts';
 import {
   formatDate,
@@ -34,9 +34,9 @@ import {
 } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
-import { GmvChart } from '~/routes/admin/components/gmv-chart';
+import { GmvChart } from '~/features/admin/components/gmv-chart';
 import { SubscriptionStatusBadge, TenantStatusBadge } from '~/components/status-badge';
-import { CountSignal } from '~/routes/admin/components/count-signal';
+import { CountSignal } from '~/features/admin/components/count-signal';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tổng quan nền tảng · Bookify Admin' }];

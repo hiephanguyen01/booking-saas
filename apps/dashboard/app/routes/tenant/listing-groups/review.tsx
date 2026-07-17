@@ -27,8 +27,8 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import type { Route } from './+types/review';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { BOOKING_MODE_LABEL } from '~/lib/format';
-import { asRecord } from '~/lib/records';
-import { requireTenant } from '../tenant.server';
+import { listingPriceFrom } from '~/lib/listing-price';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { EntityRef } from '~/components/entity-ref';
@@ -60,20 +60,6 @@ function contactFieldLabel(field: string): string {
     return `Hạng mục ${Number(match[1]) + 1} · ${sub}`;
   }
   return CONTACT_FIELD_LABEL[field] ?? field;
-}
-
-/** Lowest configured base price across a listing's modes (VND đồng digit string). */
-function listingPriceFrom(modeConfig: Record<string, unknown>): string | null {
-  let min: bigint | null = null;
-  for (const [mode, cfg] of Object.entries(modeConfig)) {
-    const c = asRecord(cfg);
-    if (!c) continue;
-    const raw = mode === 'daily' ? c.basePricePerNight : c.basePrice;
-    if (typeof raw !== 'string' || !/^\d+$/.test(raw)) continue;
-    const value = BigInt(raw);
-    if (min === null || value < min) min = value;
-  }
-  return min === null ? null : min.toString();
 }
 
 function locationString(group: ListingGroupDetailResponse): string | null {
@@ -357,7 +343,7 @@ function ReviewCard({
 }
 
 function ChildCard({ listing }: { listing: ListingResponse }) {
-  const price = listingPriceFrom(listing.modeConfig);
+  const price = listingPriceFrom(listing);
   const thumb = listing.photos[0];
   return (
     <div className="flex gap-3 rounded-lg border border-border p-3">

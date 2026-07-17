@@ -39,7 +39,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/_index';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { platformLoader, platformSession } from '~/routes/admin/lib/api.server';
+import { platformLoader, platformSession } from '~/features/admin/server/admin.server';
 import { formatNumber } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';

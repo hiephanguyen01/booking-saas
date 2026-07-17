@@ -7,7 +7,7 @@ import type {
   Path,
   UseFormReturn,
 } from '@booking/ui/components/form/rhf';
-import { Grid, Section } from '~/components/form-layout';
+import { Grid, Section } from './form-layout';
 
 type AddressValues = FieldValues & {
   provinceCode: string;

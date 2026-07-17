@@ -16,7 +16,7 @@ import { Switch } from '@booking/ui/components/ui/switch';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { UseFormReturn } from '@booking/ui/components/form/rhf';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import { Section, Grid, Field } from '~/components/form-layout';
+import { Section, Grid, Field } from './form-layout';
 import { BOOKING_MODE_LABEL } from '~/lib/format';
 import {
   buildModeConfig,
@@ -25,7 +25,7 @@ import {
   savedModeConfig,
   type BlockRow,
   type DynamicState,
-} from './listing-mode-config';
+} from '../lib/listing-mode-config';
 import {
   Select,
   SelectContent,

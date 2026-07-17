@@ -13,13 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@book
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from './partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
-import { MiniBarChart, type BarDatum } from './components/mini-bar-chart';
+import { MiniBarChart, type BarDatum } from '~/features/partner/components/mini-bar-chart';
 import { BookingStatusBadge } from '~/components/status-badge';
 import { formatTime, formatVnd, dayKey, formatDayLabel } from '~/lib/format';
-import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from './components/calendar-dates';
+import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from '~/lib/calendar-dates';
 
 const ACTIVE: BookingStatus[] = ['pending_approval', 'pending_payment', 'confirmed'];
 

@@ -2,7 +2,7 @@ import type { AffiliateCommissionResponse, AffiliateCommissionStatusDto } from '
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/commissions';
 import { apiGet } from '~/lib/api.server';
-import { requireAffiliate } from './affiliate.server';
+import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';

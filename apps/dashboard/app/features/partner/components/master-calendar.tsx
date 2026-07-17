@@ -18,7 +18,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@b
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import { dayKey, formatTime, formatVnd, minutesOfDay } from '~/lib/format';
 import { bookingStatusMeta } from '~/components/status-badge';
-import { parseDay } from './calendar-dates';
+import { parseDay } from '~/lib/calendar-dates';
 
 interface ListingType {
   id: string;

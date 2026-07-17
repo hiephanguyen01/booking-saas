@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { Check, Eye, Ban } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';

@@ -4,9 +4,9 @@ import { updateListingTypeInputSchema, type ListingTypeResponse } from '@booking
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
-import { ListingTypeForm } from '../components/listing-type-form';
+import { ListingTypeForm } from '~/features/tenant/components/listing-type-form';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sửa loại dịch vụ · Tenant · Bookify' }];

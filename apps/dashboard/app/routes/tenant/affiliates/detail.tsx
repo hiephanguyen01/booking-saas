@@ -18,7 +18,7 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { ArrowLeft, Ban, Check, CheckCircle2, TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatDiscount, formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';

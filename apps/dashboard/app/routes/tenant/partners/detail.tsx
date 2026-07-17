@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatDate, PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/lib/format';
 import { readHttpUrl, readString } from '~/lib/records';
 import { PageHeader } from '~/components/page-header';

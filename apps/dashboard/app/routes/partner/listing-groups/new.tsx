@@ -4,9 +4,9 @@ import { createListingGroupInputSchema, type ListingTypeResponse } from '@bookin
 import { Button } from '@booking/ui/components/ui/button';
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { canPartner, requirePartner } from '../partner.server';
+import { canPartner, requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
-import { ListingGroupForm } from '../components/listing-group-form';
+import { ListingGroupForm } from '~/features/partner/components/listing-group-form';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request);

@@ -24,10 +24,10 @@ import { Label } from '@booking/ui/components/ui/label';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import type { Route } from './+types/detail';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
-import { useTenantArea } from '../area-context';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { PageHeader } from '~/components/page-header';
-import { BookingDetailCard } from '~/components/booking-detail-card';
+import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import { Money } from '~/components/money';
 import { toTimelineEntries } from '~/features/bookings/booking-history';
 

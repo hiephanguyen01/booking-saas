@@ -32,7 +32,7 @@ import type { Route } from './+types/review';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { BOOKING_MODE_LABEL } from '~/lib/format';
 import { asRecord } from '~/lib/records';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';

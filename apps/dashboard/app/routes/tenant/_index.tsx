@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requireTenant } from './tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatVnd, formatDateTime, formatNumber, formatDaysLeft } from '~/lib/format';
 import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';

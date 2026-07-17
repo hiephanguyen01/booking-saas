@@ -4,8 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import { Link, redirect, data as routeData } from 'react-router';
 import { PageHeader } from '~/components/page-header';
 import { apiPost } from '~/lib/api.server';
-import { ListingTypeForm } from '../components/listing-type-form';
-import { requireTenant } from '../tenant.server';
+import { ListingTypeForm } from '~/features/tenant/components/listing-type-form';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import type { Route } from './+types/new';
 
 export function meta(): Route.MetaDescriptors {

@@ -21,8 +21,8 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/calendar';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from './partner.server';
-import { MasterCalendar } from './components/master-calendar';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
+import { MasterCalendar } from '~/features/partner/components/master-calendar';
 import { PageHeader } from '~/components/page-header';
 import { dayKey, formatDate } from '~/lib/format';
 import {
@@ -33,7 +33,7 @@ import {
   todayString,
   toDayString,
   weekDays,
-} from './components/calendar-dates';
+} from '~/lib/calendar-dates';
 
 interface BlockableListing {
   id: string;

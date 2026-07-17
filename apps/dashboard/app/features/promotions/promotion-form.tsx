@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@booking/ui/components/ui/select';
 import { Trash2, Plus } from 'lucide-react';
-import type { ScopeOptions } from '../promotions/scope-options.server';
+import type { ScopeOptions } from './scope-options.server';
 
 export type ScopeKey = 'all' | 'listing' | 'listing_type' | 'listing_group' | 'category' | 'partner';
 type TimeWindow = { days: number[]; from: string; to: string };

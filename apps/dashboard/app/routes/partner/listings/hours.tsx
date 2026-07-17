@@ -11,7 +11,7 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Switch } from '@booking/ui/components/ui/switch';
 import type { Route } from './+types/hours';
 import { apiGet, apiPut } from '~/lib/api.server';
-import { requirePartner, canPartner } from '../partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import {
   DAYS,
@@ -26,7 +26,7 @@ import {
   validateWeek,
   type HoursWindow,
   type WeekWindows,
-} from '../listing-hours';
+} from '~/features/partner/lib/listing-hours';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Giờ mở cửa · Đối tác · Bookify' }];

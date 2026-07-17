@@ -6,10 +6,10 @@ import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { ArrowLeft, CircleAlert } from 'lucide-react';
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
-import { PromotionForm, readPromotionForm } from '../components/promotion-form';
-import { loadScopeOptions } from './scope-options.server';
+import { PromotionForm, readPromotionForm } from '~/features/promotions/promotion-form';
+import { loadScopeOptions } from '~/features/promotions/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tạo khuyến mãi · Tenant · Bookify' }];

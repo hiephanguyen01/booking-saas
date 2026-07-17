@@ -7,7 +7,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
-import { platformSession } from '~/routes/admin/lib/api.server';
+import { platformSession } from '~/features/admin/server/admin.server';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {

@@ -22,7 +22,7 @@ import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import type { Route } from './+types/profile';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from './partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 import { DateTimeValue } from '~/components/date-time-value';

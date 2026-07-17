@@ -6,13 +6,13 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { Plus, ArrowUpRight } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
-import { useTenantArea } from '../area-context';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
+import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { formatDiscount } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { EnumValue } from '~/components/enum-value';
-import { SCOPE_LABELS } from '../components/promotion-form';
+import { SCOPE_LABELS } from '~/features/promotions/promotion-form';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Tenant · Bookify' }];

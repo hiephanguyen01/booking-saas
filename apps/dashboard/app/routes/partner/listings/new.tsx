@@ -5,9 +5,9 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '../partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
-import { ListingForm } from '../components/listing-form';
+import { ListingForm } from '~/features/partner/components/listing-form';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng mới · Đối tác · Bookify' }];

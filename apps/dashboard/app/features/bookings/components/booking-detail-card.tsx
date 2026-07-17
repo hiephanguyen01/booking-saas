@@ -14,7 +14,7 @@ import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { EntityRef } from '~/components/entity-ref';
 import { CopyableCode } from '~/components/copyable-code';
-import { StatusTimestamp } from '~/components/status-timestamp';
+import { StatusTimestamp } from './status-timestamp';
 import { Timeline, type TimelineEntry } from '~/components/timeline';
 
 /** Bookable modes → Vietnamese (§9.4); Phase-3 verticals included defensively. */

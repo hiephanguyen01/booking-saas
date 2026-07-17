@@ -64,7 +64,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/detail';
 import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { platformLoader, platformSession } from '~/routes/admin/lib/api.server';
+import { platformLoader, platformSession } from '~/features/admin/server/admin.server';
 import { SUBSCRIPTION_STATUS_LABELS } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';

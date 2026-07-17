@@ -8,7 +8,7 @@ import { NativeSelect } from '@booking/ui/components/ui/native-select';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
-import { platformLoader } from '~/routes/admin/lib/api.server';
+import { platformLoader } from '~/features/admin/server/admin.server';
 import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';

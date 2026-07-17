@@ -27,7 +27,7 @@ import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { ArrowLeft, CircleAlert, Ban, TriangleAlert } from 'lucide-react';
 import type { Route } from './+types/detail';
 import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatDiscount, formatNumber } from '~/lib/format';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
@@ -35,8 +35,8 @@ import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { CopyableCode } from '~/components/copyable-code';
 import { PromotionStatusBadge } from '~/components/status-badge';
-import { PromotionForm, readPromotionForm, SCOPE_LABELS, TimeWindowsSummary } from '../components/promotion-form';
-import { loadScopeOptions } from './scope-options.server';
+import { PromotionForm, readPromotionForm, SCOPE_LABELS, TimeWindowsSummary } from '~/features/promotions/promotion-form';
+import { loadScopeOptions } from '~/features/promotions/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Tenant · Bookify' }];

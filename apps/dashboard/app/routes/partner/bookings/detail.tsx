@@ -6,9 +6,9 @@ import { Textarea } from '@booking/ui/components/ui/textarea';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import type { Route } from './+types/detail';
 import { apiGet } from '~/lib/api.server';
-import { requirePartner, canPartner } from '../partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
-import { BookingDetailCard } from '~/components/booking-detail-card';
+import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import {
   runPartnerBookingAction,
   type PartnerBookingActionResult,

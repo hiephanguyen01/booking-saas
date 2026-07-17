@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { CircleAlert, HandCoins, Pencil, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '../partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { formatDiscount } from '~/lib/format';

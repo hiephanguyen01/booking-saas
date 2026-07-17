@@ -25,5 +25,5 @@ export const tenantChildren: RouteConfigEntry[] = [
   route('promotions/:promotionId', 'routes/tenant/promotions/detail.tsx'),
   route('affiliates', 'routes/tenant/affiliates/_index.tsx'),
   route('affiliates/:affiliateId', 'routes/tenant/affiliates/detail.tsx'),
-  route('settings', 'routes/tenant/settings/_index.tsx'),
+  route('settings', 'routes/tenant/settings.tsx'),
 ];

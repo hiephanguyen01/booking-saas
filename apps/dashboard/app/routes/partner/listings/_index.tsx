@@ -15,13 +15,13 @@ import {
 } from '@booking/ui/components/ui/select';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
-import { requirePartner, canPartner } from '../partner.server';
+import { requirePartner, canPartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { BOOKING_MODE_LABEL, formatDate } from '~/lib/format';
-import { listingPriceFrom } from '../listing-price';
+import { listingPriceFrom } from '~/lib/listing-price';
 
 /** Booking-mode → Vietnamese label (exhaustive, so a new mode is a compile error). */
 

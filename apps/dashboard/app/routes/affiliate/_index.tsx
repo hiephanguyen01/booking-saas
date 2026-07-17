@@ -13,7 +13,7 @@ import { CheckCircle2, MousePointerClick, Percent, ShoppingBag, Wallet } from 'l
 import { apiGet, apiPatch } from '~/lib/api.server';
 import { formatDiscount, formatRate } from '~/lib/format';
 import type { Route } from './+types/_index';
-import { requireAffiliate } from './affiliate.server';
+import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';

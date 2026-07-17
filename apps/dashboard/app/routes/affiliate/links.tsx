@@ -7,7 +7,7 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Route } from './+types/links';
 import { apiGet, apiPost, apiDelete } from '~/lib/api.server';
-import { requireAffiliate } from './affiliate.server';
+import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';

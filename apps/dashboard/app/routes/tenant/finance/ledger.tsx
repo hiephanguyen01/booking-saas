@@ -19,7 +19,7 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { ArrowLeft, Filter } from 'lucide-react';
 import type { Route } from './+types/ledger';
 import { apiGet } from '~/lib/api.server';
-import { requireTenant } from '../tenant.server';
+import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { amountToneClass } from '~/components/money';

@@ -3,7 +3,8 @@ import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { cn } from '@booking/ui/lib/utils';
 import { Share2 } from 'lucide-react';
 import type { Route } from './+types/_layout';
-import { requireAffiliate } from './affiliate.server';
+import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
+import { affiliateTabs } from './nav';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Bookify' }];
@@ -16,12 +17,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     active: active ? { tenantId: active.tenantId, tenantName: active.tenantName } : null,
   };
 }
-
-const TABS = [
-  { to: '/affiliate', label: 'Tổng quan', end: true },
-  { to: '/affiliate/links', label: 'Link giới thiệu', end: false },
-  { to: '/affiliate/commissions', label: 'Hoa hồng', end: false },
-];
 
 export default function AffiliateLayout({ loaderData }: Route.ComponentProps) {
   const { memberships, active } = loaderData;
@@ -74,7 +69,7 @@ export default function AffiliateLayout({ loaderData }: Route.ComponentProps) {
       </div>
 
       <nav className="flex gap-1 border-b border-border">
-        {TABS.map((tab) => (
+        {affiliateTabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={withTenant(tab.to)}
