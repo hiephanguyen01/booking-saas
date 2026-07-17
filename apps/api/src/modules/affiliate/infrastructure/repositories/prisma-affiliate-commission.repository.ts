@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   AffiliateCommissionRecord,
@@ -91,6 +92,20 @@ export class PrismaAffiliateCommissionRepository implements IAffiliateCommission
       orderBy: { createdAt: 'desc' },
     });
     return rows.map(toWithBooking);
+  }
+
+  async listByAffiliatePaginated(
+    tx: PrismaTx,
+    affiliateId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: AffiliateCommissionWithBooking[]; total: number }> {
+    const where = { affiliateId };
+    const { skip, take } = pageOffset(params);
+    const [rows, total] = await Promise.all([
+      tx.affiliateCommission.findMany({ where, include: WITH_BOOKING, orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.affiliateCommission.count({ where }),
+    ]);
+    return { items: rows.map(toWithBooking), total };
   }
 
   async totalsForAffiliate(tx: PrismaTx, affiliateId: string): Promise<AffiliateCommissionTotals> {

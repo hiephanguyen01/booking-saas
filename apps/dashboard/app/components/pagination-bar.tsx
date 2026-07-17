@@ -1,44 +1,46 @@
-import { Link } from 'react-router';
-import { Button } from '@booking/ui/components/ui/button';
+import { PAGE_SIZE_OPTIONS } from '@booking/contracts';
+import {
+  Pagination,
+  type PaginationLabels,
+} from '@booking/ui/components/data-table/pagination';
 
 /**
- * The `Trang X / Y` + Trước/Sau footer for server-paginated lists. Renders
- * nothing for a single page. `hrefFor` must preserve the active filters —
- * build it with `pageHref` from `~/lib/pagination`.
+ * Vietnamese-labelled wrapper over the shared `<Pagination>` (numbered pages +
+ * ellipsis + rows-per-page + count). Every server-paginated dashboard list renders
+ * this in its footer; build `hrefFor` from `readListParams(...).pageHref`
+ * (`~/lib/pagination`) so filters + page size are preserved.
  */
+const VI_LABELS: PaginationLabels = {
+  previous: 'Trước',
+  next: 'Sau',
+  rowsPerPage: 'Số dòng',
+  showing: (from, to, total) => `${from}–${to} / ${total}`,
+};
+
 export function PaginationBar({
   page,
-  totalPages,
+  pageSize,
+  total,
   hrefFor,
+  pageSizeOptions = PAGE_SIZE_OPTIONS,
+  className,
 }: {
   page: number;
-  totalPages: number;
-  hrefFor: (page: number) => string;
+  pageSize: number;
+  total: number;
+  hrefFor: (target: { page: number; pageSize: number }) => string;
+  pageSizeOptions?: readonly number[];
+  className?: string;
 }) {
-  if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-muted-foreground">
-        Trang {page} / {totalPages}
-      </span>
-      <div className="flex gap-2">
-        <Button asChild variant="outline" size="sm" disabled={page <= 1} aria-disabled={page <= 1}>
-          <Link to={hrefFor(page - 1)} prefetch="intent">
-            Trước
-          </Link>
-        </Button>
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          disabled={page >= totalPages}
-          aria-disabled={page >= totalPages}
-        >
-          <Link to={hrefFor(page + 1)} prefetch="intent">
-            Sau
-          </Link>
-        </Button>
-      </div>
-    </div>
+    <Pagination
+      page={page}
+      pageSize={pageSize}
+      total={total}
+      hrefFor={hrefFor}
+      pageSizeOptions={pageSizeOptions}
+      labels={VI_LABELS}
+      className={className}
+    />
   );
 }

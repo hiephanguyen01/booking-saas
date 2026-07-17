@@ -1,5 +1,5 @@
-import { data, Form, Link } from 'react-router';
-import type { PromotionResponse } from '@booking/contracts';
+import { data, Form, Link, useSearchParams } from 'react-router';
+import type { Paginated, PromotionResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -19,19 +19,22 @@ import { PageHeader } from '~/components/page-header';
 import { useBusy } from '~/hooks/use-busy';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { formatDiscount } from '~/lib/format';
+import { PaginationBar } from '~/components/pagination-bar';
+import { readListParams } from '~/lib/pagination';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Đối tác · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.promotions.manage');
+  const { toApiQuery } = readListParams(url.searchParams);
   const [mine, pending] = await Promise.all([
-    apiGet<PromotionResponse[]>('/partner/promotions', auth),
+    apiGet<Paginated<PromotionResponse>>('/partner/promotions', auth, { query: toApiQuery() }),
     apiGet<PromotionResponse[]>('/partner/promotions/pending-optin', auth),
   ]);
   return {
-    promotions: mine.ok ? (mine.data ?? []) : [],
+    result: mine.ok ? mine.data : null,
     pending: pending.ok ? (pending.data ?? []) : [],
     error: mine.ok ? null : (mine.error ?? 'Không tải được khuyến mãi.'),
   };
@@ -50,9 +53,13 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerPromotions({ loaderData, actionData }: Route.ComponentProps) {
-  const { promotions, pending, error } = loaderData;
+  const { result, pending, error } = loaderData;
   const busy = useBusy();
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
+  const promotions = result?.items ?? [];
+  const total = result?.total ?? 0;
 
   const columns: DataTableColumn<PromotionResponse>[] = [
     {
@@ -150,7 +157,14 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
           {error ? (
             <ErrorBanner error={error} />
           ) : (
-            <DataTable data={promotions} columns={columns} emptyMessage="Chưa có khuyến mãi nào." />
+            <div className="space-y-4">
+              <DataTable
+                data={promotions}
+                columns={columns}
+                emptyMessage="Chưa có khuyến mãi nào."
+              />
+              <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
+            </div>
           )}
         </CardContent>
       </Card>

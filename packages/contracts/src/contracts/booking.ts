@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { paginationQuerySchema, uuidSchema } from './common';
 import { passwordSchema } from './auth';
 
 /** Booking state machine (§8). Terminal-ish branches: completed/no_show/rejected/expired/refunded. */
@@ -108,14 +108,13 @@ export type PartnerNoteInput = z.infer<typeof partnerNoteInputSchema>;
 
 /**
  * Filters for the tenant booking overview (`GET /tenant/bookings`, Task 1.13).
- * `status`/`partnerId` are honoured SERVER-side — never filter client-side over a
- * truncated page, or every derived count is wrong past `limit` rows.
+ * Offset-paginated: `status`/`partnerId` are honoured SERVER-side alongside
+ * `page`/`pageSize` — never filter client-side over one page, or every derived
+ * count is wrong past the page boundary.
  */
-export const tenantBookingsQuerySchema = z.object({
+export const tenantBookingsQuerySchema = paginationQuerySchema.extend({
   status: bookingStatusSchema.optional(),
   partnerId: uuidSchema.optional(),
-  /** Row cap (server clamps to 1–200; defaults to 100 when omitted). */
-  limit: z.coerce.number().int().min(1).max(200).optional(),
 });
 export type TenantBookingsQuery = z.infer<typeof tenantBookingsQuerySchema>;
 

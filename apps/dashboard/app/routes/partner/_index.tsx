@@ -50,7 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         )
       : Promise.resolve(null),
     can('partner.listings.read')
-      ? apiGet<ListingResponse[]>('/partner/listings', auth)
+      ? apiGet<{ items: ListingResponse[] }>('/partner/listings?page=1&pageSize=100', auth)
       : Promise.resolve(null),
     can('partner.profile.manage')
       ? apiGet<PartnerResponse>('/partner/profile', auth)
@@ -58,7 +58,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
 
   const bookings = feedRes && feedRes.ok && feedRes.data ? feedRes.data : [];
-  const listings = listingsRes && listingsRes.ok && listingsRes.data ? listingsRes.data : [];
+  const listings = listingsRes && listingsRes.ok && listingsRes.data ? listingsRes.data.items : [];
   const profile = profileRes && profileRes.ok && profileRes.data ? profileRes.data : null;
 
   return {

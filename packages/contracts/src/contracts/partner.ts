@@ -108,6 +108,8 @@ export type UpdatePartnerDocumentsInput = z.infer<typeof updatePartnerDocumentsI
 
 export const listPartnersQuerySchema = paginationQuerySchema.extend({
   status: partnerStatusSchema.optional(),
+  /** Case-insensitive search over partner name/slug (approval queue search box). */
+  q: z.string().trim().max(200).optional(),
 });
 export type ListPartnersQuery = z.infer<typeof listPartnersQuerySchema>;
 

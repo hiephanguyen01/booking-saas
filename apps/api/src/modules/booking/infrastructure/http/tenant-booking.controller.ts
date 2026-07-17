@@ -2,12 +2,14 @@ import {
   uuidSchema,
   type BookingStatusHistoryResponse,
   type CancelBookingResponse,
+  type Paginated,
   type PartnerBookingStatsResponse,
   type TenantBookingResponse,
 } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
@@ -53,20 +55,22 @@ export class TenantBookingController {
   ) {}
 
   /**
-   * `status` / `partnerId` / `limit` are all honoured SERVER-side. Filtering a
-   * truncated page client-side makes every derived count wrong past `limit` rows.
+   * Offset-paginated. `status` / `partnerId` are honoured SERVER-side alongside
+   * `page` / `pageSize` — filtering one page client-side makes every derived count
+   * wrong past the page boundary.
    */
   @RequirePermissions('tenant.bookings.read')
   @Get()
   @ApiOperation({ summary: 'List bookings across the tenant' })
-  @ApiOkResponse({ type: [TenantBookingResponseDto] })
-  async list(@Query() query: TenantBookingsQueryDto): Promise<TenantBookingResponse[]> {
-    const items = await this.listBookings.execute(this.tenantContext.tenantIdOrThrow(), {
+  @ApiPaginatedResponse(TenantBookingResponseDto)
+  async list(@Query() query: TenantBookingsQueryDto): Promise<Paginated<TenantBookingResponse>> {
+    const result = await this.listBookings.execute(this.tenantContext.tenantIdOrThrow(), {
       status: query.status,
       partnerId: query.partnerId,
-      limit: query.limit,
+      page: query.page,
+      pageSize: query.pageSize,
     });
-    return items.map(toBookingResponse);
+    return toPaginated(query, result, toBookingResponse);
   }
 
   @RequirePermissions('tenant.bookings.read')

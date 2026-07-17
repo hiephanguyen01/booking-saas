@@ -67,6 +67,12 @@ export interface IAffiliateCommissionRepository {
     data: { status: AffiliateCommissionStatus; amount?: bigint },
   ): Promise<void>;
   listByAffiliate(tx: PrismaTx, affiliateId: string): Promise<AffiliateCommissionWithBooking[]>;
+  /** One page of an affiliate's commissions (newest first) + the matching total. */
+  listByAffiliatePaginated(
+    tx: PrismaTx,
+    affiliateId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: AffiliateCommissionWithBooking[]; total: number }>;
   totalsForAffiliate(tx: PrismaTx, affiliateId: string): Promise<AffiliateCommissionTotals>;
   /** Flip an affiliate's `confirmed` commissions to `paid` after a payout settles. */
   markConfirmedPaid(tx: PrismaTx, affiliateId: string): Promise<void>;

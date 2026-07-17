@@ -1,4 +1,9 @@
-import { uuidSchema, type ListingResponse, type ListingReviewResponse } from '@booking/contracts';
+import {
+  uuidSchema,
+  type ListingResponse,
+  type ListingReviewResponse,
+  type PaginatedWithCounts,
+} from '@booking/contracts';
 import {
   Body,
   Controller,
@@ -13,7 +18,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
@@ -34,6 +40,7 @@ import { DeleteListingUseCase } from '../../application/use-cases/delete-listing
 import {
   CreateListingDto,
   ListingResponseDto,
+  ListPartnerListingsQueryDto,
   ModerationReasonDto,
   SubmitListingResponseDto,
   UpdateListingDto,
@@ -59,19 +66,26 @@ export class PartnerListingModerationController {
     private readonly tenantContext: TenantContextService,
   ) {}
 
-  /** The partner's own listings (§7.3) — read-only, scoped to x-partner-id. */
+  /**
+   * The partner's own listings (§7.3) — read-only, paginated, always scoped to
+   * x-partner-id. Filterable by `status` and a `q` title search, with per-status
+   * row counts for the filter tabs; `groupId` narrows to one post's items.
+   */
   @RequirePermissions('partner.listings.read')
   @Get()
   @ApiOperation({ summary: "List the calling partner's listings" })
-  @ApiOkResponse({ type: [ListingResponseDto] })
-  async list(@Query('groupId') groupId?: string): Promise<ListingResponse[]> {
+  @ApiPaginatedResponse(ListingResponseDto)
+  async list(
+    @Query() query: ListPartnerListingsQueryDto,
+  ): Promise<PaginatedWithCounts<ListingResponse>> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
-    const listings = await this.listListings.execute(tenantId, {
-      partnerId,
-      ...(groupId ? { groupId } : {}),
-    });
-    return listings.map(toListingResponse);
+    const result = await this.listListings.execute(
+      tenantId,
+      { partnerId, groupId: query.groupId, status: query.status, q: query.q },
+      { page: query.page, pageSize: query.pageSize },
+    );
+    return { ...toPaginated(query, result, toListingResponse), counts: result.counts };
   }
 
   /**

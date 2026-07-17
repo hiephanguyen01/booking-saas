@@ -1,6 +1,6 @@
-import { data as routeData, Link, useFetcher } from 'react-router';
+import { data as routeData, Link, useFetcher, useSearchParams } from 'react-router';
 import { Check, Eye, EyeOff, Undo2 } from 'lucide-react';
-import type { ListingGroupResponse } from '@booking/contracts';
+import type { ListingGroupResponse, Paginated } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -13,16 +13,21 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
+import { PaginationBar } from '~/components/pagination-bar';
+import { readListParams } from '~/lib/pagination';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Bài đăng · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
-  const res = await apiGet<ListingGroupResponse[]>('/tenant/listing-groups', auth);
+  const { toApiQuery } = readListParams(url.searchParams);
+  const res = await apiGet<Paginated<ListingGroupResponse>>('/tenant/listing-groups', auth, {
+    query: toApiQuery(),
+  });
   return {
-    groups: res.ok ? (res.data ?? []) : [],
+    result: res.ok ? res.data : null,
     canModerate: can('tenant.listings.publish'),
     error: res.ok ? null : (res.error ?? 'Không tải được bài đăng.'),
   };
@@ -48,9 +53,12 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantListingGroups({ loaderData, actionData }: Route.ComponentProps) {
-  const { groups, canModerate, error } = loaderData;
+  const { result, canModerate, error } = loaderData;
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
-  const pending = groups.filter((g) => g.status === 'pending_review').length;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
+  const groups = result?.items ?? [];
+  const total = result?.total ?? 0;
 
   const columns: DataTableColumn<ListingGroupResponse>[] = [
     {
@@ -119,11 +127,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
     <div className="space-y-5">
       <PageHeader
         title="Bài đăng"
-        description={
-          pending > 0
-            ? `${pending} bài đăng đang chờ duyệt.`
-            : 'Duyệt, ẩn hoặc mở lại các bài đăng nhóm của đối tác.'
-        }
+        description="Duyệt, ẩn hoặc mở lại các bài đăng nhóm của đối tác."
       />
       <ErrorBanner error={error ?? actionError} />
       <DataTable
@@ -132,6 +136,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
         getRowKey={(g) => g.id}
         emptyMessage="Chưa có bài đăng nào."
       />
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

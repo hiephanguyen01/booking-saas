@@ -28,6 +28,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
+import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
@@ -190,9 +192,10 @@ export class TenantFinanceController {
   @RequirePermissions('tenant.payouts.manage')
   @Get('payouts')
   @ApiOperation({ summary: 'List payouts' })
-  @ApiOkResponse({ type: [PayoutResponseDto] })
-  async listPayouts(): Promise<PayoutResponse[]> {
-    return (await this.listPayoutsUseCase.execute(this.tenantId)).map(toPayoutResponse);
+  @ApiPaginatedResponse(PayoutResponseDto)
+  async listPayouts(@Query() query: PaginationQueryDto): Promise<Paginated<PayoutResponse>> {
+    const result = await this.listPayoutsUseCase.execute(this.tenantId, query);
+    return toPaginated(query, result, toPayoutResponse);
   }
 
   @RequirePermissions('tenant.payouts.manage')

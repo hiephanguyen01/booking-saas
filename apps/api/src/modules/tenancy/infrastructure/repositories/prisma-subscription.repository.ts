@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 import type {
   AssignSubscriptionData,
   ISubscriptionRepository,
@@ -52,17 +53,32 @@ export class PrismaSubscriptionRepository implements ISubscriptionRepository {
     return s ? toRecord(s) : null;
   }
 
-  async listByTenant(tenantId: string): Promise<SubscriptionHistoryRecord[]> {
-    const rows = await this.prisma.admin.tenantSubscription.findMany({
-      where: { tenantId },
-      // Newest first, matching `findCurrentByTenant`'s notion of "current" —
-      // so the first row of the history IS the current subscription.
-      orderBy: [{ startsAt: 'desc' }, { createdAt: 'desc' }],
-      include: { plan: { select: { name: true } } },
-    });
-    return rows.map((s: PrismaSubscriptionWithPlan) => ({
-      ...toRecord(s),
-      planName: s.plan.name,
-    }));
+  async listByTenant(
+    tenantId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: SubscriptionHistoryRecord[]; total: number }> {
+    // Platform/admin read scoped by the :id tenant path param — this is the
+    // BYPASSRLS admin pool (no `forTenant`), so the tenantId filter is explicit.
+    const where: Prisma.TenantSubscriptionWhereInput = { tenantId };
+    const { skip, take } = pageOffset(params);
+    const [rows, total] = await Promise.all([
+      this.prisma.admin.tenantSubscription.findMany({
+        where,
+        // Newest first, matching `findCurrentByTenant`'s notion of "current" —
+        // so the first row of the history IS the current subscription.
+        orderBy: [{ startsAt: 'desc' }, { createdAt: 'desc' }],
+        include: { plan: { select: { name: true } } },
+        skip,
+        take,
+      }),
+      this.prisma.admin.tenantSubscription.count({ where }),
+    ]);
+    return {
+      items: rows.map((s: PrismaSubscriptionWithPlan) => ({
+        ...toRecord(s),
+        planName: s.plan.name,
+      })),
+      total,
+    };
   }
 }

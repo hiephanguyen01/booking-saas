@@ -9,6 +9,7 @@ import {
   affiliateStatusResponseSchema,
   applyAffiliateInputSchema,
   createReferralLinkInputSchema,
+  listAffiliatesQuerySchema,
   referralLinkResponseSchema,
   tenantAffiliateStatusInputSchema,
   tenantUpdateAffiliateInputSchema,
@@ -16,6 +17,9 @@ import {
   trackReferralResponseSchema,
   updateAffiliatePayoutInfoInputSchema,
 } from '@booking/contracts';
+
+// Query params
+export class ListAffiliatesQueryDto extends createZodDto(listAffiliatesQuerySchema) {}
 
 // Request bodies
 export class ApplyAffiliateDto extends createZodDto(applyAffiliateInputSchema) {}

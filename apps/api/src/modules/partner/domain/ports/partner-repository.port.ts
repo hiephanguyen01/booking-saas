@@ -59,6 +59,8 @@ export interface UpdatePartnerData {
 
 export interface ListPartnersFilter {
   status?: PartnerStatus;
+  /** Case-insensitive search over partner name/slug. Applied to items + counts. */
+  q?: string;
   page: number;
   pageSize: number;
 }
@@ -82,7 +84,7 @@ export interface IPartnerRepository {
   list(
     tx: PrismaTx,
     filter: ListPartnersFilter,
-  ): Promise<{ items: PartnerRecord[]; total: number }>;
+  ): Promise<{ items: PartnerRecord[]; total: number; counts: Record<string, number> }>;
   update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord>;
   addMember(
     tx: PrismaTx,

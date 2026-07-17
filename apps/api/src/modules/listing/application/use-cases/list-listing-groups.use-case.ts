@@ -6,6 +6,7 @@ import {
   type ListingGroupRecord,
 } from '../../domain/ports/listing-group-repository.port';
 
+/** One page of a tenant's (or one partner's) listing groups — offset-paginated. */
 @Injectable()
 export class ListListingGroupsUseCase {
   constructor(
@@ -13,7 +14,11 @@ export class ListListingGroupsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, filter: { partnerId?: string } = {}): Promise<ListingGroupRecord[]> {
-    return this.tenantDb.forTenant(tenantId, (tx) => this.repo.list(tx, filter));
+  execute(
+    tenantId: string,
+    filter: { partnerId?: string },
+    page: { page: number; pageSize: number },
+  ): Promise<{ items: ListingGroupRecord[]; total: number }> {
+    return this.tenantDb.forTenant(tenantId, (tx) => this.repo.listPage(tx, filter, page));
   }
 }

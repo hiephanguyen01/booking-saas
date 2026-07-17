@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { PaginationQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PROMOTION_REPOSITORY,
@@ -14,7 +15,13 @@ export class ListPartnerPromotionsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, partnerId: string): Promise<PromotionRecord[]> {
-    return this.tenantDb.forTenant(tenantId, (tx) => this.promotions.listByPartner(tx, partnerId));
+  execute(
+    tenantId: string,
+    partnerId: string,
+    query: PaginationQuery,
+  ): Promise<{ items: PromotionRecord[]; total: number }> {
+    return this.tenantDb.forTenant(tenantId, (tx) =>
+      this.promotions.listByPartner(tx, partnerId, query),
+    );
   }
 }

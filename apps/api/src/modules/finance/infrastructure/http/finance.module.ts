@@ -26,6 +26,7 @@ import { MarkPayoutPaidUseCase } from '../../application/use-cases/mark-payout-p
 import { FailPayoutUseCase } from '../../application/use-cases/fail-payout.use-case';
 import { GetTenantFinanceSummaryUseCase } from '../../application/use-cases/get-tenant-finance-summary.use-case';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
+import { ListPartnerLedgerUseCase } from '../../application/use-cases/list-partner-ledger.use-case';
 import { GetPlatformFinanceUseCase } from '../../application/use-cases/get-platform-finance.use-case';
 import { GetTenantPayableUseCase } from '../../application/use-cases/get-tenant-payable.use-case';
 import { ListPartnerPayoutsUseCase } from '../../application/use-cases/list-partner-payouts.use-case';
@@ -58,6 +59,7 @@ import { PlatformFinanceController } from './platform-finance.controller';
     FailPayoutUseCase,
     GetTenantFinanceSummaryUseCase,
     GetPartnerFinanceUseCase,
+    ListPartnerLedgerUseCase,
     GetPlatformFinanceUseCase,
     GetTenantPayableUseCase,
     ListPartnerPayoutsUseCase,

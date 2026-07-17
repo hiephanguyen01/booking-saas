@@ -1,4 +1,4 @@
-import { Form, Link } from 'react-router';
+import { Form, Link, useSearchParams } from 'react-router';
 import { Plus, Search } from 'lucide-react';
 import type { Paginated, TenantResponse, TenantStatus, Vertical } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -13,7 +13,7 @@ import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/constants/tenancy';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
 import { TenantStatusBadge } from '~/components/status-badge';
-import { parsePage, pageHref } from '~/lib/pagination';
+import { readListParams } from '~/lib/pagination';
 import { PaginationBar } from '~/components/pagination-bar';
 import { ErrorBanner } from '~/components/action-feedback';
 
@@ -21,26 +21,22 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tenant · Bookify Admin' }];
 }
 
-const PAGE_SIZE = 20;
-
 const STATUS_VALUES: TenantStatus[] = ['active', 'suspended', 'expired'];
 const VERTICAL_VALUES: Vertical[] = ['studio', 'rental', 'classes'];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const page = parsePage(url.searchParams);
+  const { toApiQuery } = readListParams(url.searchParams);
   const search = url.searchParams.get('search')?.trim() ?? '';
-  const status = url.searchParams.get('status') ?? '';
-  const vertical = url.searchParams.get('vertical') ?? '';
-
-  const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
-  if (search) query.set('search', search);
-  if (STATUS_VALUES.includes(status as TenantStatus)) query.set('status', status);
-  if (VERTICAL_VALUES.includes(vertical as Vertical)) query.set('vertical', vertical);
+  const statusRaw = url.searchParams.get('status') ?? '';
+  const verticalRaw = url.searchParams.get('vertical') ?? '';
+  const status = STATUS_VALUES.includes(statusRaw as TenantStatus) ? statusRaw : '';
+  const vertical = VERTICAL_VALUES.includes(verticalRaw as Vertical) ? verticalRaw : '';
 
   const { auth } = await requirePlatform(request, 'platform.tenants.read');
-  const res = await apiGet<Paginated<TenantResponse>>(`/admin/tenants?${query}`, auth);
+  const res = await apiGet<Paginated<TenantResponse>>('/admin/tenants', auth, {
+    query: toApiQuery({ search, status, vertical }),
+  });
   return {
-    page,
     filters: { search, status, vertical },
     result: res.ok ? res.data : null,
     error: res.ok ? null : res.error,
@@ -74,21 +70,13 @@ const columns: DataTableColumn<TenantResponse>[] = [
   },
 ];
 
-/** Build a querystring that resets to page 1 whenever a filter changes. */
-function keepFilters(filters: { search: string; status: string; vertical: string }): string {
-  const q = new URLSearchParams();
-  if (filters.search) q.set('search', filters.search);
-  if (filters.status) q.set('status', filters.status);
-  if (filters.vertical) q.set('vertical', filters.vertical);
-  return q.toString();
-}
-
 export default function TenantsList({ loaderData }: Route.ComponentProps) {
-  const { result, error, page, filters } = loaderData;
+  const { result, error, filters } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref } = readListParams(searchParams);
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const filterQs = keepFilters(filters);
+  const hasFilters = Boolean(filters.search || filters.status || filters.vertical);
 
   return (
     <div className="space-y-6">
@@ -106,7 +94,9 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
       />
 
       <Form method="get" className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[14rem] flex-1 space-y-1.5">
+        {/* Preserve the chosen page size across a filter change; page is dropped → back to page 1. */}
+        <input type="hidden" name="pageSize" value={pageSize} />
+        <div className="min-w-56 flex-1 space-y-1.5">
           <Label htmlFor="search">Tìm kiếm</Label>
           <Input
             id="search"
@@ -142,7 +132,7 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
           <Search className="size-4" />
           Lọc
         </Button>
-        {filterQs ? (
+        {hasFilters ? (
           <Button asChild variant="ghost">
             <Link to="/admin/tenants">Xoá lọc</Link>
           </Button>
@@ -156,13 +146,13 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
         data={items}
         getRowKey={(t) => t.id}
         emptyMessage={
-          filterQs
+          hasFilters
             ? 'Không có tenant khớp bộ lọc.'
             : 'Chưa có tenant nào. Tạo tenant đầu tiên để bắt đầu.'
         }
       />
 
-      <PaginationBar page={page} totalPages={totalPages} hrefFor={(p) => pageHref(filterQs, p)} />
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

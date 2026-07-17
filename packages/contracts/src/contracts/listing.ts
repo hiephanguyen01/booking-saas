@@ -221,8 +221,20 @@ export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
 /** `GET /tenant/listings` — paginated; `groupId` narrows to one post's items. */
 export const listTenantListingsQuerySchema = paginationQuerySchema.extend({
   groupId: uuidSchema.optional(),
+  status: publishStatusSchema.optional(),
+  /** Case-insensitive search over the listing title. Applied to items + counts. */
+  q: z.string().trim().max(200).optional(),
 });
 export type ListTenantListingsQuery = z.infer<typeof listTenantListingsQuerySchema>;
+
+/** `GET /partner/listings` — paginated; always scoped to the calling partner. */
+export const listPartnerListingsQuerySchema = paginationQuerySchema.extend({
+  groupId: uuidSchema.optional(),
+  status: publishStatusSchema.optional(),
+  /** Case-insensitive search over the listing title. Applied to items + counts. */
+  q: z.string().trim().max(200).optional(),
+});
+export type ListPartnerListingsQuery = z.infer<typeof listPartnerListingsQuerySchema>;
 
 // ── Responses ──────────────────────────────────────────────────────────────
 

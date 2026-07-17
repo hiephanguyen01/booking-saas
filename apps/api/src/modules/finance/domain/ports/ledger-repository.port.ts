@@ -44,6 +44,8 @@ export interface RecordJournalRefs {
 export interface LedgerFilters {
   bookingId?: string;
   ownerType?: OwnerType;
+  /** Narrow to a single owner (e.g. the partner in scope) — ANDed with `ownerType`. */
+  ownerId?: string;
   entryType?: LedgerEntryType;
   /** Inclusive lower/upper bounds on `createdAt`. */
   from?: Date;

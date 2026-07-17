@@ -1,14 +1,17 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   uuidSchema,
   type AffiliateCommissionResponse,
   type AffiliateResponse,
   type AffiliateStatsResponse,
+  type Paginated,
   type ReferralLinkResponse,
 } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
+import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
@@ -98,14 +101,15 @@ export class AffiliateController {
   @AuthenticatedOnly()
   @Get('links')
   @ApiOperation({ summary: "List the affiliate's referral links" })
-  @ApiOkResponse({ type: [ReferralLinkResponseDto] })
+  @ApiPaginatedResponse(ReferralLinkResponseDto)
   async links(
     @CurrentPrincipal() principal: SessionPrincipal,
+    @Query() query: PaginationQueryDto,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
-  ): Promise<ReferralLinkResponse[]> {
+  ): Promise<Paginated<ReferralLinkResponse>> {
     const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
-    const links = await this.listLinks.execute(ctx.tenantId, ctx.affiliateId);
-    return links.map(toReferralLinkResponse);
+    const result = await this.listLinks.execute(ctx.tenantId, ctx.affiliateId, query);
+    return toPaginated(query, result, toReferralLinkResponse);
   }
 
   @AuthenticatedOnly()
@@ -151,13 +155,14 @@ export class AffiliateController {
   @AuthenticatedOnly()
   @Get('commissions')
   @ApiOperation({ summary: "The affiliate's commission history" })
-  @ApiOkResponse({ type: [AffiliateCommissionResponseDto] })
+  @ApiPaginatedResponse(AffiliateCommissionResponseDto)
   async commissions(
     @CurrentPrincipal() principal: SessionPrincipal,
+    @Query() query: PaginationQueryDto,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
-  ): Promise<AffiliateCommissionResponse[]> {
+  ): Promise<Paginated<AffiliateCommissionResponse>> {
     const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
-    const items = await this.listCommissions.execute(ctx.tenantId, ctx.affiliateId);
-    return items.map(toAffiliateCommissionResponse);
+    const result = await this.listCommissions.execute(ctx.tenantId, ctx.affiliateId, query);
+    return toPaginated(query, result, toAffiliateCommissionResponse);
   }
 }

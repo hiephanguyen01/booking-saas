@@ -20,6 +20,7 @@ import type { CurrentSubscription } from '~/features/admin/server/tenant-detail-
 import { SUBSCRIPTION_STATUS_LABELS } from '~/constants/tenancy';
 import { dashboardPaths } from '~/constants/paths';
 import { ErrorBanner } from '~/components/action-feedback';
+import { PaginationBar } from '~/components/pagination-bar';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { SubscriptionStatusBadge } from '~/components/status-badge';
@@ -112,12 +113,20 @@ function AssignSubscriptionForm({
 export function TenantSubscriptionSection({
   subscription,
   history,
+  historyTotal,
+  page,
+  pageSize,
+  pageHref,
   plans,
   busy,
   serverError,
 }: {
   subscription: CurrentSubscription | null;
   history: SubscriptionHistoryItem[] | null;
+  historyTotal: number;
+  page: number;
+  pageSize: number;
+  pageHref: (target: { page: number; pageSize: number }) => string;
   plans: PlanResponse[];
   busy: boolean;
   serverError: string | null;
@@ -208,12 +217,15 @@ export function TenantSubscriptionSection({
           {history === null ? (
             <p className="text-sm text-warning">Không tải được lịch sử đăng ký.</p>
           ) : history.length > 0 ? (
-            <DataTable
-              columns={historyColumns}
-              data={history}
-              getRowKey={(s) => s.id}
-              emptyMessage="Chưa có lịch sử đăng ký."
-            />
+            <>
+              <DataTable
+                columns={historyColumns}
+                data={history}
+                getRowKey={(s) => s.id}
+                emptyMessage="Chưa có lịch sử đăng ký."
+              />
+              <PaginationBar page={page} pageSize={pageSize} total={historyTotal} hrefFor={pageHref} />
+            </>
           ) : null}
         </DetailSection>
       </CardContent>

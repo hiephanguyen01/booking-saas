@@ -14,13 +14,11 @@ import { PageHeader } from '~/components/page-header';
 import { StatCard } from '~/components/stat-card';
 import { BookingStatusBadge } from '~/components/status-badge';
 import { Money } from '~/components/money';
-import {
-  parseBookingStatus,
-  type BookingStatusFilter,
-  type BookingSummary,
-} from '~/features/bookings/lib/booking-list';
+import { parseBookingStatus, type BookingStatusFilter } from '~/features/bookings/lib/booking-list';
 import { fetchBookingList } from '~/features/bookings/server/booking-list.server';
 import { dashboardPaths } from '~/constants/paths';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
 interface PartnerStat {
   partnerId: string;
@@ -40,11 +38,13 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.bookings.read');
   const status = parseBookingStatus(url.searchParams.get('status'));
+  const { page, pageSize } = readListParams(url.searchParams);
   const [list, statsRes, partnersRes] = await Promise.all([
-    fetchBookingList(auth, status, request.signal),
+    fetchBookingList(auth, status, page, pageSize, request.signal),
     apiGet<PartnerStat[]>('/tenant/bookings/partner-stats', auth, { signal: request.signal }),
     can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth, {
+      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, {
+          query: { pageSize: 100 },
           signal: request.signal,
         })
       : Promise.resolve(null),
@@ -57,7 +57,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   return {
     status,
     bookings: list.items,
-    summary: list.summary,
+    total: list.total,
     stats: statsRes.ok ? (statsRes.data ?? []) : [],
     partnerNames,
   };
@@ -68,7 +68,7 @@ export default function TenantBookings({ loaderData }: Route.ComponentProps) {
     <TenantBookingsPage
       status={loaderData.status}
       bookings={loaderData.bookings}
-      summary={loaderData.summary}
+      total={loaderData.total}
       stats={loaderData.stats}
       partnerNames={loaderData.partnerNames}
     />
@@ -78,23 +78,32 @@ export default function TenantBookings({ loaderData }: Route.ComponentProps) {
 interface TenantBookingsPageProps {
   status: BookingStatusFilter;
   bookings: BookingResponse[];
-  summary: BookingSummary;
+  total: number;
   stats: PartnerStat[];
   partnerNames: Record<string, string>;
 }
 
-function TenantBookingsPage({ status, bookings, summary, stats, partnerNames }: TenantBookingsPageProps) {
+function TenantBookingsPage({ status, bookings, total, stats, partnerNames }: TenantBookingsPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const kpis = summary;
-  // When the row cap is hit the KPIs cover only the latest slice — say so rather
-  // than presenting a truncated count as a cumulative total.
-  const cappedHint = kpis.capped ? 'trong 200 đơn gần nhất' : undefined;
+  const { page, pageSize, pageHref } = readListParams(searchParams);
+  // Tenant-wide KPIs come from the partner-stats aggregate (accurate across the
+  // whole dataset), never from the current page — summing per-partner counts.
+  const kpis = stats.reduce(
+    (acc, s) => ({
+      total: acc.total + s.total,
+      confirmed: acc.confirmed + s.confirmed,
+      completed: acc.completed + s.completed,
+      cancelled: acc.cancelled + s.cancelled,
+    }),
+    { total: 0, confirmed: 0, completed: 0, cancelled: 0 },
+  );
 
   function setStatus(nextStatus: string) {
     const next = new URLSearchParams(searchParams);
     const parsed = parseBookingStatus(nextStatus);
     if (parsed === 'all') next.delete('status');
     else next.set('status', parsed);
+    next.delete('page'); // a filter change resets to page 1
     setSearchParams(next, { preventScrollReset: true });
   }
 
@@ -143,15 +152,10 @@ function TenantBookingsPage({ status, bookings, summary, stats, partnerNames }: 
       <PageHeader title="Đặt chỗ" description="Theo dõi đơn đặt và sức khoẻ vận hành của từng đối tác." />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Tổng đơn" value={kpis.total} hint={cappedHint} />
-        <StatCard label="Đang hoạt động" value={kpis.active} tone="default" hint={cappedHint} />
-        <StatCard label="Đã hoàn tất" value={kpis.completed} tone="positive" hint={cappedHint} />
-        <StatCard
-          label="Doanh thu ghi nhận"
-          value={<Money value={kpis.revenue} />}
-          tone="positive"
-          hint={cappedHint}
-        />
+        <StatCard label="Tổng đơn" value={kpis.total} />
+        <StatCard label="Đã xác nhận" value={kpis.confirmed} tone="default" />
+        <StatCard label="Đã hoàn tất" value={kpis.completed} tone="positive" />
+        <StatCard label="Đã huỷ" value={kpis.cancelled} tone="negative" />
       </div>
 
       <Tabs defaultValue="list">
@@ -176,6 +180,7 @@ function TenantBookingsPage({ status, bookings, summary, stats, partnerNames }: 
             </Select>
           </div>
           <DataTable columns={bookingColumns} data={bookings} getRowKey={(b) => b.id} emptyMessage="Không có đơn nào." />
+          <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
         </TabsContent>
 
         <TabsContent value="partners" className="space-y-4">

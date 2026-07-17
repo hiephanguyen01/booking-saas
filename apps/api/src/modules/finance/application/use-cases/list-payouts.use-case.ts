@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { PaginationQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PAYOUT_REPOSITORY,
@@ -14,7 +15,10 @@ export class ListPayoutsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string): Promise<PayoutRecord[]> {
-    return this.tenantDb.forTenant(tenantId, (tx) => this.payouts.list(tx));
+  execute(
+    tenantId: string,
+    query: PaginationQuery,
+  ): Promise<{ items: PayoutRecord[]; total: number }> {
+    return this.tenantDb.forTenant(tenantId, (tx) => this.payouts.list(tx, query));
   }
 }

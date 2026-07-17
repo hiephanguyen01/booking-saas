@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { Banknote, TrendingUp, Wallet } from 'lucide-react';
+import { useSearchParams } from 'react-router';
+import { TrendingUp, Wallet } from 'lucide-react';
 import type {
   LedgerEntryResponse,
+  Paginated,
   PartnerFinanceResponse,
   PayoutResponse,
 } from '@booking/contracts';
@@ -13,7 +15,9 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { LEDGER_ENTRY_LABEL } from '~/constants/finance';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { PaginationBar } from '~/components/pagination-bar';
 import { StatCard } from '~/components/stat-card';
+import { readListParams } from '~/lib/pagination';
 import { Money, amountToneClass } from '~/components/money';
 import { CopyableCode } from '~/components/copyable-code';
 import { PayoutStatusBadge } from '~/components/status-badge';
@@ -23,22 +27,35 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Doanh thu · Đối tác · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.finance.read');
-  // The payout runs come from their own endpoint so pending/failed runs are
-  // visible (the ledger only records settled payouts). Each fetch can fail
-  // independently — a payout-feed error must not blank out the ledger.
-  const [financeRes, payoutsRes] = await Promise.all([
+  // Two paginated tables on one page → namespace the ledger pager so it never
+  // collides with the payout pager. `/partner/finance` stays balance + a recent
+  // ledger preview; the full journal comes from the paginated ledger endpoint.
+  const ledgerParams = readListParams(url.searchParams, {
+    pageKey: 'ledgerPage',
+    pageSizeKey: 'ledgerPageSize',
+  });
+  const payoutParams = readListParams(url.searchParams);
+  const [financeRes, ledgerRes, payoutsRes] = await Promise.all([
     apiGet<PartnerFinanceResponse>('/partner/finance', auth),
-    apiGet<PayoutResponse[]>('/partner/finance/payouts', auth),
+    apiGet<Paginated<LedgerEntryResponse>>('/partner/finance/ledger', auth, {
+      query: ledgerParams.toApiQuery(),
+    }),
+    apiGet<Paginated<PayoutResponse>>('/partner/finance/payouts', auth, {
+      query: payoutParams.toApiQuery(),
+    }),
   ]);
   const finance: PartnerFinanceResponse =
     financeRes.ok && financeRes.data ? financeRes.data : { balance: '0', entries: [] };
-  const payouts: PayoutResponse[] = payoutsRes.ok && payoutsRes.data ? payoutsRes.data : [];
   return {
     finance,
-    payouts,
+    ledger: ledgerRes.ok && ledgerRes.data ? ledgerRes.data.items : [],
+    ledgerTotal: ledgerRes.ok && ledgerRes.data ? ledgerRes.data.total : 0,
+    payouts: payoutsRes.ok && payoutsRes.data ? payoutsRes.data.items : [],
+    payoutsTotal: payoutsRes.ok && payoutsRes.data ? payoutsRes.data.total : 0,
     financeError: financeRes.ok ? null : (financeRes.error ?? 'Không tải được dữ liệu tài chính.'),
+    ledgerError: ledgerRes.ok ? null : (ledgerRes.error ?? 'Không tải được sổ cái.'),
     payoutsError: payoutsRes.ok ? null : (payoutsRes.error ?? 'Không tải được lịch sử chi trả.'),
   };
 }
@@ -48,12 +65,19 @@ function sumBig(values: string[]): string {
 }
 
 export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps) {
-  const { finance, payouts, financeError, payoutsError } = loaderData;
+  const { finance, ledger, ledgerTotal, payouts, payoutsTotal, financeError, ledgerError, payoutsError } =
+    loaderData;
+  const [searchParams] = useSearchParams();
+  const ledgerParams = readListParams(searchParams, {
+    pageKey: 'ledgerPage',
+    pageSizeKey: 'ledgerPageSize',
+  });
+  const payoutParams = readListParams(searchParams);
+  // `finance.entries` is a small recent preview from /partner/finance — used only
+  // for the "Tổng ghi có" tile; the full journal below is server-paginated.
   const entries = finance.entries;
 
   const totalCredit = useMemo(() => sumBig(entries.map((e) => e.credit)), [entries]);
-  const paidPayouts = useMemo(() => payouts.filter((p) => p.status === 'paid'), [payouts]);
-  const totalPaidOut = useMemo(() => sumBig(paidPayouts.map((p) => p.amount)), [paidPayouts]);
 
   const journalColumns: DataTableColumn<LedgerEntryResponse>[] = [
     {
@@ -152,7 +176,7 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
 
       <ErrorBanner error={financeError} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatCard
           label="Số dư hiện tại"
           value={<Money value={finance.balance} />}
@@ -166,21 +190,22 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
           hint="Cộng dồn theo sổ cái"
           icon={<TrendingUp className="size-4" />}
         />
-        <StatCard
-          label="Đã chi trả"
-          value={<Money value={totalPaidOut} />}
-          hint={`${paidPayouts.length} đợt đã chi`}
-          icon={<Banknote className="size-4" />}
-        />
       </div>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Sổ cái</h2>
+        <ErrorBanner error={ledgerError} />
         <DataTable
           columns={journalColumns}
-          data={entries}
+          data={ledger}
           getRowKey={(e) => e.id}
           emptyMessage="Chưa có bút toán nào."
+        />
+        <PaginationBar
+          page={ledgerParams.page}
+          pageSize={ledgerParams.pageSize}
+          total={ledgerTotal}
+          hrefFor={ledgerParams.pageHref}
         />
       </section>
 
@@ -194,6 +219,12 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
           data={payouts}
           getRowKey={(p) => p.id}
           emptyMessage="Chưa có đợt chi trả nào."
+        />
+        <PaginationBar
+          page={payoutParams.page}
+          pageSize={payoutParams.pageSize}
+          total={payoutsTotal}
+          hrefFor={payoutParams.pageHref}
         />
       </section>
     </div>

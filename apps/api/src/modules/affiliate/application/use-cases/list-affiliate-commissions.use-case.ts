@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { PaginationQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   AFFILIATE_COMMISSION_REPOSITORY,
@@ -14,7 +15,13 @@ export class ListAffiliateCommissionsUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async execute(tenantId: string, affiliateId: string): Promise<AffiliateCommissionWithBooking[]> {
-    return this.tenantDb.forTenant(tenantId, (tx) => this.commissions.listByAffiliate(tx, affiliateId));
+  async execute(
+    tenantId: string,
+    affiliateId: string,
+    query: PaginationQuery,
+  ): Promise<{ items: AffiliateCommissionWithBooking[]; total: number }> {
+    return this.tenantDb.forTenant(tenantId, (tx) =>
+      this.commissions.listByAffiliatePaginated(tx, affiliateId, query),
+    );
   }
 }

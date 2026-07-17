@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { BookingMode, ModerationActor } from '@booking/contracts';
+import { toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateListingData,
@@ -70,11 +71,16 @@ function toRecord(l: Row): ListingRecord {
   };
 }
 
-/** Prisma `where` for the shared listing filter. */
+/**
+ * Prisma `where` for the shared listing filter, EXCLUDING `status` — so it doubles
+ * as the `baseWhere` the per-status counts are grouped over. `listPage` layers the
+ * active `status` on top for `items`/`total`.
+ */
 function toWhere(filter: ListingFilter): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {};
   if (filter.groupId) where.groupId = filter.groupId;
   if (filter.partnerId) where.partnerId = filter.partnerId;
+  if (filter.q) where.title = { contains: filter.q, mode: 'insensitive' };
   return where;
 }
 
@@ -187,9 +193,16 @@ export class PrismaListingRepository implements IListingRepository {
     tx: PrismaTx,
     filter: ListingFilter,
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingRecord[]; total: number }> {
-    const where = toWhere(filter);
-    const [items, total] = await Promise.all([
+  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }> {
+    // `baseWhere` carries every filter EXCEPT status, so each status tab's count
+    // reflects the group/search scope while ignoring the active tab. `items`/`total`
+    // use the full `where` (status included) — filtered identically or the pager lies.
+    const baseWhere = toWhere(filter);
+    const where: Prisma.ListingWhereInput = {
+      ...baseWhere,
+      ...(filter.status ? { status: filter.status } : {}),
+    };
+    const [items, total, countRows] = await Promise.all([
       tx.listing.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -198,8 +211,9 @@ export class PrismaListingRepository implements IListingRepository {
         take: page.pageSize,
       }),
       tx.listing.count({ where }),
+      tx.listing.groupBy({ by: ['status'], where: baseWhere, _count: true }),
     ]);
-    return { items: items.map(toRecord), total };
+    return { items: items.map(toRecord), total, counts: toStatusCounts(countRows) };
   }
 
   async update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord> {

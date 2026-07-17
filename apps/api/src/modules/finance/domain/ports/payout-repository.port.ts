@@ -32,9 +32,17 @@ export interface CreatePayoutData {
 export interface IPayoutRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePayoutData): Promise<PayoutRecord>;
   findById(tx: PrismaTx, id: string): Promise<PayoutRecord | null>;
-  list(tx: PrismaTx): Promise<PayoutRecord[]>;
+  list(
+    tx: PrismaTx,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PayoutRecord[]; total: number }>;
   /** Every payout run addressed to one payee, newest first — the payee's own history. */
-  listForPayee(tx: PrismaTx, payeeType: PayoutPayeeType, payeeId: string): Promise<PayoutRecord[]>;
+  listForPayee(
+    tx: PrismaTx,
+    payeeType: PayoutPayeeType,
+    payeeId: string,
+    params: { page: number; pageSize: number },
+  ): Promise<{ items: PayoutRecord[]; total: number }>;
   markPaid(tx: PrismaTx, id: string, evidence: { reference: string; evidenceKey?: string }): Promise<PayoutRecord>;
   markFailed(tx: PrismaTx, id: string, reason: string | null): Promise<PayoutRecord>;
   /** Sum of not-yet-settled payouts for a payee (pending + processing) — prevents

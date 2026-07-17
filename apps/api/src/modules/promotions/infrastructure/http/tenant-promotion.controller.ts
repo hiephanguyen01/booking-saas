@@ -1,13 +1,16 @@
 import {
   uuidSchema,
+  type Paginated,
   type PromotionCategoryOption,
   type PromotionDetailResponse,
   type PromotionResponse,
   type PromoUsageStatsResponse,
 } from '@booking/contracts';
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
+import { toPaginated } from '../../../../shared/pagination/pagination';
+import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -52,10 +55,10 @@ export class TenantPromotionController {
   @RequirePermissions('tenant.promotions.manage')
   @Get()
   @ApiOperation({ summary: 'List all promotions for the tenant' })
-  @ApiOkResponse({ type: [PromotionResponseDto] })
-  async list(): Promise<PromotionResponse[]> {
-    const items = await this.listPromotions.execute(this.tenantContext.tenantIdOrThrow());
-    return items.map(toPromotionResponse);
+  @ApiPaginatedResponse(PromotionResponseDto)
+  async list(@Query() query: PaginationQueryDto): Promise<Paginated<PromotionResponse>> {
+    const result = await this.listPromotions.execute(this.tenantContext.tenantIdOrThrow(), query);
+    return toPaginated(query, result, toPromotionResponse);
   }
 
   /**

@@ -8,6 +8,7 @@ import {
   ledgerQuerySchema,
   markPayoutPaidInputSchema,
   paginationQuerySchema,
+  partnerLedgerQuerySchema,
   partnerFinanceResponseSchema,
   payoutResponseSchema,
   platformFinanceResponseSchema,
@@ -27,6 +28,7 @@ export class FailPayoutDto extends createZodDto(failPayoutInputSchema) {}
 // Query params
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
 export class LedgerQueryDto extends createZodDto(ledgerQuerySchema) {}
+export class PartnerLedgerQueryDto extends createZodDto(partnerLedgerQuerySchema) {}
 export class TenantPayableQueryDto extends createZodDto(tenantPayableQuerySchema) {}
 
 // Responses

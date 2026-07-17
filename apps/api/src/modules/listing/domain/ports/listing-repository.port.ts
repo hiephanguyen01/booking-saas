@@ -121,6 +121,9 @@ export type UpdateListingData = Partial<
 export interface ListingFilter {
   groupId?: string;
   partnerId?: string;
+  status?: PublishStatus;
+  /** Case-insensitive search over the listing title. Applied to items + counts. */
+  q?: string;
 }
 
 export interface IListingRepository {
@@ -129,12 +132,16 @@ export interface IListingRepository {
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingRecord | null>;
   findPublicBySlug(tx: PrismaTx, slug: string): Promise<PublicListingRecord | null>;
   list(tx: PrismaTx, filter: ListingFilter): Promise<ListingRecord[]>;
-  /** One page of `list`, plus the unpaginated total (§13 pagination shape). */
+  /**
+   * One page of `list`, plus the unpaginated total and per-status row counts
+   * (§13 pagination shape). `counts` is computed over every filter EXCEPT
+   * `status`, so each status tab shows its own total.
+   */
   listPage(
     tx: PrismaTx,
     filter: ListingFilter,
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingRecord[]; total: number }>;
+  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }>;
   update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord>;
   moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;

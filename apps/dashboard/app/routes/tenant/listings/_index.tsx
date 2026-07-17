@@ -1,9 +1,13 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
-import type { ListingResponse, Paginated, PartnerResponse, PublishStatus } from '@booking/contracts';
+import { Link, useSearchParams } from 'react-router';
+import type {
+  ListingResponse,
+  Paginated,
+  PaginatedWithCounts,
+  PartnerResponse,
+  PublishStatus,
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { ClipboardCheck, Eye } from 'lucide-react';
 import type { Route } from './+types/_index';
@@ -15,27 +19,37 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
+import { StatusFilterTabs } from '~/components/status-filter-tabs';
 import { listingPriceFrom } from '~/lib/listing-price';
+import { readListParams } from '~/lib/pagination';
+import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Listing · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+const STATUS_VALUES: PublishStatus[] = ['draft', 'pending_review', 'published', 'archived'];
+
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
-  // `GET /tenant/listings` is paginated; pull a full moderation page (max 100).
+  const { toApiQuery } = readListParams(url.searchParams);
+  const statusRaw = url.searchParams.get('status') ?? '';
+  const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
   const [res, partnersRes] = await Promise.all([
-    apiGet<Paginated<ListingResponse>>('/tenant/listings?pageSize=100', auth),
+    apiGet<PaginatedWithCounts<ListingResponse>>('/tenant/listings', auth, {
+      query: toApiQuery({ status }),
+    }),
     can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
+      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, { query: { pageSize: 100 } })
       : Promise.resolve(null),
   ]);
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
   return {
-    listings: res.ok ? (res.data?.items ?? []) : [],
+    result: res.ok ? res.data : null,
     partnerNames,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách listing.'),
+    filters: { status },
     canModerate: can('tenant.listings.publish'),
   };
 }
@@ -51,19 +65,13 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 export default function TenantListings({ loaderData }: Route.ComponentProps) {
-  const { listings, partnerNames, error, canModerate } = loaderData;
-  const [filter, setFilter] = useState<Filter>('all');
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: listings.length };
-    for (const l of listings) c[l.status] = (c[l.status] ?? 0) + 1;
-    return c;
-  }, [listings]);
-
-  const rows = useMemo(
-    () => (filter === 'all' ? listings : listings.filter((l) => l.status === filter)),
-    [filter, listings],
-  );
+  const { result, partnerNames, error, canModerate, filters } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
+  const listings = result?.items ?? [];
+  const total = result?.total ?? 0;
+  const counts = result?.counts;
+  const statusValue = filters.status || 'all';
 
   const columns: DataTableColumn<ListingResponse>[] = [
     {
@@ -149,25 +157,21 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-        <TabsList className="flex-wrap">
-          {FILTERS.map((f) => (
-            <TabsTrigger key={f.value} value={f.value} className="gap-2">
-              {f.label}
-              <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
-                {counts[f.value] ?? 0}
-              </span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <StatusFilterTabs
+        filters={FILTERS}
+        value={statusValue}
+        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
+        counts={counts}
+      />
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={listings}
         getRowKey={(l) => l.id}
         emptyMessage="Không có listing nào trong nhóm này."
       />
+
+      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

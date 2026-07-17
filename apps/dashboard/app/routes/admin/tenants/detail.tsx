@@ -1,7 +1,9 @@
+import { useSearchParams } from 'react-router';
 import { CalendarClock, ExternalLink, ListChecks, Users } from 'lucide-react';
 import {
   updateTenantInputSchema,
   type DomainResponse,
+  type Paginated,
   type PlanResponse,
   type SubscriptionHistoryItem,
   type TenantDetailResponse,
@@ -40,18 +42,27 @@ import { StatCard } from '~/components/stat-card';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { TenantStatusBadge } from '~/components/status-badge';
+import { readListParams } from '~/lib/pagination';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   return [{ title: `${loaderData?.tenant?.name ?? 'Tenant'} · Bookify Admin` }];
 }
 
-export async function loader({ request, params }: Route.LoaderArgs) {
+export async function loader({ request, params, url }: Route.LoaderArgs) {
   const id = params.id;
   const { auth } = await requirePlatform(request, 'platform.tenants.read');
+  // The subscription-history table is server-paginated with its OWN namespaced params
+  // (subPage/subPageSize) so it never collides with anything else on this detail page.
+  const { toApiQuery } = readListParams(url.searchParams, {
+    pageKey: 'subPage',
+    pageSizeKey: 'subPageSize',
+  });
   const [tenantRes, subRes, historyRes, domainsRes, plansRes] = await Promise.all([
     apiGet<TenantDetailResponse>(`/admin/tenants/${id}`, auth),
     apiGet<CurrentSubscription | null>(`/admin/tenants/${id}/subscription`, auth),
-    apiGet<SubscriptionHistoryItem[]>(`/admin/tenants/${id}/subscriptions`, auth),
+    apiGet<Paginated<SubscriptionHistoryItem>>(`/admin/tenants/${id}/subscriptions`, auth, {
+      query: toApiQuery(),
+    }),
     apiGet<DomainResponse[]>(`/admin/tenants/${id}/domains`, auth),
     apiGet<PlanResponse[]>('/admin/plans', auth),
   ]);
@@ -62,7 +73,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     tenant: tenantRes.data,
     subscription: subRes.ok ? subRes.data : null,
     // null → the history fetch itself failed (render the failed state); [] → no history yet.
-    history: historyRes.ok ? (historyRes.data ?? []) : null,
+    history: historyRes.ok ? (historyRes.data?.items ?? []) : null,
+    historyTotal: historyRes.ok ? (historyRes.data?.total ?? 0) : 0,
     domains: domainsRes.ok ? (domainsRes.data ?? []) : [],
     plans: plansRes.ok ? (plansRes.data ?? []) : [],
   };
@@ -80,8 +92,14 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function TenantDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { tenant, subscription, history, domains, plans } = loaderData;
+  const { tenant, subscription, history, historyTotal, domains, plans } = loaderData;
   const busy = useBusy();
+  const [searchParams] = useSearchParams();
+  const {
+    page: subPage,
+    pageSize: subPageSize,
+    pageHref: subPageHref,
+  } = readListParams(searchParams, { pageKey: 'subPage', pageSizeKey: 'subPageSize' });
 
   const result = (actionData ?? null) as ActionResult | null;
   const scopedError = (scope: ActionScope): string | null =>
@@ -196,6 +214,10 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
       <TenantSubscriptionSection
         subscription={subscription}
         history={history}
+        historyTotal={historyTotal}
+        page={subPage}
+        pageSize={subPageSize}
+        pageHref={subPageHref}
         plans={plans}
         busy={busy}
         serverError={scopedError('subscription')}

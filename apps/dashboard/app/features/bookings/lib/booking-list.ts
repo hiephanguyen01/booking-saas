@@ -12,18 +12,10 @@ export const bookingStatuses = [
 
 export type BookingStatusFilter = (typeof bookingStatuses)[number];
 
-export interface BookingSummary {
-  total: number;
-  active: number;
-  completed: number;
-  revenue: string;
-  /** The row cap was hit — the KPIs cover the latest {@link BOOKING_LIST_LIMIT} only. */
-  capped: boolean;
-}
-
 export interface BookingListData {
   items: BookingResponse[];
-  summary: BookingSummary;
+  /** Total rows matching the active status filter (server count, for the pager). */
+  total: number;
 }
 
 export function parseBookingStatus(value: string | null): BookingStatusFilter {

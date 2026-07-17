@@ -40,7 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth)
       : Promise.resolve(null),
     can('tenant.bookings.read')
-      ? apiGet<BookingResponse[]>('/tenant/bookings', auth)
+      ? apiGet<{ items: BookingResponse[] }>('/tenant/bookings?page=1&pageSize=100', auth)
       : Promise.resolve(null),
     can('tenant.listings.read')
       ? apiGet<{ items: ListingResponse[]; total: number }>('/tenant/listings?page=1&pageSize=100', auth)
@@ -52,7 +52,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const listingsPage = listingsRes?.ok ? listingsRes.data : null;
   const listings = listingsPage?.items ?? (listingsRes?.ok ? [] : null);
-  const bookings = bookingsRes?.ok ? (bookingsRes.data ?? []) : null;
+  const bookings = bookingsRes?.ok ? (bookingsRes.data?.items ?? []) : null;
 
   return {
     tenantName: membership.tenantName ?? 'Tenant',

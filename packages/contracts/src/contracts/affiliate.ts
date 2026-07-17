@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { paginationQuerySchema, uuidSchema } from './common';
 import { bookingStatusSchema } from './booking';
 import { rateTypeSchema } from './finance';
 
@@ -238,6 +238,17 @@ export const affiliateListItemSchema = z.object({
   createdAt: z.string(),
 });
 export type AffiliateListItem = z.infer<typeof affiliateListItemSchema>;
+
+/**
+ * `GET /tenant/affiliates` list query (§15.3): offset pagination plus an optional
+ * membership-`status` filter. The response is a `PaginatedWithCounts` — the
+ * per-status `counts` are computed over every membership (ignoring this filter) so
+ * the filter-tab chips always show their own totals.
+ */
+export const listAffiliatesQuerySchema = paginationQuerySchema.extend({
+  status: affiliateStatusSchema.optional(),
+});
+export type ListAffiliatesQuery = z.infer<typeof listAffiliatesQuerySchema>;
 
 export const tenantAffiliateStatusInputSchema = z.object({
   status: z.enum(['approved', 'suspended']),

@@ -9,6 +9,7 @@ import {
   listingGroupReviewResponseSchema,
   listingResponseSchema,
   listingReviewResponseSchema,
+  listPartnerListingsQuerySchema,
   listTenantListingsQuerySchema,
   moderationReasonInputSchema,
   pricingRuleInputSchema,
@@ -33,6 +34,7 @@ export class QuoteQueryDto extends createZodDto(quoteQuerySchema) {}
 export class ModerationReasonDto extends createZodDto(moderationReasonInputSchema) {}
 export class PublishListingDto extends createZodDto(publishListingInputSchema) {}
 export class ListTenantListingsQueryDto extends createZodDto(listTenantListingsQuerySchema) {}
+export class ListPartnerListingsQueryDto extends createZodDto(listPartnerListingsQuerySchema) {}
 
 // ── Responses ─────────────────────────────────────────────────────────────────
 export class ListingGroupResponseDto extends createZodDto(listingGroupResponseSchema) {}

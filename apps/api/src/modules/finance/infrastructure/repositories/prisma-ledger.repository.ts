@@ -99,6 +99,7 @@ function viewConditions(filters: LedgerFilters): Prisma.Sql {
   const conds: Prisma.Sql[] = [];
   if (filters.bookingId) conds.push(Prisma.sql`le.booking_id = ${filters.bookingId}::uuid`);
   if (filters.ownerType) conds.push(Prisma.sql`la.owner_type = ${filters.ownerType}::ledger_owner_type`);
+  if (filters.ownerId) conds.push(Prisma.sql`la.owner_id = ${filters.ownerId}::uuid`);
   if (filters.entryType) conds.push(Prisma.sql`le.entry_type = ${filters.entryType}::ledger_entry_type`);
   if (filters.from) conds.push(Prisma.sql`le.created_at >= ${filters.from}`);
   if (filters.to) conds.push(Prisma.sql`le.created_at <= ${filters.to}`);
