@@ -5,10 +5,20 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@booking/ui/components/ui/collapsible';
-import { Check, ChevronDown, Clock3, ImageIcon, MapPin, Ruler, Sparkles, Users } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  Clock3,
+  ImageIcon,
+  MapPin,
+  Ruler,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import { PendingLink } from '../../../components/pending-link';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { formatListingLocation, formatVnd } from '../../../lib/ui';
+import { hoursBetween } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
 import type { BookingMode, RoomOption } from '../listing-group-types';
 import { checkoutHref, type RoomAvailabilityState } from '../listing-group-utils';
@@ -43,10 +53,7 @@ export function RoomDetails({
           attributes.map((attribute, index) => {
             const Icon = index === 0 ? Ruler : index === 1 ? ImageIcon : Sparkles;
             return (
-              <span
-                key={attribute.key}
-                className="flex items-start gap-2.5 text-muted-foreground"
-              >
+              <span key={attribute.key} className="flex items-start gap-2.5 text-muted-foreground">
                 <Icon className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden="true" />
                 {attribute.kind === 'area'
                   ? t('group.area', { value: attribute.value })
@@ -132,11 +139,16 @@ export function RoomPrice({
     return <p className="font-medium text-muted-foreground">{t('group.soldOut')}</p>;
   if (state === 'missing-price')
     return <p className="font-medium text-muted-foreground">{t('group.noPrice')}</p>;
+  const selectedHours = option.start && option.end ? hoursBetween(option.start, option.end) : null;
   return (
     <div className="flex flex-col gap-1">
       <strong className="text-xl text-primary">{formatVnd(option.price)}</strong>
       <span className="text-muted-foreground">
-        {mode === 'hourly' ? t('group.pricePerHour') : t('group.priceTotalRange')}
+        {mode === 'hourly'
+          ? selectedHours
+            ? t('group.priceForHours', { count: selectedHours })
+            : t('group.pricePerHour')
+          : t('group.priceTotalRange')}
       </span>
     </div>
   );

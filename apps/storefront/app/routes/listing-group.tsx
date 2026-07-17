@@ -57,24 +57,57 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
           }),
         );
         const slots =
-          availability?.mode === 'hourly'
-            ? availability.days.flatMap((day) => day.slots).filter((slot) => slot.available)
-            : [];
-        const price = slots.length
-          ? slots.reduce(
-              (lowest, slot) => (BigInt(slot.price) < BigInt(lowest) ? slot.price : lowest),
-              slots[0]!.price,
+          availability?.mode === 'hourly' ? availability.days.flatMap((day) => day.slots) : [];
+        const openSlots = slots.filter((slot) => slot.available);
+        const timezone = availability?.timezone ?? 'Asia/Ho_Chi_Minh';
+        const requestedStart = state.hasTimeSelection
+          ? zonedToUtcIso(state.date, state.startTime, timezone)
+          : null;
+        const requestedEnd = state.hasTimeSelection
+          ? zonedToUtcIso(state.date, state.endTime, timezone)
+          : null;
+        const requestedSlot =
+          requestedStart && requestedEnd
+            ? slots.find(
+                (slot) =>
+                  slot.startUtc === requestedStart &&
+                  slot.endUtc === requestedEnd &&
+                  slot.available,
+              )
+            : null;
+        const quote = requestedSlot
+          ? await safe(
+              fetchQuote(
+                request,
+                child.slug,
+                new URLSearchParams({
+                  mode: 'hourly',
+                  from: requestedStart!,
+                  to: requestedEnd!,
+                  quantity: '1',
+                }),
+              ),
             )
           : null;
+        const price = state.hasTimeSelection
+          ? (quote?.subtotal ?? null)
+          : openSlots.length
+            ? openSlots.reduce(
+                (lowest, slot) => (BigInt(slot.price) < BigInt(lowest) ? slot.price : lowest),
+                openSlots[0]!.price,
+              )
+            : null;
         return {
           child,
           detail,
           availability,
-          available: slots.length > 0,
+          available: state.hasTimeSelection
+            ? Boolean(requestedSlot && quote)
+            : openSlots.length > 0,
           price,
-          quote: null,
-          start: null,
-          end: null,
+          quote,
+          start: requestedStart,
+          end: requestedEnd,
         };
       }
       const daily = (detail.modeConfig.daily ?? {}) as Record<string, unknown>;

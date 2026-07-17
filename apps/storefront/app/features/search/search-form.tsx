@@ -27,6 +27,7 @@ import {
   Check,
   ChevronDown,
   ChevronsUpDown,
+  Clock3,
   Info,
   MapPin,
   Search,
@@ -100,6 +101,8 @@ export function SearchForm({
   const seed = selectedDates(state);
   const [date, setDate] = useState(seed.date);
   const [range, setRange] = useState<DateRange>(toRange(seed));
+  const [startTime, setStartTime] = useState(state.startTime);
+  const [endTime, setEndTime] = useState(state.endTime);
   const types = [...listingTypes].sort((left, right) => {
     if (left.slug.toLowerCase() === 'studio') return -1;
     if (right.slug.toLowerCase() === 'studio') return 1;
@@ -120,7 +123,9 @@ export function SearchForm({
   const rangeFrom = range.from ? localToDateOnly(range.from) : undefined;
   const rangeTo = range.to ? localToDateOnly(range.to) : undefined;
   const dailyRange = validDailyRange(rangeFrom, rangeTo);
-  const canSubmit = canSubmitSearch(mode, rangeFrom, rangeTo);
+  const canSubmit =
+    canSubmitSearch(mode, rangeFrom, rangeTo) &&
+    (mode !== 'hourly' || !date || startTime < endTime);
 
   function changeType(nextType: string): void {
     const schedule =
@@ -193,7 +198,7 @@ export function SearchForm({
         <div
           className={cn(
             'grid gap-3',
-            isHero ? 'sm:grid-cols-2 lg:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5',
+            isHero ? 'sm:grid-cols-2 lg:grid-cols-5' : 'lg:grid-cols-4 xl:grid-cols-6',
           )}
         >
           <SearchField icon={Search} label={t('home.searchPlaceholder')}>
@@ -217,6 +222,16 @@ export function SearchForm({
               setRange={setRange}
               showModeTabs={!isHero}
               availableModes={availableModes}
+            />
+          ) : null}
+
+          {mode === 'hourly' ? (
+            <TimeRangeField
+              startTime={startTime}
+              endTime={endTime}
+              onStartTimeChange={setStartTime}
+              onEndTimeChange={setEndTime}
+              disabled={!date}
             />
           ) : null}
 
@@ -279,6 +294,50 @@ export function SearchForm({
         ) : null}
       </div>
     </Form>
+  );
+}
+
+function TimeRangeField({
+  startTime,
+  endTime,
+  onStartTimeChange,
+  onEndTimeChange,
+  disabled,
+}: {
+  startTime: string;
+  endTime: string;
+  onStartTimeChange: (value: string) => void;
+  onEndTimeChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslation(NsI18n.Common);
+  return (
+    <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+      <Clock3 className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <input
+        name="startTime"
+        type="time"
+        step={300}
+        value={startTime}
+        onChange={(event) => onStartTimeChange(event.target.value)}
+        disabled={disabled}
+        aria-label={t('home.startTime')}
+        className="w-0 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      <span className="text-muted-foreground" aria-hidden="true">
+        –
+      </span>
+      <input
+        name="endTime"
+        type="time"
+        step={300}
+        value={endTime}
+        onChange={(event) => onEndTimeChange(event.target.value)}
+        disabled={disabled}
+        aria-label={t('home.endTime')}
+        className="w-0 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      />
+    </div>
   );
 }
 

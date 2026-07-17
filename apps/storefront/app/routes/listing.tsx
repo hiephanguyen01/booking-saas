@@ -5,7 +5,7 @@ import { ListingPage } from '../features/listing/listing-page';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
-import { addDays, DEFAULT_TZ, todayInTz } from '../lib/time';
+import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
 import type { StorefrontContext } from '../root';
 import { jsonLd } from '../lib/seo';
@@ -83,24 +83,87 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     availabilityPromise = fetchAvailability(request, params.listingSlug, { mode, from, to });
   }
 
-  const start = searchParams.get('start');
-  const end = searchParams.get('end');
-  const quantity = searchParams.get('qty') || '1';
-  const quotePromise =
-    start && end
-      ? fetchQuote(
-          request,
-          params.listingSlug,
-          new URLSearchParams({ mode, from: start, to: end, quantity }),
-        )
-      : Promise.resolve(null);
+  const availability = await availabilityPromise;
+  let selectionStart = searchParams.get('start');
+  let selectionEnd = searchParams.get('end');
+  const quantity = searchParams.get('qty') || searchParams.get('quantity') || '1';
 
-  const [availability, quote] = await Promise.all([availabilityPromise, quotePromise]);
+  if (mode === 'hourly' && (!selectionStart || !selectionEnd)) {
+    const date = searchParams.get('date');
+    const startTime = searchParams.get('startTime');
+    const endTime = searchParams.get('endTime');
+    if (date && startTime && endTime && startTime < endTime) {
+      selectionStart = zonedToUtcIso(date, startTime, availability.timezone);
+      selectionEnd = zonedToUtcIso(date, endTime, availability.timezone);
+    }
+  }
+
+  const selectionAvailable =
+    selectionStart && selectionEnd
+      ? isSelectionAvailable(
+          availability,
+          mode,
+          selectionStart,
+          selectionEnd,
+          quantity,
+          searchParams,
+        )
+      : false;
+  const quote = selectionAvailable
+    ? await fetchQuote(
+        request,
+        params.listingSlug,
+        new URLSearchParams({
+          mode,
+          from: selectionStart!,
+          to: selectionEnd!,
+          quantity,
+        }),
+      )
+    : null;
   const locations = provinces.map((province) => ({
     value: province.code,
     label: province.name,
   }));
-  return { listing, mode, availability, quote, locations };
+  return { listing, mode, availability, quote, locations, selectionStart, selectionEnd };
+}
+
+function isSelectionAvailable(
+  availability: Awaited<ReturnType<typeof fetchAvailability>>,
+  mode: AvailabilityMode,
+  start: string,
+  end: string,
+  quantity: string,
+  searchParams: URLSearchParams,
+): boolean {
+  if (mode === 'hourly') {
+    return (
+      availability.mode === 'hourly' &&
+      availability.days.some((day) =>
+        day.slots.some((slot) => slot.startUtc === start && slot.endUtc === end && slot.available),
+      )
+    );
+  }
+  if (mode === 'inventory') {
+    const requested = Number(quantity);
+    return (
+      availability.mode === 'inventory' &&
+      Number.isInteger(requested) &&
+      requested > 0 &&
+      availability.inventory.remaining >= requested
+    );
+  }
+  if (availability.mode !== 'daily') return false;
+  const from = searchParams.get('from');
+  const to = searchParams.get('to');
+  if (!from || !to || from >= to) return false;
+  const openDates = new Set(
+    availability.days.filter((day) => day.status === 'available').map((day) => day.date),
+  );
+  for (let date = from; date < to; date = addDays(date, 1)) {
+    if (!openDates.has(date)) return false;
+  }
+  return true;
 }
 
 export default function ListingRoute(props: Route.ComponentProps) {

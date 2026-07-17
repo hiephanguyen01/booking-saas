@@ -1,4 +1,5 @@
 import type { HourlySlot } from '@booking/contracts';
+import { Button } from '@booking/ui/components/ui/button';
 import {
   Empty,
   EmptyDescription,
@@ -7,7 +8,7 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { Building2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { SectionCard } from '../../../components/section-card';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { BookingMode, RoomOption } from '../listing-group-types';
@@ -27,31 +28,52 @@ export function RoomOptionsSection({
   roomOptions,
   mode,
   date,
+  hideUnavailableByDefault,
 }: {
   roomOptions: RoomOption[];
   mode: BookingMode;
   date: string;
+  hideUnavailableByDefault: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const [hideUnavailable, setHideUnavailable] = useState(hideUnavailableByDefault);
   // The table and the card list are both mounted at every width, so deriving
   // the atomic slots per room here keeps `atomicHourlySlots` off the render path.
   const slotsByRoom = useMemo<SlotsByRoom>(
     () => new Map(roomOptions.map((option) => [option.child.id, hourlySlotsOf(option)])),
     [roomOptions],
   );
+  const unavailableCount = roomOptions.filter((option) => !option.available).length;
+  const visibleOptions = hideUnavailable
+    ? roomOptions.filter((option) => option.available)
+    : roomOptions;
 
   return (
     <SectionCard id="room-options" aria-labelledby="room-options-title" className="scroll-mt-28">
-      <div className="mb-5">
-        <h2 id="room-options-title" className="text-base font-semibold">
-          {t('group.roomTypes')}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {mode === 'hourly' ? t('group.availabilityOn', { date }) : t('group.availabilityRange')}
-        </p>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="room-options-title" className="text-base font-semibold">
+            {t('group.roomTypes')}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {mode === 'hourly' ? t('group.availabilityOn', { date }) : t('group.availabilityRange')}
+          </p>
+        </div>
+        {unavailableCount > 0 ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setHideUnavailable((current) => !current)}
+          >
+            {hideUnavailable
+              ? t('group.showUnavailableRooms', { count: unavailableCount })
+              : t('group.hideUnavailableRooms')}
+          </Button>
+        ) : null}
       </div>
 
-      {roomOptions.length ? (
+      {visibleOptions.length ? (
         <>
           <div className="hidden overflow-x-auto rounded-md border xl:block">
             <table className="w-full table-fixed text-left text-sm">
@@ -73,7 +95,7 @@ export function RoomOptionsSection({
                 </tr>
               </thead>
               <tbody>
-                {roomOptions.map((option) => (
+                {visibleOptions.map((option) => (
                   <RoomRow
                     key={option.child.id}
                     option={option}
@@ -86,7 +108,7 @@ export function RoomOptionsSection({
             </table>
           </div>
           <div className="flex flex-col gap-4 xl:hidden">
-            {roomOptions.map((option) => (
+            {visibleOptions.map((option) => (
               <RoomCard
                 key={option.child.id}
                 option={option}
@@ -160,7 +182,5 @@ function RoomCard({ option, mode, date, slots }: RoomProps) {
 
 function hourlySlotsOf(option: RoomOption): HourlySlot[] {
   if (option.availability?.mode !== 'hourly') return [];
-  return atomicHourlySlots(
-    option.availability.days.flatMap((day) => day.slots).filter((slot) => slot.available),
-  );
+  return atomicHourlySlots(option.availability.days.flatMap((day) => day.slots));
 }

@@ -9,6 +9,7 @@ import {
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { formatListingLocation, formatVnd } from '../../../lib/ui';
+import { clockHoursBetween } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
 
 export function SearchResultCard({
@@ -28,6 +29,9 @@ export function SearchResultCard({
   const photos = listing.photos.slice(0, 3);
   const location = formatListingLocation(listing);
   const selectedDayCount = state.hasDailyRange ? rangeDates(state.from, state.to).length : 0;
+  const selectedHours = state.hasTimeSelection
+    ? clockHoursBetween(state.startTime, state.endTime)
+    : null;
 
   return (
     <article className="group grid overflow-hidden rounded-lg border border-border bg-background transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)]">
@@ -93,7 +97,9 @@ export function SearchResultCard({
               {state.hasDailyRange
                 ? t('listing:forSelectedDays', { count: selectedDayCount })
                 : listing.priceUnit === 'hour'
-                  ? t('listing:perHour')
+                  ? selectedHours
+                    ? t('listing:forHours', { count: selectedHours })
+                    : t('listing:perHour')
                   : listing.priceUnit === 'item'
                     ? t('listing:perItem')
                     : listing.priceUnit === 'session'

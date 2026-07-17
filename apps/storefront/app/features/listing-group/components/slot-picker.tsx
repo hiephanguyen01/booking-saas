@@ -97,12 +97,20 @@ function SlotPickerContent({
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const [selected, setSelected] = useState<HourlySlot[]>([]);
+  const [useRequestedInterval, setUseRequestedInterval] = useState(
+    Boolean(option.start && option.end),
+  );
   const [expanded, setExpanded] = useState(false);
   const [selectionError, setSelectionError] = useState('');
   const timezone = option.availability?.timezone ?? DEFAULT_TZ;
-  const interval = slotInterval(selected);
+  const interval =
+    useRequestedInterval && option.start && option.end
+      ? { start: option.start, end: option.end }
+      : slotInterval(selected);
 
   function toggle(slot: HourlySlot): void {
+    if (!slot.available) return;
+    setUseRequestedInterval(false);
     const result = toggleContiguousSlot(selected, slot);
     setSelected(result.slots);
     setSelectionError(result.changed ? '' : t('group.contiguousOnly'));
@@ -143,12 +151,15 @@ function SlotPickerContent({
                   key={`${slot.startUtc}:${slot.endUtc}`}
                   id={slotFieldId(option.child.id, slot.startUtc)}
                   checked={selected.some((item) => item.startUtc === slot.startUtc)}
+                  disabled={!slot.available}
                   onToggle={() => toggle(slot)}
                 >
                   <span className="flex-1 text-sm">
                     {timeInTz(slot.startUtc, timezone)} - {timeInTz(slot.endUtc, timezone)}
                   </span>
-                  <span className="text-xs text-muted-foreground">{formatVnd(slot.price)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {slot.available ? formatVnd(slot.price) : t('group.unavailableSlot')}
+                  </span>
                 </SlotRow>
               ))
             ) : (
@@ -164,6 +175,7 @@ function SlotPickerContent({
               size="sm"
               onClick={() => {
                 setSelected([]);
+                setUseRequestedInterval(false);
                 setSelectionError('');
               }}
             >
@@ -181,7 +193,12 @@ function SlotPickerContent({
           {selectionError}
         </p>
       ) : null}
-      {selected.length ? (
+      {useRequestedInterval && option.start && option.end ? (
+        <Badge variant="secondary" className="gap-1.5 rounded-md py-1.5">
+          {t('group.requestedTime')}: {timeInTz(option.start, timezone)} -{' '}
+          {timeInTz(option.end, timezone)}
+        </Badge>
+      ) : selected.length ? (
         <div className="flex flex-wrap gap-2">
           {selected.map((slot) => (
             <Badge key={slot.startUtc} variant="secondary" className="gap-1.5 rounded-md py-1.5">
@@ -199,11 +216,7 @@ function SlotPickerContent({
         </div>
       ) : null}
       {bookingHref ? (
-        <PendingLink
-          to={bookingHref}
-          className="mt-1 w-full"
-          pendingLabel={t('group.navigating')}
-        >
+        <PendingLink to={bookingHref} className="mt-1 w-full" pendingLabel={t('group.navigating')}>
           {t('bookNow')}
         </PendingLink>
       ) : (
@@ -218,20 +231,27 @@ function SlotPickerContent({
 function SlotRow({
   id,
   checked,
+  disabled,
   onToggle,
   children,
 }: {
   id: string;
   checked: boolean;
+  disabled: boolean;
   onToggle: () => void;
   children: ReactNode;
 }) {
   return (
     <label
       htmlFor={id}
-      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted"
+      className={cn(
+        'flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5',
+        disabled
+          ? 'cursor-not-allowed bg-muted/40 text-muted-foreground opacity-60'
+          : 'cursor-pointer hover:bg-muted',
+      )}
     >
-      <Checkbox id={id} checked={checked} onCheckedChange={onToggle} />
+      <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={onToggle} />
       {children}
     </label>
   );

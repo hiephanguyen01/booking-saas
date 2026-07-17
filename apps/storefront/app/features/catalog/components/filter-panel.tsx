@@ -56,7 +56,15 @@ export function FilterPanel({
       ) : null}
       {state.sort !== 'relevance' ? <input type="hidden" name="sort" value={state.sort} /> : null}
       {state.mode === 'hourly' && state.hasDateSelection ? (
-        <input type="hidden" name="date" value={state.date} />
+        <>
+          <input type="hidden" name="date" value={state.date} />
+          {state.hasTimeSelection ? (
+            <>
+              <input type="hidden" name="startTime" value={state.startTime} />
+              <input type="hidden" name="endTime" value={state.endTime} />
+            </>
+          ) : null}
+        </>
       ) : (state.mode === 'daily' || state.mode === 'inventory') && state.hasDailyRange ? (
         <>
           <input type="hidden" name="from" value={state.from} />

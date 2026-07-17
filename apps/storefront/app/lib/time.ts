@@ -95,6 +95,19 @@ export function nightsBetween(from: string, to: string): number {
   return Math.max(0, Math.round((b - a) / 86_400_000));
 }
 
+/** Positive duration in hours, rounded to two decimals for 15/30-minute grids. */
+export function hoursBetween(startIso: string, endIso: string): number | null {
+  const start = Date.parse(startIso);
+  const end = Date.parse(endIso);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return Math.round(((end - start) / 3_600_000) * 100) / 100;
+}
+
+/** Same-day wall-clock duration for search values such as `09:00` → `14:00`. */
+export function clockHoursBetween(startTime: string, endTime: string): number | null {
+  return hoursBetween(`1970-01-01T${startTime}:00Z`, `1970-01-01T${endTime}:00Z`);
+}
+
 /** Add days to a `YYYY-MM-DD` string, returning `YYYY-MM-DD`. */
 export function addDays(dateStr: string, days: number): string {
   const ms = Date.parse(`${dateStr}T00:00:00Z`) + days * 86_400_000;

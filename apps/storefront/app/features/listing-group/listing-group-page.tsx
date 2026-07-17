@@ -4,6 +4,7 @@ import { useOutletContext } from 'react-router';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { formatListingLocation } from '../../lib/ui';
+import { clockHoursBetween } from '../../lib/time';
 import type { StorefrontContext } from '../../root';
 import { SearchForm } from '../search/search-form';
 import { AmenitiesSection } from './components/amenities-section';
@@ -31,6 +32,9 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   const location = formatListingLocation(group, 'full');
   const trust = roomOptions[0]?.detail.trust ?? null;
   const minimumPrice = minimumRoomPrice(roomOptions.filter((option) => option.available));
+  const selectedHours = state.hasTimeSelection
+    ? clockHoursBetween(state.startTime, state.endTime)
+    : null;
   const mapsHref = location
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
     : null;
@@ -38,7 +42,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   return (
     <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
       <SearchForm
-      
+        key={`${state.mode}:${state.date}:${state.startTime}:${state.endTime}:${state.from}:${state.to}`}
         listingTypes={listingTypes}
         currentType={group.listingTypeSlug}
         initialState={state}
@@ -97,7 +101,9 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {state.mode === 'hourly'
-                  ? t('perHour')
+                  ? selectedHours
+                    ? t('forHours', { count: selectedHours })
+                    : t('perHour')
                   : t('group.priceForRange', { from: state.from, to: state.to })}
               </p>
               <Button asChild className="mt-5 w-full">
@@ -108,7 +114,13 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           </aside>
         </div>
 
-        <RoomOptionsSection roomOptions={roomOptions} mode={state.mode} date={state.date} />
+        <RoomOptionsSection
+          key={`${state.mode}:${state.date}:${state.startTime}:${state.endTime}:${state.from}:${state.to}`}
+          roomOptions={roomOptions}
+          mode={state.mode}
+          date={state.date}
+          hideUnavailableByDefault={state.hasTimeSelection || state.hasDailyRange}
+        />
 
         <RelatedStudios listings={relatedListings} />
       </div>

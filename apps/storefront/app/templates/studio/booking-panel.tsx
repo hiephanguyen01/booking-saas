@@ -11,7 +11,7 @@ import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Input } from '@booking/ui/components/ui/input';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { eligibleDailyRange, normalizeDailyRange } from '../../lib/daily-range';
 import { NsI18n, useTranslation } from '../../lib/i18n';
@@ -20,6 +20,7 @@ import {
   DEFAULT_TZ,
   addDays,
   dateOnlyToLocal,
+  hoursBetween,
   localToDateOnly,
   timeInTz,
   todayInTz,
@@ -36,6 +37,8 @@ interface PanelProps {
   mode: AvailabilityMode;
   availability: AvailabilityResponse | null;
   quote: QuoteResponse | null;
+  initialStart?: string | null;
+  initialEnd?: string | null;
 }
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
@@ -46,7 +49,14 @@ const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
  * quote. Selection is reflected in the URL, so the route loader re-fetches
  * availability + the quote on every change (SSR-safe, no client API calls).
  */
-export function BookingPanel({ listing, mode, availability, quote }: PanelProps) {
+export function BookingPanel({
+  listing,
+  mode,
+  availability,
+  quote,
+  initialStart,
+  initialEnd,
+}: PanelProps) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const [sp, setSp] = useSearchParams();
@@ -59,8 +69,8 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
   // already shown in the picker, so read the selection from the picker's own
   // defaults instead of the URL — which only carries them after an edit.
   const inventory = mode === 'inventory' ? inventorySelection(sp, listing.modeConfig, tz) : null;
-  const start = inventory ? inventory.start : sp.get('start');
-  const end = inventory ? inventory.end : sp.get('end');
+  const start = inventory ? inventory.start : (sp.get('start') ?? initialStart ?? null);
+  const end = inventory ? inventory.end : (sp.get('end') ?? initialEnd ?? null);
 
   function switchMode(next: AvailabilityMode): void {
     setSp({ mode: next }); // reset the selection when the mode changes
@@ -70,19 +80,31 @@ export function BookingPanel({ listing, mode, availability, quote }: PanelProps)
   if (start) checkoutParams.set('start', start);
   if (end) checkoutParams.set('end', end);
   if (inventory) checkoutParams.set('qty', String(inventory.qty));
-  const canBook = Boolean(start && end);
+  const inventoryAvailable = Boolean(
+    inventory &&
+    availability?.mode === 'inventory' &&
+    availability.inventory.remaining >= inventory.qty,
+  );
+  const canBook = Boolean(
+    start && end && (mode === 'inventory' ? inventoryAvailable : Boolean(quote)),
+  );
 
   return (
     <div className="rounded-lg bg-card p-5 text-card-foreground shadow-sm">
       <div className="space-y-5">
-        <QuoteHeader quote={quote} listing={listing} mode={mode} />
+        <QuoteHeader quote={quote} listing={listing} mode={mode} start={start} end={end} />
 
-        {modes.length > 1 ? (
-          <ModeToggle modes={modes} active={mode} onSelect={switchMode} />
-        ) : null}
+        {modes.length > 1 ? <ModeToggle modes={modes} active={mode} onSelect={switchMode} /> : null}
 
         {mode === 'hourly' ? (
-          <HourlyPicker availability={availability} sp={sp} setSp={setSp} tz={tz} />
+          <HourlyPicker
+            availability={availability}
+            sp={sp}
+            setSp={setSp}
+            tz={tz}
+            selectedStart={start}
+            selectedEnd={end}
+          />
         ) : mode === 'daily' ? (
           <DailyPicker
             availability={availability}
@@ -126,15 +148,20 @@ function QuoteHeader({
   quote,
   listing,
   mode,
+  start,
+  end,
 }: {
   quote: QuoteResponse | null;
   listing: PublicListingDetailResponse;
   mode: AvailabilityMode;
+  start: string | null;
+  end: string | null;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const from = formatVnd(fromPrice(listing.modeConfig));
+  const selectedHours = start && end ? hoursBetween(start, end) : null;
   const unitLabel: Record<AvailabilityMode, string> = {
-    hourly: t('perHour'),
+    hourly: quote && selectedHours ? t('forHours', { count: selectedHours }) : t('perHour'),
     daily: t('perDay'),
     inventory: t('perItem'),
   };
@@ -201,18 +228,22 @@ function HourlyPicker({
   sp,
   setSp,
   tz,
+  selectedStart,
+  selectedEnd,
 }: {
   availability: AvailabilityResponse | null;
   sp: URLSearchParams;
   setSp: (next: URLSearchParams) => void;
   tz: string;
+  selectedStart: string | null;
+  selectedEnd: string | null;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const today = todayInTz(tz);
   const day = sp.get('day') || sp.get('date') || today;
   const slots: HourlySlot[] =
     availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
-  const selectedStart = sp.get('start');
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
 
   function pickDay(nextDay: string): void {
     const next = new URLSearchParams(sp);
@@ -228,12 +259,23 @@ function HourlyPicker({
     const next = new URLSearchParams(sp);
     next.set('mode', 'hourly');
     next.set('day', day);
+    next.set('date', day);
+    next.set('startTime', timeInTz(slot.startUtc, tz));
+    next.set('endTime', timeInTz(slot.endUtc, tz));
     next.set('start', slot.startUtc);
     next.set('end', slot.endUtc);
     setSp(next);
   }
 
-  const available = slots.filter((s) => s.available);
+  const available = slots.filter((slot) => slot.available);
+  const visibleSlots = onlyAvailable ? available : slots;
+  const selectedUnavailable = Boolean(
+    selectedStart &&
+    selectedEnd &&
+    !slots.some(
+      (slot) => slot.startUtc === selectedStart && slot.endUtc === selectedEnd && slot.available,
+    ),
+  );
 
   return (
     <div className="space-y-3">
@@ -247,36 +289,57 @@ function HourlyPicker({
         />
       </label>
 
-      <PickerLabel>{t('pickSlot')}</PickerLabel>
-      {available.length === 0 ? (
+      <div className="flex items-center justify-between gap-3">
+        <PickerLabel>{t('pickSlot')}</PickerLabel>
+        {slots.some((slot) => !slot.available) ? (
+          <button
+            type="button"
+            onClick={() => setOnlyAvailable((current) => !current)}
+            className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {onlyAvailable ? t('showAllSlots') : t('showOnlyAvailable')}
+          </button>
+        ) : null}
+      </div>
+      {visibleSlots.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
           {t('noSlots')}
         </p>
       ) : (
         <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pr-1">
-          {available.map((slot, slotIndex) => {
-            const isSelected = slot.startUtc === selectedStart;
+          {visibleSlots.map((slot, slotIndex) => {
+            const isSelected = slot.startUtc === selectedStart && slot.endUtc === selectedEnd;
             return (
               <button
                 key={`${slot.startUtc}-${slot.endUtc}-${slotIndex}`}
                 type="button"
-                onClick={() => pickSlot(slot)}
+                onClick={() => slot.available && pickSlot(slot)}
+                disabled={!slot.available}
                 className={cn(
                   'flex flex-col items-center rounded-lg border px-1 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isSelected
                     ? 'border-primary bg-primary/10 font-semibold text-primary'
-                    : 'border-border bg-background/40 hover:border-primary/50 hover:bg-muted/40',
+                    : slot.available
+                      ? 'border-border bg-background/40 hover:border-primary/50 hover:bg-muted/40'
+                      : 'cursor-not-allowed border-border/60 bg-muted/50 text-muted-foreground opacity-60',
                 )}
               >
                 <span>
                   {timeInTz(slot.startUtc, tz)}–{timeInTz(slot.endUtc, tz)}
                 </span>
-                <span className="text-[11px] text-muted-foreground">{formatVnd(slot.price)}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {slot.available ? formatVnd(slot.price) : t('unavailableSlot')}
+                </span>
               </button>
             );
           })}
         </div>
       )}
+      {selectedUnavailable ? (
+        <p role="alert" className="text-xs text-destructive">
+          {t('selectedSlotUnavailable')}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -307,9 +370,7 @@ function DailyPicker({
   const checkinTime = dailyCfg.checkinTime ?? '14:00';
   const checkoutTime = dailyCfg.checkoutTime ?? '12:00';
   const minNights = dailyCfg.minNights ?? 1;
-  const maxNights = Number.isFinite(Number(dailyCfg.maxNights))
-    ? Number(dailyCfg.maxNights)
-    : null;
+  const maxNights = Number.isFinite(Number(dailyCfg.maxNights)) ? Number(dailyCfg.maxNights) : null;
 
   const openDates = useMemo(
     () => new Set(days.filter((d) => d.status === 'available').map((d) => d.date)),
@@ -371,6 +432,7 @@ function DailyPicker({
         selected={range}
         onSelect={onSelect}
         disabled={isDisabled}
+        excludeDisabled
         className="rounded-lg border border-border bg-background/40 p-2"
       />
       {nights > 0 ? (
@@ -418,7 +480,7 @@ function inventorySelection(
   const unit = ((modeConfig.inventory ?? {}) as { unit?: 'hour' | 'day' }).unit ?? 'day';
   const from = (sp.get('from') || todayInTz(tz)).slice(0, 10);
   const to = (sp.get('to') || addDays(from, 1)).slice(0, 10);
-  const parsedQty = Number(sp.get('qty') || '1');
+  const parsedQty = Number(sp.get('qty') || sp.get('quantity') || '1');
   const qty = Number.isFinite(parsedQty) && parsedQty >= 1 ? Math.floor(parsedQty) : 1;
   return { from, to, qty, unit, ...inventoryWindow(from, to, unit, tz) };
 }

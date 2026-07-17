@@ -17,7 +17,8 @@ import { SearchForm } from '../search/search-form';
 import { parseSearchState } from '../search/search-state';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
-  const { listing, mode, availability, quote, locations } = loaderData;
+  const { listing, mode, availability, quote, locations, selectionStart, selectionEnd } =
+    loaderData;
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const { listingTypes } = useOutletContext<StorefrontContext>();
@@ -39,6 +40,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   return (
     <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
       <SearchForm
+        key={searchParams.toString()}
         listingTypes={listingTypes}
         currentType={listing.listingTypeSlug}
         initialState={parseSearchState(searchParams)}
@@ -95,7 +97,14 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
-            <BookingPanel listing={listing} mode={mode} availability={availability} quote={quote} />
+            <BookingPanel
+              listing={listing}
+              mode={mode}
+              availability={availability}
+              quote={quote}
+              initialStart={selectionStart}
+              initialEnd={selectionEnd}
+            />
             <ProviderCard trust={listing.trust} />
           </aside>
         </div>
