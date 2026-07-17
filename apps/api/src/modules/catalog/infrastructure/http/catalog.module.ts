@@ -13,6 +13,7 @@ import { UpdateListingTypeUseCase } from '../../application/use-cases/update-lis
 import { DeleteListingTypeUseCase } from '../../application/use-cases/delete-listing-type.use-case';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { ListPublicListingsUseCase } from '../../application/use-cases/list-public-listings.use-case';
+import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
 import { AttributeValidatorService } from '../../application/services/attribute-validator.service';
 import { TenantListingTypeController } from './tenant-listing-type.controller';
 import { PartnerListingTypeController } from './partner-listing-type.controller';
@@ -31,6 +32,7 @@ import { PublicCatalogController } from './public-catalog.controller';
     DeleteListingTypeUseCase,
     ListPublicListingTypesUseCase,
     ListPublicListingsUseCase,
+    SearchPublicCatalogUseCase,
     AttributeValidatorService,
   ],
   // Exported so Task 1.4 (listing creation) validates attributes against the type

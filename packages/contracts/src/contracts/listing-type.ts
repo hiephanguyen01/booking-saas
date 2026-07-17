@@ -139,6 +139,91 @@ export const attributeFieldSchema = z
   });
 export type AttributeField = z.infer<typeof attributeFieldSchema>;
 
+export const listingTypeSearchScheduleSchema = z.enum(['none', 'hourly', 'daily', 'inventory']);
+export type ListingTypeSearchSchedule = z.infer<typeof listingTypeSearchScheduleSchema>;
+
+export const listingTypeSearchFacetControlSchema = z.enum([
+  'checkbox',
+  'radio',
+  'range',
+  'buckets',
+]);
+export type ListingTypeSearchFacetControl = z.infer<typeof listingTypeSearchFacetControlSchema>;
+
+export const listingTypeSearchBucketSchema = z
+  .object({
+    id: slugSchema,
+    label: z.string().trim().min(1).max(120),
+    min: z.number().finite().nonnegative().optional(),
+    max: z.number().finite().nonnegative().optional(),
+  })
+  .refine((bucket) => bucket.min !== undefined || bucket.max !== undefined, {
+    message: 'A search bucket needs min or max',
+  })
+  .refine(
+    (bucket) => bucket.min === undefined || bucket.max === undefined || bucket.min < bucket.max,
+    { path: ['max'], message: 'Bucket max must be greater than min' },
+  );
+export type ListingTypeSearchBucket = z.infer<typeof listingTypeSearchBucketSchema>;
+
+export const listingTypeSearchAttributeFacetSchema = z
+  .object({
+    key: attributeKeySchema,
+    control: listingTypeSearchFacetControlSchema,
+    matchAll: z.boolean().default(false),
+    buckets: z.array(listingTypeSearchBucketSchema).max(20).optional(),
+  })
+  .superRefine((facet, ctx) => {
+    if (facet.control === 'buckets' && !facet.buckets?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buckets'],
+        message: 'Bucket facets need at least one bucket',
+      });
+    }
+    if (facet.control !== 'buckets' && facet.buckets?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buckets'],
+        message: 'Buckets are only allowed for bucket facets',
+      });
+    }
+    const bucketIds = facet.buckets?.map((bucket) => bucket.id) ?? [];
+    if (new Set(bucketIds).size !== bucketIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buckets'],
+        message: 'Bucket IDs must be unique within a facet',
+      });
+    }
+  });
+export type ListingTypeSearchAttributeFacet = z.infer<typeof listingTypeSearchAttributeFacetSchema>;
+
+export const listingTypeSearchConfigSchema = z
+  .object({
+    schedule: listingTypeSearchScheduleSchema.default('none'),
+    showGuests: z.boolean().default(false),
+    systemFacets: z
+      .array(z.enum(['price', 'location', 'amenities']))
+      .max(3)
+      .refine((facets) => new Set(facets).size === facets.length, {
+        message: 'System facets must be unique',
+      })
+      .default(['price', 'location']),
+    attributeFacets: z.array(listingTypeSearchAttributeFacetSchema).max(30).default([]),
+  })
+  .superRefine((config, ctx) => {
+    const keys = config.attributeFacets.map((facet) => facet.key);
+    if (new Set(keys).size !== keys.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['attributeFacets'],
+        message: 'Search facet keys must be unique',
+      });
+    }
+  });
+export type ListingTypeSearchConfig = z.infer<typeof listingTypeSearchConfigSchema>;
+
 export const attributeSchemaSchema = z.array(attributeFieldSchema).superRefine((fields, ctx) => {
   const keys = fields.map((f) => f.key);
   const duplicates = [...new Set(keys.filter((k, i) => keys.indexOf(k) !== i))];
@@ -160,6 +245,7 @@ const listingTypeBaseSchema = z.object({
   allowedModes: z.array(bookingModeSchema).min(1),
   defaultModes: z.array(bookingModeSchema).default([]),
   attributeSchema: attributeSchemaSchema.default([]),
+  searchConfig: listingTypeSearchConfigSchema.default({}),
   unitLabel: z.string().max(40).optional(),
   sortOrder: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
@@ -242,6 +328,7 @@ export const listingTypeResponseSchema = z.object({
   allowedModes: z.array(bookingModeSchema),
   defaultModes: z.array(bookingModeSchema),
   attributeSchema: z.array(attributeFieldSchema),
+  searchConfig: listingTypeSearchConfigSchema,
   unitLabel: z.string().nullable(),
   sortOrder: z.number(),
   isActive: z.boolean(),
@@ -270,7 +357,10 @@ export const publicListingTypeResponseSchema = z.object({
   requiresIdentityVerification: z.boolean(),
   structure: listingStructureSchema,
   itemLabel: z.string().nullable(),
+  allowedModes: z.array(bookingModeSchema),
+  defaultModes: z.array(bookingModeSchema),
   attributeSchema: z.array(attributeFieldSchema),
+  searchConfig: listingTypeSearchConfigSchema,
 });
 export type PublicListingTypeResponse = z.infer<typeof publicListingTypeResponseSchema>;
 

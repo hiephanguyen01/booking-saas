@@ -13,6 +13,7 @@ import {
   type IListingTypeRepository,
   type ListingTypeRecord,
 } from '../../domain/ports/listing-type-repository.port';
+import { assertValidListingTypeSearchConfig } from '../services/listing-type-search-config.validator';
 
 @Injectable()
 export class UpdateListingTypeUseCase {
@@ -58,6 +59,13 @@ export class UpdateListingTypeUseCase {
           message: `defaultModes must be a subset of allowedModes; invalid: ${invalid.join(', ')}`,
         });
       }
+      const searchConfig = input.searchConfig ?? existing.searchConfig;
+      const attributes = input.attributeSchema ?? existing.attributeSchema;
+      assertValidListingTypeSearchConfig({
+        allowedModes: allowed,
+        attributeSchema: attributes,
+        searchConfig,
+      });
 
       const updated = await this.repo.update(tx, id, {
         name: input.name,
@@ -66,6 +74,7 @@ export class UpdateListingTypeUseCase {
         allowedModes: input.allowedModes,
         defaultModes: input.defaultModes,
         attributeSchema: input.attributeSchema,
+        searchConfig: input.searchConfig,
         unitLabel: input.unitLabel,
         sortOrder: input.sortOrder,
         isActive: input.isActive,

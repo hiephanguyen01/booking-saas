@@ -83,7 +83,13 @@ export function SearchResultCard({
               {formatVnd(listing.priceFrom)}
             </strong>
             <span className="block text-primary">
-              {listing.priceUnit === 'hour' ? t('listing:perHour') : t('listing:perDay')}
+              {listing.priceUnit === 'hour'
+                ? t('listing:perHour')
+                : listing.priceUnit === 'item'
+                  ? t('listing:perItem')
+                  : listing.priceUnit === 'session'
+                    ? t('listing:perSession')
+                    : t('listing:perDay')}
             </span>
           </p>
         </div>

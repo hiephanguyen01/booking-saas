@@ -29,7 +29,7 @@ export function typeIcon(slug: string): LucideIcon {
  * on the `/en` routes the storefront already serves. Render them through the
  * `listing.perHour` / `listing.perDay` i18n keys.
  */
-export type PriceUnit = 'hour' | 'day';
+export type PriceUnit = 'hour' | 'day' | 'item' | 'session';
 
 /** VND đồng digit string → "1.200.000₫". */
 export function formatVnd(amount: string | null | undefined): string | null {

@@ -1,14 +1,14 @@
 import { BadRequestException, Controller, Get, Headers, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
-  publicListingsFilterSchema,
-  type PublicListingResponse,
+  publicCatalogSearchQuerySchema,
+  type PublicCatalogSearchResponse,
   type PublicListingTypeResponse,
 } from '@booking/contracts';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
-import { ListPublicListingsUseCase } from '../../application/use-cases/list-public-listings.use-case';
-import { toPublicListingResponse, toPublicListingTypeResponse } from '../../application/catalog.mapper';
+import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
+import { toPublicListingTypeResponse } from '../../application/catalog.mapper';
 import {
   ListPublicListingsQueryDto,
   PublicListingResponseDto,
@@ -21,7 +21,7 @@ import {
 export class PublicCatalogController {
   constructor(
     private readonly listTypes: ListPublicListingTypesUseCase,
-    private readonly listListings: ListPublicListingsUseCase,
+    private readonly searchCatalog: SearchPublicCatalogUseCase,
   ) {}
 
   @Public()
@@ -38,29 +38,27 @@ export class PublicCatalogController {
 
   @Public()
   @Get('listings')
-  @ApiOperation({ summary: 'Storefront listing search (supports dynamic attr.* equality filters)' })
+  @ApiOperation({
+    summary: 'Storefront listing search with listing-type facets, availability and pagination',
+  })
   @ApiQuery({ type: ListPublicListingsQueryDto })
-  @ApiOkResponse({ type: [PublicListingResponseDto] })
+  @ApiOkResponse({ type: PublicListingResponseDto })
   async listings(
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, unknown>,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
-  ): Promise<PublicListingResponse[]> {
+  ): Promise<PublicCatalogSearchResponse> {
     const resolvedHost = resolveHost(forwardedHost, host);
-    const filters = publicListingsFilterSchema.parse(query);
-    const listings = await this.listListings.execute(resolvedHost, filters);
-    const items = listings.map(toPublicListingResponse);
-    const deduped = new Map<string, PublicListingResponse>();
-    for (const item of items) {
-      const existing = deduped.get(item.id);
-      if (!existing) {
-        deduped.set(item.id, item);
-        continue;
-      }
-      const prices = [existing.priceFrom, item.priceFrom].filter((price): price is string => price !== null).map(Number);
-      if (prices.length) existing.priceFrom = String(Math.min(...prices));
+    const parsed = publicCatalogSearchQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'INVALID_CATALOG_SEARCH',
+        message: 'Invalid catalog search query',
+        issues: parsed.error.issues,
+      });
     }
-    return [...deduped.values()];
+    return this.searchCatalog.execute(resolvedHost, parsed.data);
   }
 }
 

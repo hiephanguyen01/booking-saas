@@ -542,6 +542,7 @@ async function upsertListingType(
     sortOrder,
     isActive: true,
     attributeSchema: definition.attributeSchema,
+    searchConfig: searchConfigFor(definition),
     requiresIdentityVerification: definition.requiresIdentityVerification ?? false,
   };
   return prisma.listingType.upsert({
@@ -549,6 +550,76 @@ async function upsertListingType(
     update: data,
     create: { tenantId, slug: definition.slug, ...data },
   });
+}
+
+function searchConfigFor(definition: CatalogDefinition): Prisma.InputJsonValue {
+  const configured: Record<string, Prisma.InputJsonValue> = {
+    studio: {
+      schedule: 'hourly',
+      showGuests: true,
+      systemFacets: ['price', 'location', 'amenities'],
+      attributeFacets: [
+        {
+          key: 'area',
+          control: 'buckets',
+          buckets: [
+            { id: 'under-25', label: 'Dưới 25 m²', max: 25 },
+            { id: '25-50', label: 'Từ 25 m² đến 50 m²', min: 25, max: 50 },
+            { id: '50-100', label: 'Từ 50 m² đến 100 m²', min: 50, max: 100 },
+            { id: 'over-100', label: 'Trên 100 m²', min: 100 },
+          ],
+        },
+        { key: 'style', control: 'checkbox' },
+        { key: 'naturalLight', control: 'checkbox' },
+      ],
+    },
+    photography: {
+      schedule: 'hourly',
+      showGuests: true,
+      systemFacets: ['price', 'location'],
+      attributeFacets: [
+        { key: 'photographyStyle', control: 'checkbox' },
+        { key: 'rawFiles', control: 'checkbox' },
+      ],
+    },
+    makeup: {
+      schedule: 'hourly',
+      showGuests: false,
+      systemFacets: ['price', 'location'],
+      attributeFacets: [
+        { key: 'makeupStyle', control: 'checkbox' },
+        { key: 'hairStyling', control: 'checkbox' },
+      ],
+    },
+    equipment: {
+      schedule: 'inventory',
+      showGuests: false,
+      systemFacets: ['price', 'location'],
+      attributeFacets: [
+        { key: 'brand', control: 'checkbox' },
+        { key: 'condition', control: 'checkbox' },
+        { key: 'insuranceIncluded', control: 'checkbox' },
+      ],
+    },
+    costume: {
+      schedule: 'inventory',
+      showGuests: false,
+      systemFacets: ['price', 'location'],
+      attributeFacets: [{ key: 'costumeStyle', control: 'checkbox' }],
+    },
+    model: {
+      schedule: 'none',
+      showGuests: false,
+      systemFacets: ['price', 'location'],
+      attributeFacets: [{ key: 'experienceLevel', control: 'checkbox' }],
+    },
+  };
+  return configured[definition.slug] ?? {
+    schedule: 'none',
+    showGuests: false,
+    systemFacets: ['price', 'location'],
+    attributeFacets: [],
+  };
 }
 
 async function upsertCategory(prisma: PrismaClient, tenantId: string, name: string, slug: string) {

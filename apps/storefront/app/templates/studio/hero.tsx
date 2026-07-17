@@ -12,10 +12,12 @@ export function StudioHero({
   tenant,
   listingTypes,
   locations,
+  onTypeChange,
 }: {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   locations: string[];
+  onTypeChange?: (typeSlug: string) => void;
 }) {
   const { t } = useTranslation(NsI18n.Common);
 
@@ -41,7 +43,12 @@ export function StudioHero({
         </div>
       </div>
       <div className="relative mx-auto -mt-42 max-w-292.5 px-4 sm:px-6 xl:px-0">
-        <SearchForm listingTypes={listingTypes} locations={locations} variant="hero" />
+        <SearchForm
+          listingTypes={listingTypes}
+          locations={locations}
+          variant="hero"
+          onTypeChange={onTypeChange}
+        />
       </div>
     </section>
   );

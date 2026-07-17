@@ -2,6 +2,7 @@ import {
   createListingTypeInputSchema,
   LISTING_TYPE_ICONS,
   listingTypeIconSchema,
+  listingTypeSearchConfigSchema,
   type AttributeField,
   type AttributeFieldType,
   type BookingMode,
@@ -27,6 +28,10 @@ import { cn } from '@booking/ui/lib/utils';
 import * as Icons from 'lucide-react';
 import { Plus, X } from 'lucide-react';
 import { BOOKING_MODE_LABEL } from '~/lib/format';
+import {
+  ListingTypeSearchConfigFields,
+  normalizeSearchConfig,
+} from './listing-type-search-config-fields';
 
 const ALL_MODES: BookingMode[] = ['hourly', 'daily', 'inventory', 'appointment', 'class'];
 const FIELD_TYPES: { value: AttributeFieldType; label: string }[] = [
@@ -232,6 +237,7 @@ export function listingTypeFormDefaultValues(t?: ListingTypeResponse): CreateLis
     // reject the hidden empty string before `transform` gets a chance to drop it.
     itemLabel: structure === 'standalone' ? undefined : (t?.itemLabel ?? ''),
     attributeSchema: t?.attributeSchema ?? [],
+    searchConfig: t?.searchConfig ?? listingTypeSearchConfigSchema.parse({}),
   };
 }
 
@@ -272,6 +278,7 @@ export function ListingTypeForm({
         attributeSchema: d.attributeSchema.map((a) =>
           isChoice(a.type) ? a : { ...a, options: undefined },
         ),
+        searchConfig: normalizeSearchConfig(d.searchConfig, d.attributeSchema, d.allowedModes),
       })}
     />
   );
@@ -314,6 +321,12 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
                 'defaultModes',
                 dm.filter((m) => m !== mode),
               );
+              if (form.getValues('searchConfig.schedule') === mode) {
+                form.setValue('searchConfig.schedule', 'none', {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }
             }
           };
           return (
@@ -371,9 +384,81 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
         name="attributeSchema"
         render={({ field }) => {
           const rows: AttributeField[] = field.value ?? [];
-          const update = (i: number, patch: Partial<AttributeField>): void =>
-            field.onChange(rows.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
-          const remove = (i: number): void => field.onChange(rows.filter((_, idx) => idx !== i));
+          const update = (i: number, patch: Partial<AttributeField>): void => {
+            const current = rows[i];
+            if (!current) return;
+            const activeFacet = form
+              .getValues('searchConfig.attributeFacets')
+              .some((facet) => facet.key === current.key);
+            if (
+              patch.filterable === false &&
+              current.filterable &&
+              activeFacet &&
+              globalThis.confirm &&
+              !globalThis.confirm(
+                `Tắt “Lọc được” sẽ xoá cấu hình bộ lọc “${current.label || current.key}”. Tiếp tục?`,
+              )
+            )
+              return;
+
+            const nextRows = rows.map((attribute, index) =>
+              index === i ? { ...attribute, ...patch } : attribute,
+            );
+            let searchConfig = form.getValues('searchConfig');
+            if (patch.key !== undefined && patch.key !== current.key) {
+              searchConfig = {
+                ...searchConfig,
+                attributeFacets: searchConfig.attributeFacets.map((facet) =>
+                  facet.key === current.key ? { ...facet, key: patch.key! } : facet,
+                ),
+              };
+            }
+            if (patch.filterable === false) {
+              searchConfig = {
+                ...searchConfig,
+                attributeFacets: searchConfig.attributeFacets.filter(
+                  (facet) => facet.key !== current.key,
+                ),
+              };
+            }
+            field.onChange(nextRows);
+            form.setValue(
+              'searchConfig',
+              normalizeSearchConfig(searchConfig, nextRows, form.getValues('allowedModes')),
+              { shouldDirty: true, shouldValidate: true },
+            );
+          };
+          const remove = (i: number): void => {
+            const current = rows[i];
+            if (!current) return;
+            const activeFacet = form
+              .getValues('searchConfig.attributeFacets')
+              .some((facet) => facet.key === current.key);
+            if (
+              activeFacet &&
+              globalThis.confirm &&
+              !globalThis.confirm(
+                `Xoá thuộc tính sẽ xoá luôn bộ lọc “${current.label || current.key}”. Tiếp tục?`,
+              )
+            )
+              return;
+            const nextRows = rows.filter((_, index) => index !== i);
+            field.onChange(nextRows);
+            form.setValue(
+              'searchConfig',
+              normalizeSearchConfig(
+                {
+                  ...form.getValues('searchConfig'),
+                  attributeFacets: form
+                    .getValues('searchConfig.attributeFacets')
+                    .filter((facet) => facet.key !== current.key),
+                },
+                nextRows,
+                form.getValues('allowedModes'),
+              ),
+              { shouldDirty: true, shouldValidate: true },
+            );
+          };
           const add = (): void =>
             field.onChange([
               ...rows,
@@ -392,8 +477,8 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
             <section className="space-y-3 rounded-lg border p-4">
               <h2 className="text-sm font-semibold">Thuộc tính tuỳ biến</h2>
               <p className="text-xs text-muted-foreground">
-                Các trường sẽ hiện khi đối tác tạo listing thuộc loại này. Trường “lọc được” trở
-                thành bộ lọc trên storefront.
+                Các trường sẽ hiện khi đối tác tạo listing thuộc loại này. “Lọc được” chỉ làm cho
+                thuộc tính đủ điều kiện; hãy bật và chọn kiểu hiển thị ở phần bộ lọc bên dưới.
               </p>
               {rootMessage ? (
                 <p className="text-xs text-destructive">{String(rootMessage)}</p>
@@ -511,6 +596,8 @@ function ModesAndAttributes({ form }: { form: UseFormReturn<CreateListingTypeInp
           );
         }}
       />
+
+      <ListingTypeSearchConfigFields form={form} />
     </div>
   );
 }

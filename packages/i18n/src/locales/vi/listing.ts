@@ -9,6 +9,8 @@ export const viListing = {
   fromPriceShort: 'từ',
   perHour: 'cho 1 giờ',
   perDay: 'cho 1 ngày',
+  perItem: 'mỗi sản phẩm',
+  perSession: 'mỗi buổi',
   addToFavorites: 'Thêm vào yêu thích',
   pickScheduleForPrice: 'Chọn lịch để xem giá',
   subtotalEstimate: 'tổng tạm tính',

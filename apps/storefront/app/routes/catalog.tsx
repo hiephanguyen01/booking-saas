@@ -2,12 +2,21 @@ import type { Route } from './+types/catalog';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CatalogPage } from '../features/catalog/catalog-page';
 import { NsI18n, useTranslation } from '../lib/i18n';
-import { fetchListingTypes, fetchListings } from '../lib/catalog.server';
-import { composeSearchResults } from '../lib/search.server';
+import { searchListings } from '../lib/catalog.server';
 import { parseSearchState } from '../features/search/search-state';
 
 /** Search params that make this a filtered view rather than the canonical catalog page. */
-const FILTER_PARAMS = ['q', 'location', 'minPrice', 'maxPrice', 'area', 'amenities'];
+const FILTER_PARAMS = [
+  'q',
+  'location',
+  'minPrice',
+  'maxPrice',
+  'area',
+  'amenities',
+  'date',
+  'from',
+  'to',
+];
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
   return [
@@ -18,29 +27,40 @@ export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescript
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const state = parseSearchState(url.searchParams);
-  const apiSearch = new URLSearchParams({ type: params.typeSlug });
-  if (state.q) apiSearch.set('q', state.q);
-  for (const [key, value] of url.searchParams) {
-    if (key.startsWith('attr.') && value) apiSearch.set(key, value);
-  }
-
-  const [types, candidates] = await Promise.all([
-    fetchListingTypes(request),
-    fetchListings(request, apiSearch),
-  ]);
-
-  const type = types.find((item) => item.slug === params.typeSlug) ?? null;
-  if (!type) throw new Response('Listing type not found', { status: 404 });
-
-  const search = await composeSearchResults(request, candidates, state);
+  const apiSearch = new URLSearchParams(url.searchParams);
+  apiSearch.set('type', params.typeSlug);
+  apiSearch.delete('area');
+  const legacyArea = url.searchParams.get('area');
+  if (legacyArea) apiSearch.set('attr.area', legacyArea);
+  const result = await searchListings(request, apiSearch);
+  const type = result.type;
+  const search = {
+    items: result.items.map((item) => ({
+      ...item,
+      workingArea: null,
+    })),
+    total: result.pagination.total,
+    page: result.pagination.page,
+    totalPages: result.pagination.totalPages,
+    locations: result.facets.find((facet) => facet.key === 'location')?.options ?? [],
+    amenities: result.facets.find((facet) => facet.key === 'amenities')?.options ?? [],
+    facets: result.facets,
+    sortOptions: result.sortOptions,
+  };
+  const resolvedState = {
+    ...state,
+    mode: result.applied.mode ?? ('none' as const),
+    page: result.pagination.page,
+  };
   return {
     type,
     search,
-    state,
+    state: resolvedState,
     // Presence alone would flag the canonical page too: the filter form submits
     // every control it owns, so an untouched "Áp dụng" carries empty values.
-    noIndex: FILTER_PARAMS.some((key) =>
-      url.searchParams.getAll(key).some((value) => value.trim() !== ''),
+    noIndex: [...url.searchParams].some(
+      ([key, value]) =>
+        (FILTER_PARAMS.includes(key) || key.startsWith('attr.')) && value.trim() !== '',
     ),
   };
 }

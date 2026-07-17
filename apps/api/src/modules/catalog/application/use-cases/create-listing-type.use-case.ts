@@ -7,6 +7,7 @@ import {
   type IListingTypeRepository,
   type ListingTypeRecord,
 } from '../../domain/ports/listing-type-repository.port';
+import { assertValidListingTypeSearchConfig } from '../services/listing-type-search-config.validator';
 
 /** Tenant admin defines a new listing type with its typed attribute schema (§7.3). */
 @Injectable()
@@ -26,6 +27,11 @@ export class CreateListingTypeUseCase {
           message: `Slug "${input.slug}" is already in use`,
         });
       }
+      assertValidListingTypeSearchConfig({
+        allowedModes: input.allowedModes,
+        attributeSchema: input.attributeSchema,
+        searchConfig: input.searchConfig,
+      });
       const created = await this.repo.create(tx, tenantId, {
         name: input.name,
         slug: input.slug,
@@ -33,6 +39,7 @@ export class CreateListingTypeUseCase {
         allowedModes: input.allowedModes,
         defaultModes: input.defaultModes,
         attributeSchema: input.attributeSchema,
+        searchConfig: input.searchConfig,
         unitLabel: input.unitLabel ?? null,
         sortOrder: input.sortOrder,
         isActive: input.isActive,

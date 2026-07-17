@@ -717,6 +717,8 @@ model ListingType {
   defaultModes                 BookingMode[]    @map("default_modes")
   /// [{key,label,type,required,filterable,options}] — validates listing.attributes.
   attributeSchema              Json             @default("[]") @map("attribute_schema")
+  /// storefront search controls/facet presentation for this tenant-defined type.
+  searchConfig                 Json             @default("{}") @map("search_config")
   /// price display unit: "hour", "day", "session", "set"…
   unitLabel                    String?          @map("unit_label")
   /// people-booking type (models, makeup): the partner must be identity-verified to serve it (§7.3, Task 1.2/1.3).
