@@ -7,8 +7,12 @@ export type {
   ApiResult,
   ApiAuth,
   Auth,
+  AuthRequestOptions,
   RefreshedTokens,
+  BackendAuthResult,
   BackendLoginResult,
+  BackendRegisterCredentials,
+  BackendRegisterResult,
   BackendRefreshResult,
 } from './types';
 export { toResult, networkError, transportError } from './errors';

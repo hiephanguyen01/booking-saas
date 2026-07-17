@@ -48,7 +48,20 @@ export interface RefreshedTokens {
   refreshToken: string;
 }
 
-export interface BackendLoginResult {
+export interface BackendRegisterCredentials {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  locale?: 'vi' | 'en';
+}
+
+export type AuthRequestOptions = Pick<
+  ApiRequestOptions<never>,
+  'signal' | 'timeoutMs' | 'headers' | 'requestId'
+>;
+
+export interface BackendAuthResult {
   ok: boolean;
   status: number;
   tokens?: RefreshedTokens;
@@ -56,6 +69,9 @@ export interface BackendLoginResult {
   code?: string;
   failure?: ApiFailure;
 }
+
+export type BackendLoginResult = BackendAuthResult;
+export type BackendRegisterResult = BackendAuthResult;
 
 export interface BackendRefreshResult {
   ok: boolean;
