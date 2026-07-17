@@ -5,13 +5,13 @@ import {
   type Auth,
   type BackendRegisterCredentials,
 } from '@booking/api-client';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import { storefrontEnv } from './env.server';
 
 const client = () => createApiClient(storefrontEnv.backendUrl);
 
 type StorefrontJsonOptions<T> = Omit<ApiRequestOptions<T>, 'signal' | 'schema'> & {
-  schema: ZodType<T>;
+  schema: ZodType<T, ZodTypeDef, unknown>;
 };
 
 type NullableReadOptions<T> = StorefrontJsonOptions<T> & { allowNotFound: true };

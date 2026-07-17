@@ -1,5 +1,5 @@
 import { AxiosError, isAxiosError, isCancel, type AxiosResponse } from 'axios';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import type { ApiResult } from './types';
 
 type BackendErrorBody = {
@@ -15,7 +15,10 @@ function responseRequestId(response: AxiosResponse): string | undefined {
   return typeof value === 'string' && value ? value : undefined;
 }
 
-export function toResult<T>(response: AxiosResponse, schema?: ZodType<T>): ApiResult<T> {
+export function toResult<T>(
+  response: AxiosResponse,
+  schema?: ZodType<T, ZodTypeDef, unknown>,
+): ApiResult<T> {
   const { status } = response;
   const requestId = responseRequestId(response);
   if (status === 204) return { ok: true, status, data: null, ...(requestId ? { requestId } : {}) };

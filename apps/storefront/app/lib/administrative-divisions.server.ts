@@ -4,30 +4,23 @@ import {
   type AdministrativeProvince,
   type AdministrativeWard,
 } from '@booking/contracts';
-import { requestPublicJson } from './public-api.server';
+import { publicGetData } from './api.server';
 
-export async function loadAdministrativeProvinces(
+export function loadAdministrativeProvinces(
   request: Request,
 ): Promise<AdministrativeProvince[]> {
-  const payload = await requestPublicJson<unknown>(
-    request,
-    '/public/administrative-divisions/provinces',
-  );
-  const parsed = administrativeProvinceListSchema.safeParse(payload);
-  if (!parsed.success)
-    throw new Response('Invalid administrative province response', { status: 502 });
-  return parsed.data;
+  return publicGetData(request, '/public/administrative-divisions/provinces', {
+    schema: administrativeProvinceListSchema,
+  });
 }
 
-export async function loadAdministrativeWards(
+export function loadAdministrativeWards(
   request: Request,
   provinceCode: string,
 ): Promise<AdministrativeWard[]> {
-  const payload = await requestPublicJson<unknown>(
+  return publicGetData(
     request,
     `/public/administrative-divisions/wards?provinceCode=${encodeURIComponent(provinceCode)}`,
+    { schema: administrativeWardListSchema },
   );
-  const parsed = administrativeWardListSchema.safeParse(payload);
-  if (!parsed.success) throw new Response('Invalid administrative ward response', { status: 502 });
-  return parsed.data;
 }

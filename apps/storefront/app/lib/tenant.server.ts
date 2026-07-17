@@ -1,6 +1,6 @@
-import type { PublicTenantResponse } from '@booking/contracts';
+import { publicTenantResponseSchema } from '@booking/contracts';
+import { publicGetData } from './api.server';
 import { toStorefrontTenant, type StorefrontTenant } from './tenant-mapper';
-import { storefrontEnv } from './env.server';
 
 export type { StorefrontTenant } from './tenant-mapper';
 
@@ -12,29 +12,20 @@ export type { StorefrontTenant } from './tenant-mapper';
  *   - unmapped host        → 404 (API returns UNKNOWN_HOST)
  *   - suspended / expired  → `live: false` → root renders the suspended page
  */
-const backendUrl = (): string => storefrontEnv.backendUrl;
-
 export async function resolveTenant(request: Request): Promise<StorefrontTenant> {
-  const hostname = (request.headers.get('host') ?? 'localhost').split(':')[0];
-
-  let response: Response;
   try {
-    response = await fetch(`${backendUrl()}/public/tenant`, {
-      headers: { 'x-forwarded-host': hostname, accept: 'application/json' },
+    const dto = await publicGetData(request, '/public/tenant', {
+      schema: publicTenantResponseSchema,
     });
-  } catch {
-    // API unreachable — fail closed rather than serving a fabricated storefront.
-    throw new Response('Storefront temporarily unavailable', { status: 503 });
+    return toStorefrontTenant(dto);
+  } catch (error) {
+    if (error instanceof Response && error.status === 404) {
+      const hostname = (request.headers.get('host') ?? 'localhost').split(':')[0];
+      throw new Response(`No storefront found for "${hostname}"`, { status: 404 });
+    }
+    if (error instanceof Response && error.status === 503) {
+      throw new Response('Storefront temporarily unavailable', { status: 503 });
+    }
+    throw error;
   }
-
-  if (response.status === 404) {
-    // No tenant is mapped to this hostname.
-    throw new Response(`No storefront found for "${hostname}"`, { status: 404 });
-  }
-  if (!response.ok) {
-    throw new Response('Storefront temporarily unavailable', { status: 503 });
-  }
-
-  const dto = (await response.json()) as PublicTenantResponse;
-  return toStorefrontTenant(dto);
 }

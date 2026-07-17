@@ -1,5 +1,5 @@
 import type { AxiosAdapter } from 'axios';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 
 export type ApiFailure = 'http' | 'network' | 'timeout' | 'invalid-response';
 
@@ -33,7 +33,7 @@ export interface ApiRequestOptions<T> {
   query?: Record<string, QueryValue>;
   headers?: Record<string, string>;
   requestId?: string;
-  schema?: ZodType<T>;
+  schema?: ZodType<T, ZodTypeDef, unknown>;
 }
 
 export interface ApiClientOptions {

@@ -10,7 +10,12 @@ import type {
   PaymentStatusResponse,
   ValidatePromoResponse,
 } from '@booking/contracts';
-import { requestPublicJson } from './public-api.server';
+import {
+  availabilityResponseSchema,
+  bookingResponseSchema,
+  paymentStatusResponseSchema,
+} from '@booking/contracts';
+import { publicGetData } from './api.server';
 import { getOptionalAccessToken } from './auth.server';
 import { storefrontEnv } from './env.server';
 
@@ -92,9 +97,10 @@ export function fetchAvailability(
   query: { mode: AvailabilityMode; from: string; to: string },
 ): Promise<AvailabilityResponse> {
   const qs = new URLSearchParams(query).toString();
-  return requestPublicJson<AvailabilityResponse>(
+  return publicGetData(
     request,
     `/public/listings/${encodeURIComponent(slug)}/availability?${qs}`,
+    { schema: availabilityResponseSchema },
   );
 }
 
@@ -147,11 +153,10 @@ export function fetchBookingByCode(
   // on GET. The browser now POSTs it to the BFF and it remains server-side; SF-05
   // removes this final upstream URL use when the API exposes an opaque grant.
   const qs = otp ? `?otp=${encodeURIComponent(otp)}` : '';
-  return requestPublicJson<BookingResponse>(
-    request,
-    `/public/bookings/${encodeURIComponent(code)}${qs}`,
-    { allowNotFound: true },
-  );
+  return publicGetData(request, `/public/bookings/${encodeURIComponent(code)}${qs}`, {
+    schema: bookingResponseSchema,
+    allowNotFound: true,
+  });
 }
 
 export function requestBookingOtp(
@@ -183,11 +188,10 @@ export function fetchPaymentStatus(
   request: Request,
   code: string,
 ): Promise<PaymentStatusResponse | null> {
-  return requestPublicJson<PaymentStatusResponse>(
-    request,
-    `/public/bookings/${encodeURIComponent(code)}/payment-status`,
-    { allowNotFound: true },
-  );
+  return publicGetData(request, `/public/bookings/${encodeURIComponent(code)}/payment-status`, {
+    schema: paymentStatusResponseSchema,
+    allowNotFound: true,
+  });
 }
 
 /** Dev-only mock payment (gated behind `ALLOW_MOCK_PAYMENTS` on the API). */

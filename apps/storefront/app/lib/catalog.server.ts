@@ -6,7 +6,17 @@ import type {
   PublicCatalogSearchResponse,
   QuoteResponse,
 } from '@booking/contracts';
-import { requestPublicJson } from './public-api.server';
+import {
+  publicCatalogSearchResponseSchema,
+  publicListingDetailResponseSchema,
+  publicListingGroupDetailResponseSchema,
+  publicListingTypeResponseSchema,
+  quoteResponseSchema,
+} from '@booking/contracts';
+import { z } from 'zod';
+import { publicGetData } from './api.server';
+
+const listingTypesSchema = z.array(publicListingTypeResponseSchema);
 
 /**
  * Server-only catalog fetches (BFF). The storefront menu + filters are generated
@@ -14,21 +24,18 @@ import { requestPublicJson } from './public-api.server';
  * with no storefront code change (Task 1.3 DoD). Upstream failures remain
  * distinguishable from a legitimate empty catalog.
  */
-export async function fetchListingTypes(request: Request): Promise<PublicListingTypeResponse[]> {
-  return (
-    (await requestPublicJson<PublicListingTypeResponse[]>(request, '/public/listing-types')) ?? []
-  );
+export function fetchListingTypes(request: Request): Promise<PublicListingTypeResponse[]> {
+  return publicGetData(request, '/public/listing-types', { schema: listingTypesSchema });
 }
 
 export function fetchListingGroup(
   request: Request,
   slug: string,
 ): Promise<PublicListingGroupDetailResponse | null> {
-  return requestPublicJson<PublicListingGroupDetailResponse>(
-    request,
-    `/public/listings/groups/${encodeURIComponent(slug)}`,
-    { allowNotFound: true },
-  );
+  return publicGetData(request, `/public/listings/groups/${encodeURIComponent(slug)}`, {
+    schema: publicListingGroupDetailResponseSchema,
+    allowNotFound: true,
+  });
 }
 
 export async function fetchListings(
@@ -66,26 +73,24 @@ export async function fetchListings(
   }));
 }
 
-export async function searchListings(
+export function searchListings(
   request: Request,
   search: URLSearchParams,
 ): Promise<PublicCatalogSearchResponse> {
   const query = search.toString();
-  return (await requestPublicJson<PublicCatalogSearchResponse>(
-    request,
-    `/public/listings${query ? `?${query}` : ''}`,
-  )) as PublicCatalogSearchResponse;
+  return publicGetData(request, `/public/listings${query ? `?${query}` : ''}`, {
+    schema: publicCatalogSearchResponseSchema,
+  });
 }
 
 export function fetchListing(
   request: Request,
   slug: string,
 ): Promise<PublicListingDetailResponse | null> {
-  return requestPublicJson<PublicListingDetailResponse>(
-    request,
-    `/public/listings/${encodeURIComponent(slug)}`,
-    { allowNotFound: true },
-  );
+  return publicGetData(request, `/public/listings/${encodeURIComponent(slug)}`, {
+    schema: publicListingDetailResponseSchema,
+    allowNotFound: true,
+  });
 }
 
 export function fetchQuote(
@@ -93,9 +98,9 @@ export function fetchQuote(
   slug: string,
   query: URLSearchParams,
 ): Promise<QuoteResponse | null> {
-  return requestPublicJson<QuoteResponse>(
+  return publicGetData(
     request,
     `/public/listings/${encodeURIComponent(slug)}/quote?${query.toString()}`,
-    { allowNotFound: true },
+    { schema: quoteResponseSchema, allowNotFound: true },
   );
 }
