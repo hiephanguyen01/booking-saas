@@ -1,5 +1,7 @@
+import '../src/config/load-root-env';
 import { PrismaClient } from '@prisma/client';
 import argon2 from 'argon2';
+import type { ThemeConfigInput } from '@booking/contracts';
 import {
   PERMISSION_CATALOG,
   SYSTEM_ROLES,
@@ -102,15 +104,37 @@ async function seedDemo(): Promise<void> {
     /\/$/,
     '',
   );
+  const logoUrl = `${storagePublicUrl}/defaults/booking-studio/logo.png`;
+  const appIconUrl = `${storagePublicUrl}/defaults/booking-studio/app-icon.png`;
+  const backgroundUrl = `${storagePublicUrl}/defaults/booking-studio/background.png`;
   const studioHubTheme = {
     colors: { primary: '#E21114', accent: '#F97316', background: '#FFFFFF' },
-    logoUrl: `${storagePublicUrl}/defaults/booking-studio/logo.png`,
+    logoUrl,
+    faviconUrl: appIconUrl,
+    font: 'Montserrat',
     hero: {
       title: 'Đặt studio trong 30 giây',
-      subtitle: 'Chụp ảnh chuyên nghiệp',
-      imageUrl: `${storagePublicUrl}/defaults/booking-studio/background.png`,
+      subtitle: 'Không gian chuyên nghiệp cho mọi ý tưởng hình ảnh của bạn.',
+      imageUrl: backgroundUrl,
     },
-  };
+    carousel: [backgroundUrl],
+    contact: {
+      email: 'hello@studiohub.vn',
+      phone: '0900 000 001',
+      address: '12 Nguyễn Huệ, Phường Sài Gòn, Thành phố Hồ Chí Minh',
+    },
+    seo: {
+      title: 'StudioHub — Đặt studio chuyên nghiệp tại TP.HCM',
+      description:
+        'Khám phá và đặt studio chụp ảnh, thiết bị cùng dịch vụ sáng tạo chuyên nghiệp tại TP.HCM.',
+    },
+    socialLinks: {
+      facebook: 'https://facebook.com/studiohub.vn',
+      instagram: 'https://instagram.com/studiohub.vn',
+      tiktok: 'https://tiktok.com/@studiohub.vn',
+      youtube: 'https://youtube.com/@studiohub.vn',
+    },
+  } satisfies ThemeConfigInput;
 
   // ── Users ──────────────────────────────────────────────────────────────────
   const owner = await prisma.user.upsert({
@@ -148,11 +172,21 @@ async function seedDemo(): Promise<void> {
   // ── Tenant + domains + subscription ─────────────────────────────────────────
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'studiohub' },
-    update: { themeConfig: studioHubTheme },
+    update: {
+      name: 'StudioHub',
+      status: 'active',
+      vertical: 'studio',
+      defaultTimezone: 'Asia/Ho_Chi_Minh',
+      defaultLocale: 'vi',
+      themeConfig: studioHubTheme,
+    },
     create: {
       name: 'StudioHub',
       slug: 'studiohub',
+      status: 'active',
       vertical: 'studio',
+      defaultTimezone: 'Asia/Ho_Chi_Minh',
+      defaultLocale: 'vi',
       createdAt: tenantCreatedAt,
       themeConfig: studioHubTheme,
     },

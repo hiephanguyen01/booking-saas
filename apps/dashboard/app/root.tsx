@@ -1,4 +1,12 @@
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
+import {
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useLocation,
+} from 'react-router';
 import { SidebarInset, SidebarProvider } from '@booking/ui/components/ui/sidebar';
 import { Toaster } from '@booking/ui/components/ui/sonner';
 import { ThemeProvider } from '@booking/ui/components/theme/theme-provider';
@@ -7,6 +15,7 @@ import { loadSessionInfo } from './lib/auth.server';
 import { dashboardAuthMiddleware } from './lib/auth-middleware.server';
 import { AppSidebar } from './components/app-sidebar';
 import { DashboardHeader } from './components/dashboard-header';
+import { activeTenantMembership, tenantBrandStyle } from './lib/tenant-brand';
 import './app.css';
 
 export const middleware: Route.MiddlewareFunction[] = [dashboardAuthMiddleware];
@@ -48,14 +57,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const info = loaderData?.info ?? null;
+  const location = useLocation();
 
   // Unauthenticated (login/logout) — render the page without the dashboard shell.
   if (!info) {
     return <Outlet />;
   }
 
+  const membership = activeTenantMembership(info, location.pathname);
+
   return (
-    <SidebarProvider>
+    <SidebarProvider style={tenantBrandStyle(membership?.tenantBranding ?? null)}>
       <AppSidebar info={info} />
       <SidebarInset>
         <DashboardHeader />

@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { ScopeLevel, ScopeMembership } from '@booking/contracts';
+import {
+  dashboardBrandConfigSchema,
+  type ScopeLevel,
+  type ScopeMembership,
+} from '@booking/contracts';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { ISessionInfoReader } from '../../domain/ports/session-info-reader.port';
 
@@ -21,11 +25,13 @@ export class PrismaSessionInfoReader implements ISessionInfoReader {
       where: { userId },
       include: {
         role: { include: { rolePermissions: true } },
-        tenant: { select: { id: true, name: true } },
+        tenant: { select: { id: true, name: true, themeConfig: true } },
       },
     });
 
-    const partnerIds = [...new Set(rows.map((r) => r.partnerId).filter((id): id is string => !!id))];
+    const partnerIds = [
+      ...new Set(rows.map((r) => r.partnerId).filter((id): id is string => !!id)),
+    ];
     const partners = partnerIds.length
       ? await this.prisma.admin.partner.findMany({
           where: { id: { in: partnerIds } },
@@ -40,12 +46,14 @@ export class PrismaSessionInfoReader implements ISessionInfoReader {
       const key = `${row.tenantId ?? '-'}:${row.partnerId ?? '-'}`;
       let membership = groups.get(key);
       if (!membership) {
+        const branding = dashboardBrandConfigSchema.safeParse(row.tenant?.themeConfig);
         membership = {
           scope,
           tenantId: row.tenantId ?? null,
           tenantName: row.tenant?.name ?? null,
           partnerId: row.partnerId ?? null,
           partnerName: row.partnerId ? (partnerName.get(row.partnerId) ?? null) : null,
+          tenantBranding: branding.success ? branding.data : null,
           roles: [],
           permissions: [],
         };

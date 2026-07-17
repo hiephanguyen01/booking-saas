@@ -82,8 +82,9 @@ currently unpopulated.
 `PORT` (default 3000). **There is no `enableCors` and no global exception filter** — domain use-cases
 throw NestJS `HttpException`s, and the error envelope is `{ statusCode, code, message, details? }`
 (e.g. `VALIDATION_ERROR` from the zod pipe, `NO_PERMISSION_DECLARED`/`MISSING_PERMISSION` from the
-guard). Never leak Prisma errors. Env vars are read via `process.env` (see `.env.example`; the Prisma
-CLI additionally reads `apps/api/.env`).
+guard). Never leak Prisma errors. Env vars are read via `process.env`; API bootstrap, Prisma CLI, seed,
+and storage scripts all load the single workspace-root `.env` (see `.env.example`). Never add an
+app-local env file.
 
 ## Scripts (verified)
 

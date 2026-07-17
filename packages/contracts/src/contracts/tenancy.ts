@@ -196,6 +196,19 @@ export const themeConfigSchema = z.object({
 });
 export type ThemeConfigInput = z.infer<typeof themeConfigSchema>;
 
+/**
+ * The tenant-brand subset used by authenticated dashboard shells. It is derived
+ * from the same theme schema as the storefront, so dashboard consumers never
+ * invent a second shape for logo, colors, or typography.
+ */
+export const dashboardBrandConfigSchema = themeConfigSchema.pick({
+  logoUrl: true,
+  faviconUrl: true,
+  colors: true,
+  font: true,
+});
+export type DashboardBrandConfig = z.infer<typeof dashboardBrandConfigSchema>;
+
 /** The storefront theme payload the dashboard reads back to hydrate its form (§16.1). */
 export const tenantThemeResponseSchema = z.object({
   name: z.string(),

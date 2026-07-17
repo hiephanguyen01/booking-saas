@@ -89,30 +89,43 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
   const sent = actionData?.sent ?? false;
 
   return (
-    <div className="mx-auto max-w-lg px-6 py-12">
-      <h1 className="text-2xl font-bold tracking-tight">{t('lookup.title')}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{t('lookup.subtitle')}</p>
+    <div className="bg-muted/20 font-studio">
+      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14 lg:py-16">
+        <header className="max-w-2xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            {t('lookup.title')}
+          </h1>
+          <p className="mt-3 text-base leading-7 text-muted-foreground">{t('lookup.subtitle')}</p>
+        </header>
 
       {myBookings.length > 0 ? (
-        <section className="mt-6" aria-labelledby="my-bookings-title">
-          <h2 id="my-bookings-title" className="mb-2 text-sm font-semibold text-foreground">
-            {t('lookup.myBookingsTitle')}
-          </h2>
-          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+        <section
+          className="mt-8 rounded-sm border border-border bg-card p-5 shadow-sm sm:p-6"
+          aria-labelledby="my-bookings-title"
+        >
+          <div>
+            <h2 id="my-bookings-title" className="font-semibold text-foreground">
+              {t('lookup.myBookingsTitle')}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('lookup.myBookingsDescription')}
+            </p>
+          </div>
+          <ul className="mt-5 divide-y divide-border overflow-hidden rounded-sm border border-border">
             {myBookings.map((booking) => (
               <li key={booking.id}>
                 <Link
                   to={storefrontPaths.booking(locale, booking.code)}
-                  className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted"
+                  className="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   <span>
                     <span className="block font-mono text-sm font-semibold">{booking.code}</span>
                     <span className="text-xs text-muted-foreground">
-                      {dateLabelInTz(booking.startUtc, DEFAULT_TZ, locale)} ·{' '}
+                      {dateLabelInTz(booking.startUtc, DEFAULT_TZ, locale)},{' '}
                       {timeInTz(booking.startUtc, DEFAULT_TZ)}
                     </span>
                   </span>
-                  <span className="text-sm font-medium text-primary">
+                  <span className="shrink-0 rounded-sm bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
                     {t(`statusLabels.${booking.status}`)}
                   </span>
                 </Link>
@@ -122,8 +135,14 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
         </section>
       ) : null}
 
-      <Card className="mt-6 rounded-2xl border-border">
-        <CardContent className="p-6">
+      <Card className="mt-6 gap-0 rounded-sm border-border py-0 shadow-sm sm:mt-8">
+        <CardContent className="p-5 sm:p-8">
+          <div className="mb-7">
+            <h2 className="text-lg font-semibold text-foreground">{t('lookup.formTitle')}</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {t('lookup.formDescription')}
+            </p>
+          </div>
           {sent ? (
             <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} locale={locale} />
           ) : (
@@ -133,9 +152,13 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
             />
           )}
         </CardContent>
+        <div className="border-t border-border bg-muted/30 px-5 py-4 text-sm leading-6 text-muted-foreground sm:px-8">
+          {t('lookup.privacyNote')}
+        </div>
       </Card>
 
       <RecentList recent={recent} locale={locale} />
+      </div>
     </div>
   );
 }
@@ -166,10 +189,12 @@ function RequestForm({
       fields={fields}
       defaultValues={{ code: '' }}
       submitLabel={t('lookup.sendOtp')}
+      submitPendingLabel={t('lookup.sendingOtp')}
       submitFullWidth
       serverError={error ? t('lookup.invalidCode') : null}
       fieldErrors={fieldErrors}
       transform={(values) => ({ code: values.code.trim().toUpperCase() })}
+      className="[&_button[type=submit]]:h-12 [&_button[type=submit]]:rounded-sm [&_input]:h-12 [&_input]:rounded-sm [&_input]:font-mono [&_input]:uppercase [&_input]:tracking-wide"
     />
   );
 }
@@ -186,20 +211,28 @@ function VerifyForm({
 }) {
   const { t } = useTranslation(NsI18n.Booking);
   return (
-    <div className="space-y-3">
-      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+    <div className="space-y-5">
+      <p className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-foreground">
         {t('lookup.otpSent')}
       </p>
       {devOtp ? (
-        <p className="text-xs text-muted-foreground">{t('lookup.otpHintDev', { otp: devOtp })}</p>
+        <p className="rounded-sm bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
+          {t('lookup.otpHintDev', { otp: devOtp })}
+        </p>
       ) : null}
-      <Form method="post" action={storefrontPaths.booking(locale, code)} className="space-y-3">
+      <Form method="post" action={storefrontPaths.booking(locale, code)} className="space-y-5">
         <input type="hidden" name="intent" value="verify-access" />
-        <label className="flex flex-col gap-1.5">
+        <label className="flex flex-col gap-2">
           <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
-          <Input name="otp" inputMode="numeric" autoComplete="one-time-code" autoFocus />
+          <Input
+            name="otp"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            className="h-12 rounded-sm font-mono tracking-[0.2em]"
+          />
         </label>
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="h-12 w-full rounded-sm">
           {t('lookup.verify')}
         </Button>
       </Form>
@@ -210,17 +243,20 @@ function VerifyForm({
 function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' }) {
   const { t } = useTranslation(NsI18n.Booking);
   return (
-    <div className="mt-8">
-      <h2 className="mb-2 text-sm font-semibold text-foreground">{t('lookup.recentTitle')}</h2>
+    <section className="mt-6 rounded-sm border border-border bg-card p-5 shadow-sm sm:p-6">
+      <h2 className="font-semibold text-foreground">{t('lookup.recentTitle')}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{t('lookup.recentDescription')}</p>
       {recent.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('lookup.recentEmpty')}</p>
+        <p className="mt-5 rounded-sm border border-dashed border-border bg-muted/25 px-4 py-6 text-center text-sm text-muted-foreground">
+          {t('lookup.recentEmpty')}
+        </p>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border">
+        <ul className="mt-5 divide-y divide-border overflow-hidden rounded-sm border border-border">
           {recent.map((code) => (
             <li key={code}>
               <Link
                 to={storefrontPaths.booking(locale, code)}
-                className="flex items-center justify-between px-4 py-3 text-sm hover:bg-muted"
+                className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 <span className="font-mono font-semibold">{code}</span>
                 <span className="text-muted-foreground">{t('viewDetails')} →</span>
@@ -229,6 +265,6 @@ function RecentList({ recent, locale }: { recent: string[]; locale: 'vi' | 'en' 
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

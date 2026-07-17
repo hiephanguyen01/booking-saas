@@ -17,7 +17,10 @@ import { storefrontPaths } from '../lib/locale-paths';
 import { getOptionalAuth } from '../lib/auth.server';
 import { getCheckoutFlowService } from '../lib/checkout-flow.server';
 import { createTranslator } from '../lib/i18n';
-import { allowedPaymentRedirect } from '../lib/payment-redirect.server';
+import {
+  allowedPaymentRedirect,
+  isMockPaymentRedirect,
+} from '../lib/payment-redirect.server';
 import { errorStatus } from '../lib/http-status';
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
@@ -167,7 +170,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         { status: errorStatus(checkout.status), headers },
       );
     }
-    const paymentUrl = allowedPaymentRedirect(checkout.data?.paymentUrl);
+    const rawPaymentUrl = checkout.data?.paymentUrl;
+    if (isMockPaymentRedirect(rawPaymentUrl)) {
+      return redirect(storefrontPaths.booking(locale, booking.code), { headers });
+    }
+    const paymentUrl = allowedPaymentRedirect(rawPaymentUrl);
     if (!paymentUrl) {
       return data(
         { fieldErrors: null, error: 'INVALID_PAYMENT_REDIRECT', code: 'INVALID_PAYMENT_REDIRECT' },
