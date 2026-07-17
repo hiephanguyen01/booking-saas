@@ -23,19 +23,20 @@ import { dateLabelInTz, dateOnlyToLocal, DEFAULT_TZ, localToDateOnly } from '../
 import { typeIcon } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
 import {
-  dateSelectionForMode,
   canSubmitSearch,
+  dateSelectionForMode,
   parseSearchState,
+  selectedDates,
+  validDailyRange,
   type SearchDateSelection,
   type SearchMode,
   type StorefrontSearchState,
-  selectedDates,
-  validDailyRange,
 } from './search-state';
 
 type DateRange = { from: Date | undefined; to?: Date | undefined };
 type LocationOption = string | { value: string; label: string };
 type SearchFormVariant = 'hero' | 'bar';
+type ModeAppearance = 'pills' | 'tabs';
 
 const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20] as const;
 
@@ -106,6 +107,14 @@ export function SearchForm({
     onTypeChange?.(nextType);
   }
 
+  function changeMode(nextMode: SearchMode): void {
+    if (nextMode === mode) return;
+    const selection = dateSelectionForMode(nextMode);
+    setDate(selection.date);
+    setRange(toRange(selection));
+    setMode(selection.mode);
+  }
+
   return (
     <Form
       method="get"
@@ -133,6 +142,13 @@ export function SearchForm({
           isHero ? 'px-5 pt-5 pb-12 md:px-6' : 'mx-auto max-w-292.5 px-4 pb-6 lg:px-0',
         )}
       >
+        {isHero ? (
+          <div className="flex flex-col items-start gap-2">
+            <ModeToggle mode={mode} onModeChange={changeMode} appearance="pills" />
+            <span className="text-xs font-medium text-primary">{modeHint(mode, t)}</span>
+          </div>
+        ) : null}
+
         {mode !== 'none' ? <input type="hidden" name="mode" value={mode} /> : null}
         {mode === 'hourly' && date ? (
           <input type="hidden" name="date" value={date} />
@@ -177,10 +193,12 @@ export function SearchForm({
           {mode !== 'none' ? (
             <SearchDatePicker
               mode={mode}
+              onModeChange={changeMode}
               date={date}
               setDate={setDate}
               range={range}
               setRange={setRange}
+              showModeTabs={!isHero}
             />
           ) : null}
 
@@ -304,6 +322,43 @@ function CategoryPicker({
   );
 }
 
+const MODE_ITEM_CLASS: Record<ModeAppearance, string> = {
+  pills:
+    'h-10 rounded-full border-border px-4 data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary',
+  tabs: 'h-14 rounded-none! border-0 border-b-2 border-transparent bg-transparent data-[state=on]:border-primary data-[state=on]:bg-transparent data-[state=on]:text-primary',
+};
+
+function ModeToggle({
+  mode,
+  onModeChange,
+  appearance,
+}: {
+  mode: SearchMode;
+  onModeChange: (mode: SearchMode) => void;
+  appearance: ModeAppearance;
+}) {
+  const { t } = useTranslation(NsI18n.Common);
+  const isPills = appearance === 'pills';
+  return (
+    <ToggleGroup
+      type="single"
+      value={mode}
+      onValueChange={(value) => value && onModeChange(value as SearchMode)}
+      variant={isPills ? 'outline' : 'default'}
+      spacing={isPills ? 3 : 0}
+      className={cn(!isPills && 'mx-auto grid grid-cols-2 px-6')}
+      aria-label={t('home.bookingMode')}
+    >
+      <ToggleGroupItem value="hourly" className={MODE_ITEM_CLASS[appearance]}>
+        {t('home.bookHourly')}
+      </ToggleGroupItem>
+      <ToggleGroupItem value="daily" className={MODE_ITEM_CLASS[appearance]}>
+        {t('home.bookDaily')}
+      </ToggleGroupItem>
+    </ToggleGroup>
+  );
+}
+
 /** One bordered box holding an icon + a control: the box IS the form control, so it
  *  owns the 44px geometry and the control inside is stripped of its own
  *  border/height/padding (`h-auto border-0 p-0` — merged last, so it beats the
@@ -343,16 +398,20 @@ function useCalendarFormatters(locale: Locale) {
 
 function SearchDatePicker({
   mode,
+  onModeChange,
   date,
   setDate,
   range,
   setRange,
+  showModeTabs,
 }: {
   mode: SearchMode;
+  onModeChange: (mode: SearchMode) => void;
   date: string;
   setDate: (value: string) => void;
   range: DateRange;
   setRange: (value: DateRange) => void;
+  showModeTabs: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
@@ -361,8 +420,7 @@ function SearchDatePicker({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const day = (value: Date): string => dateLabelInTz(localToDateOnly(value), DEFAULT_TZ, locale);
   const isSingleDayRange =
-    Boolean(range.from && range.to) &&
-    localToDateOnly(range.from!) === localToDateOnly(range.to!);
+    Boolean(range.from && range.to) && localToDateOnly(range.from!) === localToDateOnly(range.to!);
   const label =
     mode === 'hourly'
       ? date
@@ -421,6 +479,9 @@ function SearchDatePicker({
 
     return (
       <div className="flex flex-col">
+        {showModeTabs ? (
+          <ModeToggle mode={mode} onModeChange={onModeChange} appearance="tabs" />
+        ) : null}
         <div className="overflow-x-auto p-3">{picker}</div>
         <div className="flex items-center gap-2 border-t border-border bg-muted/40 px-6 py-4 text-xs text-muted-foreground">
           <Info className="size-4 shrink-0" aria-hidden="true" />

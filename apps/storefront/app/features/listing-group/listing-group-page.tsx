@@ -38,6 +38,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   return (
     <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
       <SearchForm
+      
         listingTypes={listingTypes}
         currentType={group.listingTypeSlug}
         initialState={state}
