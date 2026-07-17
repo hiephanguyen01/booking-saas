@@ -30,13 +30,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   const auth = getOptionalAuth();
   let myBookings: BookingResponse[] = [];
   if (auth) {
-    const host = (request.headers.get('host') ?? 'localhost').split(':')[0];
     const result = await apiGet<BookingResponse[]>(
+      request,
       '/public/my-bookings',
       auth.session.accessToken,
       {
-        signal: request.signal,
-        headers: { 'x-forwarded-host': host },
         schema: z.array(bookingResponseSchema),
       },
     );

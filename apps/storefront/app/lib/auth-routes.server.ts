@@ -47,10 +47,14 @@ export async function startRegistrationAction(request: Request, localeParam?: st
     locale,
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
-  const result = await publicPost<AuthChallengeResponse>('/auth/registration/start', parsed.data, {
-    signal: request.signal,
-    schema: authChallengeResponseSchema,
-  });
+  const result = await publicPost<AuthChallengeResponse>(
+    request,
+    '/auth/registration/start',
+    parsed.data,
+    {
+      schema: authChallengeResponseSchema,
+    },
+  );
   if (!result.ok || !result.data) return failed(result);
   const setCookie = await authFlow.create(request, {
     phase: 'registration_verify',
@@ -69,10 +73,10 @@ export async function startResetAction(request: Request, localeParam?: string) {
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthChallengeResponse>(
+    request,
     '/auth/password-reset/start',
     parsed.data,
     {
-      signal: request.signal,
       schema: authChallengeResponseSchema,
     },
   );
@@ -138,9 +142,10 @@ export async function verifyAction(
   const form = await request.formData();
   if (form.get('intent') === 'resend') {
     const result = await publicPost<AuthChallengeResponse>(
+      request,
       `/auth/${purpose === 'registration' ? 'registration' : 'password-reset'}/resend`,
       { challengeId: flow.record.challengeId },
-      { signal: request.signal, schema: authChallengeResponseSchema },
+      { schema: authChallengeResponseSchema },
     );
     if (!result.ok || !result.data) return failed(result);
     await authFlow.update(flow.id, {
@@ -156,9 +161,10 @@ export async function verifyAction(
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthOtpVerifiedResponse>(
+    request,
     `/auth/${purpose === 'registration' ? 'registration' : 'password-reset'}/verify`,
     parsed.data,
-    { signal: request.signal, schema: authOtpVerifiedResponseSchema },
+    { schema: authOtpVerifiedResponseSchema },
   );
   if (!result.ok || !result.data) return failed(result);
   await authFlow.update(flow.id, {
@@ -194,9 +200,10 @@ export async function completePasswordAction(
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthFlowCompleteResponse>(
+    request,
     `/auth/${purpose === 'registration' ? 'registration' : 'password-reset'}/complete`,
     parsed.data,
-    { signal: request.signal, schema: authFlowCompleteResponseSchema },
+    { schema: authFlowCompleteResponseSchema },
   );
   if (!result.ok || !result.data) return failed(result);
   await authFlow.update(flow.id, {
@@ -214,7 +221,7 @@ export async function loginAction(request: Request, localeParam?: string) {
   const form = await request.formData();
   const parsed = loginInputSchema.safeParse(fields(form));
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
-  const result = await backendLogin(parsed.data);
+  const result = await backendLogin(request, parsed.data);
   if (!result.ok || !result.tokens || !result.user) return failed(result);
   suppressStorefrontSessionCommit();
   const url = new URL(request.url);
@@ -225,7 +232,7 @@ export async function loginAction(request: Request, localeParam?: string) {
 export async function logoutAction(request: Request, localeParam?: string) {
   const locale = localeOf(localeParam);
   const auth = getOptionalAuth();
-  if (auth) await backendLogout(auth.session.accessToken);
+  if (auth) await backendLogout(request, auth.session.accessToken);
   suppressStorefrontSessionCommit();
   return destroyUserSession(request, `/${locale}`);
 }

@@ -17,23 +17,22 @@ type AuthResult =
   | { kind: 'invalid' }
   | { kind: 'unavailable' };
 
-async function authenticate(data: StorefrontSessionData, signal: AbortSignal): Promise<AuthResult> {
-  const initial = await apiGet<SessionInfoResponse>('/auth/session', data.accessToken, {
-    signal,
+async function authenticate(data: StorefrontSessionData, request: Request): Promise<AuthResult> {
+  const initial = await apiGet<SessionInfoResponse>(request, '/auth/session', data.accessToken, {
     schema: sessionInfoResponseSchema,
   });
   if (initial.ok && initial.data) {
     return { kind: 'authenticated', info: initial.data, data, rotated: false };
   }
-  if (initial.status !== 401)
+  if (initial.status !== 401) {
     return initial.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
-  const refreshed = await backendRefresh(data.refreshToken, signal);
+  }
+  const refreshed = await backendRefresh(request, data.refreshToken);
   if (!refreshed.ok || !refreshed.tokens) {
     return refreshed.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
   }
   const next = { ...data, ...refreshed.tokens };
-  const retried = await apiGet<SessionInfoResponse>('/auth/session', next.accessToken, {
-    signal,
+  const retried = await apiGet<SessionInfoResponse>(request, '/auth/session', next.accessToken, {
     schema: sessionInfoResponseSchema,
   });
   if (!retried.ok || !retried.data) {
@@ -60,7 +59,7 @@ export async function storefrontAuthMiddleware(
       next,
     );
   }
-  const result = await authenticate(stored.data, request.signal);
+  const result = await authenticate(stored.data, request);
   if (result.kind === 'unavailable') {
     throw new Response('Authentication service temporarily unavailable', { status: 503 });
   }

@@ -102,9 +102,10 @@ export async function startPartnerRegistration(request: Request, localeParam?: s
     .toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) return invalid({ email: ['invalidEmail'] });
   const result = await publicPost<AuthChallengeResponse>(
+    request,
     '/auth/registration/start',
     { email, fullName: inferredName(email), locale },
-    { signal: request.signal, schema: authChallengeResponseSchema },
+    { schema: authChallengeResponseSchema },
   );
   if (!result.ok || !result.data) return failed(result);
   const setCookie = await authFlow.create(request, {
@@ -164,9 +165,10 @@ export async function verifyPartnerRegistration(request: Request, localeParam?: 
   const form = await request.formData();
   if (form.get('intent') === 'resend') {
     const result = await publicPost<AuthChallengeResponse>(
+      request,
       '/auth/registration/resend',
       { challengeId: flow.record.challengeId },
-      { signal: request.signal, schema: authChallengeResponseSchema },
+      { schema: authChallengeResponseSchema },
     );
     if (!result.ok || !result.data) return failed(result);
     await authFlow.update(flow.id, {
@@ -182,10 +184,10 @@ export async function verifyPartnerRegistration(request: Request, localeParam?: 
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthOtpVerifiedResponse>(
+    request,
     '/auth/registration/verify',
     parsed.data,
     {
-      signal: request.signal,
       schema: authOtpVerifiedResponseSchema,
     },
   );
@@ -230,12 +232,13 @@ export async function completePartnerPassword(request: Request, localeParam?: st
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const completed = await publicPost<AuthFlowCompleteResponse>(
+    request,
     '/auth/registration/complete',
     parsed.data,
-    { signal: request.signal, schema: authFlowCompleteResponseSchema },
+    { schema: authFlowCompleteResponseSchema },
   );
   if (!completed.ok || !completed.data) return failed(completed);
-  const login = await backendLogin({
+  const login = await backendLogin(request, {
     email: flow.record.email ?? '',
     password: String(form.password),
   });
