@@ -1,3 +1,4 @@
+import type { ApiResult } from '@booking/api-client';
 import type {
   AutoCampaignResponse,
   AvailabilityMode,
@@ -11,12 +12,16 @@ import type {
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
+  autoCampaignResponseSchema,
   availabilityResponseSchema,
+  bookingOtpResponseSchema,
   bookingResponseSchema,
+  cancelBookingResponseSchema,
+  checkoutResponseSchema,
   paymentStatusResponseSchema,
+  validatePromoResponseSchema,
 } from '@booking/contracts';
-import { publicGetData } from './api.server';
-import { getOptionalAccessToken } from './auth.server';
+import { publicGetData, publicPost } from './api.server';
 import { storefrontEnv } from './env.server';
 
 /**
@@ -25,70 +30,6 @@ import { storefrontEnv } from './env.server';
  * structured `ApiResult` so routes can surface field errors and stable
  * problem messages instead of throwing.
  */
-export interface ApiResult<T> {
-  ok: boolean;
-  status: number;
-  data: T | null;
-  /** Human message from the API's problem body (`message`). */
-  error?: string;
-  /** Stable machine code from the API (`code`), e.g. `SLOT_TAKEN`, `VALIDATION_ERROR`. */
-  code?: string;
-  /** Per-field messages from a zod `VALIDATION_ERROR` (`details.fieldErrors`). */
-  fieldErrors?: Record<string, string[]>;
-}
-
-const backendUrl = (): string => storefrontEnv.backendUrl;
-
-function hostOf(request: Request): string {
-  return (request.headers.get('host') ?? 'localhost').split(':')[0];
-}
-
-function baseHeaders(request: Request): Record<string, string> {
-  const token = getOptionalAccessToken();
-  return {
-    'x-forwarded-host': hostOf(request),
-    accept: 'application/json',
-    ...(token ? { cookie: `sid=${token}` } : {}),
-  };
-}
-
-async function postJson<T>(
-  request: Request,
-  path: string,
-  body: unknown,
-  extraHeaders: Record<string, string> = {},
-): Promise<ApiResult<T>> {
-  let res: Response;
-  try {
-    res = await fetch(`${backendUrl()}${path}`, {
-      method: 'POST',
-      headers: { ...baseHeaders(request), 'content-type': 'application/json', ...extraHeaders },
-      body: JSON.stringify(body ?? {}),
-    });
-  } catch {
-    return { ok: false, status: 503, data: null, error: 'Không kết nối được máy chủ.' };
-  }
-
-  let payload: unknown = null;
-  try {
-    payload = await res.json();
-  } catch {
-    payload = null;
-  }
-
-  if (res.ok) {
-    return { ok: true, status: res.status, data: payload as T };
-  }
-
-  const record = (payload ?? {}) as Record<string, unknown>;
-  const error = typeof record.message === 'string' ? record.message : undefined;
-  const code = typeof record.code === 'string' ? record.code : undefined;
-  const details = record.details as { fieldErrors?: Record<string, string[]> } | undefined;
-  const fieldErrors =
-    details && typeof details.fieldErrors === 'object' ? details.fieldErrors : undefined;
-  return { ok: false, status: res.status, data: null, error, code, fieldErrors };
-}
-
 // ── Availability (§9) ──────────────────────────────────────────────────────────
 
 export function fetchAvailability(
@@ -110,7 +51,9 @@ export function validatePromo(
   request: Request,
   input: { code: string; listingId: string; amount: string; start?: string; end?: string },
 ): Promise<ApiResult<ValidatePromoResponse>> {
-  return postJson<ValidatePromoResponse>(request, '/public/checkout/validate-promo', input);
+  return publicPost(request, '/public/checkout/validate-promo', input, {
+    schema: validatePromoResponseSchema,
+  });
 }
 
 /** The best auto-applied campaign for a slot (§12.1), or null when none applies. */
@@ -118,7 +61,9 @@ export function resolveAutoCampaign(
   request: Request,
   input: { listingId: string; amount: string; start?: string; end?: string },
 ): Promise<ApiResult<AutoCampaignResponse>> {
-  return postJson<AutoCampaignResponse>(request, '/public/checkout/auto-campaigns', input);
+  return publicPost(request, '/public/checkout/auto-campaigns', input, {
+    schema: autoCampaignResponseSchema,
+  });
 }
 
 // ── Bookings (§8) ───────────────────────────────────────────────────────────────
@@ -128,8 +73,9 @@ export function createBooking(
   input: CreateBookingInput,
   idempotencyKey: string,
 ): Promise<ApiResult<BookingResponse>> {
-  return postJson<BookingResponse>(request, '/public/bookings', input, {
-    'idempotency-key': idempotencyKey,
+  return publicPost(request, '/public/bookings', input, {
+    headers: { 'idempotency-key': idempotencyKey },
+    schema: bookingResponseSchema,
   });
 }
 
@@ -137,10 +83,11 @@ export function checkoutBooking(
   request: Request,
   bookingId: string,
 ): Promise<ApiResult<CheckoutResponse>> {
-  return postJson<CheckoutResponse>(
+  return publicPost(
     request,
     `/public/bookings/${encodeURIComponent(bookingId)}/checkout`,
     {},
+    { schema: checkoutResponseSchema },
   );
 }
 
@@ -163,10 +110,11 @@ export function requestBookingOtp(
   request: Request,
   code: string,
 ): Promise<ApiResult<BookingOtpResponse>> {
-  return postJson<BookingOtpResponse>(
+  return publicPost(
     request,
     `/public/bookings/${encodeURIComponent(code)}/request-otp`,
     {},
+    { schema: bookingOtpResponseSchema },
   );
 }
 
@@ -175,10 +123,11 @@ export function cancelBooking(
   code: string,
   body: { reason?: string; otp?: string },
 ): Promise<ApiResult<CancelBookingResponse>> {
-  return postJson<CancelBookingResponse>(
+  return publicPost(
     request,
     `/public/bookings/${encodeURIComponent(code)}/cancel`,
     body,
+    { schema: cancelBookingResponseSchema },
   );
 }
 
@@ -196,10 +145,11 @@ export function fetchPaymentStatus(
 
 /** Dev-only mock payment (gated behind `ALLOW_MOCK_PAYMENTS` on the API). */
 export function mockPay(request: Request, code: string): Promise<ApiResult<BookingResponse>> {
-  return postJson<BookingResponse>(
+  return publicPost(
     request,
     `/public/bookings/${encodeURIComponent(code)}/mock-pay`,
     {},
+    { schema: bookingResponseSchema },
   );
 }
 
