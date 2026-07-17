@@ -190,5 +190,12 @@ export default function CheckoutRoute(props: Route.ComponentProps) {
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
-  return <RouteErrorState error={error} homeHref={storefrontPaths.home(locale)} homeLabel="Về trang chủ" />;
+  const homeLabel = createTranslator(locale).t('errors.home');
+  return (
+    <RouteErrorState
+      error={error}
+      homeHref={storefrontPaths.home(locale)}
+      homeLabel={homeLabel}
+    />
+  );
 }
