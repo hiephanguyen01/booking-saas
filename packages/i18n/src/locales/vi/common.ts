@@ -30,6 +30,8 @@ export const viCommon = {
     pickDate: 'Chọn ngày',
     searchPlaceholder: 'Bạn tìm gì?',
     locationPlaceholder: 'Địa điểm',
+    searchLocation: 'Tìm địa điểm…',
+    noLocationResults: 'Không có địa điểm phù hợp.',
     guestsPlaceholder: '1 - 5 khách',
     search: 'Tìm kiếm',
     // Was "Top 10 Studio đặt nhiều nhất". The ranking behind that claim was a

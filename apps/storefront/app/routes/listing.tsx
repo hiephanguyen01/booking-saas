@@ -2,6 +2,7 @@ import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/con
 import type { Route } from './+types/listing';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { ListingPage } from '../features/listing/listing-page';
+import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
 import { addDays, DEFAULT_TZ, todayInTz } from '../lib/time';
@@ -49,7 +50,10 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const searchParams = url.searchParams;
-  const listing = await fetchListing(request, params.listingSlug);
+  const [listing, provinces] = await Promise.all([
+    fetchListing(request, params.listingSlug),
+    loadAdministrativeProvinces(request),
+  ]);
 
   if (!listing) {
     throw new Response('Listing not found', { status: 404 });
@@ -92,7 +96,11 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       : Promise.resolve(null);
 
   const [availability, quote] = await Promise.all([availabilityPromise, quotePromise]);
-  return { listing, mode, availability, quote };
+  const locations = provinces.map((province) => ({
+    value: province.code,
+    label: province.name,
+  }));
+  return { listing, mode, availability, quote, locations };
 }
 
 export default function ListingRoute(props: Route.ComponentProps) {

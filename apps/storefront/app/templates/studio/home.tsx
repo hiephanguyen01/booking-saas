@@ -8,6 +8,7 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { Camera } from 'lucide-react';
 import { useState } from 'react';
+import type { LocationOption } from '../../features/search/search-form';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
 import { BrandCarousel } from './brand-carousel';
@@ -30,7 +31,7 @@ export function StudioHome({
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   listings: PublicListingResponse[];
-  locations: string[];
+  locations: LocationOption[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const [selectedType, setSelectedType] = useState(

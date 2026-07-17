@@ -2,6 +2,14 @@ import type { PublicListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@booking/ui/components/ui/command';
+import {
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -14,7 +22,16 @@ import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/nati
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { cn } from '@booking/ui/lib/utils';
-import { CalendarDays, ChevronDown, Info, MapPin, Search, Users } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  Info,
+  MapPin,
+  Search,
+  Users,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Form } from 'react-router';
 import { NsI18n, useTranslation, type Locale } from '../../lib/i18n';
@@ -34,7 +51,7 @@ import {
 } from './search-state';
 
 type DateRange = { from: Date | undefined; to?: Date | undefined };
-type LocationOption = string | { value: string; label: string };
+export type LocationOption = string | { value: string; label: string };
 type SearchFormVariant = 'hero' | 'bar';
 type ModeAppearance = 'pills' | 'tabs';
 
@@ -188,21 +205,7 @@ export function SearchForm({
             />
           </SearchField>
 
-          <SearchField icon={MapPin} label={t('home.locationPlaceholder')}>
-            <NativeSelect
-              name="location"
-              defaultValue={state.location}
-              aria-label={t('home.locationPlaceholder')}
-              className="h-auto border-0 bg-transparent p-0 pr-7 shadow-none focus-visible:ring-0"
-            >
-              <NativeSelectOption value="">{t('home.locationPlaceholder')}</NativeSelectOption>
-              {options.map((location) => (
-                <NativeSelectOption key={location.value} value={location.value}>
-                  {location.label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </SearchField>
+          <LocationCombobox key={state.location} initialValue={state.location} options={options} />
 
           {mode !== 'none' ? (
             <SearchDatePicker
@@ -276,6 +279,104 @@ export function SearchForm({
         ) : null}
       </div>
     </Form>
+  );
+}
+
+function LocationCombobox({
+  initialValue,
+  options,
+}: {
+  initialValue: string;
+  options: { value: string; label: string }[];
+}) {
+  const { t } = useTranslation(NsI18n.Common);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(initialValue);
+  const selected = options.find((option) => option.value === value);
+  const placeholder = t('home.locationPlaceholder');
+
+  function select(nextValue: string): void {
+    setValue(nextValue);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <input type="hidden" name="location" value={value} />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            role="combobox"
+            aria-expanded={open}
+            aria-label={placeholder}
+            className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-left text-foreground shadow-xs hover:bg-accent focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+          >
+            <MapPin className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span
+              className={cn(
+                'min-w-0 flex-1 truncate text-sm',
+                !selected && 'text-muted-foreground',
+              )}
+            >
+              {selected?.label ?? placeholder}
+            </span>
+            <ChevronsUpDown
+              className="size-4 shrink-0 text-muted-foreground opacity-70"
+              aria-hidden="true"
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-content-available-width)] p-0"
+        >
+          <Command>
+            <CommandInput placeholder={t('home.searchLocation')} />
+            <CommandList>
+              <CommandEmpty>{t('home.noLocationResults')}</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value={placeholder}
+                  onSelect={() => select('')}
+                  className="data-[selected=true]:bg-primary/10 data-[selected=true]:text-primary"
+                >
+                  <Check
+                    className={cn('mr-2 size-4 text-primary', value ? 'opacity-0' : 'opacity-100')}
+                  />
+                  {placeholder}
+                </CommandItem>
+                {options.map((option) => {
+                  const isSelected = option.value === value;
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.label}
+                      onSelect={() => select(option.value)}
+                      className={cn(
+                        'data-[selected=true]:bg-primary/10 data-[selected=true]:text-primary',
+                        isSelected &&
+                          'bg-primary text-primary-foreground data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground',
+                      )}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 size-4',
+                          isSelected
+                            ? 'text-primary-foreground opacity-100'
+                            : 'text-primary opacity-0',
+                        )}
+                      />
+                      <span className="truncate">{option.label}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </>
   );
 }
 

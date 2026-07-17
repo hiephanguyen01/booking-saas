@@ -1,5 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
-import { SearchForm } from '../../features/search/search-form';
+import { SearchForm, type LocationOption } from '../../features/search/search-form';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
 
@@ -16,7 +16,7 @@ export function StudioHero({
 }: {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
-  locations: string[];
+  locations: LocationOption[];
   onTypeChange?: (typeSlug: string) => void;
 }) {
   const { t } = useTranslation(NsI18n.Common);

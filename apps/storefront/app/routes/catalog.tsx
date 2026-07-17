@@ -2,6 +2,7 @@ import type { Route } from './+types/catalog';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CatalogPage } from '../features/catalog/catalog-page';
 import { NsI18n, useTranslation } from '../lib/i18n';
+import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { searchListings } from '../lib/catalog.server';
 import { parseSearchState } from '../features/search/search-state';
 
@@ -32,7 +33,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   apiSearch.delete('area');
   const legacyArea = url.searchParams.get('area');
   if (legacyArea) apiSearch.set('attr.area', legacyArea);
-  const result = await searchListings(request, apiSearch);
+  const [result, provinces] = await Promise.all([
+    searchListings(request, apiSearch),
+    loadAdministrativeProvinces(request),
+  ]);
   const type = result.type;
   const search = {
     items: result.items.map((item) => ({
@@ -42,7 +46,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     total: result.pagination.total,
     page: result.pagination.page,
     totalPages: result.pagination.totalPages,
-    locations: result.facets.find((facet) => facet.key === 'location')?.options ?? [],
+    locations: provinces.map((province) => ({ value: province.code, label: province.name })),
     amenities: result.facets.find((facet) => facet.key === 'amenities')?.options ?? [],
     facets: result.facets,
     sortOptions: result.sortOptions,

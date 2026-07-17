@@ -33,6 +33,8 @@ export const enCommon = {
     pickDate: 'Pick a date',
     searchPlaceholder: 'What are you looking for?',
     locationPlaceholder: 'Location',
+    searchLocation: 'Search locations…',
+    noLocationResults: 'No matching locations.',
     guestsPlaceholder: '1 - 5 guests',
     search: 'Search',
     topListings: 'Featured studios',

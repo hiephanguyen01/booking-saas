@@ -1,6 +1,7 @@
 import { useOutletContext } from 'react-router';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import type { Route } from './+types/listing-group';
+import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchListing, fetchListingGroup, fetchListings, fetchQuote } from '../lib/catalog.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { storefrontPaths } from '../lib/locale-paths';
@@ -9,7 +10,6 @@ import { jsonLd } from '../lib/seo';
 import { parseSearchState, rangeDates } from '../features/search/search-state';
 import { addDays, nightsBetween, zonedToUtcIso } from '../lib/time';
 import { ListingGroupPage } from '../features/listing-group/listing-group-page';
-import { deriveLocationSuggestions } from '../lib/search.server';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   const group = loaderData?.group;
@@ -35,14 +35,12 @@ async function safe<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
-  const [group, catalogCandidates] = await Promise.all([
+  const [group, catalogCandidates, provinces] = await Promise.all([
     fetchListingGroup(request, params.groupSlug),
     safe(fetchListings(request, new URLSearchParams())),
+    loadAdministrativeProvinces(request),
   ]);
   if (!group) throw new Response('Listing group not found', { status: 404 });
-  const suggestedLocations = catalogCandidates
-    ? await safe(deriveLocationSuggestions(request, catalogCandidates))
-    : null;
   const state = parseSearchState(url.searchParams);
   const children = group.listings.slice(0, 20);
   const options = await Promise.all(
@@ -128,17 +126,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   const roomOptions = options.filter(
     (option): option is NonNullable<typeof option> => option !== null,
   );
-  const locations = [
-    ...new Set(
-      [
-        ...(suggestedLocations ?? []),
-        group.workingArea,
-        group.wardName,
-        group.provinceName,
-        group.address,
-      ].filter((value): value is string => Boolean(value)),
-    ),
-  ];
+  const locations = provinces.map((province) => ({
+    value: province.code,
+    label: province.name,
+  }));
   const childIds = new Set(group.listings.map((listing) => listing.id));
   const relatedListings = (catalogCandidates ?? [])
     .filter(
