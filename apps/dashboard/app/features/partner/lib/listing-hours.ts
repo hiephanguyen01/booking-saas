@@ -1,4 +1,4 @@
-import type { AvailabilityRuleResponse } from '@booking/contracts';
+import type { AvailabilityRuleResponse, ListingResponse } from '@booking/contracts';
 
 /**
  * Weekly opening-hours editing (§7.4). A listing may store SEVERAL availability
@@ -11,6 +11,14 @@ import type { AvailabilityRuleResponse } from '@booking/contracts';
  * additional window. Pure + React-free so the seed/serialize round-trip is
  * unit-testable.
  */
+
+/**
+ * A listing whose calendar is time-window based (opening hours apply) — only
+ * hourly/daily modes generate slots from the weekly rule set edited here.
+ */
+export function usesOpeningHours(listing: Pick<ListingResponse, 'bookingModes'>): boolean {
+  return listing.bookingModes.some((mode) => mode === 'hourly' || mode === 'daily');
+}
 
 /** Display order Mon…Sun; `dow` is the backend's 0=Sun…6=Sat value. */
 export const DAYS: { dow: number; label: string }[] = [

@@ -1,18 +1,5 @@
-import { Form, data as routeData, useNavigation } from 'react-router';
-import { CheckCircle2, CircleAlert, Trash2 } from 'lucide-react';
-import type {
-  PartnerResponse,
-  SubmitIdentityInput,
-  UpdatePartnerDocumentsInput,
-  UpdatePayoutInfoInput,
-} from '@booking/contracts';
-import {
-  submitIdentityInputSchema,
-  updatePartnerDocumentsInputSchema,
-  updatePayoutInfoInputSchema,
-} from '@booking/contracts';
-import { GenericForm } from '@booking/ui/components/form/generic-form';
-import type { FieldConfig } from '@booking/ui/components/form/types';
+import { CircleAlert } from 'lucide-react';
+import type { PartnerResponse } from '@booking/contracts';
 import {
   Card,
   CardContent,
@@ -21,26 +8,30 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
-import { Button } from '@booking/ui/components/ui/button';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import type { Route } from './+types/profile';
-import { apiGet, apiPatch, apiPost } from '~/lib/api.server';
+import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import {
+  runPartnerProfileAction,
+  type PartnerProfileActionResult,
+  type PartnerProfileIntent,
+} from '~/features/partner/server/profile-actions.server';
+import { ProfileIdentityCard } from '~/features/partner/components/profile/profile-identity-card';
+import { ProfilePayoutCard } from '~/features/partner/components/profile/profile-payout-card';
+import { ProfileDocumentsCard } from '~/features/partner/components/profile/profile-documents-card';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { CopyableCode } from '~/components/copyable-code';
-import { PhotoStrip } from '~/components/photo-strip';
-import { formatDate } from '~/lib/format';
-import { IDENTITY_DOCUMENT_LABEL, PARTNER_TYPE_LABEL } from '~/constants/partner';
+import { readString } from '~/lib/records';
+import { PARTNER_TYPE_LABEL } from '~/constants/partner';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Hồ sơ đối tác · Đối tác · Bookify' }];
 }
-
-// ── loader ──────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request);
@@ -58,206 +49,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-// ── action ──────────────────────────────────────────────────────────────────
-
-type Intent = 'payout' | 'identity' | 'documents' | 'deleteDoc';
-
-interface ActionResult {
-  intent: Intent | '';
-  ok: boolean;
-  error: string | null;
-  fieldErrors: Record<string, string[] | undefined> | null;
-}
-
-function readStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((v): v is string => typeof v === 'string' && v.length > 0)
-    : [];
-}
-
 export async function action({ request }: Route.ActionArgs) {
   const { auth } = await requirePartner(request);
-  const contentType = request.headers.get('content-type') ?? '';
-
-  // GenericForm submissions arrive as JSON with an `intent` discriminator.
-  if (contentType.includes('application/json')) {
-    const body = (await request.json()) as Record<string, unknown>;
-    const intent = typeof body.intent === 'string' ? (body.intent as Intent) : '';
-
-    if (intent === 'payout') {
-      const parsed = updatePayoutInfoInputSchema.safeParse(body);
-      if (!parsed.success) {
-        return routeData<ActionResult>(
-          { intent, ok: false, error: null, fieldErrors: parsed.error.flatten().fieldErrors },
-          { status: 400 },
-        );
-      }
-      const res = await apiPatch('/partner/profile/payout', parsed.data, auth);
-      if (!res.ok) {
-        return routeData<ActionResult>(
-          {
-            intent,
-            ok: false,
-            error: res.error ?? 'Không lưu được tài khoản nhận tiền.',
-            fieldErrors: null,
-          },
-          { status: 400 },
-        );
-      }
-      return { intent, ok: true, error: null, fieldErrors: null } satisfies ActionResult;
-    }
-
-    if (intent === 'identity') {
-      const parsed = submitIdentityInputSchema.safeParse(body);
-      if (!parsed.success) {
-        return routeData<ActionResult>(
-          { intent, ok: false, error: null, fieldErrors: parsed.error.flatten().fieldErrors },
-          { status: 400 },
-        );
-      }
-      const res = await apiPost('/partner/profile/identity', parsed.data, auth);
-      if (!res.ok) {
-        return routeData<ActionResult>(
-          {
-            intent,
-            ok: false,
-            error: res.error ?? 'Không gửi được thông tin định danh.',
-            fieldErrors: null,
-          },
-          { status: 400 },
-        );
-      }
-      return { intent, ok: true, error: null, fieldErrors: null } satisfies ActionResult;
-    }
-
-    if (intent === 'documents') {
-      const parsed = updatePartnerDocumentsInputSchema.safeParse(body);
-      if (!parsed.success) {
-        return routeData<ActionResult>(
-          { intent, ok: false, error: null, fieldErrors: parsed.error.flatten().fieldErrors },
-          { status: 400 },
-        );
-      }
-      // Only forward set keys, and APPEND new license docs onto the existing set
-      // (the PATCH replaces the array — appending here keeps previous documents).
-      const payload: UpdatePartnerDocumentsInput = {};
-      if (parsed.data.logoUrl) payload.logoUrl = parsed.data.logoUrl;
-      if (parsed.data.licenseDocs && parsed.data.licenseDocs.length > 0) {
-        const current = await apiGet<PartnerResponse>('/partner/profile', auth);
-        const existing =
-          current.ok && current.data ? readStringArray(current.data.businessInfo.licenseDocs) : [];
-        payload.licenseDocs = [...existing, ...parsed.data.licenseDocs].slice(0, 20);
-      }
-      const res = await apiPatch('/partner/profile/documents', payload, auth);
-      if (!res.ok) {
-        return routeData<ActionResult>(
-          { intent, ok: false, error: res.error ?? 'Không lưu được giấy tờ.', fieldErrors: null },
-          { status: 400 },
-        );
-      }
-      return { intent, ok: true, error: null, fieldErrors: null } satisfies ActionResult;
-    }
-
-    return routeData<ActionResult>(
-      { intent: '', ok: false, error: 'Hành động không hợp lệ.', fieldErrors: null },
-      { status: 400 },
-    );
-  }
-
-  // Plain form posts: deleting a single license document.
-  const form = await request.formData();
-  const intent = String(form.get('intent') ?? '');
-  if (intent === 'deleteDoc') {
-    const url = String(form.get('url') ?? '');
-    const current = await apiGet<PartnerResponse>('/partner/profile', auth);
-    if (!current.ok || !current.data) {
-      return routeData<ActionResult>(
-        { intent, ok: false, error: 'Không tải được hồ sơ.', fieldErrors: null },
-        { status: 400 },
-      );
-    }
-    const next = readStringArray(current.data.businessInfo.licenseDocs).filter((d) => d !== url);
-    const res = await apiPatch('/partner/profile/documents', { licenseDocs: next }, auth);
-    if (!res.ok) {
-      return routeData<ActionResult>(
-        { intent, ok: false, error: res.error ?? 'Không xoá được giấy tờ.', fieldErrors: null },
-        { status: 400 },
-      );
-    }
-    return { intent, ok: true, error: null, fieldErrors: null } satisfies ActionResult;
-  }
-
-  return routeData<ActionResult>(
-    { intent: '', ok: false, error: 'Hành động không hợp lệ.', fieldErrors: null },
-    { status: 400 },
-  );
+  return runPartnerProfileAction(request, auth);
 }
-
-// ── field configs ─────────────────────────────────────────────────────────────
-
-const identityFields: FieldConfig<SubmitIdentityInput>[] = [
-  {
-    name: 'documentType',
-    type: 'select',
-    label: 'Loại giấy tờ',
-    required: true,
-    options: [
-      { value: 'national_id', label: IDENTITY_DOCUMENT_LABEL.national_id },
-      { value: 'passport', label: IDENTITY_DOCUMENT_LABEL.passport },
-      { value: 'driver_license', label: IDENTITY_DOCUMENT_LABEL.driver_license },
-    ],
-  },
-  { name: 'documentNumber', type: 'text', label: 'Số giấy tờ', required: true },
-  { name: 'holderName', type: 'text', label: 'Họ tên trên giấy tờ', required: true },
-  {
-    name: 'dateOfBirth',
-    type: 'text',
-    label: 'Ngày sinh',
-    placeholder: 'YYYY-MM-DD',
-    description: 'Định dạng năm-tháng-ngày, ví dụ 1998-05-20.',
-    required: true,
-  },
-];
-
-const payoutFields: FieldConfig<UpdatePayoutInfoInput>[] = [
-  { name: 'bank', type: 'text', label: 'Ngân hàng', required: true },
-  { name: 'accountNumber', type: 'text', label: 'Số tài khoản', required: true },
-  { name: 'holderName', type: 'text', label: 'Chủ tài khoản', required: true },
-];
-
-const documentFields: FieldConfig<UpdatePartnerDocumentsInput>[] = [
-  {
-    name: 'logoUrl',
-    type: 'file',
-    target: 'partners',
-    label: 'Logo đối tác',
-    description: 'Hình đại diện hiển thị với khách sau khi đặt.',
-  },
-  {
-    name: 'licenseDocs',
-    type: 'file',
-    target: 'partners',
-    multiple: true,
-    maxFiles: 10,
-    label: 'Tải thêm giấy tờ',
-    description: 'Ảnh mới sẽ được thêm vào danh sách giấy tờ hiện có.',
-  },
-];
-
-// ── helpers ────────────────────────────────────────────────────────────────
-
-function readString(value: unknown): string {
-  return typeof value === 'string' ? value : '';
-}
-
-// ── component ────────────────────────────────────────────────────────────────
 
 export default function PartnerProfile({ loaderData, actionData }: Route.ComponentProps) {
   const { canManage, partner, loadError } = loaderData;
-  const nav = useNavigation();
-  const busy = nav.state !== 'idle';
 
-  const resultFor = (intent: Intent): ActionResult | null =>
+  const resultFor = (intent: PartnerProfileIntent): PartnerProfileActionResult | null =>
     actionData && actionData.intent === intent ? actionData : null;
 
   if (!canManage) {
@@ -292,32 +92,8 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
   }
 
   const logoUrl = readString(partner.businessInfo.logoUrl);
-  const licenseDocs = readStringArray(partner.businessInfo.licenseDocs);
-  const payout = partner.payoutInfo as Record<string, unknown>;
   const identity = partner.identityInfo;
   const contact = partner.contactInfo;
-
-  const payoutResult = resultFor('payout');
-  const identityResult = resultFor('identity');
-  const documentsResult = resultFor('documents');
-
-  const payoutDefaults = {
-    bank: readString(payout.bank),
-    accountNumber: readString(payout.accountNumber),
-    holderName: readString(payout.holderName),
-  };
-
-  const identityDefaults = {
-    documentType: identity.documentType ?? undefined,
-    documentNumber: identity.documentNumber ?? '',
-    holderName: identity.holderName ?? '',
-    dateOfBirth: partner.dateOfBirth ? partner.dateOfBirth.slice(0, 10) : '',
-  };
-
-  const documentDefaults = {
-    logoUrl,
-    licenseDocs: [] as string[],
-  };
 
   return (
     <div className="space-y-6">
@@ -429,144 +205,13 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
       </Card>
 
       {/* 4 · Danh tính */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Danh tính</CardTitle>
-          <CardDescription>
-            Gửi thông tin giấy tờ tuỳ thân để tenant xác minh. Cần thiết cho các loại listing gắn
-            với con người.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <DetailGrid columns={2}>
-            <DetailField
-              label="Loại giấy tờ"
-              value={
-                identity.documentType ? (
-                  <EnumValue map={IDENTITY_DOCUMENT_LABEL} value={identity.documentType} />
-                ) : null
-              }
-            />
-            <DetailField label="Số giấy tờ" value={identity.documentNumber} />
-            <DetailField label="Họ tên trên giấy tờ" value={identity.holderName} />
-            <DetailField
-              label="Ngày sinh"
-              value={partner.dateOfBirth ? formatDate(partner.dateOfBirth) : null}
-            />
-          </DetailGrid>
-
-          {identityResult?.ok ? (
-            <Alert className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="size-4" />
-              <AlertDescription>Đã gửi thông tin định danh, chờ tenant xác minh.</AlertDescription>
-            </Alert>
-          ) : null}
-
-          <div>
-            <h3 className="mb-4 text-sm font-semibold">
-              {identity.documentNumber ? 'Cập nhật / gửi lại định danh' : 'Gửi thông tin định danh'}
-            </h3>
-            <GenericForm
-              schema={submitIdentityInputSchema}
-              fields={identityFields}
-              defaultValues={identityDefaults}
-              columns={2}
-              submitLabel="Gửi xác minh"
-              method="post"
-              transform={(v) => ({ ...v, intent: 'identity' })}
-              serverError={identityResult?.error ?? null}
-              fieldErrors={identityResult?.fieldErrors ?? null}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileIdentityCard partner={partner} result={resultFor('identity')} />
 
       {/* 5 · Tài khoản nhận tiền */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tài khoản nhận tiền</CardTitle>
-          <CardDescription>Nền tảng chi trả doanh thu về tài khoản này.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {payoutResult?.ok ? (
-            <Alert className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="size-4" />
-              <AlertDescription>Đã lưu tài khoản nhận tiền.</AlertDescription>
-            </Alert>
-          ) : null}
-          <GenericForm
-            schema={updatePayoutInfoInputSchema}
-            fields={payoutFields}
-            defaultValues={payoutDefaults}
-            columns={2}
-            submitLabel="Lưu tài khoản"
-            method="patch"
-            transform={(v) => ({ ...v, intent: 'payout' })}
-            serverError={payoutResult?.error ?? null}
-            fieldErrors={payoutResult?.fieldErrors ?? null}
-          />
-        </CardContent>
-      </Card>
+      <ProfilePayoutCard partner={partner} result={resultFor('payout')} />
 
       {/* 6 · Giấy tờ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Logo & giấy tờ</CardTitle>
-          <CardDescription>
-            Hình ảnh được tải trực tiếp lên kho lưu trữ; chỉ đường dẫn được lưu vào hồ sơ.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {documentsResult?.ok ? (
-            <Alert className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="size-4" />
-              <AlertDescription>Đã lưu giấy tờ.</AlertDescription>
-            </Alert>
-          ) : null}
-
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold">Giấy tờ đã tải lên</h3>
-            {licenseDocs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Chưa có giấy tờ nào.</p>
-            ) : (
-              <div className="flex flex-wrap gap-3">
-                {licenseDocs.map((url, i) => (
-                  <div key={`${url}-${i}`} className="space-y-1.5">
-                    <PhotoStrip photos={[url]} alt="Giấy tờ" />
-                    <Form method="post">
-                      <input type="hidden" name="intent" value="deleteDoc" />
-                      <input type="hidden" name="url" value={url} />
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        className="h-8 w-full gap-1.5 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="size-3.5" aria-hidden /> Xoá
-                      </Button>
-                    </Form>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-border pt-6">
-            <h3 className="mb-4 text-sm font-semibold">Tải lên</h3>
-            <GenericForm
-              schema={updatePartnerDocumentsInputSchema}
-              fields={documentFields}
-              defaultValues={documentDefaults}
-              submitLabel="Lưu giấy tờ"
-              method="patch"
-              transform={(v) => ({ ...v, intent: 'documents' })}
-              serverError={documentsResult?.error ?? null}
-              fieldErrors={documentsResult?.fieldErrors ?? null}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileDocumentsCard partner={partner} result={resultFor('documents')} />
     </div>
   );
 }
