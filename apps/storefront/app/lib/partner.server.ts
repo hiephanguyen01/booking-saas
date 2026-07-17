@@ -52,9 +52,11 @@ export async function registerOrLogin(
     email: creds.email,
     password: creds.password,
   });
-  if (!login.ok || !login.tokens) {
+  if (!login.ok && login.failure === 'http') {
     return { ok: false, code: 'emailTakenWrongPassword', status: login.status };
   }
+  if (!login.ok) return { ok: false, code: 'generic', status: login.status };
+  if (!login.tokens) return { ok: false, code: 'generic', status: 502 };
   return { ok: true, token: login.tokens.accessToken };
 }
 
