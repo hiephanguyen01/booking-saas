@@ -15,26 +15,34 @@ function responseRequestId(response: AxiosResponse): string | undefined {
   return typeof value === 'string' && value ? value : undefined;
 }
 
+function invalidResponse<T>(requestId?: string): ApiResult<T> {
+  return {
+    ok: false,
+    status: 502,
+    data: null,
+    failure: 'invalid-response',
+    error: 'Backend returned an invalid response.',
+    ...(requestId ? { requestId } : {}),
+  };
+}
+
 export function toResult<T>(
   response: AxiosResponse,
   schema?: ZodType<T, ZodTypeDef, unknown>,
 ): ApiResult<T> {
   const { status } = response;
   const requestId = responseRequestId(response);
-  if (status === 204) return { ok: true, status, data: null, ...(requestId ? { requestId } : {}) };
+  if (status === 204) {
+    return schema
+      ? invalidResponse(requestId)
+      : { ok: true, status, data: null, ...(requestId ? { requestId } : {}) };
+  }
 
   if (status >= 200 && status < 300) {
     if (schema) {
       const parsed = schema.safeParse(response.data);
       if (!parsed.success) {
-        return {
-          ok: false,
-          status: 502,
-          data: null,
-          failure: 'invalid-response',
-          error: 'Backend returned an invalid response.',
-          ...(requestId ? { requestId } : {}),
-        };
+        return invalidResponse(requestId);
       }
       return { ok: true, status, data: parsed.data, ...(requestId ? { requestId } : {}) };
     }

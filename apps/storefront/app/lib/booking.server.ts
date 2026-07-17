@@ -21,7 +21,7 @@ import {
   paymentStatusResponseSchema,
   validatePromoResponseSchema,
 } from '@booking/contracts';
-import { publicGetData, publicPost } from './api.server';
+import { optionalAuthPost, publicGetData } from './api.server';
 import { storefrontEnv } from './env.server';
 
 /**
@@ -51,7 +51,7 @@ export function validatePromo(
   request: Request,
   input: { code: string; listingId: string; amount: string; start?: string; end?: string },
 ): Promise<ApiResult<ValidatePromoResponse>> {
-  return publicPost(request, '/public/checkout/validate-promo', input, {
+  return optionalAuthPost(request, '/public/checkout/validate-promo', input, {
     schema: validatePromoResponseSchema,
   });
 }
@@ -61,7 +61,7 @@ export function resolveAutoCampaign(
   request: Request,
   input: { listingId: string; amount: string; start?: string; end?: string },
 ): Promise<ApiResult<AutoCampaignResponse>> {
-  return publicPost(request, '/public/checkout/auto-campaigns', input, {
+  return optionalAuthPost(request, '/public/checkout/auto-campaigns', input, {
     schema: autoCampaignResponseSchema,
   });
 }
@@ -73,7 +73,7 @@ export function createBooking(
   input: CreateBookingInput,
   idempotencyKey: string,
 ): Promise<ApiResult<BookingResponse>> {
-  return publicPost(request, '/public/bookings', input, {
+  return optionalAuthPost(request, '/public/bookings', input, {
     headers: { 'idempotency-key': idempotencyKey },
     schema: bookingResponseSchema,
   });
@@ -83,7 +83,7 @@ export function checkoutBooking(
   request: Request,
   bookingId: string,
 ): Promise<ApiResult<CheckoutResponse>> {
-  return publicPost(
+  return optionalAuthPost(
     request,
     `/public/bookings/${encodeURIComponent(bookingId)}/checkout`,
     {},
@@ -110,7 +110,7 @@ export function requestBookingOtp(
   request: Request,
   code: string,
 ): Promise<ApiResult<BookingOtpResponse>> {
-  return publicPost(
+  return optionalAuthPost(
     request,
     `/public/bookings/${encodeURIComponent(code)}/request-otp`,
     {},
@@ -123,7 +123,7 @@ export function cancelBooking(
   code: string,
   body: { reason?: string; otp?: string },
 ): Promise<ApiResult<CancelBookingResponse>> {
-  return publicPost(
+  return optionalAuthPost(
     request,
     `/public/bookings/${encodeURIComponent(code)}/cancel`,
     body,
@@ -145,7 +145,7 @@ export function fetchPaymentStatus(
 
 /** Dev-only mock payment (gated behind `ALLOW_MOCK_PAYMENTS` on the API). */
 export function mockPay(request: Request, code: string): Promise<ApiResult<BookingResponse>> {
-  return publicPost(
+  return optionalAuthPost(
     request,
     `/public/bookings/${encodeURIComponent(code)}/mock-pay`,
     {},

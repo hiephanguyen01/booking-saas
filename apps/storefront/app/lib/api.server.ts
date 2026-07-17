@@ -81,6 +81,19 @@ export const publicPost = <T>(
   options: StorefrontJsonOptions<T>,
 ) => client().publicPost(path, body, requestOptions(request, options));
 
+export const optionalAuthPost = <T>(
+  request: Request,
+  path: string,
+  body: unknown,
+  options: StorefrontJsonOptions<T>,
+) => {
+  const accessToken = getOptionalAccessToken();
+  const requestOptionsForCall = requestOptions(request, options);
+  return accessToken
+    ? client().post(path, body, accessToken, requestOptionsForCall)
+    : client().publicPost(path, body, requestOptionsForCall);
+};
+
 export const apiGet = <T>(
   request: Request,
   path: string,
