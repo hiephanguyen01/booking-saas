@@ -12,9 +12,9 @@ import { BookingDetailCard } from '~/features/bookings/components/booking-detail
 import {
   runPartnerBookingAction,
   type PartnerBookingActionResult,
-} from '~/features/bookings/partner-booking-actions.server';
-import { PartnerBookingActions } from '~/features/bookings/partner-booking-actions';
-import { toTimelineEntries } from '~/features/bookings/booking-history';
+} from '~/features/bookings/server/partner-booking-actions.server';
+import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
+import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết lượt đặt · Đối tác · Bookify' }];

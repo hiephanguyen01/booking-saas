@@ -7,12 +7,12 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { ErrorBanner } from '~/components/action-feedback';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
-import { PromotionForm } from '~/features/promotions/promotion-form';
+import { PromotionForm } from '~/features/promotions/components/promotion-form';
 import {
   readPromotionForm,
   zodFirstIssueMessage,
-} from '~/features/promotions/promotion-form.server';
-import { loadTenantScopeOptions } from '~/features/promotions/scope-options.server';
+} from '~/features/promotions/server/promotion-form.server';
+import { loadTenantScopeOptions } from '~/features/promotions/server/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tạo khuyến mãi · Tenant · Bookify' }];

@@ -17,15 +17,15 @@ import { DateTimeValue } from '~/components/date-time-value';
 import { ErrorBanner } from '~/components/action-feedback';
 import { BackLink } from '~/components/back-link';
 import { useBusy } from '~/hooks/use-busy';
-import { PromotionForm } from '~/features/promotions/promotion-form';
+import { PromotionForm } from '~/features/promotions/components/promotion-form';
 import {
   readPromotionForm,
   zodFirstIssueMessage,
-} from '~/features/promotions/promotion-form.server';
-import { PromotionHeader } from '~/features/promotions/promotion-header';
-import { PromotionSummarySection } from '~/features/promotions/promotion-summary-section';
-import { EndPromotionDialog } from '~/features/promotions/end-promotion-dialog';
-import { loadPartnerScopeOptions } from '~/features/promotions/scope-options.server';
+} from '~/features/promotions/server/promotion-form.server';
+import { PromotionHeader } from '~/features/promotions/components/promotion-header';
+import { PromotionSummarySection } from '~/features/promotions/components/promotion-summary-section';
+import { EndPromotionDialog } from '~/features/promotions/components/end-promotion-dialog';
+import { loadPartnerScopeOptions } from '~/features/promotions/server/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết khuyến mãi · Đối tác · Bookify' }];

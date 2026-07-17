@@ -2,7 +2,6 @@ import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration }
 import { SidebarInset, SidebarProvider } from '@booking/ui/components/ui/sidebar';
 import { Toaster } from '@booking/ui/components/ui/sonner';
 import { ThemeProvider } from '@booking/ui/components/theme/theme-provider';
-import { QueryProvider } from '@booking/query';
 import type { Route } from './+types/root';
 import { loadSessionInfo } from './lib/auth.server';
 import { dashboardAuthMiddleware } from './lib/auth-middleware.server';
@@ -52,25 +51,19 @@ export default function App({ loaderData }: Route.ComponentProps) {
 
   // Unauthenticated (login/logout) — render the page without the dashboard shell.
   if (!info) {
-    return (
-      <QueryProvider>
-        <Outlet />
-      </QueryProvider>
-    );
+    return <Outlet />;
   }
 
   return (
-    <QueryProvider>
-      <SidebarProvider>
-        <AppSidebar info={info} />
-        <SidebarInset>
-          <DashboardHeader />
-          <main className="flex-1 p-4 lg:p-6">
-            <Outlet />
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
-    </QueryProvider>
+    <SidebarProvider>
+      <AppSidebar info={info} />
+      <SidebarInset>
+        <DashboardHeader />
+        <main className="flex-1 p-4 lg:p-6">
+          <Outlet />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

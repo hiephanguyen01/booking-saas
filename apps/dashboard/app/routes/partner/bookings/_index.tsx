@@ -17,8 +17,8 @@ import { BookingStatusBadge, bookingStatusMeta } from '~/components/status-badge
 import { Money } from '~/components/money';
 import { formatDate, formatTime } from '~/lib/format';
 import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from '~/lib/calendar-dates';
-import { runPartnerBookingAction } from '~/features/bookings/partner-booking-actions.server';
-import { PartnerBookingActions } from '~/features/bookings/partner-booking-actions';
+import { runPartnerBookingAction } from '~/features/bookings/server/partner-booking-actions.server';
+import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Lượt đặt · Đối tác · Bookify' }];

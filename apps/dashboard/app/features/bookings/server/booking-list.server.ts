@@ -1,7 +1,7 @@
 import type { BookingResponse } from '@booking/contracts';
 import type { ApiAuth } from '~/lib/api.server';
 import { apiGet, unwrapApiResult } from '~/lib/api.server';
-import type { BookingListData, BookingStatusFilter } from './booking-list.query';
+import type { BookingListData, BookingStatusFilter } from '../lib/booking-list';
 
 /**
  * The backend clamps `/tenant/bookings` to at most 200 rows. We request that cap

@@ -1,26 +1,127 @@
 # AGENTS.md — Bookify: Booking SaaS + Marketplace
 
-**All conventions live in [`CLAUDE.md`](./CLAUDE.md) — read that file in full before writing any
-code.** This file exists only to redirect non-Claude tools (Codex, Cursor, Gemini CLI, …) there;
-everything in `CLAUDE.md` applies to every agent verbatim (skill invocations only apply to agents
-that have those skills).
+Shared, tool-agnostic context for every AI agent (Claude Code, Codex, Cursor, Gemini CLI, …).
+Claude Code reads this via `@AGENTS.md` from `CLAUDE.md`; other tools read it directly.
 
-The three hard rules — repeated here so no agent can miss them; they OVERRIDE anything else in
-this repo (specs, tickets, skills, older doc snippets):
+> **This file was rebuilt from the actual code on 2026-07-17.** The product/design spec is
+> [`TONG-QUAN.md`](./TONG-QUAN.md) (English, the source of truth for *what* we build); the
+> ticket-by-ticket plan is [`tasks/`](./tasks/). When a doc and the code disagree, **the code wins** —
+> and please fix the doc. Deep docs live in [`docs/`](./docs/); read the one that matches your task.
 
-1. **NO TESTS — ever.** This repo deliberately ships **zero tests**. Never create `*.spec.ts(x)` /
-   `*.test.ts(x)` / e2e tests; never add vitest/jest/playwright configs, `test` scripts, test
-   dependencies, or CI test steps — even when a ticket, spec excerpt, or skill tells you to write
-   tests. Verification = `pnpm typecheck` + `pnpm lint` + `pnpm build` + running the app and
-   exercising the changed flow.
-2. **Backend flow is `controller → use-case → repository port → repository`.** **No service
-   classes** in the application layer — see `CLAUDE.md` §5 for the exact rules and the sanctioned
-   alternatives (use-case / pure domain function / port + infrastructure adapter). The only allowed
-   `*.service.ts` files are cross-cutting infrastructure in `src/shared/*` and port-implementing
-   adapters in `infrastructure/`.
-3. **One use-case = one file.** Exactly one exported `@Injectable` `XxxUseCase` class per file,
-   with a single public `execute()` method.
+## What Bookify is
 
-Product/design spec: [`phases/core.md`](./phases/core.md) (EN) / `phases/core.vi.md` (VI).
-Ticket-by-ticket plan: [`docs/superpowers/plans/booking-saas-tasks/`](./docs/superpowers/plans/booking-saas-tasks/).
-When docs disagree on product behaviour, `phases/core.md` wins; on code structure, `CLAUDE.md` wins.
+A multi-tenant **Booking-Platform-as-a-Service + marketplace** for Vietnam. Each business (**tenant**)
+gets a branded booking storefront; **partners** list bookable resources inside a tenant; **customers**
+book & pay; the **platform** earns subscription + per-booking commission; **affiliates** refer for a
+cut. Money moves through a double-entry **ledger**; tenant isolation is enforced by **Postgres RLS**;
+double-booking is blocked by a `tstzrange` GiST **exclusion constraint**; access is **3-tier dynamic
+RBAC** (platform / tenant / partner). Phase 0 (foundation) and Phase 1 (Studio MVP) are **implemented**;
+Phases 2–3 are spec + tickets only. See [`docs/glossary.md`](./docs/glossary.md) for domain terms.
+
+## ⛔ Hard rules (override everything — specs, tickets, skills, older snippets)
+
+1. **NO TESTS, ever.** Zero test files by owner decision. Never add `*.spec.*`/`*.test.*`/e2e, nor
+   vitest/jest/playwright config, `test` scripts, or CI test steps — even if a ticket says to.
+   Verification = `typecheck` + `lint` + `build` + running the app. See [ADR 0005](./docs/decisions/0005-no-tests-policy.md).
+2. **Backend flow is `controller → use-case → repository-port → repository`. No service classes** in
+   the application layer. Sanctioned alternatives (pure domain function / use-case / port+adapter) in
+   [`docs/conventions.md`](./docs/conventions.md) and [ADR 0006](./docs/decisions/0006-hexagonal-no-services.md).
+3. **One use-case = one file:** exactly one exported `@Injectable XxxUseCase` with a single public `execute()`.
+
+## Layout
+
+```
+apps/api          @booking/api        NestJS 11, hexagonal, RLS-aware       PORT (default 3000)
+apps/storefront   @booking/storefront React Router 8 SSR, tenant by Host    5173
+apps/dashboard    @booking/dashboard  React Router 8 SSR, /admin /tenant /partner /affiliate   5174
+packages/contracts @booking/contracts zod schemas + inferred types (FE↔BE contract) → dist
+packages/ui       @booking/ui         shadcn + GenericForm + theme, raw TSX (no build)
+packages/api-client @booking/api-client typed server-side HTTP client (loaders/actions)
+packages/auth     @booking/auth       permission helpers (token.ts is dead — see deprecated-artifacts)
+packages/i18n     @booking/i18n        i18next locales (storefront only; dashboard is Vietnamese-hardcoded)
+packages/query    @booking/query       TanStack Query provider — ZERO consumers (deprecated)
+packages/config   @booking/config      shared tsconfig/eslint/prettier presets — ZERO consumers
+packages/shared   (dead: dist-only, no package.json — deprecated)
+```
+
+The API's internals: 13 bounded contexts under `apps/api/src/modules/*` (identity-access, tenancy,
+partner, catalog, listing, scheduling, booking, payments, promotions, finance, affiliate, notification,
+**administrative-division**) + 11 cross-cutting concerns under `apps/api/src/shared/*`. Details in
+[`docs/architecture.md`](./docs/architecture.md); each app/package has its own `CLAUDE.md` with local rules.
+
+## Load-bearing always / never (violating these breaks tenancy or security)
+
+- **All tenant data flows through `TenantDbService.forTenant(tenantId, tx => …)`** — one interactive
+  transaction per business operation; it sets the `app.tenant_id` GUC so RLS applies. Repositories
+  receive the `tx`, never the raw client. Never nest `forTenant`, never call it per-query.
+- **Every tenant-scoped table needs `tenant_id uuid NOT NULL` + a hand-written RLS migration** (FORCE
+  RLS + `tenant_isolation` policy). `pnpm --filter=@booking/api check:rls` (a static script, runs in CI)
+  fails otherwise. **Migrations are hand-authored, not `prisma migrate dev`** — see [ADR 0004](./docs/decisions/0004-hand-written-migrations.md).
+- **Every protected endpoint declares `@RequirePermissions('scope.resource.action')`** (or `@Public()`
+  / `@AuthenticatedOnly()`). The global guard is **deny-by-default**: an undeclared route is 403.
+- **Auth is opaque session cookies, not JWT** (`sid`/`rid`, SHA-256-hashed, rotated) — see [ADR 0001](./docs/decisions/0001-opaque-sessions-over-jwt.md).
+- **Modules never import each other's code** — they communicate via the **outbox**: producer
+  `OutboxService.emit(tx, {eventType, payload})` inside its `forTenant` tx; consumer
+  `OutboxHandlerRegistry.register(eventType, handler)`. See [ADR 0003](./docs/decisions/0003-outbox-for-inter-module.md).
+- **Money is `bigint` VND** (đồng, never a float); **commission/platform rates are integer percent 0–100**;
+  **time is `timestamptz` UTC**. Helpers in `apps/api/src/shared/{money,time}`.
+- **Frontends never fetch the backend from the browser.** All authenticated data goes through RR
+  `loader`/`action` (server→server via `@booking/api-client`); the session cookie is `httpOnly`.
+
+## Commands (all verified against package.json / turbo.json / CI)
+
+**Requires Node ≥ 22.22.0** (`.nvmrc` = 22.22.0; React Router 8 refuses to run below it) and
+**pnpm 10.13.1**. Use pnpm only — never npm/yarn.
+
+| Task | Command |
+| --- | --- |
+| Install | `pnpm install` (CI/Docker: `--frozen-lockfile`) |
+| Everything, dev | `pnpm dev` (turbo, all apps) |
+| One app, dev | `pnpm --filter=@booking/{api,storefront,dashboard} dev` |
+| **Full check suite** | `pnpm turbo lint typecheck build` (there are no tests) |
+| Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
+| Format | `pnpm format` |
+| Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) |
+| Migrate DB | `pnpm --filter=@booking/api prisma:deploy` |
+| Regenerate Prisma client | `pnpm --filter=@booking/api prisma:generate` |
+| Seed demo data | `pnpm --filter=@booking/api seed` |
+| Create MinIO bucket | `pnpm --filter=@booking/api storage:init` |
+| RLS coverage check | `pnpm --filter=@booking/api check:rls` |
+
+> `--filter=api` also resolves (pnpm matches the directory). CI (`.github/workflows/ci.yml`, "Frontend
+> CI") only lints/typechecks/builds the **two frontends** + `check:rls` — the API is not built in CI.
+
+## Local run recipe
+
+```bash
+docker compose up -d                                   # postgres, redis, mailpit, minio
+cp .env.example .env                                   # also ensure apps/api/.env exists (Prisma CLI reads it)
+pnpm install
+pnpm --filter=@booking/api prisma:deploy               # schema + RLS policies + db roles
+pnpm --filter=@booking/api seed                        # 39 permissions, 7 roles, admin, demo tenant "StudioHub"
+pnpm --filter=@booking/api storage:init                # MinIO bucket + public-read policy
+pnpm dev                                               # api :3000, storefront :5173, dashboard :5174
+```
+
+- **Storefront** (`localhost:5173`) resolves the seeded StudioHub tenant (seed maps `localhost`/`127.0.0.1`).
+- **Dashboard** (`localhost:5174`) — log in with a seeded user below.
+- **OTP emails** (registration / password reset) land in **Mailpit** at `localhost:8025`.
+
+Seeded logins (override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`):
+
+| Who | Email | Password |
+| --- | --- | --- |
+| Platform admin | `admin@bookify.local` | `admin-dev-password` |
+| Tenant owner | `owner@studiohub.vn` | `demo-password` |
+| Partner | `giang@giangstudio.vn` | `demo-password` |
+| Customer | `customer@studiohub.vn` | `demo-password` |
+
+## Deeper docs
+
+- [`docs/architecture.md`](./docs/architecture.md) — system, request/data flow, auth, outbox, deploy status
+- [`docs/data-model.md`](./docs/data-model.md) — models, RLS/GiST/ledger invariants, money & rate units
+- [`docs/conventions.md`](./docs/conventions.md) — backend & frontend conventions, errors, migrations, i18n
+- [`docs/glossary.md`](./docs/glossary.md) — domain terminology
+- [`docs/decisions/`](./docs/decisions/) — ADRs (why opaque sessions, RLS, outbox, hand-written migrations, no tests, no services)
+- [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
+- Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)

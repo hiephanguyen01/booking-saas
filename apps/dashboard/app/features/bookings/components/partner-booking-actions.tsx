@@ -6,15 +6,15 @@ import { cn } from '@booking/ui/lib/utils';
 import { Button } from '@booking/ui/components/ui/button';
 import { Money } from '~/components/money';
 import { ReasonDialog } from '~/components/reason-dialog';
-import type { PartnerBookingActionResult } from './partner-booking-actions.server';
+import type { PartnerBookingActionResult } from '../server/partner-booking-actions.server';
 import {
   availablePartnerBookingActions,
   type PartnerActionableBooking,
   type PartnerBookingActionKind,
-} from './partner-booking-rules';
+} from '../lib/partner-booking-rules';
 import { PartnerReturnDialog } from './partner-return-dialog';
 
-export type { PartnerActionableBooking } from './partner-booking-rules';
+export type { PartnerActionableBooking } from '../lib/partner-booking-rules';
 
 type DialogKind = 'reject' | 'no-show' | 'cancel' | 'return';
 

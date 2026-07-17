@@ -10,7 +10,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import { SCOPE_LABELS, type ScopeKey } from '~/constants/promotion';
 import { useBusy } from '~/hooks/use-busy';
-import type { ScopeOptions } from './scope-options.server';
+import type { ScopeOptions } from '../server/scope-options.server';
 import { TimeWindowsEditor, type TimeWindow } from './time-windows';
 import { usePromotionScope } from './use-promotion-scope';
 

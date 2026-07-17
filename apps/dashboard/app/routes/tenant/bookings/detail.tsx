@@ -31,7 +31,7 @@ import { PageHeader } from '~/components/page-header';
 import { useBusy } from '~/hooks/use-busy';
 import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import { Money } from '~/components/money';
-import { toTimelineEntries } from '~/features/bookings/booking-history';
+import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết đặt chỗ · Tenant · Bookify' }];
