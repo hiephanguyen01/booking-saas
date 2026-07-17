@@ -119,7 +119,7 @@ export default function ListingRoute(props: Route.ComponentProps) {
       {
         '@type': 'BreadcrumbList',
         itemListElement: [
-          {
+          { 
             '@type': 'ListItem',
             position: 1,
             name: locale === 'vi' ? 'Trang chủ' : 'Home',
