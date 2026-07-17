@@ -12,6 +12,8 @@ export interface TenantRecord {
   defaultLocale: string;
   themeConfig: Record<string, unknown>;
   settings: Record<string, unknown>;
+  /** Tenant-level fallback cancellation policy (§11.3); null = no tenant default. */
+  defaultCancellationPolicyId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +44,8 @@ export interface UpdateTenantData {
   status?: 'active' | 'suspended' | 'expired';
   themeConfig?: Record<string, unknown>;
   settings?: Record<string, unknown>;
+  /** null clears the tenant default; a value must reference a tenant-level policy of this tenant. */
+  defaultCancellationPolicyId?: string | null;
 }
 
 /**
@@ -60,6 +64,8 @@ export interface ITenantRepository {
   findBySlug(slug: string): Promise<TenantRecord | null>;
   list(params: ListTenantsParams): Promise<{ items: TenantRecord[]; total: number }>;
   update(id: string, data: UpdateTenantData): Promise<TenantRecord>;
+  /** True when `policyId` is a tenant-level (partner_id null) cancellation policy of this tenant. */
+  isTenantLevelPolicy(tenantId: string, policyId: string): Promise<boolean>;
   countPartners(tenantId: string): Promise<number>;
   countListings(tenantId: string): Promise<number>;
   /**

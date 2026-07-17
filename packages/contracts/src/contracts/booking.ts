@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { paginationQuerySchema, uuidSchema } from './common';
+import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
 import { passwordSchema } from './auth';
 
 /** Booking state machine (§8). Terminal-ish branches: completed/no_show/rejected/expired/refunded. */
@@ -165,16 +165,8 @@ export const additionalChargeSchema = z.object({
 });
 export type AdditionalCharge = z.infer<typeof additionalChargeSchema>;
 
-/**
- * One tier of a snapshotted cancellation policy (§11.3), e.g.
- * `{hoursBefore: 48, refundPercent: 50}`. Structured (rather than opaque) because
- * the refund domain already requires exactly this shape to compute a refund.
- */
-export const cancellationTierSchema = z.object({
-  hoursBefore: z.number(),
-  refundPercent: z.number(),
-});
-export type CancellationTier = z.infer<typeof cancellationTierSchema>;
+// `cancellationTierSchema` / `CancellationTier` now live in ./common (shared with the
+// listing-policy contract); still re-exported package-wide via the barrel.
 
 /**
  * An immutable jsonb snapshot frozen onto the booking at checkout. Deliberately

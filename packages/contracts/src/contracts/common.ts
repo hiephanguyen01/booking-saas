@@ -12,6 +12,18 @@ export const MAX_PAGE_SIZE = 100;
 /** The page-size options offered by the shared pagination control. */
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
+/**
+ * One tier of a cancellation policy (§11.3), e.g. `{hoursBefore: 48, refundPercent: 50}` —
+ * refund `refundPercent`% when cancelled at least `hoursBefore` hours before start. Kept
+ * loose (plain numbers) here because it is shared by both the listing-policy contract and
+ * the immutable booking snapshot, whose historical rows must not be rejected by tighter rules.
+ */
+export const cancellationTierSchema = z.object({
+  hoursBefore: z.number(),
+  refundPercent: z.number(),
+});
+export type CancellationTier = z.infer<typeof cancellationTierSchema>;
+
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),

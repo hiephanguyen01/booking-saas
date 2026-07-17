@@ -58,7 +58,13 @@ import { PartnerListingGroupController } from './partner-listing-group.controlle
 import { GetListingGroupDetailUseCase } from '../../application/use-cases/get-listing-group-detail.use-case';
 import { GetPublicListingGroupUseCase } from '../../application/use-cases/get-public-listing-group.use-case';
 import { ListCancellationPoliciesUseCase } from '../../application/use-cases/list-cancellation-policies.use-case';
+import { ListTenantCancellationPoliciesUseCase } from '../../application/use-cases/list-tenant-cancellation-policies.use-case';
+import { GetCancellationPolicyUseCase } from '../../application/use-cases/get-cancellation-policy.use-case';
+import { CreateCancellationPolicyUseCase } from '../../application/use-cases/create-cancellation-policy.use-case';
+import { UpdateCancellationPolicyUseCase } from '../../application/use-cases/update-cancellation-policy.use-case';
+import { DeleteCancellationPolicyUseCase } from '../../application/use-cases/delete-cancellation-policy.use-case';
 import { PartnerCancellationPolicyController } from './partner-cancellation-policy.controller';
+import { TenantCancellationPolicyController } from './tenant-cancellation-policy.controller';
 
 @Module({
   imports: [
@@ -81,6 +87,7 @@ import { PartnerCancellationPolicyController } from './partner-cancellation-poli
     TenantPricingRuleController,
     PublicListingController,
     PartnerCancellationPolicyController,
+    TenantCancellationPolicyController,
   ],
   providers: [
     { provide: LISTING_GROUP_REPOSITORY, useClass: PrismaListingGroupRepository },
@@ -108,6 +115,11 @@ import { PartnerCancellationPolicyController } from './partner-cancellation-poli
     GetPublicListingUseCase,
     GetPublicListingGroupUseCase,
     ListCancellationPoliciesUseCase,
+    ListTenantCancellationPoliciesUseCase,
+    GetCancellationPolicyUseCase,
+    CreateCancellationPolicyUseCase,
+    UpdateCancellationPolicyUseCase,
+    DeleteCancellationPolicyUseCase,
     GetPublicQuoteUseCase,
     ReviewListingUseCase,
     ReviewListingGroupUseCase,

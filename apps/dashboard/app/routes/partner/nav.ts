@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Store,
   Ticket,
+  Undo2,
   Wallet,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
@@ -41,6 +42,12 @@ export const partnerNavSections: DashboardNavSection[] = [
         title: 'Tin đăng',
         to: dashboardPaths.partner.listings,
         icon: Store,
+        permission: 'partner.listings.read',
+      },
+      {
+        title: 'Chính sách huỷ',
+        to: dashboardPaths.partner.cancellationPolicies,
+        icon: Undo2,
         permission: 'partner.listings.read',
       },
     ],

@@ -87,6 +87,7 @@ export function toPartnerResponse(p: PartnerRecord): PartnerResponse {
     businessInfo: p.businessInfo,
     contactInfo: toContactInfo(p.contactInfo),
     identityInfo: toIdentityInfo(p.identityInfo),
+    defaultCancellationPolicyId: p.defaultCancellationPolicyId,
     owner: p.owner ? { email: p.owner.email, phone: p.owner.phone } : null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),

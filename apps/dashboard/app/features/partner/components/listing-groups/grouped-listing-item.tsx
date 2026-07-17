@@ -4,6 +4,7 @@ import type { DataTableColumn } from '@booking/ui/components/data-table/data-tab
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
 import { EntityRef } from '~/components/entity-ref';
+import { EffectiveCancellationPolicyCell } from '~/components/cancellation-tiers';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { formatNumber } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
@@ -87,6 +88,17 @@ export function buildGroupedListingColumns(opts: {
       ),
     },
     {
+      header: 'Chính sách huỷ',
+      cell: (listing) => (
+        <EffectiveCancellationPolicyCell
+          policy={listing.effectiveCancellationPolicy}
+          source={listing.effectiveCancellationPolicySource}
+        />
+      ),
+      className: 'hidden lg:table-cell',
+      headClassName: 'hidden lg:table-cell',
+    },
+    {
       header: 'Thao tác',
       className: 'text-right',
       headClassName: 'text-right',
@@ -168,6 +180,13 @@ export function GroupedListingCard({
             </span>
           ) : null}
         </div>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Chính sách huỷ</p>
+        <EffectiveCancellationPolicyCell
+          policy={listing.effectiveCancellationPolicy}
+          source={listing.effectiveCancellationPolicySource}
+        />
       </div>
       <GroupedListingActions
         groupId={groupId}

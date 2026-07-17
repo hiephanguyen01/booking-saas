@@ -224,6 +224,8 @@ export const tenantResponseSchema = z.object({
   defaultLocale: localeSchema,
   themeConfig: z.record(z.unknown()),
   settings: z.record(z.unknown()),
+  /** Tenant-level fallback cancellation policy (§11.3); null = no tenant default. */
+  defaultCancellationPolicyId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

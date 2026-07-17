@@ -1,6 +1,7 @@
 import type {
   BalanceDue,
   BookingMode,
+  CancellationPolicySource,
   CancellationPolicySummary,
   ListingPartnerSummary,
   ModerationActor,
@@ -42,8 +43,12 @@ export interface ListingRecord {
   /** VND đồng digit string (the column is bigint) — never a JS number. */
   rescheduleFee: string | null;
   cancellationPolicyId: string | null;
-  /** Resolved from `cancellationPolicyId`; null when none is set. */
+  /** Resolved from `cancellationPolicyId` — the listing's OWN explicit choice; null when none. */
   cancellationPolicy: CancellationPolicySummary | null;
+  /** The policy that actually governs the listing after fallback (own → partner → tenant default). */
+  effectiveCancellationPolicy: CancellationPolicySummary | null;
+  /** Origin of `effectiveCancellationPolicy`; null when no policy applies at any level. */
+  effectiveCancellationPolicySource: CancellationPolicySource | null;
   /** Owning partner — display name + verification state only (§7.3). */
   partner: ListingPartnerSummary;
   status: PublishStatus;

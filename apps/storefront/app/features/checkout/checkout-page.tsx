@@ -30,7 +30,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
             start={start}
             end={end}
             qty={qty}
-            policies={policyLines(listing.cancellationPolicy)}
+            policies={policyLines(listing.effectiveCancellationPolicy ?? listing.cancellationPolicy)}
             searchParams={searchParams}
             promoCode={promoCode}
             promo={promo}
