@@ -131,3 +131,30 @@ export const sessionInfoResponseSchema = z.object({
   scopes: z.array(scopeMembershipSchema),
 });
 export type SessionInfoResponse = z.infer<typeof sessionInfoResponseSchema>;
+
+/** Storefront customer account form. Mutations are currently handled by the BFF demo action. */
+export const customerProfileInputSchema = z.object({
+  fullName: z.string().trim().min(1).max(200),
+  email: z.string().email().toLowerCase(),
+  phone: z.string().trim().min(6).max(20).optional(),
+});
+export type CustomerProfileInput = z.infer<typeof customerProfileInputSchema>;
+
+/** Password-change presentation contract, ready for the future authenticated API endpoint. */
+export const customerPasswordChangeInputSchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().min(1),
+  })
+  .refine((value) => value.newPassword === value.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Passwords do not match',
+  });
+export type CustomerPasswordChangeInput = z.infer<typeof customerPasswordChangeInputSchema>;
+
+/** Unified customer account form used by the storefront profile center. */
+export const customerAccountSettingsInputSchema = customerProfileInputSchema.and(
+  customerPasswordChangeInputSchema,
+);
+export type CustomerAccountSettingsInput = z.infer<typeof customerAccountSettingsInputSchema>;

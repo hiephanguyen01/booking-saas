@@ -30,4 +30,18 @@ export const storefrontPaths = {
   register: (locale: Locale) => `/${locale}/auth/register`,
   forgotPassword: (locale: Locale) => `/${locale}/auth/forgot-password`,
   logout: (locale: Locale) => `/${locale}/auth/logout`,
+  community: (locale: Locale) => `/${locale}/community`,
+  account: {
+    root: (locale: Locale) => `/${locale}/account`,
+    profile: (locale: Locale) => `/${locale}/account/profile`,
+    bookings: (locale: Locale) => `/${locale}/account/bookings`,
+    booking: (locale: Locale, code: string) => `/${locale}/account/bookings/${segment(code)}`,
+    messages: (locale: Locale) => `/${locale}/account/messages`,
+    reviews: (locale: Locale) => `/${locale}/account/reviews`,
+    favorites: (locale: Locale) => `/${locale}/account/favorites`,
+    recent: (locale: Locale) => `/${locale}/account/recent`,
+    terms: (locale: Locale) => `/${locale}/account/terms`,
+    security: (locale: Locale) => `/${locale}/account/security`,
+    help: (locale: Locale) => `/${locale}/account/help`,
+  },
 } as const;

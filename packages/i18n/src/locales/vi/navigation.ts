@@ -4,11 +4,13 @@ export const viNavigation = {
   categories: 'Danh mục',
   all: 'Tất cả',
   lookup: 'Tra cứu đặt chỗ',
+  community: 'Cộng đồng',
   myBookings: 'Đặt chỗ của tôi',
   becomePartner: 'Trở thành đối tác',
   login: 'Đăng nhập',
   register: 'Đăng ký',
   openMenu: 'Mở menu',
   logout: 'Đăng xuất',
+  accountMenu: 'Mở menu tài khoản',
   switchLanguage: 'Đổi ngôn ngữ sang {locale}',
 } as const;

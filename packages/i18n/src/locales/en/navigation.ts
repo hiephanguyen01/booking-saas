@@ -7,11 +7,13 @@ export const enNavigation = {
   categories: 'Categories',
   all: 'All',
   lookup: 'Find a booking',
+  community: 'Community',
   myBookings: 'My bookings',
   becomePartner: 'Become a partner',
   login: 'Log in',
   register: 'Sign up',
   openMenu: 'Open menu',
   logout: 'Log out',
+  accountMenu: 'Open account menu',
   switchLanguage: 'Switch language to {locale}',
 } satisfies TranslationShape<typeof viNavigation>;

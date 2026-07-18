@@ -6,6 +6,7 @@ import { enErrors } from './locales/en/errors';
 import { enListing } from './locales/en/listing';
 import { enNavigation } from './locales/en/navigation';
 import { enAuth } from './locales/en/auth';
+import { enAccount } from './locales/en/account';
 import type { TranslationShape } from './locales/translation-shape';
 import { viBooking } from './locales/vi/booking';
 import { viCatalog } from './locales/vi/catalog';
@@ -15,6 +16,7 @@ import { viErrors } from './locales/vi/errors';
 import { viListing } from './locales/vi/listing';
 import { viNavigation } from './locales/vi/navigation';
 import { viAuth } from './locales/vi/auth';
+import { viAccount } from './locales/vi/account';
 import { NsI18n } from './ns-i18n';
 
 export const supportedLocales = ['vi', 'en'] as const;
@@ -31,6 +33,7 @@ export const namespaces = [
   NsI18n.Booking,
   NsI18n.Error,
   NsI18n.Auth,
+  NsI18n.Account,
 ] as const;
 export type Namespace = (typeof namespaces)[number];
 
@@ -43,6 +46,7 @@ export const vi = {
   [NsI18n.Booking]: viBooking,
   [NsI18n.Error]: viErrors,
   [NsI18n.Auth]: viAuth,
+  [NsI18n.Account]: viAccount,
 } as const;
 
 export type Messages = typeof vi;
@@ -56,6 +60,7 @@ export const en = {
   [NsI18n.Booking]: enBooking,
   [NsI18n.Error]: enErrors,
   [NsI18n.Auth]: enAuth,
+  [NsI18n.Account]: enAccount,
 } satisfies TranslationShape<Messages>;
 
 export const resources = { vi, en } as const;

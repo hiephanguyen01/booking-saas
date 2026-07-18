@@ -31,6 +31,7 @@ import { themeCss } from './theme/theme';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
 import { storefrontRequestMiddleware } from './lib/request-security.server';
 import { getOptionalAuth } from './lib/auth.server';
+import { getAccountMenuSummary } from './features/account/server/account-menu.server';
 
 export const middleware: Route.MiddlewareFunction[] = [storefrontRequestMiddleware];
 
@@ -51,7 +52,16 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const alternates = localizedAlternates(publicUrl);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
   const currentUser = getOptionalAuth()?.info.user ?? null;
-  const payload = { tenant, listingTypes, locale, canonical, alternates, currentUser };
+  const accountMenuSummary = currentUser ? getAccountMenuSummary(locale) : null;
+  const payload = {
+    tenant,
+    listingTypes,
+    locale,
+    canonical,
+    alternates,
+    currentUser,
+    accountMenuSummary,
+  };
 
   // Affiliate attribution (§15.1): capture `?ref=CODE` once per new code and set
   // the last-click cookie. Only track when the code differs from what's already
@@ -131,7 +141,7 @@ function ThemeStyle({ theme }: { theme: StorefrontTenant['theme'] }) {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { tenant, listingTypes, locale, canonical, currentUser } = loaderData;
+  const { tenant, listingTypes, locale, canonical, currentUser, accountMenuSummary } = loaderData;
 
   const matches = useMatches();
 
@@ -156,6 +166,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
               listingTypes={listingTypes}
               locale={locale}
               currentUser={currentUser}
+              accountMenuSummary={accountMenuSummary}
             />
             <main className="flex-1">
               <Outlet context={outletContext} />

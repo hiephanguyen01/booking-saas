@@ -7,4 +7,5 @@ export enum NsI18n {
   Booking = 'booking',
   Error = 'errors',
   Auth = 'auth',
+  Account = 'account',
 }
