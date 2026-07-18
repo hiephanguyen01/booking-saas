@@ -11,7 +11,7 @@ import { wallClockInZone } from '../../../../shared/time/time';
  * price, with the highest-priority matching pricing_rule replacing the base for
  * that unit — so a golden-hour window prices only the hours inside it.
  */
-export type RuleType = 'day_of_week' | 'time_range' | 'date_range';
+export type RuleType = 'day_of_week' | 'time_range' | 'date_range' | 'date_time_range';
 
 export interface PricingRuleView {
   id: string;
@@ -20,6 +20,8 @@ export interface PricingRuleView {
   params: Record<string, unknown>;
   /** VND đồng digit string — replaces the per-unit base when matched. */
   price: string;
+  /** Optional effective sale price; regular `price` remains visible in the quote. */
+  salePrice?: string | null;
   priority: number;
 }
 
@@ -27,7 +29,9 @@ export interface QuoteLine {
   label: string;
   quantity: number;
   unitPrice: Vnd;
+  regularUnitPrice: Vnd;
   amount: Vnd;
+  regularAmount: Vnd;
   appliedRuleId?: string;
   block?: boolean;
 }
@@ -35,6 +39,7 @@ export interface QuoteLine {
 export interface QuoteResult {
   mode: BookingMode;
   subtotal: Vnd;
+  regularSubtotal: Vnd;
   depositAmount: Vnd;
   securityDeposit: Vnd;
   lineItems: QuoteLine[];
@@ -82,8 +87,15 @@ function ruleMatches(rule: PricingRuleView, wall: ReturnType<typeof wallClockInZ
     const minutes = wall.hour * 60 + wall.minute;
     return minutes >= fromH * 60 + fromM && minutes < toH * 60 + toM;
   }
-  // date_range
   const date = `${wall.year}-${pad(wall.month)}-${pad(wall.day)}`;
+  if (rule.ruleType === 'date_time_range') {
+    if (date !== String(p.date)) return false;
+    const [fromH = 0, fromM = 0] = String(p.from).split(':').map(Number);
+    const [toH = 0, toM = 0] = String(p.to).split(':').map(Number);
+    const minutes = wall.hour * 60 + wall.minute;
+    return minutes >= fromH * 60 + fromM && minutes < toH * 60 + toM;
+  }
+  // date_range
   return date >= String(p.from) && date <= String(p.to);
 }
 
@@ -98,19 +110,30 @@ function matchingRule(
 }
 
 /** Merge consecutive units with the same price + rule into one line item. */
-function coalesce(units: { price: Vnd; ruleId?: string }[], label: string): QuoteLine[] {
+function coalesce(
+  units: { price: Vnd; regularPrice: Vnd; ruleId?: string }[],
+  label: string,
+): QuoteLine[] {
   const lines: QuoteLine[] = [];
   for (const unit of units) {
     const last = lines[lines.length - 1];
-    if (last && last.unitPrice === unit.price && last.appliedRuleId === unit.ruleId) {
+    if (
+      last &&
+      last.unitPrice === unit.price &&
+      last.regularUnitPrice === unit.regularPrice &&
+      last.appliedRuleId === unit.ruleId
+    ) {
       last.quantity += 1;
       last.amount = last.unitPrice * BigInt(last.quantity);
+      last.regularAmount = last.regularUnitPrice * BigInt(last.quantity);
     } else {
       lines.push({
         label,
         quantity: 1,
         unitPrice: unit.price,
+        regularUnitPrice: unit.regularPrice,
         amount: unit.price,
+        regularAmount: unit.regularPrice,
         ...(unit.ruleId ? { appliedRuleId: unit.ruleId } : {}),
       });
     }
@@ -128,12 +151,25 @@ function wholeUnits(startUtc: Date, endUtc: Date, unitMs: number, unitName: stri
   return units;
 }
 
+function calendarDaysBetween(startUtc: Date, endUtc: Date, timezone: string): number {
+  const start = wallClockInZone(startUtc, timezone);
+  const end = wallClockInZone(endUtc, timezone);
+  const count = Math.round(
+    (Date.UTC(end.year, end.month - 1, end.day) -
+      Date.UTC(start.year, start.month - 1, start.day)) /
+      DAY_MS,
+  );
+  if (count < 1) throw new PricingError('INVALID_RANGE', 'Range is shorter than one night');
+  return count;
+}
+
 export function computeQuote(req: QuoteRequest): QuoteResult {
   const rules = req.pricingRules
     .filter((r) => r.bookingMode === req.mode)
     .sort((a, b) => b.priority - a.priority);
 
   let subtotal: Vnd = 0n;
+  let regularSubtotal: Vnd = 0n;
   let securityDeposit: Vnd = 0n;
   let lineItems: QuoteLine[];
 
@@ -147,15 +183,31 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
       throw new PricingError('MODE_CONFIG_MISSING', 'No daily config on this listing');
 
     const unitMs = isHourly ? HOUR_MS : DAY_MS;
-    const count = wholeUnits(req.startUtc, req.endUtc, unitMs, isHourly ? 'hour' : 'night');
+    const count = isHourly
+      ? wholeUnits(req.startUtc, req.endUtc, unitMs, 'hour')
+      : calendarDaysBetween(req.startUtc, req.endUtc, req.timezone);
     const basePrice = isHourly ? vnd(hourly!.basePrice) : vnd(daily!.basePricePerNight);
     // Normalize blocks to {count, price} so the hourly/daily union stays clean.
     const blocks = isHourly
       ? hourly!.blocks.map((b) => ({ count: b.hours, price: b.price }))
       : daily!.blocks.map((b) => ({ count: b.days, price: b.price }));
 
+    const pricedUnits = Array.from({ length: count }, (_, i) => {
+      const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
+      const rule = matchingRule(rules, unitStart, req.timezone);
+      const regularPrice = rule ? vnd(rule.price) : basePrice;
+      return {
+        price: rule?.salePrice ? vnd(rule.salePrice) : regularPrice,
+        regularPrice,
+        ruleId: rule?.id,
+        calendarOverride: rule?.ruleType === 'date_range' || rule?.ruleType === 'date_time_range',
+      };
+    });
+
     const block = blocks.find((b) => b.count === count);
-    if (block) {
+    // A partner's exact calendar price must not be hidden by an old duration
+    // bundle. Recurring weekday/time rules retain the documented bundle behavior.
+    if (block && !pricedUnits.some((unit) => unit.calendarOverride)) {
       // Bundle price — flat, not rule-overridable.
       const price = vnd(block.price);
       subtotal = price;
@@ -164,19 +216,17 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
           label: `${count} ${isHourly ? 'giờ' : 'đêm'} (bundle)`,
           quantity: 1,
           unitPrice: price,
+          regularUnitPrice: price,
           amount: price,
+          regularAmount: price,
           block: true,
         },
       ];
     } else {
-      const units = Array.from({ length: count }, (_, i) => {
-        const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
-        const rule = matchingRule(rules, unitStart, req.timezone);
-        return { price: rule ? vnd(rule.price) : basePrice, ruleId: rule?.id };
-      });
-      lineItems = coalesce(units, isHourly ? 'Giờ' : 'Đêm');
+      lineItems = coalesce(pricedUnits, isHourly ? 'Giờ' : 'Đêm');
       subtotal = lineItems.reduce((sum, l) => sum + l.amount, 0n);
     }
+    regularSubtotal = lineItems.reduce((sum, l) => sum + l.regularAmount, 0n);
   } else if (req.mode === 'inventory') {
     const cfg = req.modeConfig.inventory;
     if (!cfg) throw new PricingError('MODE_CONFIG_MISSING', 'No inventory config on this listing');
@@ -189,14 +239,25 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
     const units = Array.from({ length: duration }, (_, i) => {
       const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
       const rule = matchingRule(rules, unitStart, req.timezone);
-      return { price: rule ? vnd(rule.price) : basePrice, ruleId: rule?.id };
+      const regularPrice = rule ? vnd(rule.price) : basePrice;
+      return {
+        price: rule?.salePrice ? vnd(rule.salePrice) : regularPrice,
+        regularPrice,
+        ruleId: rule?.id,
+      };
     });
     // Price one item across the range, then scale each line by the quantity rented.
     lineItems = coalesce(units, cfg.unit === 'hour' ? 'Giờ' : 'Ngày').map((line) => {
       const quantity = line.quantity * req.quantity;
-      return { ...line, quantity, amount: line.unitPrice * BigInt(quantity) };
+      return {
+        ...line,
+        quantity,
+        amount: line.unitPrice * BigInt(quantity),
+        regularAmount: line.regularUnitPrice * BigInt(quantity),
+      };
     });
     subtotal = lineItems.reduce((sum, l) => sum + l.amount, 0n);
+    regularSubtotal = lineItems.reduce((sum, l) => sum + l.regularAmount, 0n);
     securityDeposit = vnd(cfg.securityDeposit) * BigInt(req.quantity);
   } else {
     throw new PricingError(
@@ -206,7 +267,7 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
   }
 
   const depositAmount = percentOfBps(subtotal, req.depositPercent * 100);
-  return { mode: req.mode, subtotal, depositAmount, securityDeposit, lineItems };
+  return { mode: req.mode, subtotal, regularSubtotal, depositAmount, securityDeposit, lineItems };
 }
 
 /**
@@ -221,13 +282,17 @@ export function computeQuoteResponse(input: QuoteInput): QuoteResponse {
     currency: 'VND',
     mode: result.mode,
     subtotal: result.subtotal.toString(),
+    regularSubtotal: result.regularSubtotal.toString(),
+    savingsAmount: (result.regularSubtotal - result.subtotal).toString(),
     depositAmount: result.depositAmount.toString(),
     securityDeposit: result.securityDeposit.toString(),
     lineItems: result.lineItems.map((l) => ({
       label: l.label,
       quantity: l.quantity,
       unitPrice: l.unitPrice.toString(),
+      regularUnitPrice: l.regularUnitPrice.toString(),
       amount: l.amount.toString(),
+      regularAmount: l.regularAmount.toString(),
       ...(l.appliedRuleId ? { appliedRuleId: l.appliedRuleId } : {}),
       ...(l.block ? { block: true } : {}),
     })),

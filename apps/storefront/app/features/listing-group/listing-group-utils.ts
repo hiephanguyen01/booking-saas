@@ -70,6 +70,26 @@ export function slotInterval(slots: SlotRange[]): { start: string; end: string }
   return { start: ordered[0].startUtc, end: ordered[ordered.length - 1].endUtc };
 }
 
+/** Rebuild the atomic, gapless cells represented by a persisted `[start,end)` selection. */
+export function contiguousSlotsForInterval(
+  slots: HourlySlot[],
+  startUtc: string,
+  endUtc: string,
+): HourlySlot[] {
+  const available = sortSlots(slots.filter((slot) => slot.available));
+  const selected: HourlySlot[] = [];
+  let cursor = startUtc;
+
+  while (cursor < endUtc) {
+    const next = available.find((slot) => slot.startUtc === cursor && slot.endUtc <= endUtc);
+    if (!next) return [];
+    selected.push(next);
+    cursor = next.endUtc;
+  }
+
+  return cursor === endUtc ? selected : [];
+}
+
 export function checkoutHref(input: {
   locale: Locale;
   listingSlug: string;

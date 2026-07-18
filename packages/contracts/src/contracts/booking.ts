@@ -43,6 +43,8 @@ export const createBookingInputSchema = z.object({
   to: z.string().datetime(),
   /** Units to rent — `inventory` mode only; ignored (forced to 1) for hourly/daily. */
   quantity: z.number().int().positive().max(1000).default(1),
+  /** Quote shown at submit time; the API rejects instead of silently repricing. */
+  expectedSubtotal: z.string().regex(/^\d+$/).optional(),
   guestCount: z.number().int().positive().max(1000).default(1),
   customerNote: z.string().max(1000).optional(),
   /** Required when the caller is not a logged-in customer. */

@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "react-router dev",
-    "build": "react-router build",
-    "start": "react-router-serve ./build/server/index.js",
+    "dev": "node --env-file-if-exists=../../.env ./node_modules/@react-router/dev/bin.cjs dev",
+    "build": "node --env-file-if-exists=../../.env ./node_modules/@react-router/dev/bin.cjs build",
+    "start": "node --env-file-if-exists=../../.env ./node_modules/@react-router/serve/bin.cjs ./build/server/index.js",
     "lint": "eslint app",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "node --env-file-if-exists=../../.env ./node_modules/@react-router/dev/bin.cjs typegen && tsc"
   },
   "dependencies": {
     "@booking/api-client": "workspace:*",

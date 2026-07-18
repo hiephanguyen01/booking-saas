@@ -2,6 +2,14 @@ import type { PublicListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@booking/ui/components/ui/command';
+import {
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -14,7 +22,17 @@ import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/nati
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { cn } from '@booking/ui/lib/utils';
-import { CalendarDays, ChevronDown, Info, MapPin, Search, Users } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  Clock3,
+  Info,
+  MapPin,
+  Search,
+  Users,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Form } from 'react-router';
 import { NsI18n, useTranslation, type Locale } from '../../lib/i18n';
@@ -34,11 +52,18 @@ import {
 } from './search-state';
 
 type DateRange = { from: Date | undefined; to?: Date | undefined };
-type LocationOption = string | { value: string; label: string };
+export type LocationOption = string | { value: string; label: string };
 type SearchFormVariant = 'hero' | 'bar';
 type ModeAppearance = 'pills' | 'tabs';
 
 const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20] as const;
+
+function searchableModes(type: PublicListingTypeResponse | undefined): SearchMode[] {
+  if (!type || type.searchConfig.schedule === 'none') return [];
+  return (['hourly', 'daily', 'inventory'] as const).filter((mode) =>
+    type.allowedModes.includes(mode),
+  );
+}
 
 function toRange(selection: SearchDateSelection): DateRange {
   return {
@@ -71,17 +96,21 @@ export function SearchForm({
   const [selectedType, setSelectedType] = useState(initialType);
   const initialConfig = listingTypes.find((type) => type.slug === initialType)?.searchConfig;
   const [mode, setMode] = useState<SearchMode>(
-    (initialConfig?.schedule ?? (initialState ? state.mode : 'none')) as SearchMode,
+    (initialState ? state.mode : (initialConfig?.schedule ?? 'none')) as SearchMode,
   );
   const seed = selectedDates(state);
   const [date, setDate] = useState(seed.date);
   const [range, setRange] = useState<DateRange>(toRange(seed));
+  const [startTime, setStartTime] = useState(state.startTime);
+  const [endTime, setEndTime] = useState(state.endTime);
   const types = [...listingTypes].sort((left, right) => {
     if (left.slug.toLowerCase() === 'studio') return -1;
     if (right.slug.toLowerCase() === 'studio') return 1;
     return 0;
   });
-  const selectedConfig = listingTypes.find((type) => type.slug === selectedType)?.searchConfig;
+  const selectedListingType = listingTypes.find((type) => type.slug === selectedType);
+  const selectedConfig = selectedListingType?.searchConfig;
+  const availableModes = searchableModes(selectedListingType);
   const optionMap = new Map<string, string>();
   for (const option of locations) {
     if (typeof option === 'string') optionMap.set(option, option);
@@ -94,7 +123,9 @@ export function SearchForm({
   const rangeFrom = range.from ? localToDateOnly(range.from) : undefined;
   const rangeTo = range.to ? localToDateOnly(range.to) : undefined;
   const dailyRange = validDailyRange(rangeFrom, rangeTo);
-  const canSubmit = canSubmitSearch(mode, rangeFrom, rangeTo);
+  const canSubmit =
+    canSubmitSearch(mode, rangeFrom, rangeTo) &&
+    (mode !== 'hourly' || !date || startTime < endTime);
 
   function changeType(nextType: string): void {
     const schedule =
@@ -142,9 +173,14 @@ export function SearchForm({
           isHero ? 'px-5 pt-5 pb-12 md:px-6' : 'mx-auto max-w-292.5 px-4 pb-6 lg:px-0',
         )}
       >
-        {isHero ? (
+        {isHero && availableModes.length ? (
           <div className="flex flex-col items-start gap-2">
-            <ModeToggle mode={mode} onModeChange={changeMode} appearance="pills" />
+            <ModeToggle
+              mode={mode}
+              modes={availableModes}
+              onModeChange={changeMode}
+              appearance="pills"
+            />
             <span className="text-xs font-medium text-primary">{modeHint(mode, t)}</span>
           </div>
         ) : null}
@@ -162,7 +198,7 @@ export function SearchForm({
         <div
           className={cn(
             'grid gap-3',
-            isHero ? 'sm:grid-cols-2 lg:grid-cols-4' : 'lg:grid-cols-4 xl:grid-cols-5',
+            isHero ? 'sm:grid-cols-2 lg:grid-cols-5' : 'lg:grid-cols-4 xl:grid-cols-6',
           )}
         >
           <SearchField icon={Search} label={t('home.searchPlaceholder')}>
@@ -174,21 +210,7 @@ export function SearchForm({
             />
           </SearchField>
 
-          <SearchField icon={MapPin} label={t('home.locationPlaceholder')}>
-            <NativeSelect
-              name="location"
-              defaultValue={state.location}
-              aria-label={t('home.locationPlaceholder')}
-              className="h-auto border-0 bg-transparent p-0 pr-7 shadow-none focus-visible:ring-0"
-            >
-              <NativeSelectOption value="">{t('home.locationPlaceholder')}</NativeSelectOption>
-              {options.map((location) => (
-                <NativeSelectOption key={location.value} value={location.value}>
-                  {location.label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </SearchField>
+          <LocationCombobox key={state.location} initialValue={state.location} options={options} />
 
           {mode !== 'none' ? (
             <SearchDatePicker
@@ -199,6 +221,17 @@ export function SearchForm({
               range={range}
               setRange={setRange}
               showModeTabs={!isHero}
+              availableModes={availableModes}
+            />
+          ) : null}
+
+          {mode === 'hourly' ? (
+            <TimeRangeField
+              startTime={startTime}
+              endTime={endTime}
+              onStartTimeChange={setStartTime}
+              onEndTimeChange={setEndTime}
+              disabled={!date}
             />
           ) : null}
 
@@ -261,6 +294,148 @@ export function SearchForm({
         ) : null}
       </div>
     </Form>
+  );
+}
+
+function TimeRangeField({
+  startTime,
+  endTime,
+  onStartTimeChange,
+  onEndTimeChange,
+  disabled,
+}: {
+  startTime: string;
+  endTime: string;
+  onStartTimeChange: (value: string) => void;
+  onEndTimeChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslation(NsI18n.Common);
+  return (
+    <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+      <Clock3 className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <input
+        name="startTime"
+        type="time"
+        step={300}
+        value={startTime}
+        onChange={(event) => onStartTimeChange(event.target.value)}
+        disabled={disabled}
+        aria-label={t('home.startTime')}
+        className="w-0 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      <span className="text-muted-foreground" aria-hidden="true">
+        –
+      </span>
+      <input
+        name="endTime"
+        type="time"
+        step={300}
+        value={endTime}
+        onChange={(event) => onEndTimeChange(event.target.value)}
+        disabled={disabled}
+        aria-label={t('home.endTime')}
+        className="w-0 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      />
+    </div>
+  );
+}
+
+function LocationCombobox({
+  initialValue,
+  options,
+}: {
+  initialValue: string;
+  options: { value: string; label: string }[];
+}) {
+  const { t } = useTranslation(NsI18n.Common);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(initialValue);
+  const selected = options.find((option) => option.value === value);
+  const placeholder = t('home.locationPlaceholder');
+
+  function select(nextValue: string): void {
+    setValue(nextValue);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <input type="hidden" name="location" value={value} />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            role="combobox"
+            aria-expanded={open}
+            aria-label={placeholder}
+            className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-left text-foreground shadow-xs hover:bg-accent focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+          >
+            <MapPin className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span
+              className={cn(
+                'min-w-0 flex-1 truncate text-sm',
+                !selected && 'text-muted-foreground',
+              )}
+            >
+              {selected?.label ?? placeholder}
+            </span>
+            <ChevronsUpDown
+              className="size-4 shrink-0 text-muted-foreground opacity-70"
+              aria-hidden="true"
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-content-available-width)] p-0"
+        >
+          <Command>
+            <CommandInput placeholder={t('home.searchLocation')} />
+            <CommandList>
+              <CommandEmpty>{t('home.noLocationResults')}</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value={placeholder}
+                  onSelect={() => select('')}
+                  className="data-[selected=true]:bg-primary/10 data-[selected=true]:text-primary"
+                >
+                  <Check
+                    className={cn('mr-2 size-4 text-primary', value ? 'opacity-0' : 'opacity-100')}
+                  />
+                  {placeholder}
+                </CommandItem>
+                {options.map((option) => {
+                  const isSelected = option.value === value;
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.label}
+                      onSelect={() => select(option.value)}
+                      className={cn(
+                        'data-[selected=true]:bg-primary/10 data-[selected=true]:text-primary',
+                        isSelected &&
+                          'bg-primary text-primary-foreground data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground',
+                      )}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 size-4',
+                          isSelected
+                            ? 'text-primary-foreground opacity-100'
+                            : 'text-primary opacity-0',
+                        )}
+                      />
+                      <span className="truncate">{option.label}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </>
   );
 }
 
@@ -330,10 +505,12 @@ const MODE_ITEM_CLASS: Record<ModeAppearance, string> = {
 
 function ModeToggle({
   mode,
+  modes,
   onModeChange,
   appearance,
 }: {
   mode: SearchMode;
+  modes: SearchMode[];
   onModeChange: (mode: SearchMode) => void;
   appearance: ModeAppearance;
 }) {
@@ -349,12 +526,11 @@ function ModeToggle({
       className={cn(!isPills && 'mx-auto grid grid-cols-2 px-6')}
       aria-label={t('home.bookingMode')}
     >
-      <ToggleGroupItem value="hourly" className={MODE_ITEM_CLASS[appearance]}>
-        {t('home.bookHourly')}
-      </ToggleGroupItem>
-      <ToggleGroupItem value="daily" className={MODE_ITEM_CLASS[appearance]}>
-        {t('home.bookDaily')}
-      </ToggleGroupItem>
+      {modes.map((item) => (
+        <ToggleGroupItem key={item} value={item} className={MODE_ITEM_CLASS[appearance]}>
+          {item === 'hourly' ? t('home.bookHourly') : t('home.bookDaily')}
+        </ToggleGroupItem>
+      ))}
     </ToggleGroup>
   );
 }
@@ -404,6 +580,7 @@ function SearchDatePicker({
   range,
   setRange,
   showModeTabs,
+  availableModes,
 }: {
   mode: SearchMode;
   onModeChange: (mode: SearchMode) => void;
@@ -412,6 +589,7 @@ function SearchDatePicker({
   range: DateRange;
   setRange: (value: DateRange) => void;
   showModeTabs: boolean;
+  availableModes: SearchMode[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
@@ -479,8 +657,13 @@ function SearchDatePicker({
 
     return (
       <div className="flex flex-col">
-        {showModeTabs ? (
-          <ModeToggle mode={mode} onModeChange={onModeChange} appearance="tabs" />
+        {showModeTabs && availableModes.length > 1 ? (
+          <ModeToggle
+            mode={mode}
+            modes={availableModes}
+            onModeChange={onModeChange}
+            appearance="tabs"
+          />
         ) : null}
         <div className="overflow-x-auto p-3">{picker}</div>
         <div className="flex items-center gap-2 border-t border-border bg-muted/40 px-6 py-4 text-xs text-muted-foreground">

@@ -22,7 +22,6 @@ import type { Route } from './+types/detail';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { runListingGroupAction } from '~/features/partner/server/listing-groups.server';
-import { usesOpeningHours } from '~/features/partner/lib/listing-hours';
 import {
   GroupStatusAlert,
   isAdminLocked,
@@ -74,6 +73,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
     groupId: group.id,
     itemLabel,
     canEdit: canEditItems,
+    canWrite,
     canAvailability,
   });
 
@@ -155,7 +155,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
                       listing={listing}
                       itemLabel={itemLabel}
                       canEdit={canEditItems}
-                      canManageHours={canAvailability && usesOpeningHours(listing)}
+                      canManageCalendar={canWrite || canAvailability}
                     />
                   ))}
                 </div>

@@ -503,9 +503,10 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | listing_id   |                                                                                                                                                                                |
 | booking_mode | which mode the rule applies to (`hourly`/`daily`/`inventory`) — required since base price is split per mode                                                                    |
-| rule_type    | `day_of_week / date_range / time_range`                                                                                                                                        |
-| params       | jsonb, e.g. `{days:[6,0], from:"18:00", to:"22:00"}`                                                                                                                           |
-| price        | bigint — replaces the mode's **per-unit price** (basePrice) when matched; **never overrides block pricing** — a duration matching a block always gets the block (bundle) price |
+| rule_type    | `day_of_week / date_range / time_range / date_time_range`                                                                                                                        |
+| params       | jsonb, e.g. `{days:[6,0], from:"18:00", to:"22:00"}` or `{date:"2026-07-20",from:"18:00",to:"22:00"}`                                                                     |
+| price        | bigint — regular per-unit price replacing `basePrice`; an exact calendar override takes precedence over a matching duration bundle                                               |
+| sale_price   | nullable bigint — partner-funded calendar sale; greater than zero and lower than `price`; promotion codes apply after this price                                                   |
 | priority     | higher-priority rule wins                                                                                                                                                      |
 
 **categories**: tenant_id, name, slug (used for category-based commission rules + storefront filtering).
@@ -520,7 +521,7 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 | day_of_week           | 0–6                                   |
 | open_time, close_time | local time in the resource's timezone |
 
-**availability_exceptions** — date-specific exceptions: **resource_id** (not listing — a maintenance/holiday block must affect EVERY listing sharing that calendar), date, type (`closed / custom_hours`), open_time, close_time, reason.
+**availability_exceptions** — date-specific exceptions: **resource_id** (not listing — a maintenance/holiday block must affect EVERY listing sharing that calendar), date, type (`closed / custom_hours`), open_time, close_time, reason. `(resource_id, date)` is unique; saving a day replaces its previous exception.
 
 ### 7.5. Booking Group
 
@@ -763,8 +764,9 @@ Input: date D (in the **resource's** timezone), listing config, active bookings 
      occupied range = [s − buffer_before, s + d + buffer_after)
      exclude if it overlaps any booking (status ∈ confirmed, pending_*) or an active hold
      exclude if s < now + leadTimeMin (minimum lead time, in mode_config)
-4. Return slots with prices: a duration matching a mode_config block → block (bundle) price,
-   not overridable by a rule; otherwise → per-unit price × duration, with pricing_rules applied by priority
+4. Return slots with prices: an exact calendar override (`date_range` / `date_time_range`) wins;
+   otherwise a duration matching a mode_config block uses the flat bundle price; remaining ranges
+   use per-unit pricing_rules by priority. `sale_price`, when present, is the effective unit price.
 ```
 
 Results are cached in Redis by `(listing, date)` for the booking/config portion only (invalidated on change); **hold state is never cached** — it's merged at read time, so a hold expiring naturally in Redis never leaves a "ghost" slot reported as busy.

@@ -39,6 +39,7 @@ const DAY_MS = 86_400_000;
 interface EvaluatedListing {
   listing: PublicListingRecord;
   price: bigint;
+  regularPrice: bigint;
   priceUnit: 'hour' | 'day' | 'item' | 'session';
 }
 
@@ -169,12 +170,6 @@ export class SearchPublicCatalogUseCase {
         message: `Listing type does not support mode "${mode}"`,
       });
     }
-    if (schedule !== 'none' && mode !== schedule) {
-      throw new BadRequestException({
-        code: 'MODE_NOT_SEARCHABLE',
-        message: `This listing type searches by ${schedule}`,
-      });
-    }
     return mode;
   }
 
@@ -185,7 +180,7 @@ export class SearchPublicCatalogUseCase {
   ) {
     const hasHourly = Boolean(query.date || query.startTime || query.endTime);
     const hasRange = Boolean(query.from || query.to);
-    if (type.searchConfig.schedule === 'none' && (hasHourly || hasRange)) {
+    if (!mode && (hasHourly || hasRange)) {
       throw new BadRequestException({
         code: 'DATE_FILTER_DISABLED',
         message: 'This listing type does not use a date filter',
@@ -366,7 +361,12 @@ export class SearchPublicCatalogUseCase {
         quantity: mode === 'inventory' ? query.quantity : 1,
         depositPercent: listing.depositPercent,
       });
-      return { listing, price: quote.subtotal, priceUnit: unitFor(mode, config) };
+      return {
+        listing,
+        price: quote.subtotal,
+        regularPrice: quote.regularSubtotal,
+        priceUnit: unitFor(mode, config),
+      };
     } catch {
       return null;
     }
@@ -390,7 +390,7 @@ export class SearchPublicCatalogUseCase {
     );
     const durationMinutes = hourly.minDuration * 60;
     const earliestStart = Date.now() + hourly.leadTimeMin * 60_000;
-    let cheapest: bigint | null = null;
+    let cheapest: { price: bigint; regularPrice: bigint } | null = null;
 
     for (const window of windows) {
       const lastStart = addMinutes(window.end, -durationMinutes);
@@ -417,19 +417,24 @@ export class SearchPublicCatalogUseCase {
             quantity: 1,
             depositPercent: listing.depositPercent,
           });
-          if (cheapest === null || quote.subtotal < cheapest) cheapest = quote.subtotal;
+          if (cheapest === null || quote.subtotal < cheapest.price) {
+            cheapest = { price: quote.subtotal, regularPrice: quote.regularSubtotal };
+          }
         } catch {
           continue;
         }
       }
     }
 
-    return cheapest === null ? null : { listing, price: cheapest, priceUnit: 'hour' };
+    return cheapest === null
+      ? null
+      : { listing, price: cheapest.price, regularPrice: cheapest.regularPrice, priceUnit: 'hour' };
   }
 
   private openDaily(listing: PublicListingRecord, date: string): boolean {
     const exception = listing.availabilityExceptions.find((e) => e.date === date);
     if (exception?.type === 'closed') return false;
+    if (exception?.type === 'custom_hours') return true;
     return (
       listing.availabilityRules.length === 0 ||
       listing.availabilityRules.some((r) => r.dayOfWeek === weekdayOf(date))
@@ -460,6 +465,7 @@ export class SearchPublicCatalogUseCase {
         wardName: g?.wardName ?? l.wardName,
         amenities: stringArrayRaw(g?.amenities),
         priceFrom: cheapest.price.toString(),
+        regularPriceFrom: cheapest.regularPrice.toString(),
         priceUnit: cheapest.priceUnit,
         completedBookings: matches.reduce((sum, row) => sum + row.listing.completedBookings, 0),
         matchingRoomCount: matches.length,
@@ -575,7 +581,12 @@ function configuredPrice(
   });
   if (!prices.length) return null;
   const cheapest = prices.reduce((a, b) => (b.price < a.price ? b : a));
-  return { listing, price: cheapest.price, priceUnit: unitFor(cheapest.mode, config) };
+  return {
+    listing,
+    price: cheapest.price,
+    regularPrice: cheapest.price,
+    priceUnit: unitFor(cheapest.mode, config),
+  };
 }
 
 function configuredRawPrice(listing: PublicListingRecord): EvaluatedListing | null {
@@ -598,6 +609,7 @@ function configuredRawPrice(listing: PublicListingRecord): EvaluatedListing | nu
   return {
     listing,
     price: cheapest.price,
+    regularPrice: cheapest.price,
     priceUnit:
       cheapest.mode === 'daily'
         ? 'day'

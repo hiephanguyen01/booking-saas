@@ -1,9 +1,10 @@
 import { Link } from 'react-router';
+import { Facebook, Instagram, Mail, Music2, Phone, Youtube, type LucideIcon } from 'lucide-react';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { useLocale } from '../lib/use-locale';
-import { SOCIAL_PROFILES } from './site-footer-fallback';
+import { SOCIAL_PROFILES, type SocialKey } from './site-footer-fallback';
 import { TenantBrand } from './tenant-brand';
 
 export function SiteFooter({
@@ -15,9 +16,11 @@ export function SiteFooter({
 }) {
   const { t } = useTranslation([NsI18n.Common, NsI18n.Navigation]);
   const locale = useLocale();
+  const config = tenant.themeConfig;
+  const contact = config.contact;
 
   const socials = SOCIAL_PROFILES.flatMap((social) => {
-    const href = tenant.social[social.tenantKey];
+    const href = config.socialLinks?.[social.tenantKey];
     return href ? [{ ...social, href }] : [];
   });
 
@@ -37,15 +40,35 @@ export function SiteFooter({
             >
               <TenantBrand
                 name={tenant.name}
-                logoUrl={tenant.logoUrl}
+                logoUrl={config.logoUrl || null}
                 imageClassName="h-12 w-auto max-w-48 object-contain"
                 textClassName="max-w-64 text-xl font-bold text-primary"
               />
             </Link>
-            {tenant.contact.address ? (
-              <p className="max-w-80 text-sm leading-5 text-muted-foreground">
-                {tenant.contact.address}
-              </p>
+            {contact?.address ? (
+              <p className="max-w-80 text-sm leading-5 text-muted-foreground">{contact.address}</p>
+            ) : null}
+            {contact?.phone || contact?.email ? (
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                {contact.phone ? (
+                  <a
+                    href={`tel:${contact.phone}`}
+                    className="inline-flex items-center gap-2 hover:text-primary"
+                  >
+                    <Phone aria-hidden="true" className="size-4" />
+                    {contact.phone}
+                  </a>
+                ) : null}
+                {contact.email ? (
+                  <a
+                    href={`mailto:${contact.email}`}
+                    className="inline-flex items-center gap-2 hover:text-primary"
+                  >
+                    <Mail aria-hidden="true" className="size-4" />
+                    {contact.email}
+                  </a>
+                ) : null}
+              </div>
             ) : null}
             {socials.length ? (
               <>
@@ -58,9 +81,9 @@ export function SiteFooter({
                       target="_blank"
                       rel="noreferrer noopener"
                       aria-label={social.name}
-                      className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="rounded-full text-foreground transition-colors hover:text-(--sf-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <img src={social.src} alt="" width={40} height={40} className="size-10" />
+                      <SocialIcon network={social.tenantKey} />
                     </a>
                   ))}
                 </div>
@@ -81,7 +104,7 @@ export function SiteFooter({
             items={[
               t('footer.supportLinks.help'),
               t('footer.supportLinks.rules'),
-              tenant.contact.phone ?? tenant.contact.email ?? t('footer.supportLinks.contact'),
+              ...(!contact?.phone && !contact?.email ? [t('footer.supportLinks.contact')] : []),
             ]}
           />
         </div>
@@ -94,6 +117,18 @@ export function SiteFooter({
       </div>
     </footer>
   );
+}
+
+const SOCIAL_ICONS: Record<SocialKey, LucideIcon> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  tiktok: Music2,
+  youtube: Youtube,
+};
+
+function SocialIcon({ network }: { network: SocialKey }) {
+  const Icon = SOCIAL_ICONS[network];
+  return <Icon aria-hidden="true" className="size-6" />;
 }
 
 function FooterList({ title, items }: { title: string; items: string[] }) {

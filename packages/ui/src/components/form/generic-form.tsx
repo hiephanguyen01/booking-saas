@@ -23,9 +23,11 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   /** Zod schema from `@booking/contracts` — validates on the client and (again) in the action. */
   schema: TSchema;
   /** Field configs; `name`s are type-checked against the schema's inferred type. */
-  fields: FieldConfig<z.infer<TSchema>>[];
-  defaultValues?: DefaultValues<z.infer<TSchema>>;
-  submitLabel?: string;
+  fields: FieldConfig<z.infer<TSchema>>[]
+  defaultValues?: DefaultValues<z.infer<TSchema>>
+  submitLabel?: string
+  /** Localized label shown while the form is being submitted. */
+  submitPendingLabel?: string
   /** Grid columns for the layout (default 1). Per-field `colSpan` overrides width. */
   columns?: 1 | 2 | 3 | 4;
   /** Form-level error from the action (`data({ error }, …)`). */
@@ -93,7 +95,8 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   schema,
   fields,
   defaultValues,
-  submitLabel = 'Lưu',
+  submitLabel = "Lưu",
+  submitPendingLabel = "Đang lưu...",
   columns = 1,
   serverError,
   fieldErrors,
@@ -203,7 +206,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
             disabled={isSubmitting}
             className={cn('px-8 font-semibold', submitFullWidth && 'w-full')}
           >
-            {isSubmitting ? 'Đang lưu...' : submitLabel}
+            {isSubmitting ? submitPendingLabel : submitLabel}
           </Button>
           {children}
         </div>

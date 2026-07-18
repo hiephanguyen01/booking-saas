@@ -8,8 +8,10 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { Camera } from 'lucide-react';
 import { useState } from 'react';
+import type { LocationOption } from '../../features/search/search-form';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
+import { BrandCarousel } from './brand-carousel';
 import { StudioHero } from './hero';
 import { splitHomeListings } from './home-listing-presentation';
 import { RecommendedSection } from './recommended-section';
@@ -29,7 +31,7 @@ export function StudioHome({
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   listings: PublicListingResponse[];
-  locations: string[];
+  locations: LocationOption[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const [selectedType, setSelectedType] = useState(
@@ -49,6 +51,10 @@ export function StudioHome({
         onTypeChange={setSelectedType}
       />
       <div className="mx-auto flex max-w-292.5 flex-col gap-10 px-4 pb-24 sm:px-6 xl:px-0">
+        <BrandCarousel
+          images={(tenant.themeConfig.carousel ?? []).filter(Boolean)}
+          tenantName={tenant.name}
+        />
         {visibleListings.length > 0 ? (
           <>
             <TopListingsSection listings={sections.top} />

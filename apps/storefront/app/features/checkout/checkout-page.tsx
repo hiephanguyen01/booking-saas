@@ -30,7 +30,9 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
             start={start}
             end={end}
             qty={qty}
-            policies={policyLines(listing.effectiveCancellationPolicy ?? listing.cancellationPolicy)}
+            policies={policyLines(
+              listing.effectiveCancellationPolicy ?? listing.cancellationPolicy,
+            )}
             searchParams={searchParams}
             promoCode={promoCode}
             promo={promo}
@@ -59,6 +61,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
               fieldErrors={actionData?.fieldErrors ?? null}
               serverError={actionData?.error ?? null}
               dueNow={amounts.dueNow}
+              expectedSubtotal={quote.subtotal}
             />
           </div>
         </div>

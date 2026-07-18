@@ -30,6 +30,8 @@ export const viCommon = {
     pickDate: 'Chọn ngày',
     searchPlaceholder: 'Bạn tìm gì?',
     locationPlaceholder: 'Địa điểm',
+    searchLocation: 'Tìm địa điểm…',
+    noLocationResults: 'Không có địa điểm phù hợp.',
     guestsPlaceholder: '1 - 5 khách',
     search: 'Tìm kiếm',
     // Was "Top 10 Studio đặt nhiều nhất". The ranking behind that claim was a
@@ -41,6 +43,10 @@ export const viCommon = {
     emptyTitle: 'Chưa có studio phù hợp',
     emptyBody: 'Các studio mới sẽ xuất hiện tại đây ngay khi được xuất bản.',
     emptyInLocation: 'Chưa có studio tại khu vực này.',
+    carouselLabel: 'Hình ảnh nổi bật của {tenant}',
+    carouselPrevious: 'Ảnh trước',
+    carouselNext: 'Ảnh tiếp theo',
+    carouselGoTo: 'Xem ảnh số {slide}',
     locations: {
       hcm: 'TP Hồ Chí Minh',
       hanoi: 'Hà Nội',

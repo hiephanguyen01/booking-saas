@@ -7,7 +7,13 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
 import { SectionCard } from '../../../components/section-card';
 import { NsI18n, type ScopedI18n, useTranslation } from '../../../lib/i18n';
-import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../../../lib/time';
+import {
+  dateLabelInTz,
+  dateOnlyInTz,
+  DEFAULT_TZ,
+  nightsBetween,
+  timeInTz,
+} from '../../../lib/time';
 import { formatListingLocation } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
 import type { checkoutAmounts, PolicyLine } from '../checkout-presentation';
@@ -45,6 +51,10 @@ export function BookingColumn({
   const address = formatListingLocation(listing, 'full');
   const scheduleBadges = buildScheduleBadges(mode, start, end, qty, locale, tListing);
   const slotCount = mode === 'hourly' ? Math.max(1, scheduleBadges.length) : 1;
+  const dayCount =
+    mode === 'daily'
+      ? Math.max(1, nightsBetween(dateOnlyInTz(start, DEFAULT_TZ), dateOnlyInTz(end, DEFAULT_TZ)))
+      : 1;
 
   return (
     <SectionCard>
@@ -124,6 +134,7 @@ export function BookingColumn({
           qty={qty}
           mode={mode}
           slotCount={slotCount}
+          dayCount={dayCount}
         />
       </div>
     </SectionCard>

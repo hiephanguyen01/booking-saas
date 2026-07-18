@@ -1,8 +1,12 @@
 import { data as routeData } from 'react-router';
-import { addDomainInputSchema, themeConfigSchema, type DomainResponse } from '@booking/contracts';
+import {
+  addDomainInputSchema,
+  themeConfigSchema,
+  type DomainResponse,
+  type TenantThemeResponse,
+} from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost, type ApiAuth } from '~/lib/api.server';
 import { TENANT_FLAGS_PATH, type TenantFlags } from '~/features/tenant/lib/flags';
-import type { TenantThemeResponse } from '~/features/tenant/components/settings/settings-fields';
 
 /**
  * The tenant settings route's multi-intent action, kept out of the route module.
@@ -65,7 +69,10 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
       auth,
     );
     if (!res.ok)
-      return routeData({ form: 'flags', error: res.error ?? 'Không lưu được cài đặt.' }, { status: 400 });
+      return routeData(
+        { form: 'flags', error: res.error ?? 'Không lưu được cài đặt.' },
+        { status: 400 },
+      );
     return { form: 'flags', ok: true };
   }
 

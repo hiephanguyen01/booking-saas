@@ -1,8 +1,7 @@
-import { publicTenantResponseSchema } from '@booking/contracts';
+import { publicTenantResponseSchema, type PublicTenantResponse } from '@booking/contracts';
 import { publicGetData } from './api.server';
-import { toStorefrontTenant, type StorefrontTenant } from './tenant-mapper';
 
-export type { StorefrontTenant } from './tenant-mapper';
+export type StorefrontTenant = PublicTenantResponse;
 
 /**
  * Tenant resolution by Host header (TONG-QUAN.md §6.1). The storefront acts as a
@@ -17,7 +16,7 @@ export async function resolveTenant(request: Request): Promise<StorefrontTenant>
     const dto = await publicGetData(request, '/public/tenant', {
       schema: publicTenantResponseSchema,
     });
-    return toStorefrontTenant(dto);
+    return dto;
   } catch (error) {
     if (error instanceof Response && error.status === 404) {
       const hostname = (request.headers.get('host') ?? 'localhost').split(':')[0];

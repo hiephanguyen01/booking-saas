@@ -50,6 +50,7 @@ export class GetPublicQuoteUseCase {
           ruleType: r.ruleType,
           params: r.params,
           price: r.price,
+          salePrice: r.salePrice,
           priority: r.priority,
         })),
         timezone: listing.resourceTimezone,

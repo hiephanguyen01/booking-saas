@@ -1,33 +1,23 @@
+import '../src/config/load-root-env';
 import {
   CreateBucketCommand,
   HeadBucketCommand,
   PutBucketPolicyCommand,
+  PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { s3ConfigFromEnv } from '../src/shared/storage/s3-storage.service';
 
 /**
  * One-time dev bootstrap for object storage: create the bucket and make it
  * publicly readable so presigned uploads are viewable on the storefront.
- * Idempotent — safe to re-run. Reads S3_* from apps/api/.env (or docker-compose
- * defaults). PRODUCTION note: do NOT use a public bucket policy there — serve
+ * Idempotent — safe to re-run. Reads S3_* from the workspace-root `.env` (or
+ * docker-compose defaults). PRODUCTION note: do NOT use a public bucket policy there — serve
  * via a CDN or signed GET URLs instead.
  */
-function loadDotEnv(): void {
-  const path = resolve(process.cwd(), '.env');
-  if (!existsSync(path)) return;
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
-    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-    if (m && process.env[m[1]] === undefined) {
-      process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-    }
-  }
-}
-
 async function main(): Promise<void> {
-  loadDotEnv();
   const cfg = s3ConfigFromEnv();
   const s3 = new S3Client({
     region: cfg.region,
@@ -62,6 +52,37 @@ async function main(): Promise<void> {
     }),
   );
   console.log(`applied public-read policy to "${cfg.bucket}" (dev only)`);
+
+  const defaultAssets = [
+    {
+      label: 'logo',
+      key: 'defaults/booking-studio/logo.png',
+      path: resolve(__dirname, '../../storefront/public/booking-studio/logo.png'),
+    },
+    {
+      label: 'app icon',
+      key: 'defaults/booking-studio/app-icon.png',
+      path: resolve(__dirname, '../../storefront/public/booking-studio/app-icon.png'),
+    },
+    {
+      label: 'background',
+      key: 'defaults/booking-studio/background.png',
+      path: resolve(__dirname, '../../storefront/public/booking-studio/hero.png'),
+    },
+  ] as const;
+
+  for (const asset of defaultAssets) {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: cfg.bucket,
+        Key: asset.key,
+        Body: readFileSync(asset.path),
+        ContentType: 'image/png',
+        CacheControl: 'public, max-age=3600',
+      }),
+    );
+    console.log(`uploaded default storefront ${asset.label} to ${cfg.publicUrl}/${asset.key}`);
+  }
   console.log(`objects served from ${cfg.publicUrl}/<key>`);
 }
 

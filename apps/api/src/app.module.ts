@@ -27,7 +27,9 @@ import { AdministrativeDivisionModule } from './modules/administrative-division/
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // main.ts loads the one workspace-root `.env` before importing this module.
+    // Ignore package-local dotenv files so configuration cannot silently drift.
+    ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',

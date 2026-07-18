@@ -12,6 +12,7 @@ export function PricePanel({
   qty,
   mode,
   slotCount,
+  dayCount,
 }: {
   quote: QuoteResponse;
   promo: ValidatePromoResponse | null;
@@ -19,14 +20,30 @@ export function PricePanel({
   qty: string;
   mode: string;
   slotCount: number;
+  dayCount: number;
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   const { t: tListing } = useTranslation(NsI18n.Listing);
   const hasDiscount = amounts.discount !== '0';
   const quantity = mode === 'inventory' ? qty : '1';
+  const quantityLabel =
+    mode === 'daily'
+      ? t('dailyQuantityLine', { rooms: quantity, days: dayCount })
+      : mode === 'inventory'
+        ? t('inventoryQuantityLine', { quantity })
+        : t('quantityLine', { rooms: quantity, slots: slotCount });
+  const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
 
   return (
     <div className="mt-3 rounded-lg bg-primary/10 px-5 py-4 text-sm leading-5 text-foreground">
+      {hasCalendarSale ? (
+        <div className="mb-2 flex items-center justify-between gap-4">
+          <Badge className="rounded-sm bg-emerald-600 text-white">Sale</Badge>
+          <span className="text-muted-foreground line-through">
+            {formatVnd(quote.regularSubtotal)}
+          </span>
+        </div>
+      ) : null}
       {hasDiscount ? (
         <div className="flex items-center justify-between gap-4">
           <Badge variant="destructive" className="rounded-sm font-semibold">
@@ -36,7 +53,7 @@ export function PricePanel({
         </div>
       ) : null}
       <PriceRow
-        label={t('quantityLine', { rooms: quantity, slots: slotCount })}
+        label={quantityLabel}
         value={formatVnd(amounts.subtotal)}
         className={hasDiscount ? 'mt-2' : ''}
       />

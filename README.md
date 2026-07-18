@@ -15,10 +15,9 @@ docker compose up -d            # postgres, redis, mailpit, minio
 
 cp .env.example .env            # adjust ports if needed
 
-cd apps/api
-pnpm exec prisma migrate deploy # applies schema + RLS policies + db roles
-pnpm run seed                   # permission catalog, system roles, dev admin
-pnpm run start:dev              # API on :3000
+pnpm --filter=@booking/api prisma:deploy # applies schema + RLS policies + db roles
+pnpm --filter=@booking/api seed          # permission catalog, system roles, dev admin
+pnpm --filter=@booking/api start:dev     # API on :3000
 ```
 
 Dev admin: `admin@bookify.local` / `admin-dev-password` (override via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
@@ -26,8 +25,8 @@ Dev admin: `admin@bookify.local` / `admin-dev-password` (override via `SEED_ADMI
 ## Frontend apps
 
 ```bash
-cd apps/storefront && pnpm dev   # customer site, multi-tenant by Host header (:5173)
-cd apps/dashboard && pnpm dev    # 4 role areas: /admin /tenant /partner /affiliate
+pnpm --filter=@booking/storefront dev # customer site, multi-tenant by Host header (:5173)
+pnpm --filter=@booking/dashboard dev  # 4 role areas: /admin /tenant /partner /affiliate
 ```
 
 React Router 7 framework mode (SSR) + Tailwind v4. Storefront resolves the tenant in `app/lib/tenant.server.ts` (Phase 0: demo stub — real API + Redis lookup lands with task 1.1) and themes via `--sf-*` CSS variables from tenant config.

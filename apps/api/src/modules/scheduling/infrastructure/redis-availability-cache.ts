@@ -30,21 +30,39 @@ export class RedisAvailabilityCache implements IAvailabilityCache {
     return `avail:res:${resourceId}`;
   }
 
+  private listingIndexKey(listingId: string): string {
+    return `avail:listing:${listingId}`;
+  }
+
   async get(listingId: string, date: string): Promise<CachedSlot[] | null> {
     const raw = await this.redis.get(this.entryKey(listingId, date));
     return raw ? (JSON.parse(raw) as CachedSlot[]) : null;
   }
 
-  async set(resourceId: string, listingId: string, date: string, slots: CachedSlot[]): Promise<void> {
+  async set(
+    resourceId: string,
+    listingId: string,
+    date: string,
+    slots: CachedSlot[],
+  ): Promise<void> {
     const key = this.entryKey(listingId, date);
     const index = this.indexKey(resourceId);
+    const listingIndex = this.listingIndexKey(listingId);
     await this.redis
       .multi()
       .set(key, JSON.stringify(slots), 'EX', TTL_SECONDS)
       .sadd(index, key)
+      .sadd(listingIndex, key)
       // Outlive the entries so the index never orphans a still-live key.
       .expire(index, TTL_SECONDS + 60)
+      .expire(listingIndex, TTL_SECONDS + 60)
       .exec();
+  }
+
+  async invalidateListing(listingId: string): Promise<void> {
+    const index = this.listingIndexKey(listingId);
+    const keys = await this.redis.smembers(index);
+    await this.redis.del(index, ...keys);
   }
 
   async invalidateResource(resourceId: string): Promise<void> {

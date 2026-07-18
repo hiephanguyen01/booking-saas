@@ -1,11 +1,18 @@
-import type { CancellationPolicyResponse, DomainResponse } from '@booking/contracts';
+import type {
+  CancellationPolicyResponse,
+  DomainResponse,
+  TenantThemeResponse,
+} from '@booking/contracts';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/settings';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { handleSettingsAction } from '~/features/tenant/server/settings-actions.server';
-import { TENANT_FLAGS_PATH, toPartnerPromotionsState, type TenantFlags } from '~/features/tenant/lib/flags';
-import type { TenantThemeResponse } from '~/features/tenant/components/settings/settings-fields';
+import {
+  TENANT_FLAGS_PATH,
+  toPartnerPromotionsState,
+  type TenantFlags,
+} from '~/features/tenant/lib/flags';
 import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { PageHeader } from '~/components/page-header';
 import { PartnerPromotionsCard } from '~/features/tenant/components/settings/partner-promotions-card';

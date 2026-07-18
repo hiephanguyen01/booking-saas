@@ -213,6 +213,8 @@ export const publicCatalogSearchItemSchema = z.object({
   wardName: z.string().nullable(),
   amenities: z.array(z.string()),
   priceFrom: moneySchema,
+  /** Price before a calendar sale; equals priceFrom when no sale applies. */
+  regularPriceFrom: moneySchema,
   priceUnit: z.enum(['hour', 'day', 'item', 'session']),
   completedBookings: z.number().int().nonnegative(),
   matchingRoomCount: z.number().int().positive(),

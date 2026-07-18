@@ -1,3 +1,4 @@
+import './config/load-root-env';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';

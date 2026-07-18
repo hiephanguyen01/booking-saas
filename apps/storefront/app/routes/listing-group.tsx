@@ -1,6 +1,7 @@
 import { useOutletContext } from 'react-router';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import type { Route } from './+types/listing-group';
+import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchListing, fetchListingGroup, fetchListings, fetchQuote } from '../lib/catalog.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { storefrontPaths } from '../lib/locale-paths';
@@ -9,7 +10,6 @@ import { jsonLd } from '../lib/seo';
 import { parseSearchState, rangeDates } from '../features/search/search-state';
 import { addDays, nightsBetween, zonedToUtcIso } from '../lib/time';
 import { ListingGroupPage } from '../features/listing-group/listing-group-page';
-import { deriveLocationSuggestions } from '../lib/search.server';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   const group = loaderData?.group;
@@ -35,14 +35,12 @@ async function safe<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
-  const [group, catalogCandidates] = await Promise.all([
+  const [group, catalogCandidates, provinces] = await Promise.all([
     fetchListingGroup(request, params.groupSlug),
     safe(fetchListings(request, new URLSearchParams())),
+    loadAdministrativeProvinces(request),
   ]);
   if (!group) throw new Response('Listing group not found', { status: 404 });
-  const suggestedLocations = catalogCandidates
-    ? await safe(deriveLocationSuggestions(request, catalogCandidates))
-    : null;
   const state = parseSearchState(url.searchParams);
   const children = group.listings.slice(0, 20);
   const options = await Promise.all(
@@ -59,21 +57,57 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
           }),
         );
         const slots =
-          availability?.mode === 'hourly'
-            ? availability.days.flatMap((day) => day.slots).filter((slot) => slot.available)
-            : [];
-        const price = slots.length
-          ? String(Math.min(...slots.map((slot) => Number(slot.price))))
+          availability?.mode === 'hourly' ? availability.days.flatMap((day) => day.slots) : [];
+        const openSlots = slots.filter((slot) => slot.available);
+        const timezone = availability?.timezone ?? 'Asia/Ho_Chi_Minh';
+        const requestedStart = state.hasTimeSelection
+          ? zonedToUtcIso(state.date, state.startTime, timezone)
           : null;
+        const requestedEnd = state.hasTimeSelection
+          ? zonedToUtcIso(state.date, state.endTime, timezone)
+          : null;
+        const requestedSlot =
+          requestedStart && requestedEnd
+            ? slots.find(
+                (slot) =>
+                  slot.startUtc === requestedStart &&
+                  slot.endUtc === requestedEnd &&
+                  slot.available,
+              )
+            : null;
+        const quote = requestedSlot
+          ? await safe(
+              fetchQuote(
+                request,
+                child.slug,
+                new URLSearchParams({
+                  mode: 'hourly',
+                  from: requestedStart!,
+                  to: requestedEnd!,
+                  quantity: '1',
+                }),
+              ),
+            )
+          : null;
+        const price = state.hasTimeSelection
+          ? (quote?.subtotal ?? null)
+          : openSlots.length
+            ? openSlots.reduce(
+                (lowest, slot) => (BigInt(slot.price) < BigInt(lowest) ? slot.price : lowest),
+                openSlots[0]!.price,
+              )
+            : null;
         return {
           child,
           detail,
           availability,
-          available: slots.length > 0,
+          available: state.hasTimeSelection
+            ? Boolean(requestedSlot && quote)
+            : openSlots.length > 0,
           price,
-          quote: null,
-          start: null,
-          end: null,
+          quote,
+          start: requestedStart,
+          end: requestedEnd,
         };
       }
       const daily = (detail.modeConfig.daily ?? {}) as Record<string, unknown>;
@@ -125,17 +159,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   const roomOptions = options.filter(
     (option): option is NonNullable<typeof option> => option !== null,
   );
-  const locations = [
-    ...new Set(
-      [
-        ...(suggestedLocations ?? []),
-        group.workingArea,
-        group.wardName,
-        group.provinceName,
-        group.address,
-      ].filter((value): value is string => Boolean(value)),
-    ),
-  ];
+  const locations = provinces.map((province) => ({
+    value: province.code,
+    label: province.name,
+  }));
   const childIds = new Set(group.listings.map((listing) => listing.id));
   const relatedListings = (catalogCandidates ?? [])
     .filter(

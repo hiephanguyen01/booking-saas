@@ -14,28 +14,49 @@ import {
   SidebarRail,
 } from '@booking/ui/components/ui/sidebar';
 import { dashboardAreasFor } from '~/lib/navigation';
+import { activeTenantMembership } from '~/lib/tenant-brand';
 import { NavUser } from './nav-user';
 
 export function AppSidebar({ info }: { info: SessionInfoResponse }) {
   const location = useLocation();
   const areas = dashboardAreasFor(info, location.pathname);
+  const activeNavPath = areas
+    .flatMap((area) => area.items)
+    .filter((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))
+    .sort((left, right) => right.to.length - left.to.length)[0]?.to;
+  const membership = activeTenantMembership(info, location.pathname);
+  const appIconUrl =
+    membership?.tenantBranding?.faviconUrl || membership?.tenantBranding?.logoUrl || null;
+  const workspaceName =
+    membership?.scope === 'partner'
+      ? membership.partnerName || membership.tenantName
+      : membership?.tenantName;
 
   return (
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <CalendarCheck2 className="size-5" />
+          <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground">
+            {appIconUrl ? (
+              <img src={appIconUrl} alt="" className="size-full object-contain" />
+            ) : (
+              <CalendarCheck2 className="size-5" />
+            )}
           </div>
           <div className="grid leading-tight">
-            <span className="text-sm font-semibold">Bookify</span>
-            <span className="text-xs text-muted-foreground">Dashboard</span>
+            <span className="truncate text-sm font-semibold">{workspaceName || 'Bookify'}</span>
+            <span className="truncate text-xs text-muted-foreground">
+              {membership?.scope === 'partner'
+                ? membership.tenantName || 'Partner Dashboard'
+                : 'Dashboard'}
+            </span>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        {info.scopes.filter((scope) => scope.scope === 'tenant' || scope.scope === 'partner').length > 1 ? (
+        {info.scopes.filter((scope) => scope.scope === 'tenant' || scope.scope === 'partner')
+          .length > 1 ? (
           <SidebarGroup>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -61,11 +82,15 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
                 {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
                 <SidebarMenu>
                   {items.map((item) => {
-                    const isActive =
-                      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+                    const isActive = item.to === activeNavPath;
                     return (
                       <SidebarMenuItem key={item.to}>
-                        <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          tooltip={item.title}
+                          className="data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground"
+                        >
                           <Link to={item.to}>
                             {item.icon ? <item.icon /> : null}
                             <span>{item.title}</span>

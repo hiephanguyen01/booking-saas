@@ -53,6 +53,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
     // A plain <div>: root.tsx already wraps the outlet in the page's one <main>.
     <div className="bg-muted/20 pb-20 font-studio">
       <SearchForm
+        key={`${params.typeSlug}:${state.mode}:${state.date}:${state.from}:${state.to}`}
         listingTypes={listingTypes}
         currentType={params.typeSlug}
         initialState={state}

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { localeSchema, uuidSchema } from './common';
+import { dashboardBrandConfigSchema } from './tenancy';
 
 export const passwordSchema = z
   .string()
@@ -114,6 +115,8 @@ export const scopeMembershipSchema = z.object({
   tenantName: z.string().nullable(),
   partnerId: uuidSchema.nullable(),
   partnerName: z.string().nullable(),
+  /** Parent tenant branding for tenant/partner dashboard shells; null at platform scope. */
+  tenantBranding: dashboardBrandConfigSchema.nullable(),
   /** Role names assigned in this scope (for display only). */
   roles: z.array(z.string()),
   /** Fully-resolved permission keys (`scope.resource.action`) held in this scope. */

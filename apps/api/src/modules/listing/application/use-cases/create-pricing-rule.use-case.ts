@@ -49,6 +49,7 @@ export class CreatePricingRuleUseCase {
         ruleType: input.ruleType,
         params: input.params,
         price: input.price,
+        salePrice: input.salePrice ?? null,
         priority: input.priority,
       });
       await this.outbox.emit(tx, {

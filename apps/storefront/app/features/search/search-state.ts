@@ -16,6 +16,7 @@ export interface StorefrontSearchState {
   from: string;
   to: string;
   hasDateSelection: boolean;
+  hasTimeSelection: boolean;
   hasDailyRange: boolean;
   guests: number;
   quantity: number;
@@ -46,6 +47,7 @@ export interface EnrichedSearchListing {
   provinceName: string | null;
   amenities: string[];
   priceFrom: string;
+  regularPriceFrom: string;
   /** Locale-independent; rendered via the listing.perHour/perDay i18n keys. */
   priceUnit: PriceUnit;
   matchingRoomCount: number;
@@ -60,6 +62,7 @@ export interface SearchDateSelection {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function dateParam(value: string | null, fallback: string): string {
   return value && DATE_RE.test(value) ? value : fallback;
@@ -83,6 +86,8 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
   const rawDate = params.get('date');
   const rawFrom = params.get('from');
   const rawTo = params.get('to');
+  const rawStartTime = params.get('startTime');
+  const rawEndTime = params.get('endTime');
   const from = dateParam(rawFrom, today);
   const toCandidate = dateParam(params.get('to'), addDays(from, 1));
   const to = toCandidate > from ? toCandidate : addDays(from, 1);
@@ -100,15 +105,20 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     location: params.get('location')?.trim().slice(0, 200) ?? '',
     mode,
     date: dateParam(rawDate, today),
-    startTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(params.get('startTime') ?? '')
-      ? params.get('startTime')!
-      : '09:00',
-    endTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(params.get('endTime') ?? '')
-      ? params.get('endTime')!
-      : '10:00',
+    startTime: TIME_RE.test(rawStartTime ?? '') ? rawStartTime! : '09:00',
+    endTime: TIME_RE.test(rawEndTime ?? '') ? rawEndTime! : '10:00',
     from,
     to,
     hasDateSelection: Boolean(rawDate && DATE_RE.test(rawDate)),
+    hasTimeSelection: Boolean(
+      rawDate &&
+      DATE_RE.test(rawDate) &&
+      rawStartTime &&
+      rawEndTime &&
+      TIME_RE.test(rawStartTime) &&
+      TIME_RE.test(rawEndTime) &&
+      rawStartTime < rawEndTime,
+    ),
     hasDailyRange: Boolean(
       rawFrom && rawTo && DATE_RE.test(rawFrom) && DATE_RE.test(rawTo) && rawTo > rawFrom,
     ),
@@ -134,6 +144,10 @@ export function searchContextParams(state: StorefrontSearchState): URLSearchPara
   if (state.mode === 'inventory') params.set('quantity', String(state.quantity));
   if (state.mode === 'hourly' && state.hasDateSelection) {
     params.set('date', state.date);
+    if (state.hasTimeSelection) {
+      params.set('startTime', state.startTime);
+      params.set('endTime', state.endTime);
+    }
   } else if ((state.mode === 'daily' || state.mode === 'inventory') && state.hasDailyRange) {
     params.set('from', state.from);
     params.set('to', state.to);

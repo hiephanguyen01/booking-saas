@@ -17,7 +17,10 @@ import { storefrontPaths } from '../lib/locale-paths';
 import { getOptionalAuth } from '../lib/auth.server';
 import { getCheckoutFlowService } from '../lib/checkout-flow.server';
 import { createTranslator } from '../lib/i18n';
-import { allowedPaymentRedirect } from '../lib/payment-redirect.server';
+import {
+  allowedPaymentRedirect,
+  isMockPaymentRedirect,
+} from '../lib/payment-redirect.server';
 import { errorStatus } from '../lib/http-status';
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
@@ -44,11 +47,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
 
   const [listing, quote] = await Promise.all([
     fetchListing(request, slug),
-    fetchQuote(
-      request,
-      slug,
-      new URLSearchParams({ mode, from: start, to: end, quantity: qty }),
-    ),
+    fetchQuote(request, slug, new URLSearchParams({ mode, from: start, to: end, quantity: qty })),
   ]);
 
   if (!listing) throw redirect(storefrontPaths.home(locale));
@@ -85,8 +84,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   const start = String(form.get('start') ?? '');
   const end = String(form.get('end') ?? '');
   const qty = Number(form.get('qty') ?? '1');
-  const promoCode = String(form.get('promoCode') ?? '').trim().toUpperCase() || undefined;
+  const promoCode =
+    String(form.get('promoCode') ?? '')
+      .trim()
+      .toUpperCase() || undefined;
   const note = String(form.get('customerNote') ?? '').trim() || undefined;
+  const expectedSubtotal = String(form.get('expectedSubtotal') ?? '');
   const guest = guestInfoSchema.safeParse({
     fullName: String(form.get('fullName') ?? '').trim(),
     email: String(form.get('email') ?? '').trim(),
@@ -94,10 +97,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   });
 
   if (!guest.success) {
-    return data(
-      { fieldErrors: guest.error.flatten().fieldErrors, error: null },
-      { status: 400 },
-    );
+    return data({ fieldErrors: guest.error.flatten().fieldErrors, error: null }, { status: 400 });
   }
 
   const tenant = getCurrentStorefrontTenant();
@@ -108,6 +108,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     from: start,
     to: end,
     quantity: qty,
+    expectedSubtotal,
     guestCount: 1,
     customerNote: note,
     guest: guest.data,
@@ -169,7 +170,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         { status: errorStatus(checkout.status), headers },
       );
     }
-    const paymentUrl = allowedPaymentRedirect(checkout.data?.paymentUrl);
+    const rawPaymentUrl = checkout.data?.paymentUrl;
+    if (isMockPaymentRedirect(rawPaymentUrl)) {
+      return redirect(storefrontPaths.booking(locale, booking.code), { headers });
+    }
+    const paymentUrl = allowedPaymentRedirect(rawPaymentUrl);
     if (!paymentUrl) {
       return data(
         { fieldErrors: null, error: 'INVALID_PAYMENT_REDIRECT', code: 'INVALID_PAYMENT_REDIRECT' },
@@ -192,10 +197,6 @@ export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
   const homeLabel = createTranslator(locale).t('errors.home');
   return (
-    <RouteErrorState
-      error={error}
-      homeHref={storefrontPaths.home(locale)}
-      homeLabel={homeLabel}
-    />
+    <RouteErrorState error={error} homeHref={storefrontPaths.home(locale)} homeLabel={homeLabel} />
   );
 }

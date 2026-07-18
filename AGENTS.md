@@ -95,7 +95,7 @@ partner, catalog, listing, scheduling, booking, payments, promotions, finance, a
 
 ```bash
 docker compose up -d                                   # postgres, redis, mailpit, minio
-cp .env.example .env                                   # also ensure apps/api/.env exists (Prisma CLI reads it)
+cp .env.example .env                                   # the only env file; every app/CLI reads this root file
 pnpm install
 pnpm --filter=@booking/api prisma:deploy               # schema + RLS policies + db roles
 pnpm --filter=@booking/api seed                        # 39 permissions, 7 roles, admin, demo tenant "StudioHub"

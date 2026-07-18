@@ -25,7 +25,7 @@ export async function loader() {
   const tenant = getCurrentStorefrontTenant();
   return {
     tenantName: tenant.name,
-    tenantLogoUrl: tenant.logoUrl ?? null,
+    tenantLogoUrl: tenant.themeConfig.logoUrl || null,
     dashboardUrl: storefrontEnv.dashboardUrl,
   };
 }
@@ -126,7 +126,8 @@ function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantNa
 export default function BecomeAffiliate({ loaderData, actionData }: Route.ComponentProps) {
   const { tenantName, dashboardUrl } = loaderData;
   const rootData = useRouteLoaderData<typeof rootLoader>('root');
-  const logoUrl = loaderData.tenantLogoUrl ?? rootData?.tenant?.logoUrl ?? null;
+  const logoUrl =
+    loaderData.tenantLogoUrl ?? rootData?.tenant?.themeConfig.logoUrl ?? null;
   const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
   const formFields = useMemo(() => fields(t), [t]);
 

@@ -11,7 +11,9 @@ import { NotificationModule } from '../../../notification/infrastructure/http/no
 import { BOOKING_REPOSITORY } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE } from '../../domain/ports/hold-store.port';
 import { OTP_STORE } from '../../domain/ports/otp-store.port';
+import { BOOKING_AVAILABILITY_READER } from '../../domain/ports/booking-availability-reader.port';
 import { PrismaBookingRepository } from '../repositories/prisma-booking.repository';
+import { PrismaBookingAvailabilityReader } from '../repositories/prisma-booking-availability-reader';
 import { RedisHoldStore } from '../redis-hold.store';
 import { RedisOtpStore } from '../redis-otp.store';
 import { BookingSchedulerWorker } from '../booking-scheduler.worker';
@@ -54,6 +56,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     { provide: BOOKING_REPOSITORY, useClass: PrismaBookingRepository },
     { provide: HOLD_STORE, useClass: RedisHoldStore },
     { provide: OTP_STORE, useClass: RedisOtpStore },
+    { provide: BOOKING_AVAILABILITY_READER, useClass: PrismaBookingAvailabilityReader },
     CreateBookingUseCase,
     ConfirmBookingUseCase,
     CancelBookingUseCase,

@@ -1,4 +1,4 @@
-import { themeConfigSchema } from '@booking/contracts';
+import { themeConfigSchema, type TenantThemeResponse } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import {
@@ -9,11 +9,7 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { CheckCircle2, CircleAlert } from 'lucide-react';
-import {
-  themeFields,
-  toThemeDefaults,
-  type TenantThemeResponse,
-} from './settings-fields';
+import { themeFields, toThemeDefaults } from './settings-fields';
 
 /** Storefront theme editor — brand config persisted into the tenant's `theme_config`. */
 export function ThemeSettingsCard({

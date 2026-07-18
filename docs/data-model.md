@@ -62,6 +62,11 @@ guards the RLS parts in CI.
   `promotionSnapshot`/`cancellationPolicySnapshot`, `ListingType.searchConfig`, `Tenant.settings`,
   `SubscriptionPlan.limits`, `Payout.evidence`) are typed & validated by `@booking/contracts`, not by
   the DB. Check the contract when reading/writing one.
+- **Calendar pricing** stays in `pricing_rules`: `date_range` covers exact daily overrides and
+  `date_time_range` covers one local-date hourly window. `price` is the regular unit price and
+  nullable `sale_price` is the effective partner-funded sale; booking snapshots freeze both.
+- **One availability exception per resource/day** is enforced by `(resource_id, date)`. Because an
+  exception belongs to the resource, it affects every listing sharing that calendar.
 - **The booking state machine** (allowed transitions, who may trigger each, what `expiresAt` expiry
   does per status) is in the booking module's use-cases + `TONG-QUAN.md` §8, not the enum.
 

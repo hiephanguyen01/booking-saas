@@ -74,6 +74,21 @@ export function todayInTz(tz: string): string {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+/** Calendar date of a UTC instant in `tz`, as `YYYY-MM-DD`. */
+export function dateOnlyInTz(utcIso: string, tz: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(new Date(utcIso))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 /** `YYYY-MM-DD` → local `Date` at noon (avoids off-by-one from tz when feeding a calendar). */
 export function dateOnlyToLocal(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -93,6 +108,19 @@ export function nightsBetween(from: string, to: string): number {
   const a = Date.parse(`${from}T00:00:00Z`);
   const b = Date.parse(`${to}T00:00:00Z`);
   return Math.max(0, Math.round((b - a) / 86_400_000));
+}
+
+/** Positive duration in hours, rounded to two decimals for 15/30-minute grids. */
+export function hoursBetween(startIso: string, endIso: string): number | null {
+  const start = Date.parse(startIso);
+  const end = Date.parse(endIso);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return Math.round(((end - start) / 3_600_000) * 100) / 100;
+}
+
+/** Same-day wall-clock duration for search values such as `09:00` → `14:00`. */
+export function clockHoursBetween(startTime: string, endTime: string): number | null {
+  return hoursBetween(`1970-01-01T${startTime}:00Z`, `1970-01-01T${endTime}:00Z`);
 }
 
 /** Add days to a `YYYY-MM-DD` string, returning `YYYY-MM-DD`. */

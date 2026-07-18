@@ -1,6 +1,7 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import {
+  rangeDates,
   withSearchContext,
   type EnrichedSearchListing,
   type StorefrontSearchState,
@@ -8,6 +9,7 @@ import {
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { formatListingLocation, formatVnd } from '../../../lib/ui';
+import { clockHoursBetween } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
 
 export function SearchResultCard({
@@ -26,6 +28,10 @@ export function SearchResultCard({
   const href = withSearchContext(detailPath, state);
   const photos = listing.photos.slice(0, 3);
   const location = formatListingLocation(listing);
+  const selectedDayCount = state.hasDailyRange ? rangeDates(state.from, state.to).length : 0;
+  const selectedHours = state.hasTimeSelection
+    ? clockHoursBetween(state.startTime, state.endTime)
+    : null;
 
   return (
     <article className="group grid overflow-hidden rounded-lg border border-border bg-background transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)]">
@@ -78,18 +84,27 @@ export function SearchResultCard({
 
         <div className="flex items-end justify-end text-right">
           <p className="text-xs text-muted-foreground">
+            {listing.regularPriceFrom !== listing.priceFrom ? (
+              <span className="mb-0.5 block line-through">
+                {formatVnd(listing.regularPriceFrom)}
+              </span>
+            ) : null}
             {t('listing:fromPriceShort')}{' '}
             <strong className="text-base font-semibold text-primary">
               {formatVnd(listing.priceFrom)}
             </strong>
             <span className="block text-primary">
-              {listing.priceUnit === 'hour'
-                ? t('listing:perHour')
-                : listing.priceUnit === 'item'
-                  ? t('listing:perItem')
-                  : listing.priceUnit === 'session'
-                    ? t('listing:perSession')
-                    : t('listing:perDay')}
+              {state.hasDailyRange
+                ? t('listing:forSelectedDays', { count: selectedDayCount })
+                : listing.priceUnit === 'hour'
+                  ? selectedHours
+                    ? t('listing:forHours', { count: selectedHours })
+                    : t('listing:perHour')
+                  : listing.priceUnit === 'item'
+                    ? t('listing:perItem')
+                    : listing.priceUnit === 'session'
+                      ? t('listing:perSession')
+                      : t('listing:perDay')}
             </span>
           </p>
         </div>

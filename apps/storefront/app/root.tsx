@@ -87,8 +87,8 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   const tenant = loaderData?.tenant;
   if (!tenant) return [{ title: 'Booking' }];
-  const title = tenant.seo.title ?? tenant.name;
-  const description = tenant.seo.description ?? undefined;
+  const title = tenant.themeConfig.seo?.title || tenant.name;
+  const description = tenant.themeConfig.seo?.description || undefined;
   const tags: Array<Record<string, string>> = [
     { title },
     { property: 'og:title', content: title },
@@ -109,14 +109,16 @@ export function meta({ loaderData }: Route.MetaArgs) {
     tags.push({ name: 'description', content: description });
     tags.push({ property: 'og:description', content: description });
   }
-  if (tenant.hero.imageUrl) tags.push({ property: 'og:image', content: tenant.hero.imageUrl });
+  if (tenant.themeConfig.hero?.imageUrl) {
+    tags.push({ property: 'og:image', content: tenant.themeConfig.hero.imageUrl });
+  }
   return tags;
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const data = useRouteLoaderData<typeof loader>('root');
   const lang = data?.locale ?? 'vi';
-  const favicon = data?.tenant?.faviconUrl ?? null;
+  const favicon = data?.tenant?.themeConfig.faviconUrl || null;
   return (
     <html lang={lang}>
       <head>
@@ -136,7 +138,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 /** Per-tenant brand tokens, injected once at SSR so every UI component re-tints. */
-function ThemeStyle({ theme }: { theme: StorefrontTenant['theme'] }) {
+function ThemeStyle({ theme }: { theme: StorefrontTenant['themeConfig'] }) {
   return <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
 }
 
@@ -154,7 +156,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <BookingI18nProvider locale={locale}>
       <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
-        <ThemeStyle theme={tenant.theme} />
+        <ThemeStyle theme={tenant.themeConfig} />
         {!tenant.live ? (
           <SuspendedNotice name={tenant.name} />
         ) : isStandalone ? (
@@ -203,7 +205,11 @@ function RootErrorNotice({ error, locale }: { error: unknown; locale: Locale }) 
   const { t } = useTranslation(NsI18n.Error);
   return (
     <main className="flex min-h-dvh flex-col justify-center bg-background text-foreground">
-      <RouteErrorState error={error} homeHref={storefrontPaths.home(locale)} homeLabel={t('home')} />
+      <RouteErrorState
+        error={error}
+        homeHref={storefrontPaths.home(locale)}
+        homeLabel={t('home')}
+      />
     </main>
   );
 }

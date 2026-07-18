@@ -10,8 +10,10 @@ import type {
   TenantDetailResponse,
   TenantResponse,
   TenantThemeResponse,
+  ThemeConfigInput,
   Vertical,
 } from '@booking/contracts';
+import { themeConfigSchema } from '@booking/contracts';
 import type { TenantRecord } from '../domain/ports/tenant-repository.port';
 import type { PlanWithSubscribers } from '../domain/ports/plan-repository.port';
 import type {
@@ -22,6 +24,11 @@ import type { DomainRecord } from '../domain/ports/tenant-domain-repository.port
 import type { PlatformHealth } from './use-cases/get-platform-health.use-case';
 import type { SubscriptionStatusView } from './use-cases/get-subscription-status.use-case';
 import type { TenantDetailView } from './use-cases/get-tenant-detail.use-case';
+
+function toThemeConfig(value: Record<string, unknown>): ThemeConfigInput {
+  const parsed = themeConfigSchema.safeParse(value);
+  return parsed.success ? parsed.data : {};
+}
 
 export function toTenantResponse(t: TenantRecord): TenantResponse {
   return {
@@ -64,9 +71,9 @@ export function toPartnerPromotionsToggle(t: TenantRecord): PartnerPromotionsTog
 export function toTenantThemeResponse(t: TenantRecord): TenantThemeResponse {
   return {
     name: t.name,
-    vertical: t.vertical,
-    defaultLocale: t.defaultLocale,
-    themeConfig: t.themeConfig,
+    vertical: t.vertical as Vertical,
+    defaultLocale: t.defaultLocale as 'vi' | 'en',
+    themeConfig: toThemeConfig(t.themeConfig),
   };
 }
 
@@ -108,7 +115,7 @@ export function toPublicTenantResponse(t: TenantRecord, live: boolean): PublicTe
     slug: t.slug,
     vertical: t.vertical as Vertical,
     defaultLocale: t.defaultLocale as 'vi' | 'en',
-    themeConfig: t.themeConfig,
+    themeConfig: toThemeConfig(t.themeConfig),
     live,
   };
 }

@@ -1,4 +1,5 @@
 import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
+import type { LocationOption } from '../features/search/search-form';
 import type { StorefrontTenant } from '../lib/tenant.server';
 import { StudioHome } from './studio/home';
 
@@ -11,7 +12,7 @@ export interface HomeTemplateProps {
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   listings: PublicListingResponse[];
-  locations: string[];
+  locations: LocationOption[];
 }
 
 export function homeTemplateFor(

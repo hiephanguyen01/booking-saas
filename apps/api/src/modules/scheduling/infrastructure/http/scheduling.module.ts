@@ -79,5 +79,11 @@ export class SchedulingModule implements OnModuleInit {
         return this.cache.invalidateByBooking(event.tenantId ?? '', bookingId);
       });
     }
+    for (const eventType of ['pricing_rule.created', 'pricing_rule.deleted']) {
+      this.registry.register(eventType, (event) => {
+        const { listingId } = event.payload as { listingId: string };
+        return this.cache.invalidateListing(listingId);
+      });
+    }
   }
 }

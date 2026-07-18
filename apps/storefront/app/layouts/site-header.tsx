@@ -204,7 +204,12 @@ function BrandHomeLink({ locale, tenant }: { locale: Locale; tenant: StorefrontT
       aria-label={t('brandHome', { tenant: tenant.name })}
       className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <TenantBrand name={tenant.name} logoUrl={tenant.logoUrl} width={133} height={40} />
+      <TenantBrand
+        name={tenant.name}
+        logoUrl={tenant.themeConfig.logoUrl || null}
+        width={133}
+        height={40}
+      />
     </Link>
   );
 }

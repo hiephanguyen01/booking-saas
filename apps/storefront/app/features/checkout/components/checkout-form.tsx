@@ -39,6 +39,7 @@ export function CheckoutForm({
   fieldErrors,
   serverError,
   dueNow,
+  expectedSubtotal,
 }: {
   listingId: string;
   listingSlug: string;
@@ -51,6 +52,7 @@ export function CheckoutForm({
   fieldErrors: Partial<Record<string, string[]>> | null;
   serverError: string | null;
   dueNow: string;
+  expectedSubtotal: string;
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   const navigation = useNavigation();
@@ -64,10 +66,14 @@ export function CheckoutForm({
       <input type="hidden" name="start" value={start} />
       <input type="hidden" name="end" value={end} />
       <input type="hidden" name="qty" value={qty} />
+      <input type="hidden" name="expectedSubtotal" value={expectedSubtotal} />
       {promoCode ? <input type="hidden" name="promoCode" value={promoCode} /> : null}
 
       <SectionCard aria-labelledby="checkout-contact-heading">
-        <h2 id="checkout-contact-heading" className="text-base leading-6 font-semibold text-foreground">
+        <h2
+          id="checkout-contact-heading"
+          className="text-base leading-6 font-semibold text-foreground"
+        >
           {t('guestSection')}
         </h2>
         {serverError ? (
@@ -111,7 +117,10 @@ export function CheckoutForm({
       </SectionCard>
 
       <SectionCard aria-labelledby="checkout-payment-heading">
-        <h2 id="checkout-payment-heading" className="text-base leading-6 font-semibold text-foreground">
+        <h2
+          id="checkout-payment-heading"
+          className="text-base leading-6 font-semibold text-foreground"
+        >
           {t('payment.title')}
         </h2>
         <div className="mt-4 flex items-center justify-between gap-4">
@@ -156,7 +165,12 @@ function PaymentMethods({ showUnavailable }: { showUnavailable: boolean }) {
         <PaymentMethod value="payos" icon={QrCode} label={t('payment.payos')} />
         {showUnavailable ? (
           <>
-            <PaymentMethod value="transfer" icon={Landmark} label={t('payment.transfer')} disabled />
+            <PaymentMethod
+              value="transfer"
+              icon={Landmark}
+              label={t('payment.transfer')}
+              disabled
+            />
             <PaymentMethod
               value="international-card"
               icon={CreditCard}
@@ -263,7 +277,9 @@ function ContactField({
         ) : null}
       </InputGroup>
       <FieldError id={`${name}-error`} className="mt-1 text-xs leading-4">
-        {invalid ? t(FIELD_ERROR_KEYS[name as keyof typeof FIELD_ERROR_KEYS] ?? 'fieldErrors.generic') : null}
+        {invalid
+          ? t(FIELD_ERROR_KEYS[name as keyof typeof FIELD_ERROR_KEYS] ?? 'fieldErrors.generic')
+          : null}
       </FieldError>
     </Field>
   );

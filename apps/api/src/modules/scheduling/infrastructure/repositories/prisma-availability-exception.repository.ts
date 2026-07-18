@@ -52,8 +52,20 @@ export class PrismaAvailabilityExceptionRepository implements IAvailabilityExcep
     data: AvailabilityExceptionInputData,
   ): Promise<AvailabilityExceptionRecord> {
     return toRecord(
-      await tx.availabilityException.create({
-        data: {
+      await tx.availabilityException.upsert({
+        where: {
+          resourceId_date: {
+            resourceId,
+            date: new Date(`${data.date}T00:00:00Z`),
+          },
+        },
+        update: {
+          type: data.type,
+          openTime: data.openTime ?? null,
+          closeTime: data.closeTime ?? null,
+          reason: data.reason ?? null,
+        },
+        create: {
           tenantId,
           resourceId,
           date: new Date(`${data.date}T00:00:00Z`),

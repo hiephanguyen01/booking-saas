@@ -127,6 +127,7 @@ export function toPricingRuleResponse(p: PricingRuleRecord): PricingRuleResponse
     ruleType: p.ruleType,
     params: p.params,
     price: p.price,
+    salePrice: p.salePrice,
     priority: p.priority,
     createdAt: p.createdAt.toISOString(),
   };
