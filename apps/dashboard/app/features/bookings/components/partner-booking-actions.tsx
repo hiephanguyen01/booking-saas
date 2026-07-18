@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { useFetcher } from 'react-router';
-import { Ban, Check, PackageCheck, Undo2, UserX, X } from 'lucide-react';
+import { Ban, Check, CircleCheckBig, PackageCheck, Undo2, UserX, X } from 'lucide-react';
 import { cn } from '@booking/ui/lib/utils';
 import { Button } from '@booking/ui/components/ui/button';
 import { Money } from '~/components/money';
@@ -13,10 +13,11 @@ import {
   type PartnerBookingActionKind,
 } from '../lib/partner-booking-rules';
 import { PartnerReturnDialog } from './partner-return-dialog';
+import { PartnerCompleteDialog } from './partner-complete-dialog';
 
 export type { PartnerActionableBooking } from '../lib/partner-booking-rules';
 
-type DialogKind = 'reject' | 'no-show' | 'cancel' | 'return';
+type DialogKind = 'reject' | 'no-show' | 'cancel' | 'return' | 'complete';
 
 /**
  * The partner's approve / reject / no-show / cancel / pick-up / return controls
@@ -28,6 +29,7 @@ export function PartnerBookingActions({
   booking,
   canApprove,
   canManage,
+  canWrite,
   size = 'xs',
   align = 'end',
   emptyLabel,
@@ -36,6 +38,7 @@ export function PartnerBookingActions({
   booking: PartnerActionableBooking;
   canApprove: boolean;
   canManage: boolean;
+  canWrite: boolean;
   size?: 'xs' | 'sm';
   align?: 'start' | 'end';
   /** Rendered when no action is available; omit to render nothing. */
@@ -53,32 +56,71 @@ export function PartnerBookingActions({
     );
   };
 
-  const actions = availablePartnerBookingActions(booking, { canApprove, canManage });
+  const actions = availablePartnerBookingActions(booking, { canApprove, canManage, canWrite });
   const buttons = actions.map((kind) => renderAction(kind));
 
   function renderAction(kind: PartnerBookingActionKind): React.ReactNode {
     switch (kind) {
+      case 'complete':
+        return (
+          <Button
+            key="complete"
+            type="button"
+            size={size}
+            disabled={busy}
+            onClick={() => setDialog('complete')}
+          >
+            <CircleCheckBig className="size-3.5" aria-hidden /> Hoàn thành
+          </Button>
+        );
       case 'approve':
         return (
-          <Button key="approve" type="button" size={size} disabled={busy} onClick={() => submit('approve')}>
+          <Button
+            key="approve"
+            type="button"
+            size={size}
+            disabled={busy}
+            onClick={() => submit('approve')}
+          >
             <Check className="size-3.5" aria-hidden /> Duyệt
           </Button>
         );
       case 'reject':
         return (
-          <Button key="reject" type="button" size={size} variant="outline" disabled={busy} onClick={() => setDialog('reject')}>
+          <Button
+            key="reject"
+            type="button"
+            size={size}
+            variant="outline"
+            disabled={busy}
+            onClick={() => setDialog('reject')}
+          >
             <X className="size-3.5" aria-hidden /> Từ chối
           </Button>
         );
       case 'pick-up':
         return (
-          <Button key="pickup" type="button" size={size} variant="outline" disabled={busy} onClick={() => submit('pick-up')}>
+          <Button
+            key="pickup"
+            type="button"
+            size={size}
+            variant="outline"
+            disabled={busy}
+            onClick={() => submit('pick-up')}
+          >
             <PackageCheck className="size-3.5" aria-hidden /> Giao thiết bị
           </Button>
         );
       case 'return':
         return (
-          <Button key="return" type="button" size={size} variant="outline" disabled={busy} onClick={() => setDialog('return')}>
+          <Button
+            key="return"
+            type="button"
+            size={size}
+            variant="outline"
+            disabled={busy}
+            onClick={() => setDialog('return')}
+          >
             <Undo2 className="size-3.5" aria-hidden /> Nhận trả
           </Button>
         );
@@ -115,8 +157,9 @@ export function PartnerBookingActions({
 
   const result = fetcher.data && fetcher.data.ok ? fetcher.data : null;
   const cancelRefund = result?.intent === 'cancel' ? result.refund : null;
+  const completionSuccess = result?.intent === 'complete';
 
-  if (buttons.length === 0 && !cancelRefund) {
+  if (buttons.length === 0 && !cancelRefund && !completionSuccess) {
     return emptyLabel ? <span className="text-xs text-muted-foreground">{emptyLabel}</span> : null;
   }
 
@@ -127,7 +170,13 @@ export function PartnerBookingActions({
   );
 
   return (
-    <div className={cn('flex flex-col gap-2', align === 'end' ? 'items-end' : 'items-start', className)}>
+    <div
+      className={cn(
+        'flex flex-col gap-2',
+        align === 'end' ? 'items-end' : 'items-start',
+        className,
+      )}
+    >
       {cancelRefund ? (
         <p className="text-xs text-muted-foreground">
           Đã huỷ · hoàn {cancelRefund.refundPercent}% ={' '}
@@ -135,8 +184,19 @@ export function PartnerBookingActions({
         </p>
       ) : null}
 
+      {completionSuccess ? (
+        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+          Đã hoàn thành dịch vụ và mở thời gian tranh chấp.
+        </p>
+      ) : null}
+
       {buttons.length > 0 ? (
-        <div className={cn('flex flex-wrap gap-1.5', align === 'end' ? 'justify-end' : 'justify-start')}>
+        <div
+          className={cn(
+            'flex flex-wrap gap-1.5',
+            align === 'end' ? 'justify-end' : 'justify-start',
+          )}
+        >
           {buttons}
         </div>
       ) : null}
@@ -182,6 +242,13 @@ export function PartnerBookingActions({
       <PartnerReturnDialog
         open={dialog === 'return'}
         onOpenChange={(open) => setDialog(open ? 'return' : null)}
+        fetcher={fetcher}
+        booking={booking}
+        busy={busy}
+      />
+      <PartnerCompleteDialog
+        open={dialog === 'complete'}
+        onOpenChange={(open) => setDialog(open ? 'complete' : null)}
         fetcher={fetcher}
         booking={booking}
         busy={busy}

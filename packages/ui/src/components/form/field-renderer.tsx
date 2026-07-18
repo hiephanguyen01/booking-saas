@@ -164,6 +164,8 @@ function renderControl<T extends FieldValues>(
           autoComplete={field.autoComplete}
           disabled={field.disabled}
           required={field.required}
+          min={field.min}
+          max={field.max}
           name={rhf.name}
           onBlur={rhf.onBlur}
           value={rhf.value === undefined || rhf.value === null ? '' : String(rhf.value)}

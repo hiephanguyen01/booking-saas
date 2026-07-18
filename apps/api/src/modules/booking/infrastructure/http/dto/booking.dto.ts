@@ -6,6 +6,7 @@ import {
   bookingStatusHistoryResponseSchema,
   cancelBookingInputSchema,
   cancelBookingResponseSchema,
+  completeBookingInputSchema,
   createBookingInputSchema,
   markReturnedInputSchema,
   partnerBookingResponseSchema,
@@ -24,6 +25,7 @@ export class CreateBookingDto extends createZodDto(createBookingInputSchema) {}
 export class CancelBookingDto extends createZodDto(cancelBookingInputSchema) {}
 export class ReasonDto extends createZodDto(reasonInputSchema) {}
 export class MarkReturnedDto extends createZodDto(markReturnedInputSchema) {}
+export class CompleteBookingDto extends createZodDto(completeBookingInputSchema) {}
 export class PartnerNoteDto extends createZodDto(partnerNoteInputSchema) {}
 
 // ── Queries ──────────────────────────────────────────────────────────────────

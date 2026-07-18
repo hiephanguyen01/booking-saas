@@ -44,6 +44,7 @@ export interface AccountBookingViewModel {
   finalAmount: string;
   depositAmount: string;
   paidAmount: string;
+  securityDeposit: string;
   balanceAmount: string;
   paymentMethod: string | null;
   cancellationTiers: CancellationTier[];
@@ -188,13 +189,14 @@ export function toAccountBookingViewModel(
     finalAmount: booking.finalAmount,
     depositAmount: booking.depositAmount,
     paidAmount: booking.paidAmount,
+    securityDeposit: booking.securityDeposit,
     balanceAmount: subtractMoney(booking.finalAmount, booking.paidAmount),
     paymentMethod: fixture?.paymentMethod ?? null,
     cancellationTiers: [...(booking.cancellationPolicySnapshot ?? [])].sort(
       (a, b) => b.hoursBefore - a.hoursBefore,
     ),
-    refundAmount: fixture?.refundAmount ?? null,
-    refundPercent: fixture?.refundPercent ?? null,
+    refundAmount: fixture?.refundAmount ?? booking.refundDueAmount,
+    refundPercent: fixture?.refundPercent ?? booking.refundPercent,
     cancelledAt: fixture?.cancelledAt ?? null,
     cancellationReason: fixture?.cancellationReason ?? null,
     attributes: fixture?.attributes ?? [],

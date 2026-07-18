@@ -1,5 +1,6 @@
 import { data } from 'react-router';
 import {
+  completeBookingInputSchema,
   markReturnedInputSchema,
   partnerNoteInputSchema,
   reasonInputSchema,
@@ -72,6 +73,24 @@ export async function runPartnerBookingAction(opts: {
   const canWrite = can('partner.bookings.write');
 
   switch (intent) {
+    case 'complete': {
+      if (!canWrite)
+        return data(fail('Không có quyền hoàn thành dịch vụ.', intent), { status: 403 });
+      const parsed = completeBookingInputSchema.safeParse({
+        onsiteCollectedAmount: String(form.get('onsiteCollectedAmount') ?? '').trim(),
+        note: readOptional(form, 'note'),
+      });
+      if (!parsed.success) {
+        return data(fail('Số tiền thu tại chỗ không hợp lệ (số nguyên VND).', intent), {
+          status: 400,
+        });
+      }
+      const res = await apiPost(`/partner/bookings/${id}/complete`, parsed.data, auth);
+      return res.ok
+        ? data(ok(intent))
+        : data(fail(res.error ?? 'Không thể hoàn thành dịch vụ.', intent), { status: 400 });
+    }
+
     case 'approve': {
       if (!canApprove) return data(fail('Không có quyền duyệt lượt đặt.', intent), { status: 403 });
       const res = await apiPost(`/partner/bookings/${id}/approve`, {}, auth);
@@ -81,9 +100,11 @@ export async function runPartnerBookingAction(opts: {
     }
 
     case 'reject': {
-      if (!canApprove) return data(fail('Không có quyền từ chối lượt đặt.', intent), { status: 403 });
+      if (!canApprove)
+        return data(fail('Không có quyền từ chối lượt đặt.', intent), { status: 403 });
       const parsed = reasonInputSchema.safeParse({ reason: readOptional(form, 'reason') });
-      if (!parsed.success) return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
+      if (!parsed.success)
+        return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
       const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
       const res = await apiPost(`/partner/bookings/${id}/reject`, body, auth);
       return res.ok
@@ -92,9 +113,11 @@ export async function runPartnerBookingAction(opts: {
     }
 
     case 'no-show': {
-      if (!canManage) return data(fail('Không có quyền đánh dấu vắng mặt.', intent), { status: 403 });
+      if (!canManage)
+        return data(fail('Không có quyền đánh dấu vắng mặt.', intent), { status: 403 });
       const parsed = reasonInputSchema.safeParse({ reason: readOptional(form, 'reason') });
-      if (!parsed.success) return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
+      if (!parsed.success)
+        return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
       const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
       const res = await apiPost(`/partner/bookings/${id}/no-show`, body, auth);
       return res.ok
@@ -105,7 +128,8 @@ export async function runPartnerBookingAction(opts: {
     case 'cancel': {
       if (!canManage) return data(fail('Không có quyền huỷ lượt đặt.', intent), { status: 403 });
       const parsed = reasonInputSchema.safeParse({ reason: readOptional(form, 'reason') });
-      if (!parsed.success) return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
+      if (!parsed.success)
+        return data(fail('Lý do không hợp lệ (tối đa 500 ký tự).', intent), { status: 400 });
       const body = parsed.data.reason ? { reason: parsed.data.reason } : {};
       const res = await apiPost<PartnerCancelBookingResponse>(
         `/partner/bookings/${id}/cancel`,
@@ -115,7 +139,10 @@ export async function runPartnerBookingAction(opts: {
       return res.ok && res.data
         ? data(
             ok(intent, {
-              refund: { refundAmount: res.data.refundAmount, refundPercent: res.data.refundPercent },
+              refund: {
+                refundAmount: res.data.refundAmount,
+                refundPercent: res.data.refundPercent,
+              },
             }),
           )
         : data(fail(res.error ?? 'Huỷ không thành công.', intent), { status: 400 });
@@ -126,18 +153,26 @@ export async function runPartnerBookingAction(opts: {
       const res = await apiPost(`/partner/bookings/${id}/pick-up`, {}, auth);
       return res.ok
         ? data(ok(intent))
-        : data(fail(res.error ?? 'Đánh dấu giao thiết bị không thành công.', intent), { status: 400 });
+        : data(fail(res.error ?? 'Đánh dấu giao thiết bị không thành công.', intent), {
+            status: 400,
+          });
     }
 
     case 'return': {
-      if (!canManage) return data(fail('Không có quyền nhận trả thiết bị.', intent), { status: 403 });
+      if (!canManage)
+        return data(fail('Không có quyền nhận trả thiết bị.', intent), { status: 403 });
       const damageAmount = String(form.get('damageAmount') ?? '0').trim() || '0';
       const parsed = markReturnedInputSchema.safeParse({
         damageAmount,
         reason: readOptional(form, 'reason'),
       });
-      if (!parsed.success) return data(fail('Số tiền hư hỏng không hợp lệ (số nguyên VND).', intent), { status: 400 });
-      const res = await apiPost<ReturnBookingResponse>(`/partner/bookings/${id}/return`, parsed.data, auth);
+      if (!parsed.success)
+        return data(fail('Số tiền hư hỏng không hợp lệ (số nguyên VND).', intent), { status: 400 });
+      const res = await apiPost<ReturnBookingResponse>(
+        `/partner/bookings/${id}/return`,
+        parsed.data,
+        auth,
+      );
       return res.ok && res.data
         ? data(
             ok(intent, {
@@ -154,7 +189,8 @@ export async function runPartnerBookingAction(opts: {
     case 'set-note': {
       if (!canWrite) return data(fail('Không có quyền ghi chú lượt đặt.', intent), { status: 403 });
       const parsed = partnerNoteInputSchema.safeParse({ note: readOptional(form, 'note') });
-      if (!parsed.success) return data(fail('Ghi chú không hợp lệ (tối đa 1000 ký tự).', intent), { status: 400 });
+      if (!parsed.success)
+        return data(fail('Ghi chú không hợp lệ (tối đa 1000 ký tự).', intent), { status: 400 });
       const res = await apiPatch(`/partner/bookings/${id}/note`, parsed.data, auth);
       return res.ok
         ? data(ok(intent))

@@ -24,6 +24,7 @@ import {
   updateCancellationPolicyInputSchema,
   updateListingGroupInputSchema,
   updateListingInputSchema,
+  depositRequirementResponseSchema,
 } from '@booking/contracts';
 
 // ── Request bodies / query ────────────────────────────────────────────────────
@@ -54,6 +55,9 @@ export class QuoteResponseDto extends createZodDto(quoteResponseSchema) {}
 export class ListingReviewResponseDto extends createZodDto(listingReviewResponseSchema) {}
 export class ListingGroupReviewResponseDto extends createZodDto(listingGroupReviewResponseSchema) {}
 export class CancellationPolicyResponseDto extends createZodDto(cancellationPolicyResponseSchema) {}
+export class DepositRequirementResponseDto extends createZodDto(
+  depositRequirementResponseSchema,
+) {}
 
 // ── Composed responses ────────────────────────────────────────────────────────
 /** Partner submit-for-review returns the listing plus its review checklist. */

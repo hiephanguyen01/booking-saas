@@ -6,13 +6,16 @@ import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.modu
 import { COMMISSION_RULE_REPOSITORY } from '../../domain/ports/commission-rule-repository.port';
 import { LEDGER_REPOSITORY } from '../../domain/ports/ledger-repository.port';
 import { PAYOUT_REPOSITORY } from '../../domain/ports/payout-repository.port';
+import { SETTLEMENT_REPOSITORY } from '../../domain/ports/settlement-repository.port';
+import { SETTLEMENT_DISPUTE_REPOSITORY } from '../../domain/ports/settlement-dispute-repository.port';
+import { FINANCE_TENANT_HOST_READER } from '../../domain/ports/finance-tenant-host-reader.port';
 import { PrismaCommissionRuleRepository } from '../repositories/prisma-commission-rule.repository';
 import { PrismaLedgerRepository } from '../repositories/prisma-ledger.repository';
 import { PrismaPayoutRepository } from '../repositories/prisma-payout.repository';
+import { PrismaSettlementRepository } from '../repositories/prisma-settlement.repository';
+import { PrismaSettlementDisputeRepository } from '../repositories/prisma-settlement-dispute.repository';
+import { PrismaFinanceTenantHostReader } from '../repositories/prisma-finance-tenant-host.reader';
 import { ResolveCommissionUseCase } from '../../application/use-cases/resolve-commission.use-case';
-import { RecordCompletionJournalUseCase } from '../../application/use-cases/record-completion-journal.use-case';
-import { RecordNoShowJournalUseCase } from '../../application/use-cases/record-no-show-journal.use-case';
-import { RecordCancellationFeeJournalUseCase } from '../../application/use-cases/record-cancellation-fee-journal.use-case';
 import { RecordClawbackJournalUseCase } from '../../application/use-cases/record-clawback-journal.use-case';
 import { ComputePayoutPayableUseCase } from '../../application/use-cases/compute-payout-payable.use-case';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
@@ -31,21 +34,51 @@ import { GetPlatformFinanceUseCase } from '../../application/use-cases/get-platf
 import { GetTenantPayableUseCase } from '../../application/use-cases/get-tenant-payable.use-case';
 import { ListPartnerPayoutsUseCase } from '../../application/use-cases/list-partner-payouts.use-case';
 import { ListTenantLedgerUseCase } from '../../application/use-cases/list-tenant-ledger.use-case';
+import { GetBookingSettlementUseCase } from '../../application/use-cases/get-booking-settlement.use-case';
+import { GetPayoutPolicyUseCase } from '../../application/use-cases/get-payout-policy.use-case';
+import { ListBookingSettlementsUseCase } from '../../application/use-cases/list-booking-settlements.use-case';
+import { RecordHeldSettlementUseCase } from '../../application/use-cases/record-held-settlement.use-case';
+import { ReleaseSettlementUseCase } from '../../application/use-cases/release-settlement.use-case';
+import { StartSettlementWindowUseCase } from '../../application/use-cases/start-settlement-window.use-case';
+import { StartNoShowSettlementWindowUseCase } from '../../application/use-cases/start-no-show-settlement-window.use-case';
+import { PrepareSettlementRefundUseCase } from '../../application/use-cases/prepare-settlement-refund.use-case';
+import { FinalizeSettlementRefundUseCase } from '../../application/use-cases/finalize-settlement-refund.use-case';
+import { OpenSettlementDisputeUseCase } from '../../application/use-cases/open-settlement-dispute.use-case';
+import { ResolveSettlementDisputeUseCase } from '../../application/use-cases/resolve-settlement-dispute.use-case';
+import { ListSettlementDisputesUseCase } from '../../application/use-cases/list-settlement-disputes.use-case';
+import { GetSettlementSummaryUseCase } from '../../application/use-cases/get-settlement-summary.use-case';
+import { ListPlatformSettlementsUseCase } from '../../application/use-cases/list-platform-settlements.use-case';
+import { GetTenantPayoutPolicyUseCase } from '../../application/use-cases/get-tenant-payout-policy.use-case';
+import { UpdatePayoutPolicyUseCase } from '../../application/use-cases/update-payout-policy.use-case';
+import { GetCustomerBookingSettlementUseCase } from '../../application/use-cases/get-customer-booking-settlement.use-case';
+import { RespondSettlementDisputeUseCase } from '../../application/use-cases/respond-settlement-dispute.use-case';
+import { SettlementReleaseWorker } from '../settlement-release.worker';
 import { TenantFinanceController } from './tenant-finance.controller';
 import { PartnerFinanceController } from './partner-finance.controller';
 import { PlatformFinanceController } from './platform-finance.controller';
+import { CustomerFinanceController } from './customer-finance.controller';
+import { TenantDisputeController } from './tenant-dispute.controller';
 
 @Module({
   imports: [PrismaModule, TenantContextModule, TenancyModule],
-  controllers: [TenantFinanceController, PartnerFinanceController, PlatformFinanceController],
+  controllers: [
+    TenantFinanceController,
+    PartnerFinanceController,
+    PlatformFinanceController,
+    CustomerFinanceController,
+    TenantDisputeController,
+  ],
   providers: [
     { provide: COMMISSION_RULE_REPOSITORY, useClass: PrismaCommissionRuleRepository },
     { provide: LEDGER_REPOSITORY, useClass: PrismaLedgerRepository },
     { provide: PAYOUT_REPOSITORY, useClass: PrismaPayoutRepository },
+    { provide: SETTLEMENT_REPOSITORY, useClass: PrismaSettlementRepository },
+    {
+      provide: SETTLEMENT_DISPUTE_REPOSITORY,
+      useClass: PrismaSettlementDisputeRepository,
+    },
+    { provide: FINANCE_TENANT_HOST_READER, useClass: PrismaFinanceTenantHostReader },
     ResolveCommissionUseCase,
-    RecordCompletionJournalUseCase,
-    RecordNoShowJournalUseCase,
-    RecordCancellationFeeJournalUseCase,
     RecordClawbackJournalUseCase,
     ComputePayoutPayableUseCase,
     ListCommissionRulesUseCase,
@@ -64,6 +97,25 @@ import { PlatformFinanceController } from './platform-finance.controller';
     GetTenantPayableUseCase,
     ListPartnerPayoutsUseCase,
     ListTenantLedgerUseCase,
+    GetBookingSettlementUseCase,
+    GetPayoutPolicyUseCase,
+    ListBookingSettlementsUseCase,
+    RecordHeldSettlementUseCase,
+    ReleaseSettlementUseCase,
+    StartSettlementWindowUseCase,
+    StartNoShowSettlementWindowUseCase,
+    PrepareSettlementRefundUseCase,
+    FinalizeSettlementRefundUseCase,
+    OpenSettlementDisputeUseCase,
+    ResolveSettlementDisputeUseCase,
+    ListSettlementDisputesUseCase,
+    GetSettlementSummaryUseCase,
+    ListPlatformSettlementsUseCase,
+    GetTenantPayoutPolicyUseCase,
+    UpdatePayoutPolicyUseCase,
+    GetCustomerBookingSettlementUseCase,
+    RespondSettlementDisputeUseCase,
+    SettlementReleaseWorker,
   ],
   // Exported so the booking module can snapshot the commission at booking time.
   exports: [ResolveCommissionUseCase],
@@ -71,34 +123,92 @@ import { PlatformFinanceController } from './platform-finance.controller';
 export class FinanceModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
-    private readonly completionJournal: RecordCompletionJournalUseCase,
-    private readonly noShowJournal: RecordNoShowJournalUseCase,
-    private readonly cancellationFeeJournal: RecordCancellationFeeJournalUseCase,
+    private readonly recordHeldSettlement: RecordHeldSettlementUseCase,
+    private readonly startSettlementWindow: StartSettlementWindowUseCase,
+    private readonly startNoShowWindow: StartNoShowSettlementWindowUseCase,
+    private readonly prepareRefund: PrepareSettlementRefundUseCase,
+    private readonly finalizeRefund: FinalizeSettlementRefundUseCase,
     private readonly clawbackJournal: RecordClawbackJournalUseCase,
+    private readonly releaseSettlement: ReleaseSettlementUseCase,
   ) {}
 
   /**
-   * Ledger journals are driven purely by booking lifecycle events (§13.1). Every
-   * handler is idempotent (guarded on existing ledger entries) so at-least-once
-   * outbox delivery is safe:
-   *   completed → commission journal; no_show → journal on paid_amount;
-   *   cancelled → cancellation_fee on the retained portion;
+   * Payment success creates the custody record. Completion opens (but does not
+   * recognize revenue during) the dispute window. A worker creates the revenue
+   * journal only after that deadline. All handlers are idempotent for at-least-once
+   * outbox delivery:
+   *   payment succeeded → held; completed/no_show → dispute window;
+   *   cancelled → refund pending or a cancellation-fee dispute window;
    *   refunded (post-completion dispute) → clawback reversal.
    */
   onModuleInit(): void {
-    this.registry.register('booking.completed', (event) =>
-      this.completionJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
+    this.registry.register('payment.succeeded', (event) => {
+      const payload = event.payload as { paymentId: string };
+      return this.recordHeldSettlement.execute(event.tenantId ?? '', payload.paymentId);
+    });
+    this.registry.register('booking.completed', (event) => {
+      const payload = event.payload as { bookingId: string; onsiteCollectedAmount?: string };
+      return this.startSettlementWindow.execute(
+        event.tenantId ?? '',
+        payload.bookingId,
+        payload.onsiteCollectedAmount === undefined
+          ? undefined
+          : BigInt(payload.onsiteCollectedAmount),
+      );
+    });
     this.registry.register('booking.no_show', (event) =>
-      this.noShowJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
+      this.startNoShowWindow.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
     this.registry.register('booking.cancelled', (event) => {
       const p = event.payload as { bookingId: string; refundAmount?: string };
-      return this.cancellationFeeJournal.execute(event.tenantId ?? '', p.bookingId, BigInt(p.refundAmount ?? '0'));
+      return this.prepareRefund.execute(
+        event.tenantId ?? '',
+        p.bookingId,
+        BigInt(p.refundAmount ?? '0'),
+        'cancellation_fee',
+      );
+    });
+    this.registry.register('refund.requested', (event) => {
+      const p = event.payload as {
+        bookingId: string;
+        amount: string;
+        reason?: string;
+        affectsBookingStatus?: boolean;
+      };
+      if (p.affectsBookingStatus === false) return Promise.resolve();
+      return this.prepareRefund.execute(
+        event.tenantId ?? '',
+        p.bookingId,
+        BigInt(p.amount),
+        p.reason === 'booking_cancellation' ? 'cancellation_fee' : undefined,
+        p.reason === 'dispute_refund',
+      );
+    });
+    this.registry.register('refund.completed', async (event) => {
+      const p = event.payload as {
+        refundId: string;
+        bookingId: string;
+        amount: string;
+        reason?: string | null;
+        affectsBookingStatus?: boolean;
+      };
+      if (p.affectsBookingStatus === false) return;
+      await this.finalizeRefund.execute(
+        event.tenantId ?? '',
+        p.bookingId,
+        p.refundId,
+        BigInt(p.amount),
+        p.reason,
+      );
+      await this.clawbackJournal.execute(event.tenantId ?? '', p.bookingId);
     });
     this.registry.register('booking.refunded', (event) =>
       this.clawbackJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
     );
+    this.registry.register('settlement.release_requested', (event) => {
+      const p = event.payload as { settlementId: string };
+      return this.releaseSettlement.execute(event.tenantId ?? '', p.settlementId);
+    });
   }
 }
 

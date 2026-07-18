@@ -1,6 +1,7 @@
 import {
   BookText,
   CalendarCheck,
+  CreditCard,
   Files,
   LayoutDashboard,
   Settings,
@@ -81,6 +82,12 @@ export const tenantNavSections: DashboardNavSection[] = [
         title: 'Sổ cái',
         to: dashboardPaths.tenant.ledger,
         icon: BookText,
+        permission: 'tenant.finance.read',
+      },
+      {
+        title: 'Giao dịch',
+        to: dashboardPaths.tenant.transactions,
+        icon: CreditCard,
         permission: 'tenant.finance.read',
       },
     ],

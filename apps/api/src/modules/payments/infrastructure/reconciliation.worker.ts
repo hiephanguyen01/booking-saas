@@ -2,11 +2,15 @@ import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
+import { OutboxService } from '../../../shared/outbox/outbox.service';
 import { utcNow } from '../../../shared/time/time';
-import { ConfirmBookingUseCase } from '../../booking/application/use-cases/confirm-booking.use-case';
-import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../domain/ports/payment-repository.port';
+import {
+  PAYMENT_REPOSITORY,
+  type IPaymentRepository,
+} from '../domain/ports/payment-repository.port';
 import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../domain/ports/gateway-registry.port';
 import { amountMatches } from '../domain/payment-status';
+import { REFUND_REPOSITORY, type IRefundRepository } from '../domain/ports/refund-repository.port';
 
 export const RECONCILIATION_QUEUE = 'payment-reconciliation';
 const POLL_EVERY_MS = 30_000;
@@ -26,15 +30,20 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
-    private readonly confirmBooking: ConfirmBookingUseCase,
+    @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
     private readonly tenantDb: TenantDbService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async onModuleInit(): Promise<void> {
     if (process.env.OUTBOX_RELAY_DISABLED === 'true') return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
     this.queue = new Queue(RECONCILIATION_QUEUE, { connection });
-    await this.queue.upsertJobScheduler('reconcile-poll', { every: POLL_EVERY_MS }, { name: 'poll' });
+    await this.queue.upsertJobScheduler(
+      'reconcile-poll',
+      { every: POLL_EVERY_MS },
+      { name: 'poll' },
+    );
     this.worker = new Worker(RECONCILIATION_QUEUE, () => this.sweep(), { connection });
   }
 
@@ -47,14 +56,14 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
     const stale = await this.payments.findStalePending(staleSec());
     let reconciled = 0;
     for (const p of stale) {
-      if (!p.gatewayTxnId) continue;
-      const txnId = p.gatewayTxnId;
+      const reference = p.gatewayOrderRef ?? p.gatewayTxnId;
+      if (!reference) continue;
       try {
         // Record the payment durably first (its own tx), then confirm — mirroring the
         // webhook path so the slot-taken auto-refund (§8.2 row 665) actually fires.
         const flipped = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
-          const gateway = await this.registry.resolveForTenant(tx, p.tenantId);
-          const status = await gateway.queryPaymentStatus(txnId);
+          const gateway = await this.registry.resolveForTenant(tx, p.tenantId, p.gateway);
+          const status = await gateway.queryPaymentStatus(reference);
           if (status.status === 'expired') {
             // Guarded: only expire while still pending (a concurrent succeeded wins).
             await this.payments.markTerminalIfPending(tx, p.id, 'expired');
@@ -69,20 +78,105 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
             );
             return false;
           }
-          return this.payments.markSucceeded(tx, p.id, utcNow(), { reconciled: true });
-        });
-        if (flipped) {
-          reconciled++;
-          // Own tx: execute() handles the expired→confirmed restore and auto-refunds
-          // if the slot was taken. Absorbs SlotTaken; other errors are logged.
-          try {
-            await this.confirmBooking.execute(p.tenantId, p.bookingId);
-          } catch (err) {
-            this.logger.error(`reconcile ${p.id}: confirm after payment succeeded failed: ${err instanceof Error ? err.message : String(err)}`);
+          const succeeded = await this.payments.markSucceeded(tx, p.id, utcNow(), {
+            reconciled: true,
+          });
+          if (succeeded) {
+            await this.outbox.emit(tx, {
+              tenantId: p.tenantId,
+              eventType: 'payment.succeeded',
+              payload: { paymentId: p.id, bookingId: p.bookingId },
+            });
           }
-        }
+          return succeeded;
+        });
+        if (flipped) reconciled++;
       } catch (err) {
-        this.logger.debug(`reconcile ${p.id} failed: ${err instanceof Error ? err.message : String(err)}`);
+        this.logger.debug(
+          `reconcile ${p.id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Backstop both old already-processed events and partial consumer failures.
+    // Re-emitting is safe because Booking confirmation and Settlement creation are
+    // guarded/idempotent; the row drops out as soon as both projections converge.
+    const recoverable = await this.payments.findSucceededNeedingRecovery(100);
+    for (const p of recoverable) {
+      try {
+        await this.tenantDb.forTenant(p.tenantId, async (tx) => {
+          await this.outbox.emit(tx, {
+            tenantId: p.tenantId,
+            eventType: 'payment.succeeded',
+            payload: {
+              paymentId: p.id,
+              bookingId: p.bookingId,
+              recovery: true,
+              skipBookingConfirmation: p.skipBookingConfirmation === true,
+            },
+          });
+        });
+        reconciled++;
+      } catch (err) {
+        this.logger.debug(
+          `recovery emit ${p.id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Provider/manual refund truth can also outlive a failed consumer delivery.
+    // Re-emit the durable refund row until both the booking and custody projection
+    // converge; downstream handlers are guarded by refund id/state.
+    const refundRecoveries = await this.refunds.findSucceededNeedingRecovery(100);
+    for (const refund of refundRecoveries) {
+      try {
+        await this.tenantDb.forTenant(refund.tenantId, async (tx) => {
+          await this.outbox.emit(tx, {
+            tenantId: refund.tenantId,
+            eventType: 'refund.completed',
+            payload: {
+              refundId: refund.id,
+              paymentId: refund.paymentId,
+              bookingId: refund.bookingId,
+              amount: refund.amount.toString(),
+              reason: refund.reason,
+              affectsBookingStatus: refund.reason !== 'security_deposit',
+              recovery: true,
+            },
+          });
+        });
+        reconciled++;
+      } catch (err) {
+        this.logger.debug(
+          `refund recovery emit ${refund.id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // Cancellation stores its exact policy result before emitting the outbox
+    // event. A no-show always returns the security deposit. If either refund
+    // row is missing, request execution again without replaying unrelated
+    // booking notifications.
+    const missingRefunds = await this.refunds.findBookingsMissingRefund(100);
+    for (const missing of missingRefunds) {
+      try {
+        await this.tenantDb.forTenant(missing.tenantId, async (tx) => {
+          await this.outbox.emit(tx, {
+            tenantId: missing.tenantId,
+            eventType: 'refund.recovery_requested',
+            payload: {
+              bookingId: missing.bookingId,
+              amount: missing.amount.toString(),
+              reason: missing.reason,
+              refundPercent: missing.refundPercent,
+            },
+          });
+        });
+        reconciled++;
+      } catch (err) {
+        this.logger.debug(
+          `missing refund recovery ${missing.bookingId} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
     return reconciled;

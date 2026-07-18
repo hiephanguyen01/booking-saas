@@ -4,16 +4,28 @@ import {
   checkoutResponseSchema,
   gatewayConfigResponseSchema,
   paymentStatusResponseSchema,
+  paymentHistoryItemSchema,
+  paymentHistoryQuerySchema,
   upsertGatewayConfigInputSchema,
+  confirmManualRefundInputSchema,
+  refundResponseSchema,
+  refundHistoryItemSchema,
+  refundHistoryQuerySchema,
 } from '@booking/contracts';
 
 // Request bodies
 export class UpsertGatewayConfigDto extends createZodDto(upsertGatewayConfigInputSchema) {}
+export class PaymentHistoryQueryDto extends createZodDto(paymentHistoryQuerySchema) {}
+export class ConfirmManualRefundDto extends createZodDto(confirmManualRefundInputSchema) {}
+export class RefundHistoryQueryDto extends createZodDto(refundHistoryQuerySchema) {}
 
 // Responses
 export class CheckoutResponseDto extends createZodDto(checkoutResponseSchema) {}
 export class PaymentStatusResponseDto extends createZodDto(paymentStatusResponseSchema) {}
 export class GatewayConfigResponseDto extends createZodDto(gatewayConfigResponseSchema) {}
+export class PaymentHistoryItemDto extends createZodDto(paymentHistoryItemSchema) {}
+export class RefundResponseDto extends createZodDto(refundResponseSchema) {}
+export class RefundHistoryItemDto extends createZodDto(refundHistoryItemSchema) {}
 
 // Ad-hoc responses
 export class WebhookReceivedDto extends createZodDto(z.object({ received: z.literal(true) })) {}

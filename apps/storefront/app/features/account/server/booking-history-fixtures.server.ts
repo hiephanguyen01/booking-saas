@@ -57,6 +57,8 @@ function booking(
     finalAmount: '800000',
     depositAmount: '400000',
     paidAmount: status === 'pending_payment' ? '0' : '400000',
+    refundDueAmount: null,
+    refundPercent: null,
     securityDeposit: '0',
     pickedUpAt: null,
     returnedAt: null,

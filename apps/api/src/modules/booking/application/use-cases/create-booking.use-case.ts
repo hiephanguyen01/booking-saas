@@ -20,6 +20,8 @@ import { priceQuote } from '../../../listing/application/pricing';
 import { PreparePromotionUseCase } from '../../../promotions/application/use-cases/prepare-promotion.use-case';
 import { ReservePromotionUseCase } from '../../../promotions/application/use-cases/reserve-promotion.use-case';
 import { ResolveCommissionUseCase } from '../../../finance/application/use-cases/resolve-commission.use-case';
+import { computeCommissionSplit } from '../../../finance/domain/commission-split';
+import { snapshotToRates } from '../../../finance/domain/commission-snapshot';
 import { ResolveAttributionUseCase } from '../../../affiliate/application/use-cases/resolve-attribution.use-case';
 import { applyCustomRate } from '../../../affiliate/domain/affiliate-rate';
 import {
@@ -367,6 +369,32 @@ export class CreateBookingUseCase {
       }
     }
 
+    const fundedBy = promo?.snapshot.fundedBy ?? null;
+    const split = computeCommissionSplit({
+      totalAmount: subtotal,
+      finalAmount,
+      fundedBy,
+      hasAffiliate: attribution !== null,
+      rates: snapshotToRates(commissionSnapshot),
+    });
+    const partnerBasis = fundedBy === 'tenant' ? subtotal : finalAmount;
+    const tenantCommissionGross = commissionSnapshot.isHouse
+      ? 0n
+      : partnerBasis - split.partnerShare;
+    const depositAmount = BigInt(args.quote.depositAmount);
+    if (!commissionSnapshot.isHouse && depositAmount < tenantCommissionGross) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'DEPOSIT_BELOW_TENANT_COMMISSION',
+        message: 'The customer deposit must cover the tenant commission for this booking',
+        details: {
+          depositAmount: depositAmount.toString(),
+          minimumDepositAmount: tenantCommissionGross.toString(),
+          commissionRuleId: commissionSnapshot.ruleId,
+        },
+      });
+    }
+
     const draft = await this.bookings.insertDraft(tx, tenantId, {
       listingId: args.listing.id,
       partnerId: args.listing.partnerId,
@@ -382,7 +410,7 @@ export class CreateBookingUseCase {
       totalAmount: subtotal,
       discountAmount,
       finalAmount,
-      depositAmount: BigInt(args.quote.depositAmount),
+      depositAmount,
       securityDeposit: args.securityDeposit,
       promotionId: promo?.promotionId ?? null,
       promoCode: promo?.promoCode ?? null,

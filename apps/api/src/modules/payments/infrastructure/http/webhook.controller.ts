@@ -24,8 +24,15 @@ export class WebhookController {
     @Param('gateway', new ZodValidationPipe(gatewayKeySchema)) gateway: GatewayKey,
     @Req() req: Request & { rawBody?: Buffer },
   ): Promise<{ received: true }> {
-    const raw = req.rawBody ?? (Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body ?? {})));
-    if (!raw?.length) throw new BadRequestException({ statusCode: 400, code: 'EMPTY_BODY', message: 'Empty webhook body' });
+    const raw =
+      req.rawBody ??
+      (Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body ?? {})));
+    if (!raw?.length)
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'EMPTY_BODY',
+        message: 'Empty webhook body',
+      });
     await this.handle.execute(gateway, raw, req.headers as Record<string, string>);
     return { received: true };
   }

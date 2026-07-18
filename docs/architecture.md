@@ -34,6 +34,10 @@ Browser ──▶ RR8 loader/action (server)
 - The browser never calls the API directly and never holds a token — the session cookie is `httpOnly`
   (dashboard sessions are Redis-backed; the cookie carries only a signed id). See
   [ADR 0001](./decisions/0001-opaque-sessions-over-jwt.md).
+- SePay checkout is the one intentional browser-to-provider hop: the storefront action receives signed
+  form fields server-to-server, validates the provider origin, then renders a browser `POST` form to
+  SePay. The merchant secret remains encrypted in the API and is never sent to the browser. See
+  [`payments-sepay.md`](./payments-sepay.md).
 - Every tenant-scoped operation runs in **one** `forTenant` transaction that sets `app.tenant_id`, so
   Postgres Row-Level Security filters every query. See [`data-model.md`](./data-model.md) and
   [ADR 0002](./decisions/0002-rls-tenant-isolation-forTenant.md).
@@ -58,8 +62,13 @@ registers `OutboxHandlerRegistry.register(eventType, handler)`. The BullMQ relay
 exponential backoff (capped 300s, **no dead-letter**). Timing uses the **DB clock** (`now()`), never
 `Date.now()`. See [ADR 0003](./decisions/0003-outbox-for-inter-module.md).
 
-Example event chain: `booking.completed` → finance posts ledger entries + computes a commission
-snapshot; other consumers (notifications, affiliate) react independently.
+Settlement event chain: `payment.succeeded` is consumed independently by Booking (confirmation) and
+Finance (held custody); `booking.completed/no_show` freezes the applicable split and opens the dispute
+window; a customer claim locks it as `disputed`; Tenant adjudication emits either release or refund;
+the release worker posts the revenue journal only after the deadline. `refund.completed` is provider/
+manual-transfer truth and converges Booking + Settlement idempotently. Payout allocations then map
+released booking debt into guarded payout runs. Other consumers react independently. See
+[`settlement-flow.md`](./settlement-flow.md).
 
 ## Backend internals
 
@@ -75,8 +84,10 @@ snapshot; other consumers (notifications, affiliate) react independently.
 Database access uses **one** `PrismaService` exposing two pools — `app` (`DATABASE_URL`, app_user,
 RLS-forced) and `admin` (`ADMIN_DATABASE_URL`, app_admin, BYPASSRLS for platform/webhook/reconciliation
 work). Migrations run as `MIGRATE_DATABASE_URL` (superuser). Background workers (outbox relay,
-reminders, reconciliation, domain-verification) have no request context and resolve `tenant_id` from
-the payload before calling `forTenant`.
+reminders, reconciliation, settlement-release, domain-verification) have no request context and
+resolve `tenant_id` from the payload before calling `forTenant`. Reconciliation rebuilds payment,
+refund and missing-refund projections from durable database facts; operational queries are in
+[`runbooks/finance-reconciliation.md`](./runbooks/finance-reconciliation.md).
 
 ## Frontend internals
 

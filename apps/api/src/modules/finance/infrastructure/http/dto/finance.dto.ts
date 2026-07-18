@@ -1,5 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 import {
+  bookingSettlementResponseSchema,
+  bookingSettlementsQuerySchema,
   commissionRuleResponseSchema,
   createCommissionRuleInputSchema,
   createPayoutInputSchema,
@@ -16,6 +18,15 @@ import {
   tenantPayableQuerySchema,
   tenantPayableResponseSchema,
   updateCommissionRuleInputSchema,
+  openSettlementDisputeInputSchema,
+  resolveSettlementDisputeInputSchema,
+  settlementDisputeResponseSchema,
+  partnerBookingSettlementResponseSchema,
+  customerBookingSettlementResponseSchema,
+  partnerSettlementDisputeResponseSchema,
+  settlementSummaryResponseSchema,
+  payoutPolicySchema,
+  respondSettlementDisputeInputSchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -24,18 +35,41 @@ export class UpdateCommissionRuleDto extends createZodDto(updateCommissionRuleIn
 export class CreatePayoutDto extends createZodDto(createPayoutInputSchema) {}
 export class MarkPayoutPaidDto extends createZodDto(markPayoutPaidInputSchema) {}
 export class FailPayoutDto extends createZodDto(failPayoutInputSchema) {}
+export class OpenSettlementDisputeDto extends createZodDto(openSettlementDisputeInputSchema) {}
+export class ResolveSettlementDisputeDto extends createZodDto(
+  resolveSettlementDisputeInputSchema,
+) {}
+export class PayoutPolicyDto extends createZodDto(payoutPolicySchema) {}
+export class RespondSettlementDisputeDto extends createZodDto(
+  respondSettlementDisputeInputSchema,
+) {}
 
 // Query params
 export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
 export class LedgerQueryDto extends createZodDto(ledgerQuerySchema) {}
 export class PartnerLedgerQueryDto extends createZodDto(partnerLedgerQuerySchema) {}
 export class TenantPayableQueryDto extends createZodDto(tenantPayableQuerySchema) {}
+export class BookingSettlementsQueryDto extends createZodDto(bookingSettlementsQuerySchema) {}
 
 // Responses
 export class CommissionRuleResponseDto extends createZodDto(commissionRuleResponseSchema) {}
 export class LedgerEntryResponseDto extends createZodDto(ledgerEntryResponseSchema) {}
-export class TenantFinanceSummaryResponseDto extends createZodDto(tenantFinanceSummaryResponseSchema) {}
+export class TenantFinanceSummaryResponseDto extends createZodDto(
+  tenantFinanceSummaryResponseSchema,
+) {}
 export class PartnerFinanceResponseDto extends createZodDto(partnerFinanceResponseSchema) {}
 export class PlatformFinanceResponseDto extends createZodDto(platformFinanceResponseSchema) {}
 export class PayoutResponseDto extends createZodDto(payoutResponseSchema) {}
 export class TenantPayableResponseDto extends createZodDto(tenantPayableResponseSchema) {}
+export class BookingSettlementResponseDto extends createZodDto(bookingSettlementResponseSchema) {}
+export class SettlementDisputeResponseDto extends createZodDto(settlementDisputeResponseSchema) {}
+export class PartnerBookingSettlementResponseDto extends createZodDto(
+  partnerBookingSettlementResponseSchema,
+) {}
+export class CustomerBookingSettlementResponseDto extends createZodDto(
+  customerBookingSettlementResponseSchema,
+) {}
+export class PartnerSettlementDisputeResponseDto extends createZodDto(
+  partnerSettlementDisputeResponseSchema,
+) {}
+export class SettlementSummaryResponseDto extends createZodDto(settlementSummaryResponseSchema) {}

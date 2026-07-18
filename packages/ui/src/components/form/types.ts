@@ -39,6 +39,8 @@ export interface TextFieldConfig<T extends FieldValues> extends BaseFieldConfig<
    * Ignored for non-password types.
    */
   showToggle?: boolean;
+  min?: number;
+  max?: number;
 }
 
 /** `select | combobox | radio` — pick one of `options`. */

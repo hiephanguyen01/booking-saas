@@ -38,6 +38,7 @@ export interface RecordJournalRefs {
   paymentId?: string | null;
   payoutId?: string | null;
   memo?: string | null;
+  availableAt?: Date;
 }
 
 /** Optional, ANDed filters for the tenant ledger view (§13.3). */

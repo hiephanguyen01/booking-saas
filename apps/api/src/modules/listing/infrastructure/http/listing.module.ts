@@ -5,6 +5,9 @@ import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.modu
 import { CatalogModule } from '../../../catalog/infrastructure/http/catalog.module';
 import { PartnerModule } from '../../../partner/infrastructure/http/partner.module';
 import { AdministrativeDivisionModule } from '../../../administrative-division/infrastructure/http/administrative-division.module';
+import { COMMISSION_COVERAGE_READER } from '../../domain/ports/commission-coverage-reader.port';
+import { PrismaCommissionCoverageReader } from '../repositories/prisma-commission-coverage.reader';
+import { AssertListingDepositCoverageUseCase } from '../../application/use-cases/assert-listing-deposit-coverage.use-case';
 import { LISTING_GROUP_REPOSITORY } from '../../domain/ports/listing-group-repository.port';
 import { LISTING_REPOSITORY } from '../../domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY } from '../../domain/ports/resource-repository.port';
@@ -68,6 +71,7 @@ import { CreateCancellationPolicyUseCase } from '../../application/use-cases/cre
 import { UpdateCancellationPolicyUseCase } from '../../application/use-cases/update-cancellation-policy.use-case';
 import { DeleteCancellationPolicyUseCase } from '../../application/use-cases/delete-cancellation-policy.use-case';
 import { PartnerCancellationPolicyController } from './partner-cancellation-policy.controller';
+import { GetListingDepositRequirementUseCase } from '../../application/use-cases/get-listing-deposit-requirement.use-case';
 import { TenantCancellationPolicyController } from './tenant-cancellation-policy.controller';
 
 @Module({
@@ -100,6 +104,7 @@ import { TenantCancellationPolicyController } from './tenant-cancellation-policy
     { provide: RESOURCE_REPOSITORY, useClass: PrismaResourceRepository },
     { provide: PRICING_RULE_REPOSITORY, useClass: PrismaPricingRuleRepository },
     { provide: CANCELLATION_POLICY_REPOSITORY, useClass: PrismaCancellationPolicyRepository },
+    { provide: COMMISSION_COVERAGE_READER, useClass: PrismaCommissionCoverageReader },
     CreateListingGroupUseCase,
     ListListingGroupsUseCase,
     GetListingGroupUseCase,
@@ -109,6 +114,8 @@ import { TenantCancellationPolicyController } from './tenant-cancellation-policy
     CreateResourceUseCase,
     ListResourcesUseCase,
     CreateListingUseCase,
+    AssertListingDepositCoverageUseCase,
+    GetListingDepositRequirementUseCase,
     ListListingsUseCase,
     ListListingsPageUseCase,
     GetListingUseCase,

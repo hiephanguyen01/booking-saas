@@ -1,6 +1,7 @@
 import type {
   LedgerEntryTypeDto,
   LedgerOwnerTypeDto,
+  SettlementStatusDto,
   TenantPayableResponse,
 } from '@booking/contracts';
 
@@ -32,6 +33,15 @@ export const LEDGER_OWNER_LABEL: Record<LedgerOwnerTypeDto, string> = {
   tenant: 'Cửa hàng',
   partner: 'Đối tác',
   affiliate: 'Affiliate',
+};
+
+export const SETTLEMENT_STATUS_LABEL: Record<SettlementStatusDto, string> = {
+  held: 'Tenant đang giữ',
+  dispute_window: 'Trong thời gian tranh chấp',
+  disputed: 'Đang tranh chấp',
+  refund_pending: 'Chờ xác nhận hoàn tiền',
+  released: 'Đã ghi nhận & sẵn sàng chi',
+  refunded: 'Đã hoàn tiền',
 };
 
 /** Why a payout run cannot be created right now (backend ineligible reasons). */

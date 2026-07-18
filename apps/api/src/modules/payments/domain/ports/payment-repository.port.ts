@@ -1,3 +1,4 @@
+import type { PaymentHistoryQuery, CheckoutDestination } from '@booking/contracts';
 import type { PaymentKind, PaymentStatus } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { GatewayKey } from './payment-gateway.port';
@@ -12,7 +13,10 @@ export interface PaymentRecord {
   kind: PaymentKind;
   amount: bigint;
   status: PaymentStatus;
+  gatewayOrderRef: string | null;
+  gatewayOrderId: string | null;
   gatewayTxnId: string | null;
+  paymentMethod: string | null;
   idempotencyKey: string;
   paidAt: Date | null;
 }
@@ -22,7 +26,9 @@ export interface CreatePaymentData {
   gateway: GatewayKey;
   kind: PaymentKind;
   amount: bigint;
-  gatewayTxnId: string;
+  gatewayTxnId?: string | null;
+  gatewayOrderRef?: string | null;
+  paymentMethod?: string | null;
   idempotencyKey: string;
   gatewayPayload?: unknown;
 }
@@ -36,17 +42,50 @@ export interface PaymentRef {
   amount: bigint;
   status: PaymentStatus;
   gatewayTxnId: string | null;
+  gatewayOrderRef: string | null;
+  /** Recovery-only: the booking is terminal/refunded, so only rebuild finance custody. */
+  skipBookingConfirmation?: boolean;
+}
+
+export interface PaymentHistoryRecord {
+  id: string;
+  tenantId: string;
+  tenantName: string | null;
+  bookingId: string;
+  bookingCode: string;
+  gateway: GatewayKey;
+  paymentMethod: string | null;
+  kind: PaymentKind;
+  amount: bigint;
+  status: PaymentStatus;
+  gatewayOrderRef: string | null;
+  gatewayTxnId: string | null;
+  paidAt: Date | null;
+  createdAt: Date;
 }
 
 export interface IPaymentRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePaymentData): Promise<PaymentRecord>;
   findActivePendingByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
-  /** A reusable pending checkout (id + stored paymentUrl) — for idempotent checkout. */
-  findPendingCheckout(tx: PrismaTx, bookingId: string): Promise<{ id: string; paymentUrl: string } | null>;
+  /** Reuse the stored provider handoff on retries/double-clicks. */
+  findPendingCheckout(
+    tx: PrismaTx,
+    bookingId: string,
+  ): Promise<{ id: string; destination: CheckoutDestination } | null>;
   findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   /** Atomically mark succeeded (only if not already) — the webhook idempotency guard. */
-  markSucceeded(tx: PrismaTx, id: string, paidAt: Date, payload: unknown): Promise<boolean>;
+  markSucceeded(
+    tx: PrismaTx,
+    id: string,
+    paidAt: Date,
+    payload: unknown,
+    gatewayData?: {
+      gatewayTxnId?: string;
+      gatewayOrderId?: string;
+      paymentMethod?: string;
+    },
+  ): Promise<boolean>;
   /**
    * Atomically set a terminal `failed`/`expired` status ONLY while still `pending`
    * (§11.2: `succeeded` is terminal — a late/out-of-order failed must not clobber it).
@@ -54,6 +93,16 @@ export interface IPaymentRepository {
    */
   markTerminalIfPending(tx: PrismaTx, id: string, status: 'failed' | 'expired'): Promise<boolean>;
   // ── admin pool (cross-tenant; no request context) ──
-  findByGatewayTxnId(gatewayTxnId: string): Promise<PaymentRef | null>;
+  findByGatewayReference(gateway: GatewayKey, reference: string): Promise<PaymentRef | null>;
   findStalePending(olderThanSec: number): Promise<PaymentRef[]>;
+  /** Succeeded payments whose booking confirmation or held settlement still needs recovery. */
+  findSucceededNeedingRecovery(limit: number): Promise<PaymentRef[]>;
+  listTenant(
+    tx: PrismaTx,
+    tenantId: string,
+    query: PaymentHistoryQuery,
+  ): Promise<{ items: PaymentHistoryRecord[]; total: number }>;
+  listPlatform(
+    query: PaymentHistoryQuery,
+  ): Promise<{ items: PaymentHistoryRecord[]; total: number }>;
 }

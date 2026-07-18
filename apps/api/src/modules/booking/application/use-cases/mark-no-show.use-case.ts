@@ -27,14 +27,18 @@ export class MarkNoShowUseCase {
         reason,
         // §8.5: a no-show is only markable after the slot ends and within 48h of it.
         guard: (booking) => this.assertNoShowWindow(booking),
+        // The customer never took custody of inventory, so its separately-held
+        // security deposit must be returned even though the service deposit is
+        // subject to the no-show settlement split.
+        eventPayload: (booking) => ({ securityDeposit: booking.securityDeposit.toString() }),
       },
     );
   }
 
   /**
    * §8.5: the partner may mark `no_show` only once the slot has ended and only
-   * within {@link NO_SHOW_WINDOW_HOURS}h of `timeslot.end` — past that a job has
-   * (or is about to) auto-complete the booking, so a late mark would race it.
+   * within {@link NO_SHOW_WINDOW_HOURS}h of `timeslot.end`. Past that, an explicit
+   * Tenant intervention is required; the scheduler never guesses completion.
    */
   private assertNoShowWindow(booking: BookingRecord): void {
     if (!isWithinNoShowWindow(booking.endUtc, utcNow())) {

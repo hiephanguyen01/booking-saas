@@ -1,7 +1,9 @@
 import type {
   CancellationPolicyResponse,
   DomainResponse,
+  GatewayConfigResponse,
   TenantThemeResponse,
+  PayoutPolicyDto,
 } from '@booking/contracts';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/settings';
@@ -19,6 +21,8 @@ import { PartnerPromotionsCard } from '~/features/tenant/components/settings/par
 import { TenantDefaultCancellationPolicyCard } from '~/features/tenant/components/settings/tenant-default-cancellation-policy-card';
 import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-domains-card';
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
+import { SepayGatewayCard } from '~/features/tenant/components/settings/sepay-gateway-card';
+import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cài đặt · Tenant · Bookify' }];
@@ -26,7 +30,7 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request);
-  const [themeRes, domainsRes, flagsRes, policiesRes] = await Promise.all([
+  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes] = await Promise.all([
     can('tenant.theme.manage')
       ? apiGet<TenantThemeResponse>('/tenant/theme', auth)
       : Promise.resolve(null),
@@ -39,6 +43,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     can('tenant.settings.manage')
       ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
       : Promise.resolve(null),
+    can('tenant.settings.manage')
+      ? apiGet<GatewayConfigResponse | null>('/tenant/gateway-config', auth)
+      : Promise.resolve(null),
+    can('tenant.finance.read')
+      ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
+      : Promise.resolve(null),
   ]);
   return {
     theme: themeRes?.ok ? themeRes.data : null,
@@ -49,6 +59,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     // indistinguishable from a flag that is genuinely off.
     partnerPromotions: toPartnerPromotionsState(flagsRes),
     cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : [],
+    gatewayConfig: gatewayRes?.ok ? (gatewayRes.data ?? null) : null,
+    payoutPolicy: payoutPolicyRes?.ok ? (payoutPolicyRes.data ?? null) : null,
+    canManagePayoutPolicy: can('tenant.payouts.manage'),
   };
 }
 
@@ -58,8 +71,17 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
-  const { theme, domains, canTheme, canDomains, partnerPromotions, cancellationPolicies } =
-    loaderData;
+  const {
+    theme,
+    domains,
+    canTheme,
+    canDomains,
+    partnerPromotions,
+    cancellationPolicies,
+    gatewayConfig,
+    payoutPolicy,
+    canManagePayoutPolicy,
+  } = loaderData;
   const { readOnly } = useTenantArea();
 
   // Feedback narrowing: every action branch tags its result with `form`, so each
@@ -88,7 +110,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     <div className="space-y-6">
       <PageHeader
         title="Cài đặt"
-        description="Tuỳ chỉnh giao diện storefront và tên miền của cửa hàng."
+        description="Tuỳ chỉnh storefront, tên miền và cổng thanh toán của cửa hàng."
       />
 
       {canTheme && theme ? (
@@ -111,11 +133,30 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
         />
       ) : null}
 
+      {payoutPolicy ? (
+        <PayoutPolicyCard
+          policy={payoutPolicy}
+          readOnly={readOnly || !canManagePayoutPolicy}
+          saved={okFor('payout-policy')}
+          error={errFor('payout-policy')}
+        />
+      ) : null}
+
       {canDomains && partnerPromotions ? (
         <PartnerPromotionsCard
           state={partnerPromotions}
           readOnly={readOnly}
           error={errFor('flags')}
+        />
+      ) : null}
+
+      {canDomains ? (
+        <SepayGatewayCard
+          config={gatewayConfig}
+          readOnly={readOnly}
+          saved={okFor('sepay')}
+          error={errFor('sepay')}
+          fieldErrors={fieldErrorsFor('sepay')}
         />
       ) : null}
 
@@ -128,7 +169,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
         />
       ) : null}
 
-      {!canTheme && !canDomains ? (
+      {!canTheme && !canDomains && !payoutPolicy ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
             Bạn không có quyền chỉnh sửa cài đặt.

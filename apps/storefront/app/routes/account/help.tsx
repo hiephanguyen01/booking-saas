@@ -13,6 +13,7 @@ import type { AccountOutletContext } from './layout';
 export default function HelpPage() {
   const { tenant } = useOutletContext<AccountOutletContext>();
   const { t } = useTranslation(NsI18n.Account);
+  const contact = tenant.themeConfig.contact;
   const faqs = [
     [t('help.q1'), t('help.a1')],
     [t('help.q2'), t('help.a2')],
@@ -38,28 +39,28 @@ export default function HelpPage() {
         <AccountPanel className="self-start p-6">
           <h2 className="font-semibold">{t('help.contact')}</h2>
           <div className="mt-5 space-y-4 text-sm">
-            {tenant.contact.phone ? (
+            {contact?.phone ? (
               <a
-                href={`tel:${tenant.contact.phone}`}
+                href={`tel:${contact.phone}`}
                 className="flex items-start gap-3 hover:text-primary"
               >
                 <Phone className="mt-0.5 size-4" />
-                {tenant.contact.phone}
+                {contact.phone}
               </a>
             ) : null}
-            {tenant.contact.email ? (
+            {contact?.email ? (
               <a
-                href={`mailto:${tenant.contact.email}`}
+                href={`mailto:${contact.email}`}
                 className="flex items-start gap-3 break-all hover:text-primary"
               >
                 <Mail className="mt-0.5 size-4 shrink-0" />
-                {tenant.contact.email}
+                {contact.email}
               </a>
             ) : null}
-            {tenant.contact.address ? (
+            {contact?.address ? (
               <p className="flex items-start gap-3 text-muted-foreground">
                 <MapPin className="mt-0.5 size-4 shrink-0" />
-                {tenant.contact.address}
+                {contact.address}
               </p>
             ) : null}
           </div>

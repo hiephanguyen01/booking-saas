@@ -1,4 +1,8 @@
-import type { AddDomainInput, ThemeConfigInput } from '@booking/contracts';
+import type {
+  AddDomainInput,
+  SepayGatewaySettingsForm,
+  ThemeConfigInput,
+} from '@booking/contracts';
 import { FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 
@@ -11,6 +15,35 @@ export const domainFields: FieldConfig<AddDomainInput>[] = [
     colSpan: 2,
   },
   { name: 'isPrimary', type: 'switch', label: 'Đặt làm tên miền chính' },
+];
+
+export const sepayGatewayFields: FieldConfig<SepayGatewaySettingsForm>[] = [
+  {
+    name: 'environment',
+    type: 'radio',
+    label: 'Môi trường',
+    variant: 'segmented',
+    options: [
+      { label: 'Sandbox', value: 'sandbox' },
+      { label: 'Production', value: 'production' },
+    ],
+    colSpan: 2,
+  },
+  {
+    name: 'merchantId',
+    type: 'text',
+    label: 'Merchant ID',
+    placeholder: 'SP-…',
+    required: true,
+  },
+  {
+    name: 'secretKey',
+    type: 'password',
+    label: 'Secret key',
+    placeholder: 'Nhập secret key mới',
+    autoComplete: 'new-password',
+    required: true,
+  },
 ];
 
 export const themeFields: FieldConfig<ThemeConfigInput>[] = [

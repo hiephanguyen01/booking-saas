@@ -1,11 +1,13 @@
 import { data as routeData } from 'react-router';
 import {
   addDomainInputSchema,
+  sepayGatewaySettingsFormSchema,
   themeConfigSchema,
   type DomainResponse,
   type TenantThemeResponse,
+  payoutPolicySchema,
 } from '@booking/contracts';
-import { apiDelete, apiPatch, apiPost, type ApiAuth } from '~/lib/api.server';
+import { apiDelete, apiPatch, apiPost, apiPut, type ApiAuth } from '~/lib/api.server';
 import { TENANT_FLAGS_PATH, type TenantFlags } from '~/features/tenant/lib/flags';
 
 /**
@@ -20,6 +22,43 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
   // They carry disjoint keys, so `hostname` disambiguates the domain payload.
   if (contentType.includes('application/json')) {
     const body: unknown = await request.json();
+
+    if (body && typeof body === 'object' && 'gateway' in body) {
+      const raw = body as {
+        environment?: unknown;
+        credentials?: { merchantId?: unknown; secretKey?: unknown };
+      };
+      const parsed = sepayGatewaySettingsFormSchema.safeParse({
+        environment: raw.environment,
+        merchantId: raw.credentials?.merchantId,
+        secretKey: raw.credentials?.secretKey,
+      });
+      if (!parsed.success) {
+        return routeData(
+          { form: 'sepay', fieldErrors: parsed.error.flatten().fieldErrors },
+          { status: 400 },
+        );
+      }
+      const res = await apiPut(
+        '/tenant/gateway-config',
+        {
+          gateway: 'sepay',
+          environment: parsed.data.environment,
+          credentials: {
+            merchantId: parsed.data.merchantId,
+            secretKey: parsed.data.secretKey,
+          },
+        },
+        auth,
+      );
+      if (!res.ok) {
+        return routeData(
+          { form: 'sepay', error: res.error ?? 'Không lưu được cấu hình SePay.' },
+          { status: res.status >= 400 && res.status <= 599 ? res.status : 400 },
+        );
+      }
+      return { form: 'sepay', ok: true };
+    }
 
     if (body && typeof body === 'object' && 'hostname' in body) {
       const parsed = addDomainInputSchema.safeParse(body);
@@ -74,6 +113,28 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
         { status: 400 },
       );
     return { form: 'flags', ok: true };
+  }
+
+  if (intent === 'payout-policy') {
+    const parsed = payoutPolicySchema.safeParse({
+      holdingDays: Number(formData.get('holdingDays')),
+      minAmount: String(formData.get('minAmount') ?? ''),
+      cycle: String(formData.get('cycle') ?? ''),
+    });
+    if (!parsed.success) {
+      return routeData(
+        { form: 'payout-policy', error: 'Chính sách chi trả không hợp lệ.' },
+        { status: 400 },
+      );
+    }
+    const res = await apiPut('/tenant/finance/payout-policy', parsed.data, auth);
+    if (!res.ok) {
+      return routeData(
+        { form: 'payout-policy', error: res.error ?? 'Không lưu được chính sách chi trả.' },
+        { status: 400 },
+      );
+    }
+    return { form: 'payout-policy', ok: true };
   }
 
   if (intent === 'set-default-cancellation-policy') {

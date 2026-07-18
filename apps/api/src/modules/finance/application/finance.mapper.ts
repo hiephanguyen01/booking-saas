@@ -1,4 +1,5 @@
 import type {
+  BookingSettlementResponse,
   CommissionRuleResponse,
   LedgerEntryResponse,
   OwnerBalanceResponse,
@@ -7,14 +8,23 @@ import type {
   PlatformFinanceResponse,
   TenantFinanceSummaryResponse,
   TenantPayableResponse,
+  SettlementDisputeResponse,
+  PartnerBookingSettlementResponse,
+  CustomerBookingSettlementResponse,
+  PartnerSettlementDisputeResponse,
+  SettlementSummaryResponse,
 } from '@booking/contracts';
 import type { CommissionRuleRecord } from '../domain/ports/commission-rule-repository.port';
 import type { LedgerEntryView, OwnerBalance } from '../domain/ports/ledger-repository.port';
 import type { PayoutRecord } from '../domain/ports/payout-repository.port';
+import type { SettlementRecord } from '../domain/ports/settlement-repository.port';
 import type { PayableSnapshot } from './use-cases/compute-payout-payable.use-case';
 import type { TenantFinanceSummary } from './use-cases/get-tenant-finance-summary.use-case';
 import type { PartnerFinance } from './use-cases/get-partner-finance.use-case';
 import type { PlatformFinance } from './use-cases/get-platform-finance.use-case';
+import type { SettlementDisputeRecord } from '../domain/ports/settlement-dispute-repository.port';
+import type { SettlementSummary } from '../domain/ports/settlement-repository.port';
+import type { CustomerBookingSettlementView } from './use-cases/get-customer-booking-settlement.use-case';
 
 export function toCommissionRuleResponse(r: CommissionRuleRecord): CommissionRuleResponse {
   return {
@@ -62,7 +72,9 @@ export function toOwnerBalanceResponse(b: OwnerBalance): OwnerBalanceResponse {
   };
 }
 
-export function toTenantFinanceSummaryResponse(s: TenantFinanceSummary): TenantFinanceSummaryResponse {
+export function toTenantFinanceSummaryResponse(
+  s: TenantFinanceSummary,
+): TenantFinanceSummaryResponse {
   return {
     netRevenue: s.netRevenue.toString(),
     partnerPayable: s.partnerPayable.toString(),
@@ -77,10 +89,214 @@ export function toPartnerFinanceResponse(f: PartnerFinance): PartnerFinanceRespo
   return { balance: f.balance.toString(), entries: f.entries.map(toLedgerEntryResponse) };
 }
 
+export function toBookingSettlementResponse(
+  settlement: SettlementRecord,
+): BookingSettlementResponse {
+  return {
+    id: settlement.id,
+    tenantId: settlement.tenantId,
+    tenantName: settlement.tenantName,
+    bookingId: settlement.bookingId,
+    paymentId: settlement.paymentId,
+    partnerId: settlement.partnerId,
+    status: settlement.status,
+    kind: settlement.kind,
+    bookingCode: settlement.bookingCode,
+    listingTitle: settlement.listingTitle,
+    customerName: settlement.customerName,
+    partnerName: settlement.partnerName,
+    onlineHeldAmount: settlement.onlineHeldAmount.toString(),
+    remainingHeldAmount: (
+      settlement.onlineHeldAmount > settlement.refundedAmount
+        ? settlement.onlineHeldAmount - settlement.refundedAmount
+        : 0n
+    ).toString(),
+    onsiteCollectedAmount: settlement.onsiteCollectedAmount.toString(),
+    securityDepositHeld: settlement.securityDepositHeld.toString(),
+    tenantCommissionGross: settlement.tenantCommissionGross.toString(),
+    tenantNetEarning: settlement.tenantNetEarning.toString(),
+    partnerGrossEarning: settlement.partnerGrossEarning.toString(),
+    partnerPayable: settlement.partnerPayable.toString(),
+    platformFee: settlement.platformFee.toString(),
+    affiliateCommission: settlement.affiliateCommission.toString(),
+    refundedAmount: settlement.refundedAmount.toString(),
+    retainedAmount: settlement.retainedAmount.toString(),
+    refundId: settlement.refundId,
+    payoutPendingAmount: settlement.payoutPendingAmount.toString(),
+    paidAmount: settlement.paidAmount.toString(),
+    remainingPayableAmount: settlement.remainingPayableAmount.toString(),
+    latestPayoutId: settlement.latestPayoutId,
+    latestPayoutStatus: settlement.latestPayoutStatus,
+    latestPayoutReference: settlement.latestPayoutReference,
+    latestPayoutPaidAt: settlement.latestPayoutPaidAt?.toISOString() ?? null,
+    completedAt: settlement.completedAt?.toISOString() ?? null,
+    disputeUntil: settlement.disputeUntil?.toISOString() ?? null,
+    releasedAt: settlement.releasedAt?.toISOString() ?? null,
+    createdAt: settlement.createdAt.toISOString(),
+    updatedAt: settlement.updatedAt.toISOString(),
+  };
+}
+
+export function toPartnerBookingSettlementResponse(
+  settlement: SettlementRecord,
+): PartnerBookingSettlementResponse {
+  const full = toBookingSettlementResponse(settlement);
+  return {
+    id: full.id,
+    bookingId: full.bookingId,
+    status: full.status,
+    kind: full.kind,
+    bookingCode: full.bookingCode,
+    listingTitle: full.listingTitle,
+    partnerName: full.partnerName,
+    onlineHeldAmount: full.onlineHeldAmount,
+    remainingHeldAmount: full.remainingHeldAmount,
+    onsiteCollectedAmount: full.onsiteCollectedAmount,
+    partnerGrossEarning: full.partnerGrossEarning,
+    partnerPayable: full.partnerPayable,
+    refundedAmount: full.refundedAmount,
+    payoutPendingAmount: full.payoutPendingAmount,
+    paidAmount: full.paidAmount,
+    remainingPayableAmount: full.remainingPayableAmount,
+    latestPayoutId: full.latestPayoutId,
+    latestPayoutStatus: full.latestPayoutStatus,
+    latestPayoutReference: full.latestPayoutReference,
+    latestPayoutPaidAt: full.latestPayoutPaidAt,
+    completedAt: full.completedAt,
+    disputeUntil: full.disputeUntil,
+    releasedAt: full.releasedAt,
+    createdAt: full.createdAt,
+    updatedAt: full.updatedAt,
+  };
+}
+
+export function toCustomerBookingSettlementResponse(
+  view: CustomerBookingSettlementView,
+): CustomerBookingSettlementResponse {
+  const { settlement, dispute } = view;
+  const full = toBookingSettlementResponse(settlement);
+  return {
+    id: full.id,
+    bookingId: full.bookingId,
+    status: full.status,
+    kind: full.kind,
+    bookingCode: full.bookingCode,
+    onlineHeldAmount: full.onlineHeldAmount,
+    remainingHeldAmount: full.remainingHeldAmount,
+    refundedAmount: full.refundedAmount,
+    retainedAmount: full.retainedAmount,
+    completedAt: full.completedAt,
+    disputeUntil: full.disputeUntil,
+    releasedAt: full.releasedAt,
+    updatedAt: full.updatedAt,
+    canOpenDispute:
+      dispute === null &&
+      settlement.status === 'dispute_window' &&
+      settlement.disputeUntil !== null &&
+      settlement.disputeUntil.getTime() > Date.now(),
+    refundConfirmed:
+      settlement.refundId !== null && settlement.status !== 'refund_pending',
+    dispute: dispute
+      ? {
+          id: dispute.id,
+          status: dispute.status,
+          resolution: dispute.resolution,
+          resolutionNote: dispute.resolutionNote,
+          refundAmount: dispute.refundAmount.toString(),
+          partnerResponse: dispute.partnerResponse,
+          partnerRespondedAt: dispute.partnerRespondedAt?.toISOString() ?? null,
+          resolvedAt: dispute.resolvedAt?.toISOString() ?? null,
+          createdAt: dispute.createdAt.toISOString(),
+        }
+      : null,
+  };
+}
+
+export function toSettlementDisputeResponse(
+  dispute: SettlementDisputeRecord,
+): SettlementDisputeResponse {
+  return {
+    id: dispute.id,
+    settlementId: dispute.settlementId,
+    bookingId: dispute.bookingId,
+    openedByUserId: dispute.openedByUserId,
+    openedByRole: dispute.openedByRole,
+    bookingCode: dispute.bookingCode,
+    listingTitle: dispute.listingTitle,
+    customerName: dispute.customerName,
+    partnerName: dispute.partnerName,
+    onlineHeldAmount: dispute.onlineHeldAmount.toString(),
+    remainingHeldAmount: dispute.remainingHeldAmount.toString(),
+    disputeUntil: dispute.disputeUntil?.toISOString() ?? null,
+    reason: dispute.reason,
+    evidence: dispute.evidence,
+    partnerResponse: dispute.partnerResponse,
+    partnerRespondedAt: dispute.partnerRespondedAt?.toISOString() ?? null,
+    status: dispute.status,
+    resolution: dispute.resolution,
+    resolutionNote: dispute.resolutionNote,
+    refundAmount: dispute.refundAmount.toString(),
+    resolvedBy: dispute.resolvedBy,
+    resolvedAt: dispute.resolvedAt?.toISOString() ?? null,
+    createdAt: dispute.createdAt.toISOString(),
+    updatedAt: dispute.updatedAt.toISOString(),
+  };
+}
+
+export function toPartnerSettlementDisputeResponse(
+  dispute: SettlementDisputeRecord,
+): PartnerSettlementDisputeResponse {
+  const full = toSettlementDisputeResponse(dispute);
+  return {
+    id: full.id,
+    settlementId: full.settlementId,
+    bookingId: full.bookingId,
+    openedByRole: full.openedByRole,
+    bookingCode: full.bookingCode,
+    listingTitle: full.listingTitle,
+    customerName: full.customerName,
+    partnerName: full.partnerName,
+    onlineHeldAmount: full.onlineHeldAmount,
+    remainingHeldAmount: full.remainingHeldAmount,
+    disputeUntil: full.disputeUntil,
+    reason: full.reason,
+    evidence: full.evidence,
+    partnerResponse: full.partnerResponse,
+    partnerRespondedAt: full.partnerRespondedAt,
+    status: full.status,
+    resolution: full.resolution,
+    resolutionNote: full.resolutionNote,
+    refundAmount: full.refundAmount,
+    resolvedAt: full.resolvedAt,
+    createdAt: full.createdAt,
+    updatedAt: full.updatedAt,
+  };
+}
+
+export function toSettlementSummaryResponse(
+  summary: SettlementSummary,
+): SettlementSummaryResponse {
+  return {
+    heldAmount: summary.heldAmount.toString(),
+    disputedAmount: summary.disputedAmount.toString(),
+    heldPartnerPayableAmount: summary.heldPartnerPayableAmount.toString(),
+    disputedPartnerPayableAmount: summary.disputedPartnerPayableAmount.toString(),
+    refundPendingAmount: summary.refundPendingAmount.toString(),
+    releasedPayableAmount: summary.releasedPayableAmount.toString(),
+    payoutPendingAmount: summary.payoutPendingAmount.toString(),
+    paidAmount: summary.paidAmount.toString(),
+    remainingPayableAmount: summary.remainingPayableAmount.toString(),
+    counts: summary.counts,
+  };
+}
+
 export function toPlatformFinanceResponse(f: PlatformFinance): PlatformFinanceResponse {
   return {
     totalFeePayable: f.totalFeePayable.toString(),
-    perTenant: f.perTenant.map((t) => ({ tenantId: t.tenantId, feePayable: t.feePayable.toString() })),
+    perTenant: f.perTenant.map((t) => ({
+      tenantId: t.tenantId,
+      feePayable: t.feePayable.toString(),
+    })),
   };
 }
 

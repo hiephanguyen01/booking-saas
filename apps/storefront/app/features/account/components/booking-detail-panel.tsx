@@ -24,18 +24,22 @@ import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import type { AccountBookingViewModel } from '../lib/booking-history';
+import type { CustomerBookingSettlementResponse } from '@booking/contracts';
 import { CancelBookingDialog } from './cancel-booking-dialog';
+import { CustomerSettlementDisputePanel } from './customer-settlement-dispute-panel';
 
 export function BookingDetailPanel({
   booking,
   locale,
   defaultCancelOpen,
   actionError,
+  settlement,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
   defaultCancelOpen: boolean;
   actionError: string | null;
+  settlement: CustomerBookingSettlementResponse | null;
 }) {
   const { t } = useTranslation(NsI18n.Account);
   return (
@@ -60,6 +64,11 @@ export function BookingDetailPanel({
         locale={locale}
         defaultCancelOpen={defaultCancelOpen}
         actionError={actionError}
+        postServiceRefund={
+          booking.status === 'refunded' &&
+          settlement !== null &&
+          settlement.kind !== 'cancellation_fee'
+        }
       />
 
       {booking.variant === 'completed' && booking.review ? (
@@ -68,8 +77,16 @@ export function BookingDetailPanel({
 
       <ContactSection booking={booking} />
 
+      <CustomerSettlementDisputePanel settlement={settlement} locale={locale} />
+
       {booking.variant === 'cancelled' ? (
-        <CancellationSummary booking={booking} locale={locale} />
+        booking.status === 'refunded' &&
+        settlement !== null &&
+        settlement.kind !== 'cancellation_fee' ? (
+          <PostServiceRefundSummary settlement={settlement} locale={locale} />
+        ) : (
+          <CancellationSummary booking={booking} locale={locale} settlement={settlement} />
+        )
       ) : booking.variant === 'no-show' ? (
         <NoShowSummary booking={booking} locale={locale} />
       ) : (
@@ -84,11 +101,13 @@ function BookingOverview({
   locale,
   defaultCancelOpen,
   actionError,
+  postServiceRefund,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
   defaultCancelOpen: boolean;
   actionError: string | null;
+  postServiceRefund: boolean;
 }) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Booking]);
   return (
@@ -162,7 +181,7 @@ function BookingOverview({
       ) : null}
 
       <div className="flex flex-wrap items-end justify-between gap-4 pt-4">
-        <PolicyNotes booking={booking} />
+        <PolicyNotes booking={booking} postServiceRefund={postServiceRefund} />
         {booking.variant === 'payment' && booking.status === 'pending_payment' ? (
           <Form method="post">
             <input type="hidden" name="intent" value="pay" />
@@ -184,8 +203,15 @@ function BookingOverview({
 
 const AMENITY_ICONS = [AirVent, Wind, Snowflake, Refrigerator, Warehouse, Sparkles, Shirt, Camera];
 
-function PolicyNotes({ booking }: { booking: AccountBookingViewModel }) {
+function PolicyNotes({
+  booking,
+  postServiceRefund,
+}: {
+  booking: AccountBookingViewModel;
+  postServiceRefund: boolean;
+}) {
   const { t } = useTranslation(NsI18n.Account);
+  if (postServiceRefund) return null;
   if (booking.variant === 'cancelled') {
     return (
       <ul className="space-y-2 text-xs text-muted-foreground">
@@ -248,6 +274,12 @@ function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel;
         value={money(booking.depositAmount, locale)}
         accent
       />
+      {BigInt(booking.securityDeposit) > 0n ? (
+        <DetailRow
+          label={t('bookings.payment.securityDeposit')}
+          value={money(booking.securityDeposit, locale)}
+        />
+      ) : null}
       {booking.paymentMethod ? (
         <DetailRow label={t('bookings.payment.method')} value={booking.paymentMethod} />
       ) : null}
@@ -266,11 +298,32 @@ function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel;
 function CancellationSummary({
   booking,
   locale,
+  settlement,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
+  settlement: CustomerBookingSettlementResponse | null;
 }) {
   const { t } = useTranslation(NsI18n.Account);
+  const refunded = settlement ? BigInt(settlement.refundedAmount) : 0n;
+  const refundAmount = booking.refundAmount ?? (refunded > 0n ? settlement?.refundedAmount : null);
+  const serviceRefundAmount = refundAmount
+    ? maxMoney(BigInt(refundAmount) - BigInt(booking.securityDeposit))
+    : 0n;
+  const noRefundDue =
+    refundAmount === '0' &&
+    settlement?.status === 'dispute_window' &&
+    !settlement.refundConfirmed;
+  const refundStatus =
+    settlement?.status === 'refund_pending'
+      ? t('bookings.refund.pending')
+      : noRefundDue
+        ? t('bookings.refund.noRefundDue')
+        : refunded > 0n && settlement?.status === 'dispute_window'
+          ? t('bookings.refund.partialCompleted')
+          : refunded > 0n || settlement?.status === 'refunded' || settlement?.refundConfirmed
+            ? t('bookings.refund.completed')
+            : t('bookings.refund.pending');
   return (
     <DetailSection title={t('bookings.refund.title')}>
       {booking.cancelledAt ? (
@@ -283,19 +336,66 @@ function CancellationSummary({
         <DetailRow label={t('bookings.refund.reason')} value={booking.cancellationReason} />
       ) : null}
       <DetailRow label={t('bookings.payment.deposit')} value={money(booking.paidAmount, locale)} />
-      {booking.refundAmount ? (
+      {BigInt(booking.securityDeposit) > 0n ? (
+        <DetailRow
+          label={t('bookings.payment.securityDeposit')}
+          value={money(booking.securityDeposit, locale)}
+        />
+      ) : null}
+      {refundAmount ? (
         <DetailRow
           label={t('bookings.refund.fee')}
-          value={money(String(BigInt(booking.paidAmount) - BigInt(booking.refundAmount)), locale)}
+          value={money(
+            String(
+              BigInt(booking.paidAmount) > serviceRefundAmount
+                ? BigInt(booking.paidAmount) - serviceRefundAmount
+                : 0n,
+            ),
+            locale,
+          )}
         />
       ) : null}
       <DetailRow
         label={t('bookings.refund.amount')}
-        value={money(booking.refundAmount ?? '0', locale)}
+        value={money(refundAmount ?? '0', locale)}
       />
-      <DetailRow label={t('bookings.refund.status')} value={t('bookings.refund.pending')} strong />
+      <DetailRow label={t('bookings.refund.status')} value={refundStatus} strong />
     </DetailSection>
   );
+}
+
+function PostServiceRefundSummary({
+  settlement,
+  locale,
+}: {
+  settlement: CustomerBookingSettlementResponse;
+  locale: Locale;
+}) {
+  const { t } = useTranslation(NsI18n.Account);
+  return (
+    <DetailSection title={t('bookings.refund.serviceTitle')}>
+      <DetailRow
+        label={t('bookings.refund.amount')}
+        value={money(settlement.refundedAmount, locale)}
+      />
+      <DetailRow
+        label={t('bookings.refund.status')}
+        value={
+          settlement.status === 'refund_pending'
+            ? t('bookings.refund.pending')
+            : t('bookings.refund.completed')
+        }
+        strong
+      />
+      <p className="mt-4 text-xs text-muted-foreground">
+        {t('bookings.refund.serviceNote')}
+      </p>
+    </DetailSection>
+  );
+}
+
+function maxMoney(value: bigint): bigint {
+  return value > 0n ? value : 0n;
 }
 
 function NoShowSummary({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
@@ -305,6 +405,12 @@ function NoShowSummary({ booking, locale }: { booking: AccountBookingViewModel; 
       <DetailRow label={t('bookings.payment.deposit')} value={money(booking.paidAmount, locale)} />
       <DetailRow label={t('bookings.noShow.fee')} value={money(booking.paidAmount, locale)} />
       <DetailRow label={t('bookings.refund.amount')} value={money('0', locale)} />
+      {BigInt(booking.securityDeposit) > 0n ? (
+        <DetailRow
+          label={t('bookings.noShow.securityRefund')}
+          value={money(booking.securityDeposit, locale)}
+        />
+      ) : null}
     </DetailSection>
   );
 }

@@ -43,10 +43,19 @@ export class MarkPayoutPaidUseCase {
           message: 'Payout not found',
         });
       if (payout.status === 'paid' || payout.status === 'failed') {
+        if (payout.status === 'paid') return payout;
         throw new BadRequestException({
           statusCode: 400,
           code: 'PAYOUT_SETTLED',
           message: `Payout already ${payout.status}`,
+        });
+      }
+      const claimed = await this.payouts.claimForPayment(tx, id);
+      if (!claimed) {
+        throw new BadRequestException({
+          statusCode: 409,
+          code: 'PAYOUT_IN_PROGRESS',
+          message: 'Payout is already being processed',
         });
       }
 
@@ -64,6 +73,14 @@ export class MarkPayoutPaidUseCase {
         reference: input.reference,
         evidenceKey: input.evidenceKey,
       });
+      if (!updated) {
+        throw new BadRequestException({
+          statusCode: 409,
+          code: 'PAYOUT_STATE_CHANGED',
+          message: 'Payout state changed concurrently',
+        });
+      }
+      await this.payouts.markAllocationsPaid(tx, id);
       await this.audit.write(tx, {
         tenantId,
         actorUserId: actorId,

@@ -18,7 +18,11 @@ export class AesGcmCryptoService implements CryptoPort {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key(), iv);
     const enc = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-    return [iv.toString('base64'), cipher.getAuthTag().toString('base64'), enc.toString('base64')].join('.');
+    return [
+      iv.toString('base64'),
+      cipher.getAuthTag().toString('base64'),
+      enc.toString('base64'),
+    ].join('.');
   }
 
   decrypt(ciphertext: string): string {
@@ -26,6 +30,8 @@ export class AesGcmCryptoService implements CryptoPort {
     if (!ivB || !tagB || !encB) throw new Error('Malformed ciphertext');
     const decipher = createDecipheriv('aes-256-gcm', this.key(), Buffer.from(ivB, 'base64'));
     decipher.setAuthTag(Buffer.from(tagB, 'base64'));
-    return Buffer.concat([decipher.update(Buffer.from(encB, 'base64')), decipher.final()]).toString('utf8');
+    return Buffer.concat([decipher.update(Buffer.from(encB, 'base64')), decipher.final()]).toString(
+      'utf8',
+    );
   }
 }

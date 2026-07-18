@@ -62,7 +62,10 @@ const PHONE_REVEALED_STATUSES = new Set(['confirmed', 'completed', 'no_show']);
  * reach the guest (see `PHONE_REVEALED_STATUSES`). Masking happens HERE,
  * server-side, so the real number is never serialised into a partner payload.
  */
-export function toPartnerCustomer(c: BookingCustomerRecord, status: string): PartnerBookingCustomer {
+export function toPartnerCustomer(
+  c: BookingCustomerRecord,
+  status: string,
+): PartnerBookingCustomer {
   const revealed = PHONE_REVEALED_STATUSES.has(status);
   return {
     fullName: c.fullName,
@@ -74,7 +77,7 @@ export function toPartnerCustomer(c: BookingCustomerRecord, status: string): Par
 // ── Shared, audience-agnostic fields ─────────────────────────────────────────
 
 /** Coerce the `additional_charges` jsonb array to the wire shape, dropping malformed rows. */
-function toAdditionalCharges(raw: unknown): AdditionalCharge[] {
+export function toAdditionalCharges(raw: unknown): AdditionalCharge[] {
   if (!Array.isArray(raw)) return [];
   const charges: AdditionalCharge[] = [];
   for (const item of raw) {
@@ -131,6 +134,8 @@ function toCore(b: BookingRecord) {
     finalAmount: b.finalAmount.toString(),
     depositAmount: b.depositAmount.toString(),
     paidAmount: b.paidAmount.toString(),
+    refundDueAmount: b.refundDueAmount?.toString() ?? null,
+    refundPercent: b.refundPercent,
     securityDeposit: b.securityDeposit.toString(),
     pickedUpAt: b.pickedUpAt?.toISOString() ?? null,
     returnedAt: b.returnedAt?.toISOString() ?? null,
@@ -221,7 +226,9 @@ export function toReturnResponse(r: ReturnResult): ReturnBookingResponse {
 }
 
 /** Transition audit trail (§8.2). Audience-agnostic: no contact details, by construction. */
-export function toStatusHistoryResponse(h: BookingStatusHistoryRecord): BookingStatusHistoryResponse {
+export function toStatusHistoryResponse(
+  h: BookingStatusHistoryRecord,
+): BookingStatusHistoryResponse {
   return {
     id: h.id,
     fromStatus: h.fromStatus,

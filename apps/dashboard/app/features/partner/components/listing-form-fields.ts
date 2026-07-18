@@ -13,8 +13,15 @@ export function listingFormFields(opts: {
   cancellationPolicies: CancellationPolicySummary[];
   isEdit: boolean;
   lockedListingTypeId?: string;
+  minimumDepositPercent?: number | null;
 }): FieldConfig<CreateListingInput>[] {
-  const { listingTypes, cancellationPolicies, isEdit, lockedListingTypeId } = opts;
+  const {
+    listingTypes,
+    cancellationPolicies,
+    isEdit,
+    lockedListingTypeId,
+    minimumDepositPercent,
+  } = opts;
   return [
     {
       name: 'listingTypeId',
@@ -52,7 +59,18 @@ export function listingFormFields(opts: {
       description: 'Để trống nếu không giới hạn.',
       colSpan: 1,
     },
-    { name: 'depositPercent', type: 'number', label: 'Đặt cọc (%)', colSpan: 1 },
+    {
+      name: 'depositPercent',
+      type: 'number',
+      label: 'Đặt cọc (%)',
+      description:
+        minimumDepositPercent === null || minimumDepositPercent === undefined
+          ? 'Booking vẫn được kiểm tra theo số commission thực tế trước khi thanh toán.'
+          : `Tối thiểu ${minimumDepositPercent}% theo commission Tenant đang áp dụng.`,
+      min: minimumDepositPercent ?? 0,
+      max: 100,
+      colSpan: 1,
+    },
     {
       name: 'balanceDue',
       type: 'select',

@@ -23,7 +23,12 @@ export function applyPartnerTransition(
   bookingId: string,
   to: BookingStatus,
   eventType: string,
-  opts: { expiresAt?: Date; reason?: string; guard?: (booking: BookingRecord) => void },
+  opts: {
+    expiresAt?: Date;
+    reason?: string;
+    guard?: (booking: BookingRecord) => void;
+    eventPayload?: (booking: BookingRecord) => Record<string, unknown>;
+  },
 ): Promise<BookingRecord> {
   return deps.tenantDb.forTenant(ctx.tenantId, async (tx) => {
     const booking = await loadOwnedBooking(deps.bookings, tx, bookingId, ctx.partnerId);
@@ -38,7 +43,15 @@ export function applyPartnerTransition(
       reason: opts.reason ?? null,
       expiresAt: opts.expiresAt,
     });
-    await deps.outbox.emit(tx, { tenantId: ctx.tenantId, eventType, payload: { bookingId, code: updated.code } });
+    await deps.outbox.emit(tx, {
+      tenantId: ctx.tenantId,
+      eventType,
+      payload: {
+        ...opts.eventPayload?.(updated),
+        bookingId,
+        code: updated.code,
+      },
+    });
     return updated;
   });
 }

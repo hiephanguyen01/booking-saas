@@ -3,6 +3,7 @@ import {
   createListingInputSchema,
   type CancellationPolicySummary,
   type ListingTypeResponse,
+  type DepositRequirementResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -40,12 +41,20 @@ export async function loader({ request }: Route.LoaderArgs) {
   ) {
     return redirect(`/partner/listing-groups/new?type=${selectedType.id}`);
   }
+  const requirement = selectedType
+    ? await apiGet<DepositRequirementResponse>('/partner/listings/deposit-requirement', auth, {
+        query: { listingTypeId: selectedType.id },
+      })
+    : null;
   return {
     listingTypes,
     selectedType,
     mode,
     cancellationPolicies: policies.data ?? [],
     partnerId: membership.partnerId,
+    minimumDepositPercent: requirement?.ok
+      ? (requirement.data?.minimumDepositPercent ?? null)
+      : null,
   };
 }
 
@@ -150,6 +159,7 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
         partnerId={loaderData.partnerId}
         lockedListingTypeId={loaderData.selectedType.id}
         cancellationPolicies={loaderData.cancellationPolicies}
+        minimumDepositPercent={loaderData.minimumDepositPercent}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />

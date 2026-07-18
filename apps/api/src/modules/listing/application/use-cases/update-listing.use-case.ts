@@ -24,6 +24,11 @@ import {
   type IListingGroupRepository,
 } from '../../domain/ports/listing-group-repository.port';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
+import {
+  PARTNER_REPOSITORY,
+  type IPartnerRepository,
+} from '../../../partner/domain/ports/partner-repository.port';
+import { AssertListingDepositCoverageUseCase } from './assert-listing-deposit-coverage.use-case';
 
 @Injectable()
 export class UpdateListingUseCase {
@@ -31,7 +36,9 @@ export class UpdateListingUseCase {
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
     @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
+    @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
     private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
+    private readonly assertDepositCoverage: AssertListingDepositCoverageUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -70,6 +77,27 @@ export class UpdateListingUseCase {
           code: 'LISTING_NOT_OWNED',
           message: 'This listing belongs to another partner',
         });
+      }
+      if (input.depositPercent !== undefined || input.categoryId !== undefined) {
+        const partner = await this.partners.findById(tx, existing.partnerId);
+        if (!partner) {
+          throw new NotFoundException({
+            statusCode: 404,
+            code: 'PARTNER_NOT_FOUND',
+            message: 'Partner not found',
+          });
+        }
+        await this.assertDepositCoverage.execute(
+          tx,
+          {
+            partnerId: existing.partnerId,
+            listingTypeId: existing.listingTypeId,
+            categoryId:
+              input.categoryId === undefined ? existing.categoryId : (input.categoryId ?? null),
+            isHouse: partner.isHouse,
+          },
+          input.depositPercent ?? existing.depositPercent,
+        );
       }
 
       const effectiveGroupId = input.groupId === undefined ? existing.groupId : input.groupId;

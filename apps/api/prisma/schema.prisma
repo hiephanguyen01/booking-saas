@@ -193,6 +193,7 @@ enum BalanceDue {
 }
 
 enum PaymentGateway {
+  sepay
   payos
   momo
   vnpay
@@ -294,6 +295,51 @@ enum PayoutStatus {
   failed
 
   @@map("payout_status")
+}
+
+/// Operational custody/release lifecycle for money collected by the tenant.
+enum SettlementStatus {
+  held
+  dispute_window
+  disputed
+  refund_pending
+  released
+  refunded
+
+  @@map("settlement_status")
+}
+
+enum SettlementKind {
+  service_completed
+  customer_no_show
+  cancellation_fee
+
+  @@map("settlement_kind")
+}
+
+enum SettlementDisputeStatus {
+  open
+  accepted
+  rejected
+  resolved
+
+  @@map("settlement_dispute_status")
+}
+
+enum SettlementDisputeResolution {
+  release
+  full_refund
+  partial_refund
+
+  @@map("settlement_dispute_resolution")
+}
+
+enum PayoutAllocationStatus {
+  reserved
+  paid
+  released
+
+  @@map("payout_allocation_status")
 }
 
 enum AffiliateStatus {
@@ -536,43 +582,46 @@ model AdministrativeWard {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Tenant {
-  id              String       @id @default(uuid(7)) @db.Uuid
-  name            String
-  slug            String       @unique
-  status          TenantStatus @default(active)
-  defaultTimezone String       @default("Asia/Ho_Chi_Minh") @map("default_timezone")
-  defaultLocale   String       @default("vi") @map("default_locale")
+  id                          String       @id @default(uuid(7)) @db.Uuid
+  name                        String
+  slug                        String       @unique
+  status                      TenantStatus @default(active)
+  defaultTimezone             String       @default("Asia/Ho_Chi_Minh") @map("default_timezone")
+  defaultLocale               String       @default("vi") @map("default_locale")
   /// Storefront base template only (§16.1); the real menu comes from listing_types.
-  vertical        String       @default("studio")
-  themeConfig     Json         @default("{}") @map("theme_config")
-  settings        Json         @default("{}")
+  vertical                    String       @default("studio")
+  themeConfig                 Json         @default("{}") @map("theme_config")
+  settings                    Json         @default("{}")
   /// Tenant-level fallback cancellation policy (§11.3) applied when a listing and its
   /// partner set none. Points at a tenant-level policy (partner_id null).
-  defaultCancellationPolicyId String? @map("default_cancellation_policy_id") @db.Uuid
-  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  defaultCancellationPolicyId String?      @map("default_cancellation_policy_id") @db.Uuid
+  createdAt                   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  domains              TenantDomain[]
-  subscriptions        TenantSubscription[]
-  roles                Role[]
-  roleAssignments      RoleAssignment[]
-  agreementAcceptances AgreementAcceptance[]
-  partners             Partner[]
-  listingTypes         ListingType[]
-  listingGroups        ListingGroup[]
-  resources            Resource[]
-  listings             Listing[]
-  categories           Category[]
-  cancellationPolicies CancellationPolicy[] @relation("TenantPolicies")
-  defaultCancellationPolicy CancellationPolicy? @relation("TenantDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
-  bookings             Booking[]
-  payments             Payment[]
-  gatewayConfigs       TenantGatewayConfig[]
-  commissionRules      CommissionRule[]
-  ledgerAccounts       LedgerAccount[]
-  payouts              Payout[]
-  promotions           Promotion[]
-  affiliates           Affiliate[]
+  domains                   TenantDomain[]
+  subscriptions             TenantSubscription[]
+  roles                     Role[]
+  roleAssignments           RoleAssignment[]
+  agreementAcceptances      AgreementAcceptance[]
+  partners                  Partner[]
+  listingTypes              ListingType[]
+  listingGroups             ListingGroup[]
+  resources                 Resource[]
+  listings                  Listing[]
+  categories                Category[]
+  cancellationPolicies      CancellationPolicy[]  @relation("TenantPolicies")
+  defaultCancellationPolicy CancellationPolicy?   @relation("TenantDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
+  bookings                  Booking[]
+  payments                  Payment[]
+  gatewayConfigs            TenantGatewayConfig[]
+  commissionRules           CommissionRule[]
+  ledgerAccounts            LedgerAccount[]
+  payouts                   Payout[]
+  bookingSettlements        BookingSettlement[]
+  settlementDisputes        SettlementDispute[]
+  payoutAllocations         PayoutAllocation[]
+  promotions                Promotion[]
+  affiliates                Affiliate[]
 
   @@map("tenants")
 }
@@ -651,46 +700,47 @@ model TenantSubscription {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Partner {
-  id                 String                    @id @default(uuid(7)) @db.Uuid
-  tenantId           String                    @map("tenant_id") @db.Uuid
-  name               String
-  slug               String
-  description        String?
-  partnerType        PartnerType               @default(individual) @map("partner_type")
+  id                          String                    @id @default(uuid(7)) @db.Uuid
+  tenantId                    String                    @map("tenant_id") @db.Uuid
+  name                        String
+  slug                        String
+  description                 String?
+  partnerType                 PartnerType               @default(individual) @map("partner_type")
   /// Tenant-owned inventory: no partner payable/payout, platform fee on GMV (§7.3).
-  isHouse            Boolean                   @default(false) @map("is_house")
-  status             PartnerStatus             @default(pending)
+  isHouse                     Boolean                   @default(false) @map("is_house")
+  status                      PartnerStatus             @default(pending)
   /// tax ID / business registration for a `company` partner.
-  businessInfo       Json                      @default("{}") @map("business_info")
-  contactInfo        Json                      @default("{}") @map("contact_info")
+  businessInfo                Json                      @default("{}") @map("business_info")
+  contactInfo                 Json                      @default("{}") @map("contact_info")
   /// bank account for receiving payouts.
-  payoutInfo         Json                      @default("{}") @map("payout_info")
+  payoutInfo                  Json                      @default("{}") @map("payout_info")
   /// national ID / DOB verification for people-booking listing types (§7.3).
-  verifiedAt         DateTime?                 @map("verified_at") @db.Timestamptz(6)
+  verifiedAt                  DateTime?                 @map("verified_at") @db.Timestamptz(6)
   /// manual-review state; `verified` (with verifiedAt set) unlocks people-booking types.
-  verificationStatus PartnerVerificationStatus @default(unsubmitted) @map("verification_status")
+  verificationStatus          PartnerVerificationStatus @default(unsubmitted) @map("verification_status")
   /// date of birth for the under-18 block on people-booking types (§7.3).
-  dateOfBirth        DateTime?                 @map("date_of_birth") @db.Date
+  dateOfBirth                 DateTime?                 @map("date_of_birth") @db.Date
   /// { documentType, documentNumber, holderName, reviewedBy, reviewNote } — manual eKYC (Phase 3 automates).
-  identityInfo       Json                      @default("{}") @map("identity_info")
+  identityInfo                Json                      @default("{}") @map("identity_info")
   /// Partner-level fallback cancellation policy (§11.3) applied when a listing sets none.
-  defaultCancellationPolicyId String?          @map("default_cancellation_policy_id") @db.Uuid
-  createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  defaultCancellationPolicyId String?                   @map("default_cancellation_policy_id") @db.Uuid
+  createdAt                   DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  members              PartnerMember[]
-  listingGroups        ListingGroup[]
-  resources            Resource[]
-  listings             Listing[]
-  bookings             Booking[]
-  commissionRules      CommissionRule[]
-  staff                Staff[]
-  promotions           Promotion[]           @relation("PartnerCreatedPromotions")
-  fundedPromotions     Promotion[]           @relation("PartnerFundedPromotions")
-  agreementAcceptances AgreementAcceptance[]
-  cancellationPolicies CancellationPolicy[]  @relation("PartnerPolicies")
-  defaultCancellationPolicy CancellationPolicy? @relation("PartnerDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
+  tenant                    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members                   PartnerMember[]
+  listingGroups             ListingGroup[]
+  resources                 Resource[]
+  listings                  Listing[]
+  bookings                  Booking[]
+  commissionRules           CommissionRule[]
+  bookingSettlements        BookingSettlement[]
+  staff                     Staff[]
+  promotions                Promotion[]           @relation("PartnerCreatedPromotions")
+  fundedPromotions          Promotion[]           @relation("PartnerFundedPromotions")
+  agreementAcceptances      AgreementAcceptance[]
+  cancellationPolicies      CancellationPolicy[]  @relation("PartnerPolicies")
+  defaultCancellationPolicy CancellationPolicy?   @relation("PartnerDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -959,9 +1009,9 @@ model AvailabilityException {
 
   resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
+  @@unique([resourceId, date])
   @@index([tenantId])
   @@index([resourceId, date])
-  @@unique([resourceId, date])
   @@map("availability_exceptions")
 }
 
@@ -1005,6 +1055,9 @@ model Booking {
   finalAmount                BigInt                    @map("final_amount")
   depositAmount              BigInt                    @map("deposit_amount")
   paidAmount                 BigInt                    @default(0) @map("paid_amount")
+  /// Durable refund intent used by reconciliation if an outbox delivery is lost.
+  refundDueAmount            BigInt?                   @map("refund_due_amount")
+  refundPercent              Int?                      @map("refund_percent")
   promotionId                String?                   @map("promotion_id") @db.Uuid
   promoCode                  String?                   @map("promo_code")
   affiliateId                String?                   @map("affiliate_id") @db.Uuid
@@ -1037,6 +1090,8 @@ model Booking {
   promoRedemption     PromoRedemption?
   affiliateCommission AffiliateCommission?
   ledgerEntries       LedgerEntry[]
+  settlement          BookingSettlement?
+  settlementDisputes  SettlementDispute[]
 
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId])
@@ -1111,26 +1166,31 @@ model CancellationPolicy {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Payment {
-  id             String         @id @default(uuid(7)) @db.Uuid
-  tenantId       String         @map("tenant_id") @db.Uuid
-  bookingId      String         @map("booking_id") @db.Uuid
-  gateway        PaymentGateway
-  kind           PaymentKind
-  amount         BigInt
-  status         PaymentStatus  @default(pending)
-  gatewayTxnId   String?        @map("gateway_txn_id")
-  gatewayPayload Json?          @map("gateway_payload")
-  idempotencyKey String         @unique @map("idempotency_key")
-  paidAt         DateTime?      @map("paid_at") @db.Timestamptz(6)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              String         @id @default(uuid(7)) @db.Uuid
+  tenantId        String         @map("tenant_id") @db.Uuid
+  bookingId       String         @map("booking_id") @db.Uuid
+  gateway         PaymentGateway
+  kind            PaymentKind
+  amount          BigInt
+  status          PaymentStatus  @default(pending)
+  gatewayOrderRef String?        @map("gateway_order_ref")
+  gatewayOrderId  String?        @map("gateway_order_id")
+  gatewayTxnId    String?        @map("gateway_txn_id")
+  paymentMethod   String?        @map("payment_method")
+  gatewayPayload  Json?          @map("gateway_payload")
+  idempotencyKey  String         @unique @map("idempotency_key")
+  paidAt          DateTime?      @map("paid_at") @db.Timestamptz(6)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking       Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   refunds       Refund[]
   ledgerEntries LedgerEntry[]
+  settlement    BookingSettlement?
 
   @@unique([gateway, gatewayTxnId])
+  @@unique([gateway, gatewayOrderRef])
   @@index([tenantId])
   @@index([bookingId])
   @@map("payments")
@@ -1149,8 +1209,9 @@ model Refund {
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payment    Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  booking    Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  settlement BookingSettlement?
 
   @@index([tenantId])
   @@index([paymentId])
@@ -1229,18 +1290,20 @@ model LedgerAccount {
 /// Double-entry, immutable (append-only — enforced by a trigger in the SQL migration).
 /// A business transaction groups its lines by journal_id; sum(debit) = sum(credit).
 model LedgerEntry {
-  id        String          @id @default(uuid(7)) @db.Uuid
-  tenantId  String          @map("tenant_id") @db.Uuid
-  journalId String          @map("journal_id") @db.Uuid
-  accountId String          @map("account_id") @db.Uuid
-  entryType LedgerEntryType @map("entry_type")
-  debit     BigInt          @default(0)
-  credit    BigInt          @default(0)
-  bookingId String?         @map("booking_id") @db.Uuid
-  paymentId String?         @map("payment_id") @db.Uuid
-  payoutId  String?         @map("payout_id") @db.Uuid
-  memo      String?
-  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String          @id @default(uuid(7)) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  journalId   String          @map("journal_id") @db.Uuid
+  accountId   String          @map("account_id") @db.Uuid
+  entryType   LedgerEntryType @map("entry_type")
+  debit       BigInt          @default(0)
+  credit      BigInt          @default(0)
+  bookingId   String?         @map("booking_id") @db.Uuid
+  paymentId   String?         @map("payment_id") @db.Uuid
+  payoutId    String?         @map("payout_id") @db.Uuid
+  memo        String?
+  /// Explicit payout maturity; do not infer eligibility from created_at.
+  availableAt DateTime        @default(now()) @map("available_at") @db.Timestamptz(6)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   account LedgerAccount @relation(fields: [accountId], references: [id])
   booking Booking?      @relation(fields: [bookingId], references: [id])
@@ -1251,6 +1314,7 @@ model LedgerEntry {
   @@index([journalId])
   @@index([accountId])
   @@index([bookingId])
+  @@index([accountId, availableAt])
   @@map("ledger_entries")
 }
 
@@ -1270,12 +1334,106 @@ model Payout {
   createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ledgerEntries LedgerEntry[]
+  allocations   PayoutAllocation[]
 
   @@index([tenantId])
   @@index([payeeType, payeeId])
   @@map("payouts")
+}
+
+/// Tenant-custodied customer funds. Provider success creates `held`; service
+/// completion opens the dispute window; only release creates earnings/payables.
+model BookingSettlement {
+  id                    String           @id @default(uuid(7)) @db.Uuid
+  tenantId              String           @map("tenant_id") @db.Uuid
+  bookingId             String           @unique @map("booking_id") @db.Uuid
+  paymentId             String           @unique @map("payment_id") @db.Uuid
+  partnerId             String           @map("partner_id") @db.Uuid
+  status                SettlementStatus @default(held)
+  kind                  SettlementKind   @default(service_completed)
+  onlineHeldAmount      BigInt           @map("online_held_amount")
+  onsiteCollectedAmount BigInt           @default(0) @map("onsite_collected_amount")
+  securityDepositHeld   BigInt           @default(0) @map("security_deposit_held")
+  tenantCommissionGross BigInt           @default(0) @map("tenant_commission_gross")
+  tenantNetEarning      BigInt           @default(0) @map("tenant_net_earning")
+  partnerGrossEarning   BigInt           @default(0) @map("partner_gross_earning")
+  partnerPayable        BigInt           @default(0) @map("partner_payable")
+  platformFee           BigInt           @default(0) @map("platform_fee")
+  affiliateCommission   BigInt           @default(0) @map("affiliate_commission")
+  refundedAmount        BigInt           @default(0) @map("refunded_amount")
+  retainedAmount        BigInt           @default(0) @map("retained_amount")
+  refundId              String?          @unique @map("refund_id") @db.Uuid
+  completedAt           DateTime?        @map("completed_at") @db.Timestamptz(6)
+  disputeUntil          DateTime?        @map("dispute_until") @db.Timestamptz(6)
+  releasedAt            DateTime?        @map("released_at") @db.Timestamptz(6)
+  releaseJournalId      String?          @map("release_journal_id") @db.Uuid
+  createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking           Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payment           Payment            @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  partner           Partner            @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  refund            Refund?            @relation(fields: [refundId], references: [id], onDelete: SetNull)
+  dispute           SettlementDispute?
+  payoutAllocations PayoutAllocation[]
+
+  @@index([tenantId])
+  @@index([partnerId, status])
+  @@index([status, disputeUntil])
+  @@map("booking_settlements")
+}
+
+model SettlementDispute {
+  id                 String                       @id @default(uuid(7)) @db.Uuid
+  tenantId           String                       @map("tenant_id") @db.Uuid
+  settlementId       String                       @unique @map("settlement_id") @db.Uuid
+  bookingId          String                       @map("booking_id") @db.Uuid
+  openedByUserId     String                       @map("opened_by_user_id") @db.Uuid
+  openedByRole       String                       @map("opened_by_role")
+  reason             String
+  evidence           Json                         @default("[]")
+  partnerResponse    String?                      @map("partner_response")
+  partnerRespondedBy String?                      @map("partner_responded_by") @db.Uuid
+  partnerRespondedAt DateTime?                    @map("partner_responded_at") @db.Timestamptz(6)
+  status             SettlementDisputeStatus      @default(open)
+  resolution         SettlementDisputeResolution?
+  resolutionNote     String?                      @map("resolution_note")
+  refundAmount       BigInt                       @default(0) @map("refund_amount")
+  resolvedBy         String?                      @map("resolved_by") @db.Uuid
+  resolvedAt         DateTime?                    @map("resolved_at") @db.Timestamptz(6)
+  createdAt          DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  settlement BookingSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  booking    Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, createdAt])
+  @@index([bookingId])
+  @@map("settlement_disputes")
+}
+
+model PayoutAllocation {
+  id           String                 @id @default(uuid(7)) @db.Uuid
+  tenantId     String                 @map("tenant_id") @db.Uuid
+  payoutId     String                 @map("payout_id") @db.Uuid
+  settlementId String                 @map("settlement_id") @db.Uuid
+  amount       BigInt
+  status       PayoutAllocationStatus @default(reserved)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payout     Payout            @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  settlement BookingSettlement @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, settlementId])
+  @@index([tenantId])
+  @@index([settlementId, status])
+  @@map("payout_allocations")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

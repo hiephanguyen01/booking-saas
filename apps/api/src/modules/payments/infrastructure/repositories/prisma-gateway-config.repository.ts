@@ -27,11 +27,43 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
     return c ? this.toRecord(c) : null;
   }
 
-  async upsert(tx: PrismaTx, tenantId: string, data: UpsertGatewayConfigData): Promise<GatewayConfigRecord> {
+  async findByGateway(
+    tx: PrismaTx,
+    tenantId: string,
+    gateway: GatewayKey,
+  ): Promise<GatewayConfigRecord | null> {
+    const c = await tx.tenantGatewayConfig.findFirst({
+      where: { tenantId, gateway },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return c ? this.toRecord(c) : null;
+  }
+
+  async upsert(
+    tx: PrismaTx,
+    tenantId: string,
+    data: UpsertGatewayConfigData,
+  ): Promise<GatewayConfigRecord> {
     const credentials = { enc: this.crypto.encrypt(JSON.stringify(data.credentials)) };
+    await tx.tenantGatewayConfig.updateMany({
+      where: { tenantId, isActive: true },
+      data: { isActive: false },
+    });
     const c = await tx.tenantGatewayConfig.upsert({
-      where: { tenantId_gateway_environment: { tenantId, gateway: data.gateway, environment: data.environment } },
-      create: { tenantId, gateway: data.gateway, environment: data.environment, credentials, isActive: true },
+      where: {
+        tenantId_gateway_environment: {
+          tenantId,
+          gateway: data.gateway,
+          environment: data.environment,
+        },
+      },
+      create: {
+        tenantId,
+        gateway: data.gateway,
+        environment: data.environment,
+        credentials,
+        isActive: true,
+      },
       update: { credentials, isActive: true },
     });
     return this.toRecord(c);

@@ -24,6 +24,8 @@ export const dashboardPaths = {
     tenantNew: '/admin/tenants/new',
     tenant: (id: string) => `/admin/tenants/${segment(id)}`,
     plans: '/admin/plans',
+    transactions: '/admin/transactions',
+    settlements: '/admin/settlements',
   },
   tenant: {
     home: tenantPath(),
@@ -36,6 +38,9 @@ export const dashboardPaths = {
     booking: (bookingId: string) => tenantPath(`/bookings/${segment(bookingId)}`),
     finance: tenantPath('/finance'),
     ledger: tenantPath('/finance/ledger'),
+    settlements: tenantPath('/finance/settlements'),
+    disputes: tenantPath('/finance/disputes'),
+    transactions: tenantPath('/finance/transactions'),
     promotions: tenantPath('/promotions'),
     promotion: (promotionId: string) => tenantPath(`/promotions/${segment(promotionId)}`),
     affiliates: tenantPath('/affiliates'),

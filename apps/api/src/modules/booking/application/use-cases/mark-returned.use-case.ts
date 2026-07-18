@@ -34,7 +34,7 @@ export class MarkReturnedUseCase {
       if (booking.bookingMode !== 'inventory') {
         throw new BadRequestException({ statusCode: 400, code: 'NOT_INVENTORY', message: 'Return applies to inventory rentals only' });
       }
-      assertTransition(booking.status, 'completed', 'system'); // partner-triggered system completion
+      assertTransition(booking.status, 'completed', 'partner');
 
       const returnedAt = utcNow();
       const inventory = ((await this.listings.findById(tx, booking.listingId))?.modeConfig as ModeConfig | undefined)?.inventory;
@@ -53,7 +53,7 @@ export class MarkReturnedUseCase {
         id: bookingId,
         from: patched.status,
         to: 'completed',
-        actor: 'system',
+        actor: 'partner',
         actorId: ctx.actorId,
         reason: 'inventory returned',
       });

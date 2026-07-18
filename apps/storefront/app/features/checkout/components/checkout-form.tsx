@@ -146,8 +146,8 @@ export function CheckoutForm({
 }
 
 /**
- * PayOS is the only gateway the booking action can reach today, so the group is
- * presentational: it submits no field, because nothing server-side reads one.
+ * SePay is selected by the tenant gateway configuration. The group is
+ * presentational for now because a tenant exposes one active gateway.
  * Wire a `name` here only together with an action that honours the choice.
  */
 function PaymentMethods({ showUnavailable }: { showUnavailable: boolean }) {
@@ -158,11 +158,11 @@ function PaymentMethods({ showUnavailable }: { showUnavailable: boolean }) {
         {t('payment.method')}
       </legend>
       <RadioGroup
-        defaultValue="payos"
+        defaultValue="sepay"
         className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
         aria-label={t('payment.method')}
       >
-        <PaymentMethod value="payos" icon={QrCode} label={t('payment.payos')} />
+        <PaymentMethod value="sepay" icon={QrCode} label={t('payment.sepay')} />
         {showUnavailable ? (
           <>
             <PaymentMethod

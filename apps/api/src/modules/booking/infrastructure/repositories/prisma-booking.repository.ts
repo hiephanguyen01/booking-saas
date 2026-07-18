@@ -41,6 +41,8 @@ interface Row {
   finalAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  refundDueAmount: bigint | null;
+  refundPercent: number | null;
   securityDeposit: bigint;
   pickedUpAt: Date | null;
   returnedAt: Date | null;
@@ -85,6 +87,7 @@ const SELECT = Prisma.sql`
          b.guest_count AS "guestCount", b.quantity,
          b.total_amount AS "totalAmount", b.discount_amount AS "discountAmount",
          b.final_amount AS "finalAmount", b.deposit_amount AS "depositAmount", b.paid_amount AS "paidAmount",
+         b.refund_due_amount AS "refundDueAmount", b.refund_percent AS "refundPercent",
          b.security_deposit AS "securityDeposit", b.picked_up_at AS "pickedUpAt",
          b.returned_at AS "returnedAt", b.damage_amount AS "damageAmount",
          b.additional_charges AS "additionalCharges",
@@ -125,8 +128,7 @@ function isExclusionViolation(err: unknown): boolean {
 function isIdempotencyViolation(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return (
-    (msg.includes('23505') || msg.includes('duplicate key')) &&
-    msg.includes('idempotency_key')
+    (msg.includes('23505') || msg.includes('duplicate key')) && msg.includes('idempotency_key')
   );
 }
 
@@ -178,6 +180,10 @@ export class PrismaBookingRepository implements IBookingRepository {
     ];
     if (params.expiresAt !== undefined) sets.push(Prisma.sql`expires_at = ${params.expiresAt}`);
     if (params.paidAmount !== undefined) sets.push(Prisma.sql`paid_amount = ${params.paidAmount}`);
+    if (params.refundDueAmount !== undefined)
+      sets.push(Prisma.sql`refund_due_amount = ${params.refundDueAmount}`);
+    if (params.refundPercent !== undefined)
+      sets.push(Prisma.sql`refund_percent = ${params.refundPercent}`);
 
     let affected: number;
     try {
@@ -257,6 +263,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         discountAmount: bigint;
         depositAmount: bigint;
         paidAmount: bigint;
+        additionalCharges: unknown;
         securityDeposit: bigint;
         pickedUpAt: Date | null;
         returnedAt: Date | null;
@@ -286,6 +293,7 @@ export class PrismaBookingRepository implements IBookingRepository {
              b.discount_amount AS "discountAmount",
              b.deposit_amount AS "depositAmount",
              b.paid_amount AS "paidAmount",
+             b.additional_charges AS "additionalCharges",
              b.security_deposit AS "securityDeposit",
              b.picked_up_at AS "pickedUpAt",
              b.returned_at AS "returnedAt",
@@ -376,7 +384,14 @@ export class PrismaBookingRepository implements IBookingRepository {
 
   async partnerBookingStats(tx: PrismaTx): Promise<PartnerBookingStat[]> {
     const rows = await tx.$queryRaw<
-      { partnerId: string; total: number; cancelled: number; noShow: number; completed: number; confirmed: number }[]
+      {
+        partnerId: string;
+        total: number;
+        cancelled: number;
+        noShow: number;
+        completed: number;
+        confirmed: number;
+      }[]
     >(Prisma.sql`
       SELECT partner_id AS "partnerId",
              COUNT(*)::int AS "total",
@@ -390,13 +405,25 @@ export class PrismaBookingRepository implements IBookingRepository {
     return rows;
   }
 
-  async lockAndCountInventory(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number> {
+  async lockAndCountInventory(
+    tx: PrismaTx,
+    listingId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
     // Serialise concurrent inventory bookings for this listing until commit (§9.4).
-    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('inv:' || ${listingId}))`);
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('inv:' || ${listingId}))`,
+    );
     return this.countInventoryUsage(tx, listingId, from, to);
   }
 
-  async countInventoryUsage(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number> {
+  async countInventoryUsage(
+    tx: PrismaTx,
+    listingId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
     const rows = await tx.$queryRaw<{ used: number }[]>(Prisma.sql`
       SELECT COALESCE(SUM(quantity), 0)::int AS "used"
       FROM bookings
@@ -408,15 +435,22 @@ export class PrismaBookingRepository implements IBookingRepository {
     return rows[0]?.used ?? 0;
   }
 
-  async patchFulfillment(tx: PrismaTx, id: string, patch: FulfillmentPatch): Promise<BookingRecord> {
+  async patchFulfillment(
+    tx: PrismaTx,
+    id: string,
+    patch: FulfillmentPatch,
+  ): Promise<BookingRecord> {
     const sets = [Prisma.sql`updated_at = now()`];
     if (patch.pickedUpAt !== undefined) sets.push(Prisma.sql`picked_up_at = ${patch.pickedUpAt}`);
     if (patch.returnedAt !== undefined) sets.push(Prisma.sql`returned_at = ${patch.returnedAt}`);
-    if (patch.damageAmount !== undefined) sets.push(Prisma.sql`damage_amount = ${patch.damageAmount}`);
+    if (patch.damageAmount !== undefined)
+      sets.push(Prisma.sql`damage_amount = ${patch.damageAmount}`);
     if (patch.additionalCharges !== undefined) {
       sets.push(Prisma.sql`additional_charges = ${JSON.stringify(patch.additionalCharges)}::jsonb`);
     }
-    await tx.$executeRaw(Prisma.sql`UPDATE bookings SET ${Prisma.join(sets)} WHERE id = ${id}::uuid`);
+    await tx.$executeRaw(
+      Prisma.sql`UPDATE bookings SET ${Prisma.join(sets)} WHERE id = ${id}::uuid`,
+    );
     return this.byId(tx, id);
   }
 

@@ -1,0 +1,160 @@
+import { timingSafeEqual } from 'node:crypto';
+import { SePayPgClient } from 'sepay-pg-node';
+import type {
+  CreatePaymentInput,
+  CreatePaymentResult,
+  GatewayKey,
+  PaymentGatewayPort,
+  PaymentStatusResult,
+  RefundResult,
+  WebhookVerification,
+} from '../../domain/ports/payment-gateway.port';
+
+export interface SepayCredentials {
+  merchantId: string;
+  secretKey: string;
+  environment: 'sandbox' | 'production';
+}
+
+interface SepayIpnBody {
+  notification_type?: string;
+  order?: {
+    id?: string;
+    order_id?: string;
+    order_status?: string;
+    order_currency?: string;
+    order_amount?: string;
+    order_invoice_number?: string;
+  };
+  transaction?: {
+    id?: string;
+    payment_method?: string;
+    transaction_id?: string;
+    transaction_status?: string;
+    transaction_amount?: string;
+    transaction_currency?: string;
+  };
+}
+
+function parseBody(rawBody: Buffer): SepayIpnBody | null {
+  try {
+    const value: unknown = JSON.parse(rawBody.toString('utf8'));
+    return value && typeof value === 'object' ? (value as SepayIpnBody) : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseVnd(value: unknown): bigint {
+  if (typeof value !== 'string' && typeof value !== 'number') return 0n;
+  const normalized = String(value).trim();
+  const match = /^(\d+)(?:\.0+)?$/.exec(normalized);
+  return match?.[1] ? BigInt(match[1]) : 0n;
+}
+
+function sameSecret(expected: string, actual: string | undefined): boolean {
+  if (!actual) return false;
+  const left = Buffer.from(expected, 'utf8');
+  const right = Buffer.from(actual, 'utf8');
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+/** Official SePay Payment Gateway adapter. Checkout is a browser form POST; IPN
+ * is authenticated by the tenant merchant's X-Secret-Key. */
+export class SepayGatewayAdapter implements PaymentGatewayPort {
+  readonly key: GatewayKey = 'sepay';
+
+  constructor(private readonly creds: SepayCredentials) {}
+
+  createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
+    if (input.amountVnd <= 0n || input.amountVnd > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error('SePay amount is outside the supported integer range');
+    }
+    // The SDK stores checkout base URLs statically. Construction and both calls
+    // are synchronous, so no other request can interleave before fields/URL are read.
+    const client = new SePayPgClient({
+      env: this.creds.environment,
+      merchant_id: this.creds.merchantId,
+      secret_key: this.creds.secretKey,
+    });
+    const rawFields = client.checkout.initOneTimePaymentFields({
+      operation: 'PURCHASE',
+      payment_method: 'BANK_TRANSFER',
+      order_invoice_number: input.orderCode,
+      order_amount: Number(input.amountVnd),
+      currency: 'VND',
+      order_description: input.description,
+      success_url: input.returnUrl,
+      error_url: input.errorUrl,
+      cancel_url: input.cancelUrl,
+    });
+    const fields = Object.fromEntries(
+      Object.entries(rawFields)
+        .filter((entry): entry is [string, string | number] => entry[1] !== undefined)
+        .map(([name, value]) => [name, String(value)]),
+    );
+    return Promise.resolve({
+      destination: {
+        type: 'form_post',
+        actionUrl: client.checkout.initCheckoutUrl(),
+        fields,
+      },
+      gatewayOrderRef: input.orderCode,
+    });
+  }
+
+  peekReference(rawBody: Buffer): string | null {
+    return parseBody(rawBody)?.order?.order_invoice_number ?? null;
+  }
+
+  verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification {
+    const body = parseBody(rawBody);
+    const reference = body?.order?.order_invoice_number ?? '';
+    const txnId = body?.transaction?.transaction_id ?? body?.transaction?.id ?? reference;
+    const currency = body?.transaction?.transaction_currency ?? body?.order?.order_currency;
+    const approved =
+      body?.notification_type === 'ORDER_PAID' &&
+      body.transaction?.transaction_status === 'APPROVED';
+    return {
+      valid:
+        Boolean(body && reference && txnId && currency === 'VND') &&
+        sameSecret(this.creds.secretKey, headers['x-secret-key']),
+      event: approved ? 'succeeded' : 'failed',
+      gatewayTxnId: txnId,
+      gatewayOrderRef: reference,
+      gatewayOrderId: body?.order?.order_id ?? body?.order?.id,
+      paymentMethod: body?.transaction?.payment_method,
+      amountVnd: parseVnd(body?.transaction?.transaction_amount ?? body?.order?.order_amount),
+    };
+  }
+
+  refund(): Promise<RefundResult> {
+    return Promise.resolve({ supported: false });
+  }
+
+  async queryPaymentStatus(orderInvoiceNumber: string): Promise<PaymentStatusResult> {
+    const base =
+      this.creds.environment === 'sandbox'
+        ? 'https://pgapi-sandbox.sepay.vn'
+        : 'https://pgapi.sepay.vn';
+    const auth = Buffer.from(`${this.creds.merchantId}:${this.creds.secretKey}`).toString('base64');
+    const response = await fetch(
+      `${base}/v1/order/detail/${encodeURIComponent(orderInvoiceNumber)}`,
+      { headers: { authorization: `Basic ${auth}`, accept: 'application/json' } },
+    );
+    if (!response.ok) throw new Error(`SePay order lookup failed with ${response.status}`);
+    const json = (await response.json()) as {
+      data?: { order_status?: string; order_amount?: string };
+    };
+    const orderStatus = json.data?.order_status;
+    const status: PaymentStatusResult['status'] =
+      orderStatus === 'CAPTURED'
+        ? 'succeeded'
+        : orderStatus === 'EXPIRED'
+          ? 'expired'
+          : orderStatus === 'CANCELLED' || orderStatus === 'VOIDED'
+            ? 'failed'
+            : 'pending';
+    return { status, amountVnd: parseVnd(json.data?.order_amount) };
+  }
+}

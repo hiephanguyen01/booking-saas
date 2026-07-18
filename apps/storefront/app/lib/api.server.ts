@@ -18,7 +18,10 @@ type StorefrontJsonOptions<T> = Omit<ApiRequestOptions<T>, 'signal' | 'schema'> 
 type NullableReadOptions<T> = StorefrontJsonOptions<T> & { allowNotFound: true };
 
 function forwardedHost(request: Request): string {
-  return (request.headers.get('host') ?? 'localhost').split(':')[0];
+  // Keep the port: checkout callbacks must return to the exact storefront host
+  // the customer used (for example localhost:5173). The API tenant resolver
+  // normalizes the hostname itself before looking up the tenant.
+  return request.headers.get('host')?.split(',')[0]?.trim() || new URL(request.url).host;
 }
 
 function requestOptions<T>(

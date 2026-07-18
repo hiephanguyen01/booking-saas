@@ -59,6 +59,8 @@ export class CancelBookingUseCase {
         actor,
         actorId: opts.actorId ?? null,
         reason: opts.reason ?? null,
+        refundDueAmount: refundAmount,
+        refundPercent: percent,
       });
       await this.outbox.emit(tx, {
         tenantId,

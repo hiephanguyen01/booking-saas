@@ -1,23 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PayoutCycleDto } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { addDays, utcNow } from '../../../../shared/time/time';
-import { LEDGER_REPOSITORY, type ILedgerRepository } from '../../domain/ports/ledger-repository.port';
+import { utcNow } from '../../../../shared/time/time';
+import {
+  LEDGER_REPOSITORY,
+  type ILedgerRepository,
+} from '../../domain/ports/ledger-repository.port';
 import {
   PAYOUT_REPOSITORY,
   type IPayoutRepository,
   type PayoutPayeeType,
 } from '../../domain/ports/payout-repository.port';
-
-/** Tenant payout policy (§7.7), read from `tenants.settings.payout`. */
-export interface PayoutPolicy {
-  /** Dispute buffer: payable is only mature once it is this many days old. */
-  holdingDays: number;
-  /** Minimum VND a run must reach to be accepted. */
-  minAmount: bigint;
-  /** Cadence a payout run covers — drives the derived period window. */
-  cycle: PayoutCycleDto;
-}
+import { GetPayoutPolicyUseCase, type PayoutPolicy } from './get-payout-policy.use-case';
 
 /** Mirrors the exact error codes `CreatePayoutUseCase` rejects with. */
 export type PayableIneligibleReason = 'NOTHING_TO_PAY' | 'BELOW_MINIMUM';
@@ -28,13 +21,13 @@ export interface PayableSnapshot {
   payeeId: string;
   /** Raw ledger balance (credit − debit). Context only — NOT what gets paid. */
   balance: bigint;
-  /** Net payable that has cleared the holding window. */
+  /** Net payable already recognized by released settlement journals. */
   maturePayable: bigint;
   /** Already claimed by pending/processing runs. */
   outstanding: bigint;
   /** `maturePayable − outstanding` — the amount a run opened now would pay. */
   available: bigint;
-  /** The holding-window boundary the mature payable was measured against. */
+  /** Latest ledger timestamp included in the payable calculation. */
   cutoff: Date;
   policy: PayoutPolicy;
   eligible: boolean;
@@ -47,17 +40,18 @@ export interface PayableSnapshot {
  * Both `CreatePayoutUseCase` (which pays it) and `GetTenantPayableUseCase` (which
  * previews it) call `execute()`, so the previewed number is by construction the
  * number a run would pay. This must stay the only place the rule lives: the
- * dashboard payout dialog used to show the raw ledger balance, which is a
- * *different, larger* number — money still inside the holding window or already
- * claimed by an unsettled run is in the balance but is not payable — so a payee
- * that looked flush would fail the run with a hard NOTHING_TO_PAY / BELOW_MINIMUM.
- * Re-deriving the payable anywhere else would just recreate that divergence.
+ * dashboard payout dialog used to show the raw ledger balance without subtracting
+ * pending/processing payout claims. That can display the same payable twice and
+ * makes the next run fail with NOTHING_TO_PAY / BELOW_MINIMUM. Held settlement
+ * funds are intentionally absent from the ledger until release. Re-deriving the
+ * payable anywhere else would recreate that divergence.
  */
 @Injectable()
 export class ComputePayoutPayableUseCase {
   constructor(
     @Inject(LEDGER_REPOSITORY) private readonly ledger: ILedgerRepository,
     @Inject(PAYOUT_REPOSITORY) private readonly payouts: IPayoutRepository,
+    private readonly getPolicy: GetPayoutPolicyUseCase,
   ) {}
 
   async execute(
@@ -66,8 +60,10 @@ export class ComputePayoutPayableUseCase {
     payeeType: PayoutPayeeType,
     payeeId: string,
   ): Promise<PayableSnapshot> {
-    const policy = await this.policy(tx, tenantId);
-    const cutoff = addDays(utcNow(), -policy.holdingDays);
+    const policy = await this.getPolicy.execute(tx, tenantId);
+    // Earnings only enter the payable ledger after the settlement dispute window
+    // has elapsed. Applying holdingDays here again would delay payout twice.
+    const cutoff = utcNow();
 
     const owner = await this.ledger.ownerBalance(tx, payeeType, payeeId);
     const maturePayable = await this.ledger.maturePayable(tx, payeeType, payeeId, cutoff);
@@ -91,22 +87,5 @@ export class ComputePayoutPayableUseCase {
       eligible: ineligibleReason === null,
       ineligibleReason,
     };
-  }
-
-  /**
-   * Keyed on `tenantId` on purpose: `tenants` carries no RLS policy (it is the
-   * tenant registry itself, not tenant-scoped data), so an unkeyed `findFirst`
-   * here would read an arbitrary tenant's payout policy.
-   */
-  private async policy(tx: PrismaTx, tenantId: string): Promise<PayoutPolicy> {
-    const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } });
-    const payout = (
-      tenant?.settings as { payout?: { holdingDays?: number; minAmount?: string | number; cycle?: string } } | null
-    )?.payout;
-    const holdingDays = typeof payout?.holdingDays === 'number' ? payout.holdingDays : 3;
-    const minAmount =
-      payout?.minAmount !== undefined && /^\d+$/.test(String(payout.minAmount)) ? BigInt(payout.minAmount) : 0n;
-    const cycle: PayoutCycleDto = payout?.cycle === 'weekly' ? 'weekly' : 'monthly';
-    return { holdingDays, minAmount, cycle };
   }
 }

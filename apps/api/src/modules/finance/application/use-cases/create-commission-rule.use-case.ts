@@ -6,7 +6,10 @@ import {
   type CommissionRuleRecord,
   type ICommissionRuleRepository,
 } from '../../domain/ports/commission-rule-repository.port';
-import { TENANT_SHARE_FLOOR_CODE, violatesTenantShareFloor } from '../../domain/commission-rate-guard';
+import {
+  TENANT_SHARE_FLOOR_CODE,
+  violatesTenantShareFloor,
+} from '../../domain/commission-rate-guard';
 import { isHousePartner } from '../is-house-partner';
 
 /**
@@ -23,9 +26,13 @@ export class CreateCommissionRuleUseCase {
   execute(tenantId: string, input: CreateCommissionRuleInput): Promise<CommissionRuleRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.rules.list(tx);
-      const platformRate = existing.find((r) => r.appliesTo === 'tenant_default')?.platformRate ?? 0;
+      const platformRate =
+        existing.find((r) => r.appliesTo === 'tenant_default')?.platformRate ?? 0;
 
-      const isHouse = input.appliesTo === 'partner' && input.partnerId ? await isHousePartner(tx, input.partnerId) : false;
+      const isHouse =
+        input.appliesTo === 'partner' && input.partnerId
+          ? await isHousePartner(tx, input.partnerId)
+          : false;
       if (
         violatesTenantShareFloor({
           tenantRateType: input.tenantRateType,
@@ -39,11 +46,11 @@ export class CreateCommissionRuleUseCase {
         throw new BadRequestException({
           statusCode: 400,
           code: TENANT_SHARE_FLOOR_CODE,
-          message: 'platform% + affiliate% must not exceed the tenant commission% (the tenant share would go negative)',
+          message:
+            'platform% + affiliate% must not exceed the tenant commission% (the tenant share would go negative)',
         });
       }
-
-      return this.rules.create(tx, tenantId, {
+      const data = {
         appliesTo: input.appliesTo,
         listingTypeId: input.listingTypeId ?? null,
         categoryId: input.categoryId ?? null,
@@ -55,7 +62,18 @@ export class CreateCommissionRuleUseCase {
         affiliateRate: BigInt(input.affiliateRate),
         effectiveFrom: input.effectiveFrom ? new Date(input.effectiveFrom) : null,
         effectiveTo: input.effectiveTo ? new Date(input.effectiveTo) : null,
-      });
+      } as const;
+      const incompatible = await this.rules.findIncompatibleListingsForRule(tx, data);
+      if (incompatible.count > 0) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'COMMISSION_EXCEEDS_PARTNER_DEPOSIT',
+          message: `${incompatible.count} listing(s) would have a deposit below their effective commission`,
+          details: { incompatibleListings: incompatible.count, samples: incompatible.samples },
+        });
+      }
+
+      return this.rules.create(tx, tenantId, data);
     });
   }
 }

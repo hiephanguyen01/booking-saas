@@ -1,4 +1,5 @@
 import {
+  type BookingSettlementResponse,
   uuidSchema,
   type CommissionRuleResponse,
   type LedgerEntryResponse,
@@ -7,6 +8,8 @@ import {
   type PayoutResponse,
   type TenantFinanceSummaryResponse,
   type TenantPayableResponse,
+  type SettlementSummaryResponse,
+  type PayoutPolicyDto as PayoutPolicyResponse,
 } from '@booking/contracts';
 import {
   Body,
@@ -14,9 +17,11 @@ import {
   Delete,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -37,12 +42,14 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import {
+  toBookingSettlementResponse,
   toCommissionRuleResponse,
   toLedgerEntryResponse,
   toPartnerFinanceResponse,
   toPayoutResponse,
   toTenantFinanceSummaryResponse,
   toTenantPayableResponse,
+  toSettlementSummaryResponse,
 } from '../../application/finance.mapper';
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
 import { CreatePayoutUseCase } from '../../application/use-cases/create-payout.use-case';
@@ -52,11 +59,18 @@ import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partne
 import { GetTenantFinanceSummaryUseCase } from '../../application/use-cases/get-tenant-finance-summary.use-case';
 import { GetTenantPayableUseCase } from '../../application/use-cases/get-tenant-payable.use-case';
 import { ListCommissionRulesUseCase } from '../../application/use-cases/list-commission-rules.use-case';
+import { ListBookingSettlementsUseCase } from '../../application/use-cases/list-booking-settlements.use-case';
+import { GetBookingSettlementUseCase } from '../../application/use-cases/get-booking-settlement.use-case';
+import { GetSettlementSummaryUseCase } from '../../application/use-cases/get-settlement-summary.use-case';
+import { GetTenantPayoutPolicyUseCase } from '../../application/use-cases/get-tenant-payout-policy.use-case';
+import { UpdatePayoutPolicyUseCase } from '../../application/use-cases/update-payout-policy.use-case';
 import { ListPayoutsUseCase } from '../../application/use-cases/list-payouts.use-case';
 import { ListTenantLedgerUseCase } from '../../application/use-cases/list-tenant-ledger.use-case';
 import { MarkPayoutPaidUseCase } from '../../application/use-cases/mark-payout-paid.use-case';
 import { UpdateCommissionRuleUseCase } from '../../application/use-cases/update-commission-rule.use-case';
 import {
+  BookingSettlementResponseDto,
+  BookingSettlementsQueryDto,
   CommissionRuleResponseDto,
   CreateCommissionRuleDto,
   CreatePayoutDto,
@@ -70,6 +84,8 @@ import {
   TenantPayableQueryDto,
   TenantPayableResponseDto,
   UpdateCommissionRuleDto,
+  SettlementSummaryResponseDto,
+  PayoutPolicyDto,
 } from './dto/finance.dto';
 
 /** Tenant finance: commission rules, ledger overview + manual payouts (§13.3). */
@@ -89,11 +105,32 @@ export class TenantFinanceController {
     private readonly partnerFinanceUseCase: GetPartnerFinanceUseCase,
     private readonly listLedgerUseCase: ListTenantLedgerUseCase,
     private readonly getPayableUseCase: GetTenantPayableUseCase,
+    private readonly listSettlementsUseCase: ListBookingSettlementsUseCase,
+    private readonly getSettlementUseCase: GetBookingSettlementUseCase,
+    private readonly getSettlementSummaryUseCase: GetSettlementSummaryUseCase,
+    private readonly getPayoutPolicyUseCase: GetTenantPayoutPolicyUseCase,
+    private readonly updatePayoutPolicyUseCase: UpdatePayoutPolicyUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
 
   private get tenantId(): string {
     return this.tenantContext.tenantIdOrThrow();
+  }
+
+  @RequirePermissions('tenant.finance.read')
+  @Get('payout-policy')
+  @ApiOperation({ summary: 'Read the tenant dispute and payout policy' })
+  @ApiOkResponse({ type: PayoutPolicyDto })
+  payoutPolicy(): Promise<PayoutPolicyResponse> {
+    return this.getPayoutPolicyUseCase.execute(this.tenantId);
+  }
+
+  @RequirePermissions('tenant.payouts.manage')
+  @Put('payout-policy')
+  @ApiOperation({ summary: 'Update the tenant dispute and payout policy' })
+  @ApiOkResponse({ type: PayoutPolicyDto })
+  updatePayoutPolicy(@Body() input: PayoutPolicyDto): Promise<PayoutPolicyResponse> {
+    return this.updatePayoutPolicyUseCase.execute(this.tenantId, input);
   }
 
   // ── Commission rules ──────────────────────────────────────────────────────
@@ -150,7 +187,10 @@ export class TenantFinanceController {
 
   @RequirePermissions('tenant.finance.read')
   @Get('ledger')
-  @ApiOperation({ summary: 'List tenant ledger entries', description: 'Filterable by booking, owner type, entry type and created-at range.' })
+  @ApiOperation({
+    summary: 'List tenant ledger entries',
+    description: 'Filterable by booking, owner type, entry type and created-at range.',
+  })
   @ApiPaginatedResponse(LedgerEntryResponseDto)
   async ledger(@Query() query: LedgerQueryDto): Promise<Paginated<LedgerEntryResponse>> {
     const { items, total } = await this.listLedgerUseCase.execute(this.tenantId, query);
@@ -160,6 +200,52 @@ export class TenantFinanceController {
       pageSize: query.pageSize,
       total,
     };
+  }
+
+  @RequirePermissions('tenant.finance.read')
+  @Get('settlements')
+  @ApiOperation({
+    summary: 'List customer-payment settlements',
+    description:
+      'Shows money held by the tenant, the dispute deadline, recognized earnings and the amount payable to the partner.',
+  })
+  @ApiPaginatedResponse(BookingSettlementResponseDto)
+  async settlements(
+    @Query() query: BookingSettlementsQueryDto,
+  ): Promise<Paginated<BookingSettlementResponse>> {
+    const result = await this.listSettlementsUseCase.execute(this.tenantId, query);
+    return toPaginated(query, result, toBookingSettlementResponse);
+  }
+
+  @RequirePermissions('tenant.finance.read')
+  @Get('settlement-summary')
+  @ApiOperation({ summary: 'Aggregate custody, dispute and payout settlement totals' })
+  @ApiOkResponse({ type: SettlementSummaryResponseDto })
+  async settlementSummary(
+    @Query('partnerId', new ZodValidationPipe(uuidSchema.optional())) partnerId?: string,
+  ): Promise<SettlementSummaryResponse> {
+    return toSettlementSummaryResponse(
+      await this.getSettlementSummaryUseCase.execute(this.tenantId, partnerId),
+    );
+  }
+
+  @RequirePermissions('tenant.finance.read')
+  @Get('settlements/:bookingId')
+  @UuidParam('bookingId')
+  @ApiOperation({ summary: 'Get the settlement state for one booking' })
+  @ApiOkResponse({ type: BookingSettlementResponseDto })
+  async settlement(
+    @Param('bookingId', new ZodValidationPipe(uuidSchema)) bookingId: string,
+  ): Promise<BookingSettlementResponse> {
+    const settlement = await this.getSettlementUseCase.execute(this.tenantId, bookingId);
+    if (!settlement) {
+      throw new NotFoundException({
+        statusCode: 404,
+        code: 'SETTLEMENT_NOT_FOUND',
+        message: 'Settlement not found',
+      });
+    }
+    return toBookingSettlementResponse(settlement);
   }
 
   @RequirePermissions('tenant.finance.read')

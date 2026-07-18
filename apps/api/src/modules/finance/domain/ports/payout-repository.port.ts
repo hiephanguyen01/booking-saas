@@ -30,6 +30,7 @@ export interface CreatePayoutData {
 }
 
 export interface IPayoutRepository {
+  lockPayee(tx: PrismaTx, payeeType: PayoutPayeeType, payeeId: string): Promise<void>;
   create(tx: PrismaTx, tenantId: string, data: CreatePayoutData): Promise<PayoutRecord>;
   findById(tx: PrismaTx, id: string): Promise<PayoutRecord | null>;
   list(
@@ -43,8 +44,18 @@ export interface IPayoutRepository {
     payeeId: string,
     params: { page: number; pageSize: number },
   ): Promise<{ items: PayoutRecord[]; total: number }>;
-  markPaid(tx: PrismaTx, id: string, evidence: { reference: string; evidenceKey?: string }): Promise<PayoutRecord>;
-  markFailed(tx: PrismaTx, id: string, reason: string | null): Promise<PayoutRecord>;
+  claimForPayment(tx: PrismaTx, id: string): Promise<PayoutRecord | null>;
+  markPaid(tx: PrismaTx, id: string, evidence: { reference: string; evidenceKey?: string }): Promise<PayoutRecord | null>;
+  markFailed(tx: PrismaTx, id: string, reason: string | null): Promise<PayoutRecord | null>;
+  allocateReleasedSettlements(
+    tx: PrismaTx,
+    tenantId: string,
+    payoutId: string,
+    partnerId: string,
+    amount: bigint,
+  ): Promise<bigint>;
+  markAllocationsPaid(tx: PrismaTx, payoutId: string): Promise<void>;
+  releaseAllocations(tx: PrismaTx, payoutId: string): Promise<void>;
   /** Sum of not-yet-settled payouts for a payee (pending + processing) — prevents
    *  a second payout run from double-paying the same outstanding balance. */
   outstandingForPayee(tx: PrismaTx, payeeType: PayoutPayeeType, payeeId: string): Promise<bigint>;

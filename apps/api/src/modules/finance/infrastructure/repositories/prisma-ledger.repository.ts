@@ -124,6 +124,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
           paymentId: refs.paymentId ?? null,
           payoutId: refs.payoutId ?? null,
           memo: refs.memo ?? null,
+          availableAt: refs.availableAt,
         },
       });
     }
@@ -205,7 +206,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
   async maturePayable(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, cutoff: Date): Promise<bigint> {
     const rows = await tx.$queryRaw<{ balance: bigint }[]>(Prisma.sql`
       SELECT COALESCE(SUM(
-               CASE WHEN le.created_at <= ${cutoff} OR le.entry_type IN ('payout', 'clawback')
+               CASE WHEN le.available_at <= ${cutoff} OR le.entry_type IN ('payout', 'clawback')
                     THEN le.credit - le.debit ELSE 0 END
              ), 0)::bigint AS balance
       FROM ledger_accounts la

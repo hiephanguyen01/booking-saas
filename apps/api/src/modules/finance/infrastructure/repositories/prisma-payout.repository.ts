@@ -30,6 +30,16 @@ function toRecord(p: Row): PayoutRecord {
 
 @Injectable()
 export class PrismaPayoutRepository implements IPayoutRepository {
+  async lockPayee(
+    tx: PrismaTx,
+    payeeType: PayoutRecord['payeeType'],
+    payeeId: string,
+  ): Promise<void> {
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`payout:${payeeType}:${payeeId}`}, 0))`,
+    );
+  }
+
   async create(tx: PrismaTx, tenantId: string, data: CreatePayoutData): Promise<PayoutRecord> {
     return toRecord(
       await tx.payout.create({
@@ -79,22 +89,32 @@ export class PrismaPayoutRepository implements IPayoutRepository {
     return { items: rows.map(toRecord), total };
   }
 
-  async markPaid(tx: PrismaTx, id: string, evidence: { reference: string; evidenceKey?: string }): Promise<PayoutRecord> {
-    return toRecord(
-      await tx.payout.update({
-        where: { id },
-        data: { status: 'paid', paidAt: utcNow(), evidence: { ...evidence } },
-      }),
-    );
+  async claimForPayment(tx: PrismaTx, id: string): Promise<PayoutRecord | null> {
+    const changed = await tx.payout.updateMany({
+      where: { id, status: 'pending' },
+      data: { status: 'processing' },
+    });
+    return changed.count > 0 ? this.findById(tx, id) : null;
   }
 
-  async markFailed(tx: PrismaTx, id: string, reason: string | null): Promise<PayoutRecord> {
-    return toRecord(
-      await tx.payout.update({
-        where: { id },
-        data: { status: 'failed', evidence: { failureReason: reason ?? 'unspecified' } },
-      }),
-    );
+  async markPaid(
+    tx: PrismaTx,
+    id: string,
+    evidence: { reference: string; evidenceKey?: string },
+  ): Promise<PayoutRecord | null> {
+    const changed = await tx.payout.updateMany({
+      where: { id, status: 'processing' },
+      data: { status: 'paid', paidAt: utcNow(), evidence: { ...evidence } },
+    });
+    return changed.count > 0 ? this.findById(tx, id) : null;
+  }
+
+  async markFailed(tx: PrismaTx, id: string, reason: string | null): Promise<PayoutRecord | null> {
+    const changed = await tx.payout.updateMany({
+      where: { id, status: { in: ['pending', 'processing'] } },
+      data: { status: 'failed', evidence: { failureReason: reason ?? 'unspecified' } },
+    });
+    return changed.count > 0 ? this.findById(tx, id) : null;
   }
 
   async outstandingForPayee(
@@ -107,5 +127,60 @@ export class PrismaPayoutRepository implements IPayoutRepository {
       _sum: { amount: true },
     });
     return agg._sum.amount ?? 0n;
+  }
+
+  async allocateReleasedSettlements(
+    tx: PrismaTx,
+    tenantId: string,
+    payoutId: string,
+    partnerId: string,
+    amount: bigint,
+  ): Promise<bigint> {
+    const rows = await tx.$queryRaw<Array<{ id: string; remaining: bigint }>>(Prisma.sql`
+      SELECT bs.id,
+             GREATEST(
+               bs.partner_payable - COALESCE(SUM(pa.amount) FILTER (
+                 WHERE pa.status IN ('reserved', 'paid')
+               ), 0),
+               0
+             )::bigint AS remaining
+      FROM booking_settlements bs
+      LEFT JOIN payout_allocations pa ON pa.settlement_id = bs.id
+      WHERE bs.tenant_id = ${tenantId}::uuid
+        AND bs.partner_id = ${partnerId}::uuid
+        AND bs.status = 'released'::settlement_status
+        AND bs.partner_payable > 0
+      GROUP BY bs.id
+      HAVING bs.partner_payable - COALESCE(SUM(pa.amount) FILTER (
+        WHERE pa.status IN ('reserved', 'paid')
+      ), 0) > 0
+      ORDER BY bs.released_at, bs.id`);
+
+    let left = amount;
+    let allocated = 0n;
+    for (const row of rows) {
+      if (left <= 0n) break;
+      const take = row.remaining < left ? row.remaining : left;
+      await tx.payoutAllocation.create({
+        data: { tenantId, payoutId, settlementId: row.id, amount: take },
+      });
+      allocated += take;
+      left -= take;
+    }
+    return allocated;
+  }
+
+  async markAllocationsPaid(tx: PrismaTx, payoutId: string): Promise<void> {
+    await tx.payoutAllocation.updateMany({
+      where: { payoutId, status: 'reserved' },
+      data: { status: 'paid' },
+    });
+  }
+
+  async releaseAllocations(tx: PrismaTx, payoutId: string): Promise<void> {
+    await tx.payoutAllocation.updateMany({
+      where: { payoutId, status: 'reserved' },
+      data: { status: 'released' },
+    });
   }
 }

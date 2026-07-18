@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   uuidSchema,
@@ -20,6 +30,7 @@ import { MarkNoShowUseCase } from '../../application/use-cases/mark-no-show.use-
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { MarkPickedUpUseCase } from '../../application/use-cases/mark-picked-up.use-case';
 import { MarkReturnedUseCase } from '../../application/use-cases/mark-returned.use-case';
+import { MarkCompletedUseCase } from '../../application/use-cases/mark-completed.use-case';
 import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { GetBookingHistoryUseCase } from '../../application/use-cases/get-booking-history.use-case';
@@ -37,6 +48,7 @@ import {
 import {
   BookingStatusHistoryResponseDto,
   CalendarRangeQueryDto,
+  CompleteBookingDto,
   MarkReturnedDto,
   PartnerBookingResponseDto,
   PartnerCalendarBookingResponseDto,
@@ -65,6 +77,7 @@ export class PartnerBookingController {
     private readonly cancelBooking: CancelBookingUseCase,
     private readonly markPickedUp: MarkPickedUpUseCase,
     private readonly markReturned: MarkReturnedUseCase,
+    private readonly markCompleted: MarkCompletedUseCase,
     private readonly calendar: PartnerCalendarUseCase,
     private readonly getBooking: GetBookingUseCase,
     private readonly bookingHistory: GetBookingHistoryUseCase,
@@ -202,6 +215,28 @@ export class PartnerBookingController {
     );
   }
 
+  @RequirePermissions('partner.bookings.write')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Post(':id/complete')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Complete a service and confirm the amount collected on site' })
+  @UuidParam()
+  @ApiOkResponse({ type: PartnerBookingResponseDto })
+  async complete(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() body: CompleteBookingDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<PartnerBookingResponse> {
+    return toPartnerBookingResponse(
+      await this.markCompleted.execute(
+        this.ctx(principal),
+        id,
+        BigInt(body.onsiteCollectedAmount),
+        body.note,
+      ),
+    );
+  }
+
   @RequirePermissions('partner.bookings.cancel')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/cancel')
@@ -248,6 +283,8 @@ export class PartnerBookingController {
     @Body() body: MarkReturnedDto,
     @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ReturnBookingResponse> {
-    return toReturnResponse(await this.markReturned.execute(this.ctx(principal), id, BigInt(body.damageAmount)));
+    return toReturnResponse(
+      await this.markReturned.execute(this.ctx(principal), id, BigInt(body.damageAmount)),
+    );
   }
 }

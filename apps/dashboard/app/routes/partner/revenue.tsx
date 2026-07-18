@@ -1,12 +1,15 @@
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router';
-import { TrendingUp, Wallet } from 'lucide-react';
+import { data as routeData, Form, useNavigation, useSearchParams } from 'react-router';
+import { Clock3, HandCoins, Scale, TrendingUp, Wallet } from 'lucide-react';
 import type {
   LedgerEntryResponse,
   Paginated,
   PartnerFinanceResponse,
   PayoutResponse,
+  PartnerSettlementDisputeResponse,
+  SettlementSummaryResponse,
 } from '@booking/contracts';
+import { respondSettlementDisputeInputSchema } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/revenue';
@@ -22,6 +25,13 @@ import { Money, amountToneClass } from '~/components/money';
 import { CopyableCode } from '~/components/copyable-code';
 import { PayoutStatusBadge } from '~/components/status-badge';
 import { formatDate } from '~/lib/format';
+import { formatDateTime } from '~/lib/format';
+import { apiPost } from '~/lib/api.server';
+import { Badge } from '@booking/ui/components/ui/badge';
+import { Button } from '@booking/ui/components/ui/button';
+import { Card, CardContent } from '@booking/ui/components/ui/card';
+import { Label } from '@booking/ui/components/ui/label';
+import { Textarea } from '@booking/ui/components/ui/textarea';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Doanh thu · Đối tác · Bookify' }];
@@ -37,13 +47,21 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     pageSizeKey: 'ledgerPageSize',
   });
   const payoutParams = readListParams(url.searchParams);
-  const [financeRes, ledgerRes, payoutsRes] = await Promise.all([
+  const disputeParams = readListParams(url.searchParams, {
+    pageKey: 'disputePage',
+    pageSizeKey: 'disputePageSize',
+  });
+  const [financeRes, ledgerRes, payoutsRes, settlementSummaryRes, disputesRes] = await Promise.all([
     apiGet<PartnerFinanceResponse>('/partner/finance', auth),
     apiGet<Paginated<LedgerEntryResponse>>('/partner/finance/ledger', auth, {
       query: ledgerParams.toApiQuery(),
     }),
     apiGet<Paginated<PayoutResponse>>('/partner/finance/payouts', auth, {
       query: payoutParams.toApiQuery(),
+    }),
+    apiGet<SettlementSummaryResponse>('/partner/finance/settlement-summary', auth),
+    apiGet<Paginated<PartnerSettlementDisputeResponse>>('/partner/finance/disputes', auth, {
+      query: disputeParams.toApiQuery(),
     }),
   ]);
   const finance: PartnerFinanceResponse =
@@ -54,30 +72,83 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     ledgerTotal: ledgerRes.ok && ledgerRes.data ? ledgerRes.data.total : 0,
     payouts: payoutsRes.ok && payoutsRes.data ? payoutsRes.data.items : [],
     payoutsTotal: payoutsRes.ok && payoutsRes.data ? payoutsRes.data.total : 0,
+    settlementSummary:
+      settlementSummaryRes.ok && settlementSummaryRes.data ? settlementSummaryRes.data : null,
+    disputes: disputesRes.ok && disputesRes.data ? disputesRes.data.items : [],
+    disputesTotal: disputesRes.ok && disputesRes.data ? disputesRes.data.total : 0,
     financeError: financeRes.ok ? null : (financeRes.error ?? 'Không tải được dữ liệu tài chính.'),
     ledgerError: ledgerRes.ok ? null : (ledgerRes.error ?? 'Không tải được sổ cái.'),
     payoutsError: payoutsRes.ok ? null : (payoutsRes.error ?? 'Không tải được lịch sử chi trả.'),
+    settlementsError: settlementSummaryRes.ok
+      ? null
+      : (settlementSummaryRes.error ?? 'Không tải được trạng thái đối soát.'),
+    disputesError: disputesRes.ok
+      ? null
+      : (disputesRes.error ?? 'Không tải được tranh chấp liên quan.'),
   };
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const { auth } = await requirePartner(request, 'partner.finance.read');
+  const form = await request.formData();
+  const disputeId = String(form.get('disputeId') ?? '');
+  const parsed = respondSettlementDisputeInputSchema.safeParse({ response: form.get('response') });
+  if (!parsed.success) {
+    return routeData({ error: 'Phản hồi phải có ít nhất 10 ký tự.' }, { status: 400 });
+  }
+  const result = await apiPost<PartnerSettlementDisputeResponse>(
+    `/partner/finance/disputes/${encodeURIComponent(disputeId)}/respond`,
+    parsed.data,
+    auth,
+  );
+  if (!result.ok) {
+    return routeData({ error: result.error ?? 'Không gửi được phản hồi.' }, { status: 400 });
+  }
+  return { ok: true };
 }
 
 function sumBig(values: string[]): string {
   return values.reduce((acc, v) => acc + BigInt(v || '0'), 0n).toString();
 }
 
-export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps) {
-  const { finance, ledger, ledgerTotal, payouts, payoutsTotal, financeError, ledgerError, payoutsError } =
-    loaderData;
+export default function PartnerRevenuePage({ loaderData, actionData }: Route.ComponentProps) {
+  const {
+    finance,
+    ledger,
+    ledgerTotal,
+    payouts,
+    payoutsTotal,
+    settlementSummary,
+    disputes,
+    disputesTotal,
+    financeError,
+    ledgerError,
+    payoutsError,
+    settlementsError,
+    disputesError,
+  } = loaderData;
+  const navigation = useNavigation();
   const [searchParams] = useSearchParams();
   const ledgerParams = readListParams(searchParams, {
     pageKey: 'ledgerPage',
     pageSizeKey: 'ledgerPageSize',
   });
   const payoutParams = readListParams(searchParams);
+  const disputeParams = readListParams(searchParams, {
+    pageKey: 'disputePage',
+    pageSizeKey: 'disputePageSize',
+  });
   // `finance.entries` is a small recent preview from /partner/finance — used only
   // for the "Tổng ghi có" tile; the full journal below is server-paginated.
   const entries = finance.entries;
 
   const totalCredit = useMemo(() => sumBig(entries.map((e) => e.credit)), [entries]);
+  const settlementTotals = {
+    held: settlementSummary?.heldPartnerPayableAmount ?? '0',
+    disputed: settlementSummary?.disputedPartnerPayableAmount ?? '0',
+    pending: settlementSummary?.payoutPendingAmount ?? '0',
+    paid: settlementSummary?.paidAmount ?? '0',
+  };
 
   const journalColumns: DataTableColumn<LedgerEntryResponse>[] = [
     {
@@ -176,11 +247,17 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
 
       <ErrorBanner error={financeError} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <ErrorBanner error={settlementsError} />
+
+      <ErrorBanner error={disputesError} />
+
+      <ErrorBanner error={actionData && 'error' in actionData ? actionData.error : null} />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Số dư hiện tại"
           value={<Money value={finance.balance} />}
-          hint="Số tiền nền tảng còn phải trả bạn"
+          hint="Số tiền Tenant còn phải trả bạn"
           icon={<Wallet className="size-4" />}
           tone={balanceNegative ? 'negative' : 'positive'}
         />
@@ -190,7 +267,78 @@ export default function PartnerRevenuePage({ loaderData }: Route.ComponentProps)
           hint="Cộng dồn theo sổ cái"
           icon={<TrendingUp className="size-4" />}
         />
+        <StatCard label="Đang giữ/chờ tranh chấp" value={<Money value={settlementTotals.held} />} hint="Chưa đủ điều kiện vào kỳ chi" icon={<Clock3 className="size-4" />} />
+        <StatCard label="Đang tranh chấp" value={<Money value={settlementTotals.disputed} />} hint="Tạm khóa cho đến khi Tenant xử lý" icon={<Scale className="size-4" />} />
+        <StatCard label="Đang chờ chuyển" value={<Money value={settlementTotals.pending} />} hint="Đã nằm trong lệnh chi" icon={<HandCoins className="size-4" />} />
+        <StatCard label="Đã được chi" value={<Money value={settlementTotals.paid} />} hint="Theo allocation của từng booking" icon={<Wallet className="size-4" />} />
       </div>
+
+      {disputes.length ? (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold">Tranh chấp liên quan</h2>
+          {disputes.map((dispute) => {
+            const submitting =
+              navigation.state === 'submitting' &&
+              navigation.formData?.get('disputeId') === dispute.id;
+            return (
+              <Card key={dispute.id}>
+                <CardContent className="space-y-4 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-sm font-medium">
+                        {dispute.bookingCode ?? dispute.bookingId.slice(0, 8)}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {dispute.listingTitle ?? '—'} · {formatDateTime(dispute.createdAt)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Money value={dispute.remainingHeldAmount} className="font-semibold" />
+                      <div className="mt-1">
+                        <Badge variant={dispute.status === 'open' ? 'destructive' : 'secondary'}>
+                          {dispute.status === 'open' ? 'Chờ Tenant xử lý' : 'Đã xử lý'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="rounded-md bg-muted/50 p-3 text-sm leading-6">{dispute.reason}</p>
+                  {dispute.partnerResponse ? (
+                    <div className="border-t pt-3 text-sm">
+                      <p className="font-medium">Phản hồi của bạn</p>
+                      <p className="mt-1 text-muted-foreground">{dispute.partnerResponse}</p>
+                    </div>
+                  ) : dispute.status === 'open' ? (
+                    <Form method="post" className="space-y-3 border-t pt-4">
+                      <input type="hidden" name="disputeId" value={dispute.id} />
+                      <Label htmlFor={`partner-response-${dispute.id}`}>Thông tin đối chiếu</Label>
+                      <Textarea
+                        id={`partner-response-${dispute.id}`}
+                        name="response"
+                        required
+                        minLength={10}
+                        maxLength={2000}
+                        rows={3}
+                        placeholder="Mô tả việc hoàn thành dịch vụ, thanh toán tại chỗ và bằng chứng liên quan…"
+                      />
+                      <div className="text-right">
+                        <Button type="submit" disabled={submitting}>
+                          {submitting ? 'Đang gửi…' : 'Gửi phản hồi'}
+                        </Button>
+                      </div>
+                    </Form>
+                  ) : null}
+                </CardContent>
+              </Card>
+            );
+          })}
+          <PaginationBar
+            page={disputeParams.page}
+            pageSize={disputeParams.pageSize}
+            total={disputesTotal}
+            hrefFor={disputeParams.pageHref}
+          />
+        </section>
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Sổ cái</h2>

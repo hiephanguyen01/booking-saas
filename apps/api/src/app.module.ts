@@ -25,6 +25,10 @@ import { AffiliateModule } from './modules/affiliate/infrastructure/http/affilia
 import { NotificationModule } from './modules/notification/infrastructure/http/notification.module';
 import { AdministrativeDivisionModule } from './modules/administrative-division/infrastructure/http/administrative-division.module';
 
+const prettyLogs =
+  process.env.LOG_PRETTY === 'true' ||
+  (process.env.LOG_PRETTY !== 'false' && process.env.NODE_ENV !== 'production');
+
 @Module({
   imports: [
     // main.ts loads the one workspace-root `.env` before importing this module.
@@ -34,6 +38,22 @@ import { AdministrativeDivisionModule } from './modules/administrative-division/
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
         redact: ['req.headers.cookie', 'req.headers.authorization'],
+        customSuccessMessage: (req, res, responseTime) =>
+          `${req.method} ${req.url} → ${res.statusCode} (${responseTime}ms)`,
+        customErrorMessage: (req, res, error) =>
+          `${req.method} ${req.url} → ${res.statusCode}: ${error.message}`,
+        transport: prettyLogs
+          ? {
+              target: require.resolve('pino-pretty'),
+              options: {
+                colorize: true,
+                singleLine: true,
+                translateTime: 'SYS:HH:MM:ss.l',
+                ignore: 'pid,hostname,context,req,res,responseTime',
+                messageFormat: '{if context}{context} - {end}{msg}',
+              },
+            }
+          : undefined,
       },
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),

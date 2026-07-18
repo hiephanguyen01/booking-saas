@@ -168,6 +168,12 @@ const modeConfigCoversModes = (
 export const createListingInputSchema = listingBaseSchema.superRefine(modeConfigCoversModes);
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
+export const depositRequirementResponseSchema = z.object({
+  minimumDepositPercent: z.number().int().min(0).max(100).nullable(),
+  commissionRuleId: uuidSchema.nullable(),
+});
+export type DepositRequirementResponse = z.infer<typeof depositRequirementResponseSchema>;
+
 export const updateListingInputSchema = listingBaseSchema
   .partial()
   .superRefine(modeConfigCoversModes);

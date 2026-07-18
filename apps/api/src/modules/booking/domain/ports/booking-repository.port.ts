@@ -41,6 +41,8 @@ export interface BookingRecord {
   finalAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  refundDueAmount: bigint | null;
+  refundPercent: number | null;
   securityDeposit: bigint;
   pickedUpAt: Date | null;
   returnedAt: Date | null;
@@ -92,6 +94,7 @@ export interface PartnerCalendarBooking {
   discountAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  additionalCharges: unknown;
   securityDeposit: bigint;
   pickedUpAt: Date | null;
   returnedAt: Date | null;
@@ -183,6 +186,8 @@ export interface TransitionParams {
   /** Optional column patches applied atomically with the status change. */
   expiresAt?: Date | null;
   paidAmount?: bigint;
+  refundDueAmount?: bigint;
+  refundPercent?: number;
 }
 
 export interface IBookingRepository {

@@ -41,12 +41,14 @@ import { errorStatus } from '../lib/http-status';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import {
+  allowedPaymentFormPost,
   allowedPaymentRedirect,
   isMockPaymentRedirect,
 } from '../lib/payment-redirect.server';
 import { formatVnd } from '../lib/ui';
 import { useLocale } from '../lib/use-locale';
 import type { StorefrontContext } from '../root';
+import { PaymentHandoff } from '../features/checkout/components/payment-handoff';
 import type { Route } from './+types/booking-detail';
 
 export function meta() {
@@ -135,11 +137,20 @@ export async function action({ request, params }: Route.ActionArgs) {
       return data({ ok: false, error: 'PAYMENT_RETRY_UNAVAILABLE' }, { status: 403 });
     }
     const checkout = await checkoutBooking(request, bookingId);
-    const rawPaymentUrl = checkout.data?.paymentUrl;
-    if (checkout.ok && isMockPaymentRedirect(rawPaymentUrl)) {
+    const destination = checkout.data?.destination;
+    if (
+      checkout.ok &&
+      destination?.type === 'redirect' &&
+      isMockPaymentRedirect(destination.paymentUrl)
+    ) {
       return redirect(storefrontPaths.booking(locale, params.code));
     }
-    const paymentUrl = allowedPaymentRedirect(rawPaymentUrl);
+    if (checkout.ok && destination?.type === 'form_post') {
+      const handoff = allowedPaymentFormPost(destination);
+      if (handoff) return { ok: true, error: null, handoff };
+    }
+    const paymentUrl =
+      destination?.type === 'redirect' ? allowedPaymentRedirect(destination.paymentUrl) : null;
     if (checkout.ok && paymentUrl) {
       return redirect(paymentUrl);
     }
@@ -178,7 +189,11 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
   const submitting = navigation.state === 'submitting';
 
   const bookingStatus = normalizeBookingStatus(status.bookingStatus);
+  const paymentOutcome = sp.get('payment');
   const paymentFailed =
+    paymentOutcome === 'cancel' ||
+    paymentOutcome === 'error' ||
+    // Backward compatibility for checkout links created before the SePay redirect normalization.
     sp.get('cancelled') === '1' ||
     status.paymentStatus === 'failed' ||
     status.paymentStatus === 'expired' ||
@@ -199,6 +214,10 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
     }, 3000);
     return () => clearInterval(id);
   }, [isPending, revalidator]);
+
+  if (actionData && 'handoff' in actionData && actionData.handoff) {
+    return <PaymentHandoff destination={actionData.handoff} />;
+  }
 
   return (
     <div className="bg-muted/20 font-studio">
@@ -255,11 +274,7 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
               ) : null}
 
               {isPending ? (
-                <PendingActions
-                  status={status}
-                  mockEnabled={mockEnabled}
-                  submitting={submitting}
-                />
+                <PendingActions status={status} mockEnabled={mockEnabled} submitting={submitting} />
               ) : null}
 
               {paymentFailed && canRetry ? (
