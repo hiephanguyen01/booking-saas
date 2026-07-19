@@ -9,20 +9,24 @@ expose SePay only.
 
 1. Sign in to the dashboard as a tenant owner.
 2. Open **Cài đặt → Cổng thanh toán SePay**.
-3. Choose `Sandbox` or `Production`, enter Merchant ID and Secret key, then save.
-4. Bookify encrypts the credential using the existing AES-GCM gateway-config repository. The API only
+3. Choose `Sandbox` or `Production`, then enter the two tenant-owned credentials:
+   - **Merchant ID**: identifies the SePay Payment Gateway merchant.
+   - **Merchant Secret Key**: signs checkout fields, authenticates Payment Gateway API calls and
+     verifies the Payment Gateway IPN `X-Secret-Key` header.
+4. Bookify encrypts the credentials as one AES-GCM blob in `tenant_gateway_configs`. The API only
    returns environment, active state and Merchant ID; it never returns the secret.
 
-Do not put a tenant Merchant ID or Secret key in source code, seed data or `.env.example`. Rotate any
-credential pasted into an issue, chat, log or committed file.
+Do not put a tenant Merchant ID or Merchant Secret Key in source code, seed data or `.env.example`.
+Rotate any credential pasted into an issue, chat, log or committed file.
 
 ## Environment variables
 
 Provider credentials are deliberately **not** process environment variables. Bookify serves many
 tenants in one API process, while every tenant owns a separate SePay account. Tenant owners enter the
-Merchant ID and Secret key in Dashboard; Bookify stores the encrypted credential in
-`tenant_gateway_configs` under tenant RLS. The same rule applies to PayOS credentials. Vì vậy không có
-`SEPAY_MERCHANT_ID`, `SEPAY_SECRET_KEY`, `PAYOS_CLIENT_ID` hay `PAYOS_API_KEY` dùng chung trong `.env`.
+Merchant ID and Merchant Secret Key in Dashboard; Bookify stores the encrypted credential in
+`tenant_gateway_configs` under tenant RLS. The same rule applies to PayOS credentials. Vì vậy không
+có `SEPAY_MERCHANT_ID`, `SEPAY_SECRET_KEY`, `PAYOS_CLIENT_ID` hay `PAYOS_API_KEY` dùng chung trong
+`.env`.
 
 The deployment only needs payment infrastructure variables:
 
@@ -41,23 +45,46 @@ Changing `PAYMENTS_ENC_KEY` without first re-encrypting stored credentials makes
 configs unreadable. Keep it in the production secret manager and use the same value across all API
 replicas.
 
-## IPN configuration
+## Payment Gateway IPN configuration
+
+Bookify checkout uses **SePay Payment Gateway**, so payment confirmation must be configured in the
+merchant's Payment Gateway IPN screen—not in the separate Webhooks screen for bank balance changes.
 
 In the SePay merchant console, open **Cổng thanh toán → Cấu hình → IPN** and configure:
 
 ```text
-POST https://<public-api-domain>/webhooks/sepay
-Authentication: SECRET_KEY
+Method:       POST
+IPN URL:      https://<public-api-domain>/webhooks/sepay
+Content-Type: application/json
+Authentication: SECRET_KEY (when the screen exposes this option)
+```
+
+The endpoint must be public HTTPS. For local Sandbox work, expose API port 3000 with a trusted tunnel
+and configure the resulting HTTPS URL. Quick Tunnel `trycloudflare.com` hostnames change after every
+restart; update SePay or use a named tunnel with a stable hostname.
+
+Sandbox Payment Gateway is isolated from Production but still sends the real integration flow: IPN
+and redirect callbacks. Sandbox and Production have separate Merchant ID/Secret Key pairs. When an
+order is paid, SePay sends an IPN with `notification_type = ORDER_PAID`,
+`order.order_invoice_number`, transaction status/amount/currency and:
+
+```http
+X-Secret-Key: <Merchant Secret Key for the selected environment>
 Content-Type: application/json
 ```
 
-The endpoint must be public HTTPS. For local sandbox work, expose API port 3000 with a trusted tunnel
-and configure the resulting HTTPS URL. SePay expects HTTP 200 after a valid notification is accepted.
+Bookify resolves the tenant from `order.order_invoice_number` using the admin pool, enters the
+tenant's RLS transaction, loads that tenant's Merchant Secret Key, compares `X-Secret-Key` in constant
+time, validates VND amount/status and atomically transitions the payment. Duplicate IPNs return HTTP
+200 without confirming the booking twice.
 
-Bookify resolves the tenant from `order.order_invoice_number` using the admin pool, enters that
-tenant's RLS transaction, loads the matching SePay credential (including an inactive historical
-config), and compares `X-Secret-Key` in constant time. It then validates VND amount/status and performs
-an atomic status transition. Duplicate IPNs return 200 without confirming the booking twice.
+### Not the bank-transaction Webhooks screen
+
+The SePay screen offering `API Key`, `HMAC-SHA256`, `OAuth 2.0` and no authentication belongs to the
+separate bank-transaction Webhooks product. A Live bank webhook is triggered by a real transaction in
+a linked bank account; its Test mode is triggered by **Mô phỏng giao dịch**. Marking a Payment Gateway
+Sandbox order paid does not create that bank-transaction webhook log. Bookify does not use that
+HMAC/WH Secret flow for its current `sepay-pg-node` checkout.
 
 ## Checkout flow
 
@@ -72,7 +99,8 @@ an atomic status transition. Duplicate IPNs return 200 without confirming the bo
    customer (for example `http://localhost:5173/bookings/BK-N55RRP?payment=success`). The API parses
    the forwarded Host as an origin and rejects credentials/path/query/hash before constructing these
    URLs. A success redirect shows the pending state until IPN is verified.
-6. Only the verified IPN (or the reconciliation worker) can mark payment succeeded and confirm booking.
+6. Only a verified SePay Payment Gateway IPN (or the reconciliation worker) can mark payment succeeded
+   and confirm booking.
 
 ## Reconciliation and refunds
 
@@ -113,8 +141,9 @@ payloads, card data or credentials.
 
 ## Verification (no test files)
 
-Use SePay Sandbox to exercise success, cancel/error redirect, duplicate IPN, invalid secret, amount
-mismatch and lost-IPN reconciliation. Then run:
+Use SePay Payment Gateway Sandbox to exercise success, cancel/error redirect, valid/invalid
+`X-Secret-Key`, duplicate IPN, unknown invoice number, amount mismatch and lost-IPN reconciliation.
+Then run:
 
 ```bash
 pnpm --filter=@booking/api prisma:deploy

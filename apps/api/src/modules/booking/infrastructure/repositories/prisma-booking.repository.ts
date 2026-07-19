@@ -22,8 +22,13 @@ interface Row {
   tenantId: string;
   listingId: string;
   listingTitle: string;
+  listingDescription: string | null;
+  listingImageUrl: string | null;
+  listingAttributes: unknown;
   partnerId: string;
+  partnerName: string;
   resourceId: string;
+  resourceName: string;
   customerId: string;
   customerFullName: string;
   customerPhone: string | null;
@@ -78,8 +83,10 @@ interface Row {
 const SELECT = Prisma.sql`
   SELECT b.id,
          b.tenant_id AS "tenantId", b.listing_id AS "listingId", l.title AS "listingTitle",
-         b.partner_id AS "partnerId",
-         b.resource_id AS "resourceId", b.customer_id AS "customerId",
+         l.description AS "listingDescription", l.photos->>0 AS "listingImageUrl",
+         l.attributes AS "listingAttributes",
+         b.partner_id AS "partnerId", p.name AS "partnerName",
+         b.resource_id AS "resourceId", r.name AS "resourceName", b.customer_id AS "customerId",
          u.full_name AS "customerFullName", u.phone AS "customerPhone", u.email::text AS "customerEmail",
          b.code, b.idempotency_key AS "idempotencyKey",
          b.booking_mode::text AS "bookingMode", b.status::text AS "status",
@@ -102,7 +109,9 @@ const SELECT = Prisma.sql`
          b.expires_at AS "expiresAt", b.created_at AS "createdAt", b.updated_at AS "updatedAt"
   FROM bookings b
   JOIN users u ON u.id = b.customer_id
-  JOIN listings l ON l.id = b.listing_id`;
+  JOIN listings l ON l.id = b.listing_id
+  JOIN partners p ON p.id = b.partner_id
+  JOIN resources r ON r.id = b.resource_id`;
 
 function toRecord(r: Row): BookingRecord {
   const { customerFullName, customerPhone, customerEmail, ...rest } = r;

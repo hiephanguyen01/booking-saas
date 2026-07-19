@@ -58,7 +58,7 @@ guards the RLS parts in CI.
 ## SePay payment references
 
 - `gateway_order_ref` is Bookify's unique `order_invoice_number` and exists before the browser leaves the storefront.
-- `gateway_order_id` and `gateway_txn_id` are populated from a verified SePay IPN.
+- `gateway_order_id` and `gateway_txn_id` are populated from a verified SePay Payment Gateway IPN.
 - `payment_method` stores the normalized provider method (`BANK_TRANSFER` for the current storefront flow).
 - Dashboard payment history reads these normalized columns; it never queries SePay live and never exposes `gateway_payload` or merchant credentials.
 

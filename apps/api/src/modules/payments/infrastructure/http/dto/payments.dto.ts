@@ -28,4 +28,4 @@ export class RefundResponseDto extends createZodDto(refundResponseSchema) {}
 export class RefundHistoryItemDto extends createZodDto(refundHistoryItemSchema) {}
 
 // Ad-hoc responses
-export class WebhookReceivedDto extends createZodDto(z.object({ received: z.literal(true) })) {}
+export class WebhookReceivedDto extends createZodDto(z.object({ success: z.literal(true) })) {}

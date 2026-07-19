@@ -48,6 +48,7 @@
     "start:dev": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && node --env-file-if-exists=../../.env ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "prisma:generate": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate",
     "prisma:reset": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate reset",
+    "prisma:studio": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js studio",
     "prisma:deploy": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate deploy",
     "seed": "node --env-file-if-exists=../../.env ./node_modules/ts-node/dist/bin.js --transpile-only prisma/seed.ts",
     "quick:start": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate reset && node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js migrate deploy && node --env-file-if-exists=../../.env ./node_modules/ts-node/dist/bin.js --transpile-only prisma/seed.ts",

@@ -1,4 +1,10 @@
-import type { BookingResponse, BookingStatus, CancellationTier } from '@booking/contracts';
+import type {
+  AdditionalCharge,
+  BookingResponse,
+  BookingStatus,
+  CancellationTier,
+  QuoteLineItem,
+} from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 
 export const BOOKING_HISTORY_FILTERS = [
@@ -26,9 +32,11 @@ export interface AccountBookingViewModel {
   code: string;
   status: BookingStatus;
   variant: BookingDetailVariant;
-  studioName: string;
+  partnerName: string;
   listingTitle: string;
-  imageUrl: string;
+  listingDescription: string | null;
+  imageUrl: string | null;
+  resourceName: string;
   startUtc: string;
   endUtc: string;
   dateLabel: string;
@@ -45,38 +53,22 @@ export interface AccountBookingViewModel {
   depositAmount: string;
   paidAmount: string;
   securityDeposit: string;
+  damageAmount: string;
+  additionalCharges: AdditionalCharge[];
+  promoCode: string | null;
+  pricingLineItems: QuoteLineItem[];
+  pickedUpAt: string | null;
+  returnedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
   balanceAmount: string;
-  paymentMethod: string | null;
   cancellationTiers: CancellationTier[];
   refundAmount: string | null;
   refundPercent: number | null;
   cancelledAt: string | null;
   cancellationReason: string | null;
   attributes: Array<{ label: string; value: string }>;
-  amenities: string[];
-  description: string | null;
   review: AccountBookingReview | null;
-  demo: boolean;
-}
-
-export interface AccountBookingFixture {
-  booking: BookingResponse;
-  presentation: Partial<
-    Pick<
-      AccountBookingViewModel,
-      | 'studioName'
-      | 'imageUrl'
-      | 'paymentMethod'
-      | 'refundAmount'
-      | 'refundPercent'
-      | 'cancelledAt'
-      | 'cancellationReason'
-      | 'attributes'
-      | 'amenities'
-      | 'description'
-      | 'review'
-    >
-  >;
 }
 
 const STATUS_FILTERS: Record<BookingStatus, BookingDetailVariant> = {
@@ -91,12 +83,6 @@ const STATUS_FILTERS: Record<BookingStatus, BookingDetailVariant> = {
   expired: 'cancelled',
   refunded: 'cancelled',
 };
-
-const FALLBACK_IMAGES = [
-  '/images/booking-studio/home/studio-1.jpg',
-  '/images/booking-studio/home/studio-2.jpg',
-  '/images/booking-studio/home/studio-3.jpg',
-] as const;
 
 export function parseBookingHistoryFilter(value: string | null): BookingHistoryFilter {
   return BOOKING_HISTORY_FILTERS.includes(value as BookingHistoryFilter)
@@ -129,24 +115,45 @@ function durationLabel(booking: BookingResponse, locale: Locale): string {
   return locale === 'en' ? `${hours} ${hours === 1 ? 'hour' : 'hours'}` : `${hours} giờ`;
 }
 
-function dateLabel(value: string, locale: Locale): string {
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+const DATE_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     timeZone: 'Asia/Ho_Chi_Minh',
-  }).format(new Date(value));
-}
+  }),
+  vi: new Intl.DateTimeFormat('vi-VN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  }),
+};
 
-function timeLabel(startUtc: string, endUtc: string, locale: Locale): string {
-  const formatter = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+const TIME_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
     timeZone: 'Asia/Ho_Chi_Minh',
-  });
-  return `${formatter.format(new Date(startUtc))} – ${formatter.format(new Date(endUtc))}`;
+  }),
+  vi: new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Ho_Chi_Minh',
+  }),
+};
+
+function dateLabel(value: string, locale: Locale): string {
+  return DATE_FORMATTERS[locale].format(new Date(value));
+}
+
+function timeLabel(startUtc: string, endUtc: string, locale: Locale): string {
+  const formatter = TIME_FORMATTERS[locale];
+  return `${formatter.format(new Date(startUtc))} - ${formatter.format(new Date(endUtc))}`;
 }
 
 function subtractMoney(total: string, paid: string): string {
@@ -161,19 +168,17 @@ function subtractMoney(total: string, paid: string): string {
 export function toAccountBookingViewModel(
   booking: BookingResponse,
   locale: Locale,
-  fixture?: AccountBookingFixture['presentation'],
 ): AccountBookingViewModel {
-  const imageIndex =
-    Math.abs([...booking.code].reduce((sum, char) => sum + char.charCodeAt(0), 0)) %
-    FALLBACK_IMAGES.length;
   return {
     id: booking.id,
     code: booking.code,
     status: booking.status,
     variant: bookingVariant(booking.status),
-    studioName: fixture?.studioName ?? booking.listingTitle,
+    partnerName: booking.partnerName,
     listingTitle: booking.listingTitle,
-    imageUrl: fixture?.imageUrl ?? FALLBACK_IMAGES[imageIndex],
+    listingDescription: booking.listingDescription,
+    imageUrl: booking.listingImageUrl,
+    resourceName: booking.resourceName,
     startUtc: booking.startUtc,
     endUtc: booking.endUtc,
     dateLabel: dateLabel(booking.startUtc, locale),
@@ -190,19 +195,54 @@ export function toAccountBookingViewModel(
     depositAmount: booking.depositAmount,
     paidAmount: booking.paidAmount,
     securityDeposit: booking.securityDeposit,
+    damageAmount: booking.damageAmount,
+    additionalCharges: booking.additionalCharges,
+    promoCode: booking.promoCode,
+    pricingLineItems: pricingLineItems(booking.pricingSnapshot),
+    pickedUpAt: booking.pickedUpAt,
+    returnedAt: booking.returnedAt,
+    expiresAt: booking.expiresAt,
+    createdAt: booking.createdAt,
     balanceAmount: subtractMoney(booking.finalAmount, booking.paidAmount),
-    paymentMethod: fixture?.paymentMethod ?? null,
     cancellationTiers: [...(booking.cancellationPolicySnapshot ?? [])].sort(
       (a, b) => b.hoursBefore - a.hoursBefore,
     ),
-    refundAmount: fixture?.refundAmount ?? booking.refundDueAmount,
-    refundPercent: fixture?.refundPercent ?? booking.refundPercent,
-    cancelledAt: fixture?.cancelledAt ?? null,
-    cancellationReason: fixture?.cancellationReason ?? null,
-    attributes: fixture?.attributes ?? [],
-    amenities: fixture?.amenities ?? [],
-    description: fixture?.description ?? null,
-    review: fixture?.review ?? null,
-    demo: Boolean(fixture),
+    refundAmount: booking.refundDueAmount,
+    refundPercent: booking.refundPercent,
+    cancelledAt: null,
+    cancellationReason: null,
+    attributes: displayAttributes(booking.listingAttributes),
+    review: null,
   };
+}
+
+function pricingLineItems(snapshot: BookingResponse['pricingSnapshot']): QuoteLineItem[] {
+  if (!snapshot || !Array.isArray(snapshot.lineItems)) return [];
+  return snapshot.lineItems.filter((item): item is QuoteLineItem => {
+    if (!item || typeof item !== 'object') return false;
+    const line = item as Partial<QuoteLineItem>;
+    return (
+      typeof line.label === 'string' &&
+      typeof line.quantity === 'number' &&
+      typeof line.unitPrice === 'string' &&
+      typeof line.regularUnitPrice === 'string' &&
+      typeof line.amount === 'string' &&
+      typeof line.regularAmount === 'string'
+    );
+  });
+}
+
+function displayAttributes(
+  attributes: Record<string, unknown>,
+): Array<{ label: string; value: string }> {
+  return Object.entries(attributes).flatMap(([label, value]) => {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return [{ label, value: String(value) }];
+    }
+    if (Array.isArray(value)) {
+      const values = value.filter((item) => typeof item === 'string' || typeof item === 'number');
+      return values.length ? [{ label, value: values.join(', ') }] : [];
+    }
+    return [];
+  });
 }

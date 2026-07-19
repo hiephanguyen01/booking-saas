@@ -23,7 +23,7 @@ export function CustomerSettlementDisputePanel({
     navigation.state === 'submitting' && navigation.formData?.get('intent') === 'dispute';
 
   return (
-    <section className="bg-background px-5 py-5 shadow-[0_7px_24px_rgba(15,23,42,0.04)] sm:px-6">
+    <section className="rounded-xl border border-border/70 bg-background px-5 py-5 shadow-[0_10px_35px_rgba(15,23,42,0.045)] sm:px-6">
       <div className="flex items-start gap-3">
         <Scale className="mt-0.5 size-5 text-primary" />
         <div>
@@ -44,7 +44,7 @@ export function CustomerSettlementDisputePanel({
         <div>
           <dt className="text-xs text-muted-foreground">{t('bookings.disputePanel.deadline')}</dt>
           <dd className="mt-1 font-medium">
-            {deadline ? formatDateTime(deadline, locale, 'Asia/Ho_Chi_Minh') : '—'}
+            {deadline ? formatDateTime(deadline, locale, 'Asia/Ho_Chi_Minh') : '-'}
           </dd>
         </div>
       </dl>
@@ -63,6 +63,7 @@ export function CustomerSettlementDisputePanel({
             maxLength={2000}
             rows={4}
             placeholder={t('bookings.disputePanel.reasonPlaceholder')}
+            className="rounded-lg"
           />
           <label htmlFor="dispute-evidence" className="text-sm font-medium">
             {t('bookings.disputePanel.evidence')}
@@ -73,12 +74,13 @@ export function CustomerSettlementDisputePanel({
             maxLength={5000}
             rows={2}
             placeholder={t('bookings.disputePanel.evidencePlaceholder')}
+            className="rounded-lg"
           />
           <div className="flex items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
               <Clock3 className="size-4" /> {t('bookings.disputePanel.lockHint')}
             </p>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" className="shrink-0 rounded-lg" disabled={submitting}>
               {submitting
                 ? t('bookings.disputePanel.submitting')
                 : t('bookings.disputePanel.submit')}

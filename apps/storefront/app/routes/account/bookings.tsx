@@ -28,7 +28,7 @@ export default function AccountBookingsPage({ loaderData }: Route.ComponentProps
 
   return (
     <div className="space-y-3">
-      <PageHeading title={t('bookings.title')} demo={loaderData.demo} />
+      <PageHeading title={t('bookings.title')} />
       <BookingTabs active={loaderData.filter} locale={locale} />
 
       {loaderData.error ? (

@@ -42,15 +42,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const booking = await loadAccountBooking(request, params.code, locale);
   if (!booking) throw new Response('Booking not found', { status: 404 });
   let settlement: CustomerBookingSettlementResponse | null = null;
-  if (!booking.demo) {
-    const response = await apiGet<CustomerBookingSettlementResponse>(
-      request,
-      `/customer/finance/settlements/${encodeURIComponent(booking.id)}`,
-      auth.session.accessToken,
-      { schema: customerBookingSettlementResponseSchema },
-    );
-    if (response.ok) settlement = response.data;
-  }
+  const response = await apiGet<CustomerBookingSettlementResponse>(
+    request,
+    `/customer/finance/settlements/${encodeURIComponent(booking.id)}`,
+    auth.session.accessToken,
+    { schema: customerBookingSettlementResponseSchema },
+  );
+  if (response.ok) settlement = response.data;
   return {
     locale,
     booking,
@@ -70,20 +68,6 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const booking = await loadAccountBooking(request, params.code, locale);
   if (!booking) return data({ ok: false, error: 'BOOKING_NOT_FOUND' }, { status: 404 });
-
-  if (booking.demo) {
-    if (parsed.data.intent === 'dispute') {
-      return data({ ok: false, error: 'DISPUTE_NOT_AVAILABLE' }, { status: 409 });
-    }
-    if (parsed.data.intent === 'pay' && booking.status !== 'pending_payment') {
-      return data({ ok: false, error: 'PAYMENT_NOT_AVAILABLE' }, { status: 409 });
-    }
-    if (parsed.data.intent === 'cancel' && booking.status !== 'confirmed') {
-      return data({ ok: false, error: 'CANCELLATION_NOT_AVAILABLE' }, { status: 409 });
-    }
-    const demoCode = parsed.data.intent === 'pay' ? 'DEMO-UPCOMING' : 'DEMO-CANCELLED';
-    return redirect(storefrontPaths.account.booking(locale, demoCode));
-  }
 
   if (parsed.data.intent === 'dispute') {
     const dispute = openSettlementDisputeInputSchema.safeParse({

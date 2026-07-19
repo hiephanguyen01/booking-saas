@@ -122,8 +122,18 @@ function toCore(b: BookingRecord) {
     status: b.status,
     listingId: b.listingId,
     listingTitle: b.listingTitle,
+    listingDescription: b.listingDescription,
+    listingImageUrl: b.listingImageUrl,
+    listingAttributes:
+      b.listingAttributes !== null &&
+      typeof b.listingAttributes === 'object' &&
+      !Array.isArray(b.listingAttributes)
+        ? (b.listingAttributes as Record<string, unknown>)
+        : {},
     resourceId: b.resourceId,
+    resourceName: b.resourceName,
     partnerId: b.partnerId,
+    partnerName: b.partnerName,
     bookingMode: b.bookingMode,
     startUtc: b.startUtc.toISOString(),
     endUtc: b.endUtc.toISOString(),

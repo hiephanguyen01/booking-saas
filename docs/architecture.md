@@ -36,7 +36,8 @@ Browser ──▶ RR8 loader/action (server)
   [ADR 0001](./decisions/0001-opaque-sessions-over-jwt.md).
 - SePay checkout is the one intentional browser-to-provider hop: the storefront action receives signed
   form fields server-to-server, validates the provider origin, then renders a browser `POST` form to
-  SePay. The merchant secret remains encrypted in the API and is never sent to the browser. See
+  SePay. The Merchant Secret Key remains encrypted in the API and is never sent to the browser;
+  payment confirmation verifies the Payment Gateway IPN `X-Secret-Key`. See
   [`payments-sepay.md`](./payments-sepay.md).
 - Every tenant-scoped operation runs in **one** `forTenant` transaction that sets `app.tenant_id`, so
   Postgres Row-Level Security filters every query. See [`data-model.md`](./data-model.md) and

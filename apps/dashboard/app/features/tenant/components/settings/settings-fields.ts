@@ -39,8 +39,9 @@ export const sepayGatewayFields: FieldConfig<SepayGatewaySettingsForm>[] = [
   {
     name: 'secretKey',
     type: 'password',
-    label: 'Secret key',
-    placeholder: 'Nhập secret key mới',
+    label: 'Merchant Secret Key',
+    description: 'Dùng để ký checkout, gọi API và xác thực IPN từ SePay.',
+    placeholder: 'Nhập Merchant Secret Key',
     autoComplete: 'new-password',
     required: true,
   },

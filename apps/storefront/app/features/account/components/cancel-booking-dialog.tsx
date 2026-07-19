@@ -45,13 +45,13 @@ export function CancelBookingDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="secondary"
-          className="h-10 rounded-sm bg-slate-700 px-6 text-white hover:bg-slate-800"
+          variant="outline"
+          className="h-10 rounded-lg border-destructive/30 px-6 text-destructive hover:bg-destructive/5 hover:text-destructive"
         >
           {t('bookings.cancel')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-none border-0 p-6 sm:max-w-[562px] sm:p-8">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl p-6 sm:max-w-[562px] sm:p-8">
         <DialogHeader>
           <DialogTitle className="text-2xl">{t('bookings.cancelDialog.title')}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -96,7 +96,7 @@ export function CancelBookingDialog({
                 maxLength={500}
                 placeholder={t('bookings.cancelDialog.otherPlaceholder')}
                 aria-invalid={selected === 'other' && otherReason.trim().length === 0}
-                className="min-h-20 rounded-sm"
+                className="min-h-20 rounded-lg"
               />
               <p className="mt-1 text-xs text-muted-foreground">{otherReason.length}/500</p>
             </div>
@@ -110,11 +110,11 @@ export function CancelBookingDialog({
 
           <DialogFooter className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="h-12 rounded-sm">
+              <Button type="button" variant="outline" className="h-12 rounded-lg">
                 {t('bookings.cancelDialog.back')}
               </Button>
             </DialogClose>
-            <Button type="submit" className="h-12 rounded-sm" disabled={!reason || submitting}>
+            <Button type="submit" className="h-12 rounded-lg" disabled={!reason || submitting}>
               {submitting
                 ? t('bookings.cancelDialog.submitting')
                 : t('bookings.cancelDialog.confirm')}

@@ -53,7 +53,7 @@ function parseVnd(value: unknown): bigint {
 }
 
 function sameSecret(expected: string, actual: string | undefined): boolean {
-  if (!actual) return false;
+  if (!expected || !actual) return false;
   const left = Buffer.from(expected, 'utf8');
   const right = Buffer.from(actual, 'utf8');
   return left.length === right.length && timingSafeEqual(left, right);
