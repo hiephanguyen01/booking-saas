@@ -1,0 +1,140 @@
+# Review package: f920d615bf78fad43cdb4106f5d3f62221c058bc..4bea394
+
+## Commits
+4bea394 feat(storefront): add booking financial summary
+
+## Files changed
+ .../components/booking-financial-summary.tsx       | 68 ++++++++++++++++++++++
+ packages/i18n/src/locales/en/account.ts            |  2 +
+ packages/i18n/src/locales/vi/account.ts            |  2 +
+ 3 files changed, 72 insertions(+)
+
+## Diff
+diff --git a/apps/storefront/app/features/account/components/booking-financial-summary.tsx b/apps/storefront/app/features/account/components/booking-financial-summary.tsx
+new file mode 100644
+index 0000000..05476b3
+--- /dev/null
++++ b/apps/storefront/app/features/account/components/booking-financial-summary.tsx
+@@ -0,0 +1,68 @@
++import { formatCurrency, type Locale } from '@booking/i18n';
++import { NsI18n, useTranslation } from '../../../lib/i18n';
++
++interface BookingFinancialSummaryProps {
++  paidAmount: string;
++  finalAmount: string;
++  balanceAmount: string;
++  locale: Locale;
++  className?: string;
++}
++
++export function BookingFinancialSummary({
++  paidAmount,
++  finalAmount,
++  balanceAmount,
++  locale,
++  className = '',
++}: BookingFinancialSummaryProps) {
++  const { t } = useTranslation(NsI18n.Account);
++  const hasBalance = BigInt(balanceAmount) > 0n;
++  const money = (value: string) => formatCurrency(BigInt(value), 'VND', locale);
++
++  return (
++    <dl className={`grid grid-cols-3 divide-x divide-border/70 rounded-lg bg-muted/30 ${className}`}>
++      <FinancialValue
++        label={t('bookings.payment.paidDeposit')}
++        value={money(paidAmount)}
++        tone="positive"
++      />
++      <FinancialValue label={t('bookings.payment.total')} value={money(finalAmount)} strong />
++      <FinancialValue
++        label={t('bookings.payment.balance')}
++        value={hasBalance ? money(balanceAmount) : t('bookings.payment.paidInFull')}
++        tone={hasBalance ? 'primary' : 'positive'}
++        strong
++      />
++    </dl>
++  );
++}
++
++function FinancialValue({
++  label,
++  value,
++  tone = 'neutral',
++  strong = false,
++}: {
++  label: string;
++  value: string;
++  tone?: 'neutral' | 'positive' | 'primary';
++  strong?: boolean;
++}) {
++  const toneClass = {
++    neutral: 'text-foreground',
++    positive: 'text-emerald-700',
++    primary: 'text-primary',
++  }[tone];
++
++  return (
++    <div className="min-w-0 px-2.5 py-3 text-center sm:px-4">
++      <dt className="text-xs leading-4 text-muted-foreground">{label}</dt>
++      <dd
++        className={`mt-1 break-words tabular-nums text-sm ${toneClass} ${strong ? 'font-semibold' : 'font-medium'}`}
++      >
++        {value}
++      </dd>
++    </div>
++  );
++}
+diff --git a/packages/i18n/src/locales/en/account.ts b/packages/i18n/src/locales/en/account.ts
+index b59f85e..56c8a00 100644
+--- a/packages/i18n/src/locales/en/account.ts
++++ b/packages/i18n/src/locales/en/account.ts
+@@ -121,20 +121,22 @@ export const enAccount = {
+       note: 'Message',
+     },
+     payment: {
+       title: 'Payment information',
+       summary: 'Payment summary',
+       original: 'Original price',
+       discount: 'Promotion',
+       total: 'Total',
+       deposit: 'Deposit paid',
+       paid: 'Paid',
++      paidDeposit: 'Deposit paid',
++      paidInFull: 'Paid in full',
+       securityDeposit: 'Security deposit',
+       method: 'Payment method',
+       balance: 'Remaining balance',
+       taxNote: 'Price includes 8% tax and 5% service fee',
+     },
+     refund: {
+       title: 'Cancellation and refund',
+       serviceTitle: 'Post-dispute refund',
+       serviceNote: 'This refund follows a service dispute and is not a cancellation fee.',
+       cancelledAt: 'Cancelled at',
+diff --git a/packages/i18n/src/locales/vi/account.ts b/packages/i18n/src/locales/vi/account.ts
+index 61c9499..abb0f7a 100644
+--- a/packages/i18n/src/locales/vi/account.ts
++++ b/packages/i18n/src/locales/vi/account.ts
+@@ -118,20 +118,22 @@ export const viAccount = {
+       note: 'Lời nhắn',
+     },
+     payment: {
+       title: 'Thông tin thanh toán',
+       summary: 'Tóm tắt thanh toán',
+       original: 'Giá gốc',
+       discount: 'Khuyến mãi',
+       total: 'Tổng tiền',
+       deposit: 'Đã cọc',
+       paid: 'Đã thanh toán',
++      paidDeposit: 'Đã cọc',
++      paidInFull: 'Đã thanh toán đủ',
+       securityDeposit: 'Cọc bảo đảm',
+       method: 'Phương thức thanh toán',
+       balance: 'Còn lại phải thanh toán',
+       taxNote: 'Giá đã bao gồm: Thuế 8%, Phí dịch vụ 5%',
+     },
+     refund: {
+       title: 'Hủy đơn và hoàn tiền',
+       serviceTitle: 'Hoàn tiền sau khi xử lý khiếu nại',
+       serviceNote: 'Đây là khoản hoàn sau dịch vụ, không phải phí hủy đơn.',
+       cancelledAt: 'Ngày hủy',

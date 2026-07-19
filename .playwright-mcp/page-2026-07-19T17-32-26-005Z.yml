@@ -1,0 +1,134 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e5]:
+      - link "StudioHub - Trang chủ" [ref=e6] [cursor=pointer]:
+        - /url: /vi
+        - img "StudioHub" [ref=e8]
+      - navigation "Điều hướng chính" [ref=e9]:
+        - link "Tra cứu đặt chỗ" [ref=e10] [cursor=pointer]:
+          - /url: /vi/bookings
+        - link "Cộng đồng" [ref=e11] [cursor=pointer]:
+          - /url: /vi/community
+        - link "Trở thành đối tác" [ref=e12] [cursor=pointer]:
+          - /url: /vi/become-partner
+        - link "Đăng nhập" [ref=e13] [cursor=pointer]:
+          - /url: /vi/auth/login?redirectTo=%2Fvi%2Fcheckout%3Flisting%3Dseed-studio-12%26mode%3Dhourly%26start%3D2026-07-20T05%253A00%253A00.000Z%26end%3D2026-07-20T06%253A00%253A00.000Z
+        - link "Đăng ký" [ref=e14] [cursor=pointer]:
+          - /url: /vi/auth/register
+  - main [ref=e15]:
+    - main [ref=e17]:
+      - heading "Xác nhận & thanh toán" [level=1] [ref=e18]
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Tổ hợp Studio Hồ Chí Minh 01" [level=2] [ref=e22]
+            - paragraph [ref=e23]:
+              - generic [ref=e27]: 12 Nguyễn Huệ, Phường Sài Gòn, Thành phố Hồ Chí Minh
+          - generic [ref=e28]:
+            - img "Studio Vintage Hồ Chí Minh 12" [ref=e30]
+            - generic [ref=e31]:
+              - heading "Studio Vintage Hồ Chí Minh 12" [level=3] [ref=e32]
+              - paragraph [ref=e33]: Thứ 2, 20 thg 7
+              - generic [ref=e36]: 12:00 - 13:00 (1 giờ)
+          - generic [ref=e38]:
+            - heading "Chính sách hủy" [level=3] [ref=e39]
+            - generic [ref=e40]:
+              - paragraph [ref=e41]:
+                - generic [ref=e44]: Hủy miễn phí trước 12:00, ngày 13 tháng 7
+              - paragraph [ref=e45]:
+                - generic [ref=e48]: Từ 12:00, ngày 18 tháng 7, hủy mất 125.000 ₫ (50% tiền cọc)
+              - paragraph [ref=e49]:
+                - generic [ref=e52]: Từ 12:00, ngày 20 tháng 7, hủy mất 250.000 ₫ (100% tiền cọc)
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - heading "Khuyến mãi dành cho bạn" [level=3] [ref=e55]
+              - button "Mã khuyến mãi" [ref=e56]
+            - generic [ref=e63]:
+              - generic [ref=e64]:
+                - generic [ref=e65]: 1 phòng × 1 khung giờ
+                - generic [ref=e66]: 500.000₫
+              - generic [ref=e67]:
+                - generic [ref=e68]: Giảm giá
+                - generic [ref=e69]: − 0₫
+              - generic [ref=e70]:
+                - generic [ref=e71]: Tổng cộng
+                - generic [ref=e72]: 500.000₫
+              - paragraph [ref=e73]: "Giá đã bao gồm: Thuế 8%, Phí dịch vụ 5%"
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - paragraph [ref=e76]: Trở thành khách hàng thân thiết của StudioHub để có cơ hội nhận nhiều ưu đãi hấp dẫn
+            - generic [ref=e77]:
+              - link "Đăng nhập" [ref=e78] [cursor=pointer]:
+                - /url: /vi/auth/login?redirectTo=%2Fvi%2Fcheckout%3Flisting%3Dseed-studio-12%26mode%3Dhourly%26start%3D2026-07-20T05%253A00%253A00.000Z%26end%3D2026-07-20T06%253A00%253A00.000Z
+              - link "Đăng ký" [ref=e79] [cursor=pointer]:
+                - /url: /vi/auth/register?redirectTo=%2Fvi%2Fcheckout%3Flisting%3Dseed-studio-12%26mode%3Dhourly%26start%3D2026-07-20T05%253A00%253A00.000Z%26end%3D2026-07-20T06%253A00%253A00.000Z
+          - generic [ref=e80]:
+            - region [ref=e81]:
+              - heading "Thông tin của bạn" [level=2] [ref=e82]
+              - generic [ref=e83]:
+                - group [ref=e84]:
+                  - generic [ref=e85]: Họ và tên
+                  - group [ref=e86]:
+                    - group [ref=e87]
+                    - textbox "Họ và tên" [ref=e91]
+                - group [ref=e92]:
+                  - generic [ref=e93]: Số điện thoại
+                  - group [ref=e94]:
+                    - group [ref=e95]
+                    - textbox "Số điện thoại" [ref=e98]
+                - group [ref=e99]:
+                  - generic [ref=e100]: Email
+                  - group [ref=e101]:
+                    - group [ref=e102]
+                    - textbox "Email" [ref=e106]
+                - group [ref=e107]:
+                  - generic [ref=e108]: Lời nhắn của bạn
+                  - group [ref=e109]:
+                    - group [ref=e110]
+                    - textbox "Lời nhắn của bạn" [ref=e114]
+            - region [ref=e115]:
+              - heading "Thanh toán" [level=2] [ref=e116]
+              - generic [ref=e117]:
+                - generic [ref=e118]: Tiền cọc
+                - strong [ref=e119]: 250.000₫
+              - group "Phương thức thanh toán" [ref=e120]:
+                - radiogroup "Phương thức thanh toán" [ref=e122]:
+                  - generic [ref=e123] [cursor=pointer]:
+                    - radio "SePay" [checked] [ref=e124]
+                    - radio [checked]
+                    - generic [ref=e133]: SePay
+            - button "Đặt & thanh toán" [ref=e134]
+  - contentinfo [ref=e135]:
+    - generic [ref=e136]:
+      - generic [ref=e137]:
+        - region [ref=e138]:
+          - heading "StudioHub" [level=2] [ref=e139]
+          - link "StudioHub - Trang chủ" [ref=e140] [cursor=pointer]:
+            - /url: /vi
+            - img "StudioHub" [ref=e142]
+          - paragraph [ref=e143]: 12 Nguyễn Huệ, Phường Sài Gòn, Thành phố Hồ Chí Minh
+          - generic [ref=e144]:
+            - link "0900 000 001" [ref=e145] [cursor=pointer]:
+              - /url: tel:0900 000 001
+            - link "hello@studiohub.vn" [ref=e148] [cursor=pointer]:
+              - /url: mailto:hello@studiohub.vn
+          - paragraph [ref=e152]: Theo dõi chúng tôi
+          - generic [ref=e153]:
+            - link "Facebook" [ref=e154] [cursor=pointer]:
+              - /url: https://facebook.com/studiohub.vn
+            - link "Instagram" [ref=e157] [cursor=pointer]:
+              - /url: https://instagram.com/studiohub.vn
+            - link "TikTok" [ref=e161] [cursor=pointer]:
+              - /url: https://tiktok.com/@studiohub.vn
+            - link "YouTube" [ref=e165] [cursor=pointer]:
+              - /url: https://youtube.com/@studiohub.vn
+        - generic [ref=e169]:
+          - heading "Về chúng tôi" [level=2] [ref=e170]
+          - generic [ref=e171]: Giới thiệu StudioHub
+          - generic [ref=e172]: Chính sách bảo mật
+          - generic [ref=e173]: Điều khoản sử dụng
+        - generic [ref=e174]:
+          - heading "Hỗ trợ khách hàng" [level=2] [ref=e175]
+          - generic [ref=e176]: Trung tâm trợ giúp
+          - generic [ref=e177]: Quy định chung
+      - paragraph [ref=e179]: © 2021 - Bản quyền thuộc công ty Cổ phần Công nghệ và Đầu tư VNPLUS

@@ -34,7 +34,7 @@ export const enCheckout = {
     title: 'Payment',
     method: 'Payment method',
     payos: 'PayOS QRCode',
-    sepay: 'Bank transfer via SePay',
+    sepay: 'SePay',
     transfer: 'Bank transfer',
     internationalCard: 'Visa/Master/JCB',
     domesticCard: 'Domestic ATM card',
@@ -46,9 +46,9 @@ export const enCheckout = {
   policy: {
     title: 'Cancellation policy',
     unspecified: 'The cancellation policy will be confirmed with your booking details.',
-    noRefund: 'Last-minute cancellation: no refund',
-    refundBeforeDays: 'Cancel {days} days ahead: {percent}% refunded',
-    refundBeforeHours: 'Cancel {hours} hours ahead: {percent}% refunded',
+    cutoffDate: '{time} on {day}/{month}',
+    freeCancellationUntil: 'Free cancellation before {date}',
+    lateCancellationFrom: 'From {date}, cancelling costs {amount} ({percent}% of the deposit)',
   },
   fieldErrors: {
     fullName: 'Please enter your full name',

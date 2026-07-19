@@ -12,10 +12,13 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { CircleAlert, Check } from 'lucide-react';
+import type { Locale } from '@booking/i18n';
+import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { Form, useNavigation } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import type { AccountBookingViewModel } from '../lib/booking-history';
+import { CancellationPolicyList } from './account-primitives';
 
 const REASON_KEYS = [
   'schedule',
@@ -27,9 +30,13 @@ const REASON_KEYS = [
 ] as const;
 
 export function CancelBookingDialog({
+  booking,
+  locale,
   defaultOpen = false,
   serverError = null,
 }: {
+  booking: Pick<AccountBookingViewModel, 'startUtc' | 'depositAmount' | 'cancellationTiers'>;
+  locale: Locale;
   defaultOpen?: boolean;
   serverError?: string | null;
 }) {
@@ -59,14 +66,8 @@ export function CancelBookingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 text-sm">
-          <p className="flex items-center gap-2 text-emerald-600">
-            <Check className="size-4" /> {t('bookings.freeCancellation')}
-          </p>
-          <p className="flex items-center gap-2 text-muted-foreground">
-            <Check className="size-4 text-emerald-600" />
-            {t('bookings.lateCancellation', { percent: 50 })}
-          </p>
+        <div className="text-sm">
+          <CancellationPolicyList booking={booking} locale={locale} />
         </div>
 
         <Alert className="border-0 bg-amber-100 text-amber-700">

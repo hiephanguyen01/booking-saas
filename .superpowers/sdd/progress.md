@@ -24,3 +24,11 @@ Task 1: complete (commits d66a452..0711c3b, review clean; controller browser con
 Plan: `docs/superpowers/plans/2026-07-19-detail-daily-range-popup.md`
 Baseline: `f8d16ba`
 Task 1: complete (commits f8d16ba..5a239cb, task review clean; controller confirmed both `setSp` paths use `preventScrollReset`, first click retains the popover with `from` only, same-day second click closes it with normalized parameters and unchanged `scrollY`; quote unavailable in the local API state).
+
+# Account bookings Figma redesign SDD progress
+
+Plan: `docs/superpowers/plans/2026-07-19-account-bookings-figma-redesign.md`
+Execution: direct on `main` with explicit user consent.
+Baseline: `f920d615bf78fad43cdb4106f5d3f62221c058bc`; storefront lint and typecheck pass.
+Task 1: complete (commit f920d61..4bea394, review clean).
+Task 2: complete (commit 4bea394..388c671, review clean).

@@ -32,7 +32,7 @@ export const viCheckout = {
     title: 'Thanh toán',
     method: 'Phương thức thanh toán',
     payos: 'PayOS QRCode',
-    sepay: 'Chuyển khoản qua SePay',
+    sepay: 'SePay',
     transfer: 'Chuyển khoản',
     internationalCard: 'Visa/Master/JCB',
     domesticCard: 'Thẻ ATM nội địa',
@@ -44,9 +44,9 @@ export const viCheckout = {
   policy: {
     title: 'Chính sách hủy',
     unspecified: 'Chính sách hủy sẽ được xác nhận trong thông tin đặt chỗ.',
-    noRefund: 'Hủy sát giờ: không hoàn tiền',
-    refundBeforeDays: 'Hủy trước {days} ngày: hoàn {percent}%',
-    refundBeforeHours: 'Hủy trước {hours} giờ: hoàn {percent}%',
+    cutoffDate: '{time}, ngày {day} tháng {month}',
+    freeCancellationUntil: 'Hủy miễn phí trước {date}',
+    lateCancellationFrom: 'Từ {date}, hủy mất {amount} ({percent}% tiền cọc)',
   },
   fieldErrors: {
     fullName: 'Vui lòng điền họ và tên',

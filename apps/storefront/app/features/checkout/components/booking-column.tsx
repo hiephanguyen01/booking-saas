@@ -3,9 +3,11 @@ import type {
   QuoteResponse,
   ValidatePromoResponse,
 } from '@booking/contracts';
+import { formatCurrency } from '@booking/i18n';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
 import { SectionCard } from '../../../components/section-card';
+import { cancellationCutoffParts, type CancellationPolicyLine } from '../../../lib/cancellation-policy';
 import { NsI18n, type ScopedI18n, useTranslation } from '../../../lib/i18n';
 import {
   dateLabelInTz,
@@ -16,7 +18,7 @@ import {
 } from '../../../lib/time';
 import { formatListingLocation } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
-import type { checkoutAmounts, PolicyLine } from '../checkout-presentation';
+import type { checkoutAmounts } from '../checkout-presentation';
 import { PricePanel } from './price-panel';
 import { PromoForm } from './promo-form';
 
@@ -26,7 +28,7 @@ export function BookingColumn({
   start,
   end,
   qty,
-  policies,
+  policyLines,
   searchParams,
   promoCode,
   promo,
@@ -38,7 +40,7 @@ export function BookingColumn({
   start: string;
   end: string;
   qty: string;
-  policies: PolicyLine[];
+  policyLines: CancellationPolicyLine[] | null;
   searchParams: URLSearchParams;
   promoCode: string | null;
   promo: ValidatePromoResponse | null;
@@ -105,18 +107,34 @@ export function BookingColumn({
       <div className="mt-6">
         <h3 className="text-sm leading-5 font-medium text-foreground">{t('policy.title')}</h3>
         <div className="mt-2 flex flex-col gap-2">
-          {policies.map((policy, index) => {
-            const text = policyText(policy, t);
-            return (
-              <p
-                key={text}
-                className={`flex items-start gap-2 text-sm leading-5 ${index === 0 ? 'text-primary' : 'text-foreground'}`}
-              >
-                <Check className="mt-0.5 size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
-                <span>{text}</span>
-              </p>
-            );
-          })}
+          {policyLines === null ? (
+            <p className="flex items-start gap-2 text-sm leading-5 text-foreground">
+              <Check className="mt-0.5 size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+              <span>{t('policy.unspecified')}</span>
+            </p>
+          ) : (
+            policyLines.map((line, index) => {
+              const { time, day, month } = cancellationCutoffParts(line.cutoffUtc, locale);
+              const date = t('policy.cutoffDate', { time, day, month });
+              const isFree = line.feePercent <= 0;
+              const text = isFree
+                ? t('policy.freeCancellationUntil', { date })
+                : t('policy.lateCancellationFrom', {
+                    date,
+                    amount: formatCurrency(BigInt(line.feeAmount), 'VND', locale),
+                    percent: line.feePercent,
+                  });
+              return (
+                <p
+                  key={index}
+                  className={`flex items-start gap-2 text-sm leading-5 ${isFree ? 'text-primary' : 'text-foreground'}`}
+                >
+                  <Check className="mt-0.5 size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                  <span>{text}</span>
+                </p>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -139,14 +157,6 @@ export function BookingColumn({
       </div>
     </SectionCard>
   );
-}
-
-function policyText(line: PolicyLine, t: ScopedI18n<NsI18n.Checkout>['t']): string {
-  if (line.kind === 'unspecified') return t('policy.unspecified');
-  if (line.kind === 'noRefund') return t('policy.noRefund');
-  return line.unit === 'day'
-    ? t('policy.refundBeforeDays', { days: line.amount, percent: line.refundPercent })
-    : t('policy.refundBeforeHours', { hours: line.amount, percent: line.refundPercent });
 }
 
 function buildScheduleBadges(

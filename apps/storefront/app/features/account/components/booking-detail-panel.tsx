@@ -1,17 +1,16 @@
+import type { CustomerBookingSettlementResponse, QuoteLineItem } from '@booking/contracts';
 import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import {
   ArrowLeft,
   CalendarDays,
-  Check,
   Clock3,
-  ImagePlus,
+  Info,
   MessageSquareText,
   PackageCheck,
-  ReceiptText,
   Star,
-  TicketPercent,
+  Upload,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -19,11 +18,9 @@ import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import type { AccountBookingViewModel } from '../lib/booking-history';
-import type { CustomerBookingSettlementResponse } from '@booking/contracts';
-import { CancelBookingDialog } from './cancel-booking-dialog';
-import { StudioThumbnail } from './account-primitives';
-import { BookingFinancialSummary } from './booking-financial-summary';
+import { CancellationPolicyList, StudioThumbnail } from './account-primitives';
 import { BookingStatusBadge } from './booking-status-badge';
+import { CancelBookingDialog } from './cancel-booking-dialog';
 
 export function BookingDetailPanel({
   booking,
@@ -72,6 +69,8 @@ export function BookingDetailPanel({
         />
       </section>
 
+      {booking.variant === 'completed' ? <ReviewSection booking={booking} /> : null}
+
       <ContactSection booking={booking} />
 
       {booking.variant === 'cancelled' ? (
@@ -92,10 +91,18 @@ export function BookingDetailPanel({
         <PostServiceRefundSummary settlement={settlement} locale={locale} />
       ) : null}
 
-      {booking.variant === 'completed' && booking.review ? (
-        <ReviewSection booking={booking} />
-      ) : null}
+      <PaymentTaxNote />
     </div>
+  );
+}
+
+function PaymentTaxNote() {
+  const { t } = useTranslation(NsI18n.Account);
+  return (
+    <p className="flex items-start gap-2 px-1 text-sm leading-6 text-foreground">
+      <Info className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      {t('bookings.payment.taxNote')}
+    </p>
   );
 }
 
@@ -215,29 +222,42 @@ function BookingOverview({
         </dl>
       ) : null}
 
-      <OrderBreakdown booking={booking} locale={locale} />
-
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border/70 bg-muted/15 px-5 py-4 sm:px-6">
-        <PolicyNotes booking={booking} postServiceRefund={postServiceRefund} />
-        <div className="flex flex-wrap gap-2">
-          {booking.variant === 'payment' && booking.status === 'pending_payment' ? (
-            <Form method="post">
-              <input type="hidden" name="intent" value="pay" />
-              <Button className="h-10 rounded-lg">{t('bookings.payNow')}</Button>
-            </Form>
-          ) : null}
-          {booking.status === 'confirmed' ? (
-            <CancelBookingDialog defaultOpen={defaultCancelOpen} serverError={actionError} />
-          ) : null}
-          {booking.variant === 'no-show' ? (
-            <Button asChild variant="outline" className="h-10 rounded-lg">
-              <Link to={storefrontPaths.account.help(locale)}>{t('bookings.dispute')}</Link>
-            </Button>
-          ) : null}
+      {hasBookingFooter(booking, postServiceRefund) ? (
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border/70 bg-muted/15 px-5 py-4 sm:px-6">
+          <PolicyNotes booking={booking} locale={locale} postServiceRefund={postServiceRefund} />
+          <div className="flex flex-wrap gap-2">
+            {booking.variant === 'payment' && booking.status === 'pending_payment' ? (
+              <Form method="post">
+                <input type="hidden" name="intent" value="pay" />
+                <Button className="h-10 rounded-lg">{t('bookings.payNow')}</Button>
+              </Form>
+            ) : null}
+            {booking.status === 'confirmed' ? (
+              <CancelBookingDialog
+                booking={booking}
+                locale={locale}
+                defaultOpen={defaultCancelOpen}
+                serverError={actionError}
+              />
+            ) : null}
+            {booking.variant === 'no-show' ? (
+              <Button asChild variant="outline" className="h-10 rounded-lg">
+                <Link to={storefrontPaths.account.help(locale)}>{t('bookings.dispute')}</Link>
+              </Button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
+}
+
+function hasBookingFooter(booking: AccountBookingViewModel, postServiceRefund: boolean): boolean {
+  if (postServiceRefund) return false;
+  if (booking.variant === 'cancelled' || booking.variant === 'no-show') return true;
+  if (booking.variant === 'payment' && booking.status === 'pending_payment') return true;
+  if (booking.status === 'confirmed') return true;
+  return booking.cancellationTiers.length > 0 && booking.variant !== 'completed';
 }
 
 function BookingFact({
@@ -258,90 +278,13 @@ function BookingFact({
   );
 }
 
-function OrderBreakdown({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
-  const { t } = useTranslation(NsI18n.Account);
-  const hasDetails =
-    booking.pricingLineItems.length > 0 ||
-    booking.additionalCharges.length > 0 ||
-    booking.promoCode ||
-    booking.pickedUpAt ||
-    booking.returnedAt ||
-    booking.customerNote;
-  if (!hasDetails) return null;
-
-  return (
-    <div className="border-t border-border/70 px-5 py-5 sm:px-6">
-      <div className="flex items-center gap-2">
-        <ReceiptText className="size-4 text-primary" />
-        <h3 className="text-sm font-semibold">{t('bookings.orderBreakdown')}</h3>
-      </div>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-        {booking.pricingLineItems.map((line) => (
-          <DetailTile
-            key={`${line.label}-${line.quantity}-${line.amount}`}
-            label={`${line.label} × ${line.quantity}`}
-            value={money(line.amount, locale)}
-          />
-        ))}
-        {booking.additionalCharges.map((charge) => (
-          <DetailTile
-            key={`${charge.type}-${charge.amount}`}
-            label={t('bookings.additionalCharge', { type: charge.type })}
-            value={money(charge.amount, locale)}
-          />
-        ))}
-        {booking.promoCode ? (
-          <DetailTile
-            icon={TicketPercent}
-            label={t('bookings.payment.discount')}
-            value={booking.promoCode}
-          />
-        ) : null}
-        {booking.pickedUpAt ? (
-          <DetailTile
-            label={t('bookings.pickedUpAt')}
-            value={formatDateTime(booking.pickedUpAt, locale, 'Asia/Ho_Chi_Minh')}
-          />
-        ) : null}
-        {booking.returnedAt ? (
-          <DetailTile
-            label={t('bookings.returnedAt')}
-            value={formatDateTime(booking.returnedAt, locale, 'Asia/Ho_Chi_Minh')}
-          />
-        ) : null}
-        {booking.customerNote ? (
-          <DetailTile label={t('bookings.contact.note')} value={booking.customerNote} />
-        ) : null}
-      </dl>
-    </div>
-  );
-}
-
-function DetailTile({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon?: typeof TicketPercent;
-}) {
-  return (
-    <div className="rounded-lg bg-muted/40 px-4 py-3">
-      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {Icon ? <Icon className="size-3.5 text-primary" /> : null}
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm font-medium">{value}</dd>
-    </div>
-  );
-}
-
 function PolicyNotes({
   booking,
+  locale,
   postServiceRefund,
 }: {
   booking: AccountBookingViewModel;
+  locale: Locale;
   postServiceRefund: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Account);
@@ -349,7 +292,7 @@ function PolicyNotes({
   if (booking.variant === 'cancelled') {
     return (
       <div className="space-y-1 text-xs text-muted-foreground">
-        <p>{t('bookings.refundPreview')}</p>
+        <p>{t('bookings.refundPreview', { percent: booking.refundPercent ?? 0 })}</p>
         <p>{t('bookings.refundTiming')}</p>
       </div>
     );
@@ -363,19 +306,7 @@ function PolicyNotes({
     );
   }
   if (!booking.cancellationTiers.length || booking.variant === 'completed') return null;
-  return (
-    <div className="space-y-2 text-xs">
-      <p className="flex items-center gap-2 text-emerald-600">
-        <Check className="size-3.5" /> {t('bookings.freeCancellation')}
-      </p>
-      <p className="flex items-center gap-2 text-muted-foreground">
-        <Check className="size-3.5 text-emerald-600" />
-        {t('bookings.lateCancellation', {
-          percent: booking.cancellationTiers.at(-1)?.refundPercent ?? 0,
-        })}
-      </p>
-    </div>
-  );
+  return <CancellationPolicyList booking={booking} locale={locale} />;
 }
 
 function ContactSection({ booking }: { booking: AccountBookingViewModel }) {
@@ -392,23 +323,34 @@ function ContactSection({ booking }: { booking: AccountBookingViewModel }) {
 
 function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
   const { t } = useTranslation(NsI18n.Account);
+  const depositLabel =
+    booking.variant === 'completed'
+      ? t('bookings.payment.deposit')
+      : t('bookings.payment.depositDue');
   return (
     <DetailSection
       title={t('bookings.payment.title')}
-      lead={
-        <BookingFinancialSummary
-          paidAmount={booking.paidAmount}
-          finalAmount={booking.finalAmount}
-          balanceAmount={booking.balanceAmount}
-          locale={locale}
-          className="mb-5"
-        />
+      footer={
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-lg bg-muted px-4 py-3 text-sm">
+          <span className="text-muted-foreground">{t('bookings.payment.balance')}</span>
+          <span className="font-semibold">{money(booking.balanceAmount, locale)}</span>
+        </div>
       }
     >
-      <DetailRow
-        label={t('bookings.payment.original')}
-        value={money(booking.totalAmount, locale)}
-      />
+      {booking.pricingLineItems.length ? (
+        booking.pricingLineItems.map((line) => (
+          <PricingLineRow
+            key={`${line.label}-${line.quantity}-${line.amount}`}
+            line={line}
+            locale={locale}
+          />
+        ))
+      ) : (
+        <DetailRow
+          label={t('bookings.payment.original')}
+          value={money(booking.totalAmount, locale)}
+        />
+      )}
       {BigInt(booking.discountAmount) > 0n ? (
         <DetailRow
           label={t('bookings.payment.discount')}
@@ -416,24 +358,39 @@ function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel;
         />
       ) : null}
       <DetailRow label={t('bookings.payment.total')} value={money(booking.finalAmount, locale)} />
-      <DetailRow
-        label={t('bookings.payment.deposit')}
-        value={money(booking.depositAmount, locale)}
-        accent
-      />
-      <DetailRow label={t('bookings.payment.paid')} value={money(booking.paidAmount, locale)} />
+      <DetailRow label={depositLabel} value={money(booking.depositAmount, locale)} accent />
       {BigInt(booking.securityDeposit) > 0n ? (
         <DetailRow
           label={t('bookings.payment.securityDeposit')}
           value={money(booking.securityDeposit, locale)}
         />
       ) : null}
-      <DetailRow
-        label={t('bookings.payment.balance')}
-        value={money(booking.balanceAmount, locale)}
-        strong
-      />
     </DetailSection>
+  );
+}
+
+function PricingLineRow({ line, locale }: { line: QuoteLineItem; locale: Locale }) {
+  const hasDiscount = BigInt(line.regularAmount) > BigInt(line.amount);
+  const percentOff = hasDiscount
+    ? Math.round((1 - Number(line.amount) / Number(line.regularAmount)) * 100)
+    : 0;
+  return (
+    <div className="grid gap-1 py-3 text-sm first:pt-0 last:pb-0 sm:grid-cols-[minmax(9rem,0.4fr)_minmax(0,0.6fr)] sm:gap-6">
+      <dt className="text-muted-foreground">{`${line.label} × ${line.quantity}`}</dt>
+      <dd className="break-words sm:text-right">
+        {hasDiscount ? (
+          <span className="mr-2 inline-flex items-center gap-1.5">
+            <span className="rounded bg-destructive px-1.5 py-0.5 text-xs font-semibold text-white">
+              -{percentOff}%
+            </span>
+            <span className="text-xs text-muted-foreground line-through">
+              {money(line.regularAmount, locale)}
+            </span>
+          </span>
+        ) : null}
+        {money(line.amount, locale)}
+      </dd>
+    </div>
   );
 }
 
@@ -513,9 +470,7 @@ function PostServiceRefundSummary({
     <DetailSection
       title={t('bookings.refund.serviceTitle')}
       footer={
-        <p className="mt-4 text-xs text-muted-foreground">
-          {t('bookings.refund.serviceNote')}
-        </p>
+        <p className="mt-4 text-xs text-muted-foreground">{t('bookings.refund.serviceNote')}</p>
       }
     >
       <DetailRow
@@ -558,9 +513,9 @@ function NoShowSummary({ booking, locale }: { booking: AccountBookingViewModel; 
 
 function ReviewSection({ booking }: { booking: AccountBookingViewModel }) {
   const { t } = useTranslation(NsI18n.Account);
-  const [rating, setRating] = useState(booking.review?.rating ?? 0);
-  const [submitted, setSubmitted] = useState(booking.review?.state === 'reviewed');
-  if (!booking.review) return null;
+  const review = booking.review;
+  const [rating, setRating] = useState(review?.rating ?? 0);
+  const [submitted, setSubmitted] = useState(review?.state === 'reviewed');
 
   return (
     <section className="rounded-xl border border-border/70 bg-background px-5 py-6 shadow-[0_10px_35px_rgba(15,23,42,0.035)] sm:px-6">
@@ -577,19 +532,19 @@ function ReviewSection({ booking }: { booking: AccountBookingViewModel }) {
             ))}
           </div>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            {booking.review.body ?? t('bookings.reviewSection.saved')}
+            {review?.body ?? t('bookings.reviewSection.saved')}
           </p>
-          {booking.review.photos?.length ? (
+          {review?.photos?.length ? (
             <div className="mt-4 flex gap-2">
-              {booking.review.photos.map((photo) => (
+              {review.photos.map((photo) => (
                 <img key={photo} src={photo} alt="" className="size-20 rounded-lg object-cover" />
               ))}
             </div>
           ) : null}
-          {booking.review.response ? (
+          {review?.response ? (
             <div className="mt-4 rounded-lg bg-muted/60 p-4 text-xs leading-5">
               <p className="font-semibold">{booking.partnerName}</p>
-              <p className="mt-1 text-muted-foreground">{booking.review.response}</p>
+              <p className="mt-1 text-muted-foreground">{review.response}</p>
             </div>
           ) : null}
         </div>
@@ -619,11 +574,19 @@ function ReviewSection({ booking }: { booking: AccountBookingViewModel }) {
             </Button>
           </div>
           <Textarea placeholder={t('bookings.reviewSection.placeholder')} className="rounded-lg" />
-          <div className="grid min-h-36 place-items-center rounded-lg border border-dashed border-primary/50 p-5 text-center text-xs text-muted-foreground">
-            <div>
-              <ImagePlus className="mx-auto mb-2 size-7 text-primary" />
-              {t('bookings.reviewSection.upload')}
+          <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-primary/50 p-8 text-center">
+            <Upload className="size-8 text-primary" aria-hidden="true" />
+            <p className="text-sm font-medium">{t('bookings.reviewSection.uploadHint')}</p>
+            <div className="flex w-full max-w-50 items-center gap-3">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">
+                {t('bookings.reviewSection.uploadOr')}
+              </span>
+              <span className="h-px flex-1 bg-border" />
             </div>
+            <Button type="button" variant="outline" size="sm">
+              {t('bookings.reviewSection.chooseFiles')}
+            </Button>
           </div>
         </div>
       )}

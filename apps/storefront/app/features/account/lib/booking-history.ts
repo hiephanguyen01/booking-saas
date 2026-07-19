@@ -6,6 +6,13 @@ import type {
   QuoteLineItem,
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
+import {
+  cancellationCutoffParts,
+  cancellationPolicyLines as sharedCancellationPolicyLines,
+  type CancellationPolicyLine,
+} from '../../../lib/cancellation-policy';
+
+export { cancellationCutoffParts, type CancellationPolicyLine };
 
 export const BOOKING_HISTORY_FILTERS = [
   'all',
@@ -99,6 +106,22 @@ export function bookingMatchesFilter(
 
 export function bookingVariant(status: BookingStatus): BookingDetailVariant {
   return STATUS_FILTERS[status];
+}
+
+/**
+ * Maps the booking's frozen cancellation tiers (sorted by `toAccountBookingViewModel`,
+ * most-lenient first) to one display line per tier. The cutoff date/time and fee amount
+ * are computed from the booking's own `startUtc`/`depositAmount` — nothing here is a
+ * fixed bracket or invented copy, only real numbers from `cancellationPolicySnapshot`.
+ */
+export function cancellationPolicyLines(
+  booking: Pick<AccountBookingViewModel, 'startUtc' | 'depositAmount' | 'cancellationTiers'>,
+): CancellationPolicyLine[] {
+  return sharedCancellationPolicyLines({
+    startUtc: booking.startUtc,
+    depositAmount: booking.depositAmount,
+    tiers: booking.cancellationTiers,
+  });
 }
 
 function durationLabel(booking: BookingResponse, locale: Locale): string {

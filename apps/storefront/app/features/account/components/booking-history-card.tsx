@@ -1,20 +1,11 @@
-import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
+import { formatDateTime, type Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
-import {
-  CalendarDays,
-  Check,
-  Clock3,
-  MessageSquareText,
-  PackageCheck,
-  ReceiptText,
-  TicketPercent,
-  Users,
-} from 'lucide-react';
+import { CalendarDays, Clock3, MessageSquareText } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import type { AccountBookingViewModel } from '../lib/booking-history';
-import { AccountPanel, StudioThumbnail } from './account-primitives';
+import { AccountPanel, CancellationPolicyList, StudioThumbnail } from './account-primitives';
 import { BookingFinancialSummary } from './booking-financial-summary';
 import { BookingStatusBadge } from './booking-status-badge';
 
@@ -27,12 +18,6 @@ export function BookingHistoryCard({
 }) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Booking]);
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
-  const mode =
-    booking.bookingMode === 'hourly' ||
-    booking.bookingMode === 'daily' ||
-    booking.bookingMode === 'inventory'
-      ? booking.bookingMode
-      : 'other';
 
   return (
     <AccountPanel className="overflow-hidden rounded-xl border border-border/70 shadow-[0_10px_35px_rgba(15,23,42,0.045)]">
@@ -96,29 +81,6 @@ export function BookingHistoryCard({
               </span>
               <span className="rounded-full bg-muted px-2.5 py-1.5">{booking.durationLabel}</span>
             </div>
-            {booking.listingDescription ? (
-              <p className="mt-3 line-clamp-2 text-sm leading-5 text-muted-foreground">
-                {booking.listingDescription}
-              </p>
-            ) : null}
-            <dl className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-border/60 pt-3 text-xs">
-              <Fact
-                icon={PackageCheck}
-                label={t('account:bookings.bookingType')}
-                value={t(`account:bookings.modes.${mode}`)}
-              />
-              <Fact
-                icon={booking.bookingMode === 'inventory' ? PackageCheck : Users}
-                label={
-                  booking.bookingMode === 'inventory'
-                    ? t('account:bookings.quantity')
-                    : t('account:bookings.guests')
-                }
-                value={String(
-                  booking.bookingMode === 'inventory' ? booking.quantity : booking.guestCount,
-                )}
-              />
-            </dl>
           </div>
         </div>
 
@@ -130,8 +92,6 @@ export function BookingHistoryCard({
             <p className="mt-1 leading-5">{booking.customerNote}</p>
           </div>
         ) : null}
-
-        <BookingExtras booking={booking} locale={locale} />
       </div>
 
       <BookingFinancialSummary
@@ -142,160 +102,57 @@ export function BookingHistoryCard({
         className="mx-5 mb-5 sm:mx-6"
       />
 
-      <CardFooter booking={booking} detailPath={detailPath} />
+      <CardFooter booking={booking} detailPath={detailPath} locale={locale} />
     </AccountPanel>
-  );
-}
-
-function BookingExtras({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
-  const { t } = useTranslation(NsI18n.Account);
-  const hasExtras =
-    booking.pricingLineItems.length > 0 ||
-    booking.additionalCharges.length > 0 ||
-    BigInt(booking.discountAmount) > 0n ||
-    booking.promoCode ||
-    booking.pickedUpAt ||
-    booking.returnedAt ||
-    BigInt(booking.securityDeposit) > 0n;
-  if (!hasExtras) return null;
-
-  return (
-    <details className="group mt-5 border-t border-border/70 pt-4">
-      <summary className="cursor-pointer list-none text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        {t('bookings.orderBreakdown')}
-      </summary>
-      <dl className="mt-3 divide-y divide-border/60 text-sm">
-        {BigInt(booking.discountAmount) > 0n ? (
-          <ExtraRow
-            label={t('bookings.payment.discount')}
-            value={`−${money(booking.discountAmount, locale)}`}
-            accent
-          />
-        ) : null}
-        {booking.promoCode ? (
-          <ExtraRow label={t('bookings.payment.discount')} value={booking.promoCode} icon />
-        ) : null}
-        {booking.pricingLineItems.map((line) => (
-          <div
-            key={`${line.label}-${line.quantity}-${line.unitPrice}-${line.amount}`}
-            className="flex justify-between gap-4 py-2"
-          >
-            <dt className="text-muted-foreground">
-              {line.label} × {line.quantity}
-            </dt>
-            <dd className="shrink-0 font-medium">{money(line.amount, locale)}</dd>
-          </div>
-        ))}
-        {BigInt(booking.securityDeposit) > 0n ? (
-          <ExtraRow
-            label={t('bookings.payment.securityDeposit')}
-            value={money(booking.securityDeposit, locale)}
-          />
-        ) : null}
-        {booking.additionalCharges.map((charge) => (
-          <ExtraRow
-            key={`${charge.type}-${charge.amount}`}
-            label={t('bookings.additionalCharge', { type: charge.type })}
-            value={money(charge.amount, locale)}
-          />
-        ))}
-        {booking.pickedUpAt ? (
-          <ExtraRow
-            label={t('bookings.pickedUpAt')}
-            value={formatDateTime(booking.pickedUpAt, locale, 'Asia/Ho_Chi_Minh')}
-          />
-        ) : null}
-        {booking.returnedAt ? (
-          <ExtraRow
-            label={t('bookings.returnedAt')}
-            value={formatDateTime(booking.returnedAt, locale, 'Asia/Ho_Chi_Minh')}
-          />
-        ) : null}
-      </dl>
-    </details>
-  );
-}
-
-function Fact({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof CalendarDays;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </div>
-  );
-}
-
-function ExtraRow({
-  label,
-  value,
-  accent = false,
-  icon = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  icon?: boolean;
-}) {
-  return (
-    <div className="flex justify-between gap-4 py-2">
-      <dt className="flex items-center gap-1.5 text-muted-foreground">
-        {icon ? <TicketPercent className="size-3.5 text-primary" aria-hidden="true" /> : null}
-        {label}
-      </dt>
-      <dd className={`text-right font-medium ${accent ? 'text-emerald-700' : ''}`}>{value}</dd>
-    </div>
   );
 }
 
 function CardFooter({
   booking,
   detailPath,
+  locale,
 }: {
   booking: AccountBookingViewModel;
   detailPath: string;
+  locale: Locale;
 }) {
   const { t } = useTranslation(NsI18n.Account);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/15 px-5 py-4 sm:px-6">
-      <PolicyNotes booking={booking} />
+      <PolicyNotes booking={booking} locale={locale} />
       <div className="flex flex-wrap gap-2">
-        {booking.status === 'confirmed' ? (
+        {booking.variant === 'upcoming' ? (
           <Button asChild variant="outline" size="sm">
             <Link to={`${detailPath}?cancel=1`}>{t('bookings.cancel')}</Link>
           </Button>
         ) : null}
-        {booking.status === 'pending_payment' ? (
+        {booking.variant === 'payment' ? (
           <Form method="post" action={detailPath}>
             <input type="hidden" name="intent" value="pay" />
             <Button size="sm">{t('bookings.payNow')}</Button>
           </Form>
-        ) : (
-          <Button asChild size="sm">
-            <Link to={detailPath}>
-              <ReceiptText className="size-4" /> {t('bookings.detail')}
-            </Link>
+        ) : null}
+        {booking.variant === 'completed' ? (
+          <Button asChild variant="outline" size="sm">
+            <Link to={detailPath}>{t('bookings.review')}</Link>
           </Button>
-        )}
+        ) : null}
+        {booking.variant === 'no-show' ? (
+          <Button asChild variant="outline" size="sm">
+            <Link to={storefrontPaths.account.help(locale)}>{t('bookings.dispute')}</Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function PolicyNotes({ booking }: { booking: AccountBookingViewModel }) {
+function PolicyNotes({ booking, locale }: { booking: AccountBookingViewModel; locale: Locale }) {
   const { t } = useTranslation(NsI18n.Account);
   if (booking.variant === 'cancelled') {
     return (
       <div className="space-y-1 text-xs text-muted-foreground">
-        <p>{t('bookings.refundPreview')}</p>
+        <p>{t('bookings.refundPreview', { percent: booking.refundPercent ?? 0 })}</p>
         <p>{t('bookings.refundTiming')}</p>
       </div>
     );
@@ -310,20 +167,5 @@ function PolicyNotes({ booking }: { booking: AccountBookingViewModel }) {
   }
   if (!booking.cancellationTiers.length || booking.variant === 'completed') return null;
 
-  return (
-    <div className="space-y-1 text-xs text-muted-foreground">
-      <p className="flex items-center gap-1.5 text-emerald-700">
-        <Check className="size-3.5" aria-hidden="true" /> {t('bookings.freeCancellation')}
-      </p>
-      <p>
-        {t('bookings.lateCancellation', {
-          percent: booking.cancellationTiers.at(-1)?.refundPercent ?? 0,
-        })}
-      </p>
-    </div>
-  );
-}
-
-function money(value: string, locale: Locale): string {
-  return formatCurrency(BigInt(value), 'VND', locale);
+  return <CancellationPolicyList booking={booking} locale={locale} />;
 }

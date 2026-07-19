@@ -4,7 +4,7 @@ import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { useLocale } from '../../lib/use-locale';
 import type { StorefrontContext } from '../../root';
-import { checkoutAmounts, policyLines } from './checkout-presentation';
+import { checkoutAmounts, checkoutCancellationLines } from './checkout-presentation';
 import { BookingColumn } from './components/booking-column';
 import { CheckoutForm } from './components/checkout-form';
 import { MemberBanner } from './components/member-banner';
@@ -35,8 +35,10 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
             start={start}
             end={end}
             qty={qty}
-            policies={policyLines(
+            policyLines={checkoutCancellationLines(
               listing.effectiveCancellationPolicy ?? listing.cancellationPolicy,
+              start,
+              amounts.deposit,
             )}
             searchParams={searchParams}
             promoCode={promoCode}

@@ -1,6 +1,12 @@
+import { formatCurrency, type Locale } from '@booking/i18n';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Camera, Construction } from 'lucide-react';
+import { Camera, Check, Construction } from 'lucide-react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import {
+  cancellationCutoffParts,
+  cancellationPolicyLines,
+  type AccountBookingViewModel,
+} from '../lib/booking-history';
 
 export function AccountPanel({
   children,
@@ -61,6 +67,44 @@ export function StudioThumbnail({ label, className = '' }: { label: string; clas
       <div className="absolute -bottom-8 -left-5 size-24 rounded-full bg-foreground/5" />
       <Camera aria-hidden="true" className="m-auto size-7 text-primary/55" />
       <span className="sr-only">{label}</span>
+    </div>
+  );
+}
+
+export function CancellationPolicyList({
+  booking,
+  locale,
+}: {
+  booking: Pick<AccountBookingViewModel, 'startUtc' | 'depositAmount' | 'cancellationTiers'>;
+  locale: Locale;
+}) {
+  const { t } = useTranslation(NsI18n.Account);
+  const lines = cancellationPolicyLines(booking);
+  if (!lines.length) return null;
+
+  return (
+    <div className="space-y-1 text-xs text-muted-foreground">
+      {lines.map((line, index) => {
+        const { time, day, month } = cancellationCutoffParts(line.cutoffUtc, locale);
+        const date = t('bookings.policy.cutoffDate', { time, day, month });
+        const isFree = line.feePercent <= 0;
+        const text = isFree
+          ? t('bookings.policy.freeCancellationUntil', { date })
+          : t('bookings.policy.lateCancellationFrom', {
+              date,
+              amount: formatCurrency(BigInt(line.feeAmount), 'VND', locale),
+              percent: line.feePercent,
+            });
+        return (
+          <p key={index} className={`flex items-center gap-1.5 ${isFree ? 'text-emerald-700' : ''}`}>
+            <Check
+              className={`size-3.5 shrink-0 ${isFree ? '' : 'text-emerald-600'}`}
+              aria-hidden="true"
+            />
+            {text}
+          </p>
+        );
+      })}
     </div>
   );
 }
