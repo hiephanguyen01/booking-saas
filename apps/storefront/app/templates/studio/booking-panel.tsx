@@ -9,8 +9,11 @@ import type {
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Input } from '@booking/ui/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { Separator } from '@booking/ui/components/ui/separator';
+import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { cn } from '@booking/ui/lib/utils';
+import { CalendarDays, ChevronDown } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { eligibleDailyRange, normalizeDailyRange } from '../../lib/daily-range';
@@ -38,6 +41,7 @@ import {
 
 /** Local mirror of react-day-picker's DateRange (not a direct storefront dep). */
 type DateRange = { from: Date | undefined; to?: Date | undefined };
+type SetSearchParams = ReturnType<typeof useSearchParams>[1];
 
 interface PanelProps {
   listing: PublicListingDetailResponse;
@@ -84,7 +88,7 @@ export function BookingPanel({
       : null;
 
   function switchMode(next: AvailabilityMode): void {
-    setSp({ mode: next }); // reset the selection when the mode changes
+    setSp({ mode: next }, { preventScrollReset: true }); // reset selection on mode change
   }
 
   const checkoutParams = new URLSearchParams({ listing: listing.slug, mode });
@@ -253,17 +257,35 @@ function HourlyPicker({
 }: {
   availability: AvailabilityResponse | null;
   sp: URLSearchParams;
-  setSp: (next: URLSearchParams) => void;
+  setSp: SetSearchParams;
   tz: string;
   selectedStart: string | null;
   selectedEnd: string | null;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const locale = useLocale();
   const today = todayInTz(tz);
   const day = sp.get('day') || sp.get('date') || today;
   const durationSlots: HourlySlot[] =
     availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
   const slots = useMemo(() => atomicHourlySlots(durationSlots), [durationSlots]);
+  const calendarFormatters = useMemo(() => {
+    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
+    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
+    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
+    return {
+      formatCaption: (month: Date) => caption.format(month),
+      formatWeekdayName: (date: Date) => weekday.format(date),
+    };
+  }, [locale]);
+  const selectedDay = dateOnlyToLocal(day);
+  const formattedDay = new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  }).format(selectedDay);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [selectionError, setSelectionError] = useState('');
   const selected = useMemo(
@@ -274,7 +296,9 @@ function HourlyPicker({
     [selectedEnd, selectedStart, slots],
   );
 
-  function pickDay(nextDay: string): void {
+  function pickDay(date: Date | undefined): void {
+    if (!date) return;
+    const nextDay = localToDateOnly(date);
     const next = new URLSearchParams(sp);
     next.set('mode', 'hourly');
     next.set('day', nextDay);
@@ -284,7 +308,8 @@ function HourlyPicker({
     next.delete('startTime');
     next.delete('endTime');
     setSelectionError('');
-    setSp(next);
+    setCalendarOpen(false);
+    setSp(next, { preventScrollReset: true });
   }
 
   function pickSlot(slot: HourlySlot): void {
@@ -312,24 +337,51 @@ function HourlyPicker({
       next.delete('end');
     }
     setSelectionError('');
-    setSp(next);
+    setSp(next, { preventScrollReset: true });
   }
 
   const available = slots.filter((slot) => slot.available);
   const visibleSlots = onlyAvailable ? available : slots;
+  const selectedValues = selected.map((slot) => slot.startUtc);
   const selectedUnavailable = Boolean(selectedStart && selectedEnd && selected.length === 0);
 
+  function changeSelectedSlots(values: string[]): void {
+    const changedValue = [...selectedValues, ...values].find(
+      (value) => selectedValues.includes(value) !== values.includes(value),
+    );
+    const changedSlot = slots.find((slot) => slot.startUtc === changedValue);
+    if (changedSlot) pickSlot(changedSlot);
+  }
+
   return (
-    <div className="space-y-3">
-      <label className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
         <PickerLabel>{t('pickDay')}</PickerLabel>
-        <Input
-          type="date"
-          value={day}
-          min={today}
-          onChange={(e) => e.target.value && pickDay(e.target.value)}
-        />
-      </label>
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start"
+              aria-label={`${t('pickDay')}: ${formattedDay}`}
+            >
+              <CalendarDays data-icon="inline-start" />
+              <span className="min-w-0 flex-1 truncate text-left">{formattedDay}</span>
+              <ChevronDown data-icon="inline-end" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={selectedDay}
+              onSelect={pickDay}
+              disabled={{ before: dateOnlyToLocal(today) }}
+              formatters={calendarFormatters}
+              autoFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
 
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -355,34 +407,35 @@ function HourlyPicker({
           {t('noSlots')}
         </p>
       ) : (
-        <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pr-1">
+        <ToggleGroup
+          type="multiple"
+          variant="outline"
+          spacing={2}
+          value={selectedValues}
+          onValueChange={changeSelectedSlots}
+          aria-label={t('pickSlot')}
+          className="grid max-h-60 w-full grid-cols-2 gap-2 overflow-y-auto pr-1"
+        >
           {visibleSlots.map((slot, slotIndex) => {
-            const isSelected = selected.some((item) => item.startUtc === slot.startUtc);
+            const startTime = timeInTz(slot.startUtc, tz);
+            const endTime = timeInTz(slot.endUtc, tz);
+            const slotStatus = slot.available ? formatVnd(slot.price) : t('unavailableSlot');
             return (
-              <button
+              <ToggleGroupItem
                 key={`${slot.startUtc}-${slot.endUtc}-${slotIndex}`}
-                type="button"
-                onClick={() => slot.available && pickSlot(slot)}
+                value={slot.startUtc}
                 disabled={!slot.available}
-                className={cn(
-                  'flex flex-col items-center rounded-lg border px-1 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  isSelected
-                    ? 'border-primary bg-primary/10 font-semibold text-primary'
-                    : slot.available
-                      ? 'border-border bg-background/40 hover:border-primary/50 hover:bg-muted/40'
-                      : 'cursor-not-allowed border-border/60 bg-muted/50 text-muted-foreground opacity-60',
-                )}
+                aria-label={`${startTime}–${endTime}, ${slotStatus}`}
+                className="h-auto min-w-0 flex-col gap-0.5 px-1 py-2 whitespace-normal"
               >
                 <span>
-                  {timeInTz(slot.startUtc, tz)}–{timeInTz(slot.endUtc, tz)}
+                  {startTime}–{endTime}
                 </span>
-                <span className="text-[11px] text-muted-foreground">
-                  {slot.available ? formatVnd(slot.price) : t('unavailableSlot')}
-                </span>
-              </button>
+                <span className="text-xs text-muted-foreground">{slotStatus}</span>
+              </ToggleGroupItem>
             );
           })}
-        </div>
+        </ToggleGroup>
       )}
       {selected.length ? (
         <button
@@ -394,7 +447,7 @@ function HourlyPicker({
             next.delete('start');
             next.delete('end');
             setSelectionError('');
-            setSp(next);
+            setSp(next, { preventScrollReset: true });
           }}
           className="text-left text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -427,7 +480,7 @@ function DailyPicker({
   availability: AvailabilityResponse | null;
   listing: PublicListingDetailResponse;
   sp: URLSearchParams;
-  setSp: (next: URLSearchParams) => void;
+  setSp: SetSearchParams;
   tz: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
@@ -462,7 +515,7 @@ function DailyPicker({
       params.delete('to');
       params.delete('start');
       params.delete('end');
-      setSp(params);
+      setSp(params, { preventScrollReset: true });
       return;
     }
     const fromStr = localToDateOnly(next.from);
@@ -484,7 +537,7 @@ function DailyPicker({
       params.delete('start');
       params.delete('end');
     }
-    setSp(params);
+    setSp(params, { preventScrollReset: true });
   }
 
   // A day is unbookable if it's not in the open set (booked/blocked/closed).
@@ -566,7 +619,7 @@ function InventoryPicker({
   availability: AvailabilityResponse | null;
   selection: InventorySelection;
   sp: URLSearchParams;
-  setSp: (next: URLSearchParams) => void;
+  setSp: SetSearchParams;
   tz: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
@@ -585,7 +638,7 @@ function InventoryPicker({
     next.set('qty', String(patch.qty ?? qty));
     next.set('start', window.start);
     next.set('end', window.end);
-    setSp(next);
+    setSp(next, { preventScrollReset: true });
   }
 
   return (
