@@ -481,6 +481,17 @@ function DailyPicker({
   tz: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const locale = useLocale();
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarFormatters = useMemo(() => {
+    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
+    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
+    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
+    return {
+      formatCaption: (month: Date) => caption.format(month),
+      formatWeekdayName: (date: Date) => weekday.format(date),
+    };
+  }, [locale]);
   const days: DayAvailability[] = availability?.mode === 'daily' ? availability.days : [];
   const dailyCfg = (listing.modeConfig.daily ?? {}) as {
     checkinTime?: string;
@@ -503,6 +514,15 @@ function DailyPicker({
   const range: DateRange | undefined = fromDate
     ? { from: dateOnlyToLocal(fromDate), to: toDate ? dateOnlyToLocal(toDate) : undefined }
     : undefined;
+  const formatDate = (value: string): string => dateLabelInTz(value, tz, locale);
+  const selectedDateLabel = fromDate
+    ? toDate
+      ? fromDate === toDate
+        ? formatDate(fromDate)
+        : `${formatDate(fromDate)} - ${formatDate(toDate)}`
+      : `${formatDate(fromDate)} - ${t('selectRange')}`
+    : t('pickDates');
+  const calendarMonth = range?.from ?? (days[0] ? dateOnlyToLocal(days[0].date) : undefined);
 
   function onSelect(next: DateRange | undefined): void {
     const params = new URLSearchParams(sp);
@@ -548,14 +568,42 @@ function DailyPicker({
   return (
     <div className="space-y-2">
       <PickerLabel>{t('pickDates')}</PickerLabel>
-      <Calendar
-        mode="range"
-        selected={range}
-        onSelect={onSelect}
-        disabled={isDisabled}
-        excludeDisabled
-        className="sf-calendar w-full rounded-lg border border-border bg-background/40 p-2 [--cell-size:2.25rem]"
-      />
+      <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full justify-start gap-2 px-3 text-left font-normal"
+            aria-label={`${t('pickDates')}: ${selectedDateLabel}`}
+          >
+            <CalendarDays className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">{selectedDateLabel}</span>
+            <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          sideOffset={8}
+          className="w-auto max-w-[calc(100vw-2rem)] p-0"
+        >
+          <div className="overflow-x-auto p-2">
+            <Calendar
+              mode="range"
+              selected={range}
+              onSelect={(next) => {
+                onSelect(next);
+                if (next?.from && next.to) setCalendarOpen(false);
+              }}
+              disabled={isDisabled}
+              excludeDisabled
+              defaultMonth={calendarMonth}
+              resetOnSelect
+              formatters={calendarFormatters}
+              className="sf-calendar w-full [--cell-size:2.25rem]"
+            />
+          </div>
+        </PopoverContent>
+      </Popover>
       {nights > 0 ? (
         <p className="text-sm text-muted-foreground">
           {t('nights', { count: nights })}
