@@ -97,6 +97,8 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
+            <ProviderCard trust={listing.trust} />
+
             <BookingPanel
               listing={listing}
               mode={mode}
@@ -105,7 +107,6 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
               initialStart={selectionStart}
               initialEnd={selectionEnd}
             />
-            <ProviderCard trust={listing.trust} />
           </aside>
         </div>
       </div>

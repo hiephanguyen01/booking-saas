@@ -16,14 +16,20 @@ import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import {
+  atomicHourlySlots,
+  contiguousSlotsForInterval,
+  slotInterval,
+  toggleContiguousSlot,
+} from '../../features/listing-group/listing-group-utils';
 import { eligibleDailyRange, normalizeDailyRange } from '../../lib/daily-range';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import {
   DEFAULT_TZ,
   addDays,
-  dateOnlyToLocal,
   dateLabelInTz,
+  dateOnlyToLocal,
   hoursBetween,
   localToDateOnly,
   nightsBetween,
@@ -33,12 +39,6 @@ import {
 } from '../../lib/time';
 import { formatVnd } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
-import {
-  atomicHourlySlots,
-  contiguousSlotsForInterval,
-  slotInterval,
-  toggleContiguousSlot,
-} from '../../features/listing-group/listing-group-utils';
 
 /** Local mirror of react-day-picker's DateRange (not a direct storefront dep). */
 type DateRange = { from: Date | undefined; to?: Date | undefined };
@@ -266,7 +266,8 @@ function HourlyPicker({
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const today = todayInTz(tz);
-  const day = sp.get('day') || sp.get('date') || today;
+  const selectedDayValue = sp.get('day') || sp.get('date');
+  const availabilityDay = selectedDayValue ?? today;
   const durationSlots: HourlySlot[] =
     availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
   const slots = useMemo(() => atomicHourlySlots(durationSlots), [durationSlots]);
@@ -279,8 +280,11 @@ function HourlyPicker({
       formatWeekdayName: (date: Date) => weekday.format(date),
     };
   }, [locale]);
-  const selectedDay = dateOnlyToLocal(day);
-  const formattedDay = dateLabelInTz(day, tz, locale);
+  const selectedDay = selectedDayValue ? dateOnlyToLocal(selectedDayValue) : undefined;
+  const calendarMonth = selectedDay ?? dateOnlyToLocal(availabilityDay);
+  const formattedDay = selectedDayValue
+    ? dateLabelInTz(selectedDayValue, tz, locale)
+    : t('pickDay');
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [selectionError, setSelectionError] = useState('');
@@ -309,7 +313,7 @@ function HourlyPicker({
   }
 
   function pickSlot(slot: HourlySlot): void {
-    if (!slot.available) return;
+    if (!slot.available || !selectedDayValue) return;
     const result = toggleContiguousSlot(selected, slot);
     if (!result.changed) {
       setSelectionError(t('group.contiguousOnly'));
@@ -318,8 +322,8 @@ function HourlyPicker({
 
     const next = new URLSearchParams(sp);
     next.set('mode', 'hourly');
-    next.set('day', day);
-    next.set('date', day);
+    next.set('day', selectedDayValue);
+    next.set('date', selectedDayValue);
     const interval = slotInterval(result.slots);
     if (interval) {
       next.set('startTime', timeInTz(interval.start, tz));
@@ -339,7 +343,9 @@ function HourlyPicker({
   const available = slots.filter((slot) => slot.available);
   const visibleSlots = onlyAvailable ? available : slots;
   const selectedValues = selected.map((slot) => slot.startUtc);
-  const selectedUnavailable = Boolean(selectedStart && selectedEnd && selected.length === 0);
+  const selectedUnavailable = Boolean(
+    selectedDayValue && selectedStart && selectedEnd && selected.length === 0,
+  );
 
   function changeSelectedSlots(values: string[]): void {
     const changedValue = [...selectedValues, ...values].find(
@@ -359,7 +365,7 @@ function HourlyPicker({
               type="button"
               variant="outline"
               className="w-full justify-start"
-              aria-label={`${t('pickDay')}: ${formattedDay}`}
+              aria-label={selectedDayValue ? `${t('pickDay')}: ${formattedDay}` : t('pickDay')}
             >
               <CalendarDays data-icon="inline-start" />
               <span className="min-w-0 flex-1 truncate text-left">{formattedDay}</span>
@@ -370,69 +376,76 @@ function HourlyPicker({
             <Calendar
               mode="single"
               selected={selectedDay}
-              defaultMonth={selectedDay}
+              defaultMonth={calendarMonth}
               onSelect={pickDay}
               disabled={{ before: dateOnlyToLocal(today) }}
               formatters={calendarFormatters}
-              autoFocus
             />
           </PopoverContent>
         </Popover>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <PickerLabel>{t('pickSlot')}</PickerLabel>
-          {selected.length ? (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t('group.slotsChosen', { count: selected.length })}
-            </p>
-          ) : null}
-        </div>
-        {slots.some((slot) => !slot.available) ? (
-          <button
-            type="button"
-            onClick={() => setOnlyAvailable((current) => !current)}
-            className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {onlyAvailable ? t('showAllSlots') : t('showOnlyAvailable')}
-          </button>
-        ) : null}
-      </div>
-      {visibleSlots.length === 0 ? (
+      {!selectedDayValue ? (
         <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-          {t('noSlots')}
+          {t('pickDayFirst')}
         </p>
       ) : (
-        <ToggleGroup
-          type="multiple"
-          variant="outline"
-          spacing={2}
-          value={selectedValues}
-          onValueChange={changeSelectedSlots}
-          aria-label={t('pickSlot')}
-          className="grid max-h-60 w-full grid-cols-2 gap-2 overflow-y-auto pr-1"
-        >
-          {visibleSlots.map((slot, slotIndex) => {
-            const startTime = timeInTz(slot.startUtc, tz);
-            const endTime = timeInTz(slot.endUtc, tz);
-            const slotStatus = slot.available ? formatVnd(slot.price) : t('unavailableSlot');
-            return (
-              <ToggleGroupItem
-                key={`${slot.startUtc}-${slot.endUtc}-${slotIndex}`}
-                value={slot.startUtc}
-                disabled={!slot.available}
-                aria-label={`${startTime}–${endTime}, ${slotStatus}`}
-                className="h-auto min-w-0 flex-col gap-0.5 px-1 py-2 whitespace-normal"
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <PickerLabel>{t('pickSlot')}</PickerLabel>
+              {selected.length ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {t('group.slotsChosen', { count: selected.length })}
+                </p>
+              ) : null}
+            </div>
+            {slots.some((slot) => !slot.available) ? (
+              <button
+                type="button"
+                onClick={() => setOnlyAvailable((current) => !current)}
+                className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <span>
-                  {startTime}–{endTime}
-                </span>
-                <span className="text-xs text-muted-foreground">{slotStatus}</span>
-              </ToggleGroupItem>
-            );
-          })}
-        </ToggleGroup>
+                {onlyAvailable ? t('showAllSlots') : t('showOnlyAvailable')}
+              </button>
+            ) : null}
+          </div>
+          {visibleSlots.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
+              {t('noSlots')}
+            </p>
+          ) : (
+            <ToggleGroup
+              type="multiple"
+              variant="outline"
+              spacing={2}
+              value={selectedValues}
+              onValueChange={changeSelectedSlots}
+              aria-label={t('pickSlot')}
+              className="grid max-h-60 w-full grid-cols-2 gap-2 overflow-y-auto pr-1"
+            >
+              {visibleSlots.map((slot, slotIndex) => {
+                const startTime = timeInTz(slot.startUtc, tz);
+                const endTime = timeInTz(slot.endUtc, tz);
+                const slotStatus = slot.available ? formatVnd(slot.price) : t('unavailableSlot');
+                return (
+                  <ToggleGroupItem
+                    key={`${slot.startUtc}-${slot.endUtc}-${slotIndex}`}
+                    value={slot.startUtc}
+                    disabled={!slot.available}
+                    aria-label={`${startTime}–${endTime}, ${slotStatus}`}
+                    className="h-auto min-w-0 flex-col gap-0.5 px-1 py-2 whitespace-normal"
+                  >
+                    <span>
+                      {startTime}–{endTime}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{slotStatus}</span>
+                  </ToggleGroupItem>
+                );
+              })}
+            </ToggleGroup>
+          )}
+        </>
       )}
       {selected.length ? (
         <button

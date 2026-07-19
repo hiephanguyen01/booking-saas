@@ -312,31 +312,33 @@ function TimeRangeField({
 }) {
   const { t } = useTranslation(NsI18n.Common);
   return (
-    <div className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-border bg-background px-3 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+    <div className="flex h-11 min-w-0 items-center gap-1.5 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
       <Clock3 className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <input
-        name="startTime"
-        type="time"
-        step={300}
-        value={startTime}
-        onChange={(event) => onStartTimeChange(event.target.value)}
-        disabled={disabled}
-        aria-label={t('home.startTime')}
-        className="w-0 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
-      />
-      <span className="text-muted-foreground" aria-hidden="true">
-        –
-      </span>
-      <input
-        name="endTime"
-        type="time"
-        step={300}
-        value={endTime}
-        onChange={(event) => onEndTimeChange(event.target.value)}
-        disabled={disabled}
-        aria-label={t('home.endTime')}
-        className="w-0 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
-      />
+      <div className="flex shrink-0 items-center gap-1.5">
+        <input
+          name="startTime"
+          type="time"
+          step={300}
+          value={startTime}
+          onChange={(event) => onStartTimeChange(event.target.value)}
+          disabled={disabled}
+          aria-label={t('home.startTime')}
+          className="w-[5ch] min-w-[5ch] appearance-none bg-transparent text-sm tabular-nums outline-none [&::-webkit-calendar-picker-indicator]:hidden disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <span className="text-muted-foreground" aria-hidden="true">
+          –
+        </span>
+        <input
+          name="endTime"
+          type="time"
+          step={300}
+          value={endTime}
+          onChange={(event) => onEndTimeChange(event.target.value)}
+          disabled={disabled}
+          aria-label={t('home.endTime')}
+          className="w-[5ch] min-w-[5ch] appearance-none bg-transparent text-sm tabular-nums outline-none [&::-webkit-calendar-picker-indicator]:hidden disabled:cursor-not-allowed disabled:opacity-50"
+        />
+      </div>
     </div>
   );
 }

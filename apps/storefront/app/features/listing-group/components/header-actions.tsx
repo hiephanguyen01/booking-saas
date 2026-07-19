@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
-import { Copy, Heart, Menu } from 'lucide-react';
+import { Copy, EllipsisVertical, Heart } from 'lucide-react';
 import { useState } from 'react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 
@@ -51,7 +51,7 @@ export function HeaderActions({ title }: { title: string }) {
             className="size-11"
             aria-label={t('group.moreOptions')}
           >
-            <Menu />
+            <EllipsisVertical />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

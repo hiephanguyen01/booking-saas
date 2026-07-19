@@ -32,6 +32,7 @@ export const enListing = {
   modeDaily: 'By day',
   modeInventory: 'By quantity',
   pickDay: 'Pick a day',
+  pickDayFirst: 'Choose a day to see the available time slots.',
   pickSlot: 'Pick a time slot',
   noSlots: 'No open slots on this day.',
   unavailableSlot: 'Unavailable',

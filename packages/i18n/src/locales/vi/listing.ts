@@ -29,6 +29,7 @@ export const viListing = {
   modeDaily: 'Theo ngày',
   modeInventory: 'Số lượng',
   pickDay: 'Chọn ngày',
+  pickDayFirst: 'Vui lòng chọn ngày để xem các khung giờ còn trống.',
   pickSlot: 'Chọn khung giờ',
   noSlots: 'Không còn khung giờ trống trong ngày này.',
   unavailableSlot: 'Không khả dụng',

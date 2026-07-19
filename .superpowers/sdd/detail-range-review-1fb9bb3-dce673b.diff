@@ -1,0 +1,64 @@
+# Review package: 1fb9bb37f96ec3e11aab42b206d139605e3408bb..dce673b
+
+## Commits
+dce673b fix(storefront): align daily range selection
+
+## Files changed
+ apps/storefront/app/features/search/search-form.tsx    | 1 -
+ apps/storefront/app/templates/studio/booking-panel.tsx | 2 +-
+ 2 files changed, 1 insertion(+), 2 deletions(-)
+
+## Diff
+diff --git a/apps/storefront/app/features/search/search-form.tsx b/apps/storefront/app/features/search/search-form.tsx
+index 82e446a..cf02333 100644
+--- a/apps/storefront/app/features/search/search-form.tsx
++++ b/apps/storefront/app/features/search/search-form.tsx
+@@ -650,21 +650,20 @@ function SearchDatePicker({
+         <Calendar
+           mode="range"
+           selected={range}
+           onSelect={(next) => {
+             const selected = next ?? { from: undefined };
+             setRange(selected);
+             if (selected.from && selected.to) close();
+           }}
+           disabled={calendarToday ? { before: calendarToday } : undefined}
+           numberOfMonths={months}
+-          resetOnSelect
+           formatters={formatters}
+           className="sf-calendar w-full [--cell-size:2.25rem]"
+         />
+       );
+ 
+     return (
+       <div className="flex flex-col">
+         {showModeTabs && availableModes.length > 1 ? (
+           <ModeToggle
+             mode={mode}
+diff --git a/apps/storefront/app/templates/studio/booking-panel.tsx b/apps/storefront/app/templates/studio/booking-panel.tsx
+index de920bd..3bd9845 100644
+--- a/apps/storefront/app/templates/studio/booking-panel.tsx
++++ b/apps/storefront/app/templates/studio/booking-panel.tsx
+@@ -547,21 +547,21 @@ function DailyPicker({
+ 
+   return (
+     <div className="space-y-2">
+       <PickerLabel>{t('pickDates')}</PickerLabel>
+       <Calendar
+         mode="range"
+         selected={range}
+         onSelect={onSelect}
+         disabled={isDisabled}
+         excludeDisabled
+-        className="rounded-lg border border-border bg-background/40 p-2"
++        className="sf-calendar w-full rounded-lg border border-border bg-background/40 p-2 [--cell-size:2.25rem]"
+       />
+       {nights > 0 ? (
+         <p className="text-sm text-muted-foreground">
+           {t('nights', { count: nights })}
+           {nights < minNights ? ` · ${t('minNights', { count: minNights })}` : ''}
+         </p>
+       ) : (
+         <p className="text-sm text-muted-foreground">{t('selectRange')}</p>
+       )}
+     </div>
