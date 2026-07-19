@@ -237,6 +237,14 @@ export function toSettlementDisputeResponse(
   };
 }
 
+export function toAdminSettlementDisputeResponse(dispute: SettlementDisputeRecord) {
+  return {
+    ...toSettlementDisputeResponse(dispute),
+    tenantId: dispute.tenantId,
+    tenantName: dispute.tenantName ?? dispute.tenantId,
+  };
+}
+
 export function toPartnerSettlementDisputeResponse(
   dispute: SettlementDisputeRecord,
 ): PartnerSettlementDisputeResponse {

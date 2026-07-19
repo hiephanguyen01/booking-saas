@@ -1,7 +1,4 @@
-import type {
-  SettlementDisputeResolution,
-  SettlementDisputeStatus,
-} from '@prisma/client';
+import type { SettlementDisputeResolution, SettlementDisputeStatus } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const SETTLEMENT_DISPUTE_REPOSITORY = Symbol('SETTLEMENT_DISPUTE_REPOSITORY');
@@ -9,6 +6,7 @@ export const SETTLEMENT_DISPUTE_REPOSITORY = Symbol('SETTLEMENT_DISPUTE_REPOSITO
 export interface SettlementDisputeRecord {
   id: string;
   tenantId: string;
+  tenantName?: string;
   settlementId: string;
   bookingId: string;
   openedByUserId: string;
@@ -35,12 +33,17 @@ export interface SettlementDisputeRecord {
   updatedAt: Date;
 }
 
+export interface SettlementDisputeListFilters {
+  partnerId?: string;
+  status?: SettlementDisputeStatus;
+  responseStatus?: 'pending' | 'responded';
+  from?: Date;
+  to?: Date;
+  q?: string;
+}
+
 export interface ISettlementDisputeRepository {
-  customerOwnsBooking(
-    tx: PrismaTx,
-    bookingId: string,
-    customerId: string,
-  ): Promise<boolean>;
+  customerOwnsBooking(tx: PrismaTx, bookingId: string, customerId: string): Promise<boolean>;
   findById(tx: PrismaTx, id: string): Promise<SettlementDisputeRecord | null>;
   findLatestBySettlement(
     tx: PrismaTx,
@@ -80,6 +83,11 @@ export interface ISettlementDisputeRepository {
     tx: PrismaTx,
     page: number,
     pageSize: number,
-    partnerId?: string,
+    filters?: SettlementDisputeListFilters,
+  ): Promise<{ items: SettlementDisputeRecord[]; total: number }>;
+  listPlatform(
+    page: number,
+    pageSize: number,
+    filters: SettlementDisputeListFilters & { tenantId?: string },
   ): Promise<{ items: SettlementDisputeRecord[]; total: number }>;
 }

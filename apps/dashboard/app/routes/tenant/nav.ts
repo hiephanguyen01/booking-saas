@@ -11,6 +11,8 @@ import {
   Ticket,
   Users,
   Wallet,
+  Star,
+  Scale,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
 import { dashboardPaths } from '~/constants/paths';
@@ -67,6 +69,12 @@ export const tenantNavSections: DashboardNavSection[] = [
         icon: Users,
         permission: 'tenant.partners.read',
       },
+      {
+        title: 'Đánh giá',
+        to: dashboardPaths.tenant.reviews,
+        icon: Star,
+        permission: 'tenant.reviews.read',
+      },
     ],
   },
   {
@@ -89,6 +97,12 @@ export const tenantNavSections: DashboardNavSection[] = [
         to: dashboardPaths.tenant.transactions,
         icon: CreditCard,
         permission: 'tenant.finance.read',
+      },
+      {
+        title: 'Khiếu nại',
+        to: dashboardPaths.tenant.disputes,
+        icon: Scale,
+        permission: 'tenant.disputes.read',
       },
     ],
   },

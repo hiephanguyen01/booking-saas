@@ -542,7 +542,7 @@ async function seedDemo(): Promise<void> {
   // zeros. Seed a small, idempotent scenario so GMV, gmv30d, bookings30d,
   // time-to-first-booking, overdue payouts, webhook failures and the
   // expiring-subscription queue are all demonstrably non-empty.
-  await seedBooking({
+  const reviewedBooking = await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
     partnerId: partner.id,
@@ -584,6 +584,46 @@ async function seedDemo(): Promise<void> {
     startAt: atHour(daysAgo(3), 8),
     endAt: atHour(daysAgo(3), 12),
   });
+
+  const demoReview = await prisma.review.upsert({
+    where: { bookingId: reviewedBooking.id },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      bookingId: reviewedBooking.id,
+      listingId: studioA.id,
+      groupId: studioA.groupId,
+      partnerId: partner.id,
+      customerId: customer.id,
+      rating: 5,
+      content:
+        'Không gian đúng như hình, thiết bị sạch và nhân viên hỗ trợ set up rất nhanh. Mình sẽ quay lại cho buổi chụp tiếp theo.',
+      createdAt: daysAgo(38),
+    },
+  });
+  await prisma.reviewReply.upsert({
+    where: { reviewId: demoReview.id },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      reviewId: demoReview.id,
+      partnerId: partner.id,
+      authorUserId: partnerUser.id,
+      content:
+        'Cảm ơn bạn đã tin tưởng Giang Studio. Đội ngũ rất vui khi buổi chụp diễn ra thuận lợi và mong sớm được đón bạn trở lại.',
+      createdAt: daysAgo(37),
+    },
+  });
+  await prisma.listing.update({
+    where: { id: studioA.id },
+    data: { ratingAvg: 5, reviewCount: 1 },
+  });
+  if (studioA.groupId) {
+    await prisma.listingGroup.update({
+      where: { id: studioA.groupId },
+      data: { ratingAvg: 5, reviewCount: 1 },
+    });
+  }
 
   // An overdue partner payout: still pending with period_to in the past.
   if (

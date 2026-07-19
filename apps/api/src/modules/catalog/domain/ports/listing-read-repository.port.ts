@@ -26,6 +26,8 @@ export interface PublicListingRecord {
   address: string | null;
   publishedAt: Date | null;
   completedBookings: number;
+  ratingAvg: number | null;
+  reviewCount: number;
   availabilityRules: Array<{ dayOfWeek: number; openTime: string; closeTime: string }>;
   pricingRules: Array<{
     id: string;
@@ -54,6 +56,8 @@ export interface PublicListingRecord {
     wardCode: string | null;
     wardName: string | null;
     address: string | null;
+    ratingAvg: number | null;
+    reviewCount: number;
   } | null;
 }
 

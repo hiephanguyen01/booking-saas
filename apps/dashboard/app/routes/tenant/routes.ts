@@ -17,6 +17,7 @@ export const tenantChildren: RouteConfigEntry[] = [
   route('partners/:partnerId', 'routes/tenant/partners/detail.tsx'),
   route('bookings', 'routes/tenant/bookings/_index.tsx'),
   route('bookings/:bookingId', 'routes/tenant/bookings/detail.tsx'),
+  route('reviews', 'routes/tenant/reviews.tsx'),
   route('finance', 'routes/tenant/finance/_index.tsx'),
   route('finance/ledger', 'routes/tenant/finance/ledger.tsx'),
   route('finance/settlements', 'routes/tenant/finance/settlements.tsx'),

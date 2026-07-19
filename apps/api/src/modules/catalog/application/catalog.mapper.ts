@@ -93,6 +93,8 @@ export function toPublicListingResponse(l: PublicListingRecord): PublicListingRe
     photos: l.group?.photos ?? l.photos,
     priceFrom: priceFrom(l.modeConfig),
     itemLabel: l.group?.itemLabel ?? null,
+    ratingAvg: l.group?.ratingAvg ?? l.ratingAvg,
+    reviewCount: l.group?.reviewCount ?? l.reviewCount,
     provinceCode: l.group?.provinceCode ?? l.provinceCode,
     provinceName: l.group?.provinceName ?? l.provinceName,
     wardCode: l.group?.wardCode ?? l.wardCode,

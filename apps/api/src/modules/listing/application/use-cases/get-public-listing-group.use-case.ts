@@ -61,6 +61,8 @@ export class GetPublicListingGroupUseCase {
         photos: group.photos,
         listingTypeSlug: listingType?.slug ?? '',
         itemLabel: listingType?.itemLabel?.trim() || 'hạng mục',
+        ratingAvg: group.ratingAvg,
+        reviewCount: group.reviewCount,
         listings: children
           .filter((listing) => listing.status === 'published')
           .map((listing) => ({
@@ -72,6 +74,8 @@ export class GetPublicListingGroupUseCase {
             attributes: listing.attributes,
             bookingModes: listing.bookingModes,
             priceFrom: listingPriceFrom(listing),
+            ratingAvg: listing.ratingAvg,
+            reviewCount: listing.reviewCount,
           })),
       } satisfies PublicListingGroupDetailResponse;
     });

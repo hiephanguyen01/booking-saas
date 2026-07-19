@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   ISettlementDisputeRepository,
+  SettlementDisputeListFilters,
   SettlementDisputeRecord,
 } from '../../domain/ports/settlement-dispute-repository.port';
 
 const INCLUDE = Prisma.validator<Prisma.SettlementDisputeInclude>()({
+  tenant: { select: { name: true } },
   booking: {
     select: {
       code: true,
@@ -29,6 +32,7 @@ type Row = Prisma.SettlementDisputeGetPayload<{ include: typeof INCLUDE }>;
 function toRecord(row: Row): SettlementDisputeRecord {
   return {
     ...row,
+    tenantName: row.tenant.name,
     bookingCode: row.booking.code,
     listingTitle: row.booking.listing.title,
     customerName: row.booking.customer.fullName,
@@ -47,11 +51,8 @@ function toRecord(row: Row): SettlementDisputeRecord {
 
 @Injectable()
 export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepository {
-  async customerOwnsBooking(
-    tx: PrismaTx,
-    bookingId: string,
-    customerId: string,
-  ): Promise<boolean> {
+  constructor(private readonly prisma: PrismaService) {}
+  async customerOwnsBooking(tx: PrismaTx, bookingId: string, customerId: string): Promise<boolean> {
     return (await tx.booking.count({ where: { id: bookingId, customerId } })) > 0;
   }
 
@@ -142,11 +143,26 @@ export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepo
     tx: PrismaTx,
     page: number,
     pageSize: number,
-    partnerId?: string,
+    filters: SettlementDisputeListFilters = {},
   ): Promise<{ items: SettlementDisputeRecord[]; total: number }> {
-    const where: Prisma.SettlementDisputeWhereInput = partnerId
-      ? { settlement: { partnerId } }
-      : {};
+    const where: Prisma.SettlementDisputeWhereInput = {
+      status: filters.status,
+      partnerResponse:
+        filters.responseStatus === 'pending'
+          ? null
+          : filters.responseStatus === 'responded'
+            ? { not: null }
+            : undefined,
+      createdAt: filters.from || filters.to ? { gte: filters.from, lte: filters.to } : undefined,
+      settlement: filters.partnerId ? { partnerId: filters.partnerId } : undefined,
+      OR: filters.q
+        ? [
+            { reason: { contains: filters.q, mode: 'insensitive' } },
+            { booking: { code: { contains: filters.q, mode: 'insensitive' } } },
+            { booking: { listing: { title: { contains: filters.q, mode: 'insensitive' } } } },
+          ]
+        : undefined,
+    };
     const [rows, total] = await Promise.all([
       tx.settlementDispute.findMany({
         where,
@@ -156,6 +172,43 @@ export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepo
         take: pageSize,
       }),
       tx.settlementDispute.count({ where }),
+    ]);
+    return { items: rows.map(toRecord), total };
+  }
+
+  async listPlatform(
+    page: number,
+    pageSize: number,
+    filters: SettlementDisputeListFilters & { tenantId?: string },
+  ): Promise<{ items: SettlementDisputeRecord[]; total: number }> {
+    const where: Prisma.SettlementDisputeWhereInput = {
+      tenantId: filters.tenantId,
+      status: filters.status,
+      partnerResponse:
+        filters.responseStatus === 'pending'
+          ? null
+          : filters.responseStatus === 'responded'
+            ? { not: null }
+            : undefined,
+      createdAt: filters.from || filters.to ? { gte: filters.from, lte: filters.to } : undefined,
+      OR: filters.q
+        ? [
+            { reason: { contains: filters.q, mode: 'insensitive' } },
+            { booking: { code: { contains: filters.q, mode: 'insensitive' } } },
+            { booking: { listing: { title: { contains: filters.q, mode: 'insensitive' } } } },
+            { tenant: { name: { contains: filters.q, mode: 'insensitive' } } },
+          ]
+        : undefined,
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.admin.settlementDispute.findMany({
+        where,
+        include: INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.admin.settlementDispute.count({ where }),
     ]);
     return { items: rows.map(toRecord), total };
   }

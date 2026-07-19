@@ -46,6 +46,7 @@ function toRecord(g: Row): ListingGroupRecord {
     // Decimal(3,2) → number: a 1–5 rating with 2dp is exact in a float64, and it
     // is a display statistic, never money.
     ratingAvg: g.ratingAvg === null ? null : g.ratingAvg.toNumber(),
+    reviewCount: g.reviewCount,
     bookingCount: g.bookingCount,
     children: g.listings.map((l) => ({
       description: l.description,

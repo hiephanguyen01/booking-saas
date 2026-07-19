@@ -1,5 +1,7 @@
 import { ImageIcon, MapPin, Ruler, Sparkles, Users } from 'lucide-react';
 import { Link, useOutletContext, useSearchParams } from 'react-router';
+import { ListingRatingSummary } from '../../components/listing-rating-summary';
+import { PublicReviewsSection } from '../../components/public-reviews-section';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
@@ -60,24 +62,28 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
                 </Link>
               ) : null}
               <h1 className="text-xl font-semibold leading-tight md:text-2xl">{listing.title}</h1>
-              {location ? (
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+                <ListingRatingSummary
+                  ratingAvg={listing.ratingAvg}
+                  reviewCount={listing.reviewCount}
+                />
+                {location ? (
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin className="size-4" aria-hidden="true" />
                     {location}
                   </span>
-                  {mapsHref ? (
-                    <a
-                      href={mapsHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {t('group.viewMap')}
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
+                ) : null}
+                {mapsHref ? (
+                  <a
+                    href={mapsHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {t('group.viewMap')}
+                  </a>
+                ) : null}
+              </div>
             </div>
             <HeaderActions title={listing.title} />
           </header>
@@ -94,6 +100,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
             </SectionCard>
 
             <ListingDetails attributes={listing.attributes} />
+            <PublicReviewsSection reviews={loaderData.reviews} locale={locale} />
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">

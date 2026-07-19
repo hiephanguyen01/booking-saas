@@ -22,6 +22,7 @@ export interface StorefrontSearchState {
   quantity: number;
   minPrice: number | null;
   maxPrice: number | null;
+  minRating: number | null;
   amenities: string[];
   area: SearchArea;
   sort: SearchSort;
@@ -48,6 +49,8 @@ export interface EnrichedSearchListing {
   amenities: string[];
   priceFrom: string;
   regularPriceFrom: string;
+  ratingAvg: number | null;
+  reviewCount: number;
   /** Locale-independent; rendered via the listing.perHour/perDay i18n keys. */
   priceUnit: PriceUnit;
   matchingRoomCount: number;
@@ -77,6 +80,17 @@ function money(value: string | null): number | null {
   if (!value) return null;
   const parsed = Number(value.replace(/\D/g, ''));
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function rating(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) &&
+    parsed >= 1 &&
+    parsed <= 5 &&
+    parsed * 2 === Math.round(parsed * 2)
+    ? parsed
+    : null;
 }
 
 export function parseSearchState(params: URLSearchParams): StorefrontSearchState {
@@ -126,6 +140,7 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     quantity: Math.min(100, positiveInt(params.get('quantity'), 1)),
     minPrice: money(params.get('minPrice')),
     maxPrice: money(params.get('maxPrice')),
+    minRating: rating(params.get('minRating')),
     amenities: [...new Set(params.getAll('amenities').flatMap((item) => item.split(',')))].filter(
       Boolean,
     ),

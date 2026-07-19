@@ -37,6 +37,7 @@ export interface ListingGroupRecord {
   hiddenBy: ModerationActor | null;
   /** Mean review score (1–5, 2dp) as a number; null until the post has ratings. */
   ratingAvg: number | null;
+  reviewCount: number;
   bookingCount: number;
   /** The post's items, reduced to what the readiness/price aggregates need. */
   children: ListingGroupChildFacts[];

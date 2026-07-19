@@ -8,6 +8,7 @@ export const viCatalog = {
   clearFilters: 'Xóa bộ lọc',
   matchingRooms: '{count} phòng phù hợp',
   noReviews: 'Chưa có đánh giá',
+  reviewCount: '{count} đánh giá',
   sort: {
     label: 'Sắp xếp:',
     ariaLabel: 'Sắp xếp kết quả',
@@ -33,6 +34,9 @@ export const viCatalog = {
     maximum: 'Tối đa',
     location: 'Khu vực',
     amenities: 'Tiện ích',
+    rating: 'Điểm đánh giá',
+    allRatings: 'Tất cả mức điểm',
+    ratingAtLeast: 'Từ {rating} sao',
     area: 'Diện tích phòng',
     areaOptions: {
       'under-25': 'Dưới 25 m²',

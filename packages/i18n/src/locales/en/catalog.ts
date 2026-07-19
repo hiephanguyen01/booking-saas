@@ -11,6 +11,7 @@ export const enCatalog = {
   clearFilters: 'Clear filters',
   matchingRooms: '{count} matching rooms',
   noReviews: 'No reviews yet',
+  reviewCount: '{count} reviews',
   sort: {
     label: 'Sort:',
     ariaLabel: 'Sort results',
@@ -36,6 +37,9 @@ export const enCatalog = {
     maximum: 'Maximum',
     location: 'Area',
     amenities: 'Amenities',
+    rating: 'Guest rating',
+    allRatings: 'All ratings',
+    ratingAtLeast: '{rating} stars & up',
     area: 'Room size',
     areaOptions: {
       'under-25': 'Under 25 m²',

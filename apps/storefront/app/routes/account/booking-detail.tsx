@@ -13,7 +13,11 @@ import { loadAccountBooking } from '../../features/account/server/booking-histor
 import { cancelBooking, checkoutBooking } from '../../lib/booking.server';
 import { errorStatus } from '../../lib/http-status';
 import { storefrontPaths } from '../../lib/locale-paths';
-import { allowedPaymentFormPost, allowedPaymentRedirect } from '../../lib/payment-redirect.server';
+import {
+  allowedPaymentFormPost,
+  allowedPaymentRedirect,
+  isMockPaymentRedirect,
+} from '../../lib/payment-redirect.server';
 import { requireAuth } from '../../lib/auth.server';
 import { apiGet, apiPost } from '../../lib/api.server';
 import type { Route } from './+types/booking-detail';
@@ -104,6 +108,13 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
     const result = await checkoutBooking(request, booking.id);
     const destination = result.data?.destination;
+    if (
+      result.ok &&
+      destination?.type === 'redirect' &&
+      isMockPaymentRedirect(destination.paymentUrl)
+    ) {
+      return redirect(storefrontPaths.booking(locale, booking.code));
+    }
     if (result.ok && destination?.type === 'form_post') {
       const handoff = allowedPaymentFormPost(destination);
       if (handoff) return { ok: true, error: null, handoff };

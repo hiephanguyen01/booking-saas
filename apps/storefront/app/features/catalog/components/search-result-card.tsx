@@ -1,4 +1,4 @@
-import { Heart, MapPin } from 'lucide-react';
+import { Heart, MapPin, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import {
   rangeDates,
@@ -78,7 +78,17 @@ export function SearchResultCard({
         </div>
 
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>{t('catalog:noReviews')}</span>
+          {listing.ratingAvg === null || listing.reviewCount === 0 ? (
+            <span>{t('catalog:noReviews')}</span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <Star className="size-3.5 text-amber-400" fill="currentColor" aria-hidden="true" />
+              <strong className="font-semibold text-foreground">
+                {listing.ratingAvg.toFixed(1)}
+              </strong>
+              <span>({t('catalog:reviewCount', { count: listing.reviewCount })})</span>
+            </span>
+          )}
           <span>{t('catalog:matchingRooms', { count: listing.matchingRoomCount })}</span>
         </div>
 

@@ -13,6 +13,8 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'platform.finance.read', scopeLevel: 'platform' },
   { key: 'platform.users.manage', scopeLevel: 'platform' },
   { key: 'platform.roles.manage', scopeLevel: 'platform' },
+  { key: 'platform.reviews.read', scopeLevel: 'platform' },
+  { key: 'platform.disputes.read', scopeLevel: 'platform' },
   // Tenant
   { key: 'tenant.settings.manage', scopeLevel: 'tenant' },
   { key: 'tenant.theme.manage', scopeLevel: 'tenant' },
@@ -33,6 +35,9 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'tenant.members.manage', scopeLevel: 'tenant' },
   { key: 'tenant.roles.manage', scopeLevel: 'tenant' },
   { key: 'tenant.reports.read', scopeLevel: 'tenant' },
+  { key: 'tenant.reviews.read', scopeLevel: 'tenant' },
+  { key: 'tenant.disputes.read', scopeLevel: 'tenant' },
+  { key: 'tenant.disputes.resolve', scopeLevel: 'tenant' },
   // Partner
   { key: 'partner.profile.manage', scopeLevel: 'partner' },
   { key: 'partner.listings.read', scopeLevel: 'partner' },
@@ -47,6 +52,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'partner.finance.read', scopeLevel: 'partner' },
   { key: 'partner.members.manage', scopeLevel: 'partner' },
   { key: 'partner.roles.manage', scopeLevel: 'partner' },
+  { key: 'partner.reviews.read', scopeLevel: 'partner' },
+  { key: 'partner.reviews.reply', scopeLevel: 'partner' },
+  { key: 'partner.disputes.read', scopeLevel: 'partner' },
+  { key: 'partner.disputes.respond', scopeLevel: 'partner' },
 ];
 
 const keysOf = (scope: ScopeLevel) =>
@@ -62,7 +71,12 @@ export const SYSTEM_ROLES: ReadonlyArray<{
   {
     name: 'Support',
     scopeLevel: 'platform',
-    permissions: ['platform.tenants.read', 'platform.finance.read'],
+    permissions: [
+      'platform.tenants.read',
+      'platform.finance.read',
+      'platform.reviews.read',
+      'platform.disputes.read',
+    ],
   },
   { name: 'Tenant Owner', scopeLevel: 'tenant', permissions: keysOf('tenant') },
   {
@@ -75,7 +89,13 @@ export const SYSTEM_ROLES: ReadonlyArray<{
   {
     name: 'Finance',
     scopeLevel: 'tenant',
-    permissions: ['tenant.finance.read', 'tenant.payouts.manage', 'tenant.reports.read'],
+    permissions: [
+      'tenant.finance.read',
+      'tenant.payouts.manage',
+      'tenant.reports.read',
+      'tenant.disputes.read',
+      'tenant.disputes.resolve',
+    ],
   },
   { name: 'Partner Owner', scopeLevel: 'partner', permissions: keysOf('partner') },
   {
@@ -87,6 +107,8 @@ export const SYSTEM_ROLES: ReadonlyArray<{
       'partner.bookings.write',
       'partner.bookings.approve',
       'partner.availability.manage',
+      'partner.disputes.read',
+      'partner.disputes.respond',
     ],
   },
 ];
