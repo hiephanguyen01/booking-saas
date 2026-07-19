@@ -455,12 +455,14 @@ model User {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  sessions           Session[]
-  roleAssignments    RoleAssignment[]
-  bookings           Booking[]        @relation("CustomerBookings")
-  affiliates         Affiliate[]
-  partnerMemberships PartnerMember[]
-  staffProfiles      Staff[]
+  sessions              Session[]
+  roleAssignments       RoleAssignment[]
+  bookings              Booking[]        @relation("CustomerBookings")
+  affiliates            Affiliate[]
+  partnerMemberships    PartnerMember[]
+  staffProfiles         Staff[]
+  reviewsWritten        Review[]         @relation("ReviewCustomer")
+  reviewRepliesAuthored ReviewReply[]    @relation("ReviewReplyAuthor")
 
   @@map("users")
 }
@@ -619,6 +621,8 @@ model Tenant {
   payouts                   Payout[]
   bookingSettlements        BookingSettlement[]
   settlementDisputes        SettlementDispute[]
+  reviews                   Review[]
+  reviewReplies             ReviewReply[]
   payoutAllocations         PayoutAllocation[]
   promotions                Promotion[]
   affiliates                Affiliate[]
@@ -739,6 +743,8 @@ model Partner {
   promotions                Promotion[]           @relation("PartnerCreatedPromotions")
   fundedPromotions          Promotion[]           @relation("PartnerFundedPromotions")
   agreementAcceptances      AgreementAcceptance[]
+  reviews                   Review[]
+  reviewReplies             ReviewReply[]
   cancellationPolicies      CancellationPolicy[]  @relation("PartnerPolicies")
   defaultCancellationPolicy CancellationPolicy?   @relation("PartnerDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
 
@@ -823,6 +829,7 @@ model ListingGroup {
   publishedBy   ModerationActor? @map("published_by")
   hiddenBy      ModerationActor? @map("hidden_by")
   ratingAvg     Decimal?         @map("rating_avg") @db.Decimal(3, 2)
+  reviewCount   Int              @default(0) @map("review_count")
   bookingCount  Int              @default(0) @map("booking_count")
   createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -831,6 +838,7 @@ model ListingGroup {
   partner     Partner     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   listingType ListingType @relation(fields: [listingTypeId], references: [id])
   listings    Listing[]
+  reviews     Review[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -905,6 +913,8 @@ model Listing {
   submittedAt             DateTime?        @map("submitted_at") @db.Timestamptz(6)
   /// set when the listing first reaches `published`; survives a later archive/hide.
   publishedAt             DateTime?        @map("published_at") @db.Timestamptz(6)
+  ratingAvg               Decimal?         @map("rating_avg") @db.Decimal(3, 2)
+  reviewCount             Int              @default(0) @map("review_count")
   createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -921,6 +931,7 @@ model Listing {
   referralLinks      ReferralLink[]
   classSessions      ClassSession[]
   listingStaff       ListingStaff[]
+  reviews            Review[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1092,6 +1103,7 @@ model Booking {
   ledgerEntries       LedgerEntry[]
   settlement          BookingSettlement?
   settlementDisputes  SettlementDispute[]
+  review              Review?
 
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId])
@@ -1101,6 +1113,58 @@ model Booking {
   @@index([customerId])
   @@index([status])
   @@map("bookings")
+}
+
+/// Verified-booking customer review. Attribution is snapshotted when created so
+/// later regrouping never moves historical reputation between posts.
+model Review {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  bookingId  String   @unique @map("booking_id") @db.Uuid
+  listingId  String   @map("listing_id") @db.Uuid
+  groupId    String?  @map("group_id") @db.Uuid
+  partnerId  String   @map("partner_id") @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  rating     Int
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking  Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  listing  Listing       @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  group    ListingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  partner  Partner       @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  customer User          @relation("ReviewCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  reply    ReviewReply?
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([partnerId, createdAt(sort: Desc)])
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([listingId, createdAt(sort: Desc)])
+  @@index([groupId, createdAt(sort: Desc)])
+  @@index([tenantId, rating, createdAt(sort: Desc)])
+  @@map("reviews")
+}
+
+model ReviewReply {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  reviewId     String   @unique @map("review_id") @db.Uuid
+  partnerId    String   @map("partner_id") @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  content      String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  review  Review  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  author  User    @relation("ReviewReplyAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([partnerId, createdAt(sort: Desc)])
+  @@map("review_replies")
 }
 
 /// Audit mirror of Redis holds (Redis is the source of truth) — §7.5.

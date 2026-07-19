@@ -1,8 +1,6 @@
 export type ListingPriceUnit = 'hour' | 'day' | 'item' | 'session';
 
 export interface ListingCardPresentation {
-  rating: number;
-  bookingCount: number;
   originalPrice: string | null;
   discountPercent: number | null;
   priceUnit: ListingPriceUnit | null;

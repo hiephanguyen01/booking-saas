@@ -137,7 +137,10 @@ export class SearchPublicCatalogUseCase {
       );
 
       const grouped = this.toCards(evaluated);
-      const priced = grouped.filter((item) => {
+      const rated = grouped.filter(
+        (item) => query.minRating === undefined || (item.ratingAvg ?? 0) >= query.minRating,
+      );
+      const priced = rated.filter((item) => {
         const price = BigInt(item.priceFrom);
         return (
           (!query.minPrice || price >= BigInt(query.minPrice)) &&
@@ -464,6 +467,8 @@ export class SearchPublicCatalogUseCase {
         wardCode: g?.wardCode ?? l.wardCode,
         wardName: g?.wardName ?? l.wardName,
         amenities: stringArrayRaw(g?.amenities),
+        ratingAvg: g?.ratingAvg ?? l.ratingAvg,
+        reviewCount: g?.reviewCount ?? l.reviewCount,
         priceFrom: cheapest.price.toString(),
         regularPriceFrom: cheapest.regularPrice.toString(),
         priceUnit: cheapest.priceUnit,

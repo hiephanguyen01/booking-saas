@@ -19,6 +19,8 @@ import {
   tenantPayableResponseSchema,
   updateCommissionRuleInputSchema,
   openSettlementDisputeInputSchema,
+  adminSettlementDisputeResponseSchema,
+  adminSettlementDisputesQuerySchema,
   resolveSettlementDisputeInputSchema,
   settlementDisputeResponseSchema,
   partnerBookingSettlementResponseSchema,
@@ -27,6 +29,8 @@ import {
   settlementSummaryResponseSchema,
   payoutPolicySchema,
   respondSettlementDisputeInputSchema,
+  tenantSettlementDisputesQuerySchema,
+  partnerSettlementDisputesQuerySchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -50,6 +54,12 @@ export class LedgerQueryDto extends createZodDto(ledgerQuerySchema) {}
 export class PartnerLedgerQueryDto extends createZodDto(partnerLedgerQuerySchema) {}
 export class TenantPayableQueryDto extends createZodDto(tenantPayableQuerySchema) {}
 export class BookingSettlementsQueryDto extends createZodDto(bookingSettlementsQuerySchema) {}
+export class TenantSettlementDisputesQueryDto extends createZodDto(
+  tenantSettlementDisputesQuerySchema,
+) {}
+export class PartnerSettlementDisputesQueryDto extends createZodDto(
+  partnerSettlementDisputesQuerySchema,
+) {}
 
 // Responses
 export class CommissionRuleResponseDto extends createZodDto(commissionRuleResponseSchema) {}
@@ -63,6 +73,12 @@ export class PayoutResponseDto extends createZodDto(payoutResponseSchema) {}
 export class TenantPayableResponseDto extends createZodDto(tenantPayableResponseSchema) {}
 export class BookingSettlementResponseDto extends createZodDto(bookingSettlementResponseSchema) {}
 export class SettlementDisputeResponseDto extends createZodDto(settlementDisputeResponseSchema) {}
+export class AdminSettlementDisputeResponseDto extends createZodDto(
+  adminSettlementDisputeResponseSchema,
+) {}
+export class AdminSettlementDisputesQueryDto extends createZodDto(
+  adminSettlementDisputesQuerySchema,
+) {}
 export class PartnerBookingSettlementResponseDto extends createZodDto(
   partnerBookingSettlementResponseSchema,
 ) {}

@@ -17,19 +17,6 @@ export interface MockListingCard {
   price: string;
   rating: string;
 }
-export interface MockReview {
-  id: string;
-  status: 'pending' | 'reviewed';
-  studio: string;
-  bookingCode: string;
-  listing: string;
-  date: string;
-  time: string;
-  rating?: number;
-  body?: string;
-  response?: string;
-}
-
 export function accountMocksEnabled(): boolean {
   return !storefrontEnv.production;
 }
@@ -103,37 +90,6 @@ export function mockListings(locale: Locale): MockListingCard[] {
       location: en ? 'Binh Thanh, Ho Chi Minh City' : 'Bình Thạnh, TP. Hồ Chí Minh',
       price: '580.000 ₫',
       rating: '4.7',
-    },
-  ];
-}
-
-export function mockReviews(locale: Locale): MockReview[] {
-  const en = locale === 'en';
-  return [
-    {
-      id: 'review-pending',
-      status: 'pending',
-      studio: 'Dar Tawhid Intercontinental Studio',
-      bookingCode: 'BK-23A55K',
-      listing: en ? 'Premium neoclassical studio' : 'Phòng Premium phong cách tân cổ điển',
-      date: en ? 'Mon, 24 May 2024' : 'Thứ Hai, 24 tháng 05, 2024',
-      time: '07:00 - 17:00 (2 ngày)',
-    },
-    {
-      id: 'review-complete',
-      status: 'reviewed',
-      studio: 'Dar Tawhid Intercontinental Studio',
-      bookingCode: 'BK-23B55M',
-      listing: en ? 'Premium neoclassical studio' : 'Phòng Premium phong cách tân cổ điển',
-      date: en ? 'Mon, 24 May 2024' : 'Thứ Hai, 24 tháng 05, 2024',
-      time: '07:00 - 17:00 (2 ngày)',
-      rating: 4,
-      body: en
-        ? 'Beautiful studio and thoughtful service. The location was a little hard to find, but everything else was excellent.'
-        : 'Studio rất đẹp, phục vụ nhiệt tình. Giá cả hợp lý. Vị trí hơi khó tìm một chút, còn lại mọi thứ đều rất tốt.',
-      response: en
-        ? 'Thank you for trusting and supporting Studio Wisteria.'
-        : 'Cảm ơn bạn vì đã tin tưởng và ủng hộ Studio Wisteria.',
     },
   ];
 }

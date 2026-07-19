@@ -7,6 +7,8 @@ import {
   Ticket,
   Undo2,
   Wallet,
+  Star,
+  Scale,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
 import { dashboardPaths } from '~/constants/paths';
@@ -60,6 +62,18 @@ export const partnerNavSections: DashboardNavSection[] = [
         to: dashboardPaths.partner.revenue,
         icon: Wallet,
         permission: 'partner.finance.read',
+      },
+      {
+        title: 'Đánh giá',
+        to: dashboardPaths.partner.reviews,
+        icon: Star,
+        permission: 'partner.reviews.read',
+      },
+      {
+        title: 'Khiếu nại',
+        to: dashboardPaths.partner.disputes,
+        icon: Scale,
+        permission: 'partner.disputes.read',
       },
       {
         title: 'Khuyến mãi',

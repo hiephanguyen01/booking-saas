@@ -1,4 +1,8 @@
-import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
+import {
+  reviewListResponseSchema,
+  type AvailabilityMode,
+  type PublicListingDetailResponse,
+} from '@booking/contracts';
 import type { Route } from './+types/listing';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { ListingPage } from '../features/listing/listing-page';
@@ -10,6 +14,7 @@ import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
 import type { StorefrontContext } from '../root';
 import { jsonLd } from '../lib/seo';
+import { publicGetData } from '../lib/api.server';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
@@ -51,9 +56,13 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const searchParams = url.searchParams;
-  const [listing, provinces] = await Promise.all([
+  const [listing, provinces, reviews] = await Promise.all([
     fetchListing(request, params.listingSlug),
     loadAdministrativeProvinces(request),
+    publicGetData(request, '/public/reviews', {
+      query: { target: 'listing', slug: params.listingSlug, page: 1, pageSize: 6, sort: 'newest' },
+      schema: reviewListResponseSchema,
+    }).catch(() => null),
   ]);
 
   if (!listing) {
@@ -126,7 +135,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     value: province.code,
     label: province.name,
   }));
-  return { listing, mode, availability, quote, locations, selectionStart, selectionEnd };
+  return { listing, mode, availability, quote, locations, selectionStart, selectionEnd, reviews };
 }
 
 function isSelectionAvailable(
@@ -189,6 +198,24 @@ export default function ListingRoute(props: Route.ComponentProps) {
         description: listing.description,
         inLanguage: locale,
         image: listing.photos,
+      },
+      {
+        '@type': 'Service',
+        '@id': `${canonical}#service`,
+        name: listing.title,
+        image: listing.photos,
+        provider: { '@id': `${new URL(canonical).origin}/#organization` },
+        ...(listing.reviewCount > 0 && listing.ratingAvg !== null
+          ? {
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: listing.ratingAvg,
+                reviewCount: listing.reviewCount,
+                bestRating: 5,
+                worstRating: 1,
+              },
+            }
+          : {}),
       },
       {
         '@type': 'BreadcrumbList',

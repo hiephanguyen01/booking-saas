@@ -65,6 +65,8 @@ export async function fetchListings(
     photos: item.photos,
     priceFrom: item.priceFrom,
     itemLabel: null,
+    ratingAvg: item.ratingAvg,
+    reviewCount: item.reviewCount,
     provinceCode: item.provinceCode,
     provinceName: item.provinceName,
     wardCode: item.wardCode,

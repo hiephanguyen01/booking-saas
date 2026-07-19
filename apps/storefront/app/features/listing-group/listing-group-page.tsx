@@ -1,9 +1,12 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { MapPin } from 'lucide-react';
 import { useOutletContext } from 'react-router';
+import { ListingRatingSummary } from '../../components/listing-rating-summary';
+import { PublicReviewsSection } from '../../components/public-reviews-section';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { formatListingLocation } from '../../lib/ui';
+import { useLocale } from '../../lib/use-locale';
 import { clockHoursBetween } from '../../lib/time';
 import type { StorefrontContext } from '../../root';
 import { SearchForm } from '../search/search-form';
@@ -20,15 +23,14 @@ import { minimumRoomPrice } from './room-attributes';
 /**
  * A listing group ("studio") and the rooms bookable inside it.
  *
- * The page previously also rendered a rating readout, a promotion badge and six
- * customer reviews with replies and photos. All of it was synthesised from a
- * hash of the group slug — none of ratings, reviews or promotions has a public
- * API — so the blocks are gone rather than restyled.
+ * Rating and review content come from the public review API and persisted
+ * aggregates. Promotions remain absent until a truthful public contract exists.
  */
 export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData }) {
   const { group, state, roomOptions, locations, relatedListings } = loaderData;
   const { listingTypes } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Listing);
+  const locale = useLocale();
   const location = formatListingLocation(group, 'full');
   const trust = roomOptions[0]?.detail.trust ?? null;
   const minimumPrice = minimumRoomPrice(roomOptions.filter((option) => option.available));
@@ -55,24 +57,25 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h1 className="text-xl font-semibold leading-tight md:text-2xl">{group.title}</h1>
-              {location ? (
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+                <ListingRatingSummary ratingAvg={group.ratingAvg} reviewCount={group.reviewCount} />
+                {location ? (
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin className="size-4" aria-hidden="true" />
                     {location}
                   </span>
-                  {mapsHref ? (
-                    <a
-                      href={mapsHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {t('group.viewMap')}
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
+                ) : null}
+                {mapsHref ? (
+                  <a
+                    href={mapsHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {t('group.viewMap')}
+                  </a>
+                ) : null}
+              </div>
             </div>
             <HeaderActions title={group.title} />
           </header>
@@ -121,6 +124,8 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           date={state.date}
           hideUnavailableByDefault={state.hasTimeSelection || state.hasDailyRange}
         />
+
+        <PublicReviewsSection reviews={loaderData.reviews} locale={locale} />
 
         <RelatedStudios listings={relatedListings} />
       </div>

@@ -10,6 +10,8 @@ import { jsonLd } from '../lib/seo';
 import { parseSearchState, rangeDates } from '../features/search/search-state';
 import { addDays, nightsBetween, zonedToUtcIso } from '../lib/time';
 import { ListingGroupPage } from '../features/listing-group/listing-group-page';
+import { reviewListResponseSchema } from '@booking/contracts';
+import { publicGetData } from '../lib/api.server';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   const group = loaderData?.group;
@@ -35,10 +37,14 @@ async function safe<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
-  const [group, catalogCandidates, provinces] = await Promise.all([
+  const [group, catalogCandidates, provinces, reviews] = await Promise.all([
     fetchListingGroup(request, params.groupSlug),
     safe(fetchListings(request, new URLSearchParams())),
     loadAdministrativeProvinces(request),
+    publicGetData(request, '/public/reviews', {
+      query: { target: 'group', slug: params.groupSlug, page: 1, pageSize: 6, sort: 'newest' },
+      schema: reviewListResponseSchema,
+    }).catch(() => null),
   ]);
   if (!group) throw new Response('Listing group not found', { status: 404 });
   const state = parseSearchState(url.searchParams);
@@ -178,6 +184,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     roomOptions,
     locations,
     relatedListings,
+    reviews,
   };
 }
 
@@ -206,6 +213,24 @@ export default function ListingGroupRoute({ loaderData, params }: Route.Componen
           name: listing.title,
           url: new URL(storefrontPaths.listing(locale, listing.slug), canonical).toString(),
         })),
+      },
+      {
+        '@type': 'Service',
+        '@id': `${canonical}#service`,
+        name: group.title,
+        image: group.photos,
+        provider: { '@id': `${new URL(canonical).origin}/#organization` },
+        ...(group.reviewCount > 0 && group.ratingAvg !== null
+          ? {
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: group.ratingAvg,
+                reviewCount: group.reviewCount,
+                bestRating: 5,
+                worstRating: 1,
+              },
+            }
+          : {}),
       },
       {
         '@type': 'BreadcrumbList',

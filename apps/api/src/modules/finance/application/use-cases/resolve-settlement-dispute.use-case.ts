@@ -69,6 +69,11 @@ export class ResolveSettlementDisputeUseCase {
           eventType: 'settlement.release_requested',
           payload: { settlementId: settlement.id },
         });
+        await this.outbox.emit(tx, {
+          tenantId,
+          eventType: 'settlement.dispute_resolved',
+          payload: { disputeId: resolved.id, bookingId: dispute.bookingId, resolution: 'release' },
+        });
         return resolved;
       }
 
@@ -109,6 +114,15 @@ export class ResolveSettlementDisputeUseCase {
           bookingId: dispute.bookingId,
           amount: refundAmount.toString(),
           affectsBookingStatus: input.resolution === 'full_refund',
+        },
+      });
+      await this.outbox.emit(tx, {
+        tenantId,
+        eventType: 'settlement.dispute_resolved',
+        payload: {
+          disputeId: resolved.id,
+          bookingId: dispute.bookingId,
+          resolution: input.resolution,
         },
       });
       return resolved;

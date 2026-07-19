@@ -2,6 +2,7 @@ import type {
   BookingSettlementResponse,
   Paginated,
   PlatformFinanceResponse,
+  AdminSettlementDisputeResponse,
 } from '@booking/contracts';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -11,13 +12,17 @@ import { toPaginated } from '../../../../shared/pagination/pagination';
 import {
   toBookingSettlementResponse,
   toPlatformFinanceResponse,
+  toAdminSettlementDisputeResponse,
 } from '../../application/finance.mapper';
 import { GetPlatformFinanceUseCase } from '../../application/use-cases/get-platform-finance.use-case';
 import { ListPlatformSettlementsUseCase } from '../../application/use-cases/list-platform-settlements.use-case';
+import { ListPlatformDisputesUseCase } from '../../application/use-cases/list-platform-disputes.use-case';
 import {
   BookingSettlementResponseDto,
   BookingSettlementsQueryDto,
   PlatformFinanceResponseDto,
+  AdminSettlementDisputeResponseDto,
+  AdminSettlementDisputesQueryDto,
 } from './dto/finance.dto';
 
 /** Platform-admin finance (§13.3): platform fee collected per tenant (admin pool). */
@@ -27,6 +32,7 @@ export class PlatformFinanceController {
   constructor(
     private readonly platformFinanceUseCase: GetPlatformFinanceUseCase,
     private readonly listSettlements: ListPlatformSettlementsUseCase,
+    private readonly listDisputes: ListPlatformDisputesUseCase,
   ) {}
 
   @RequirePermissions('platform.finance.read')
@@ -48,6 +54,20 @@ export class PlatformFinanceController {
       query,
       await this.listSettlements.execute(query),
       toBookingSettlementResponse,
+    );
+  }
+
+  @RequirePermissions('platform.disputes.read')
+  @Get('disputes')
+  @ApiOperation({ summary: 'Platform dispute register across tenants' })
+  @ApiPaginatedResponse(AdminSettlementDisputeResponseDto)
+  async disputes(
+    @Query() query: AdminSettlementDisputesQueryDto,
+  ): Promise<Paginated<AdminSettlementDisputeResponse>> {
+    return toPaginated(
+      query,
+      await this.listDisputes.execute(query),
+      toAdminSettlementDisputeResponse,
     );
   }
 }

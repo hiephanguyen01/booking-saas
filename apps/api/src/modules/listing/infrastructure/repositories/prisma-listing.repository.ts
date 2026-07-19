@@ -41,7 +41,9 @@ type Row = Prisma.ListingGetPayload<{ include: typeof LISTING_INCLUDE }>;
 function toPolicySummary(
   p: { id: string; name: string; rules: Prisma.JsonValue } | null | undefined,
 ): CancellationPolicySummary | null {
-  return p ? { id: p.id, name: p.name, rules: (p.rules ?? []) as unknown as CancellationTier[] } : null;
+  return p
+    ? { id: p.id, name: p.name, rules: (p.rules ?? []) as unknown as CancellationTier[] }
+    : null;
 }
 
 /** Fallback chain (§11.3): the listing's own policy, else the partner default, else the tenant default. */
@@ -99,6 +101,8 @@ function toRecord(l: Row): ListingRecord {
     effectiveCancellationPolicy: effective.policy,
     effectiveCancellationPolicySource: effective.source,
     partner: { name: l.partner.name, verificationStatus: l.partner.verificationStatus },
+    ratingAvg: l.ratingAvg === null ? null : l.ratingAvg.toNumber(),
+    reviewCount: l.reviewCount,
     status: l.status,
     publishedBy: l.publishedBy as ModerationActor | null,
     hiddenBy: l.hiddenBy as ModerationActor | null,

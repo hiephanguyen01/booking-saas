@@ -12,6 +12,8 @@ export const enListing = {
   fromPriceShort: 'from',
   perHour: 'per hour',
   bookedCount: '{count} booked',
+  reviewCount: '{count} reviews',
+  noReviews: 'No reviews yet',
   priceUnit: {
     hour: 'per hour',
     day: 'per day',

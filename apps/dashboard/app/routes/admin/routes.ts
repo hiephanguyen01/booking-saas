@@ -11,4 +11,6 @@ export const adminChildren: RouteConfigEntry[] = [
   route('plans', 'routes/admin/plans/_index.tsx'),
   route('transactions', 'routes/admin/transactions/_index.tsx'),
   route('settlements', 'routes/admin/settlements/_index.tsx'),
+  route('reviews', 'routes/admin/reviews.tsx'),
+  route('disputes', 'routes/admin/disputes.tsx'),
 ];

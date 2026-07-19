@@ -26,6 +26,8 @@ export const dashboardPaths = {
     plans: '/admin/plans',
     transactions: '/admin/transactions',
     settlements: '/admin/settlements',
+    reviews: '/admin/reviews',
+    disputes: '/admin/disputes',
   },
   tenant: {
     home: tenantPath(),
@@ -40,6 +42,7 @@ export const dashboardPaths = {
     ledger: tenantPath('/finance/ledger'),
     settlements: tenantPath('/finance/settlements'),
     disputes: tenantPath('/finance/disputes'),
+    reviews: tenantPath('/reviews'),
     transactions: tenantPath('/finance/transactions'),
     promotions: tenantPath('/promotions'),
     promotion: (promotionId: string) => tenantPath(`/promotions/${segment(promotionId)}`),
@@ -62,6 +65,8 @@ export const dashboardPaths = {
     promotions: partnerPath('/promotions'),
     promotion: (promotionId: string) => partnerPath(`/promotions/${segment(promotionId)}`),
     revenue: partnerPath('/revenue'),
+    reviews: partnerPath('/reviews'),
+    disputes: partnerPath('/disputes'),
     profile: partnerPath('/profile'),
   },
   affiliate: {

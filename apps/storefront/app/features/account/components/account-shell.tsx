@@ -17,6 +17,7 @@ import { NavLink, useFetcher } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { accountNavItems, type AccountNavKey, userInitials } from '../account-nav';
+import type { AccountMenuSummary } from '../account-menu';
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -32,7 +33,6 @@ const NAV_ICONS: Record<AccountNavKey, Icon> = {
   help: CircleHelp,
 };
 
-const BADGES: Partial<Record<AccountNavKey, number>> = { messages: 1, reviews: 2 };
 const NAV_GROUPS: AccountNavKey[][] = [
   ['profile', 'bookings', 'messages', 'reviews'],
   ['favorites', 'recent'],
@@ -43,10 +43,12 @@ const ACCOUNT_AVATAR_PLACEHOLDER = '/images/booking-studio/home/promo-photograph
 export function AccountShell({
   user,
   locale,
+  accountMenuSummary,
   children,
 }: {
   user: CurrentUser;
   locale: Locale;
+  accountMenuSummary: AccountMenuSummary | null;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation(NsI18n.Account);
@@ -58,7 +60,7 @@ export function AccountShell({
         </div> */}
         <aside className=" w-64 self-start lg:block mt-2" aria-label={t('title')}>
           <AccountIdentity user={user} />
-          <AccountNavigation locale={locale} />
+          <AccountNavigation locale={locale} accountMenuSummary={accountMenuSummary} />
         </aside>
         <section className="min-w-0 pb-8">{children}</section>
       </div>
@@ -89,15 +91,21 @@ function AccountIdentity({ user }: { user: CurrentUser }) {
 
 function AccountNavigation({
   locale,
+  accountMenuSummary,
   closeOnSelect = false,
 }: {
   locale: Locale;
+  accountMenuSummary: AccountMenuSummary | null;
   closeOnSelect?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const fetcher = useFetcher();
   const items = accountNavItems(locale);
   const itemByKey = new Map(items.map((item) => [item.key, item]));
+  const badges: Partial<Record<AccountNavKey, number | undefined>> = {
+    messages: accountMenuSummary?.unreadMessages,
+    reviews: accountMenuSummary?.pendingReviews,
+  };
 
   return (
     <nav
@@ -124,9 +132,9 @@ function AccountNavigation({
               >
                 <IconComponent aria-hidden="true" className="size-5 shrink-0" />
                 <span className="min-w-0 flex-1">{t(`nav.${key}`)}</span>
-                {BADGES[key] ? (
+                {badges[key] ? (
                   <span className="flex size-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold leading-4 text-primary-foreground">
-                    {BADGES[key]}
+                    {badges[key]! > 99 ? '99+' : badges[key]}
                   </span>
                 ) : null}
               </NavLink>

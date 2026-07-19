@@ -1,6 +1,7 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { OpenSettlementDisputeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   FINANCE_TENANT_HOST_READER,
   type IFinanceTenantHostReader,
@@ -24,6 +25,7 @@ export class OpenSettlementDisputeUseCase {
     @Inject(SETTLEMENT_DISPUTE_REPOSITORY)
     private readonly disputes: ISettlementDisputeRepository,
     private readonly tenantDb: TenantDbService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async execute(
@@ -71,7 +73,7 @@ export class OpenSettlementDisputeUseCase {
           message: 'The settlement is not inside an open dispute window',
         });
       }
-      return this.disputes.create(tx, tenantId, {
+      const dispute = await this.disputes.create(tx, tenantId, {
         settlementId: settlement.id,
         bookingId: input.bookingId,
         openedByUserId: customerId,
@@ -79,6 +81,16 @@ export class OpenSettlementDisputeUseCase {
         reason: input.reason,
         evidence: input.evidence,
       });
+      await this.outbox.emit(tx, {
+        tenantId,
+        eventType: 'settlement.dispute_opened',
+        payload: {
+          disputeId: dispute.id,
+          settlementId: settlement.id,
+          bookingId: input.bookingId,
+        },
+      });
+      return dispute;
     });
   }
 }
