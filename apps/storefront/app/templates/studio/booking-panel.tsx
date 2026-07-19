@@ -554,7 +554,7 @@ function DailyPicker({
         onSelect={onSelect}
         disabled={isDisabled}
         excludeDisabled
-        className="rounded-lg border border-border bg-background/40 p-2"
+        className="sf-calendar w-full rounded-lg border border-border bg-background/40 p-2 [--cell-size:2.25rem]"
       />
       {nights > 0 ? (
         <p className="text-sm text-muted-foreground">
