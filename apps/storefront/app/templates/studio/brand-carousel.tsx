@@ -1,93 +1,105 @@
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  useCarousel,
-} from '@booking/ui/components/ui/carousel';
-import { useEffect, useState } from 'react';
+import { A11y, EffectCoverflow, Keyboard } from 'swiper/modules';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import 'swiper/css';
+import 'swiper/css/a11y';
+import 'swiper/css/effect-coverflow';
+import { useSyncExternalStore } from 'react';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 
-const AUTOPLAY_MS = 5_000;
+const LOOP_MIN_IMAGES = 5;
+const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)';
+
+function subscribeToReducedMotion(onStoreChange: () => void) {
+  const mediaQuery = window.matchMedia(REDUCED_MOTION_MEDIA_QUERY);
+  mediaQuery.addEventListener('change', onStoreChange);
+  return () => mediaQuery.removeEventListener('change', onStoreChange);
+}
+
+function getPrefersReducedMotion() {
+  return window.matchMedia(REDUCED_MOTION_MEDIA_QUERY).matches;
+}
+
+function getServerPrefersReducedMotion() {
+  return false;
+}
+
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    subscribeToReducedMotion,
+    getPrefersReducedMotion,
+    getServerPrefersReducedMotion,
+  );
+}
 
 export function BrandCarousel({ images, tenantName }: { images: string[]; tenantName: string }) {
   const { t } = useTranslation(NsI18n.Common);
-  const uniqueImages = [...new Set(images)];
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const uniqueImages = [...new Set(images.filter(Boolean))];
 
   if (uniqueImages.length === 0) return null;
 
+  const carouselLabel = t('home.carouselLabel', { tenant: tenantName });
+
   return (
-    <section aria-label={t('home.carouselLabel', { tenant: tenantName })}>
-      <Carousel opts={{ loop: uniqueImages.length > 1 }} className="overflow-hidden">
-        <CarouselContent className="ml-0">
+    <section className="brand-coverflow-surface" aria-label={carouselLabel}>
+      {uniqueImages.length === 1 ? (
+        <div className="brand-coverflow-single">
+          <BrandCarouselImage src={uniqueImages[0]} />
+        </div>
+      ) : (
+        <Swiper
+          key={prefersReducedMotion ? 'reduced-motion' : 'motion'}
+          className="brand-coverflow"
+          modules={[EffectCoverflow, Keyboard, A11y]}
+          effect="coverflow"
+          grabCursor
+          centeredSlides
+          centerInsufficientSlides={uniqueImages.length < LOOP_MIN_IMAGES}
+          slidesPerView={1.25}
+          breakpoints={{
+            640: { slidesPerView: 2, coverflowEffect: { rotate: 50, stretch: 0 } },
+            1024: { slidesPerView: 3, coverflowEffect: { rotate: 37, stretch: -31 } },
+          }}
+          speed={prefersReducedMotion ? 0 : 600}
+          coverflowEffect={{
+            rotate: 50,
+            stretch: 0,
+            depth: 100,
+            modifier: 1,
+            slideShadows: true,
+          }}
+          loop={uniqueImages.length >= LOOP_MIN_IMAGES}
+          slideToClickedSlide
+          keyboard={{ enabled: true, onlyInViewport: true }}
+          a11y={{
+            enabled: true,
+            containerMessage: carouselLabel,
+            prevSlideMessage: t('home.carouselPrevious'),
+            nextSlideMessage: t('home.carouselNext'),
+            slideLabelMessage: t('home.carouselGoTo', { slide: '{{index}}' }),
+          }}
+        >
           {uniqueImages.map((image) => (
-            <CarouselItem key={image} className="pl-0">
-              <img
-                src={image}
-                alt=""
-                width={1400}
-                height={480}
-                loading="lazy"
-                className="h-56 w-full object-cover sm:h-72 lg:h-80"
-              />
-            </CarouselItem>
+            <SwiperSlide key={image}>
+              <BrandCarouselImage src={image} />
+            </SwiperSlide>
           ))}
-        </CarouselContent>
-        {uniqueImages.length > 1 ? <BrandCarouselControls images={uniqueImages} /> : null}
-      </Carousel>
+        </Swiper>
+      )}
     </section>
   );
 }
 
-function BrandCarouselControls({ images }: { images: string[] }) {
-  const { t } = useTranslation(NsI18n.Common);
-  const { api } = useCarousel();
-  const [selected, setSelected] = useState(0);
-
-  useEffect(() => {
-    if (!api) return;
-    const onSelect = () => setSelected(api.selectedScrollSnap());
-    api.on('select', onSelect);
-    api.on('reInit', onSelect);
-    return () => {
-      api.off('select', onSelect);
-      api.off('reInit', onSelect);
-    };
-  }, [api]);
-
-  useEffect(() => {
-    if (!api || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = window.setInterval(() => api.scrollNext(), AUTOPLAY_MS);
-    return () => window.clearInterval(timer);
-  }, [api]);
-
+function BrandCarouselImage({ src }: { src: string }) {
   return (
-    <>
-      <CarouselPrevious
-        aria-label={t('home.carouselPrevious')}
-        className="left-4 border-0 bg-background/90 shadow-sm hover:bg-background"
-      />
-      <CarouselNext
-        aria-label={t('home.carouselNext')}
-        className="right-4 border-0 bg-background/90 shadow-sm hover:bg-background"
-      />
-      <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2">
-        {images.map((image, index) => (
-          <button
-            key={image}
-            type="button"
-            aria-label={t('home.carouselGoTo', { slide: index + 1 })}
-            aria-current={selected === index ? 'true' : undefined}
-            className={
-              selected === index
-                ? 'h-2 w-8 rounded-full bg-(--sf-accent) shadow-sm'
-                : 'size-2 rounded-full bg-background/80 shadow-sm'
-            }
-            onClick={() => api?.scrollTo(index)}
-          />
-        ))}
-      </div>
-    </>
+    <img
+      src={src}
+      alt=""
+      width={700}
+      height={700}
+      loading="lazy"
+      draggable={false}
+      className="size-full object-cover"
+    />
   );
 }

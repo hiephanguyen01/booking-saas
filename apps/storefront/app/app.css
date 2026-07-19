@@ -65,3 +65,33 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+.brand-coverflow-surface {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.brand-coverflow {
+  margin-inline: auto;
+  width: 100%;
+}
+
+.brand-coverflow .swiper-slide,
+.brand-coverflow-single {
+  aspect-ratio: 1;
+  height: auto;
+  overflow: hidden;
+  background: var(--muted);
+}
+
+.brand-coverflow-single {
+  margin-inline: auto;
+  width: min(100%, 21.875rem);
+}
+
+@media (min-width: 640px) {
+  .brand-coverflow .swiper-slide {
+    aspect-ratio: auto;
+    height: 21.875rem;
+  }
+}
