@@ -8,14 +8,17 @@ import {
   ChevronsUpDownIcon,
   Eye,
   EyeOff,
+  Pipette,
 } from 'lucide-react';
 import * as React from 'react';
 import { useFormContext, type FieldValues } from 'react-hook-form';
+import { HexColorPicker } from 'react-colorful';
 
 import { ImageUpload } from '@booking/ui/components/form/image-upload';
 import type {
   BooleanFieldConfig,
   ChoiceFieldConfig,
+  ColorFieldConfig,
   DateFieldConfig,
   FieldConfig,
   FileFieldConfig,
@@ -79,6 +82,10 @@ export function FieldRenderer<T extends FieldValues>({ field }: { field: FieldCo
 
   if (field.type === 'checkbox' || field.type === 'switch') {
     return <BooleanField field={field} control={control} />;
+  }
+
+  if (field.type === 'color') {
+    return <ColorField field={field} control={control} />;
   }
 
   return (
@@ -441,6 +448,126 @@ function FileControl<T extends FieldValues>({
       presignEndpoint={field.presignEndpoint}
       disabled={field.disabled}
       variant={field.variant}
+    />
+  );
+}
+
+const DEFAULT_COLOR_PRESETS = [
+  '#0f172a',
+  '#1d4ed8',
+  '#0f766e',
+  '#7c3aed',
+  '#be123c',
+  '#c2410c',
+];
+
+function normalizeHex(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  return /^#[\da-f]{6}$/i.test(withHash) ? withHash.toLowerCase() : null;
+}
+
+function ColorField<T extends FieldValues>({
+  field,
+  control,
+}: {
+  field: ColorFieldConfig<T>;
+  control: ReturnType<typeof useFormContext<T>>['control'];
+}) {
+  const presets = field.presets?.length ? field.presets : DEFAULT_COLOR_PRESETS;
+
+  return (
+    <FormField
+      control={control}
+      name={field.name}
+      render={({ field: rhf }) => {
+        const currentHex = normalizeHex(rhf.value);
+        const pickerColor = currentHex ?? normalizeHex(presets[0]) ?? '#0f172a';
+
+        return (
+          <FormItem>
+            {field.label ? <FormLabel>{field.label}</FormLabel> : null}
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={field.disabled}
+                    aria-label={`Mở bảng chọn ${field.label?.toLocaleLowerCase('vi') ?? 'màu'}`}
+                    className="size-11 shrink-0 p-1.5"
+                  >
+                    {currentHex ? (
+                      <span
+                        className="size-full rounded-sm border border-black/10 shadow-inner dark:border-white/15"
+                        style={{ backgroundColor: currentHex }}
+                      />
+                    ) : (
+                      <Pipette className="size-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-72 space-y-4 p-3">
+                  <HexColorPicker
+                    color={pickerColor}
+                    onChange={rhf.onChange}
+                    aria-label={`Chọn ${field.label?.toLocaleLowerCase('vi') ?? 'màu'}`}
+                    className="!h-44 !w-full"
+                  />
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">Màu gợi ý</p>
+                    <div className="grid grid-cols-6 gap-2" role="group" aria-label="Màu gợi ý">
+                      {presets.map((preset) => {
+                        const normalized = normalizeHex(preset);
+                        if (!normalized) return null;
+                        const selected = normalized === currentHex;
+                        return (
+                          <button
+                            key={normalized}
+                            type="button"
+                            aria-label={`Chọn màu ${normalized}`}
+                            aria-pressed={selected}
+                            disabled={field.disabled}
+                            onClick={() => rhf.onChange(normalized)}
+                            className="aspect-square rounded-md border border-black/10 shadow-sm outline-none transition-transform hover:scale-105 active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-white/15"
+                            style={{ backgroundColor: normalized }}
+                          >
+                            <span className="sr-only">{normalized}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={field.disabled || !rhf.value}
+                    onClick={() => rhf.onChange('')}
+                    className="w-full text-muted-foreground"
+                  >
+                    Dùng màu mặc định
+                  </Button>
+                </PopoverContent>
+              </Popover>
+              <FormControl>
+                <Input
+                  type="text"
+                  placeholder={field.placeholder ?? '#000000'}
+                  autoComplete="off"
+                  disabled={field.disabled}
+                  required={field.required}
+                  className="font-mono uppercase"
+                  {...textBinding(rhf)}
+                />
+              </FormControl>
+            </div>
+            {field.description ? <FormDescription>{field.description}</FormDescription> : null}
+            <FieldMessage />
+          </FormItem>
+        );
+      }}
     />
   );
 }

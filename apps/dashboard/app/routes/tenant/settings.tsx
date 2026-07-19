@@ -6,6 +6,13 @@ import type {
   PayoutPolicyDto,
 } from '@booking/contracts';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@booking/ui/components/ui/tabs';
+import { Globe2, Palette, SlidersHorizontal, WalletCards } from 'lucide-react';
 import type { Route } from './+types/settings';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
@@ -23,6 +30,16 @@ import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
 import { SepayGatewayCard } from '~/features/tenant/components/settings/sepay-gateway-card';
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
+
+const SETTINGS_TAB_BY_FORM: Record<string, string> = {
+  theme: 'brand',
+  domain: 'domains',
+  verify: 'domains',
+  flags: 'operations',
+  'cancellation-default': 'operations',
+  sepay: 'payments',
+  'payout-policy': 'payments',
+};
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cài đặt · Tenant · Bookify' }];
@@ -106,67 +123,152 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
       ? ((actionData.fieldErrors as Record<string, string[]> | undefined) ?? null)
       : null;
 
+  const settingsTabs = [
+    canTheme && theme
+      ? {
+          value: 'brand',
+          label: 'Thương hiệu',
+          description: 'Giao diện storefront',
+          icon: Palette,
+        }
+      : null,
+    canDomains
+      ? {
+          value: 'domains',
+          label: 'Tên miền',
+          description: 'Địa chỉ cửa hàng',
+          icon: Globe2,
+        }
+      : null,
+    canDomains
+      ? {
+          value: 'operations',
+          label: 'Vận hành',
+          description: 'Quy tắc đặt chỗ',
+          icon: SlidersHorizontal,
+        }
+      : null,
+    canDomains || payoutPolicy
+      ? {
+          value: 'payments',
+          label: 'Thanh toán',
+          description: 'Thu tiền & chi trả',
+          icon: WalletCards,
+        }
+      : null,
+  ].filter((tab) => tab !== null);
+  const feedbackForm =
+    actionData && 'form' in actionData && typeof actionData.form === 'string'
+      ? actionData.form
+      : null;
+  const feedbackTab = feedbackForm ? SETTINGS_TAB_BY_FORM[feedbackForm] : null;
+  const defaultTab =
+    settingsTabs.find((tab) => tab.value === feedbackTab)?.value ?? settingsTabs[0]?.value;
+  const mobileTabGridClass = settingsTabs.length === 1 ? 'grid-cols-1' : 'grid-cols-2';
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Cài đặt"
-        description="Tuỳ chỉnh storefront, tên miền và cổng thanh toán của cửa hàng."
+        description="Quản lý thương hiệu, vận hành và dòng tiền của cửa hàng tại một nơi."
       />
 
-      {canTheme && theme ? (
-        <ThemeSettingsCard
-          theme={theme}
-          readOnly={readOnly}
-          saved={okFor('theme')}
-          error={errFor('theme')}
-          fieldErrors={fieldErrorsFor('theme')}
-        />
-      ) : null}
+      {defaultTab ? (
+        <Tabs
+          defaultValue={defaultTab}
+          orientation="vertical"
+          className="flex-col gap-5 lg:flex-row lg:items-start lg:gap-8"
+        >
+          <TabsList
+            aria-label="Nhóm cài đặt"
+            className={`grid h-auto w-full shrink-0 gap-1.5 rounded-xl border bg-card p-2 shadow-xs lg:sticky lg:top-6 lg:w-64 lg:grid-cols-1 xl:w-72 ${mobileTabGridClass}`}
+          >
+            {settingsTabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="group h-auto min-h-14 justify-start gap-3 rounded-lg px-2.5 py-2.5 text-left text-foreground/70 shadow-none hover:bg-muted/70 hover:text-foreground active:scale-[0.99] data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-primary/15"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground">
+                    <Icon className="size-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold leading-5">{tab.label}</span>
+                    <span className="hidden truncate text-xs font-normal text-muted-foreground lg:block">
+                      {tab.description}
+                    </span>
+                  </span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
 
-      {canDomains ? (
-        <TenantDomainsCard
-          domains={domains}
-          readOnly={readOnly}
-          verifyError={errFor('verify')}
-          domainError={errFor('domain')}
-          domainFieldErrors={fieldErrorsFor('domain')}
-        />
-      ) : null}
+          {canTheme && theme ? (
+            <TabsContent value="brand" className="min-w-0 w-full lg:max-w-5xl">
+              <ThemeSettingsCard
+                theme={theme}
+                readOnly={readOnly}
+                saved={okFor('theme')}
+                error={errFor('theme')}
+                fieldErrors={fieldErrorsFor('theme')}
+              />
+            </TabsContent>
+          ) : null}
 
-      {payoutPolicy ? (
-        <PayoutPolicyCard
-          policy={payoutPolicy}
-          readOnly={readOnly || !canManagePayoutPolicy}
-          saved={okFor('payout-policy')}
-          error={errFor('payout-policy')}
-        />
-      ) : null}
+          {canDomains ? (
+            <TabsContent value="domains" className="min-w-0 w-full lg:max-w-5xl">
+              <TenantDomainsCard
+                domains={domains}
+                readOnly={readOnly}
+                verifyError={errFor('verify')}
+                domainError={errFor('domain')}
+                domainFieldErrors={fieldErrorsFor('domain')}
+              />
+            </TabsContent>
+          ) : null}
 
-      {canDomains && partnerPromotions ? (
-        <PartnerPromotionsCard
-          state={partnerPromotions}
-          readOnly={readOnly}
-          error={errFor('flags')}
-        />
-      ) : null}
+          {canDomains ? (
+            <TabsContent value="operations" className="min-w-0 w-full space-y-5 lg:max-w-5xl">
+              {partnerPromotions ? (
+                <PartnerPromotionsCard
+                  state={partnerPromotions}
+                  readOnly={readOnly}
+                  error={errFor('flags')}
+                />
+              ) : null}
+              <TenantDefaultCancellationPolicyCard
+                policies={cancellationPolicies}
+                readOnly={readOnly}
+                error={errFor('cancellation-default')}
+                saved={okFor('cancellation-default')}
+              />
+            </TabsContent>
+          ) : null}
 
-      {canDomains ? (
-        <SepayGatewayCard
-          config={gatewayConfig}
-          readOnly={readOnly}
-          saved={okFor('sepay')}
-          error={errFor('sepay')}
-          fieldErrors={fieldErrorsFor('sepay')}
-        />
-      ) : null}
-
-      {canDomains ? (
-        <TenantDefaultCancellationPolicyCard
-          policies={cancellationPolicies}
-          readOnly={readOnly}
-          error={errFor('cancellation-default')}
-          saved={okFor('cancellation-default')}
-        />
+          {canDomains || payoutPolicy ? (
+            <TabsContent value="payments" className="min-w-0 w-full space-y-5 lg:max-w-5xl">
+              {canDomains ? (
+                <SepayGatewayCard
+                  config={gatewayConfig}
+                  readOnly={readOnly}
+                  saved={okFor('sepay')}
+                  error={errFor('sepay')}
+                  fieldErrors={fieldErrorsFor('sepay')}
+                />
+              ) : null}
+              {payoutPolicy ? (
+                <PayoutPolicyCard
+                  policy={payoutPolicy}
+                  readOnly={readOnly || !canManagePayoutPolicy}
+                  saved={okFor('payout-policy')}
+                  error={errFor('payout-policy')}
+                />
+              ) : null}
+            </TabsContent>
+          ) : null}
+        </Tabs>
       ) : null}
 
       {!canTheme && !canDomains && !payoutPolicy ? (
