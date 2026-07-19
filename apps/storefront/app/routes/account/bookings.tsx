@@ -66,7 +66,7 @@ function BookingTabs({
   return (
     <nav
       aria-label={t('bookings.filters.label')}
-      className="overflow-x-auto bg-background shadow-[0_6px_20px_rgba(15,23,42,0.035)]"
+      className="overflow-x-auto border-b border-border/70 bg-background shadow-[0_4px_16px_rgba(15,23,42,0.03)]"
     >
       <div className="flex min-w-max">
         {BOOKING_HISTORY_FILTERS.map((filter) => {
@@ -80,7 +80,7 @@ function BookingTabs({
               to={href}
               prefetch="intent"
               aria-current={active === filter ? 'page' : undefined}
-              className={`relative flex h-13 items-center px-5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+              className={`relative flex h-12 items-center px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 ${
                 active === filter
                   ? 'text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
                   : 'text-muted-foreground hover:text-foreground'
