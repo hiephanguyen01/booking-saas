@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make the daily range calendar on the listing detail page use the same selected-range visual language as the storefront search calendar, and allow a one-day selection in both surfaces.
+Make the daily range calendar on the listing detail page use the same selected-range visual language as the storefront search calendar, and allow a same-date one-day range in both surfaces.
 
 ## Design
 
@@ -17,16 +17,16 @@ The resulting states are:
 
 ## Single-day selection
 
-Search and detail both treat the first clicked date as a complete one-day range represented by the same `from` and `to` date. Existing daily-range normalization converts that inclusive UI value into the half-open interval ending on the following date for availability, pricing, and checkout.
+Search and detail both support a one-day range represented by the same `from` and `to` date. Existing daily-range normalization converts that inclusive UI value into the half-open interval ending on the following date for availability, pricing, and checkout.
 
-Remove Search's `resetOnSelect` behavior because it intentionally leaves the first click as an incomplete range. Detail already uses the required one-click behavior and does not need selection-logic changes. Multi-day selection remains available by reopening the Search calendar and choosing a later end date, or by choosing another end date in the detail calendar.
+Search keeps `resetOnSelect` for its range calendar. The first click selects only the start and leaves the popup open. A second click on the same date completes a one-day range; a second click on another date completes a multi-day range. The popup closes only after that second click. Detail retains its existing selection behavior and does not need selection-logic changes.
 
 A listing's configured `minNights` and `maxNights` remain authoritative. A normalized one-day selection can proceed only when it satisfies those constraints.
 
 ## Scope
 
-The detail page changes only its calendar class composition. Search removes `resetOnSelect` from its daily range calendar. URL parameter shapes, availability rules, range normalization, booking times, hourly mode, and inventory mode remain unchanged.
+The detail page changes only its calendar class composition. Search retains `resetOnSelect` for its range calendar. URL parameter shapes, availability rules, range normalization, booking times, hourly mode, and inventory mode remain unchanged.
 
 ## Verification
 
-Because the repository prohibits tests, verify with storefront lint, typecheck, production build, and browser comparison of the Search and detail range states. Confirm a first click produces the same-date `from` and `to` selection in each surface.
+Because the repository prohibits tests, verify with storefront lint, typecheck, production build, and browser comparison of the Search and detail range states. In Search, confirm the first click keeps the popup open with an incomplete range, while a second click on the same date produces the same-date `from` and `to` selection and closes the popup.
