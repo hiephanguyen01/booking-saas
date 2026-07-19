@@ -10,3 +10,4 @@ build/
 .agents/skills/*/node_modules/
 /.agents
 /.claude
+/.worktrees
