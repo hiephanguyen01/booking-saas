@@ -88,7 +88,7 @@ export class PartnerFinanceController {
     return toPaginated(query, result, toPartnerSettlementDisputeResponse);
   }
 
-  @RequirePermissions('partner.finance.read')
+  @RequirePermissions('partner.finance.read', 'partner.bookings.write')
   @Post('disputes/:id/respond')
   @UuidParam('id')
   @ApiOperation({ summary: 'Respond once to an open dispute affecting an owned booking' })

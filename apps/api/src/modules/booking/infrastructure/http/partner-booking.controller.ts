@@ -198,7 +198,7 @@ export class PartnerBookingController {
     );
   }
 
-  @RequirePermissions('partner.bookings.cancel')
+  @RequirePermissions('partner.bookings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/no-show')
   @HttpCode(200)
@@ -257,7 +257,7 @@ export class PartnerBookingController {
     return toPartnerCancelResponse(result);
   }
 
-  @RequirePermissions('partner.bookings.cancel')
+  @RequirePermissions('partner.bookings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/pick-up')
   @HttpCode(200)
@@ -271,7 +271,7 @@ export class PartnerBookingController {
     return toPartnerBookingResponse(await this.markPickedUp.execute(this.ctx(principal), id));
   }
 
-  @RequirePermissions('partner.bookings.cancel')
+  @RequirePermissions('partner.bookings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Post(':id/return')
   @HttpCode(200)

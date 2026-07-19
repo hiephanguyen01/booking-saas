@@ -40,6 +40,14 @@ ALTER TABLE "bookings"
   ADD CONSTRAINT "bookings_refund_percent_check"
     CHECK (refund_percent IS NULL OR refund_percent BETWEEN 0 AND 100);
 
+-- Persist whether a confirmed refund terminates the booking. Partial dispute
+-- refunds and security-deposit returns intentionally leave its service status.
+ALTER TABLE "refunds"
+  ADD COLUMN "affects_booking_status" BOOLEAN NOT NULL DEFAULT true;
+UPDATE "refunds"
+SET "affects_booking_status" = false
+WHERE "reason" = 'security_deposit';
+
 UPDATE "bookings" b
 SET refund_due_amount = (
   SELECT r.amount
@@ -263,7 +271,42 @@ FROM bookings b
 WHERE b.id = bs.booking_id
   AND b.status = 'cancelled'
   AND bs.refund_id IS NULL
-  AND bs.online_held_amount > 0;
+  AND bs.online_held_amount > 0
+  AND (b.refund_due_amount IS NULL OR b.refund_due_amount > 0);
+
+-- A durable zero refund is different from an unknown legacy refund intent: the
+-- service deposit is a cancellation fee and must wait through the dispute buffer,
+-- not remain refund_pending forever waiting for a refund row that will never exist.
+WITH tenant_policy AS (
+  SELECT id,
+    CASE
+      WHEN settings->'payout'->>'holdingDays' ~ '^\d+$'
+        THEN LEAST(GREATEST((settings->'payout'->>'holdingDays')::int, 0), 90)
+      ELSE 3
+    END AS holding_days
+  FROM tenants
+)
+UPDATE booking_settlements bs
+SET status = 'dispute_window'::settlement_status,
+    kind = 'cancellation_fee'::settlement_kind,
+    refunded_amount = 0,
+    retained_amount = bs.online_held_amount,
+    completed_at = COALESCE(bs.completed_at, b.updated_at),
+    dispute_until = COALESCE(bs.completed_at, b.updated_at)
+      + (tp.holding_days * interval '1 day'),
+    updated_at = now()
+FROM bookings b, tenant_policy tp
+WHERE b.id = bs.booking_id
+  AND tp.id = bs.tenant_id
+  AND b.status = 'cancelled'
+  AND b.refund_due_amount = 0
+  AND bs.refund_id IS NULL
+  AND bs.online_held_amount > 0
+  AND NOT EXISTS (
+    SELECT 1 FROM ledger_entries le
+    WHERE le.booking_id = bs.booking_id
+      AND le.entry_type IN ('booking_revenue', 'partner_share', 'platform_fee', 'cancellation_fee')
+  );
 
 -- Repair no-show rows that have no terminal journal: hold them through the same
 -- tenant-configured dispute window instead of making them immediately payable.
@@ -307,7 +350,6 @@ FROM (
   ORDER BY booking_id, created_at, journal_id
 ) x
 WHERE x.booking_id = bs.booking_id
-  AND bs.status = 'released'
   AND bs.release_journal_id IS NULL;
 
 -- Backfill booking-level traceability for historical Partner payouts. Treat
@@ -326,7 +368,7 @@ WITH settlement_ranges AS (
            ORDER BY bs.released_at, bs.id
          )::bigint AS range_end
   FROM booking_settlements bs
-  WHERE bs.status = 'released'::settlement_status
+  WHERE bs.release_journal_id IS NOT NULL
     AND bs.partner_payable > 0
 ), payout_ranges AS (
   SELECT p.id AS payout_id, p.tenant_id, p.payee_id AS partner_id, p.status,

@@ -1,5 +1,5 @@
 import type { BookingStatus } from '@booking/contracts';
-import type { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
+import type { PrismaTx, TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import type { OutboxService } from '../../../shared/outbox/outbox.service';
 import type { BookingRecord, IBookingRepository } from '../domain/ports/booking-repository.port';
 import { assertTransition } from '../domain/booking-state-machine';
@@ -26,14 +26,14 @@ export function applyPartnerTransition(
   opts: {
     expiresAt?: Date;
     reason?: string;
-    guard?: (booking: BookingRecord) => void;
+    guard?: (booking: BookingRecord, tx: PrismaTx) => void | Promise<void>;
     eventPayload?: (booking: BookingRecord) => Record<string, unknown>;
   },
 ): Promise<BookingRecord> {
   return deps.tenantDb.forTenant(ctx.tenantId, async (tx) => {
     const booking = await loadOwnedBooking(deps.bookings, tx, bookingId, ctx.partnerId);
     assertTransition(booking.status, to, 'partner');
-    opts.guard?.(booking);
+    await opts.guard?.(booking, tx);
     const updated = await deps.bookings.applyTransition(tx, {
       id: bookingId,
       from: booking.status,

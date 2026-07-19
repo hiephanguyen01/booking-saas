@@ -1,4 +1,4 @@
-import { formatCurrency, type Locale } from '@booking/i18n';
+import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
@@ -42,6 +42,10 @@ export function BookingDetailPanel({
   settlement: CustomerBookingSettlementResponse | null;
 }) {
   const { t } = useTranslation(NsI18n.Account);
+  const hasPostServiceRefund =
+    settlement !== null &&
+    settlement.kind !== 'cancellation_fee' &&
+    (settlement.status === 'refund_pending' || BigInt(settlement.refundedAmount) > 0n);
   return (
     <div className="space-y-3">
       <h1 className="min-h-8 text-lg font-semibold uppercase tracking-wide">
@@ -64,11 +68,7 @@ export function BookingDetailPanel({
         locale={locale}
         defaultCancelOpen={defaultCancelOpen}
         actionError={actionError}
-        postServiceRefund={
-          booking.status === 'refunded' &&
-          settlement !== null &&
-          settlement.kind !== 'cancellation_fee'
-        }
+        postServiceRefund={hasPostServiceRefund}
       />
 
       {booking.variant === 'completed' && booking.review ? (
@@ -92,6 +92,10 @@ export function BookingDetailPanel({
       ) : (
         <PaymentSummary booking={booking} locale={locale} />
       )}
+
+      {booking.variant !== 'cancelled' && hasPostServiceRefund && settlement ? (
+        <PostServiceRefundSummary settlement={settlement} locale={locale} />
+      ) : null}
     </div>
   );
 }
@@ -311,9 +315,7 @@ function CancellationSummary({
     ? maxMoney(BigInt(refundAmount) - BigInt(booking.securityDeposit))
     : 0n;
   const noRefundDue =
-    refundAmount === '0' &&
-    settlement?.status === 'dispute_window' &&
-    !settlement.refundConfirmed;
+    refundAmount === '0' && settlement?.status === 'dispute_window' && !settlement.refundConfirmed;
   const refundStatus =
     settlement?.status === 'refund_pending'
       ? t('bookings.refund.pending')
@@ -329,7 +331,7 @@ function CancellationSummary({
       {booking.cancelledAt ? (
         <DetailRow
           label={t('bookings.refund.cancelledAt')}
-          value={new Date(booking.cancelledAt).toLocaleString(locale)}
+          value={formatDateTime(booking.cancelledAt, locale, 'Asia/Ho_Chi_Minh')}
         />
       ) : null}
       {booking.cancellationReason ? (
@@ -355,10 +357,7 @@ function CancellationSummary({
           )}
         />
       ) : null}
-      <DetailRow
-        label={t('bookings.refund.amount')}
-        value={money(refundAmount ?? '0', locale)}
-      />
+      <DetailRow label={t('bookings.refund.amount')} value={money(refundAmount ?? '0', locale)} />
       <DetailRow label={t('bookings.refund.status')} value={refundStatus} strong />
     </DetailSection>
   );
@@ -387,9 +386,7 @@ function PostServiceRefundSummary({
         }
         strong
       />
-      <p className="mt-4 text-xs text-muted-foreground">
-        {t('bookings.refund.serviceNote')}
-      </p>
+      <p className="mt-4 text-xs text-muted-foreground">{t('bookings.refund.serviceNote')}</p>
     </DetailSection>
   );
 }
@@ -525,5 +522,5 @@ function DetailRow({
 }
 
 function money(value: string, locale: Locale): string {
-  return formatCurrency(Number(value), 'VND', locale);
+  return formatCurrency(BigInt(value), 'VND', locale);
 }

@@ -13,6 +13,7 @@ export interface RefundRecord {
   status: RefundStatus;
   gatewayRefundId: string | null;
   reason: string | null;
+  affectsBookingStatus: boolean;
   evidence: { reference?: string; evidenceKey?: string; note?: string } | null;
 }
 
@@ -21,6 +22,7 @@ export interface CreateRefundData {
   bookingId: string;
   amount: bigint;
   status: RefundStatus;
+  affectsBookingStatus: boolean;
   reason?: string | null;
   gatewayRefundId?: string | null;
 }
@@ -37,6 +39,7 @@ export interface RefundRecoveryRecord {
   bookingId: string;
   amount: bigint;
   reason: string | null;
+  affectsBookingStatus: boolean;
 }
 
 export interface MissingRefundRecord {

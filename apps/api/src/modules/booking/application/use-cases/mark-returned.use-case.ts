@@ -1,11 +1,17 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { ModeConfig } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow } from '../../../../shared/time/time';
 import { vnd } from '../../../../shared/money/money';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { LISTING_REPOSITORY, type IListingRepository } from '../../../listing/domain/ports/listing-repository.port';
-import { BOOKING_REPOSITORY, type BookingRecord, type IBookingRepository } from '../../domain/ports/booking-repository.port';
+import {
+  LISTING_REPOSITORY,
+  type IListingRepository,
+} from '../../../listing/domain/ports/listing-repository.port';
+import {
+  BOOKING_REPOSITORY,
+  type BookingRecord,
+  type IBookingRepository,
+} from '../../domain/ports/booking-repository.port';
 import { assertTransition } from '../../domain/booking-state-machine';
 import { lateFee, overduePeriods } from '../../domain/late-fee';
 import { settleDeposit } from '../../domain/deposit-settlement';
@@ -32,15 +38,25 @@ export class MarkReturnedUseCase {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       const booking = await loadOwnedBooking(this.bookings, tx, bookingId, ctx.partnerId);
       if (booking.bookingMode !== 'inventory') {
-        throw new BadRequestException({ statusCode: 400, code: 'NOT_INVENTORY', message: 'Return applies to inventory rentals only' });
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'NOT_INVENTORY',
+          message: 'Return applies to inventory rentals only',
+        });
       }
       assertTransition(booking.status, 'completed', 'partner');
 
-      const returnedAt = utcNow();
-      const inventory = ((await this.listings.findById(tx, booking.listingId))?.modeConfig as ModeConfig | undefined)?.inventory;
+      const returnedAt = await this.tenantDb.databaseNow(tx);
+      const inventory = (
+        (await this.listings.findById(tx, booking.listingId))?.modeConfig as ModeConfig | undefined
+      )?.inventory;
       const unit = inventory?.unit ?? 'day';
       const ratePerUnit = vnd(inventory?.lateFeePerUnit ?? inventory?.basePrice ?? '0');
-      const fee = lateFee(overduePeriods(returnedAt, booking.endUtc, unit), ratePerUnit, booking.quantity);
+      const fee = lateFee(
+        overduePeriods(returnedAt, booking.endUtc, unit),
+        ratePerUnit,
+        booking.quantity,
+      );
       const { refund, shortfall } = settleDeposit(booking.securityDeposit, damageAmount, fee);
 
       const additionalCharges = fee > 0n ? [{ type: 'late_fee', amount: fee.toString() }] : [];
@@ -60,10 +76,24 @@ export class MarkReturnedUseCase {
       await this.outbox.emit(tx, {
         tenantId: ctx.tenantId,
         eventType: 'booking.returned',
-        payload: { bookingId, lateFee: fee.toString(), depositRefund: refund.toString(), depositShortfall: shortfall.toString() },
+        payload: {
+          bookingId,
+          lateFee: fee.toString(),
+          depositRefund: refund.toString(),
+          depositShortfall: shortfall.toString(),
+        },
       });
-      await this.outbox.emit(tx, { tenantId: ctx.tenantId, eventType: 'booking.completed', payload: { bookingId } });
-      return { booking: completed, lateFee: fee, depositRefund: refund, depositShortfall: shortfall };
+      await this.outbox.emit(tx, {
+        tenantId: ctx.tenantId,
+        eventType: 'booking.completed',
+        payload: { bookingId },
+      });
+      return {
+        booking: completed,
+        lateFee: fee,
+        depositRefund: refund,
+        depositShortfall: shortfall,
+      };
     });
   }
 }

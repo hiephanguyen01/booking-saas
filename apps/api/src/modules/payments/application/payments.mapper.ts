@@ -6,10 +6,7 @@ import type {
 } from '@booking/contracts';
 import type { GatewayConfigRecord } from '../domain/ports/gateway-config-repository.port';
 import type { PaymentHistoryRecord } from '../domain/ports/payment-repository.port';
-import type {
-  RefundHistoryRecord,
-  RefundRecord,
-} from '../domain/ports/refund-repository.port';
+import type { RefundHistoryRecord, RefundRecord } from '../domain/ports/refund-repository.port';
 
 /**
  * Public shape of a stored gateway config (§11.1). Credentials are never exposed;
@@ -32,6 +29,7 @@ export function toRefundResponse(refund: RefundRecord): RefundResponse {
     amount: refund.amount.toString(),
     status: refund.status,
     reason: refund.reason,
+    affectsBookingStatus: refund.affectsBookingStatus,
     gatewayRefundId: refund.gatewayRefundId,
     reference: refund.evidence?.reference ?? null,
   };

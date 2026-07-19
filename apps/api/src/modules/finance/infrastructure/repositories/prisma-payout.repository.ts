@@ -6,7 +6,6 @@ import type {
   IPayoutRepository,
   PayoutRecord,
 } from '../../domain/ports/payout-repository.port';
-import { utcNow } from '../../../../shared/time/time';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 
 type Row = Prisma.PayoutGetPayload<Record<string, never>>;
@@ -102,11 +101,14 @@ export class PrismaPayoutRepository implements IPayoutRepository {
     id: string,
     evidence: { reference: string; evidenceKey?: string },
   ): Promise<PayoutRecord | null> {
-    const changed = await tx.payout.updateMany({
-      where: { id, status: 'processing' },
-      data: { status: 'paid', paidAt: utcNow(), evidence: { ...evidence } },
-    });
-    return changed.count > 0 ? this.findById(tx, id) : null;
+    const changed = await tx.$executeRaw(Prisma.sql`
+      UPDATE payouts
+      SET status = 'paid'::payout_status,
+          paid_at = now(),
+          evidence = ${JSON.stringify(evidence)}::jsonb,
+          updated_at = now()
+      WHERE id = ${id}::uuid AND status = 'processing'::payout_status`);
+    return changed > 0 ? this.findById(tx, id) : null;
   }
 
   async markFailed(tx: PrismaTx, id: string, reason: string | null): Promise<PayoutRecord | null> {

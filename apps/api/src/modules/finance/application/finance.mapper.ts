@@ -106,10 +106,9 @@ export function toBookingSettlementResponse(
     customerName: settlement.customerName,
     partnerName: settlement.partnerName,
     onlineHeldAmount: settlement.onlineHeldAmount.toString(),
-    remainingHeldAmount: (
-      settlement.onlineHeldAmount > settlement.refundedAmount
-        ? settlement.onlineHeldAmount - settlement.refundedAmount
-        : 0n
+    remainingHeldAmount: (settlement.onlineHeldAmount > settlement.refundedAmount
+      ? settlement.onlineHeldAmount - settlement.refundedAmount
+      : 0n
     ).toString(),
     onsiteCollectedAmount: settlement.onsiteCollectedAmount.toString(),
     securityDepositHeld: settlement.securityDepositHeld.toString(),
@@ -173,7 +172,7 @@ export function toPartnerBookingSettlementResponse(
 export function toCustomerBookingSettlementResponse(
   view: CustomerBookingSettlementView,
 ): CustomerBookingSettlementResponse {
-  const { settlement, dispute } = view;
+  const { settlement, dispute, canOpenDispute } = view;
   const full = toBookingSettlementResponse(settlement);
   return {
     id: full.id,
@@ -189,13 +188,8 @@ export function toCustomerBookingSettlementResponse(
     disputeUntil: full.disputeUntil,
     releasedAt: full.releasedAt,
     updatedAt: full.updatedAt,
-    canOpenDispute:
-      dispute === null &&
-      settlement.status === 'dispute_window' &&
-      settlement.disputeUntil !== null &&
-      settlement.disputeUntil.getTime() > Date.now(),
-    refundConfirmed:
-      settlement.refundId !== null && settlement.status !== 'refund_pending',
+    canOpenDispute,
+    refundConfirmed: settlement.refundId !== null && settlement.status !== 'refund_pending',
     dispute: dispute
       ? {
           id: dispute.id,
@@ -273,9 +267,7 @@ export function toPartnerSettlementDisputeResponse(
   };
 }
 
-export function toSettlementSummaryResponse(
-  summary: SettlementSummary,
-): SettlementSummaryResponse {
+export function toSettlementSummaryResponse(summary: SettlementSummary): SettlementSummaryResponse {
   return {
     heldAmount: summary.heldAmount.toString(),
     disputedAmount: summary.disputedAmount.toString(),

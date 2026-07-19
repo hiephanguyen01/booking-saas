@@ -29,7 +29,7 @@ export class StartNoShowSettlementWindowUseCase {
           message: 'Booking not found while opening the no-show settlement window',
         });
       }
-      const settlement = await this.settlements.findByBooking(tx, bookingId);
+      const settlement = await this.settlements.ensureHeldForBooking(tx, tenantId, bookingId);
       if (!settlement) {
         throw new ConflictException({
           statusCode: 409,

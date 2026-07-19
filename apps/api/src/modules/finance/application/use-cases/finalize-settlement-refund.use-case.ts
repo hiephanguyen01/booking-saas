@@ -23,12 +23,10 @@ export class FinalizeSettlementRefundUseCase {
     reason?: string | null,
   ): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
-      const settlement = await this.settlements.findByBooking(tx, bookingId);
+      const settlement = await this.settlements.ensureHeldForBooking(tx, tenantId, bookingId);
       if (!settlement || settlement.refundId === refundId) return;
       const serviceRefundAmount =
-        reason === 'booking_cancellation'
-          ? max0(amount - settlement.securityDepositHeld)
-          : amount;
+        reason === 'booking_cancellation' ? max0(amount - settlement.securityDepositHeld) : amount;
       const cumulativeRefundedAmount =
         reason === 'dispute_refund'
           ? settlement.status === 'refund_pending'

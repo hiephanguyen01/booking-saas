@@ -109,6 +109,10 @@ dispute_until = now() + tenant.settings.payout.holdingDays
 ```
 
 Mặc định `holdingDays = 3`, chấp nhận `0..90`. Nếu bằng 0, worker có thể release ở lượt quét kế tiếp.
+Các mốc tài chính khác cũng dùng clock của cùng DB transaction: chọn commission rule theo
+`effectiveFrom/effectiveTo`, tính cancellation tier, xác nhận thời điểm hoàn thành/no-show và
+`payment.paid_at`, `settlement.released_at` và `payout.paid_at`. Không dùng clock của API host để tránh
+lệch máy làm đổi split hoặc refund.
 
 ## 5. Luồng kỹ thuật theo sự kiện
 
@@ -119,6 +123,11 @@ Mặc định `holdingDays = 3`, chấp nhận `0..90`. Nếu bằng 0, worker c
 3. Trong cùng transaction, API ghi outbox event `payment.succeeded` gồm `paymentId`, `bookingId`.
 4. Finance consumer tạo duy nhất một `booking_settlements` theo `booking_id/payment_id`.
 5. Booking consumer xác nhận booking trong transaction riêng. Payments không import Booking module.
+
+Các consumer completion/no-show/cancellation/refund không giả định tuyệt đối thứ tự delivery. Nếu
+event nghiệp vụ đến trước handler `payment.succeeded`, Finance atomically materialize lại `HELD` từ
+payment `deposit|full` đã `succeeded`, rồi mới áp dụng transition. Vì vậy một event được đánh dấu
+processed không thể làm mất vĩnh viễn custody row chỉ vì hai consumer chạy lệch thứ tự.
 
 Reconciliation worker đi cùng đường: nếu phát hiện payment thành công bị mất IPN, nó cũng atomically
 ghi `payment.succeeded`, vì vậy không có nhánh settlement riêng cho reconciliation. Worker còn quét
@@ -206,11 +215,21 @@ transaction rollback với `PAYOUT_ALLOCATION_MISMATCH` thay vì tạo một l�
   ở `online_held_amount - refunded_amount`, nên nhiều delivery/recovery không thể hoàn vượt số Tenant
   còn giữ. Refund một phần đưa phần còn lại vào một holding window mới; refund toàn bộ kết thúc
   settlement ở `refunded`.
+- Refund lưu durable `affects_booking_status`. `full_refund` kết thúc booking ở `refunded`, còn
+  `partial_refund` giữ booking ở trạng thái hoàn thành và chỉ thay đổi settlement. Manual confirmation
+  và reconciliation đọc cờ đã lưu này, không suy đoán lại từ `reason`.
 - Refund cọc bảo đảm có `affectsBookingStatus=false`: không đổi trạng thái settlement dịch vụ.
+
+Nếu refund xảy ra sau khi một revenue journal đã tồn tại, Finance ghi một journal `clawback` đảo đúng
+chu kỳ revenue đang active. Sau partial refund, phần giữ lại có thể release thành journal mới; guard
+idempotency theo thứ tự `revenue → clawback → revenue`, không coi clawback lịch sử là reversal của
+journal mới. Event refund cũ đến trễ cũng không được đảo một settlement đã release lại.
 
 Customer mở dispute trên chi tiết booking. Repository xác minh host → Tenant, customer ownership, DB
 deadline và chỉ atomically đổi `dispute_window → disputed`. Partner thấy claim của booking mình và có
-một lần phản hồi. Mỗi settlement chỉ có một claim; unique constraint trên `settlement_id` và
+thể phản hồi một lần. Xem dữ liệu cần `partner.finance.read`; gửi phản hồi cần
+`partner.bookings.write`, vì đây là mutation/bằng chứng nghiệp vụ chứ không phải quyền chỉ đọc. Mỗi
+settlement chỉ có một claim; unique constraint trên `settlement_id` và
 `canOpenDispute` ở customer DTO/UI chặn mở lại sau khi claim đã được xử lý. Tenant có ba quyết định:
 `release`, `full_refund`, `partial_refund`. Quyết định và actor/evidence được lưu ở
 `settlement_disputes`; không sửa settlement trực tiếp từ UI.
@@ -271,7 +290,8 @@ Migrations:
 `booking_settlements`, `settlement_disputes` và `payout_allocations` đều có `tenant_id NOT NULL`, FORCE
 RLS, policy `tenant_isolation`. Settlement unique theo `booking_id` và `payment_id`; dispute unique
 theo `settlement_id`; các amount không âm (riêng `tenant_net_earning` có thể âm vì promotion/
-affiliate). Index quan trọng:
+affiliate). `refunds.affects_booking_status` là boolean `NOT NULL`, backfill `false` cho refund cọc bảo
+đảm và được lưu ngay khi tạo refund. Index quan trọng:
 
 - `(partner_id, status)` cho Partner/tenant filter;
 - `(status, dispute_until)` cho worker;
@@ -282,6 +302,8 @@ Corrective backfill phân loại theo thứ tự ưu tiên:
 - booking đã có revenue journal → `released`, không tạo journal lại;
 - refund succeeded → `refunded`, refund manual/pending → `refund_pending`;
 - cancelled có phần giữ lại → `cancellation_fee` + `dispute_window` theo Tenant payout policy;
+- cancelled có durable `refund_due_amount = 0` cũng đi vào `cancellation_fee`; chỉ intent `NULL` hoặc
+  số refund dương chưa có refund row mới ở `refund_pending`;
 - completed/no-show chưa có journal → đúng kind + `dispute_window` theo Tenant payout policy;
 - journal cũ được gắn lại vào `release_journal_id` thay vì để projection mồ côi;
 - còn lại → `held`.
@@ -314,8 +336,11 @@ Checklist khi một settlement bị kẹt:
 6. Redis/BullMQ và settlement worker có chạy không;
 7. booking đã có revenue journal cũ gây `SETTLEMENT_JOURNAL_EXISTS` không.
 8. payout allocation có còn `reserved` trong payout đã `failed` không;
-9. refund `succeeded` có khớp `booking.refunded` và `settlement.refund_id` không;
+9. refund `succeeded` có khớp `settlement.refund_id`, và nếu `affects_booking_status=true` thì booking
+   có ở `refunded` không;
 10. booking cancelled có `refund_due_amount > 0` nhưng thiếu refund row không.
+11. refund partial có `affects_booking_status=false` và booking vẫn `completed` không;
+12. journal active gần nhất có đúng chuỗi revenue/clawback không.
 
 Reconciliation tự phục hồi payment success, refund success, cancellation có refund intent nhưng thiếu
 refund row và cọc bảo đảm của booking `no_show` bị thiếu refund row. Chi tiết query/triage ở

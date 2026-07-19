@@ -111,7 +111,6 @@ export class PrismaPaymentRepository implements IPaymentRepository {
   async markSucceeded(
     tx: PrismaTx,
     id: string,
-    paidAt: Date,
     payload: unknown,
     gatewayData: {
       gatewayTxnId?: string;
@@ -124,7 +123,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     const paymentMethod = gatewayData.paymentMethod ?? null;
     const affected = await tx.$executeRaw(Prisma.sql`
       UPDATE payments
-      SET status = 'succeeded', paid_at = ${paidAt},
+      SET status = 'succeeded', paid_at = now(),
           gateway_txn_id = COALESCE(${gatewayTxnId}, gateway_txn_id),
           gateway_order_id = COALESCE(${gatewayOrderId}, gateway_order_id),
           payment_method = COALESCE(${paymentMethod}, payment_method),

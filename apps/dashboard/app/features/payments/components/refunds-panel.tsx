@@ -34,8 +34,8 @@ export function RefundsPanel({
       <CardHeader>
         <CardTitle>Hoàn tiền khách hàng</CardTitle>
         <p className="text-sm text-muted-foreground">
-          SePay không tự chuyển hoàn. Chỉ xác nhận sau khi Tenant đã chuyển khoản và lưu mã
-          tham chiếu ngân hàng.
+          SePay không tự chuyển hoàn. Chỉ xác nhận sau khi Tenant đã chuyển khoản và lưu mã tham
+          chiếu ngân hàng.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -46,8 +46,7 @@ export function RefundsPanel({
         ) : null}
         {refunds.map((refund) => {
           const submitting =
-            navigation.state === 'submitting' &&
-            navigation.formData?.get('refundId') === refund.id;
+            navigation.state === 'submitting' && navigation.formData?.get('refundId') === refund.id;
           return (
             <div key={refund.id} className="rounded-md border p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -61,6 +60,11 @@ export function RefundsPanel({
                   <p className="mt-1 text-xs text-muted-foreground">
                     {refund.reason ?? 'Hoàn tiền'} · {formatDateTime(refund.createdAt)}
                   </p>
+                  {!refund.affectsBookingStatus ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Khoản hoàn này không kết thúc trạng thái dịch vụ của booking.
+                    </p>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <p className="font-semibold">{formatVnd(refund.amount)}</p>
@@ -94,7 +98,12 @@ export function RefundsPanel({
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
                     <Label htmlFor={`refund-note-${refund.id}`}>Ghi chú</Label>
-                    <Textarea id={`refund-note-${refund.id}`} name="note" maxLength={500} rows={2} />
+                    <Textarea
+                      id={`refund-note-${refund.id}`}
+                      name="note"
+                      maxLength={500}
+                      rows={2}
+                    />
                   </div>
                   <div className="md:col-span-2 md:text-right">
                     <Button type="submit" disabled={submitting}>
@@ -104,7 +113,8 @@ export function RefundsPanel({
                 </Form>
               ) : refund.reference ? (
                 <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
-                  Mã tham chiếu: <span className="font-mono text-foreground">{refund.reference}</span>
+                  Mã tham chiếu:{' '}
+                  <span className="font-mono text-foreground">{refund.reference}</span>
                 </p>
               ) : null}
             </div>

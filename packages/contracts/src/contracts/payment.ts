@@ -112,6 +112,7 @@ export const refundResponseSchema = z.object({
   amount: z.string(),
   status: refundStatusSchema,
   reason: z.string().nullable(),
+  affectsBookingStatus: z.boolean(),
   gatewayRefundId: z.string().nullable(),
   reference: z.string().nullable(),
 });

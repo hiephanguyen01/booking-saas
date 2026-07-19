@@ -32,7 +32,13 @@ type EnrichedRow = BookingSettlement & {
 };
 
 const ENRICH_INCLUDE = Prisma.validator<Prisma.BookingSettlementInclude>()({
-  booking: { select: { code: true, listing: { select: { title: true } }, customer: { select: { fullName: true } } } },
+  booking: {
+    select: {
+      code: true,
+      listing: { select: { title: true } },
+      customer: { select: { fullName: true } },
+    },
+  },
   partner: { select: { name: true } },
   tenant: { select: { name: true } },
   payoutAllocations: {
@@ -44,7 +50,10 @@ const ENRICH_INCLUDE = Prisma.validator<Prisma.BookingSettlementInclude>()({
 function toRecord(row: EnrichedRow): SettlementRecord {
   const allocations = row.payoutAllocations ?? [];
   const payoutPendingAmount = allocations
-    .filter((item) => item.status === 'reserved' && ['pending', 'processing'].includes(item.payout.status))
+    .filter(
+      (item) =>
+        item.status === 'reserved' && ['pending', 'processing'].includes(item.payout.status),
+    )
     .reduce((sum, item) => sum + item.amount, 0n);
   const paidAmount = allocations
     .filter((item) => item.status === 'paid' && item.payout.status === 'paid')
@@ -107,6 +116,25 @@ export class PrismaSettlementRepository implements ISettlementRepository {
         update: {},
       }),
     );
+  }
+
+  async ensureHeldForBooking(
+    tx: PrismaTx,
+    tenantId: string,
+    bookingId: string,
+  ): Promise<SettlementRecord | null> {
+    const existing = await this.findByBooking(tx, bookingId);
+    if (existing) return existing;
+    const payment = await tx.payment.findFirst({
+      where: {
+        bookingId,
+        status: 'succeeded',
+        kind: { in: ['deposit', 'full'] },
+      },
+      select: { id: true },
+      orderBy: [{ paidAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
+    });
+    return payment ? this.createHeldFromPayment(tx, tenantId, payment.id) : null;
   }
 
   async findByBooking(tx: PrismaTx, bookingId: string): Promise<SettlementRecord | null> {

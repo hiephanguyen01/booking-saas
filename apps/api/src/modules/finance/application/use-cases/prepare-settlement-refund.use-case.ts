@@ -25,7 +25,7 @@ export class PrepareSettlementRefundUseCase {
     incremental = false,
   ): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
-      const settlement = await this.settlements.findByBooking(tx, bookingId);
+      const settlement = await this.settlements.ensureHeldForBooking(tx, tenantId, bookingId);
       if (!settlement || ['released', 'refunded'].includes(settlement.status)) return;
       // Cancellation refunds include the separately-held security deposit in the
       // gateway transfer. Custody settlement only tracks the service-money part.

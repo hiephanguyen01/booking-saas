@@ -38,7 +38,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const { auth } = await requirePartner(request, 'partner.finance.read');
+  const { auth, can } = await requirePartner(request, 'partner.finance.read');
   // Two paginated tables on one page → namespace the ledger pager so it never
   // collides with the payout pager. `/partner/finance` stays balance + a recent
   // ledger preview; the full journal comes from the paginated ledger endpoint.
@@ -76,6 +76,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       settlementSummaryRes.ok && settlementSummaryRes.data ? settlementSummaryRes.data : null,
     disputes: disputesRes.ok && disputesRes.data ? disputesRes.data.items : [],
     disputesTotal: disputesRes.ok && disputesRes.data ? disputesRes.data.total : 0,
+    canRespondToDisputes: can('partner.bookings.write'),
     financeError: financeRes.ok ? null : (financeRes.error ?? 'Không tải được dữ liệu tài chính.'),
     ledgerError: ledgerRes.ok ? null : (ledgerRes.error ?? 'Không tải được sổ cái.'),
     payoutsError: payoutsRes.ok ? null : (payoutsRes.error ?? 'Không tải được lịch sử chi trả.'),
@@ -89,7 +90,10 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth } = await requirePartner(request, 'partner.finance.read');
+  const { auth, can } = await requirePartner(request, 'partner.finance.read');
+  if (!can('partner.bookings.write')) {
+    throw new Response('Bạn không có quyền phản hồi tranh chấp.', { status: 403 });
+  }
   const form = await request.formData();
   const disputeId = String(form.get('disputeId') ?? '');
   const parsed = respondSettlementDisputeInputSchema.safeParse({ response: form.get('response') });
@@ -121,6 +125,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
     settlementSummary,
     disputes,
     disputesTotal,
+    canRespondToDisputes,
     financeError,
     ledgerError,
     payoutsError,
@@ -267,10 +272,30 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           hint="Cộng dồn theo sổ cái"
           icon={<TrendingUp className="size-4" />}
         />
-        <StatCard label="Đang giữ/chờ tranh chấp" value={<Money value={settlementTotals.held} />} hint="Chưa đủ điều kiện vào kỳ chi" icon={<Clock3 className="size-4" />} />
-        <StatCard label="Đang tranh chấp" value={<Money value={settlementTotals.disputed} />} hint="Tạm khóa cho đến khi Tenant xử lý" icon={<Scale className="size-4" />} />
-        <StatCard label="Đang chờ chuyển" value={<Money value={settlementTotals.pending} />} hint="Đã nằm trong lệnh chi" icon={<HandCoins className="size-4" />} />
-        <StatCard label="Đã được chi" value={<Money value={settlementTotals.paid} />} hint="Theo allocation của từng booking" icon={<Wallet className="size-4" />} />
+        <StatCard
+          label="Đang giữ/chờ tranh chấp"
+          value={<Money value={settlementTotals.held} />}
+          hint="Chưa đủ điều kiện vào kỳ chi"
+          icon={<Clock3 className="size-4" />}
+        />
+        <StatCard
+          label="Đang tranh chấp"
+          value={<Money value={settlementTotals.disputed} />}
+          hint="Tạm khóa cho đến khi Tenant xử lý"
+          icon={<Scale className="size-4" />}
+        />
+        <StatCard
+          label="Đang chờ chuyển"
+          value={<Money value={settlementTotals.pending} />}
+          hint="Đã nằm trong lệnh chi"
+          icon={<HandCoins className="size-4" />}
+        />
+        <StatCard
+          label="Đã được chi"
+          value={<Money value={settlementTotals.paid} />}
+          hint="Theo allocation của từng booking"
+          icon={<Wallet className="size-4" />}
+        />
       </div>
 
       {disputes.length ? (
@@ -307,7 +332,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
                       <p className="font-medium">Phản hồi của bạn</p>
                       <p className="mt-1 text-muted-foreground">{dispute.partnerResponse}</p>
                     </div>
-                  ) : dispute.status === 'open' ? (
+                  ) : dispute.status === 'open' && canRespondToDisputes ? (
                     <Form method="post" className="space-y-3 border-t pt-4">
                       <input type="hidden" name="disputeId" value={dispute.id} />
                       <Label htmlFor={`partner-response-${dispute.id}`}>Thông tin đối chiếu</Label>
@@ -326,6 +351,10 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
                         </Button>
                       </div>
                     </Form>
+                  ) : dispute.status === 'open' ? (
+                    <p className="border-t pt-3 text-sm text-muted-foreground">
+                      Bạn cần quyền cập nhật booking để gửi thông tin đối chiếu.
+                    </p>
                   ) : null}
                 </CardContent>
               </Card>

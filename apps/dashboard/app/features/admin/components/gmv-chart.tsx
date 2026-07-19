@@ -20,8 +20,8 @@ const H = 220;
 const PAD = { top: 16, right: 12, bottom: 26, left: 52 };
 
 /**
- * 14-day platform GMV trend as a self-contained SVG area chart. Dependency-free
- * (recharts is not hoisted to app scope) and theme-aware via `currentColor` +
+ * 14-day platform GMV trend as a self-contained SVG area chart. It needs no
+ * chart-library dependency and stays theme-aware through `currentColor` plus
  * the primary token. Responsive through a viewBox; the container sets height.
  */
 export function GmvChart({ data }: { data: Array<{ date: string; gmv: string }> }) {
@@ -40,7 +40,9 @@ export function GmvChart({ data }: { data: Array<{ date: string; gmv: string }> 
   const x = (i: number) => PAD.left + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
   const y = (v: number) => PAD.top + innerH - (v / max) * innerH;
 
-  const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.gmv).toFixed(1)}`).join(' ');
+  const line = points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.gmv).toFixed(1)}`)
+    .join(' ');
   const area = `${line} L ${x(n - 1).toFixed(1)} ${(PAD.top + innerH).toFixed(1)} L ${x(0).toFixed(1)} ${(PAD.top + innerH).toFixed(1)} Z`;
 
   const gridVals = [0, max / 2, max];

@@ -33,7 +33,7 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Form } from 'react-router';
 import { NsI18n, useTranslation, type Locale } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
@@ -100,7 +100,7 @@ export function SearchForm({
   );
   const seed = selectedDates(state);
   const [date, setDate] = useState(seed.date);
-  const [range, setRange] = useState<DateRange>(toRange(seed));
+  const [range, setRange] = useState<DateRange>(() => toRange(seed));
   const [startTime, setStartTime] = useState(state.startTime);
   const [endTime, setEndTime] = useState(state.endTime);
   const types = [...listingTypes].sort((left, right) => {
@@ -351,6 +351,7 @@ function LocationCombobox({
   const { t } = useTranslation(NsI18n.Common);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(initialValue);
+  const listId = useId();
   const selected = options.find((option) => option.value === value);
   const placeholder = t('home.locationPlaceholder');
 
@@ -368,6 +369,7 @@ function LocationCombobox({
             type="button"
             role="combobox"
             aria-expanded={open}
+            aria-controls={listId}
             aria-label={placeholder}
             className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-left text-foreground shadow-xs hover:bg-accent focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
           >
@@ -392,7 +394,7 @@ function LocationCombobox({
         >
           <Command>
             <CommandInput placeholder={t('home.searchLocation')} />
-            <CommandList>
+            <CommandList id={listId}>
               <CommandEmpty>{t('home.noLocationResults')}</CommandEmpty>
               <CommandGroup>
                 <CommandItem
@@ -596,6 +598,12 @@ function SearchDatePicker({
   const formatters = useCalendarFormatters(locale);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [calendarToday, setCalendarToday] = useState<Date>();
+  useEffect(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setCalendarToday(today);
+  }, []);
   const day = (value: Date): string => dateLabelInTz(localToDateOnly(value), DEFAULT_TZ, locale);
   const isSingleDayRange =
     Boolean(range.from && range.to) && localToDateOnly(range.from!) === localToDateOnly(range.to!);
@@ -633,7 +641,7 @@ function SearchDatePicker({
             setDate(localToDateOnly(next));
             close();
           }}
-          disabled={{ before: new Date() }}
+          disabled={calendarToday ? { before: calendarToday } : undefined}
           numberOfMonths={months}
           formatters={formatters}
           className="sf-calendar w-full [--cell-size:2.25rem]"
@@ -647,7 +655,7 @@ function SearchDatePicker({
             setRange(selected);
             if (selected.from && selected.to) close();
           }}
-          disabled={{ before: new Date() }}
+          disabled={calendarToday ? { before: calendarToday } : undefined}
           numberOfMonths={months}
           resetOnSelect
           formatters={formatters}

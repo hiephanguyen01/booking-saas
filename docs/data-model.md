@@ -79,6 +79,9 @@ guards the RLS parts in CI.
   maturity from `createdAt`, and the settlement holding period is not applied twice.
 - `Booking.refundDueAmount/refundPercent` store the exact cancellation decision before the outbox
   event so reconciliation never recomputes a historical refund using the current time.
+- `Refund.affectsBookingStatus` stores whether confirmation terminates the booking. It is `false` for
+  security-deposit and partial-dispute refunds, so manual confirmation/recovery cannot turn a
+  completed booking into a misleading full-refund state.
 - `SettlementDispute.settlementId` is unique: one customer claim per settlement. Partial dispute
   refunds are cumulative and capped by the service amount still held.
 - A Partner payout is valid only when FIFO `PayoutAllocation` rows cover its exact amount; otherwise

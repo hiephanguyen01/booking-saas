@@ -76,6 +76,12 @@ export interface ISettlementRepository {
     tenantId: string,
     paymentId: string,
   ): Promise<SettlementRecord | null>;
+  /** Recover event-order races by materializing HELD from the booking's succeeded checkout. */
+  ensureHeldForBooking(
+    tx: PrismaTx,
+    tenantId: string,
+    bookingId: string,
+  ): Promise<SettlementRecord | null>;
   findById(tx: PrismaTx, id: string): Promise<SettlementRecord | null>;
   findByBooking(tx: PrismaTx, bookingId: string): Promise<SettlementRecord | null>;
   startDisputeWindow(

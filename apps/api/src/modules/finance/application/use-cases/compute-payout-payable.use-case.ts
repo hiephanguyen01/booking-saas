@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow } from '../../../../shared/time/time';
 import {
   LEDGER_REPOSITORY,
   type ILedgerRepository,
@@ -63,10 +62,9 @@ export class ComputePayoutPayableUseCase {
     const policy = await this.getPolicy.execute(tx, tenantId);
     // Earnings only enter the payable ledger after the settlement dispute window
     // has elapsed. Applying holdingDays here again would delay payout twice.
-    const cutoff = utcNow();
-
     const owner = await this.ledger.ownerBalance(tx, payeeType, payeeId);
-    const maturePayable = await this.ledger.maturePayable(tx, payeeType, payeeId, cutoff);
+    const matured = await this.ledger.maturePayable(tx, payeeType, payeeId);
+    const maturePayable = matured.amount;
     const outstanding = await this.payouts.outstandingForPayee(tx, payeeType, payeeId);
     const available = maturePayable - outstanding;
 
@@ -82,7 +80,7 @@ export class ComputePayoutPayableUseCase {
       maturePayable,
       outstanding,
       available,
-      cutoff,
+      cutoff: matured.cutoff,
       policy,
       eligible: ineligibleReason === null,
       ineligibleReason,

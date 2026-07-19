@@ -127,23 +127,28 @@ xác nhận đã hoàn cọc thủ công.
 
 ### Refund succeeded nhưng booking/settlement chưa cập nhật
 
-Worker tìm refund succeeded (trừ `security_deposit`) nếu booking chưa `refunded` hoặc
-`settlement.refund_id` chưa khớp, rồi re-emit `refund.completed`. Booking và Finance handlers đều
-idempotent theo state/refund id.
+Worker tìm refund succeeded nếu projection chưa hội tụ, rồi re-emit `refund.completed`. Điều kiện
+booking phải là `refunded` chỉ áp dụng khi row có `affects_booking_status=true`; partial dispute refund
+và security-deposit refund cố ý giữ nguyên booking status. Finance vẫn yêu cầu
+`settlement.refund_id` khớp cho refund dịch vụ. Booking và Finance handlers idempotent theo state/refund
+id.
 
 ```sql
-SELECT r.id, r.booking_id, r.amount, r.reason, r.status,
+SELECT r.id, r.booking_id, r.amount, r.reason, r.status, r.affects_booking_status,
        b.status AS booking_status, bs.status AS settlement_status, bs.refund_id
 FROM refunds r
 JOIN bookings b ON b.id = r.booking_id
 LEFT JOIN booking_settlements bs ON bs.booking_id = r.booking_id
 WHERE r.status = 'succeeded'
   AND r.reason <> 'security_deposit'
-  AND (b.status <> 'refunded' OR bs.refund_id IS DISTINCT FROM r.id);
+  AND ((r.affects_booking_status AND b.status <> 'refunded')
+       OR bs.refund_id IS DISTINCT FROM r.id);
 ```
 
 Refund `manual_required` là công việc Tenant chưa hoàn tất, không phải mismatch. Chỉ xác nhận sau khi
 có reference ngân hàng; endpoint confirmation giữ advisory lock theo booking và không tạo hai refund.
+Với partial refund, xác nhận manual phải giữ `affects_booking_status=false`; nếu booking bị đổi thành
+`refunded`, dừng recovery và kiểm tra version của API worker trước khi sửa projection.
 
 ### Settlement quá hạn nhưng chưa released
 

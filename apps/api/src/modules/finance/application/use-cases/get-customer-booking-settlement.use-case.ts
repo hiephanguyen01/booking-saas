@@ -18,6 +18,7 @@ import {
 export interface CustomerBookingSettlementView {
   settlement: SettlementRecord;
   dispute: SettlementDisputeRecord | null;
+  canOpenDispute: boolean;
 }
 
 /** Read the customer-safe settlement projection after verifying host and ownership. */
@@ -45,7 +46,12 @@ export class GetCustomerBookingSettlementUseCase {
       const settlement = await this.settlements.findByBooking(tx, bookingId);
       if (!settlement) throw this.notFound();
       const dispute = await this.disputes.findLatestBySettlement(tx, settlement.id);
-      return { settlement, dispute };
+      const canOpenDispute =
+        dispute === null &&
+        settlement.status === 'dispute_window' &&
+        settlement.disputeUntil !== null &&
+        settlement.disputeUntil > (await this.tenantDb.databaseNow(tx));
+      return { settlement, dispute, canOpenDispute };
     });
   }
 

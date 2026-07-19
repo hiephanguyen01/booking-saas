@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow } from '../../../../shared/time/time';
+import {
+  type PrismaTx,
+  TenantDbService,
+} from '../../../../shared/tenant-context/tenant-db.service';
 import {
   COMMISSION_RULE_REPOSITORY,
   type ICommissionRuleRepository,
@@ -29,14 +31,19 @@ export interface ResolveCommissionTarget {
 export class ResolveCommissionUseCase {
   constructor(
     @Inject(COMMISSION_RULE_REPOSITORY) private readonly rules: ICommissionRuleRepository,
+    private readonly tenantDb: TenantDbService,
   ) {}
 
   async execute(tx: PrismaTx, target: ResolveCommissionTarget): Promise<CommissionSnapshot> {
     const candidates = await this.rules.list(tx);
     const rule = selectCommissionRule(
       candidates,
-      { partnerId: target.partnerId, listingTypeId: target.listingTypeId, categoryId: target.categoryId },
-      utcNow(),
+      {
+        partnerId: target.partnerId,
+        listingTypeId: target.listingTypeId,
+        categoryId: target.categoryId,
+      },
+      await this.tenantDb.databaseNow(tx),
     );
     if (!rule) return defaultCommissionSnapshot(target.isHouse);
     return {

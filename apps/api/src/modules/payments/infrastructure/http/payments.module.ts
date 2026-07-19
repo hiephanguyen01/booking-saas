@@ -101,22 +101,22 @@ export class PaymentsModule implements OnModuleInit {
       );
     });
     this.registry.register('settlement.refund_requested', (event) => {
-      const p = event.payload as { bookingId: string; amount: string };
+      const p = event.payload as {
+        bookingId: string;
+        amount: string;
+        affectsBookingStatus: boolean;
+      };
       return this.refunds.execute(
         event.tenantId ?? '',
         p.bookingId,
         BigInt(p.amount),
         'dispute_refund',
+        p.affectsBookingStatus,
       );
     });
     this.registry.register('refund.recovery_requested', (event) => {
       const p = event.payload as { bookingId: string; amount: string; reason: string };
-      return this.refunds.execute(
-        event.tenantId ?? '',
-        p.bookingId,
-        BigInt(p.amount),
-        p.reason,
-      );
+      return this.refunds.execute(event.tenantId ?? '', p.bookingId, BigInt(p.amount), p.reason);
     });
   }
 }

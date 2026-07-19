@@ -1,5 +1,5 @@
 import type { CustomerBookingSettlementResponse } from '@booking/contracts';
-import { formatCurrency, type Locale } from '@booking/i18n';
+import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { CircleAlert, Clock3, Scale } from 'lucide-react';
@@ -38,13 +38,13 @@ export function CustomerSettlementDisputePanel({
         <div>
           <dt className="text-xs text-muted-foreground">{t('bookings.disputePanel.held')}</dt>
           <dd className="mt-1 font-semibold">
-            {formatCurrency(Number(settlement.remainingHeldAmount), 'VND', locale)}
+            {formatCurrency(BigInt(settlement.remainingHeldAmount), 'VND', locale)}
           </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">{t('bookings.disputePanel.deadline')}</dt>
           <dd className="mt-1 font-medium">
-            {deadline ? deadline.toLocaleString(locale) : '—'}
+            {deadline ? formatDateTime(deadline, locale, 'Asia/Ho_Chi_Minh') : '—'}
           </dd>
         </div>
       </dl>
@@ -112,7 +112,7 @@ export function CustomerSettlementDisputePanel({
           {BigInt(settlement.dispute.refundAmount) > 0n ? (
             <p className="font-medium">
               {t('bookings.disputePanel.refundAmount')}:{' '}
-              {formatCurrency(Number(settlement.dispute.refundAmount), 'VND', locale)}
+              {formatCurrency(BigInt(settlement.dispute.refundAmount), 'VND', locale)}
             </p>
           ) : null}
         </div>

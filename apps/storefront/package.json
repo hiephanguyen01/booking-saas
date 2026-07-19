@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@booking/api-client": "workspace:*",
-    "@booking/auth": "workspace:*",
     "@booking/contracts": "workspace:*",
     "@booking/i18n": "workspace:*",
     "@booking/ui": "workspace:*",

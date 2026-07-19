@@ -52,7 +52,7 @@ export class ConfirmManualRefundUseCase {
           bookingId: updated.bookingId,
           amount: updated.amount.toString(),
           reason: updated.reason,
-          affectsBookingStatus: updated.reason !== 'security_deposit',
+          affectsBookingStatus: updated.affectsBookingStatus,
         },
       });
       return updated;

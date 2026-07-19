@@ -30,4 +30,12 @@ export class TenantDbService {
   async forCurrentTenant<T>(fn: (tx: PrismaTx) => Promise<T>): Promise<T> {
     return this.forTenant(this.context.tenantIdOrThrow(), fn);
   }
+
+  /** Read the transaction's PostgreSQL clock; business deadlines must not use the app host clock. */
+  async databaseNow(tx: PrismaTx): Promise<Date> {
+    const rows = await tx.$queryRaw<Array<{ now: Date }>>`SELECT now() AS now`;
+    const now = rows[0]?.now;
+    if (!now) throw new Error('Database clock query returned no row');
+    return now;
+  }
 }

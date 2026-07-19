@@ -24,6 +24,7 @@ function toRecord(r: Row): RefundRecord {
     status: r.status,
     gatewayRefundId: r.gatewayRefundId,
     reason: r.reason,
+    affectsBookingStatus: r.affectsBookingStatus,
     evidence: (r.evidence as RefundRecord['evidence']) ?? null,
   };
 }
@@ -40,6 +41,7 @@ export class PrismaRefundRepository implements IRefundRepository {
           bookingId: data.bookingId,
           amount: data.amount,
           status: data.status,
+          affectsBookingStatus: data.affectsBookingStatus,
           reason: data.reason ?? null,
           gatewayRefundId: data.gatewayRefundId ?? null,
         },
@@ -104,18 +106,20 @@ export class PrismaRefundRepository implements IRefundRepository {
     return this.prisma.admin.$queryRaw<RefundRecoveryRecord[]>(Prisma.sql`
       WITH latest_succeeded AS (
         SELECT DISTINCT ON (booking_id)
-          id, tenant_id, payment_id, booking_id, amount, reason, updated_at, created_at
+          id, tenant_id, payment_id, booking_id, amount, reason,
+          affects_booking_status, updated_at, created_at
         FROM refunds
         WHERE status = 'succeeded'::refund_status
           AND reason IS DISTINCT FROM 'security_deposit'
         ORDER BY booking_id, updated_at DESC, created_at DESC, id DESC
       )
       SELECT r.id, r.tenant_id AS "tenantId", r.payment_id AS "paymentId",
-             r.booking_id AS "bookingId", r.amount, r.reason
+             r.booking_id AS "bookingId", r.amount, r.reason,
+             r.affects_booking_status AS "affectsBookingStatus"
       FROM latest_succeeded r
       JOIN bookings b ON b.id = r.booking_id
       LEFT JOIN booking_settlements bs ON bs.booking_id = r.booking_id
-      WHERE b.status <> 'refunded'::booking_status
+      WHERE (r.affects_booking_status AND b.status <> 'refunded'::booking_status)
          OR bs.refund_id IS DISTINCT FROM r.id
       ORDER BY r.updated_at
       LIMIT ${limit}`);

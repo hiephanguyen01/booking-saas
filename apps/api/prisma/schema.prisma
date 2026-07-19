@@ -1197,17 +1197,18 @@ model Payment {
 }
 
 model Refund {
-  id              String       @id @default(uuid(7)) @db.Uuid
-  tenantId        String       @map("tenant_id") @db.Uuid
-  paymentId       String       @map("payment_id") @db.Uuid
-  bookingId       String       @map("booking_id") @db.Uuid
-  amount          BigInt
-  status          RefundStatus @default(pending)
-  reason          String?
-  gatewayRefundId String?      @map("gateway_refund_id")
-  evidence        Json?
-  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String       @id @default(uuid(7)) @db.Uuid
+  tenantId             String       @map("tenant_id") @db.Uuid
+  paymentId            String       @map("payment_id") @db.Uuid
+  bookingId            String       @map("booking_id") @db.Uuid
+  amount               BigInt
+  status               RefundStatus @default(pending)
+  reason               String?
+  affectsBookingStatus Boolean      @default(true) @map("affects_booking_status")
+  gatewayRefundId      String?      @map("gateway_refund_id")
+  evidence             Json?
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   payment    Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   booking    Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)

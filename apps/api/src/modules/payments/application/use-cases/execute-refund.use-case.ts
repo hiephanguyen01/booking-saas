@@ -35,6 +35,7 @@ export class ExecuteRefundUseCase {
     bookingId: string,
     amount: bigint,
     reason = 'booking_cancellation',
+    affectsBookingStatus = reason !== 'security_deposit',
   ): Promise<void> {
     if (amount <= 0n) return;
     await this.tenantDb.forTenant(tenantId, async (tx) => {
@@ -57,10 +58,10 @@ export class ExecuteRefundUseCase {
         bookingId,
         amount,
         status: res.supported ? 'succeeded' : 'manual_required',
+        affectsBookingStatus,
         reason,
         gatewayRefundId: res.refundId ?? null,
       });
-      const affectsBookingStatus = reason !== 'security_deposit';
       await this.outbox.emit(tx, {
         tenantId,
         eventType: res.supported ? 'refund.completed' : 'refund.requested',

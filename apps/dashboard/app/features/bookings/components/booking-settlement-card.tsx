@@ -53,6 +53,16 @@ export function BookingSettlementCard({
               value={<Money value={settlement.tenantCommissionGross} />}
             />
             <DetailField
+              label="Tenant thực nhận"
+              value={<Money value={settlement.tenantNetEarning} />}
+              emphasis="strong"
+            />
+            <DetailField label="Phí nền tảng" value={<Money value={settlement.platformFee} />} />
+            <DetailField
+              label="Hoa hồng affiliate"
+              value={<Money value={settlement.affiliateCommission} />}
+            />
+            <DetailField
               label="Phần Partner (gộp)"
               value={<Money value={settlement.partnerGrossEarning} />}
             />
@@ -62,22 +72,34 @@ export function BookingSettlementCard({
               emphasis="strong"
             />
             {settlement.refundedAmount !== '0' ? (
-              <DetailField label="Đã hoàn khách" value={<Money value={settlement.refundedAmount} />} />
+              <DetailField
+                label="Đã hoàn khách"
+                value={<Money value={settlement.refundedAmount} />}
+              />
             ) : null}
             {settlement.retainedAmount !== '0' ? (
-              <DetailField label="Phần giữ lại" value={<Money value={settlement.retainedAmount} />} />
+              <DetailField
+                label="Phần giữ lại"
+                value={<Money value={settlement.retainedAmount} />}
+              />
             ) : null}
             <DetailField
               label="Đang nằm trong lệnh chi"
               value={<Money value={settlement.payoutPendingAmount} />}
             />
-            <DetailField label="Đã chuyển Partner" value={<Money value={settlement.paidAmount} />} />
+            <DetailField
+              label="Đã chuyển Partner"
+              value={<Money value={settlement.paidAmount} />}
+            />
             <DetailField
               label="Còn phải chi Partner"
               value={<Money value={settlement.remainingPayableAmount} />}
               emphasis="strong"
             />
-            <DetailField label="Mã chuyển khoản gần nhất" value={settlement.latestPayoutReference ?? undefined} />
+            <DetailField
+              label="Mã chuyển khoản gần nhất"
+              value={settlement.latestPayoutReference ?? undefined}
+            />
             <DetailField
               label="Hạn tranh chấp"
               value={

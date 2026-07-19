@@ -74,9 +74,7 @@ export class ResolveSettlementDisputeUseCase {
 
       const remainingHeld = max0(settlement.onlineHeldAmount - settlement.refundedAmount);
       const refundAmount =
-        input.resolution === 'full_refund'
-          ? remainingHeld
-          : BigInt(input.refundAmount ?? '0');
+        input.resolution === 'full_refund' ? remainingHeld : BigInt(input.refundAmount ?? '0');
       if (refundAmount <= 0n || refundAmount > remainingHeld) {
         throw new BadRequestException({
           statusCode: 400,
@@ -107,7 +105,11 @@ export class ResolveSettlementDisputeUseCase {
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'settlement.refund_requested',
-        payload: { bookingId: dispute.bookingId, amount: refundAmount.toString() },
+        payload: {
+          bookingId: dispute.bookingId,
+          amount: refundAmount.toString(),
+          affectsBookingStatus: input.resolution === 'full_refund',
+        },
       });
       return resolved;
     });

@@ -1,12 +1,6 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { utcNow } from '../../../../shared/time/time';
 import type { GatewayKey } from '../../domain/ports/payment-gateway.port';
 import {
   PAYMENT_REPOSITORY,
@@ -83,7 +77,6 @@ export class HandleWebhookUseCase {
       const succeeded = await this.payments.markSucceeded(
         tx,
         payment.id,
-        utcNow(),
         {
           event: v.event,
           amountVnd: v.amountVnd.toString(),

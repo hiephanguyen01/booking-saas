@@ -78,7 +78,6 @@ export interface IPaymentRepository {
   markSucceeded(
     tx: PrismaTx,
     id: string,
-    paidAt: Date,
     payload: unknown,
     gatewayData?: {
       gatewayTxnId?: string;

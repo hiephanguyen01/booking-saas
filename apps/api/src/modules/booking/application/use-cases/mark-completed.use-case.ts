@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow } from '../../../../shared/time/time';
 import {
   BOOKING_REPOSITORY,
   type BookingRecord,
@@ -34,7 +33,7 @@ export class MarkCompletedUseCase {
           message: 'Inventory bookings are completed through the return workflow',
         });
       }
-      if (utcNow() < booking.endUtc) {
+      if ((await this.tenantDb.databaseNow(tx)) < booking.endUtc) {
         throw new ConflictException({
           statusCode: 409,
           code: 'SERVICE_NOT_ENDED',

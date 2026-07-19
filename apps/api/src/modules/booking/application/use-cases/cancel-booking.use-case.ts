@@ -1,8 +1,11 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow } from '../../../../shared/time/time';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { BOOKING_REPOSITORY, type BookingRecord, type IBookingRepository } from '../../domain/ports/booking-repository.port';
+import {
+  BOOKING_REPOSITORY,
+  type BookingRecord,
+  type IBookingRepository,
+} from '../../domain/ports/booking-repository.port';
 import { assertTransition, type TransitionActor } from '../../domain/booking-state-machine';
 import {
   computeRefund,
@@ -38,14 +41,19 @@ export class CancelBookingUseCase {
   ): Promise<CancelResult> {
     const result = await this.tenantDb.forTenant(tenantId, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
-      if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+      if (!booking)
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'BOOKING_NOT_FOUND',
+          message: 'Booking not found',
+        });
       assertTransition(booking.status, 'cancelled', actor);
 
       const percent =
         actor === 'customer'
           ? refundPercent(
               (booking.cancellationPolicySnapshot ?? []) as CancellationTier[],
-              hoursUntil(booking.startUtc, utcNow()),
+              hoursUntil(booking.startUtc, await this.tenantDb.databaseNow(tx)),
             )
           : 100; // partner/tenant cancellation is always full refund
       // The refundable security deposit is ALWAYS returned in full on cancellation
@@ -65,7 +73,12 @@ export class CancelBookingUseCase {
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'booking.cancelled',
-        payload: { bookingId, code: cancelled.code, refundAmount: refundAmount.toString(), refundPercent: percent },
+        payload: {
+          bookingId,
+          code: cancelled.code,
+          refundAmount: refundAmount.toString(),
+          refundPercent: percent,
+        },
       });
       return { booking: cancelled, refundAmount, refundPercent: percent };
     });

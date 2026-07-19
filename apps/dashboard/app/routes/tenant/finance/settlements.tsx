@@ -124,10 +124,10 @@ const columns: DataTableColumn<BookingSettlementResponse>[] = [
     cell: (row) => <Money value={row.onsiteCollectedAmount} />,
   },
   {
-    header: 'Tenant hưởng',
+    header: 'Tenant thực nhận',
     headClassName: 'text-right',
     className: 'text-right hidden lg:table-cell',
-    cell: (row) => <Money value={row.tenantCommissionGross} />,
+    cell: (row) => <Money value={row.tenantNetEarning} />,
   },
   {
     header: 'Còn phải chi',
@@ -166,10 +166,34 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
 
       {summary ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Đang giữ" value={<Money value={summary.heldAmount} />} hint={`${(summary.counts.held ?? 0) + (summary.counts.dispute_window ?? 0)} khoản`} icon={<Clock3 className="size-4" />} />
-          <StatCard label="Đang tranh chấp" value={<Money value={summary.disputedAmount} />} hint={`${summary.counts.disputed ?? 0} khoản bị khóa`} icon={<Scale className="size-4" />} />
-          <StatCard label="Chờ chuyển Partner" value={<Money value={summary.payoutPendingAmount} />} hint="Đã nằm trong lệnh chi" icon={<HandCoins className="size-4" />} />
-          <StatCard label="Đã chuyển Partner" value={<Money value={summary.paidAmount} />} hint={<span>Còn lại <Money value={summary.remainingPayableAmount} /></span>} icon={<CircleDollarSign className="size-4" />} />
+          <StatCard
+            label="Đang giữ"
+            value={<Money value={summary.heldAmount} />}
+            hint={`${(summary.counts.held ?? 0) + (summary.counts.dispute_window ?? 0)} khoản`}
+            icon={<Clock3 className="size-4" />}
+          />
+          <StatCard
+            label="Đang tranh chấp"
+            value={<Money value={summary.disputedAmount} />}
+            hint={`${summary.counts.disputed ?? 0} khoản bị khóa`}
+            icon={<Scale className="size-4" />}
+          />
+          <StatCard
+            label="Chờ chuyển Partner"
+            value={<Money value={summary.payoutPendingAmount} />}
+            hint="Đã nằm trong lệnh chi"
+            icon={<HandCoins className="size-4" />}
+          />
+          <StatCard
+            label="Đã chuyển Partner"
+            value={<Money value={summary.paidAmount} />}
+            hint={
+              <span>
+                Còn lại <Money value={summary.remainingPayableAmount} />
+              </span>
+            }
+            icon={<CircleDollarSign className="size-4" />}
+          />
         </div>
       ) : null}
 

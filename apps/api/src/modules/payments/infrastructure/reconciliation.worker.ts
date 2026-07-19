@@ -3,7 +3,6 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue, Worker } from 'bullmq';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../shared/outbox/outbox.service';
-import { utcNow } from '../../../shared/time/time';
 import {
   PAYMENT_REPOSITORY,
   type IPaymentRepository,
@@ -59,11 +58,15 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
       const reference = p.gatewayOrderRef ?? p.gatewayTxnId;
       if (!reference) continue;
       try {
-        // Record the payment durably first (its own tx), then confirm — mirroring the
-        // webhook path so the slot-taken auto-refund (§8.2 row 665) actually fires.
+        // Decrypt/configure the adapter in a short RLS transaction, then release
+        // the DB connection before the provider network call.
+        const gateway = await this.tenantDb.forTenant(p.tenantId, (tx) =>
+          this.registry.resolveForTenant(tx, p.tenantId, p.gateway),
+        );
+        const status = await gateway.queryPaymentStatus(reference);
+
+        // Record the provider result durably in its own short transaction.
         const flipped = await this.tenantDb.forTenant(p.tenantId, async (tx) => {
-          const gateway = await this.registry.resolveForTenant(tx, p.tenantId, p.gateway);
-          const status = await gateway.queryPaymentStatus(reference);
           if (status.status === 'expired') {
             // Guarded: only expire while still pending (a concurrent succeeded wins).
             await this.payments.markTerminalIfPending(tx, p.id, 'expired');
@@ -78,7 +81,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
             );
             return false;
           }
-          const succeeded = await this.payments.markSucceeded(tx, p.id, utcNow(), {
+          const succeeded = await this.payments.markSucceeded(tx, p.id, {
             reconciled: true,
           });
           if (succeeded) {
@@ -140,7 +143,7 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
               bookingId: refund.bookingId,
               amount: refund.amount.toString(),
               reason: refund.reason,
-              affectsBookingStatus: refund.reason !== 'security_deposit',
+              affectsBookingStatus: refund.affectsBookingStatus,
               recovery: true,
             },
           });
