@@ -11,5 +11,9 @@ export interface GatewayRegistryPort {
   /** Creds-free adapter for `peekReference` (before the tenant is known). */
   statelessByKey(key: GatewayKey): PaymentGatewayPort;
   /** The tenant's configured gateway, bound to its decrypted credentials. */
-  resolveForTenant(tx: PrismaTx, tenantId: string): Promise<PaymentGatewayPort>;
+  resolveForTenant(
+    tx: PrismaTx,
+    tenantId: string,
+    gateway?: GatewayKey,
+  ): Promise<PaymentGatewayPort>;
 }

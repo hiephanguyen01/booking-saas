@@ -1,9 +1,12 @@
 /**
- * Payment gateway port (TONG-QUAN.md §11.1). Adapters: `mock` (dev/test/E2E),
- * `payos` (live). A registry binds the tenant's config to an adapter instance.
+ * Payment gateway port (TONG-QUAN.md §11.1). A registry binds the tenant's
+ * encrypted config to an adapter instance. Gateways normalize their checkout
+ * handoff and webhook payloads here so booking never imports a provider SDK.
  * Only the webhook is the source of truth for payment (§11.2).
  */
-export type GatewayKey = 'payos' | 'mock';
+import type { CheckoutDestination } from '@booking/contracts';
+
+export type GatewayKey = 'sepay' | 'payos' | 'mock';
 export type WebhookEvent = 'succeeded' | 'failed' | 'expired';
 
 export interface CreatePaymentInput {
@@ -11,19 +14,24 @@ export interface CreatePaymentInput {
   orderCode: string;
   description: string;
   returnUrl: string;
+  errorUrl: string;
   cancelUrl: string;
   expiresInSec: number;
 }
 
 export interface CreatePaymentResult {
-  paymentUrl: string;
-  gatewayTxnId: string;
+  destination: CheckoutDestination;
+  gatewayTxnId?: string;
+  gatewayOrderRef?: string;
 }
 
 export interface WebhookVerification {
   valid: boolean;
   event: WebhookEvent;
   gatewayTxnId: string;
+  gatewayOrderRef?: string;
+  gatewayOrderId?: string;
+  paymentMethod?: string;
   amountVnd: bigint;
 }
 

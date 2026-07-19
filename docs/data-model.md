@@ -1,7 +1,7 @@
 # Data model
 
 The schema is the source of truth: **[`../apps/api/prisma/schema.prisma`](../apps/api/prisma/schema.prisma)**
-(47 models, 40 enums). This page documents the **invariants and units** that Prisma can't express —
+(50 models, 45 enums). This page documents the **invariants and units** that Prisma can't express —
 read it before touching money, migrations, or tenant tables. Domain term definitions are in
 [`glossary.md`](./glossary.md).
 
@@ -16,8 +16,10 @@ read it before touching money, migrations, or tenant tables. Domain term definit
   `ListingGroup`, `Resource`, pricing rules; moderation status.
 - **Scheduling & booking** — availability rules/exceptions, `Booking`, `BookingHold` (audit mirror of a
   Redis hold), status history, inventory.
-- **Payments & finance** — `Payment`, gateway configs, `Refund`; `CommissionRule`, the double-entry
-  ledger (`Journal` / `LedgerEntry`), `Payout`.
+- **Payments & finance** — `Payment` (provider-neutral order/transaction references), encrypted
+  tenant gateway configs, `Refund`, `BookingSettlement` (held/dispute/refund/release custody
+  lifecycle), `SettlementDispute`; `CommissionRule`, the double-entry ledger (`LedgerEntry`),
+  `Payout`, `PayoutAllocation`.
 - **Promotions & affiliate** — promo codes, partner promotions, campaigns; `ReferralLink`,
   `ReferralClick`, `AffiliateCommission`.
 - **Reference** — administrative divisions (Vietnamese provinces/wards), audit logs, outbox events,
@@ -52,6 +54,39 @@ guards the RLS parts in CI.
   (seed uses `15` = 15%, `2` = 2%), **not** basis points. (An older doc said "basis points" — it was
   wrong.) Rounding follows `TONG-QUAN.md` §18; the finance use-cases own it.
 - **Time is `timestamptz` UTC.** Do timezone math only at the edges (`apps/api/src/shared/time`).
+
+## SePay payment references
+
+- `gateway_order_ref` is Bookify's unique `order_invoice_number` and exists before the browser leaves the storefront.
+- `gateway_order_id` and `gateway_txn_id` are populated from a verified SePay Payment Gateway IPN.
+- `payment_method` stores the normalized provider method (`BANK_TRANSFER` for the current storefront flow).
+- Dashboard payment history reads these normalized columns; it never queries SePay live and never exposes `gateway_payload` or merchant credentials.
+
+## Booking settlement custody
+
+- A successful `Payment` proves the provider accepted funds; it does not make Partner earnings
+  payable immediately. `BookingSettlement.status` tracks `held → dispute_window →
+  disputed/refund_pending → released/refunded`.
+- `online_held_amount` excludes `security_deposit_held`; the latter is never counted as service
+  revenue or minimum commission coverage.
+- The completion split is visible during the dispute window, but immutable ledger entries are only
+  created atomically with release. This prevents payout before the dispute buffer expires.
+- `partner_payable = max(partner_gross_earning − onsite_collected_amount, 0)`.
+- `PayoutAllocation` reserves released settlement amounts per payout; its state is
+  `reserved → paid` or `reserved → released` on failure. A payee advisory lock and a partial unique
+  index prevent concurrent open payout runs.
+- `LedgerEntry.availableAt` is the explicit payout maturity timestamp. Eligibility never infers
+  maturity from `createdAt`, and the settlement holding period is not applied twice.
+- `Booking.refundDueAmount/refundPercent` store the exact cancellation decision before the outbox
+  event so reconciliation never recomputes a historical refund using the current time.
+- `Refund.affectsBookingStatus` stores whether confirmation terminates the booking. It is `false` for
+  security-deposit and partial-dispute refunds, so manual confirmation/recovery cannot turn a
+  completed booking into a misleading full-refund state.
+- `SettlementDispute.settlementId` is unique: one customer claim per settlement. Partial dispute
+  refunds are cumulative and capped by the service amount still held.
+- A Partner payout is valid only when FIFO `PayoutAllocation` rows cover its exact amount; otherwise
+  payout creation rolls back.
+- Full state machine, event ordering, backfill and operations: [`settlement-flow.md`](./settlement-flow.md).
 
 ## What is *not* in the schema
 

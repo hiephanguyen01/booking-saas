@@ -35,11 +35,12 @@ const EDGES: readonly Edge[] = [
   { from: 'pending_payment', to: 'expired', actors: ['system'] },
   { from: 'expired', to: 'confirmed', actors: ['system'] }, // late webhook, slot still free
   { from: 'confirmed', to: 'cancelled', actors: ['customer', 'partner', 'tenant'] },
-  { from: 'confirmed', to: 'completed', actors: ['system'] },
+  { from: 'confirmed', to: 'completed', actors: ['partner', 'tenant'] },
   { from: 'confirmed', to: 'no_show', actors: ['partner', 'tenant'] },
   { from: 'cancelled', to: 'refunded', actors: ['system'] },
-  { from: 'completed', to: 'refunded', actors: ['tenant'] }, // dispute / clawback
-  { from: 'no_show', to: 'completed', actors: ['system'] }, // auto after the dispute window
+  { from: 'completed', to: 'refunded', actors: ['tenant', 'system'] },
+  { from: 'no_show', to: 'refunded', actors: ['system'] },
+  { from: 'expired', to: 'refunded', actors: ['system'] },
 ];
 
 export function canTransition(from: BookingStatus, to: BookingStatus): boolean {

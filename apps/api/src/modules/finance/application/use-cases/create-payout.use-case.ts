@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { CreatePayoutInput, PayoutCycleDto } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { addDays } from '../../../../shared/time/time';
@@ -33,6 +33,9 @@ export class CreatePayoutUseCase {
 
   execute(tenantId: string, input: CreatePayoutInput, createdBy: string | null): Promise<PayoutRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
+      // Serialize preview + claim for this payee. The second concurrent request
+      // waits, then sees the first run in `outstanding` and cannot double-claim.
+      await this.payouts.lockPayee(tx, input.payeeType, input.payeeId);
       const snapshot = await this.payable.execute(tx, tenantId, input.payeeType, input.payeeId);
 
       if (snapshot.ineligibleReason === 'NOTHING_TO_PAY') {
@@ -60,6 +63,28 @@ export class CreatePayoutUseCase {
         periodTo,
         createdBy,
       });
+      if (input.payeeType === 'partner') {
+        const allocated = await this.payouts.allocateReleasedSettlements(
+          tx,
+          tenantId,
+          payout.id,
+          input.payeeId,
+          payout.amount,
+        );
+        if (allocated !== payout.amount) {
+          // A partner payout must be traceable back to released booking rows.
+          // Throwing here rolls the payout and every tentative allocation back.
+          throw new ConflictException({
+            statusCode: 409,
+            code: 'PAYOUT_ALLOCATION_MISMATCH',
+            message: 'Partner payable is not fully backed by released settlements',
+            details: {
+              payoutAmount: payout.amount.toString(),
+              allocatedAmount: allocated.toString(),
+            },
+          });
+        }
+      }
       await this.audit.write(tx, {
         tenantId,
         actorUserId: createdBy,

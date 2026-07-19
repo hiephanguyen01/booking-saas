@@ -1,6 +1,6 @@
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import type { PartnerCalendarBooking } from '../domain/ports/booking-repository.port';
-import { toPartnerCustomer } from './booking.mapper';
+import { toAdditionalCharges, toPartnerCustomer } from './booking.mapper';
 
 export type { PartnerCalendarBookingResponse };
 
@@ -32,6 +32,7 @@ export function toPartnerCalendarResponse(
     discountAmount: b.discountAmount.toString(),
     depositAmount: b.depositAmount.toString(),
     paidAmount: b.paidAmount.toString(),
+    additionalCharges: toAdditionalCharges(b.additionalCharges),
     securityDeposit: b.securityDeposit.toString(),
     pickedUpAt: b.pickedUpAt ? b.pickedUpAt.toISOString() : null,
     returnedAt: b.returnedAt ? b.returnedAt.toISOString() : null,

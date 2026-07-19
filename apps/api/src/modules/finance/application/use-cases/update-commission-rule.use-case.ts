@@ -7,7 +7,10 @@ import {
   type ICommissionRuleRepository,
   type UpdateCommissionRuleData,
 } from '../../domain/ports/commission-rule-repository.port';
-import { TENANT_SHARE_FLOOR_CODE, violatesTenantShareFloor } from '../../domain/commission-rate-guard';
+import {
+  TENANT_SHARE_FLOOR_CODE,
+  violatesTenantShareFloor,
+} from '../../domain/commission-rate-guard';
 import { isHousePartner } from '../is-house-partner';
 
 /** Update a commission rule (§3.2) — the platform fee % is intentionally not editable here. */
@@ -18,29 +21,78 @@ export class UpdateCommissionRuleUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, id: string, input: UpdateCommissionRuleInput): Promise<CommissionRuleRecord> {
+  execute(
+    tenantId: string,
+    id: string,
+    input: UpdateCommissionRuleInput,
+  ): Promise<CommissionRuleRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const found = await this.rules.findById(tx, id);
-      if (!found) throw new NotFoundException({ statusCode: 404, code: 'RULE_NOT_FOUND', message: 'Commission rule not found' });
+      if (!found)
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'RULE_NOT_FOUND',
+          message: 'Commission rule not found',
+        });
 
       // Merge the change onto the current rule and re-check the tenant-share floor (§3.3).
       const appliesTo = input.appliesTo ?? found.appliesTo;
       const partnerId = input.partnerId !== undefined ? (input.partnerId ?? null) : found.partnerId;
-      const isHouse = appliesTo === 'partner' && partnerId ? await isHousePartner(tx, partnerId) : false;
+      const isHouse =
+        appliesTo === 'partner' && partnerId ? await isHousePartner(tx, partnerId) : false;
       if (
         violatesTenantShareFloor({
           tenantRateType: input.tenantRateType ?? found.tenantRateType,
           tenantRate: input.tenantRate !== undefined ? BigInt(input.tenantRate) : found.tenantRate,
           platformRate: found.platformRate,
           affiliateRateType: input.affiliateRateType ?? found.affiliateRateType,
-          affiliateRate: input.affiliateRate !== undefined ? BigInt(input.affiliateRate) : found.affiliateRate,
+          affiliateRate:
+            input.affiliateRate !== undefined ? BigInt(input.affiliateRate) : found.affiliateRate,
           isHouse,
         })
       ) {
         throw new BadRequestException({
           statusCode: 400,
           code: TENANT_SHARE_FLOOR_CODE,
-          message: 'platform% + affiliate% must not exceed the tenant commission% (the tenant share would go negative)',
+          message:
+            'platform% + affiliate% must not exceed the tenant commission% (the tenant share would go negative)',
+        });
+      }
+      const tenantRateType = input.tenantRateType ?? found.tenantRateType;
+      const tenantRate =
+        input.tenantRate !== undefined ? BigInt(input.tenantRate) : found.tenantRate;
+      const proposed = {
+        appliesTo,
+        listingTypeId:
+          input.listingTypeId !== undefined ? (input.listingTypeId ?? null) : found.listingTypeId,
+        categoryId: input.categoryId !== undefined ? (input.categoryId ?? null) : found.categoryId,
+        partnerId,
+        tenantRateType,
+        tenantRate,
+        platformRate: found.platformRate,
+        affiliateRateType: input.affiliateRateType ?? found.affiliateRateType,
+        affiliateRate:
+          input.affiliateRate !== undefined ? BigInt(input.affiliateRate) : found.affiliateRate,
+        effectiveFrom:
+          input.effectiveFrom !== undefined
+            ? input.effectiveFrom
+              ? new Date(input.effectiveFrom)
+              : null
+            : found.effectiveFrom,
+        effectiveTo:
+          input.effectiveTo !== undefined
+            ? input.effectiveTo
+              ? new Date(input.effectiveTo)
+              : null
+            : found.effectiveTo,
+      };
+      const incompatible = await this.rules.findIncompatibleListingsForRule(tx, proposed, id);
+      if (incompatible.count > 0) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'COMMISSION_EXCEEDS_PARTNER_DEPOSIT',
+          message: `${incompatible.count} listing(s) would have a deposit below their effective commission`,
+          details: { incompatibleListings: incompatible.count, samples: incompatible.samples },
         });
       }
 
@@ -59,7 +111,9 @@ function toPartialData(input: UpdateCommissionRuleInput): UpdateCommissionRuleDa
   if (input.tenantRate !== undefined) data.tenantRate = BigInt(input.tenantRate);
   if (input.affiliateRateType !== undefined) data.affiliateRateType = input.affiliateRateType;
   if (input.affiliateRate !== undefined) data.affiliateRate = BigInt(input.affiliateRate);
-  if (input.effectiveFrom !== undefined) data.effectiveFrom = input.effectiveFrom ? new Date(input.effectiveFrom) : null;
-  if (input.effectiveTo !== undefined) data.effectiveTo = input.effectiveTo ? new Date(input.effectiveTo) : null;
+  if (input.effectiveFrom !== undefined)
+    data.effectiveFrom = input.effectiveFrom ? new Date(input.effectiveFrom) : null;
+  if (input.effectiveTo !== undefined)
+    data.effectiveTo = input.effectiveTo ? new Date(input.effectiveTo) : null;
   return data;
 }

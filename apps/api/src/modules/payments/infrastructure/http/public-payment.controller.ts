@@ -1,5 +1,11 @@
 import { BadRequestException, Controller, Get, Param, Post, Req } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { uuidSchema, type CheckoutResponse, type PaymentStatusResponse } from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
@@ -42,7 +48,14 @@ export class PublicPaymentController {
 
 function hostOf(req: Request): string {
   const forwarded = req.headers['x-forwarded-host'];
-  const raw = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() || req.headers.host;
-  if (!raw) throw new BadRequestException({ statusCode: 400, code: 'MISSING_HOST', message: 'Host header is required' });
+  const raw =
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() ||
+    req.headers.host;
+  if (!raw)
+    throw new BadRequestException({
+      statusCode: 400,
+      code: 'MISSING_HOST',
+      message: 'Host header is required',
+    });
   return raw;
 }

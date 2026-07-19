@@ -25,11 +25,25 @@ export interface CreateCommissionRuleData {
 
 export type UpdateCommissionRuleData = Partial<CreateCommissionRuleData>;
 
+export interface IncompatibleDepositCoverage {
+  count: number;
+  samples: Array<{ id: string; title: string; depositPercent: number; requiredPercent: number }>;
+}
+
 export interface ICommissionRuleRepository {
   /** All rules for the current tenant (RLS-scoped) — precedence resolved in the domain. */
   list(tx: PrismaTx): Promise<CommissionRuleRecord[]>;
   findById(tx: PrismaTx, id: string): Promise<CommissionRuleRecord | null>;
-  create(tx: PrismaTx, tenantId: string, data: CreateCommissionRuleData): Promise<CommissionRuleRecord>;
+  findIncompatibleListingsForRule(
+    tx: PrismaTx,
+    data: CreateCommissionRuleData,
+    excludeRuleId?: string,
+  ): Promise<IncompatibleDepositCoverage>;
+  create(
+    tx: PrismaTx,
+    tenantId: string,
+    data: CreateCommissionRuleData,
+  ): Promise<CommissionRuleRecord>;
   update(tx: PrismaTx, id: string, data: UpdateCommissionRuleData): Promise<CommissionRuleRecord>;
   /** Platform-admin-only path — only the platform fee % changes. */
   setPlatformRate(tx: PrismaTx, id: string, platformRate: number): Promise<CommissionRuleRecord>;

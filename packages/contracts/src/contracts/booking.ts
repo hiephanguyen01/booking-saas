@@ -99,6 +99,13 @@ export const markReturnedInputSchema = z.object({
 });
 export type MarkReturnedInput = z.infer<typeof markReturnedInputSchema>;
 
+/** Partner confirms a non-inventory service was delivered and the on-site balance collected. */
+export const completeBookingInputSchema = z.object({
+  onsiteCollectedAmount: z.string().regex(/^\d+$/, 'Must be a non-negative VND integer string'),
+  note: z.string().max(500).optional(),
+});
+export type CompleteBookingInput = z.infer<typeof completeBookingInputSchema>;
+
 /** Partner annotates one of their own bookings (§8.2) — `partner_note`. */
 export const partnerNoteInputSchema = z.object({
   /** Blank/omitted clears the note. */
@@ -185,8 +192,14 @@ const bookingCoreSchema = z.object({
   status: bookingStatusSchema,
   listingId: z.string(),
   listingTitle: z.string(),
+  /** Customer-facing context for the booked product, resolved with the booking. */
+  listingDescription: z.string().nullable(),
+  listingImageUrl: z.string().nullable(),
+  listingAttributes: z.record(z.unknown()),
   resourceId: z.string(),
+  resourceName: z.string(),
   partnerId: z.string(),
+  partnerName: z.string(),
   bookingMode: z.string(),
   startUtc: z.string(),
   endUtc: z.string(),
@@ -198,6 +211,9 @@ const bookingCoreSchema = z.object({
   finalAmount: z.string(),
   depositAmount: z.string(),
   paidAmount: z.string(),
+  /** Exact cancellation decision persisted for refund recovery; null before cancellation. */
+  refundDueAmount: z.string().nullable(),
+  refundPercent: z.number().int().min(0).max(100).nullable(),
   /** Inventory (§9.4): refundable deposit + fulfillment state. */
   securityDeposit: z.string(),
   pickedUpAt: z.string().nullable(),
@@ -342,6 +358,7 @@ export const partnerCalendarBookingResponseSchema = z.object({
   discountAmount: z.string(),
   depositAmount: z.string(),
   paidAmount: z.string(),
+  additionalCharges: z.array(additionalChargeSchema),
   /** Inventory (§9.4) fulfillment state — drives the partner pick-up/return actions. */
   securityDeposit: z.string(),
   pickedUpAt: z.string().nullable(),

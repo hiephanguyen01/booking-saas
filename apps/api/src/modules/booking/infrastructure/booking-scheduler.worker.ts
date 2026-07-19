@@ -22,9 +22,8 @@ interface DueRow {
 /**
  * Time-driven booking transitions (§8.2), DB-polled like the outbox relay:
  * pending_payment past its deadline → expired; pending_approval past its
- * deadline → rejected; confirmed past end + 48h → completed. The auto-complete
- * fires only AFTER the 48h no-show window (§8.5) so the partner keeps the full
- * window to mark a no-show; firing at +24h would cut that window in half.
+ * deadline → rejected. Service completion is never inferred by a clock: Partner
+ * or Tenant must explicitly confirm delivery and the amount collected on site.
  * Idempotent — the repository's `WHERE status = from` guard makes
  * double-processing a no-op.
  */
@@ -58,25 +57,13 @@ export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdo
   async sweep(): Promise<number> {
     const due = await this.prisma.admin.$queryRaw<DueRow[]>`
       SELECT id, tenant_id AS "tenantId", status::text AS "status",
-             (CASE
-                WHEN status = 'pending_payment'  THEN 'expired'
-                WHEN status = 'pending_approval' THEN 'rejected'
-                ELSE 'completed'
-              END)::text AS "toStatus",
-             (CASE
-                WHEN status = 'pending_payment'  THEN 'booking.expired'
-                WHEN status = 'pending_approval' THEN 'booking.rejected'
-                ELSE 'booking.completed'
-              END) AS "eventType"
+             (CASE WHEN status = 'pending_payment' THEN 'expired' ELSE 'rejected' END)::text AS "toStatus",
+             (CASE WHEN status = 'pending_payment' THEN 'booking.expired' ELSE 'booking.rejected' END) AS "eventType"
       FROM bookings b
       WHERE (status = 'pending_approval' AND expires_at <= now())
          OR (status = 'pending_payment' AND expires_at <= now()
              -- never expire a booking a webhook already paid (avoids paid-but-expired)
              AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'succeeded'))
-         OR (status = 'confirmed' AND booking_mode <> 'inventory'
-             -- §8.5: auto-complete only AFTER the 48h no-show window so a partner
-             -- keeps the full window to mark a no-show first.
-             AND upper(timeslot) + interval '48 hours' <= now())
       LIMIT 100`;
 
     let processed = 0;

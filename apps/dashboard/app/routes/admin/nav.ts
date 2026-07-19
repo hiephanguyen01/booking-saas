@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, Package } from 'lucide-react';
+import { Building2, CreditCard, LayoutDashboard, Package, Scale } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
 import { dashboardPaths } from '~/constants/paths';
 
@@ -21,6 +21,18 @@ export const adminNavSections: DashboardNavSection[] = [
         to: dashboardPaths.admin.plans,
         icon: Package,
         permission: 'platform.plans.manage',
+      },
+      {
+        title: 'Giao dịch',
+        to: dashboardPaths.admin.transactions,
+        icon: CreditCard,
+        permission: 'platform.finance.read',
+      },
+      {
+        title: 'Đối soát giữ tiền',
+        to: dashboardPaths.admin.settlements,
+        icon: Scale,
+        permission: 'platform.finance.read',
       },
     ],
   },

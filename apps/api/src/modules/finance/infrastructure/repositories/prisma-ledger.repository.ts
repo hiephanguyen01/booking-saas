@@ -98,9 +98,11 @@ const VIEW_SELECT = Prisma.sql`
 function viewConditions(filters: LedgerFilters): Prisma.Sql {
   const conds: Prisma.Sql[] = [];
   if (filters.bookingId) conds.push(Prisma.sql`le.booking_id = ${filters.bookingId}::uuid`);
-  if (filters.ownerType) conds.push(Prisma.sql`la.owner_type = ${filters.ownerType}::ledger_owner_type`);
+  if (filters.ownerType)
+    conds.push(Prisma.sql`la.owner_type = ${filters.ownerType}::ledger_owner_type`);
   if (filters.ownerId) conds.push(Prisma.sql`la.owner_id = ${filters.ownerId}::uuid`);
-  if (filters.entryType) conds.push(Prisma.sql`le.entry_type = ${filters.entryType}::ledger_entry_type`);
+  if (filters.entryType)
+    conds.push(Prisma.sql`le.entry_type = ${filters.entryType}::ledger_entry_type`);
   if (filters.from) conds.push(Prisma.sql`le.created_at >= ${filters.from}`);
   if (filters.to) conds.push(Prisma.sql`le.created_at <= ${filters.to}`);
   return conds.length ? Prisma.sql`WHERE ${Prisma.join(conds, ' AND ')}` : Prisma.empty;
@@ -108,10 +110,20 @@ function viewConditions(filters: LedgerFilters): Prisma.Sql {
 
 @Injectable()
 export class PrismaLedgerRepository implements ILedgerRepository {
-  async recordJournal(tx: PrismaTx, tenantId: string, legs: JournalLeg[], refs: RecordJournalRefs): Promise<string> {
+  async recordJournal(
+    tx: PrismaTx,
+    tenantId: string,
+    legs: JournalLeg[],
+    refs: RecordJournalRefs,
+  ): Promise<string> {
     const journalId = randomUUID();
     for (const leg of legs) {
-      const accountId = await this.ensureAccount(tx, tenantId, leg.owner.ownerType, leg.owner.ownerId);
+      const accountId = await this.ensureAccount(
+        tx,
+        tenantId,
+        leg.owner.ownerType,
+        leg.owner.ownerId,
+      );
       await tx.ledgerEntry.create({
         data: {
           tenantId,
@@ -124,6 +136,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
           paymentId: refs.paymentId ?? null,
           payoutId: refs.payoutId ?? null,
           memo: refs.memo ?? null,
+          availableAt: refs.availableAt,
         },
       });
     }
@@ -134,12 +147,16 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     const rows = await tx.ledgerEntry.findMany({
       where: { bookingId },
       include: { account: true },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
     return rows.map(toRecord);
   }
 
-  async ownerBalance(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null): Promise<OwnerBalance> {
+  async ownerBalance(
+    tx: PrismaTx,
+    ownerType: OwnerType,
+    ownerId: string | null,
+  ): Promise<OwnerBalance> {
     const rows = await tx.$queryRaw<{ debit: bigint; credit: bigint }[]>(Prisma.sql`
       SELECT COALESCE(SUM(le.debit), 0)::bigint AS debit,
              COALESCE(SUM(le.credit), 0)::bigint AS credit
@@ -152,7 +169,9 @@ export class PrismaLedgerRepository implements ILedgerRepository {
   }
 
   async balancesByType(tx: PrismaTx, ownerType: OwnerType): Promise<OwnerBalance[]> {
-    const rows = await tx.$queryRaw<{ owner_id: string | null; debit: bigint; credit: bigint }[]>(Prisma.sql`
+    const rows = await tx.$queryRaw<
+      { owner_id: string | null; debit: bigint; credit: bigint }[]
+    >(Prisma.sql`
       SELECT la.owner_id,
              COALESCE(SUM(le.debit), 0)::bigint AS debit,
              COALESCE(SUM(le.credit), 0)::bigint AS credit
@@ -202,17 +221,27 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     return { items: rows.map(toView), total: Number(counted[0]?.total ?? 0n) };
   }
 
-  async maturePayable(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, cutoff: Date): Promise<bigint> {
-    const rows = await tx.$queryRaw<{ balance: bigint }[]>(Prisma.sql`
+  async maturePayable(
+    tx: PrismaTx,
+    ownerType: OwnerType,
+    ownerId: string | null,
+  ): Promise<{ amount: bigint; cutoff: Date }> {
+    const rows = await tx.$queryRaw<Array<{ amount: bigint; cutoff: Date }>>(Prisma.sql`
+      WITH db_clock AS (SELECT now() AS cutoff)
       SELECT COALESCE(SUM(
-               CASE WHEN le.created_at <= ${cutoff} OR le.entry_type IN ('payout', 'clawback')
+               CASE WHEN le.available_at <= db_clock.cutoff OR le.entry_type IN ('payout', 'clawback')
                     THEN le.credit - le.debit ELSE 0 END
-             ), 0)::bigint AS balance
-      FROM ledger_accounts la
-      JOIN ledger_entries le ON le.account_id = la.id
-      WHERE la.owner_type = ${ownerType}::ledger_owner_type
-        AND la.owner_id IS NOT DISTINCT FROM ${ownerId}::uuid`);
-    return rows[0]?.balance ?? 0n;
+             ), 0)::bigint AS amount,
+             db_clock.cutoff
+      FROM db_clock
+      LEFT JOIN ledger_accounts la
+        ON la.owner_type = ${ownerType}::ledger_owner_type
+       AND la.owner_id IS NOT DISTINCT FROM ${ownerId}::uuid
+      LEFT JOIN ledger_entries le ON le.account_id = la.id
+      GROUP BY db_clock.cutoff`);
+    const result = rows[0];
+    if (!result) throw new Error('Mature payable query returned no row');
+    return result;
   }
 
   /** Upsert-by-race the singleton account for (tenant, ownerType, ownerId). */

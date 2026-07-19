@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
+import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { ListingModule } from '../../../listing/infrastructure/http/listing.module';
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
@@ -25,6 +26,7 @@ import { RejectBookingUseCase } from '../../application/use-cases/reject-booking
 import { MarkNoShowUseCase } from '../../application/use-cases/mark-no-show.use-case';
 import { MarkPickedUpUseCase } from '../../application/use-cases/mark-picked-up.use-case';
 import { MarkReturnedUseCase } from '../../application/use-cases/mark-returned.use-case';
+import { MarkCompletedUseCase } from '../../application/use-cases/mark-completed.use-case';
 import { ListMyBookingsUseCase } from '../../application/use-cases/list-my-bookings.use-case';
 import { GetBookingByCodeUseCase } from '../../application/use-cases/get-booking-by-code.use-case';
 import { RequestBookingOtpUseCase } from '../../application/use-cases/request-booking-otp.use-case';
@@ -35,6 +37,7 @@ import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-
 import { GetBookingUseCase } from '../../application/use-cases/get-booking.use-case';
 import { GetBookingHistoryUseCase } from '../../application/use-cases/get-booking-history.use-case';
 import { UpdatePartnerNoteUseCase } from '../../application/use-cases/update-partner-note.use-case';
+import { FinalizeRefundedBookingUseCase } from '../../application/use-cases/finalize-refunded-booking.use-case';
 import { PublicBookingController } from './public-booking.controller';
 import { PartnerBookingController } from './partner-booking.controller';
 import { TenantBookingController } from './tenant-booking.controller';
@@ -65,6 +68,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     MarkNoShowUseCase,
     MarkPickedUpUseCase,
     MarkReturnedUseCase,
+    MarkCompletedUseCase,
     ListMyBookingsUseCase,
     GetBookingByCodeUseCase,
     RequestBookingOtpUseCase,
@@ -75,9 +79,27 @@ import { TenantBookingController } from './tenant-booking.controller';
     GetBookingUseCase,
     GetBookingHistoryUseCase,
     UpdatePartnerNoteUseCase,
+    FinalizeRefundedBookingUseCase,
     BookingSchedulerWorker,
   ],
-  // Exported so Task 1.9 (payments) can confirm a booking + read it for checkout/status.
-  exports: [ConfirmBookingUseCase, BOOKING_REPOSITORY],
 })
-export class BookingModule {}
+export class BookingModule implements OnModuleInit {
+  constructor(
+    private readonly registry: OutboxHandlerRegistry,
+    private readonly confirmBooking: ConfirmBookingUseCase,
+    private readonly finalizeRefundedBooking: FinalizeRefundedBookingUseCase,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register('payment.succeeded', async (event) => {
+      const payload = event.payload as { bookingId: string; skipBookingConfirmation?: boolean };
+      if (payload.skipBookingConfirmation === true) return;
+      await this.confirmBooking.execute(event.tenantId ?? '', payload.bookingId);
+    });
+    this.registry.register('refund.completed', async (event) => {
+      const payload = event.payload as { bookingId: string; affectsBookingStatus?: boolean };
+      if (payload.affectsBookingStatus === false) return;
+      await this.finalizeRefundedBooking.execute(event.tenantId ?? '', payload.bookingId);
+    });
+  }
+}

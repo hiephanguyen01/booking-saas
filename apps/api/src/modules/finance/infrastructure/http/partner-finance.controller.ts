@@ -1,29 +1,47 @@
 import type {
+  PartnerBookingSettlementResponse,
   LedgerEntryResponse,
   Paginated,
   PartnerFinanceResponse,
+  PartnerSettlementDisputeResponse,
   PayoutResponse,
+  SettlementSummaryResponse,
 } from '@booking/contracts';
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ApiPaginatedResponse } from '../../../../shared/openapi/decorators';
+import { Body, Controller, Get, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
 import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import {
+  toPartnerBookingSettlementResponse,
   toLedgerEntryResponse,
   toPartnerFinanceResponse,
   toPartnerPayoutResponse,
+  toPartnerSettlementDisputeResponse,
+  toSettlementSummaryResponse,
 } from '../../application/finance.mapper';
 import { GetPartnerFinanceUseCase } from '../../application/use-cases/get-partner-finance.use-case';
+import { GetBookingSettlementUseCase } from '../../application/use-cases/get-booking-settlement.use-case';
 import { ListPartnerLedgerUseCase } from '../../application/use-cases/list-partner-ledger.use-case';
 import { ListPartnerPayoutsUseCase } from '../../application/use-cases/list-partner-payouts.use-case';
+import { ListBookingSettlementsUseCase } from '../../application/use-cases/list-booking-settlements.use-case';
+import { ListSettlementDisputesUseCase } from '../../application/use-cases/list-settlement-disputes.use-case';
+import { RespondSettlementDisputeUseCase } from '../../application/use-cases/respond-settlement-dispute.use-case';
+import { GetSettlementSummaryUseCase } from '../../application/use-cases/get-settlement-summary.use-case';
 import {
+  PartnerBookingSettlementResponseDto,
   LedgerEntryResponseDto,
   PartnerFinanceResponseDto,
   PartnerLedgerQueryDto,
   PayoutResponseDto,
+  BookingSettlementsQueryDto,
+  PartnerSettlementDisputeResponseDto,
+  RespondSettlementDisputeDto,
+  SettlementSummaryResponseDto,
 } from './dto/finance.dto';
 
 /** Partner self-service finance (§13.3): current balance + ledger history. */
@@ -34,8 +52,75 @@ export class PartnerFinanceController {
     private readonly partnerFinanceUseCase: GetPartnerFinanceUseCase,
     private readonly listLedgerUseCase: ListPartnerLedgerUseCase,
     private readonly listPayoutsUseCase: ListPartnerPayoutsUseCase,
+    private readonly getSettlementUseCase: GetBookingSettlementUseCase,
+    private readonly listSettlementsUseCase: ListBookingSettlementsUseCase,
+    private readonly listDisputesUseCase: ListSettlementDisputesUseCase,
+    private readonly respondDisputeUseCase: RespondSettlementDisputeUseCase,
+    private readonly getSettlementSummaryUseCase: GetSettlementSummaryUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  @RequirePermissions('partner.finance.read')
+  @Get('settlement-summary')
+  @ApiOperation({ summary: 'Summarize the partner own settlement and payout states' })
+  @ApiOkResponse({ type: SettlementSummaryResponseDto })
+  async settlementSummary(): Promise<SettlementSummaryResponse> {
+    return toSettlementSummaryResponse(
+      await this.getSettlementSummaryUseCase.execute(
+        this.tenantContext.tenantIdOrThrow(),
+        this.tenantContext.partnerIdOrThrow(),
+      ),
+    );
+  }
+
+  @RequirePermissions('partner.finance.read')
+  @Get('disputes')
+  @ApiOperation({ summary: 'List disputes affecting the partner own bookings' })
+  @ApiPaginatedResponse(PartnerSettlementDisputeResponseDto)
+  async disputes(
+    @Query() query: PaginationQueryDto,
+  ): Promise<Paginated<PartnerSettlementDisputeResponse>> {
+    const result = await this.listDisputesUseCase.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      query,
+      this.tenantContext.partnerIdOrThrow(),
+    );
+    return toPaginated(query, result, toPartnerSettlementDisputeResponse);
+  }
+
+  @RequirePermissions('partner.finance.read', 'partner.bookings.write')
+  @Post('disputes/:id/respond')
+  @UuidParam('id')
+  @ApiOperation({ summary: 'Respond once to an open dispute affecting an owned booking' })
+  @ApiCreatedResponse({ type: PartnerSettlementDisputeResponseDto })
+  async respondToDispute(
+    @Param('id') id: string,
+    @Body() input: RespondSettlementDisputeDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
+  ): Promise<PartnerSettlementDisputeResponse> {
+    return toPartnerSettlementDisputeResponse(
+      await this.respondDisputeUseCase.execute(
+        this.tenantContext.tenantIdOrThrow(),
+        id,
+        this.tenantContext.partnerIdOrThrow(),
+        principal.userId,
+        input,
+      ),
+    );
+  }
+
+  @RequirePermissions('partner.finance.read')
+  @Get('settlements')
+  @ApiOperation({ summary: 'List the partner own settlement states' })
+  @ApiPaginatedResponse(PartnerBookingSettlementResponseDto)
+  async settlements(
+    @Query() query: BookingSettlementsQueryDto,
+  ): Promise<Paginated<PartnerBookingSettlementResponse>> {
+    const tenantId = this.tenantContext.tenantIdOrThrow();
+    const partnerId = this.tenantContext.partnerIdOrThrow();
+    const result = await this.listSettlementsUseCase.execute(tenantId, { ...query, partnerId });
+    return toPaginated(query, result, toPartnerBookingSettlementResponse);
+  }
 
   @RequirePermissions('partner.finance.read')
   @Get()
@@ -47,6 +132,27 @@ export class PartnerFinanceController {
     return toPartnerFinanceResponse(await this.partnerFinanceUseCase.execute(tenantId, partnerId));
   }
 
+  @RequirePermissions('partner.finance.read')
+  @Get('settlements/:bookingId')
+  @UuidParam('bookingId')
+  @ApiOperation({ summary: 'Get the settlement state for one owned booking' })
+  @ApiOkResponse({ type: PartnerBookingSettlementResponseDto })
+  async settlement(
+    @Param('bookingId') bookingId: string,
+  ): Promise<PartnerBookingSettlementResponse> {
+    const tenantId = this.tenantContext.tenantIdOrThrow();
+    const partnerId = this.tenantContext.partnerIdOrThrow();
+    const settlement = await this.getSettlementUseCase.execute(tenantId, bookingId, partnerId);
+    if (!settlement) {
+      throw new NotFoundException({
+        statusCode: 404,
+        code: 'SETTLEMENT_NOT_FOUND',
+        message: 'Settlement not found',
+      });
+    }
+    return toPartnerBookingSettlementResponse(settlement);
+  }
+
   /**
    * The partner's full ledger journal, paginated + filterable — the complete
    * history behind the balance preview on `GET /partner/finance`. Owner is forced
@@ -54,7 +160,9 @@ export class PartnerFinanceController {
    */
   @RequirePermissions('partner.finance.read')
   @Get('ledger')
-  @ApiOperation({ summary: 'Partner ledger history (paginated, filter by entry type + date range)' })
+  @ApiOperation({
+    summary: 'Partner ledger history (paginated, filter by entry type + date range)',
+  })
   @ApiPaginatedResponse(LedgerEntryResponseDto)
   async ledger(@Query() query: PartnerLedgerQueryDto): Promise<Paginated<LedgerEntryResponse>> {
     const tenantId = this.tenantContext.tenantIdOrThrow();

@@ -24,8 +24,13 @@ export interface BookingRecord {
   listingId: string;
   /** Joined from `listings` — every booking surface shows the title, none of them had it. */
   listingTitle: string;
+  listingDescription: string | null;
+  listingImageUrl: string | null;
+  listingAttributes: unknown;
   partnerId: string;
+  partnerName: string;
   resourceId: string;
+  resourceName: string;
   customerId: string;
   customer: BookingCustomerRecord;
   code: string;
@@ -41,6 +46,8 @@ export interface BookingRecord {
   finalAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  refundDueAmount: bigint | null;
+  refundPercent: number | null;
   securityDeposit: bigint;
   pickedUpAt: Date | null;
   returnedAt: Date | null;
@@ -92,6 +99,7 @@ export interface PartnerCalendarBooking {
   discountAmount: bigint;
   depositAmount: bigint;
   paidAmount: bigint;
+  additionalCharges: unknown;
   securityDeposit: bigint;
   pickedUpAt: Date | null;
   returnedAt: Date | null;
@@ -183,6 +191,8 @@ export interface TransitionParams {
   /** Optional column patches applied atomically with the status change. */
   expiresAt?: Date | null;
   paidAmount?: bigint;
+  refundDueAmount?: bigint;
+  refundPercent?: number;
 }
 
 export interface IBookingRepository {

@@ -1,10 +1,26 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { CheckoutResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
-import { BOOKING_REPOSITORY, type IBookingRepository } from '../../../booking/domain/ports/booking-repository.port';
-import { PAYMENT_REPOSITORY, type IPaymentRepository } from '../../domain/ports/payment-repository.port';
-import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../../domain/ports/gateway-registry.port';
+import {
+  PAYMENT_BOOKING_READER,
+  type IPaymentBookingReader,
+} from '../../domain/ports/payment-booking-reader.port';
+import {
+  PAYMENT_REPOSITORY,
+  type IPaymentRepository,
+} from '../../domain/ports/payment-repository.port';
+import {
+  GATEWAY_REGISTRY,
+  type GatewayRegistryPort,
+} from '../../domain/ports/gateway-registry.port';
 
 /**
  * The tenant's OWN storefront origin — each tenant serves on its own dynamic
@@ -13,18 +29,42 @@ import { GATEWAY_REGISTRY, type GatewayRegistryPort } from '../../domain/ports/g
  */
 function storefrontOrigin(host: string): string {
   const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  return `${scheme}://${host}`;
+  let url: URL;
+  try {
+    url = new URL(`${scheme}://${host.trim()}`);
+  } catch {
+    throw invalidStorefrontHost();
+  }
+  if (
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.search ||
+    url.hash ||
+    !url.hostname
+  ) {
+    throw invalidStorefrontHost();
+  }
+  return url.origin;
+}
+
+function invalidStorefrontHost(): BadRequestException {
+  return new BadRequestException({
+    statusCode: 400,
+    code: 'INVALID_STOREFRONT_HOST',
+    message: 'The storefront Host header is invalid',
+  });
 }
 
 /**
  * Create a gateway payment for a booking (§11.2). Amount = deposit + security
- * deposit (the security deposit is refunded on return, §9.4). Returns the
- * paymentUrl; the webhook — not the returnUrl — later confirms the booking.
+ * deposit (the security deposit is refunded on return, §9.4). Returns a
+ * normalized provider handoff; the webhook — not the return URL — confirms it.
  */
 @Injectable()
 export class CheckoutUseCase {
   constructor(
-    @Inject(BOOKING_REPOSITORY) private readonly bookings: IBookingRepository,
+    @Inject(PAYMENT_BOOKING_READER) private readonly bookings: IPaymentBookingReader,
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
@@ -34,30 +74,46 @@ export class CheckoutUseCase {
   async execute(host: string, bookingId: string): Promise<CheckoutResponse> {
     const tenant = await this.resolveTenant.execute(host);
     if (!tenant.live) {
-      throw new ForbiddenException({ statusCode: 403, code: 'STOREFRONT_SUSPENDED', message: 'This storefront is not accepting payments' });
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'STOREFRONT_SUSPENDED',
+        message: 'This storefront is not accepting payments',
+      });
     }
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
-      if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+      if (!booking)
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'BOOKING_NOT_FOUND',
+          message: 'Booking not found',
+        });
       if (booking.status !== 'pending_payment') {
-        throw new BadRequestException({ statusCode: 400, code: 'BOOKING_NOT_PAYABLE', message: `Booking is ${booking.status}, not awaiting payment` });
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'BOOKING_NOT_PAYABLE',
+          message: `Booking is ${booking.status}, not awaiting payment`,
+        });
       }
 
       // Idempotent: reuse the existing pending payment link rather than minting a
       // second gateway payment (which could double-charge on a retry/double-click).
       const existing = await this.payments.findPendingCheckout(tx, bookingId);
-      if (existing) return { paymentId: existing.id, paymentUrl: existing.paymentUrl };
+      if (existing) return { paymentId: existing.id, destination: existing.destination };
 
       const amount = booking.depositAmount + booking.securityDeposit;
       const kind = booking.depositAmount >= booking.finalAmount ? 'full' : 'deposit';
       const origin = storefrontOrigin(host); // the tenant's own domain (from the Host the customer used)
       const gateway = await this.registry.resolveForTenant(tx, tenant.id);
+      const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
+      const bookingReturnUrl = `${origin}/bookings/${booking.code}`;
       const created = await gateway.createPayment({
         amountVnd: amount,
-        orderCode: String(Date.now()),
+        orderCode: orderRef,
         description: `Booking ${booking.code}`,
-        returnUrl: `${origin}/bookings/${booking.code}`,
-        cancelUrl: `${origin}/bookings/${booking.code}?cancelled=1`,
+        returnUrl: `${bookingReturnUrl}?payment=success`,
+        errorUrl: `${bookingReturnUrl}?payment=error`,
+        cancelUrl: `${bookingReturnUrl}?payment=cancel`,
         expiresInSec: 900,
       });
       const payment = await this.payments.create(tx, tenant.id, {
@@ -65,11 +121,13 @@ export class CheckoutUseCase {
         gateway: gateway.key,
         kind,
         amount,
-        gatewayTxnId: created.gatewayTxnId,
-        idempotencyKey: `checkout:${bookingId}:${created.gatewayTxnId}`,
-        gatewayPayload: { paymentUrl: created.paymentUrl },
+        gatewayTxnId: created.gatewayTxnId ?? null,
+        gatewayOrderRef: created.gatewayOrderRef ?? orderRef,
+        paymentMethod: gateway.key === 'sepay' ? 'BANK_TRANSFER' : null,
+        idempotencyKey: `checkout:${bookingId}:${created.gatewayOrderRef ?? created.gatewayTxnId ?? orderRef}`,
+        gatewayPayload: { destination: created.destination },
       });
-      return { paymentId: payment.id, paymentUrl: created.paymentUrl };
+      return { paymentId: payment.id, destination: created.destination };
     });
   }
 }

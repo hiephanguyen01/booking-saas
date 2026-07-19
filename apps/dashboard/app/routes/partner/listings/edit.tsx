@@ -5,6 +5,7 @@ import {
   type CancellationPolicySummary,
   type ListingResponse,
   type ListingTypeResponse,
+  type DepositRequirementResponse,
 } from '@booking/contracts';
 import type { Route } from './+types/edit';
 import { apiGet, apiPatch } from '~/lib/api.server';
@@ -60,11 +61,24 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       status: listingRes.status === 403 ? 403 : 404,
     });
   }
+  const requirementRes = await apiGet<DepositRequirementResponse>(
+    '/partner/listings/deposit-requirement',
+    auth,
+    {
+      query: {
+        listingTypeId: listingRes.data.listingTypeId,
+        categoryId: listingRes.data.categoryId ?? undefined,
+      },
+    },
+  );
   return {
     listing: listingRes.data,
     listingTypes: typesRes.data ?? [],
     cancellationPolicies: policiesRes.data ?? [],
     partnerId: membership.partnerId,
+    minimumDepositPercent: requirementRes.ok
+      ? (requirementRes.data?.minimumDepositPercent ?? null)
+      : null,
   };
 }
 
@@ -100,6 +114,7 @@ export default function EditListingPage({ loaderData, actionData }: Route.Compon
         partnerId={loaderData.partnerId}
         listing={loaderData.listing}
         cancellationPolicies={loaderData.cancellationPolicies}
+        minimumDepositPercent={loaderData.minimumDepositPercent}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />

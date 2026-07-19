@@ -34,6 +34,7 @@ import {
   type IListingGroupRepository,
 } from '../../domain/ports/listing-group-repository.port';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
+import { AssertListingDepositCoverageUseCase } from './assert-listing-deposit-coverage.use-case';
 
 /**
  * Create a listing. Inside one tenant transaction it validates the attributes
@@ -50,6 +51,7 @@ export class CreateListingUseCase {
     @Inject(LISTING_TYPE_REPOSITORY) private readonly listingTypes: IListingTypeRepository,
     @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
     private readonly resolveAdministrativeAddress: ResolveAdministrativeAddressUseCase,
+    private readonly assertDepositCoverage: AssertListingDepositCoverageUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -97,6 +99,16 @@ export class CreateListingUseCase {
       assertCanServeListingType(
         { verificationStatus: partner.verificationStatus },
         { requiresIdentityVerification: type.requiresIdentityVerification },
+      );
+      await this.assertDepositCoverage.execute(
+        tx,
+        {
+          partnerId: partner.id,
+          listingTypeId: input.listingTypeId,
+          categoryId: input.categoryId ?? null,
+          isHouse: partner.isHouse,
+        },
+        input.depositPercent,
       );
 
       // A bound group must belong to the same partner (§7.3: a post and its child

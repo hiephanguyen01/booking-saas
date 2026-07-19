@@ -12,7 +12,7 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
-import { BookText } from 'lucide-react';
+import { BookText, Scale, ShieldCheck } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
@@ -23,6 +23,7 @@ import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
 import { StatCard } from '~/components/stat-card';
 import { readListParams } from '~/lib/pagination';
+import { dashboardPaths } from '~/constants/paths';
 import { BalanceCards } from '~/features/tenant/components/finance/balance-cards';
 import { CreatePayoutDialog } from '~/features/tenant/components/finance/create-payout-dialog';
 import { PayoutsTable } from '~/features/tenant/components/finance/payouts-table';
@@ -99,7 +100,8 @@ export async function action({ request }: Route.ActionArgs) {
       return routeData({ error: 'Thông tin lệnh chi không hợp lệ.' }, { status: 400 });
     }
     const res = await apiPost('/tenant/finance/payouts', parsed.data, auth);
-    if (!res.ok) return routeData({ error: res.error ?? 'Không tạo được lệnh chi.' }, { status: 400 });
+    if (!res.ok)
+      return routeData({ error: res.error ?? 'Không tạo được lệnh chi.' }, { status: 400 });
     return { ok: true };
   }
 
@@ -113,7 +115,8 @@ export async function action({ request }: Route.ActionArgs) {
       return routeData({ error: 'Cần số tham chiếu chuyển khoản.' }, { status: 400 });
     }
     const res = await apiPost(`/tenant/finance/payouts/${id}/mark-paid`, parsed.data, auth);
-    if (!res.ok) return routeData({ error: res.error ?? 'Không cập nhật được lệnh chi.' }, { status: 400 });
+    if (!res.ok)
+      return routeData({ error: res.error ?? 'Không cập nhật được lệnh chi.' }, { status: 400 });
     return { ok: true };
   }
 
@@ -125,7 +128,8 @@ export async function action({ request }: Route.ActionArgs) {
       return routeData({ error: 'Lý do không hợp lệ.' }, { status: 400 });
     }
     const res = await apiPost(`/tenant/finance/payouts/${id}/fail`, parsed.data, auth);
-    if (!res.ok) return routeData({ error: res.error ?? 'Không cập nhật được lệnh chi.' }, { status: 400 });
+    if (!res.ok)
+      return routeData({ error: res.error ?? 'Không cập nhật được lệnh chi.' }, { status: 400 });
     return { ok: true };
   }
 
@@ -150,8 +154,18 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/tenant/finance/ledger">
+              <Link to={dashboardPaths.tenant.settlements}>
+                <ShieldCheck className="size-4" /> Tiền đang giữ
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to={dashboardPaths.tenant.ledger}>
                 <BookText className="size-4" /> Xem sổ cái
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to={dashboardPaths.tenant.disputes}>
+                <Scale className="size-4" /> Tranh chấp
               </Link>
             </Button>
             {canPayouts ? (
@@ -166,7 +180,11 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         }
       />
 
-      {error ? <Card><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card> : null}
+      {error ? (
+        <Card>
+          <CardContent className="p-4 text-sm text-destructive">{error}</CardContent>
+        </Card>
+      ) : null}
       <ErrorBanner error={actionError} />
 
       {summary ? (
@@ -174,7 +192,11 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
           <StatCard label="Doanh thu ròng" value={formatVnd(summary.netRevenue)} tone="positive" />
           <StatCard label="Phải trả đối tác" value={formatVnd(summary.partnerPayable)} />
           <StatCard label="Phải trả affiliate" value={formatVnd(summary.affiliatePayable)} />
-          <StatCard label="Phí nền tảng" value={formatVnd(summary.platformFeePayable)} tone="muted" />
+          <StatCard
+            label="Phí nền tảng"
+            value={formatVnd(summary.platformFeePayable)}
+            tone="muted"
+          />
         </div>
       ) : null}
 
@@ -195,7 +217,12 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         {canPayouts ? (
           <TabsContent value="payouts" className="space-y-4">
             <PayoutsTable payouts={payouts} partnerNames={partnerNames} readOnly={readOnly} />
-            <PaginationBar page={page} pageSize={pageSize} total={payoutsTotal} hrefFor={pageHref} />
+            <PaginationBar
+              page={page}
+              pageSize={pageSize}
+              total={payoutsTotal}
+              hrefFor={pageHref}
+            />
           </TabsContent>
         ) : null}
       </Tabs>

@@ -3,6 +3,7 @@ import {
   type ListingResponse,
   type ListingReviewResponse,
   type PaginatedWithCounts,
+  type DepositRequirementResponse,
 } from '@booking/contracts';
 import {
   Body,
@@ -37,6 +38,7 @@ import { RepublishListingUseCase } from '../../application/use-cases/moderation/
 import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
 import { DeleteListingUseCase } from '../../application/use-cases/delete-listing.use-case';
+import { GetListingDepositRequirementUseCase } from '../../application/use-cases/get-listing-deposit-requirement.use-case';
 import {
   CreateListingDto,
   ListingResponseDto,
@@ -44,6 +46,7 @@ import {
   ModerationReasonDto,
   SubmitListingResponseDto,
   UpdateListingDto,
+  DepositRequirementResponseDto,
 } from './dto/listing.dto';
 
 /**
@@ -63,8 +66,25 @@ export class PartnerListingModerationController {
     private readonly getListing: GetListingUseCase,
     private readonly updateListing: UpdateListingUseCase,
     private readonly deleteListing: DeleteListingUseCase,
+    private readonly getDepositRequirement: GetListingDepositRequirementUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
+
+  @RequirePermissions('partner.listings.read')
+  @Get('deposit-requirement')
+  @ApiOperation({ summary: 'Preview the minimum deposit for a listing target' })
+  @ApiOkResponse({ type: DepositRequirementResponseDto })
+  async depositRequirement(
+    @Query('listingTypeId', new ZodValidationPipe(uuidSchema)) listingTypeId: string,
+    @Query('categoryId', new ZodValidationPipe(uuidSchema.optional())) categoryId?: string,
+  ): Promise<DepositRequirementResponse> {
+    return this.getDepositRequirement.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      this.tenantContext.partnerIdOrThrow(),
+      listingTypeId,
+      categoryId ?? null,
+    );
+  }
 
   /**
    * The partner's own listings (§7.3) — read-only, paginated, always scoped to

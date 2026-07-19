@@ -17,7 +17,9 @@ function secret(): string {
 
 /** Deterministic HMAC over a mock webhook body — exported so tests can sign. */
 export function signMockWebhook(gatewayTxnId: string, event: string, amountVnd: bigint): string {
-  return createHmac('sha256', secret()).update(`${gatewayTxnId}.${event}.${amountVnd}`).digest('hex');
+  return createHmac('sha256', secret())
+    .update(`${gatewayTxnId}.${event}.${amountVnd}`)
+    .digest('hex');
 }
 
 interface MockBody {
@@ -47,7 +49,13 @@ export class MockGatewayAdapter implements PaymentGatewayPort {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const gatewayTxnId = `mock_${randomUUID()}`;
     this.ledger.set(gatewayTxnId, { status: 'pending', amountVnd: input.amountVnd });
-    return Promise.resolve({ paymentUrl: `mock://pay/${gatewayTxnId}?order=${input.orderCode}`, gatewayTxnId });
+    return Promise.resolve({
+      destination: {
+        type: 'redirect',
+        paymentUrl: `mock://pay/${gatewayTxnId}?order=${input.orderCode}`,
+      },
+      gatewayTxnId,
+    });
   }
 
   /**
@@ -57,7 +65,10 @@ export class MockGatewayAdapter implements PaymentGatewayPort {
    */
   markPaid(gatewayTxnId: string, amountVnd?: bigint): void {
     const prev = this.ledger.get(gatewayTxnId);
-    this.ledger.set(gatewayTxnId, { status: 'succeeded', amountVnd: amountVnd ?? prev?.amountVnd ?? 0n });
+    this.ledger.set(gatewayTxnId, {
+      status: 'succeeded',
+      amountVnd: amountVnd ?? prev?.amountVnd ?? 0n,
+    });
   }
 
   peekReference(rawBody: Buffer): string | null {
@@ -80,7 +91,10 @@ export class MockGatewayAdapter implements PaymentGatewayPort {
   }
 
   refund(input: RefundInput): Promise<RefundResult> {
-    return Promise.resolve({ supported: true, refundId: `mock_refund_${randomUUID()}_${input.gatewayTxnId.slice(-4)}` });
+    return Promise.resolve({
+      supported: true,
+      refundId: `mock_refund_${randomUUID()}_${input.gatewayTxnId.slice(-4)}`,
+    });
   }
 
   queryPaymentStatus(gatewayTxnId: string): Promise<PaymentStatusResult> {

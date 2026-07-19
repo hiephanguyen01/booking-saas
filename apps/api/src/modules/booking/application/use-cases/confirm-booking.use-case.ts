@@ -43,6 +43,9 @@ export class ConfirmBookingUseCase {
   private async confirmInTx(tx: PrismaTx, tenantId: string, bookingId: string): Promise<BookingRecord> {
     const booking = await this.bookings.findById(tx, bookingId);
     if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    // Outbox delivery is at-least-once. A later Finance handler may fail after
+    // this handler already confirmed the booking, so retries must be harmless.
+    if (['confirmed', 'completed', 'no_show'].includes(booking.status)) return booking;
     assertTransition(booking.status, 'confirmed', 'system');
     const wasExpired = booking.status === 'expired';
 
@@ -96,16 +99,19 @@ export class ConfirmBookingUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
       if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
-      this.logger.warn(`late webhook for booking ${bookingId}: slot taken — auto-refunding the deposit`);
+      this.logger.warn(
+        `late webhook for booking ${bookingId}: slot taken — auto-refunding the service and security deposits`,
+      );
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'booking.cancelled',
         payload: {
           bookingId,
           code: booking.code,
-          // Refund the full deposit the customer paid; retained portion = 0 → no
-          // cancellation fee journal (finance handler is a no-op at 100%).
-          refundAmount: booking.depositAmount.toString(),
+          // Checkout charged both amounts in one gateway transaction. Omitting
+          // the security deposit here would leave customer money stranded after
+          // a late webhook loses the slot.
+          refundAmount: (booking.depositAmount + booking.securityDeposit).toString(),
           refundPercent: 100,
         },
       });

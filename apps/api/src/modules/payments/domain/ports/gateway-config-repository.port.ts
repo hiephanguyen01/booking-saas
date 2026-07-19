@@ -21,5 +21,15 @@ export interface UpsertGatewayConfigData {
 export interface IGatewayConfigRepository {
   /** The tenant's active gateway config (decrypted), or null → fall back to mock. */
   findActive(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null>;
-  upsert(tx: PrismaTx, tenantId: string, data: UpsertGatewayConfigData): Promise<GatewayConfigRecord>;
+  /** Provider-specific config, including inactive records needed by old webhooks. */
+  findByGateway(
+    tx: PrismaTx,
+    tenantId: string,
+    gateway: GatewayKey,
+  ): Promise<GatewayConfigRecord | null>;
+  upsert(
+    tx: PrismaTx,
+    tenantId: string,
+    data: UpsertGatewayConfigData,
+  ): Promise<GatewayConfigRecord>;
 }

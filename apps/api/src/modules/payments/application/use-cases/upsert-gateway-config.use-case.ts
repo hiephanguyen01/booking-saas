@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { UpsertGatewayConfigInput } from '@booking/contracts';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { sepayGatewayConfigInputSchema, type UpsertGatewayConfigInput } from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
@@ -18,12 +18,24 @@ export class UpsertGatewayConfigUseCase {
   ) {}
 
   execute(input: UpsertGatewayConfigInput): Promise<GatewayConfigRecord> {
+    const validated =
+      input.gateway === 'sepay'
+        ? sepayGatewayConfigInputSchema.safeParse(input)
+        : { success: true as const, data: input };
+    if (!validated.success) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'INVALID_GATEWAY_CONFIG',
+        message: 'Cấu hình SePay không hợp lệ',
+        details: validated.error.flatten(),
+      });
+    }
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return this.tenantDb.forTenant(tenantId, (tx) =>
       this.configs.upsert(tx, tenantId, {
-        gateway: input.gateway,
-        environment: input.environment,
-        credentials: input.credentials,
+        gateway: validated.data.gateway,
+        environment: validated.data.environment,
+        credentials: validated.data.credentials,
       }),
     );
   }

@@ -18,6 +18,7 @@ import { getOptionalAuth } from '../lib/auth.server';
 import { getCheckoutFlowService } from '../lib/checkout-flow.server';
 import { createTranslator } from '../lib/i18n';
 import {
+  allowedPaymentFormPost,
   allowedPaymentRedirect,
   isMockPaymentRedirect,
 } from '../lib/payment-redirect.server';
@@ -170,11 +171,21 @@ export async function action({ request, params }: Route.ActionArgs) {
         { status: errorStatus(checkout.status), headers },
       );
     }
-    const rawPaymentUrl = checkout.data?.paymentUrl;
-    if (isMockPaymentRedirect(rawPaymentUrl)) {
+    const destination = checkout.data?.destination;
+    if (destination?.type === 'redirect' && isMockPaymentRedirect(destination.paymentUrl)) {
       return redirect(storefrontPaths.booking(locale, booking.code), { headers });
     }
-    const paymentUrl = allowedPaymentRedirect(rawPaymentUrl);
+    if (destination?.type === 'form_post') {
+      const handoff = allowedPaymentFormPost(destination);
+      if (handoff) {
+        return data(
+          { fieldErrors: null, error: null, code: null, handoff },
+          { status: 200, headers },
+        );
+      }
+    }
+    const paymentUrl =
+      destination?.type === 'redirect' ? allowedPaymentRedirect(destination.paymentUrl) : null;
     if (!paymentUrl) {
       return data(
         { fieldErrors: null, error: 'INVALID_PAYMENT_REDIRECT', code: 'INVALID_PAYMENT_REDIRECT' },

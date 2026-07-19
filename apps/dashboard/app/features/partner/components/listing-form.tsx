@@ -24,6 +24,7 @@ export function ListingForm({
   groupId,
   lockedListingTypeId,
   cancellationPolicies = [],
+  minimumDepositPercent,
 }: {
   listingTypes: ListingTypeResponse[];
   partnerId: string;
@@ -33,13 +34,20 @@ export function ListingForm({
   groupId?: string;
   lockedListingTypeId?: string;
   cancellationPolicies?: CancellationPolicySummary[];
+  minimumDepositPercent?: number | null;
 }) {
   const isEdit = Boolean(listing);
 
   return (
     <GenericForm
       schema={createListingInputSchema}
-      fields={listingFormFields({ listingTypes, cancellationPolicies, isEdit, lockedListingTypeId })}
+      fields={listingFormFields({
+        listingTypes,
+        cancellationPolicies,
+        isEdit,
+        lockedListingTypeId,
+        minimumDepositPercent,
+      })}
       columns={2}
       defaultValues={listingFormDefaults({
         partnerId,

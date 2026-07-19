@@ -46,7 +46,7 @@ Concrete example:
 - Tenant B = "StayVN" — a platform for renting homestays by the day (Airbnb-style). Homeowners are partners of StayVN.
 - Both tenants run on **the same system**, differing only in UI template, domain, booking-mode configuration, and fee schedule.
 
-**Phase 1 (MVP) goal**: get the studio vertical running — hourly + daily booking, **and quantity-based equipment/outfit rental (with security deposit)** — with PayOS payment, commissions, basic discount codes, and a dashboard. The architecture is designed for the full model from day one.
+**Phase 1 (MVP) goal**: get the studio vertical running — hourly + daily booking, **and quantity-based equipment/outfit rental (with security deposit)** — with SePay payment, commissions, basic discount codes, and a dashboard. The architecture is designed for the full model from day one.
 
 ---
 
@@ -108,10 +108,14 @@ Configuration: tenant takes 15% from the partner; platform fee 2% (on the total 
 
 ### 3.4. Physical Money Flow (Phase 1–2)
 
-- Customer pays via a gateway (PayOS...) → money lands in **the tenant's own account** (each tenant configures its own gateway credentials).
-- The system records ledger entries: the tenant **owes** the partner and the affiliate; the tenant **owes** the platform a platform-fee amount.
+- Customer pays via SePay → money lands in **the tenant's own account** (each tenant configures its own merchant credentials).
+- Bookify records the payment as **held by the tenant**. After Partner completes the service, the
+  system waits through the tenant-configured dispute period; only then does it record ledger entries:
+  the tenant **owes** the partner/affiliate and **owes** the platform fee.
 - The tenant pays out (payout) to partners/affiliates on a cycle (manual, marked in the system, with uploaded evidence). The platform issues a monthly fee reconciliation statement to the tenant.
 - A later phase may move to a "platform collects on behalf of" model if legally permitted.
+
+Detailed custody, split and recovery rules: [`docs/settlement-flow.md`](./docs/settlement-flow.md).
 
 ---
 
@@ -138,7 +142,7 @@ Configuration: tenant takes 15% from the partner; platform fee 2% (on the total 
                        │              │              │
                 ┌──────▼─────┐ ┌──────▼─────┐ ┌──────▼──────────────┐
                 │ PostgreSQL │ │ Redis      │ │ External adapters:   │
-                │ (RLS,      │ │ (hold,     │ │ PayOS/MoMo/VNPay,    │
+                │ (RLS,      │ │ (hold,     │ │ SePay adapters,      │
                 │  ledger)   │ │  BullMQ)   │ │ SMTP/Resend, Zalo ZNS│
                 └────────────┘ └────────────┘ └─────────────────────┘
 ```
@@ -571,7 +575,7 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 
 ### 7.6. Payments Group
 
-**payments**: booking_id, tenant_id, gateway (`payos/momo/vnpay/mock`), kind (`deposit/balance/full/security_deposit` — a refundable deposit, not revenue), amount, status (`pending/succeeded/failed/expired`), gateway_txn_id, gateway_payload (jsonb), idempotency_key (unique), paid_at.
+**payments**: booking_id, tenant_id, gateway (`sepay/payos/momo/vnpay/mock`), kind (`deposit/balance/full/security_deposit` — a refundable deposit, not revenue), amount, status (`pending/succeeded/failed/expired`), gateway_order_ref, gateway_order_id, gateway_txn_id, payment_method, gateway_payload (jsonb), idempotency_key (unique), paid_at.
 
 **refunds**: payment_id, booking_id, amount, status (`pending/succeeded/failed/manual_required`), reason, gateway_refund_id. (`manual_required`: the gateway doesn't support a refund API → creates a task for the tenant to do a manual bank transfer.)
 
@@ -591,6 +595,19 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 | affiliate_rate_type, affiliate_rate        | default affiliate commission                                              |
 | effective_from, effective_to               | time-bound effectiveness                                                  |
 
+**booking_settlements**: tenant_id, booking_id, payment_id, partner_id, status
+(`held/dispute_window/disputed/refund_pending/released/refunded`), kind
+(`service_completed/customer_no_show/cancellation_fee`), online_held_amount,
+onsite_collected_amount, security_deposit_held, tenant_commission_gross, tenant_net_earning,
+partner_gross_earning, partner_payable, platform_fee, affiliate_commission, completed_at,
+refunded_amount, retained_amount, refund_id, dispute_until, released_at, release_journal_id. This is the custody/read lifecycle; payment success
+does not itself create earnings.
+
+**settlement_disputes**: booking_id, settlement_id (**unique: one claim per settlement**), customer
+reason/evidence, one Partner response, status/resolution, refund amount, resolver and timestamps. An
+open dispute locks release. Partial refund totals are cumulative and can never exceed the service
+amount still held.
+
 **ledger_accounts** — one account per party per tenant: owner_type (`platform/tenant/partner/affiliate`), owner_id, tenant_id, currency (`VND`).
 
 **ledger_entries** — double-entry bookkeeping, **immutable (append-only, no UPDATE/DELETE)**
@@ -605,7 +622,7 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 
 Constraint: total debit = total credit within each `journal_id` (checked at the domain layer + a deferred trigger constraint).
 
-**payouts**: tenant_id, payee_type (`partner/affiliate`), payee_id, amount, period_from/to, status (`pending/processing/paid/failed`), paid_at, evidence (jsonb — transfer reference number, evidence file), created_by. Payout policy is configured per tenant: **minimum amount**, **cycle** (weekly/monthly), **holding period** (only pays out the share from bookings that have been `completed` for ≥ X days — a buffer for disputes); a `failed` payout returns the related commissions to `confirmed` status to be rolled into the next cycle.
+**payouts**: tenant_id, payee_type (`partner/affiliate`), payee_id, amount, period_from/to, status (`pending/processing/paid/failed`), paid_at, evidence (jsonb — transfer reference number, evidence file), created_by. **payout_allocations** maps a released booking settlement amount to one payout (`reserved → paid/released`) so failures can safely return it to a later cycle. A Partner payout must be covered exactly by its FIFO allocations or creation rolls back. Payout policy is configured per tenant: **minimum amount**, **cycle** (weekly/monthly), **holding period**. The holding period is applied before the settlement revenue journal is created; payout eligibility must not apply the same delay a second time. A `failed` payout releases its allocations to be rolled into the next cycle.
 
 ### 7.8. Affiliate Group (Phase 2)
 
@@ -661,6 +678,8 @@ tenants 1─n partners 1─n listings 1─n availability_rules / pricing_rules
 partners 1─n resources 1─n listings (multiple listings pointing to the same resource = a shared calendar)
 listings 1─n bookings n─1 users(customer)
 bookings 1─n payments 1─n refunds
+bookings 1─1 booking_settlements 1─n settlement_disputes
+booking_settlements 1─n payout_allocations n─1 payouts
 bookings 1─1 commission_snapshot ──▶ ledger_entries (via a journal when completed)
 tenants 1─n promotions 1─n promo_redemptions n─1 bookings
 tenants 1─n affiliates 1─n referral_links 1─n referral_clicks
@@ -687,7 +706,7 @@ pending_payment ───(payment deadline passed)──────────
 expired ───────────(late webhook + slot still free)────────▶ confirmed   (slot already taken → auto-refund)
 confirmed ─────────(customer cancels: refund per policy)───▶ cancelled
 confirmed ─────────(partner/tenant cancels: 100% refund)───▶ cancelled
-confirmed ─────────(job after usage time + 24h buffer)─────▶ completed
+confirmed ─────────(partner/tenant confirms after usage)───▶ completed
 confirmed ─────────(partner marks within ≤48h after end)───▶ no_show
 cancelled ─────────(refund succeeds at the gateway)─────────▶ refunded
 completed ─────────(dispute/clawback — rare)────────────────▶ refunded
@@ -709,8 +728,8 @@ completed ─────────(dispute/clawback — rare)─────�
 | `confirmed`        | `cancelled`        | **Customer** cancels                                            | Refund per the policy snapshot; the retained portion is recorded as a `cancellation_fee` journal entry (split per commission_snapshot); affiliate goes `reversed`; promo `released` if fully refunded                                                                                |
 | `confirmed`        | `cancelled`        | **Partner/tenant** cancels                                      | **Always** a 100% refund regardless of policy (the policy only applies to customer cancellations; consider a partner penalty); affiliate goes `reversed`; promo `released`                                                                                                           |
 | `cancelled`        | `refunded`         | Refund succeeds at the gateway                                  | Closes the money lifecycle                                                                                                                                                                                                                                                           |
-| `confirmed`        | `completed`        | Job after `timeslot.end` (+ a 24h reconciliation buffer)        | **Writes the commission journal to the ledger** (section 13); affiliate `confirmed`; thank-you email                                                                                                                                                                                 |
-| `confirmed`        | `no_show`          | Partner marks it within 48h of the end time                     | No refund (default); the commission journal is recorded on the **actual `paid_amount`** — see section 8.5                                                                                                                                                                            |
+| `confirmed`        | `completed`        | Partner/Tenant confirms after `timeslot.end`                    | Freezes on-site collection and opens `dispute_window`; the journal is written only when settlement releases                                                                                                                                                                          |
+| `confirmed`        | `no_show`          | Partner marks after the slot ends and within 48h                | Opens the tenant-configured dispute window on the **actual online service amount** and separately refunds the full security deposit; no revenue/payable is released before the deadline — see section 8.5                                                                          |
 | `completed`        | `refunded`         | Dispute/clawback after completion (tenant's decision)           | A reversing journal (`clawback`); the partner/affiliate balance can go **negative** → deducted from the next payout; affiliate goes `clawed_back`                                                                                                                                    |
 
 Every transition goes through a single domain function (`booking.transitionTo(next, ctx)`) — validating, writing `booking_status_history`, firing the domain event. Status is never updated directly anywhere else.
@@ -730,10 +749,10 @@ If `deposit_percent < 100`: the booking becomes `confirmed` after paying the dep
 
 ### 8.5. No-show (customer doesn't show up) — Phase 1
 
-- The partner marks `no_show` within 48h after `timeslot.end`; past that, a job auto-transitions to `completed`.
-- On money: **no refund** by default; the commission journal is recorded on the **actual `paid_amount`** (usually just the deposit — the `on_arrival` portion the customer never paid creates no obligation, avoiding charging the partner commission on money that doesn't exist). The tenant can configure whether affiliate commission applies to no-shows.
+- The partner marks `no_show` after `timeslot.end` and within 48h. Past that, the booking remains for explicit Tenant handling; the system never infers completion from elapsed time.
+- On money: **no service-payment refund** by default; the split is frozen on the **actual online service amount** (usually just the deposit — the `on_arrival` portion the customer never paid creates no obligation). The full security deposit is refunded separately and never changes the service settlement status. A journal is posted only after the dispute window. The tenant can configure whether affiliate commission applies to no-shows.
 - `no_show` is a terminal state parallel to `completed` (the booking's time has passed, so it doesn't affect the exclusion constraint).
-- **Two-way accountability**: the customer is notified when marked no-show and has **72h to dispute** (falling to the tenant's manual handling — section 23.9); the tenant can see **each partner's cancellation/no-show rate** to take action. Automatic penalties for a partner's wrongful cancellation/no-show marking (deducted from payout): Phase 2.
+- **Two-way accountability**: the customer is notified when marked no-show and can dispute until the tenant-configured `holdingDays` deadline; the claim atomically locks settlement release. Partner can respond once, Tenant decides release/full refund/partial refund, and the tenant can see **each partner's cancellation/no-show rate**. Automatic penalties for a wrongful mark remain Phase 2.
 
 ### 8.6. Guest Checkout — Phase 1
 
@@ -849,7 +868,7 @@ Scope note: the exclusion constraint applies to **exclusive** resources (`hourly
 ```ts
 // modules/payments/domain/ports/payment-gateway.port.ts
 export interface PaymentGatewayPort {
-  readonly key: "payos" | "momo" | "vnpay" | "mock";
+  readonly key: "sepay" | "payos" | "mock";
 
   createPayment(input: {
     amountVnd: bigint;
@@ -858,7 +877,13 @@ export interface PaymentGatewayPort {
     returnUrl: string;
     cancelUrl: string;
     expiresInSec: number;
-  }): Promise<{ paymentUrl: string; gatewayTxnId: string }>;
+  }): Promise<{
+    destination:
+      | { type: "redirect"; paymentUrl: string }
+      | { type: "form_post"; actionUrl: string; fields: Record<string, string> };
+    gatewayTxnId?: string;
+    gatewayOrderRef?: string;
+  }>;
 
   verifyWebhook(
     rawBody: Buffer,
@@ -888,20 +913,20 @@ export interface PaymentGatewayPort {
 
 A registry picks the adapter based on the tenant's `tenant_gateway_configs` (credentials encrypted with AES-256-GCM, key from env/KMS). `MockGatewayAdapter` is used for dev/test/E2E: it has a fake "pay" page with Succeed/Fail buttons.
 
-### 11.2. Standard Payment Flow (PayOS, instant booking)
+### 11.2. Standard Payment Flow (SePay, instant booking)
 
 ```
 Customer → storefront: pick a slot → POST /bookings (creates a draft + hold)
-API   → PayOS: createPayment(deposit_amount) → paymentUrl
-Customer → PayOS: scan QR / bank transfer
-PayOS → API: webhook (signed) ──▶ verifyWebhook
+API   → SePay adapter: sign checkout fields → form_post destination
+Customer → SePay: POST checkout form → scan QR / bank transfer
+SePay → API: IPN (X-Secret-Key) ──▶ verifyWebhook
 API   : idempotency check (gateway_txn_id unique) → payment.succeeded
       → booking.transitionTo('confirmed')  // INSERT subject to the exclusion constraint
       → outbox: BookingConfirmed → email + ZNS to the customer & partner
 Customer ← returnUrl: "Booking successful" page (polls status, never trusts returnUrl)
 ```
 
-Principle: **only the webhook is the source of truth** for payment; returnUrl is only for UX navigation. Webhooks must be absolutely idempotent (unique key + status upsert). There's a reconciliation job: a `pending` payment stuck too long → calls the gateway's `queryPaymentStatus`. A webhook/query result must **match `amountVnd` against the expected amount** (an underpayment can't be confirmed), and payment status is a one-way state machine — `succeeded` is terminal, and a later out-of-order `failed` event is ignored.
+Principle: **only the webhook is the source of truth** for payment; returnUrl is only for UX navigation. Webhooks must be absolutely idempotent (unique key + status upsert). Reconciliation handles: stale `pending` payment via `queryPaymentStatus`; already-succeeded payment with missing Booking/Settlement projection; successful refund with a stale projection; and cancelled booking with a durable `refund_due_amount` but no refund row. A webhook/query result must **match `amountVnd` against the expected amount** (an underpayment can't be confirmed), and payment status is a one-way state machine — `succeeded` is terminal, and a later out-of-order `failed` event is ignored.
 
 ### 11.3. Refunds under the Cancellation Policy
 
@@ -995,11 +1020,21 @@ Validation when creating a `funded_by = tenant` promotion: warn (and block if it
 
 ### 13.1. Principles
 
-- Entries are recorded when a booking becomes **`completed`** (after the service has taken place) — avoiding having to reverse entries for every cancelled booking. Three exceptions: a cancellation with a **retained portion** → a `cancellation_fee` journal at cancellation time; **`no_show`** → a journal on the actual `paid_amount` (section 8.5); a dispute **after** `completed` → a `clawback` journal (reversing), and the partner/affiliate balance can go negative and is deducted from the next payout. The "computed on the full `final_amount`" rule only applies to a genuinely `completed` booking.
+- A genuinely completed/no-show booking first enters `dispute_window`; entries are recorded only when
+  its settlement is **released after the holding period**. A cancellation with a retained portion
+  follows the same release guard as `kind=cancellation_fee`. An accepted dispute moves through
+  `refund_pending`; only provider/manual `refund.completed` is refund truth. A legacy post-release
+  refund uses a reversing `clawback`, which can make a balance negative and deduct it later.
+- A settlement accepts one customer dispute. Full/partial refund is capped by
+  `online_held_amount - refunded_amount`; partial outcomes store a cumulative total and the retained
+  service amount waits through a new holding window before release.
 - **Split invariant**: when computing commission_snapshot, every split (partner / platform / affiliate / tenant) must be **≥ 0** — important for a `fixed` rule on a small-priced booking (a fixed 200k fee on a 150k booking) and combinations of fixed + promo + affiliate; a violation → blocks booking creation, or floors the value + warns the tenant. Test this alongside the ledger test suite.
 - Uses a **commission_snapshot** captured at booking time — changing the rule later doesn't affect old bookings.
 - `ledger_entries` are immutable; a mistake is corrected with a reversing entry, never edited/deleted.
 - A deposit + pay-on-arrival balance booking (`on_arrival`): commission is still computed on the full `final_amount` (only once the customer actually shows up — a no-show is recorded on `paid_amount`, section 8.5); the portion paid on-site is recorded as a "partner collected on our behalf" entry (the partner is already holding the cash) → reducing what the tenant owes the partner accordingly.
+- A Partner-configured deposit percentage must be at least the effective Tenant commission
+  percentage. Booking creation rechecks the exact VND amounts after promotion/rounding and rejects
+  `deposit_amount < tenant_commission_gross`; security deposit never counts toward this coverage.
 - **`additional_charges`** (extra charges, section 8.3): added to the commission base at `completed`, recorded as an `additional_charge` entry, handled like an `on_arrival` amount collected by the partner.
 - Each business operation gets one `journal_id`; total debit = total credit.
 
@@ -1021,8 +1056,8 @@ When a tenant pays out a partner: Debit `Partner payable` / Credit `Tenant cash`
 
 ### 13.3. Related Screens
 
-- Partner: current balance, ledger entry history, payout runs.
-- Tenant: net revenue, amounts payable to partners/affiliates, amount payable to the platform, create & mark payouts.
+- Partner: current balance, booking settlement/dispute deadline, ledger entry history, payout runs.
+- Tenant: held-settlement register, net revenue, amounts payable to partners/affiliates, amount payable to the platform, create & mark payouts.
 - Platform admin: fees collected per tenant, monthly reconciliation, CSV export.
 
 ---
@@ -1183,13 +1218,13 @@ GET  /public/listings/:slug
 GET  /public/listings/:id/availability?from=&to=        # slots or a calendar
 POST /public/checkout/validate-promo                     # validate a promo code, returns {discountAmount, finalAmount}
 POST /public/bookings                                    # creates a draft + hold (idempotent, with promoCode if any)
-POST /public/bookings/:id/checkout                       # creates a payment, returns paymentUrl
+POST /public/bookings/:id/checkout                       # creates/reuses a payment, returns checkout destination
 GET  /public/bookings/:code                              # look up by code + email OTP (guest)
 GET  /public/my-bookings                                 # a logged-in customer viewing their own bookings
 POST /public/bookings/:id/reschedule                     # reschedule (Phase 2)
 
 # Webhook
-POST /webhooks/payments/:gateway                         # raw body, signature verified
+POST /webhooks/:gateway                                  # raw body, provider auth/signature verified
 
 # Auth
 POST /auth/register | /auth/login | /auth/refresh | /auth/logout
@@ -1261,7 +1296,7 @@ Additional auth flows (Phase 1): **email verification** at signup; **password re
 2. Catalog: partners (signup + tenant approval, individual/company, **house partner**, identity verification for people-booking types), **dynamic listing types** (tenant-defined types + attribute schema, auto-generated menu/filters), **two-tier posts** (`listing_groups` containing multiple rooms/packages), listings with **multiple modes enabled** (`hourly` + `daily` flexibly) + **block pricing** (2-hour/3-day bundle pricing), calendar-sharing resources, post moderation (`pending_review` + `published_by/hidden_by` + a checklist + contact-info scanning), basic pricing rules, image uploads, storefront trust signals.
 3. Scheduling: availability rules/exceptions, slot-generation engine + calendar, caching.
 4. Booking: the full state machine (including no-show + **request-to-book/approval** — already part of the state machine), Redis holds, exclusion constraint, cancellation policies, guest checkout + OTP lookup, a date-range calendar for daily mode, **`inventory` mode** (outfit/equipment rental by quantity + security deposit + late-return handling — enough to launch StudioHub with 4 of its 5 listing types).
-5. Payments: the port + `payos` + `mock`; instant + deposit; idempotent webhooks; refunds (API + manual).
+5. Payments: the port + `sepay` + `mock` (legacy PayOS adapter retained); instant + deposit; idempotent IPN; refunds (manual when the provider has no refund API).
 6. Finance: commission rules + snapshots, double-entry ledger, journal entries at completion, balances, manual payouts.
 7. **Basic** promotions: `percent`/`fixed` codes + an effective period + a usage limit, validation + redemption at checkout (reserved/applied/released); the advanced parts (partner funded_by, campaigns, per-customer) → Phase 2.
 8. Dashboard: the admin area (tenants/plans + a **tenant health board**: GMV, published listings, time to first booking, webhook failures, overdue payouts + a queue of subscriptions/trials about to expire), the tenant area (listings/bookings/finance/promotions/theme, listing approval + partner cancellation rates), the partner area (listings, a **combined calendar** — a master calendar showing every booking across every resource by day/week, filterable by listing type, with quick calendar blocking, bookings, revenue).
@@ -1287,7 +1322,7 @@ Full affiliate system (links, cookie attribution, commission lifecycle, dashboar
 | Integration   | Vitest + Testcontainers Postgres | **RLS: tenant A can't read tenant B**; **booking race: N parallel requests → exactly 1 succeeds**; idempotent webhooks (5 duplicate deliveries → 1 payment); **promo race**: N requests fighting over the last use → exactly usage_limit end up applied + released correctly returns the usage; **inventory race** (N requests fighting over the last unit → never exceeds stock); outbox relay |
 | Contract      | zod contracts                    | FE/BE share the same schema; OpenAPI snapshot                                                                                                                                                                                                                                                                                                                                                   |
 | E2E           | Playwright + a mock gateway      | Customer: search → hold a slot → pay (including one **discount code** case) → receive an email (mailpit) → cancel → refund; **equipment rental**: book a quantity → security deposit → return the item → deposit refunded; Tenant: create a listing → approve → appears on the storefront; Partner: approve a request-to-book                                                                   |
-| Real gateway  | PayOS sandbox                    | One full end-to-end payment + refund flow before release                                                                                                                                                                                                                                                                                                                                        |
+| Real gateway  | SePay Sandbox                   | One full end-to-end payment + IPN + reconciliation flow before release                                                                                                                                                                                                                                                                                                                           |
 
 Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green + a working demo via `docker compose up` with seed data.
 
@@ -1297,7 +1332,7 @@ Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green
 
 | #   | Issue                                                                                   | Recommendation / Status                                                                                                                      |
 | --- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Limited refund APIs among Vietnamese gateways                                           | A `manual_required` flow is already designed; confirm PayOS's refund capability during integration                                           |
+| 1   | Limited refund APIs among Vietnamese gateways                                           | SePay currently uses the existing `manual_required` refund flow; re-check provider capability before enabling automated refunds               |
 | 2   | Money lands in the tenant's account (not the platform's) → platform fee collected later | Reconciliation + monthly invoicing; consider a collect-on-behalf-of model once legally viable                                                |
 | 3   | Custom domain SSL                                                                       | Use a reverse proxy that self-issues certs (Caddy/Traefik) or a hosting platform that supports it (decide when choosing hosting)             |
 | 4   | Zalo ZNS requires an OA + pre-approved templates                                        | Start the registration process early in Phase 1, integrate in Phase 2                                                                        |
@@ -1305,7 +1340,7 @@ Definition of done per phase: `pnpm turbo lint typecheck test` green + E2E green
 | 6   | Production hosting/deployment                                                           | Not yet decided (VPS + Docker, or a PaaS). Doesn't block Phase 0–1 (docker-compose for dev)                                                  |
 | 7   | Vietnamese tax / e-invoicing                                                            | Out of scope for the MVP; the ledger already has enough data to generate reports later                                                       |
 | 8   | Personal data protection (Decree 13/2023/NĐ-CP)                                         | A privacy policy + consent at data collection; encryption of sensitive PII; a data-deletion process on request; customer data-access logging |
-| 9   | Customer–partner disputes (service not as described...)                                 | Handled manually by the tenant admin early on (cancel + refund at their discretion); a dedicated dispute feature is in the backlog           |
+| 9   | Customer–partner disputes (service not as described...)                                 | Dedicated custody dispute state is implemented; Tenant still adjudicates manually and performs SePay refunds by bank transfer with evidence |
 
 ---
 
@@ -1326,7 +1361,8 @@ Items that have **already been considered** but deliberately deferred (not overl
 - **Map/location-based search** — needed for the `rental` template; consider pulling forward into Phase 2 alongside that template.
 - **Multi-listing cart / combos** in a single checkout (studio + photographer + makeup in the same time slot — a real need in the studio industry; consider pulling forward into Phase 3) and **add-on services** (extra lighting, extra hours) attached to a primary listing.
 - **Impersonation** — a super admin "logging in as a tenant" for support purposes (with auditing).
-- **A dedicated dispute process** with its own states and SLA.
+- **Automated dispute SLA/escalation** beyond the implemented claim → Partner response → Tenant
+  release/full/partial-refund workflow.
 - **VAT invoices / e-invoices** for business customers.
 - **Google/Zalo login** (social login).
 - **Mobile app** — the API contracts are already reusable for this.

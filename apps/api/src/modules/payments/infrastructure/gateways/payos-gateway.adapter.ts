@@ -50,12 +50,19 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     const signature = signedPayload(body, this.creds.checksumKey);
     const res = await fetch(`${this.base}/v2/payment-requests`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-client-id': this.creds.clientId, 'x-api-key': this.creds.apiKey },
+      headers: {
+        'content-type': 'application/json',
+        'x-client-id': this.creds.clientId,
+        'x-api-key': this.creds.apiKey,
+      },
       body: JSON.stringify({ ...body, signature }),
     });
     const json = (await res.json()) as { data?: { checkoutUrl: string; paymentLinkId: string } };
     if (!json.data) throw new Error('PayOS did not return a payment link');
-    return { paymentUrl: json.data.checkoutUrl, gatewayTxnId: json.data.paymentLinkId };
+    return {
+      destination: { type: 'redirect', paymentUrl: json.data.checkoutUrl },
+      gatewayTxnId: json.data.paymentLinkId,
+    };
   }
 
   peekReference(rawBody: Buffer): string | null {
@@ -90,7 +97,12 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
       headers: { 'x-client-id': this.creds.clientId, 'x-api-key': this.creds.apiKey },
     });
     const json = (await res.json()) as { data?: { status: string; amount: number } };
-    const status = json.data?.status === 'PAID' ? 'succeeded' : json.data?.status === 'EXPIRED' ? 'expired' : 'pending';
+    const status =
+      json.data?.status === 'PAID'
+        ? 'succeeded'
+        : json.data?.status === 'EXPIRED'
+          ? 'expired'
+          : 'pending';
     return { status, amountVnd: BigInt(json.data?.amount ?? 0) };
   }
 }

@@ -39,6 +39,15 @@ export interface TextFieldConfig<T extends FieldValues> extends BaseFieldConfig<
    * Ignored for non-password types.
    */
   showToggle?: boolean;
+  min?: number;
+  max?: number;
+}
+
+/** `color` — free-form CSS color input enhanced with a visual HEX picker. */
+export interface ColorFieldConfig<T extends FieldValues> extends BaseFieldConfig<T> {
+  type: 'color';
+  /** Optional quick-pick palette. Values should use six-digit HEX notation. */
+  presets?: string[];
 }
 
 /** `select | combobox | radio` — pick one of `options`. */
@@ -89,6 +98,7 @@ export interface FileFieldConfig<T extends FieldValues> extends BaseFieldConfig<
 
 export type FieldConfig<T extends FieldValues> =
   | TextFieldConfig<T>
+  | ColorFieldConfig<T>
   | ChoiceFieldConfig<T>
   | BooleanFieldConfig<T>
   | DateFieldConfig<T>

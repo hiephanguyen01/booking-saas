@@ -3,6 +3,7 @@ import { data as routeData, Form } from 'react-router';
 import { Ban } from 'lucide-react';
 import {
   reasonInputSchema,
+  type BookingSettlementResponse,
   type BookingStatusHistoryResponse,
   type CancelBookingResponse,
   type PartnerResponse,
@@ -32,6 +33,7 @@ import { useBusy } from '~/hooks/use-busy';
 import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import { Money } from '~/components/money';
 import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
+import { BookingSettlementCard } from '~/features/bookings/components/booking-settlement-card';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết đặt chỗ · Tenant · Bookify' }];
@@ -39,19 +41,26 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.bookings.read');
-  const bookingRes = await apiGet<TenantBookingResponse>(`/tenant/bookings/${params.bookingId}`, auth);
+  const bookingRes = await apiGet<TenantBookingResponse>(
+    `/tenant/bookings/${params.bookingId}`,
+    auth,
+  );
   if (!bookingRes.ok || !bookingRes.data) {
-    throw new Response('Không tìm thấy đặt chỗ.', { status: bookingRes.status === 403 ? 403 : 404 });
+    throw new Response('Không tìm thấy đặt chỗ.', {
+      status: bookingRes.status === 403 ? 403 : 404,
+    });
   }
   const booking = bookingRes.data;
   const canReadPartners = can('tenant.partners.read');
 
-  // Both are secondary: history degrades to a "failed" panel; the partner name is
-  // only for the metadata link. Neither should 500 the page.
-  const [historyRes, partnerRes] = await Promise.all([
+  // All are secondary reads and degrade independently; none may blank the booking page.
+  const [historyRes, partnerRes, settlementRes] = await Promise.all([
     apiGet<BookingStatusHistoryResponse[]>(`/tenant/bookings/${params.bookingId}/history`, auth),
     canReadPartners
       ? apiGet<PartnerResponse>(`/tenant/partners/${booking.partnerId}`, auth)
+      : Promise.resolve(null),
+    can('tenant.finance.read')
+      ? apiGet<BookingSettlementResponse>(`/tenant/finance/settlements/${params.bookingId}`, auth)
       : Promise.resolve(null),
   ]);
 
@@ -61,6 +70,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     historyFailed: !historyRes.ok,
     partnerName: partnerRes?.ok ? (partnerRes.data?.name ?? null) : null,
     partnerHref: canReadPartners ? `/tenant/partners/${booking.partnerId}` : null,
+    settlement: settlementRes?.ok ? (settlementRes.data ?? null) : null,
     canCancel: can('tenant.bookings.cancel'),
   };
 }
@@ -79,11 +89,16 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!res.ok || !res.data) {
     return routeData({ error: res.error ?? 'Không huỷ được đặt chỗ.' }, { status: 400 });
   }
-  return { ok: true as const, refundAmount: res.data.refundAmount, refundPercent: res.data.refundPercent };
+  return {
+    ok: true as const,
+    refundAmount: res.data.refundAmount,
+    refundPercent: res.data.refundPercent,
+  };
 }
 
 export default function TenantBookingDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { booking, history, historyFailed, partnerName, partnerHref, canCancel } = loaderData;
+  const { booking, history, historyFailed, partnerName, partnerHref, settlement, canCancel } =
+    loaderData;
   const { readOnly } = useTenantArea();
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
   const cancelled = actionData && 'ok' in actionData ? actionData : null;
@@ -118,6 +133,7 @@ export default function TenantBookingDetail({ loaderData, actionData }: Route.Co
         partnerHref={partnerHref}
         actions={cancellable ? <CancelDialog booking={booking} /> : null}
       />
+      {settlement ? <BookingSettlementCard settlement={settlement} /> : null}
     </div>
   );
 }

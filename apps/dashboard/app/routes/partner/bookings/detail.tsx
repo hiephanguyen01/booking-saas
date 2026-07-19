@@ -1,5 +1,9 @@
 import { useFetcher } from 'react-router';
-import type { BookingStatusHistoryResponse, PartnerBookingResponse } from '@booking/contracts';
+import type {
+  PartnerBookingSettlementResponse,
+  BookingStatusHistoryResponse,
+  PartnerBookingResponse,
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
@@ -15,6 +19,7 @@ import {
 } from '~/features/bookings/server/partner-booking-actions.server';
 import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
 import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
+import { PartnerBookingSettlementCard } from '~/features/bookings/components/partner-booking-settlement-card';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết lượt đặt · Đối tác · Bookify' }];
@@ -31,15 +36,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       status: bookingRes.status === 403 ? 403 : 404,
     });
   }
-  // Status history is a secondary fetch — degrade to a "failed" panel, never 500.
-  const historyRes = await apiGet<BookingStatusHistoryResponse[]>(
-    `/partner/bookings/${params.bookingId}/history`,
-    auth,
-  );
+  // Secondary reads degrade independently; neither may blank the booking page.
+  const [historyRes, settlementRes] = await Promise.all([
+    apiGet<BookingStatusHistoryResponse[]>(`/partner/bookings/${params.bookingId}/history`, auth),
+    can('partner.finance.read')
+      ? apiGet<PartnerBookingSettlementResponse>(`/partner/finance/settlements/${params.bookingId}`, auth)
+      : Promise.resolve(null),
+  ]);
   return {
     booking: bookingRes.data,
     history: historyRes.ok && historyRes.data ? toTimelineEntries(historyRes.data) : undefined,
     historyFailed: !historyRes.ok,
+    settlement: settlementRes?.ok ? (settlementRes.data ?? null) : null,
     canApprove: can('partner.bookings.approve'),
     canManage: can('partner.bookings.cancel'),
     canWrite: can('partner.bookings.write'),
@@ -52,8 +60,9 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerBookingDetail({ loaderData }: Route.ComponentProps) {
-  const { booking, history, historyFailed, canApprove, canManage, canWrite } = loaderData;
-  const canAct = canApprove || canManage;
+  const { booking, history, historyFailed, settlement, canApprove, canManage, canWrite } =
+    loaderData;
+  const canAct = canApprove || canManage || canWrite;
 
   const footer =
     canAct || canWrite ? (
@@ -64,6 +73,7 @@ export default function PartnerBookingDetail({ loaderData }: Route.ComponentProp
               booking={booking}
               canApprove={canApprove}
               canManage={canManage}
+              canWrite={canWrite}
               size="sm"
               align="start"
               emptyLabel="Không có thao tác nào ở trạng thái hiện tại."
@@ -90,6 +100,7 @@ export default function PartnerBookingDetail({ loaderData }: Route.ComponentProp
         historyFailed={historyFailed}
         footer={footer}
       />
+      {settlement ? <PartnerBookingSettlementCard settlement={settlement} /> : null}
     </div>
   );
 }

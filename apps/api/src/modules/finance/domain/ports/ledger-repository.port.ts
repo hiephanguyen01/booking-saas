@@ -38,6 +38,7 @@ export interface RecordJournalRefs {
   paymentId?: string | null;
   payoutId?: string | null;
   memo?: string | null;
+  availableAt?: Date;
 }
 
 /** Optional, ANDed filters for the tenant ledger view (§13.3). */
@@ -65,7 +66,12 @@ export interface ILedgerRepository {
    * leg's owner to a `ledger_account` (created on first use). All inserts happen in
    * the caller's tx so the deferred balance trigger validates them together.
    */
-  recordJournal(tx: PrismaTx, tenantId: string, legs: JournalLeg[], refs: RecordJournalRefs): Promise<string>;
+  recordJournal(
+    tx: PrismaTx,
+    tenantId: string,
+    legs: JournalLeg[],
+    refs: RecordJournalRefs,
+  ): Promise<string>;
   /** Existing entries for a booking (for idempotency guards + clawback reversal). */
   entriesForBooking(tx: PrismaTx, bookingId: string): Promise<LedgerEntryRecord[]>;
   /** Net balance for one owner (RLS-scoped): credit − debit. */
@@ -73,7 +79,12 @@ export interface ILedgerRepository {
   /** All non-zero owner balances of a given type for the current tenant. */
   balancesByType(tx: PrismaTx, ownerType: OwnerType): Promise<OwnerBalance[]>;
   /** Recent ledger entries for one owner (partner/affiliate history). */
-  entriesForOwner(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, limit: number): Promise<LedgerEntryView[]>;
+  entriesForOwner(
+    tx: PrismaTx,
+    ownerType: OwnerType,
+    ownerId: string | null,
+    limit: number,
+  ): Promise<LedgerEntryView[]>;
   /**
    * Paginated journal/ledger lines for the current tenant (RLS-scoped), newest
    * first — the tenant finance ledger view (§13.3). Returns the page + the total
@@ -86,9 +97,13 @@ export interface ILedgerRepository {
     filters: LedgerFilters,
   ): Promise<{ items: LedgerEntryView[]; total: number }>;
   /**
-   * Payable that has cleared the holding period (§7.7): net (credit − debit) over
-   * the owner's entries older than `cutoff`, while settlements (payout/clawback)
-   * always count so a recent payout still reduces what is available.
+   * Payable that has cleared the holding period (§7.7), evaluated against the DB
+   * transaction clock. Payout/clawback always count so a recent payout still
+   * reduces what is available.
    */
-  maturePayable(tx: PrismaTx, ownerType: OwnerType, ownerId: string | null, cutoff: Date): Promise<bigint>;
+  maturePayable(
+    tx: PrismaTx,
+    ownerType: OwnerType,
+    ownerId: string | null,
+  ): Promise<{ amount: bigint; cutoff: Date }>;
 }

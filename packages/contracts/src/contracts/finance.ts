@@ -41,12 +41,21 @@ const commissionRuleBaseSchema = z.object({
 });
 
 function refineTarget(
-  data: { appliesTo: CommissionAppliesToDto; listingTypeId?: string; categoryId?: string; partnerId?: string },
+  data: {
+    appliesTo: CommissionAppliesToDto;
+    listingTypeId?: string;
+    categoryId?: string;
+    partnerId?: string;
+  },
   ctx: z.RefinementCtx,
 ): void {
   const need = (field: 'listingTypeId' | 'categoryId' | 'partnerId') => {
     if (!data[field]) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: `${field} is required for appliesTo=${data.appliesTo}` });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: `${field} is required for appliesTo=${data.appliesTo}`,
+      });
     }
   };
   if (data.appliesTo === 'listing_type') need('listingTypeId');
@@ -55,19 +64,32 @@ function refineTarget(
 }
 
 function refinePercentRate(
-  data: { tenantRateType?: RateTypeDto; tenantRate?: string; affiliateRateType?: RateTypeDto; affiliateRate?: string },
+  data: {
+    tenantRateType?: RateTypeDto;
+    tenantRate?: string;
+    affiliateRateType?: RateTypeDto;
+    affiliateRate?: string;
+  },
   ctx: z.RefinementCtx,
 ): void {
   if (data.tenantRateType === 'percent' && data.tenantRate !== undefined) {
     const n = Number(data.tenantRate);
     if (n < 0 || n > 100) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tenantRate'], message: 'A percent tenant rate must be between 0 and 100' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tenantRate'],
+        message: 'A percent tenant rate must be between 0 and 100',
+      });
     }
   }
   if (data.affiliateRateType === 'percent' && data.affiliateRate !== undefined) {
     const n = Number(data.affiliateRate);
     if (n < 0 || n > 100) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['affiliateRate'], message: 'A percent affiliate rate must be between 0 and 100' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['affiliateRate'],
+        message: 'A percent affiliate rate must be between 0 and 100',
+      });
     }
   }
 }
@@ -88,7 +110,12 @@ export const updateCommissionRuleInputSchema = commissionRuleBaseSchema
   .superRefine((data, ctx) => {
     if (data.appliesTo !== undefined) {
       refineTarget(
-        { appliesTo: data.appliesTo, listingTypeId: data.listingTypeId, categoryId: data.categoryId, partnerId: data.partnerId },
+        {
+          appliesTo: data.appliesTo,
+          listingTypeId: data.listingTypeId,
+          categoryId: data.categoryId,
+          partnerId: data.partnerId,
+        },
         ctx,
       );
     }
@@ -235,9 +262,234 @@ export type PayoutPayeeTypeDto = z.infer<typeof payoutPayeeTypeSchema>;
 export const payoutStatusSchema = z.enum(['pending', 'processing', 'paid', 'failed']);
 export type PayoutStatusDto = z.infer<typeof payoutStatusSchema>;
 
+export const settlementStatusSchema = z.enum([
+  'held',
+  'dispute_window',
+  'disputed',
+  'refund_pending',
+  'released',
+  'refunded',
+]);
+export type SettlementStatusDto = z.infer<typeof settlementStatusSchema>;
+
+export const settlementKindSchema = z.enum([
+  'service_completed',
+  'customer_no_show',
+  'cancellation_fee',
+]);
+
+export const bookingSettlementResponseSchema = z.object({
+  id: uuidSchema,
+  tenantId: uuidSchema,
+  tenantName: z.string().nullable(),
+  bookingId: uuidSchema,
+  paymentId: uuidSchema,
+  partnerId: uuidSchema,
+  status: settlementStatusSchema,
+  kind: settlementKindSchema,
+  bookingCode: z.string().nullable(),
+  listingTitle: z.string().nullable(),
+  customerName: z.string().nullable(),
+  partnerName: z.string().nullable(),
+  onlineHeldAmount: vndDigits,
+  remainingHeldAmount: vndDigits,
+  onsiteCollectedAmount: vndDigits,
+  securityDepositHeld: vndDigits,
+  tenantCommissionGross: vndDigits,
+  tenantNetEarning: signedVndDigits,
+  partnerGrossEarning: vndDigits,
+  partnerPayable: vndDigits,
+  platformFee: vndDigits,
+  affiliateCommission: vndDigits,
+  refundedAmount: vndDigits,
+  retainedAmount: vndDigits,
+  refundId: uuidSchema.nullable(),
+  payoutPendingAmount: vndDigits,
+  paidAmount: vndDigits,
+  remainingPayableAmount: vndDigits,
+  latestPayoutId: uuidSchema.nullable(),
+  latestPayoutStatus: payoutStatusSchema.nullable(),
+  latestPayoutReference: z.string().nullable(),
+  latestPayoutPaidAt: z.string().nullable(),
+  completedAt: z.string().nullable(),
+  disputeUntil: z.string().nullable(),
+  releasedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type BookingSettlementResponse = z.infer<typeof bookingSettlementResponseSchema>;
+
+/** Partner-safe projection: no tenant net/platform/affiliate internals. */
+export const partnerBookingSettlementResponseSchema = bookingSettlementResponseSchema.pick({
+  id: true,
+  bookingId: true,
+  status: true,
+  kind: true,
+  bookingCode: true,
+  listingTitle: true,
+  partnerName: true,
+  onlineHeldAmount: true,
+  remainingHeldAmount: true,
+  onsiteCollectedAmount: true,
+  partnerGrossEarning: true,
+  partnerPayable: true,
+  refundedAmount: true,
+  payoutPendingAmount: true,
+  paidAmount: true,
+  remainingPayableAmount: true,
+  latestPayoutId: true,
+  latestPayoutStatus: true,
+  latestPayoutReference: true,
+  latestPayoutPaidAt: true,
+  completedAt: true,
+  disputeUntil: true,
+  releasedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type PartnerBookingSettlementResponse = z.infer<
+  typeof partnerBookingSettlementResponseSchema
+>;
+
+/** Customer-safe custody state used to decide whether a dispute can be opened. */
+export const customerBookingSettlementResponseSchema = bookingSettlementResponseSchema.pick({
+  id: true,
+  bookingId: true,
+  status: true,
+  kind: true,
+  bookingCode: true,
+  onlineHeldAmount: true,
+  remainingHeldAmount: true,
+  refundedAmount: true,
+  retainedAmount: true,
+  completedAt: true,
+  disputeUntil: true,
+  releasedAt: true,
+  updatedAt: true,
+}).extend({
+  /** One settlement gets one customer review; this prevents repeated partial-refund claims. */
+  canOpenDispute: z.boolean(),
+  /** A provider/manual transfer has been confirmed, including security-only refunds. */
+  refundConfirmed: z.boolean(),
+  dispute: z
+    .object({
+      id: uuidSchema,
+      status: z.enum(['open', 'accepted', 'rejected', 'resolved']),
+      resolution: z.enum(['release', 'full_refund', 'partial_refund']).nullable(),
+      resolutionNote: z.string().nullable(),
+      refundAmount: vndDigits,
+      partnerResponse: z.string().nullable(),
+      partnerRespondedAt: z.string().nullable(),
+      resolvedAt: z.string().nullable(),
+      createdAt: z.string(),
+    })
+    .nullable(),
+});
+export type CustomerBookingSettlementResponse = z.infer<
+  typeof customerBookingSettlementResponseSchema
+>;
+
+export const bookingSettlementsQuerySchema = paginationQuerySchema.extend({
+  status: settlementStatusSchema.optional(),
+  partnerId: uuidSchema.optional(),
+});
+export type BookingSettlementsQuery = z.infer<typeof bookingSettlementsQuerySchema>;
+
+export const settlementSummaryResponseSchema = z.object({
+  heldAmount: vndDigits,
+  disputedAmount: vndDigits,
+  heldPartnerPayableAmount: vndDigits,
+  disputedPartnerPayableAmount: vndDigits,
+  refundPendingAmount: vndDigits,
+  releasedPayableAmount: vndDigits,
+  payoutPendingAmount: vndDigits,
+  paidAmount: vndDigits,
+  remainingPayableAmount: vndDigits,
+  counts: z.record(settlementStatusSchema, z.number().int().nonnegative()),
+});
+export type SettlementSummaryResponse = z.infer<typeof settlementSummaryResponseSchema>;
+
+export const openSettlementDisputeInputSchema = z.object({
+  bookingId: uuidSchema,
+  reason: z.string().trim().min(10).max(2000),
+  evidence: z.array(z.string().trim().max(500)).max(10).default([]),
+});
+export type OpenSettlementDisputeInput = z.infer<typeof openSettlementDisputeInputSchema>;
+
+export const resolveSettlementDisputeInputSchema = z
+  .object({
+    resolution: z.enum(['release', 'full_refund', 'partial_refund']),
+    refundAmount: vndDigits.optional(),
+    note: z.string().trim().min(1).max(2000),
+  })
+  .superRefine((value, ctx) => {
+    if (value.resolution === 'partial_refund' && !value.refundAmount) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['refundAmount'],
+        message: 'Partial refund amount is required',
+      });
+    }
+  });
+export type ResolveSettlementDisputeInput = z.infer<
+  typeof resolveSettlementDisputeInputSchema
+>;
+
+export const respondSettlementDisputeInputSchema = z.object({
+  response: z.string().trim().min(10).max(2000),
+});
+export type RespondSettlementDisputeInput = z.infer<
+  typeof respondSettlementDisputeInputSchema
+>;
+
+export const settlementDisputeStatusSchema = z.enum(['open', 'accepted', 'rejected', 'resolved']);
+export const settlementDisputeResponseSchema = z.object({
+  id: uuidSchema,
+  settlementId: uuidSchema,
+  bookingId: uuidSchema,
+  openedByUserId: uuidSchema,
+  openedByRole: z.string(),
+  bookingCode: z.string().nullable(),
+  listingTitle: z.string().nullable(),
+  customerName: z.string().nullable(),
+  partnerName: z.string().nullable(),
+  onlineHeldAmount: vndDigits,
+  remainingHeldAmount: vndDigits,
+  disputeUntil: z.string().nullable(),
+  reason: z.string(),
+  evidence: z.array(z.string()),
+  partnerResponse: z.string().nullable(),
+  partnerRespondedAt: z.string().nullable(),
+  status: settlementDisputeStatusSchema,
+  resolution: z.enum(['release', 'full_refund', 'partial_refund']).nullable(),
+  resolutionNote: z.string().nullable(),
+  refundAmount: vndDigits,
+  resolvedBy: uuidSchema.nullable(),
+  resolvedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type SettlementDisputeResponse = z.infer<typeof settlementDisputeResponseSchema>;
+
+/** Partner-safe claim view: no raw customer/resolver user ids. */
+export const partnerSettlementDisputeResponseSchema = settlementDisputeResponseSchema.omit({
+  openedByUserId: true,
+  resolvedBy: true,
+});
+export type PartnerSettlementDisputeResponse = z.infer<
+  typeof partnerSettlementDisputeResponseSchema
+>;
+
 /** Payout cycle configured per tenant (§7.7): the cadence a payout run covers. */
 export const payoutCycleSchema = z.enum(['weekly', 'monthly']);
 export type PayoutCycleDto = z.infer<typeof payoutCycleSchema>;
+
+export const payoutPolicySchema = z.object({
+  holdingDays: z.number().int().min(0).max(90),
+  minAmount: vndDigits,
+  cycle: payoutCycleSchema,
+});
+export type PayoutPolicyDto = z.infer<typeof payoutPolicySchema>;
 
 export const createPayoutInputSchema = z.object({
   payeeType: payoutPayeeTypeSchema,
@@ -314,24 +566,22 @@ export type TenantPayableQuery = z.infer<typeof tenantPayableQuerySchema>;
  * would pay right now, plus every input that shaped it.
  *
  * `balance` (the raw ledger balance) is NOT what gets paid — a payout run pays
- * `available` = `maturePayable − outstanding`. The two diverge whenever money is
- * still inside the holding window or is already claimed by an unsettled run, so a
- * payout UI must show `available` and use `balance` only as context. Showing
- * `balance` as the payable is what makes a run fail with a hard
- * `NOTHING_TO_PAY` / `BELOW_MINIMUM` on a payee that looks flush.
+ * `available` = `maturePayable − outstanding`. Held settlements have no payable
+ * journal yet, while pending/processing payout runs already claim released
+ * payable. The UI must therefore show `available` and use `balance` only as context.
  */
 export const tenantPayableResponseSchema = z.object({
   payeeType: payoutPayeeTypeSchema,
   payeeId: z.string(),
   /** Raw ledger balance (credit − debit), signed VND. Context only — not payable. */
   balance: signedVndDigits,
-  /** Net payable that has cleared the holding window, signed VND. */
+  /** Net payable recognized by released settlement journals, signed VND. */
   maturePayable: signedVndDigits,
   /** Already claimed by pending/processing runs, VND. Subtracted from the mature payable. */
   outstanding: vndDigits,
   /** `maturePayable − outstanding` — the amount a run opened now would pay. Signed. */
   available: signedVndDigits,
-  /** Tenant policy: dispute buffer, in days, before payable matures. */
+  /** Tenant policy: dispute buffer applied before a settlement journal is released. */
   holdingDays: z.number().int(),
   /** Tenant policy: minimum VND a run must reach. */
   minAmount: vndDigits,

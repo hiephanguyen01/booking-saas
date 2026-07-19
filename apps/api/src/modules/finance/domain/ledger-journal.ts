@@ -62,9 +62,22 @@ export interface RevenueJournalInput {
   cashEntryType: LedgerEntryType;
 }
 
-const owner = (ownerType: OwnerType, ownerId: string | null): LedgerOwnerRef => ({ ownerType, ownerId });
-const debit = (o: LedgerOwnerRef, entryType: LedgerEntryType, amount: Vnd): JournalLeg => ({ owner: o, entryType, debit: amount, credit: 0n });
-const credit = (o: LedgerOwnerRef, entryType: LedgerEntryType, amount: Vnd): JournalLeg => ({ owner: o, entryType, debit: 0n, credit: amount });
+const owner = (ownerType: OwnerType, ownerId: string | null): LedgerOwnerRef => ({
+  ownerType,
+  ownerId,
+});
+const debit = (o: LedgerOwnerRef, entryType: LedgerEntryType, amount: Vnd): JournalLeg => ({
+  owner: o,
+  entryType,
+  debit: amount,
+  credit: 0n,
+});
+const credit = (o: LedgerOwnerRef, entryType: LedgerEntryType, amount: Vnd): JournalLeg => ({
+  owner: o,
+  entryType,
+  debit: 0n,
+  credit: amount,
+});
 
 /** Entry types that mark a booking as already having its terminal revenue journal. */
 const REVENUE_TYPES: ReadonlySet<LedgerEntryType> = new Set([
@@ -75,12 +88,29 @@ const REVENUE_TYPES: ReadonlySet<LedgerEntryType> = new Set([
 ]);
 
 /**
- * Idempotency guard for the booking-lifecycle journals: the outbox delivers at
- * least once, so a terminal revenue journal is only written when the booking's
- * existing entries contain none of the {@link REVENUE_TYPES}.
+ * Return the currently-active revenue journal from chronologically ordered
+ * booking entries. A clawback closes the preceding cycle; a later partial-refund
+ * release starts a new cycle and must not be confused with the old reversal.
  */
-export function hasRevenueJournal(entries: ReadonlyArray<{ entryType: LedgerEntryType }>): boolean {
-  return entries.some((e) => REVENUE_TYPES.has(e.entryType));
+export function activeRevenueJournalId(
+  entries: ReadonlyArray<{ journalId: string; entryType: LedgerEntryType }>,
+): string | null {
+  let activeJournalId: string | null = null;
+  for (const entry of entries) {
+    if (entry.entryType === 'clawback') {
+      activeJournalId = null;
+    } else if (REVENUE_TYPES.has(entry.entryType)) {
+      activeJournalId = entry.journalId;
+    }
+  }
+  return activeJournalId;
+}
+
+/** Idempotency guard for the booking-lifecycle revenue journal. */
+export function hasRevenueJournal(
+  entries: ReadonlyArray<{ journalId: string; entryType: LedgerEntryType }>,
+): boolean {
+  return activeRevenueJournalId(entries) !== null;
 }
 
 export function sumDebit(legs: JournalLeg[]): Vnd {
@@ -94,11 +124,18 @@ export function isBalanced(legs: JournalLeg[]): boolean {
 }
 
 /** Append the tenant-revenue residual leg so the journal balances exactly. */
-function withTenantResidual(tenantId: string, legs: JournalLeg[], entryType: LedgerEntryType = 'booking_revenue'): JournalLeg[] {
+function withTenantResidual(
+  tenantId: string,
+  legs: JournalLeg[],
+  entryType: LedgerEntryType = 'booking_revenue',
+): JournalLeg[] {
   const residual = sumDebit(legs) - sumCredit(legs); // >0 → tenant revenue credit
   if (residual === 0n) return legs;
   const revenue = owner('tenant', tenantId);
-  return [...legs, residual > 0n ? credit(revenue, entryType, residual) : debit(revenue, entryType, -residual)];
+  return [
+    ...legs,
+    residual > 0n ? credit(revenue, entryType, residual) : debit(revenue, entryType, -residual),
+  ];
 }
 
 /**
@@ -108,7 +145,8 @@ function withTenantResidual(tenantId: string, legs: JournalLeg[], entryType: Led
  * owes them (§13.1).
  */
 export function buildRevenueJournal(input: RevenueJournalInput): JournalLeg[] {
-  const { tenantId, partnerId, affiliateId, isHouse, commissionBase, additionalCharges, split } = input;
+  const { tenantId, partnerId, affiliateId, isHouse, commissionBase, additionalCharges, split } =
+    input;
   const legs: JournalLeg[] = [];
   const tenantCash = owner('tenant', null);
 
@@ -127,12 +165,17 @@ export function buildRevenueJournal(input: RevenueJournalInput): JournalLeg[] {
   }
 
   // A tenant-funded discount the tenant absorbs (reduces its revenue).
-  if (split.promoDiscount > 0n) legs.push(debit(owner('tenant', tenantId), 'promo_discount', split.promoDiscount));
+  if (split.promoDiscount > 0n)
+    legs.push(debit(owner('tenant', tenantId), 'promo_discount', split.promoDiscount));
 
-  if (!isHouse && split.partnerShare > 0n) legs.push(credit(owner('partner', partnerId), 'partner_share', split.partnerShare));
-  if (split.platformFee > 0n) legs.push(credit(owner('platform', null), 'platform_fee', split.platformFee));
+  if (!isHouse && split.partnerShare > 0n)
+    legs.push(credit(owner('partner', partnerId), 'partner_share', split.partnerShare));
+  if (split.platformFee > 0n)
+    legs.push(credit(owner('platform', null), 'platform_fee', split.platformFee));
   if (split.affiliateCommission > 0n && affiliateId) {
-    legs.push(credit(owner('affiliate', affiliateId), 'affiliate_commission', split.affiliateCommission));
+    legs.push(
+      credit(owner('affiliate', affiliateId), 'affiliate_commission', split.affiliateCommission),
+    );
   }
 
   return withTenantResidual(tenantId, legs);
@@ -142,7 +185,10 @@ export function buildRevenueJournal(input: RevenueJournalInput): JournalLeg[] {
  * Cancellation with a retained portion (§13.1): the tenant keeps `retained`
  * (paid − refunded) as a cancellation fee. No journal when the refund is full.
  */
-export function buildCancellationFeeJournal(params: { tenantId: string; retained: Vnd }): JournalLeg[] {
+export function buildCancellationFeeJournal(params: {
+  tenantId: string;
+  retained: Vnd;
+}): JournalLeg[] {
   if (params.retained <= 0n) return [];
   const legs = [debit(owner('tenant', null), 'cancellation_fee', params.retained)];
   return withTenantResidual(params.tenantId, legs, 'cancellation_fee');
@@ -154,7 +200,12 @@ export function buildCancellationFeeJournal(params: { tenantId: string; retained
  * push a partner/affiliate balance negative → recovered from the next payout.
  */
 export function buildClawbackJournal(originalLegs: JournalLeg[]): JournalLeg[] {
-  return originalLegs.map((l) => ({ owner: l.owner, entryType: 'clawback' as const, debit: l.credit, credit: l.debit }));
+  return originalLegs.map((l) => ({
+    owner: l.owner,
+    entryType: 'clawback' as const,
+    debit: l.credit,
+    credit: l.debit,
+  }));
 }
 
 /**

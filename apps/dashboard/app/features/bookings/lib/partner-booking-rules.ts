@@ -15,28 +15,29 @@ export interface PartnerActionableBooking {
   pickedUpAt: string | null;
   returnedAt: string | null;
   securityDeposit: string;
+  finalAmount: string;
+  paidAmount: string;
+  additionalCharges: Array<{ type: string; amount: string; note?: string }>;
   endUtc: string;
 }
 
-/** 48h after the slot end — matches the backend no-show window (§8.2). */
-export const NO_SHOW_AFTER_END_MS = 48 * 60 * 60 * 1000;
+/** No-show may be reported from slot end through end + 48h. */
+export const NO_SHOW_WINDOW_MS = 48 * 60 * 60 * 1000;
 
-/** A confirmed booking whose slot end + the backend's 48h window has elapsed. */
+/** A confirmed booking currently inside the backend's 48h no-show window. */
 export function isNoShowEligible(booking: PartnerActionableBooking): boolean {
+  const now = Date.now();
+  const end = new Date(booking.endUtc).getTime();
   return (
     booking.status === 'confirmed' &&
-    Date.now() >= new Date(booking.endUtc).getTime() + NO_SHOW_AFTER_END_MS
+    now >= end &&
+    now <= end + NO_SHOW_WINDOW_MS
   );
 }
 
 /** Every action a partner can take on a booking, in display order. */
 export type PartnerBookingActionKind =
-  | 'approve'
-  | 'reject'
-  | 'pick-up'
-  | 'return'
-  | 'no-show'
-  | 'cancel';
+  'approve' | 'reject' | 'complete' | 'pick-up' | 'return' | 'no-show' | 'cancel';
 
 /**
  * The actions available for one booking, derived from its status/fulfillment
@@ -45,7 +46,11 @@ export type PartnerBookingActionKind =
  */
 export function availablePartnerBookingActions(
   booking: PartnerActionableBooking,
-  { canApprove, canManage }: { canApprove: boolean; canManage: boolean },
+  {
+    canApprove,
+    canManage,
+    canWrite,
+  }: { canApprove: boolean; canManage: boolean; canWrite: boolean },
 ): PartnerBookingActionKind[] {
   const actions: PartnerBookingActionKind[] = [];
   const isInventory = booking.bookingMode === 'inventory';
@@ -58,7 +63,15 @@ export function availablePartnerBookingActions(
     if (isInventory && booking.pickedUpAt && !booking.returnedAt) actions.push('return');
     if (isNoShowEligible(booking)) actions.push('no-show');
   }
-  if ((booking.status === 'confirmed' || booking.status === 'pending_payment') && canManage) {
+  if (
+    booking.status === 'confirmed' &&
+    booking.bookingMode !== 'inventory' &&
+    canWrite &&
+    Date.now() >= new Date(booking.endUtc).getTime()
+  ) {
+    actions.unshift('complete');
+  }
+  if (booking.status === 'confirmed' && canManage) {
     actions.push('cancel');
   }
   return actions;

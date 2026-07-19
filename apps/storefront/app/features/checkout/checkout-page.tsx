@@ -8,6 +8,7 @@ import { checkoutAmounts, policyLines } from './checkout-presentation';
 import { BookingColumn } from './components/booking-column';
 import { CheckoutForm } from './components/checkout-form';
 import { MemberBanner } from './components/member-banner';
+import { PaymentHandoff } from './components/payment-handoff';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const { listing, mode, start, end, qty, quote, promoCode, promo, currentUser } = loaderData;
@@ -18,6 +19,10 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const [searchParams] = useSearchParams();
   const amounts = checkoutAmounts(quote, promo?.valid ? promo : null);
   const checkoutPath = `${location.pathname}${location.search}`;
+
+  if (actionData && 'handoff' in actionData && actionData.handoff) {
+    return <PaymentHandoff destination={actionData.handoff} />;
+  }
 
   return (
     <div className="bg-muted py-4 sm:py-6 lg:py-8">

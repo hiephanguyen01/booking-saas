@@ -53,8 +53,15 @@ Every actor is a single `User` row; what they can do is decided by **role assign
   customer funds, etc.); see `TONG-QUAN.md` for the exact set.
 - **Commission rule** — how a booking's amount splits. `tenantRate` / `platformRate` are **integer
   percent 0–100**. Resolved per booking into a `commissionSnapshot`.
+- **Settlement / custody** — the per-booking operational record of money received into the Tenant's
+  merchant account. `held` means paid but not yet earned/payable; release happens only after explicit
+  completion/no-show handling and the dispute deadline.
+- **Settlement dispute** — a Customer claim opened before `disputeUntil`; it locks release, allows one
+  Partner response and ends with Tenant release/full-refund/partial-refund adjudication.
 - **Payout** — a (manual bank) transfer of a partner's/tenant's accrued balance for a period; `evidence`
   jsonb records proof; states like `processing` / `failed` are operational.
+- **Payout allocation** — the amount of one released booking settlement reserved/paid by a specific
+  payout run; it is released back when the payout fails.
 - **Money = `bigint` VND (đồng); time = `timestamptz` UTC** — see [`data-model.md`](./data-model.md).
 
 ## Promotions & affiliate

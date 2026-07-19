@@ -1,8 +1,14 @@
 import { Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow } from '../../../../shared/time/time';
+import {
+  TenantDbService,
+  type PrismaTx,
+} from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { BOOKING_REPOSITORY, type BookingRecord, type IBookingRepository } from '../../domain/ports/booking-repository.port';
+import {
+  BOOKING_REPOSITORY,
+  type BookingRecord,
+  type IBookingRepository,
+} from '../../domain/ports/booking-repository.port';
 import { isWithinNoShowWindow, NO_SHOW_WINDOW_HOURS } from '../../domain/no-show-window';
 import { applyPartnerTransition } from '../apply-partner-transition';
 import type { PartnerContext } from '../partner-owned-booking';
@@ -26,18 +32,22 @@ export class MarkNoShowUseCase {
       {
         reason,
         // §8.5: a no-show is only markable after the slot ends and within 48h of it.
-        guard: (booking) => this.assertNoShowWindow(booking),
+        guard: (booking, tx) => this.assertNoShowWindow(tx, booking),
+        // The customer never took custody of inventory, so its separately-held
+        // security deposit must be returned even though the service deposit is
+        // subject to the no-show settlement split.
+        eventPayload: (booking) => ({ securityDeposit: booking.securityDeposit.toString() }),
       },
     );
   }
 
   /**
    * §8.5: the partner may mark `no_show` only once the slot has ended and only
-   * within {@link NO_SHOW_WINDOW_HOURS}h of `timeslot.end` — past that a job has
-   * (or is about to) auto-complete the booking, so a late mark would race it.
+   * within {@link NO_SHOW_WINDOW_HOURS}h of `timeslot.end`. Past that, an explicit
+   * Tenant intervention is required; the scheduler never guesses completion.
    */
-  private assertNoShowWindow(booking: BookingRecord): void {
-    if (!isWithinNoShowWindow(booking.endUtc, utcNow())) {
+  private async assertNoShowWindow(tx: PrismaTx, booking: BookingRecord): Promise<void> {
+    if (!isWithinNoShowWindow(booking.endUtc, await this.tenantDb.databaseNow(tx))) {
       throw new UnprocessableEntityException({
         statusCode: 422,
         code: 'NO_SHOW_WINDOW_INVALID',

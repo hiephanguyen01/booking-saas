@@ -27,6 +27,14 @@ export class FailPayoutUseCase {
         throw new BadRequestException({ statusCode: 400, code: 'PAYOUT_SETTLED', message: `Payout already ${payout.status}` });
       }
       const updated = await this.payouts.markFailed(tx, id, reason);
+      if (!updated) {
+        throw new BadRequestException({
+          statusCode: 409,
+          code: 'PAYOUT_STATE_CHANGED',
+          message: 'Payout state changed concurrently',
+        });
+      }
+      await this.payouts.releaseAllocations(tx, id);
       await this.audit.write(tx, {
         tenantId,
         actorUserId: actorId,

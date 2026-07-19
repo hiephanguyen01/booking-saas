@@ -1,5 +1,5 @@
 import type { BookingStatus } from '@booking/contracts';
-import type { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
+import type { PrismaTx, TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import type { OutboxService } from '../../../shared/outbox/outbox.service';
 import type { BookingRecord, IBookingRepository } from '../domain/ports/booking-repository.port';
 import { assertTransition } from '../domain/booking-state-machine';
@@ -23,12 +23,17 @@ export function applyPartnerTransition(
   bookingId: string,
   to: BookingStatus,
   eventType: string,
-  opts: { expiresAt?: Date; reason?: string; guard?: (booking: BookingRecord) => void },
+  opts: {
+    expiresAt?: Date;
+    reason?: string;
+    guard?: (booking: BookingRecord, tx: PrismaTx) => void | Promise<void>;
+    eventPayload?: (booking: BookingRecord) => Record<string, unknown>;
+  },
 ): Promise<BookingRecord> {
   return deps.tenantDb.forTenant(ctx.tenantId, async (tx) => {
     const booking = await loadOwnedBooking(deps.bookings, tx, bookingId, ctx.partnerId);
     assertTransition(booking.status, to, 'partner');
-    opts.guard?.(booking);
+    await opts.guard?.(booking, tx);
     const updated = await deps.bookings.applyTransition(tx, {
       id: bookingId,
       from: booking.status,
@@ -38,7 +43,15 @@ export function applyPartnerTransition(
       reason: opts.reason ?? null,
       expiresAt: opts.expiresAt,
     });
-    await deps.outbox.emit(tx, { tenantId: ctx.tenantId, eventType, payload: { bookingId, code: updated.code } });
+    await deps.outbox.emit(tx, {
+      tenantId: ctx.tenantId,
+      eventType,
+      payload: {
+        ...opts.eventPayload?.(updated),
+        bookingId,
+        code: updated.code,
+      },
+    });
     return updated;
   });
 }

@@ -39,6 +39,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     canApprove: can('partner.bookings.approve'),
     // partner.bookings.cancel backs no-show, cancel, and inventory pick-up/return.
     canManage: can('partner.bookings.cancel'),
+    canWrite: can('partner.bookings.write'),
     loadError: feed.ok ? null : (feed.error ?? 'Không tải được danh sách lượt đặt.'),
   };
 }
@@ -57,7 +58,7 @@ const FILTERS: { value: string; label: string }[] = [
 ];
 
 export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps) {
-  const { bookings, canApprove, canManage, loadError } = loaderData;
+  const { bookings, canApprove, canManage, canWrite, loadError } = loaderData;
   const [filter, setFilter] = useState<string>('all');
 
   const rows = useMemo(
@@ -138,11 +139,12 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
       headClassName: 'text-right',
       className: 'text-right',
       cell: (b) =>
-        canApprove || canManage ? (
+        canApprove || canManage || canWrite ? (
           <PartnerBookingActions
             booking={b}
             canApprove={canApprove}
             canManage={canManage}
+            canWrite={canWrite}
             emptyLabel="-"
           />
         ) : null,
