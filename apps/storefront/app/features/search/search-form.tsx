@@ -657,7 +657,7 @@ function SearchDatePicker({
           }}
           disabled={calendarToday ? { before: calendarToday } : undefined}
           numberOfMonths={months}
-          resetOnSelect={mode === 'inventory'}
+          resetOnSelect
           formatters={formatters}
           className="sf-calendar w-full [--cell-size:2.25rem]"
         />
