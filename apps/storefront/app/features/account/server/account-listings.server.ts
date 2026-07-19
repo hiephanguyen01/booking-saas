@@ -4,12 +4,12 @@ import type { AccountListingItem } from '../account-listing-item';
 import { accountMocksEnabled } from './mock-data.server';
 
 const PRESENTATION_FIXTURES = [
-  { rating: 4.5, bookingCount: 240, discountPercent: 20, priceUnit: 'hour' },
-  { rating: 4.5, bookingCount: 240, discountPercent: null, priceUnit: 'hour' },
-  { rating: 4.5, bookingCount: 240, discountPercent: 20, priceUnit: 'hour' },
-  { rating: 4.5, bookingCount: 240, discountPercent: 20, priceUnit: 'hour' },
-  { rating: 4.5, bookingCount: 240, discountPercent: null, priceUnit: 'hour' },
-  { rating: 4.5, bookingCount: 240, discountPercent: 20, priceUnit: 'hour' },
+  { discountPercent: 20, priceUnit: 'hour' },
+  { discountPercent: null, priceUnit: 'hour' },
+  { discountPercent: 20, priceUnit: 'hour' },
+  { discountPercent: 20, priceUnit: 'hour' },
+  { discountPercent: null, priceUnit: 'hour' },
+  { discountPercent: 20, priceUnit: 'hour' },
 ] satisfies Array<Omit<ListingCardPresentation, 'originalPrice'>>;
 
 export async function loadAccountListingItems(request: Request): Promise<AccountListingItem[]> {

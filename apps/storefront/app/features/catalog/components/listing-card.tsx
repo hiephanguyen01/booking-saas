@@ -1,4 +1,4 @@
-import { Heart, MapPin, Star } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
 import { attributeSummary, formatListingLocation, formatVnd } from '../../../lib/ui';
@@ -6,14 +6,14 @@ import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { useLocale } from '../../../lib/use-locale';
 import type { ListingCardPresentation, ListingFavoriteControl } from './listing-card.types';
+import { RatingStars } from '../../../components/rating-stars';
 
 /**
  * Image-forward listing card used on the home + catalog pages.
  *
  * The default Home/catalog rendering only uses `PublicListingResponse`.
- * Optional presentation metadata exists for callers that have explicit real
- * values or environment-gated demo fixtures; the card never derives it from a
- * listing id.
+ * Optional presentation metadata exists only for callers that have explicit
+ * real values; the card never derives business data from a listing id.
  */
 export function ListingCard({
   listing,
@@ -32,10 +32,10 @@ export function ListingCard({
   const price = formatVnd(listing.priceFrom);
   const summary = attributeSummary(listing.attributes);
   const location = formatListingLocation(listing);
+  const rating = listing.ratingAvg;
+  const ratingCount = listing.reviewCount;
 
-  const originalPrice = presentation?.originalPrice
-    ? formatVnd(presentation.originalPrice)
-    : null;
+  const originalPrice = presentation?.originalPrice ? formatVnd(presentation.originalPrice) : null;
 
   return (
     <article
@@ -82,20 +82,12 @@ export function ListingCard({
               </p>
             ) : null}
           </div>
-          {presentation ? (
+          {rating !== null && ratingCount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-0.5" aria-label={`${presentation.rating}/5`}>
-                {Array.from({ length: 5 }, (_, index) => (
-                  <Star
-                    key={index}
-                    aria-hidden="true"
-                    className={`size-4 text-amber-500 ${
-                      index < Math.round(presentation.rating) ? 'fill-current' : ''
-                    }`}
-                  />
-                ))}
+              <RatingStars rating={rating} />
+              <span>
+                {rating.toFixed(1)} · {t('reviewCount', { count: ratingCount })}
               </span>
-              <span>{t('bookedCount', { count: presentation.bookingCount })}</span>
             </div>
           ) : summary ? (
             <p className="line-clamp-1 text-sm text-muted-foreground">{summary}</p>
@@ -106,7 +98,9 @@ export function ListingCard({
                 {originalPrice ? (
                   <span className="mr-2 text-muted-foreground line-through">{originalPrice}</span>
                 ) : null}
-                <span className={presentation?.discountPercent ? 'text-primary' : 'text-foreground'}>
+                <span
+                  className={presentation?.discountPercent ? 'text-primary' : 'text-foreground'}
+                >
                   <span className="font-normal">{t('fromPriceShort')} </span>
                   <span className="text-base font-semibold">{price}</span>
                 </span>

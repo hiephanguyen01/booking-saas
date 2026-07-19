@@ -26,7 +26,11 @@ export default function AccountLayout({ loaderData }: Route.ComponentProps) {
     listingTypes: rootContext.listingTypes,
   };
   return (
-    <AccountShell user={loaderData.user} locale={loaderData.locale}>
+    <AccountShell
+      user={loaderData.user}
+      locale={loaderData.locale}
+      accountMenuSummary={rootContext.accountMenuSummary}
+    >
       <Outlet context={context} />
     </AccountShell>
   );

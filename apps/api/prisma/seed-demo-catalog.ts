@@ -614,12 +614,14 @@ function searchConfigFor(definition: CatalogDefinition): Prisma.InputJsonValue {
       attributeFacets: [{ key: 'experienceLevel', control: 'checkbox' }],
     },
   };
-  return configured[definition.slug] ?? {
-    schedule: 'none',
-    showGuests: false,
-    systemFacets: ['price', 'location'],
-    attributeFacets: [],
-  };
+  return (
+    configured[definition.slug] ?? {
+      schedule: 'none',
+      showGuests: false,
+      systemFacets: ['price', 'location'],
+      attributeFacets: [],
+    }
+  );
 }
 
 async function upsertCategory(prisma: PrismaClient, tenantId: string, name: string, slug: string) {
@@ -662,7 +664,9 @@ async function upsertStudioGroup(
     ],
     status: 'published' as const,
     publishedBy: 'partner' as const,
-    ratingAvg: 4.6 + (index % 4) * 0.1,
+    // Review aggregates are projections of persisted reviews only.
+    ratingAvg: null,
+    reviewCount: 0,
     bookingCount: 12 + index * 3,
   };
   return prisma.listingGroup.upsert({

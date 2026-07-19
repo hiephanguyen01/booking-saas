@@ -1,4 +1,12 @@
-import { Building2, CreditCard, LayoutDashboard, Package, Scale } from 'lucide-react';
+import {
+  Building2,
+  CreditCard,
+  LayoutDashboard,
+  Package,
+  Scale,
+  Star,
+  ShieldAlert,
+} from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
 import { dashboardPaths } from '~/constants/paths';
 
@@ -33,6 +41,18 @@ export const adminNavSections: DashboardNavSection[] = [
         to: dashboardPaths.admin.settlements,
         icon: Scale,
         permission: 'platform.finance.read',
+      },
+      {
+        title: 'Đánh giá',
+        to: dashboardPaths.admin.reviews,
+        icon: Star,
+        permission: 'platform.reviews.read',
+      },
+      {
+        title: 'Khiếu nại',
+        to: dashboardPaths.admin.disputes,
+        icon: ShieldAlert,
+        permission: 'platform.disputes.read',
       },
     ],
   },

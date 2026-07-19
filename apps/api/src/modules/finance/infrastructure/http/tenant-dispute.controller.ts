@@ -11,7 +11,7 @@ import { toSettlementDisputeResponse } from '../../application/finance.mapper';
 import { ListSettlementDisputesUseCase } from '../../application/use-cases/list-settlement-disputes.use-case';
 import { ResolveSettlementDisputeUseCase } from '../../application/use-cases/resolve-settlement-dispute.use-case';
 import {
-  PaginationQueryDto,
+  TenantSettlementDisputesQueryDto,
   ResolveSettlementDisputeDto,
   SettlementDisputeResponseDto,
 } from './dto/finance.dto';
@@ -25,16 +25,18 @@ export class TenantDisputeController {
     private readonly tenantContext: TenantContextService,
   ) {}
 
-  @RequirePermissions('tenant.finance.read')
+  @RequirePermissions('tenant.disputes.read')
   @Get()
   @ApiOperation({ summary: 'List settlement disputes' })
   @ApiPaginatedResponse(SettlementDisputeResponseDto)
-  async list(@Query() query: PaginationQueryDto): Promise<Paginated<SettlementDisputeResponse>> {
+  async list(
+    @Query() query: TenantSettlementDisputesQueryDto,
+  ): Promise<Paginated<SettlementDisputeResponse>> {
     const result = await this.listDisputes.execute(this.tenantContext.tenantIdOrThrow(), query);
     return toPaginated(query, result, toSettlementDisputeResponse);
   }
 
-  @RequirePermissions('tenant.payouts.manage')
+  @RequirePermissions('tenant.disputes.resolve')
   @Post(':id/resolve')
   @UuidParam()
   @ApiOperation({ summary: 'Resolve a settlement dispute' })

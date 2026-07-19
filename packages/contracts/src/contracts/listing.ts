@@ -354,6 +354,7 @@ export const listingGroupResponseSchema = z
     priceFrom: z.string().nullable(),
     /** Mean review score, 1–5 with 2 decimals; null until the post has ratings. */
     ratingAvg: z.number().nullable(),
+    reviewCount: z.number().int().nonnegative(),
     bookingCount: z.number().int().nonnegative(),
     createdAt: z.string(),
     updatedAt: z.string(),
@@ -405,6 +406,8 @@ export const listingResponseSchema = z
     /** Origin of `effectiveCancellationPolicy`; null when no policy applies. */
     effectiveCancellationPolicySource: cancellationPolicySourceSchema.nullable(),
     partner: listingPartnerSummarySchema,
+    ratingAvg: z.number().nullable(),
+    reviewCount: z.number().int().nonnegative(),
     status: publishStatusSchema,
     publishedBy: moderationActorSchema.nullable(),
     hiddenBy: moderationActorSchema.nullable(),
@@ -491,6 +494,8 @@ export const publicListingDetailResponseSchema = z
     effectiveCancellationPolicy: cancellationPolicySummarySchema.nullable(),
     effectiveCancellationPolicySource: cancellationPolicySourceSchema.nullable(),
     trust: trustSignalsSchema,
+    ratingAvg: z.number().nullable(),
+    reviewCount: z.number().int().nonnegative(),
   })
   .merge(administrativeAddressSnapshotSchema);
 export type PublicListingDetailResponse = z.infer<typeof publicListingDetailResponseSchema>;
@@ -506,6 +511,8 @@ export const publicListingGroupDetailResponseSchema = z
     photos: z.array(z.string()),
     listingTypeSlug: z.string(),
     itemLabel: z.string(),
+    ratingAvg: z.number().nullable(),
+    reviewCount: z.number().int().nonnegative(),
     listings: z.array(
       z.object({
         id: z.string(),
@@ -516,6 +523,8 @@ export const publicListingGroupDetailResponseSchema = z
         attributes: z.record(z.unknown()),
         bookingModes: z.array(bookingModeSchema),
         priceFrom: z.string().nullable(),
+        ratingAvg: z.number().nullable(),
+        reviewCount: z.number().int().nonnegative(),
       }),
     ),
   })

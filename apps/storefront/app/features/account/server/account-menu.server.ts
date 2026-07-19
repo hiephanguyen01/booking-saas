@@ -1,22 +1,18 @@
-import type { Locale } from '@booking/i18n';
+import { customerReviewListResponseSchema } from '@booking/contracts';
 import type { AccountMenuSummary } from '../account-menu';
-import {
-  accountMocksEnabled,
-  mockConversations,
-  mockReviews,
-} from './mock-data.server';
+import { apiGet } from '../../../lib/api.server';
 
-export function getAccountMenuSummary(locale: Locale): AccountMenuSummary | null {
-  if (!accountMocksEnabled()) return null;
-
+export async function getAccountMenuSummary(
+  request: Request,
+  accessToken: string,
+): Promise<AccountMenuSummary | null> {
   try {
-    return {
-      unreadMessages: mockConversations(locale).reduce(
-        (total, conversation) => total + Math.max(0, conversation.unread),
-        0,
-      ),
-      pendingReviews: mockReviews(locale).filter((review) => review.status === 'pending').length,
-    };
+    const pending = await apiGet(request, '/customer/reviews', accessToken, {
+      query: { status: 'pending', page: 1, pageSize: 1 },
+      schema: customerReviewListResponseSchema,
+    });
+    if (!pending.ok || !pending.data) return null;
+    return { unreadMessages: 0, pendingReviews: pending.data.total };
   } catch {
     return null;
   }

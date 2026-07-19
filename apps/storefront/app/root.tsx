@@ -32,6 +32,7 @@ import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
 import { storefrontRequestMiddleware } from './lib/request-security.server';
 import { getOptionalAuth } from './lib/auth.server';
 import { getAccountMenuSummary } from './features/account/server/account-menu.server';
+import type { AccountMenuSummary } from './features/account/account-menu';
 
 export const middleware: Route.MiddlewareFunction[] = [storefrontRequestMiddleware];
 
@@ -42,6 +43,7 @@ export interface StorefrontContext {
   locale: Locale;
   canonical: string;
   currentUser: CurrentUser | null;
+  accountMenuSummary: AccountMenuSummary | null;
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
@@ -51,8 +53,11 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const canonical = canonicalUrl(publicUrl);
   const alternates = localizedAlternates(publicUrl);
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
-  const currentUser = getOptionalAuth()?.info.user ?? null;
-  const accountMenuSummary = currentUser ? getAccountMenuSummary(locale) : null;
+  const storefrontAuth = getOptionalAuth();
+  const currentUser = storefrontAuth?.info.user ?? null;
+  const accountMenuSummary = storefrontAuth
+    ? await getAccountMenuSummary(request, storefrontAuth.session.accessToken)
+    : null;
   const payload = {
     tenant,
     listingTypes,
@@ -151,7 +156,14 @@ export default function App({ loaderData }: Route.ComponentProps) {
     (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
   );
 
-  const outletContext: StorefrontContext = { tenant, listingTypes, locale, canonical, currentUser };
+  const outletContext: StorefrontContext = {
+    tenant,
+    listingTypes,
+    locale,
+    canonical,
+    currentUser,
+    accountMenuSummary,
+  };
 
   return (
     <BookingI18nProvider locale={locale}>

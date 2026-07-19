@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PaginationQuery } from '@booking/contracts';
+import type {
+  PartnerSettlementDisputesQuery,
+  TenantSettlementDisputesQuery,
+} from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   SETTLEMENT_DISPUTE_REPOSITORY,
@@ -17,11 +20,18 @@ export class ListSettlementDisputesUseCase {
 
   execute(
     tenantId: string,
-    query: PaginationQuery,
+    query: PartnerSettlementDisputesQuery | TenantSettlementDisputesQuery,
     partnerId?: string,
   ): Promise<{ items: SettlementDisputeRecord[]; total: number }> {
     return this.tenantDb.forTenant(tenantId, (tx) =>
-      this.disputes.list(tx, query.page, query.pageSize, partnerId),
+      this.disputes.list(tx, query.page, query.pageSize, {
+        partnerId: partnerId ?? ('partnerId' in query ? query.partnerId : undefined),
+        status: query.status,
+        responseStatus: query.responseStatus,
+        from: query.from ? new Date(query.from) : undefined,
+        to: query.to ? new Date(query.to) : undefined,
+        q: query.q,
+      }),
     );
   }
 }

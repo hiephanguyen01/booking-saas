@@ -12,6 +12,7 @@ const FILTER_PARAMS = [
   'location',
   'minPrice',
   'maxPrice',
+  'minRating',
   'area',
   'amenities',
   'date',

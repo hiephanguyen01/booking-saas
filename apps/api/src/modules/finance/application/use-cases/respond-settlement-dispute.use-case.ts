@@ -1,6 +1,7 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { RespondSettlementDisputeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   SETTLEMENT_DISPUTE_REPOSITORY,
   type ISettlementDisputeRepository,
@@ -14,6 +15,7 @@ export class RespondSettlementDisputeUseCase {
     @Inject(SETTLEMENT_DISPUTE_REPOSITORY)
     private readonly disputes: ISettlementDisputeRepository,
     private readonly tenantDb: TenantDbService,
+    private readonly outbox: OutboxService,
   ) {}
 
   execute(
@@ -38,6 +40,11 @@ export class RespondSettlementDisputeUseCase {
           message: 'The dispute is closed, already answered, or does not belong to this partner',
         });
       }
+      await this.outbox.emit(tx, {
+        tenantId,
+        eventType: 'settlement.dispute_responded',
+        payload: { disputeId: dispute.id, bookingId: dispute.bookingId, partnerId },
+      });
       return dispute;
     });
   }

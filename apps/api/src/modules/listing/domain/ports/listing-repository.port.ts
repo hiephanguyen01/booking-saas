@@ -51,6 +51,8 @@ export interface ListingRecord {
   effectiveCancellationPolicySource: CancellationPolicySource | null;
   /** Owning partner — display name + verification state only (§7.3). */
   partner: ListingPartnerSummary;
+  ratingAvg: number | null;
+  reviewCount: number;
   status: PublishStatus;
   publishedBy: ModerationActor | null;
   hiddenBy: ModerationActor | null;

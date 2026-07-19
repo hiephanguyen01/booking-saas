@@ -40,6 +40,7 @@ import {
   PayoutResponseDto,
   BookingSettlementsQueryDto,
   PartnerSettlementDisputeResponseDto,
+  PartnerSettlementDisputesQueryDto,
   RespondSettlementDisputeDto,
   SettlementSummaryResponseDto,
 } from './dto/finance.dto';
@@ -60,7 +61,7 @@ export class PartnerFinanceController {
     private readonly tenantContext: TenantContextService,
   ) {}
 
-  @RequirePermissions('partner.finance.read')
+  @RequirePermissions('partner.disputes.read')
   @Get('settlement-summary')
   @ApiOperation({ summary: 'Summarize the partner own settlement and payout states' })
   @ApiOkResponse({ type: SettlementSummaryResponseDto })
@@ -78,7 +79,7 @@ export class PartnerFinanceController {
   @ApiOperation({ summary: 'List disputes affecting the partner own bookings' })
   @ApiPaginatedResponse(PartnerSettlementDisputeResponseDto)
   async disputes(
-    @Query() query: PaginationQueryDto,
+    @Query() query: PartnerSettlementDisputesQueryDto,
   ): Promise<Paginated<PartnerSettlementDisputeResponse>> {
     const result = await this.listDisputesUseCase.execute(
       this.tenantContext.tenantIdOrThrow(),
@@ -88,7 +89,7 @@ export class PartnerFinanceController {
     return toPaginated(query, result, toPartnerSettlementDisputeResponse);
   }
 
-  @RequirePermissions('partner.finance.read', 'partner.bookings.write')
+  @RequirePermissions('partner.disputes.respond')
   @Post('disputes/:id/respond')
   @UuidParam('id')
   @ApiOperation({ summary: 'Respond once to an open dispute affecting an owned booking' })

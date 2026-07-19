@@ -376,6 +376,8 @@ export const publicListingResponseSchema = z
     /** Lowest configured price in VND đồng as a digit string, or null. */
     priceFrom: z.string().nullable(),
     itemLabel: z.string().nullable(),
+    ratingAvg: z.number().min(1).max(5).nullable(),
+    reviewCount: z.number().int().nonnegative(),
   })
   .merge(administrativeAddressSnapshotSchema);
 export type PublicListingResponse = z.infer<typeof publicListingResponseSchema>;

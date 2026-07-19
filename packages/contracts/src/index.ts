@@ -14,3 +14,4 @@ export * from './contracts/finance';
 export * from './contracts/affiliate';
 export * from './contracts/platform';
 export * from './contracts/storage';
+export * from './contracts/review';

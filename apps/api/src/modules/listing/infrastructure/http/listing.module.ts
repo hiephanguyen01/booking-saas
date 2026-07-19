@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
+import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
@@ -73,6 +74,7 @@ import { DeleteCancellationPolicyUseCase } from '../../application/use-cases/del
 import { PartnerCancellationPolicyController } from './partner-cancellation-policy.controller';
 import { GetListingDepositRequirementUseCase } from '../../application/use-cases/get-listing-deposit-requirement.use-case';
 import { TenantCancellationPolicyController } from './tenant-cancellation-policy.controller';
+import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/project-review-aggregates.use-case';
 
 @Module({
   imports: [
@@ -146,10 +148,25 @@ import { TenantCancellationPolicyController } from './tenant-cancellation-policy
     PublishListingGroupUseCase,
     HideListingGroupUseCase,
     RepublishListingGroupUseCase,
+    ProjectReviewAggregatesUseCase,
   ],
   // Exported for Task 1.6 (scheduling) + 1.7 (bookings): the listing/resource/pricing
   // repositories they read from. (Quote pricing is a plain function now —
   // `priceQuote` in application/pricing.ts — imported directly, not injected.)
   exports: [LISTING_REPOSITORY, RESOURCE_REPOSITORY, PRICING_RULE_REPOSITORY],
 })
-export class ListingModule {}
+export class ListingModule implements OnModuleInit {
+  constructor(
+    private readonly registry: OutboxHandlerRegistry,
+    private readonly projectReviewAggregates: ProjectReviewAggregatesUseCase,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register('review.created', (event) =>
+      this.projectReviewAggregates.execute(
+        event.tenantId ?? '',
+        (event.payload ?? {}) as { listingId?: string; groupId?: string | null },
+      ),
+    );
+  }
+}

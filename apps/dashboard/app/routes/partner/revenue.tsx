@@ -76,7 +76,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       settlementSummaryRes.ok && settlementSummaryRes.data ? settlementSummaryRes.data : null,
     disputes: disputesRes.ok && disputesRes.data ? disputesRes.data.items : [],
     disputesTotal: disputesRes.ok && disputesRes.data ? disputesRes.data.total : 0,
-    canRespondToDisputes: can('partner.bookings.write'),
+    canRespondToDisputes: can('partner.disputes.respond'),
     financeError: financeRes.ok ? null : (financeRes.error ?? 'Không tải được dữ liệu tài chính.'),
     ledgerError: ledgerRes.ok ? null : (ledgerRes.error ?? 'Không tải được sổ cái.'),
     payoutsError: payoutsRes.ok ? null : (payoutsRes.error ?? 'Không tải được lịch sử chi trả.'),
@@ -90,10 +90,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth, can } = await requirePartner(request, 'partner.finance.read');
-  if (!can('partner.bookings.write')) {
-    throw new Response('Bạn không có quyền phản hồi tranh chấp.', { status: 403 });
-  }
+  const { auth } = await requirePartner(request, 'partner.disputes.respond');
   const form = await request.formData();
   const disputeId = String(form.get('disputeId') ?? '');
   const parsed = respondSettlementDisputeInputSchema.safeParse({ response: form.get('response') });
@@ -299,7 +296,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
       </div>
 
       {disputes.length ? (
-        <section className="space-y-3">
+        <section id="disputes" className="scroll-mt-24 space-y-3">
           <h2 className="text-sm font-semibold">Tranh chấp liên quan</h2>
           {disputes.map((dispute) => {
             const submitting =
@@ -367,7 +364,16 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
             hrefFor={disputeParams.pageHref}
           />
         </section>
-      ) : null}
+      ) : (
+        <section id="disputes" className="scroll-mt-24 space-y-3">
+          <h2 className="text-sm font-semibold">Tranh chấp liên quan</h2>
+          <Card>
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">
+              Chưa có khiếu nại nào liên quan đến các booking của bạn.
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Sổ cái</h2>

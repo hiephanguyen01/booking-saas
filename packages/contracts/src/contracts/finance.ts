@@ -352,39 +352,41 @@ export type PartnerBookingSettlementResponse = z.infer<
 >;
 
 /** Customer-safe custody state used to decide whether a dispute can be opened. */
-export const customerBookingSettlementResponseSchema = bookingSettlementResponseSchema.pick({
-  id: true,
-  bookingId: true,
-  status: true,
-  kind: true,
-  bookingCode: true,
-  onlineHeldAmount: true,
-  remainingHeldAmount: true,
-  refundedAmount: true,
-  retainedAmount: true,
-  completedAt: true,
-  disputeUntil: true,
-  releasedAt: true,
-  updatedAt: true,
-}).extend({
-  /** One settlement gets one customer review; this prevents repeated partial-refund claims. */
-  canOpenDispute: z.boolean(),
-  /** A provider/manual transfer has been confirmed, including security-only refunds. */
-  refundConfirmed: z.boolean(),
-  dispute: z
-    .object({
-      id: uuidSchema,
-      status: z.enum(['open', 'accepted', 'rejected', 'resolved']),
-      resolution: z.enum(['release', 'full_refund', 'partial_refund']).nullable(),
-      resolutionNote: z.string().nullable(),
-      refundAmount: vndDigits,
-      partnerResponse: z.string().nullable(),
-      partnerRespondedAt: z.string().nullable(),
-      resolvedAt: z.string().nullable(),
-      createdAt: z.string(),
-    })
-    .nullable(),
-});
+export const customerBookingSettlementResponseSchema = bookingSettlementResponseSchema
+  .pick({
+    id: true,
+    bookingId: true,
+    status: true,
+    kind: true,
+    bookingCode: true,
+    onlineHeldAmount: true,
+    remainingHeldAmount: true,
+    refundedAmount: true,
+    retainedAmount: true,
+    completedAt: true,
+    disputeUntil: true,
+    releasedAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    /** One settlement gets one customer review; this prevents repeated partial-refund claims. */
+    canOpenDispute: z.boolean(),
+    /** A provider/manual transfer has been confirmed, including security-only refunds. */
+    refundConfirmed: z.boolean(),
+    dispute: z
+      .object({
+        id: uuidSchema,
+        status: z.enum(['open', 'accepted', 'rejected', 'resolved']),
+        resolution: z.enum(['release', 'full_refund', 'partial_refund']).nullable(),
+        resolutionNote: z.string().nullable(),
+        refundAmount: vndDigits,
+        partnerResponse: z.string().nullable(),
+        partnerRespondedAt: z.string().nullable(),
+        resolvedAt: z.string().nullable(),
+        createdAt: z.string(),
+      })
+      .nullable(),
+  });
 export type CustomerBookingSettlementResponse = z.infer<
   typeof customerBookingSettlementResponseSchema
 >;
@@ -431,16 +433,12 @@ export const resolveSettlementDisputeInputSchema = z
       });
     }
   });
-export type ResolveSettlementDisputeInput = z.infer<
-  typeof resolveSettlementDisputeInputSchema
->;
+export type ResolveSettlementDisputeInput = z.infer<typeof resolveSettlementDisputeInputSchema>;
 
 export const respondSettlementDisputeInputSchema = z.object({
   response: z.string().trim().min(10).max(2000),
 });
-export type RespondSettlementDisputeInput = z.infer<
-  typeof respondSettlementDisputeInputSchema
->;
+export type RespondSettlementDisputeInput = z.infer<typeof respondSettlementDisputeInputSchema>;
 
 export const settlementDisputeStatusSchema = z.enum(['open', 'accepted', 'rejected', 'resolved']);
 export const settlementDisputeResponseSchema = z.object({
@@ -471,6 +469,12 @@ export const settlementDisputeResponseSchema = z.object({
 });
 export type SettlementDisputeResponse = z.infer<typeof settlementDisputeResponseSchema>;
 
+export const adminSettlementDisputeResponseSchema = settlementDisputeResponseSchema.extend({
+  tenantId: uuidSchema,
+  tenantName: z.string(),
+});
+export type AdminSettlementDisputeResponse = z.infer<typeof adminSettlementDisputeResponseSchema>;
+
 /** Partner-safe claim view: no raw customer/resolver user ids. */
 export const partnerSettlementDisputeResponseSchema = settlementDisputeResponseSchema.omit({
   openedByUserId: true,
@@ -479,6 +483,27 @@ export const partnerSettlementDisputeResponseSchema = settlementDisputeResponseS
 export type PartnerSettlementDisputeResponse = z.infer<
   typeof partnerSettlementDisputeResponseSchema
 >;
+
+const settlementDisputeFiltersSchema = paginationQuerySchema.extend({
+  status: settlementDisputeStatusSchema.optional(),
+  responseStatus: z.enum(['pending', 'responded']).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  q: z.string().trim().max(200).optional(),
+});
+
+export const tenantSettlementDisputesQuerySchema = settlementDisputeFiltersSchema.extend({
+  partnerId: uuidSchema.optional(),
+});
+export type TenantSettlementDisputesQuery = z.infer<typeof tenantSettlementDisputesQuerySchema>;
+
+export const partnerSettlementDisputesQuerySchema = settlementDisputeFiltersSchema;
+export type PartnerSettlementDisputesQuery = z.infer<typeof partnerSettlementDisputesQuerySchema>;
+
+export const adminSettlementDisputesQuerySchema = settlementDisputeFiltersSchema.extend({
+  tenantId: uuidSchema.optional(),
+});
+export type AdminSettlementDisputesQuery = z.infer<typeof adminSettlementDisputesQuerySchema>;
 
 /** Payout cycle configured per tenant (§7.7): the cadence a payout run covers. */
 export const payoutCycleSchema = z.enum(['weekly', 'monthly']);

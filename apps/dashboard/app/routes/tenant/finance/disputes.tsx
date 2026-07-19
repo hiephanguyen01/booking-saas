@@ -34,22 +34,28 @@ export function meta(): Route.MetaDescriptors {
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  const { auth, can } = await requireTenant(request, 'tenant.finance.read');
+  const { auth, can } = await requireTenant(request, 'tenant.disputes.read');
   const list = readListParams(url.searchParams);
   const result = await apiGet<Paginated<SettlementDisputeResponse>>(
     '/tenant/finance/disputes',
     auth,
-    { query: list.toApiQuery() },
+    {
+      query: list.toApiQuery({
+        status: url.searchParams.get('status') || undefined,
+        responseStatus: url.searchParams.get('responseStatus') || undefined,
+        q: url.searchParams.get('q') || undefined,
+      }),
+    },
   );
   return {
     result: result.ok ? result.data : null,
-    canResolve: can('tenant.payouts.manage'),
+    canResolve: can('tenant.disputes.resolve'),
     error: result.ok ? null : (result.error ?? 'Không tải được danh sách tranh chấp.'),
   };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth } = await requireTenant(request, 'tenant.payouts.manage');
+  const { auth } = await requireTenant(request, 'tenant.disputes.resolve');
   const form = await request.formData();
   const disputeId = String(form.get('disputeId') ?? '');
   const parsed = resolveSettlementDisputeInputSchema.safeParse({
@@ -95,6 +101,29 @@ export default function TenantDisputes({ loaderData, actionData }: Route.Compone
         }
       />
       <ErrorBanner error={actionError ?? loaderData.error} />
+
+      <Form method="get" className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
+        <Input
+          name="q"
+          defaultValue={searchParams.get('q') ?? ''}
+          placeholder="Mã booking, dịch vụ, lý do..."
+          className="min-w-64"
+        />
+        <NativeSelect name="status" defaultValue={searchParams.get('status') ?? ''}>
+          <option value="">Tất cả trạng thái</option>
+          <option value="open">Chờ xử lý</option>
+          <option value="accepted">Đã chấp nhận</option>
+          <option value="rejected">Đã từ chối</option>
+        </NativeSelect>
+        <NativeSelect name="responseStatus" defaultValue={searchParams.get('responseStatus') ?? ''}>
+          <option value="">Tất cả phản hồi</option>
+          <option value="pending">Partner chưa phản hồi</option>
+          <option value="responded">Partner đã phản hồi</option>
+        </NativeSelect>
+        <Button type="submit" variant="outline">
+          Lọc
+        </Button>
+      </Form>
 
       {items.length === 0 ? (
         <Card>
@@ -144,7 +173,9 @@ export default function TenantDisputes({ loaderData, actionData }: Route.Compone
                     <p>{dispute.reason}</p>
                     {dispute.evidence.length ? (
                       <ul className="mt-2 list-inside list-disc text-xs text-muted-foreground">
-                        {dispute.evidence.map((item) => <li key={item}>{item}</li>)}
+                        {dispute.evidence.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
                       </ul>
                     ) : null}
                     <p className="mt-2 text-xs text-muted-foreground">

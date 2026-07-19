@@ -78,6 +78,8 @@ export class PrismaListingReadRepository implements IListingReadRepository {
             wardCode: true,
             wardName: true,
             address: true,
+            ratingAvg: true,
+            reviewCount: true,
           },
         },
         _count: { select: { bookings: { where: { status: 'completed' } } } },
@@ -107,6 +109,8 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       address: l.address,
       publishedAt: l.publishedAt,
       completedBookings: l._count.bookings,
+      ratingAvg: l.ratingAvg === null ? null : l.ratingAvg.toNumber(),
+      reviewCount: l.reviewCount,
       availabilityRules: l.availabilityRules,
       pricingRules: l.pricingRules.map((r) => ({
         ...r,
@@ -134,6 +138,8 @@ export class PrismaListingReadRepository implements IListingReadRepository {
             wardCode: l.group.wardCode,
             wardName: l.group.wardName,
             address: l.group.address,
+            ratingAvg: l.group.ratingAvg === null ? null : l.group.ratingAvg.toNumber(),
+            reviewCount: l.group.reviewCount,
           }
         : null,
     }));

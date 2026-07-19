@@ -11,7 +11,7 @@ import {
   InputGroupInput,
 } from '@booking/ui/components/ui/input-group';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Star } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Form, Link, useSearchParams } from 'react-router';
 import type { PublicCatalogFacet } from '@booking/contracts';
@@ -73,6 +73,28 @@ export function FilterPanel({
       ) : null}
 
       <h2 className="text-base font-semibold uppercase text-foreground">{t('filters.title')}</h2>
+
+      <FilterSection title={t('filters.rating')}>
+        <RadioGroup
+          name="minRating"
+          defaultValue={state.minRating === null ? '' : String(state.minRating)}
+          className="gap-3"
+        >
+          <OptionLabel>
+            <RadioGroupItem value="" />
+            <span>{t('filters.allRatings')}</span>
+          </OptionLabel>
+          {[4.5, 4, 3].map((rating) => (
+            <OptionLabel key={rating}>
+              <RadioGroupItem value={String(rating)} />
+              <span className="flex items-center gap-1.5">
+                <Star className="size-4 text-amber-400" fill="currentColor" aria-hidden="true" />
+                <span>{t('filters.ratingAtLeast', { rating })}</span>
+              </span>
+            </OptionLabel>
+          ))}
+        </RadioGroup>
+      </FilterSection>
 
       {facets.map((facet) => {
         if (facet.key === 'price') {
