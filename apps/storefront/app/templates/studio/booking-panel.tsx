@@ -23,6 +23,7 @@ import {
   DEFAULT_TZ,
   addDays,
   dateOnlyToLocal,
+  dateLabelInTz,
   hoursBetween,
   localToDateOnly,
   nightsBetween,
@@ -279,12 +280,7 @@ function HourlyPicker({
     };
   }, [locale]);
   const selectedDay = dateOnlyToLocal(day);
-  const formattedDay = new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(selectedDay);
+  const formattedDay = dateLabelInTz(day, tz, locale);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [selectionError, setSelectionError] = useState('');
@@ -374,6 +370,7 @@ function HourlyPicker({
             <Calendar
               mode="single"
               selected={selectedDay}
+              defaultMonth={selectedDay}
               onSelect={pickDay}
               disabled={{ before: dateOnlyToLocal(today) }}
               formatters={calendarFormatters}
