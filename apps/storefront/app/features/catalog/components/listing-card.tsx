@@ -1,22 +1,31 @@
-import { Heart, MapPin } from 'lucide-react';
+import { Heart, MapPin, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
 import { attributeSummary, formatListingLocation, formatVnd } from '../../../lib/ui';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { useLocale } from '../../../lib/use-locale';
+import type { ListingCardPresentation, ListingFavoriteControl } from './listing-card.types';
 
 /**
  * Image-forward listing card used on the home + catalog pages.
  *
- * Everything it renders comes from `PublicListingResponse`. It previously also
- * accepted a `presentation` prop carrying a rating, booking count, discount
- * percentage and strikethrough "original" price — all four were derived from a
- * hash of the listing id and shown on real listings, so they were removed
- * rather than reformatted. Reinstate them here once the public contract
- * exposes the real values.
+ * The default Home/catalog rendering only uses `PublicListingResponse`.
+ * Optional presentation metadata exists for callers that have explicit real
+ * values or environment-gated demo fixtures; the card never derives it from a
+ * listing id.
  */
-export function ListingCard({ listing }: { listing: PublicListingResponse }) {
+export function ListingCard({
+  listing,
+  className = '',
+  favoriteControl,
+  presentation,
+}: {
+  listing: PublicListingResponse;
+  className?: string;
+  favoriteControl?: ListingFavoriteControl;
+  presentation?: ListingCardPresentation;
+}) {
   const locale = useLocale();
   const { t } = useTranslation(NsI18n.Listing);
   const cover = listing.photos[0] as string | undefined;
@@ -24,60 +33,122 @@ export function ListingCard({ listing }: { listing: PublicListingResponse }) {
   const summary = attributeSummary(listing.attributes);
   const location = formatListingLocation(listing);
 
+  const originalPrice = presentation?.originalPrice
+    ? formatVnd(presentation.originalPrice)
+    : null;
+
   return (
-    <Link
-      to={
-        listing.kind === 'group'
-          ? storefrontPaths.listingGroup(locale, listing.slug)
-          : storefrontPaths.listing(locale, listing.slug)
-      }
-      className="group flex h-full min-h-80 flex-col overflow-hidden rounded-lg border-2 border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    <article
+      className={`group/card relative flex h-full min-h-80 flex-col overflow-hidden rounded-lg border-2 border-border bg-card ${className}`}
     >
-      <div className="relative h-46 shrink-0 overflow-hidden bg-muted">
-        {cover ? (
-          <img
-            src={cover}
-            alt={listing.title}
-            width={720}
-            height={480}
-            loading="lazy"
-            className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-            {listing.title}
+      <Link
+        to={
+          listing.kind === 'group'
+            ? storefrontPaths.listingGroup(locale, listing.slug)
+            : storefrontPaths.listing(locale, listing.slug)
+        }
+        className="group flex h-full flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <div className="relative h-46 shrink-0 overflow-hidden bg-muted">
+          {cover ? (
+            <img
+              src={cover}
+              alt={listing.title}
+              width={720}
+              height={480}
+              loading="lazy"
+              className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+              {listing.title}
+            </div>
+          )}
+          {presentation?.discountPercent ? (
+            <span className="absolute left-0 top-6 flex h-10 w-18 items-center bg-primary px-2 text-base font-semibold text-primary-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
+              - {presentation.discountPercent}%
+            </span>
+          ) : null}
+        </div>
+        <div className="flex flex-1 flex-col gap-3 p-4">
+          <div className="flex flex-col gap-2">
+            <h3 className="line-clamp-2 text-lg leading-7 font-semibold text-foreground transition-colors group-hover:text-primary">
+              {listing.title}
+            </h3>
+            {location ? (
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{location}</span>
+              </p>
+            ) : null}
           </div>
-        )}
-        {/* Decorative only — no wishlist backend exists yet, so this doesn't persist state. */}
-        <span
-          aria-hidden
-          className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-background/95 text-primary shadow-md"
-        >
-          <Heart className="size-5" />
-        </span>
-      </div>
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex flex-col gap-2">
-          <h3 className="line-clamp-2 text-lg leading-7 font-semibold text-foreground transition-colors group-hover:text-primary">
-            {listing.title}
-          </h3>
-          {location ? (
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="size-4 shrink-0" aria-hidden="true" />
-              <span className="truncate">{location}</span>
+          {presentation ? (
+            <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-0.5" aria-label={`${presentation.rating}/5`}>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Star
+                    key={index}
+                    aria-hidden="true"
+                    className={`size-4 text-amber-500 ${
+                      index < Math.round(presentation.rating) ? 'fill-current' : ''
+                    }`}
+                  />
+                ))}
+              </span>
+              <span>{t('bookedCount', { count: presentation.bookingCount })}</span>
+            </div>
+          ) : summary ? (
+            <p className="line-clamp-1 text-sm text-muted-foreground">{summary}</p>
+          ) : null}
+          {price && presentation ? (
+            <div className="mt-auto text-right text-sm">
+              <p>
+                {originalPrice ? (
+                  <span className="mr-2 text-muted-foreground line-through">{originalPrice}</span>
+                ) : null}
+                <span className={presentation?.discountPercent ? 'text-primary' : 'text-foreground'}>
+                  <span className="font-normal">{t('fromPriceShort')} </span>
+                  <span className="text-base font-semibold">{price}</span>
+                </span>
+              </p>
+              <p
+                className={`mt-1 ${
+                  presentation?.discountPercent ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                {presentation?.priceUnit
+                  ? t(`priceUnit.${presentation.priceUnit}`)
+                  : t('fromPrice')}
+              </p>
+            </div>
+          ) : price ? (
+            <p className="mt-auto text-right text-sm">
+              <span className="font-semibold text-primary">
+                {t('fromPriceShort')} {price}
+              </span>{' '}
+              <span className="text-muted-foreground">{t('fromPrice')}</span>
             </p>
           ) : null}
         </div>
-        {summary ? <p className="line-clamp-1 text-sm text-muted-foreground">{summary}</p> : null}
-        {price ? (
-          <p className="mt-auto text-right text-sm">
-            <span className="font-semibold text-primary">
-              {t('fromPriceShort')} {price}
-            </span>{' '}
-            <span className="text-muted-foreground">{t('fromPrice')}</span>
-          </p>
-        ) : null}
-      </div>
-    </Link>
+      </Link>
+      {favoriteControl ? (
+        <button
+          type="button"
+          aria-label={favoriteControl.label}
+          aria-pressed={favoriteControl.selected}
+          onClick={favoriteControl.onToggle}
+          className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-background/95 text-primary shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <Heart className="size-5" fill={favoriteControl.selected ? 'currentColor' : 'none'} />
+        </button>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-background/95 text-primary shadow-md"
+        >
+          <Heart className="size-5" />
+        </span>
+      )}
+    </article>
   );
 }

@@ -11,6 +11,13 @@ export const enListing = {
   fromPrice: 'and up',
   fromPriceShort: 'from',
   perHour: 'per hour',
+  bookedCount: '{count} booked',
+  priceUnit: {
+    hour: 'per hour',
+    day: 'per day',
+    item: 'per item',
+    session: 'per session',
+  },
   forHours: 'for {count} hours',
   perDay: 'per day',
   forDays: 'for {count} days',

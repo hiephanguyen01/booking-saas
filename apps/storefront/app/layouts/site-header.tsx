@@ -85,6 +85,12 @@ export function SiteHeader({
 
           <nav aria-label={t('mainNavigation')} className="flex items-center gap-4">
             <Button asChild variant="outline" className={`${NAV_BUTTON} border-foreground`}>
+              <Link to={storefrontPaths.bookings(locale)} prefetch="intent">
+                <Search aria-hidden="true" className="size-4" />
+                {t('lookup')}
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className={`${NAV_BUTTON} border-foreground`}>
               <Link to={storefrontPaths.community(locale)} prefetch="intent">
                 <Globe2 aria-hidden="true" className="size-4" />
                 {t('community')}

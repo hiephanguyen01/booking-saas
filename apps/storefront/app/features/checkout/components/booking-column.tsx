@@ -122,7 +122,7 @@ export function BookingColumn({
 
       <div className="mt-6">
         <div className="flex items-center justify-between gap-4">
-          <h3 className="max-w-47.5 text-sm leading-5 font-semibold text-foreground">
+          <h3 className="max-w-47.5 text-sm leading-5 font-semibold text-foreground whitespace-nowrap overflow-hidden text-ellipsis">
             {t('promotions')}
           </h3>
           <PromoForm searchParams={searchParams} promoCode={promoCode} promo={promo} />

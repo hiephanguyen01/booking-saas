@@ -1,73 +1,112 @@
 import { Button } from '@booking/ui/components/ui/button';
-import { Clock3, MapPin, X } from 'lucide-react';
+import { Clock3 } from 'lucide-react';
 import { useState } from 'react';
-import {
-  AccountPanel,
-  DemoNotice,
-  MockDisabledState,
-  PageHeading,
-  StudioThumbnail,
-} from '../../features/account/components/account-primitives';
-import { accountMocksEnabled, mockListings } from '../../features/account/server/mock-data.server';
+import { Link, useOutletContext } from 'react-router';
+import { AccountPanel } from '../../features/account/components/account-primitives';
+import { loadAccountListingItems } from '../../features/account/server/account-listings.server';
+import { ListingCard } from '../../features/catalog/components/listing-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
+import { storefrontPaths } from '../../lib/locale-paths';
+import type { AccountOutletContext } from './layout';
 import type { Route } from './+types/recent';
 
-export function loader({ params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  const enabled = accountMocksEnabled();
-  return { enabled, items: enabled ? mockListings(locale) : [] };
+const ALL_TYPES = 'all';
+
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const locale: 'vi' | 'en' = params.locale === 'en' ? 'en' : 'vi';
+  const items = await loadAccountListingItems(request);
+  return { locale, items };
 }
+
 export default function RecentPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation(NsI18n.Account);
-  const [hidden, setHidden] = useState<string[]>([]);
-  const items = loaderData.items.filter((item) => !hidden.includes(item.id));
-  if (!loaderData.enabled)
-    return (
-      <div className="space-y-4">
-        <PageHeading title={t('recent.title')} />
-        <MockDisabledState />
-      </div>
-    );
+  const { listingTypes } = useOutletContext<AccountOutletContext>();
+  const [selectedType, setSelectedType] = useState(ALL_TYPES);
+  const visibleItems =
+    selectedType === ALL_TYPES
+      ? loaderData.items
+      : loaderData.items.filter((item) => item.listing.listingTypeSlug === selectedType);
+
   return (
-    <div className="space-y-4">
-      <PageHeading title={t('recent.title')} demo />
-      <DemoNotice />
-      {items.length ? (
-        <div className="space-y-3">
-          {items.map((item, index) => (
-            <AccountPanel key={item.id} className="grid overflow-hidden sm:grid-cols-[180px_1fr]">
-              <StudioThumbnail label={item.title} className="h-36 sm:h-full" />
-              <div className="relative p-5 pr-14">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setHidden((ids) => [...ids, item.id])}
-                  className="absolute right-3 top-3"
-                  aria-label={t('recent.remove')}
-                >
-                  <X className="size-4" />
-                </Button>
-                <p className="font-semibold">{item.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{item.studio}</p>
-                <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="size-4" />
-                  {item.location}
-                </p>
-                <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock3 className="size-4" />
-                  {t('recent.hoursAgo', { count: index + 1 })}
-                </p>
-                <p className="mt-4 font-semibold text-primary">{item.price}</p>
-              </div>
-            </AccountPanel>
+    <div className="flex flex-col gap-4 py-2 font-studio">
+      <h1 className="text-base font-semibold leading-6 text-foreground">{t('recent.title')}</h1>
+
+      <div className="flex flex-col gap-3">
+        <div
+          role="tablist"
+          aria-label={t('recent.filterLabel')}
+          className="flex min-h-13 w-full overflow-x-auto bg-background shadow-[0_0_8px_rgba(0,0,0,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <RecentTab
+            active={selectedType === ALL_TYPES}
+            label={t('recent.all')}
+            onSelect={() => setSelectedType(ALL_TYPES)}
+          />
+          {listingTypes.map((type) => (
+            <RecentTab
+              key={type.id}
+              active={selectedType === type.slug}
+              label={type.name}
+              onSelect={() => setSelectedType(type.slug)}
+            />
           ))}
         </div>
-      ) : (
-        <AccountPanel className="flex min-h-72 items-center justify-center p-8 text-sm text-muted-foreground">
-          {t('recent.empty')}
-        </AccountPanel>
-      )}
+
+        {visibleItems.length > 0 ? (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleItems.map((item) => (
+              <ListingCard
+                key={item.listing.id}
+                listing={item.listing}
+                presentation={item.presentation}
+                className="min-h-[394px]"
+              />
+            ))}
+          </div>
+        ) : (
+          <RecentEmptyState locale={loaderData.locale} />
+        )}
+      </div>
     </div>
+  );
+}
+
+function RecentTab({
+  active,
+  label,
+  onSelect,
+}: {
+  active: boolean;
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onSelect}
+      className={`relative shrink-0 px-6 py-4 text-sm font-semibold leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+      {active ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" /> : null}
+    </button>
+  );
+}
+
+function RecentEmptyState({ locale }: { locale: 'vi' | 'en' }) {
+  const { t } = useTranslation(NsI18n.Account);
+  return (
+    <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 p-8 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Clock3 aria-hidden="true" className="size-6" />
+      </span>
+      <p className="text-sm text-muted-foreground">{t('recent.empty')}</p>
+      <Button asChild>
+        <Link to={storefrontPaths.home(locale)}>{t('recent.explore')}</Link>
+      </Button>
+    </AccountPanel>
   );
 }

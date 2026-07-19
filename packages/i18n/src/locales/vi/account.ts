@@ -138,14 +138,18 @@ export const viAccount = {
   },
   favorites: {
     title: 'Danh sách yêu thích',
+    all: 'Tất cả',
+    filterLabel: 'Lọc danh sách yêu thích theo loại dịch vụ',
+    remove: 'Bỏ {title} khỏi danh sách yêu thích',
     empty: 'Chưa có địa điểm yêu thích.',
     explore: 'Khám phá studio',
   },
   recent: {
     title: 'Đã xem gần đây',
+    all: 'Tất cả',
+    filterLabel: 'Lọc danh sách đã xem gần đây theo loại dịch vụ',
     empty: 'Chưa có địa điểm nào được xem gần đây.',
-    remove: 'Xóa khỏi danh sách',
-    hoursAgo: '{count} giờ trước',
+    explore: 'Khám phá studio',
   },
   terms: {
     title: 'ĐIỀU KHOẢN SỬ DỤNG',

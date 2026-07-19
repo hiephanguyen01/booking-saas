@@ -8,6 +8,13 @@ export const viListing = {
   fromPrice: 'trở lên',
   fromPriceShort: 'từ',
   perHour: 'cho 1 giờ',
+  bookedCount: '{count} đã đặt',
+  priceUnit: {
+    hour: 'cho 1 giờ',
+    day: 'cho 1 ngày',
+    item: 'mỗi sản phẩm',
+    session: 'mỗi buổi',
+  },
   forHours: 'cho {count} giờ',
   perDay: 'cho 1 ngày',
   forDays: 'cho {count} ngày',

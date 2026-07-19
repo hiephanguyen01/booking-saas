@@ -1,82 +1,121 @@
 import { Button } from '@booking/ui/components/ui/button';
-import { Heart, MapPin, Star } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
-import {
-  AccountPanel,
-  DemoNotice,
-  MockDisabledState,
-  PageHeading,
-  StudioThumbnail,
-} from '../../features/account/components/account-primitives';
-import { accountMocksEnabled, mockListings } from '../../features/account/server/mock-data.server';
+import { Link, useOutletContext } from 'react-router';
+import { AccountPanel } from '../../features/account/components/account-primitives';
+import { loadAccountListingItems } from '../../features/account/server/account-listings.server';
+import { ListingCard } from '../../features/catalog/components/listing-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
+import type { AccountOutletContext } from './layout';
 import type { Route } from './+types/favorites';
 
-export function loader({ params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  const enabled = accountMocksEnabled();
-  return { locale, enabled, items: enabled ? mockListings(locale).slice(0, 2) : [] };
+const ALL_TYPES = 'all';
+
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const locale: 'vi' | 'en' = params.locale === 'en' ? 'en' : 'vi';
+  const items = await loadAccountListingItems(request);
+  return { locale, items };
 }
+
 export default function FavoritesPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation(NsI18n.Account);
-  const locale = loaderData.locale === 'en' ? 'en' : 'vi';
+  const { listingTypes } = useOutletContext<AccountOutletContext>();
+  const [selectedType, setSelectedType] = useState(ALL_TYPES);
   const [removed, setRemoved] = useState<string[]>([]);
-  const items = loaderData.items.filter((item) => !removed.includes(item.id));
-  if (!loaderData.enabled)
-    return (
-      <div className="space-y-4">
-        <PageHeading title={t('favorites.title')} />
-        <MockDisabledState />
-      </div>
-    );
+  const availableItems = loaderData.items.filter((item) => !removed.includes(item.listing.id));
+  const visibleItems =
+    selectedType === ALL_TYPES
+      ? availableItems
+      : availableItems.filter((item) => item.listing.listingTypeSlug === selectedType);
+
   return (
-    <div className="space-y-4">
-      <PageHeading title={t('favorites.title')} demo />
-      <DemoNotice />
-      {items.length ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {items.map((item) => (
-            <AccountPanel key={item.id} className="overflow-hidden">
-              <StudioThumbnail label={item.title} className="h-44" />
-              <div className="p-5">
-                <div className="flex justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{item.studio}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setRemoved((ids) => [...ids, item.id])}
-                    className="flex size-9 items-center justify-center rounded-full text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <Heart className="size-5" fill="currentColor" />
-                  </button>
-                </div>
-                <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="size-4" />
-                  {item.location}
-                </p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="font-semibold text-primary">{item.price}</span>
-                  <span className="flex items-center gap-1 text-xs">
-                    <Star className="size-4 text-amber-500" fill="currentColor" />
-                    {item.rating}
-                  </span>
-                </div>
-              </div>
-            </AccountPanel>
+    <div className="flex flex-col gap-4 py-2 font-studio">
+      <h1 className="text-base font-semibold leading-6 text-foreground">
+        {t('favorites.title')}
+      </h1>
+
+      <div className="flex flex-col gap-3">
+        <div
+          role="tablist"
+          aria-label={t('favorites.filterLabel')}
+          className="flex min-h-13 w-full overflow-x-auto bg-background shadow-[0_0_8px_rgba(0,0,0,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <FavoriteTab
+            active={selectedType === ALL_TYPES}
+            label={t('favorites.all')}
+            onSelect={() => setSelectedType(ALL_TYPES)}
+          />
+          {listingTypes.map((type) => (
+            <FavoriteTab
+              key={type.id}
+              active={selectedType === type.slug}
+              label={type.name}
+              onSelect={() => setSelectedType(type.slug)}
+            />
           ))}
         </div>
-      ) : (
-        <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 p-8">
-          <p className="text-sm text-muted-foreground">{t('favorites.empty')}</p>
-          <Button asChild>
-            <Link to={storefrontPaths.home(locale)}>{t('favorites.explore')}</Link>
-          </Button>
-        </AccountPanel>
-      )}
+
+        {visibleItems.length > 0 ? (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleItems.map((item) => (
+              <ListingCard
+                key={item.listing.id}
+                listing={item.listing}
+                presentation={item.presentation}
+                className="min-h-[394px]"
+                favoriteControl={{
+                  selected: true,
+                  label: t('favorites.remove', { title: item.listing.title }),
+                  onToggle: () => setRemoved((ids) => [...ids, item.listing.id]),
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <FavoriteEmptyState locale={loaderData.locale} />
+        )}
+      </div>
     </div>
+  );
+}
+
+function FavoriteTab({
+  active,
+  label,
+  onSelect,
+}: {
+  active: boolean;
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onSelect}
+      className={`relative shrink-0 px-6 py-4 text-sm font-semibold leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+      {active ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" /> : null}
+    </button>
+  );
+}
+
+function FavoriteEmptyState({ locale }: { locale: 'vi' | 'en' }) {
+  const { t } = useTranslation(NsI18n.Account);
+  return (
+    <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 p-8 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Heart aria-hidden="true" className="size-6" />
+      </span>
+      <p className="text-sm text-muted-foreground">{t('favorites.empty')}</p>
+      <Button asChild>
+        <Link to={storefrontPaths.home(locale)}>{t('favorites.explore')}</Link>
+      </Button>
+    </AccountPanel>
   );
 }

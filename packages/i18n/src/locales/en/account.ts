@@ -139,12 +139,20 @@ export const enAccount = {
     action: 'Review',
     completed: 'COMPLETED',
   },
-  favorites: { title: 'Favorites', empty: 'No favorite places yet.', explore: 'Explore studios' },
+  favorites: {
+    title: 'Favorites',
+    all: 'All',
+    filterLabel: 'Filter favorites by service type',
+    remove: 'Remove {title} from favorites',
+    empty: 'No favorite places yet.',
+    explore: 'Explore studios',
+  },
   recent: {
     title: 'Recently viewed',
+    all: 'All',
+    filterLabel: 'Filter recently viewed places by service type',
     empty: 'No recently viewed places yet.',
-    remove: 'Remove from list',
-    hoursAgo: '{count} hours ago',
+    explore: 'Explore studios',
   },
   terms: {
     title: 'TERMS OF USE',

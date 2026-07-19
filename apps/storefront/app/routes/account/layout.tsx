@@ -20,7 +20,11 @@ export function loader({ request, params }: Route.LoaderArgs) {
 
 export default function AccountLayout({ loaderData }: Route.ComponentProps) {
   const rootContext = useOutletContext<StorefrontContext>();
-  const context: AccountOutletContext = { ...loaderData, tenant: rootContext.tenant };
+  const context: AccountOutletContext = {
+    ...loaderData,
+    tenant: rootContext.tenant,
+    listingTypes: rootContext.listingTypes,
+  };
   return (
     <AccountShell user={loaderData.user} locale={loaderData.locale}>
       <Outlet context={context} />
@@ -30,4 +34,5 @@ export default function AccountLayout({ loaderData }: Route.ComponentProps) {
 
 export interface AccountOutletContext extends ReturnType<typeof loader> {
   tenant: StorefrontTenant;
+  listingTypes: StorefrontContext['listingTypes'];
 }
