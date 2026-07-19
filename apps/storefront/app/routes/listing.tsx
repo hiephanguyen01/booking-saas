@@ -5,6 +5,7 @@ import { ListingPage } from '../features/listing/listing-page';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
+import { normalizeDailyRange } from '../lib/daily-range';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
 import type { StorefrontContext } from '../root';
@@ -156,11 +157,12 @@ function isSelectionAvailable(
   if (availability.mode !== 'daily') return false;
   const from = searchParams.get('from');
   const to = searchParams.get('to');
-  if (!from || !to || from >= to) return false;
+  const range = normalizeDailyRange(from ?? undefined, to ?? undefined);
+  if (!range) return false;
   const openDates = new Set(
     availability.days.filter((day) => day.status === 'available').map((day) => day.date),
   );
-  for (let date = from; date < to; date = addDays(date, 1)) {
+  for (let date = range.from; date < range.to; date = addDays(date, 1)) {
     if (!openDates.has(date)) return false;
   }
   return true;
