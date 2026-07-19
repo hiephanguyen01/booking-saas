@@ -125,6 +125,8 @@ export const viAccount = {
       total: 'Tổng tiền',
       deposit: 'Đã cọc',
       paid: 'Đã thanh toán',
+      paidDeposit: 'Đã cọc',
+      paidInFull: 'Đã thanh toán đủ',
       securityDeposit: 'Cọc bảo đảm',
       method: 'Phương thức thanh toán',
       balance: 'Còn lại phải thanh toán',

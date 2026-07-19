@@ -128,6 +128,8 @@ export const enAccount = {
       total: 'Total',
       deposit: 'Deposit paid',
       paid: 'Paid',
+      paidDeposit: 'Deposit paid',
+      paidInFull: 'Paid in full',
       securityDeposit: 'Security deposit',
       method: 'Payment method',
       balance: 'Remaining balance',
