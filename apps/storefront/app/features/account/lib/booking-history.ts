@@ -41,6 +41,7 @@ export interface AccountBookingViewModel {
   status: BookingStatus;
   variant: BookingDetailVariant;
   partnerName: string;
+  listingSlug: string;
   listingTitle: string;
   listingDescription: string | null;
   imageUrl: string | null;
@@ -216,6 +217,7 @@ export function toAccountBookingViewModel(
     status: booking.status,
     variant: bookingVariant(booking.status),
     partnerName: booking.partnerName,
+    listingSlug: booking.listingSlug,
     listingTitle: booking.listingTitle,
     listingDescription: booking.listingDescription,
     imageUrl: booking.listingImageUrl,

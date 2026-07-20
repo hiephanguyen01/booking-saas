@@ -19,10 +19,13 @@ export function BookingCardHeader({
   return (
     <header className="mx-5 flex min-h-18 flex-col justify-center gap-3 border-b border-[#d8dee8] py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-5">
-        <p className="inline-flex min-w-0 items-center gap-2 text-sm font-medium text-[#263247]">
+        <Link
+          to={storefrontPaths.listing(locale, booking.listingSlug)}
+          className="inline-flex min-w-0 items-center gap-2 text-sm font-medium text-[#263247] hover:underline"
+        >
           <Building2 aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">{booking.partnerName}</span>
-        </p>
+        </Link>
         <Button
           asChild
           variant="outline"

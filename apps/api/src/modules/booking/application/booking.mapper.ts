@@ -122,6 +122,7 @@ function toCore(b: BookingRecord) {
     status: b.status,
     listingId: b.listingId,
     listingTitle: b.listingTitle,
+    listingSlug: b.listingSlug,
     listingDescription: b.listingDescription,
     listingImageUrl: b.listingImageUrl,
     listingAttributes:

@@ -24,6 +24,7 @@ import type { BookingMode, RoomOption } from '../listing-group-types';
 import { checkoutHref, type RoomAvailabilityState } from '../listing-group-utils';
 import { roomAttributes, roomCapacity } from '../room-attributes';
 import { SlotPicker } from './slot-picker';
+import { RoomBookingDialog } from './room-booking-dialog';
 
 export function RoomDetails({
   option,
@@ -135,6 +136,16 @@ export function RoomPrice({
   state: RoomAvailabilityState;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  if (state === 'browse')
+    return option.price ? (
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-muted-foreground">{t('group.fromRoomPrice')}</span>
+        <strong className="text-xl text-primary">{formatVnd(option.price)}</strong>
+        <span className="text-muted-foreground">{t('group.hourOrDay')}</span>
+      </div>
+    ) : (
+      <p className="font-medium text-muted-foreground">{t('group.noPrice')}</p>
+    );
   if (state === 'booked')
     return <p className="font-medium text-muted-foreground">{t('group.soldOut')}</p>;
   if (state === 'missing-price')
@@ -156,12 +167,14 @@ export function RoomPrice({
 
 export function RoomAction({
   option,
+  groupSlug,
   mode,
   date,
   state,
   slots,
 }: {
   option: RoomOption;
+  groupSlug: string;
   mode: BookingMode;
   date: string;
   state: RoomAvailabilityState;
@@ -169,6 +182,10 @@ export function RoomAction({
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
+
+  if (state === 'browse') {
+    return <RoomBookingDialog option={option} groupSlug={groupSlug} preferredMode={mode} />;
+  }
 
   if (state === 'booked')
     return (

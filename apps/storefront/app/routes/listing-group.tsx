@@ -48,12 +48,29 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   ]);
   if (!group) throw new Response('Listing group not found', { status: 404 });
   const state = parseSearchState(url.searchParams);
+  const hasAvailabilityFilter =
+    (state.mode === 'hourly' && state.hasDateSelection) ||
+    (state.mode === 'daily' && state.hasDailyRange);
   const children = group.listings.slice(0, 20);
   const options = await Promise.all(
     children.map(async (child) => {
       const detail = await safe(fetchListing(request, child.slug));
+      if (!detail) return null;
+      if (!hasAvailabilityFilter) {
+        return {
+          child,
+          detail,
+          browsing: true as const,
+          availability: null,
+          available: null,
+          price: child.priceFrom,
+          quote: null,
+          start: null,
+          end: null,
+        };
+      }
       if (state.mode === 'none') return null;
-      if (!detail || !detail.bookingModes.includes(state.mode)) return null;
+      if (!detail.bookingModes.includes(state.mode)) return null;
       if (state.mode === 'hourly') {
         const availability = await safe(
           fetchAvailability(request, child.slug, {
@@ -106,6 +123,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         return {
           child,
           detail,
+          browsing: false as const,
           availability,
           available: state.hasTimeSelection
             ? Boolean(requestedSlot && quote)
@@ -153,6 +171,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       return {
         child,
         detail,
+        browsing: false as const,
         availability,
         available: Boolean(available && quote),
         price: quote?.subtotal ?? null,
@@ -181,6 +200,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   return {
     group,
     state,
+    hasAvailabilityFilter,
     roomOptions,
     locations,
     relatedListings,

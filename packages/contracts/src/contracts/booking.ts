@@ -192,6 +192,7 @@ const bookingCoreSchema = z.object({
   status: bookingStatusSchema,
   listingId: z.string(),
   listingTitle: z.string(),
+  listingSlug: z.string(),
   /** Customer-facing context for the booked product, resolved with the booking. */
   listingDescription: z.string().nullable(),
   listingImageUrl: z.string().nullable(),

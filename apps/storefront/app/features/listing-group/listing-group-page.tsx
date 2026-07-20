@@ -33,7 +33,9 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   const locale = useLocale();
   const location = formatListingLocation(group, 'full');
   const trust = roomOptions[0]?.detail.trust ?? null;
-  const minimumPrice = minimumRoomPrice(roomOptions.filter((option) => option.available));
+  const minimumPrice = minimumRoomPrice(
+    roomOptions.filter((option) => option.browsing || option.available),
+  );
   const selectedHours = state.hasTimeSelection
     ? clockHoursBetween(state.startTime, state.endTime)
     : null;
@@ -120,6 +122,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
         <RoomOptionsSection
           key={`${state.mode}:${state.date}:${state.startTime}:${state.endTime}:${state.from}:${state.to}`}
           roomOptions={roomOptions}
+          groupSlug={group.slug}
           mode={state.mode}
           date={state.date}
           hideUnavailableByDefault={state.hasTimeSelection || state.hasDailyRange}

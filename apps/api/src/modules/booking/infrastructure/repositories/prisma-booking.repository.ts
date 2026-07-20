@@ -22,6 +22,7 @@ interface Row {
   tenantId: string;
   listingId: string;
   listingTitle: string;
+  listingSlug: string;
   listingDescription: string | null;
   listingImageUrl: string | null;
   listingAttributes: unknown;
@@ -83,6 +84,7 @@ interface Row {
 const SELECT = Prisma.sql`
   SELECT b.id,
          b.tenant_id AS "tenantId", b.listing_id AS "listingId", l.title AS "listingTitle",
+         l.slug AS "listingSlug",
          l.description AS "listingDescription", l.photos->>0 AS "listingImageUrl",
          l.attributes AS "listingAttributes",
          b.partner_id AS "partnerId", p.name AS "partnerName",

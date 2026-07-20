@@ -26,11 +26,13 @@ type SlotsByRoom = ReadonlyMap<string, HourlySlot[]>;
 
 export function RoomOptionsSection({
   roomOptions,
+  groupSlug,
   mode,
   date,
   hideUnavailableByDefault,
 }: {
   roomOptions: RoomOption[];
+  groupSlug: string;
   mode: BookingMode;
   date: string;
   hideUnavailableByDefault: boolean;
@@ -43,9 +45,12 @@ export function RoomOptionsSection({
     () => new Map(roomOptions.map((option) => [option.child.id, hourlySlotsOf(option)])),
     [roomOptions],
   );
-  const unavailableCount = roomOptions.filter((option) => !option.available).length;
+  const browsing = roomOptions.some((option) => option.browsing);
+  const unavailableCount = roomOptions.filter(
+    (option) => !option.browsing && option.available === false,
+  ).length;
   const visibleOptions = hideUnavailable
-    ? roomOptions.filter((option) => option.available)
+    ? roomOptions.filter((option) => option.browsing || option.available)
     : roomOptions;
 
   return (
@@ -56,7 +61,11 @@ export function RoomOptionsSection({
             {t('group.roomTypes')}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === 'hourly' ? t('group.availabilityOn', { date }) : t('group.availabilityRange')}
+            {browsing
+              ? t('group.chooseSchedulePerRoom')
+              : mode === 'hourly'
+                ? t('group.availabilityOn', { date })
+                : t('group.availabilityRange')}
           </p>
         </div>
         {unavailableCount > 0 ? (
@@ -99,6 +108,7 @@ export function RoomOptionsSection({
                   <RoomRow
                     key={option.child.id}
                     option={option}
+                    groupSlug={groupSlug}
                     mode={mode}
                     date={date}
                     slots={slotsByRoom.get(option.child.id) ?? []}
@@ -112,6 +122,7 @@ export function RoomOptionsSection({
               <RoomCard
                 key={option.child.id}
                 option={option}
+                groupSlug={groupSlug}
                 mode={mode}
                 date={date}
                 slots={slotsByRoom.get(option.child.id) ?? []}
@@ -136,12 +147,13 @@ export function RoomOptionsSection({
 
 interface RoomProps {
   option: RoomOption;
+  groupSlug: string;
   mode: BookingMode;
   date: string;
   slots: HourlySlot[];
 }
 
-function RoomRow({ option, mode, date, slots }: RoomProps) {
+function RoomRow({ option, groupSlug, mode, date, slots }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <tr className="border-t border-border align-top">
@@ -155,14 +167,21 @@ function RoomRow({ option, mode, date, slots }: RoomProps) {
         <RoomPrice option={option} mode={mode} state={state} />
       </td>
       <td className="border-l border-border p-5">
-        <RoomAction option={option} mode={mode} date={date} state={state} slots={slots} />
+        <RoomAction
+          option={option}
+          groupSlug={groupSlug}
+          mode={mode}
+          date={date}
+          state={state}
+          slots={slots}
+        />
         <PolicyList depositPercent={option.detail.depositPercent} />
       </td>
     </tr>
   );
 }
 
-function RoomCard({ option, mode, date, slots }: RoomProps) {
+function RoomCard({ option, groupSlug, mode, date, slots }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <article className="overflow-hidden rounded-lg border border-border bg-card">
@@ -173,7 +192,14 @@ function RoomCard({ option, mode, date, slots }: RoomProps) {
           <CapacityDetails option={option} />
           <RoomPrice option={option} mode={mode} state={state} />
         </div>
-        <RoomAction option={option} mode={mode} date={date} state={state} slots={slots} />
+        <RoomAction
+          option={option}
+          groupSlug={groupSlug}
+          mode={mode}
+          date={date}
+          state={state}
+          slots={slots}
+        />
         <PolicyList depositPercent={option.detail.depositPercent} />
       </div>
     </article>

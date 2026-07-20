@@ -106,12 +106,14 @@ export function checkoutHref(input: {
   return `${storefrontPaths.checkout(input.locale)}?${params.toString()}`;
 }
 
-export type RoomAvailabilityState = 'available' | 'booked' | 'missing-price';
+export type RoomAvailabilityState = 'browse' | 'available' | 'booked' | 'missing-price';
 
 export function roomAvailabilityState(input: {
-  available: boolean;
+  browsing?: boolean;
+  available: boolean | null;
   price: string | null;
 }): RoomAvailabilityState {
+  if (input.browsing) return 'browse';
   if (!input.available) return 'booked';
   return input.price ? 'available' : 'missing-price';
 }

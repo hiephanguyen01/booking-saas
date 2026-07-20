@@ -245,7 +245,7 @@ function AuthenticatedActions({
           aria-label={t('navigation:accountMenu')}
           className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <AccountAvatar currentUser={currentUser} className="ring-4 ring-[#d0fbe8]" />
+          <AccountAvatar currentUser={currentUser} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

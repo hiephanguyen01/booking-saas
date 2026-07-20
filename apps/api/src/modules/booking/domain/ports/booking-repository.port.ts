@@ -24,6 +24,7 @@ export interface BookingRecord {
   listingId: string;
   /** Joined from `listings` — every booking surface shows the title, none of them had it. */
   listingTitle: string;
+  listingSlug: string;
   listingDescription: string | null;
   listingImageUrl: string | null;
   listingAttributes: unknown;
