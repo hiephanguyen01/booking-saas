@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
   Star,
+  Heart,
   Scale,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
@@ -74,6 +75,12 @@ export const tenantNavSections: DashboardNavSection[] = [
         to: dashboardPaths.tenant.reviews,
         icon: Star,
         permission: 'tenant.reviews.read',
+      },
+      {
+        title: 'Yêu thích',
+        to: dashboardPaths.tenant.favorites,
+        icon: Heart,
+        permission: 'tenant.favorites.read',
       },
     ],
   },

@@ -1,15 +1,42 @@
+import { favoriteRefsResponseSchema, type FavoriteRefsResponse } from '@booking/contracts';
 import { Outlet, useOutletContext } from 'react-router';
+import { FavoritesProvider } from '../features/favorites/favorites-context';
+import { apiGet } from '../lib/api.server';
+import { getOptionalAuth } from '../lib/auth.server';
 import type { Route } from './+types/locale-layout';
 import type { StorefrontContext } from '../root';
 
-export function loader({ params }: Route.LoaderArgs) {
+const EMPTY_REFS: FavoriteRefsResponse = { listingIds: [], groupIds: [] };
+
+export async function loader({ params, request }: Route.LoaderArgs) {
   if (params.locale !== 'vi' && params.locale !== 'en') {
     throw new Response('Locale not found', { status: 404 });
   }
-  return { locale: params.locale };
+  const locale: 'vi' | 'en' = params.locale;
+
+  // One refs fetch here lights up every heart on every child page (home / filter
+  // / detail / account) with no per-card round-trip. Degrade to empty on failure.
+  const auth = getOptionalAuth();
+  let refs = EMPTY_REFS;
+  if (auth) {
+    const result = await apiGet(request, '/customer/favorites/refs', auth.session.accessToken, {
+      schema: favoriteRefsResponseSchema,
+    });
+    if (result.ok && result.data) refs = result.data;
+  }
+
+  return { locale, favorites: { isAuthenticated: Boolean(auth), refs } };
 }
 
-export default function LocaleLayout() {
+export default function LocaleLayout({ loaderData }: Route.ComponentProps) {
   const context = useOutletContext<StorefrontContext>();
-  return <Outlet context={context} />;
+  return (
+    <FavoritesProvider
+      isAuthenticated={loaderData.favorites.isAuthenticated}
+      refs={loaderData.favorites.refs}
+      locale={loaderData.locale}
+    >
+      <Outlet context={context} />
+    </FavoritesProvider>
+  );
 }

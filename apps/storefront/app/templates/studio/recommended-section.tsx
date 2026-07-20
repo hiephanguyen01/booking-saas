@@ -2,7 +2,7 @@ import type { PublicListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { useState } from 'react';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { ListingCard } from '../../features/catalog/components/listing-card';
+import { FavoriteListingCard } from '../../features/favorites/components/favorite-cards';
 import { LocationTabs } from './location-tabs';
 import {
   filterHomeListingsByLocation,
@@ -40,7 +40,7 @@ export function RecommendedSection({ listings }: { listings: PublicListingRespon
       {shown.length > 0 ? (
         <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {shown.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
+            <FavoriteListingCard key={listing.id} listing={listing} />
           ))}
         </div>
       ) : (

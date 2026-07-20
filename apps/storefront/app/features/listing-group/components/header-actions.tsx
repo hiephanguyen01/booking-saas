@@ -1,3 +1,4 @@
+import type { FavoriteTargetKind } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -6,13 +7,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
-import { Copy, EllipsisVertical, Heart } from 'lucide-react';
+import { Copy, EllipsisVertical } from 'lucide-react';
 import { useState } from 'react';
+import { FavoriteHeartButton } from '../../favorites/components/favorite-heart-button';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 
 const COPIED_FEEDBACK_MS = 1800;
 
-export function HeaderActions({ title }: { title: string }) {
+export function HeaderActions({
+  title,
+  favorite,
+}: {
+  title: string;
+  favorite: { kind: FavoriteTargetKind; id: string };
+}) {
   const { t } = useTranslation(NsI18n.Listing);
   const [copied, setCopied] = useState(false);
 
@@ -32,16 +40,12 @@ export function HeaderActions({ title }: { title: string }) {
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
+      <FavoriteHeartButton
+        kind={favorite.kind}
+        id={favorite.id}
+        title={title}
         className="size-11"
-        aria-label={t('group.save', { title })}
-        title={t('group.saveComingSoon')}
-      >
-        <Heart className="text-primary" />
-      </Button>
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

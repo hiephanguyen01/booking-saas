@@ -77,7 +77,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
                 ) : null}
               </div>
             </div>
-            <HeaderActions title={group.title} />
+            <HeaderActions title={group.title} favorite={{ kind: 'group', id: group.id }} />
           </header>
           <StudioGallery photos={group.photos} title={group.title} />
         </SectionCard>

@@ -1,7 +1,7 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { SectionCard } from '../../../components/section-card';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { ListingCard } from '../../catalog/components/listing-card';
+import { FavoriteListingCard } from '../../favorites/components/favorite-cards';
 
 const MAX_RELATED = 4;
 
@@ -19,7 +19,7 @@ export function RelatedStudios({ listings }: { listings: PublicListingResponse[]
             key={listing.id}
             className="w-[78vw] max-w-69.5 shrink-0 snap-start sm:w-69.5 xl:w-auto xl:max-w-none"
           >
-            <ListingCard listing={listing} />
+            <FavoriteListingCard listing={listing} />
           </div>
         ))}
       </div>

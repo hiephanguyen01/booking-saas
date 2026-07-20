@@ -25,6 +25,7 @@ import { AffiliateModule } from './modules/affiliate/infrastructure/http/affilia
 import { NotificationModule } from './modules/notification/infrastructure/http/notification.module';
 import { AdministrativeDivisionModule } from './modules/administrative-division/infrastructure/http/administrative-division.module';
 import { ReviewsModule } from './modules/reviews/infrastructure/http/reviews.module';
+import { FavoritesModule } from './modules/favorites/infrastructure/http/favorites.module';
 
 const prettyLogs =
   process.env.LOG_PRETTY === 'true' ||
@@ -79,6 +80,7 @@ const prettyLogs =
     NotificationModule,
     AdministrativeDivisionModule,
     ReviewsModule,
+    FavoritesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
