@@ -12,10 +12,26 @@ export function BookingContactSection({ booking }: { booking: AccountBookingView
   return (
     <DetailSection title={t('bookings.contact.title')}>
       <DetailRows>
-        <DetailRow label={t('bookings.contact.customer')} value={booking.customer.fullName} />
-        <DetailRow label={t('bookings.contact.phone')} value={booking.customer.phone ?? '-'} />
-        <DetailRow label={t('bookings.contact.email')} value={booking.customer.email} />
-        <DetailRow label={t('bookings.contact.note')} value={booking.customerNote ?? '-'} />
+        <DetailRow
+          label={t('bookings.contact.customer')}
+          value={booking.customer.fullName}
+          align="start"
+        />
+        <DetailRow
+          label={t('bookings.contact.phone')}
+          value={booking.customer.phone ?? '-'}
+          align="start"
+        />
+        <DetailRow
+          label={t('bookings.contact.email')}
+          value={booking.customer.email}
+          align="start"
+        />
+        <DetailRow
+          label={t('bookings.contact.note')}
+          value={booking.customerNote ?? '-'}
+          align="start"
+        />
       </DetailRows>
     </DetailSection>
   );
@@ -358,17 +374,21 @@ function DetailRow({
   label,
   value,
   accent = false,
+  align = 'end',
 }: {
   label: string;
   value: string;
   accent?: boolean;
+  align?: 'start' | 'end';
 }) {
+  const alignmentClass =
+    align === 'start' ? 'sm:grid-cols-[160px_minmax(0,1fr)]' : 'sm:grid-cols-2 sm:text-right';
   return (
-    <div className="grid min-h-12 items-center gap-1 border-b border-[#d8dee8] py-2 text-sm last:border-b-0 sm:grid-cols-2">
-      <dt className="text-[#667085] sm:text-right">{label}</dt>
-      <dd
-        className={`break-words text-[#263247] sm:text-right ${accent ? 'font-semibold text-[#ff3f44]' : ''}`}
-      >
+    <div
+      className={`grid min-h-12 items-center gap-1 border-b border-[#d8dee8] py-2 text-sm last:border-b-0 ${alignmentClass}`}
+    >
+      <dt className="text-[#667085]">{label}</dt>
+      <dd className={`break-words text-[#263247] ${accent ? 'font-semibold text-[#ff3f44]' : ''}`}>
         {value}
       </dd>
     </div>
