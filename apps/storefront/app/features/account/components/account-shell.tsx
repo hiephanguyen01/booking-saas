@@ -1,6 +1,6 @@
 import type { CurrentUser } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
-import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { SheetClose } from '@booking/ui/components/ui/sheet';
 import {
   CircleHelp,
@@ -38,7 +38,6 @@ const NAV_GROUPS: AccountNavKey[][] = [
   ['favorites', 'recent'],
   ['terms', 'security', 'help'],
 ];
-const ACCOUNT_AVATAR_PLACEHOLDER = '/images/booking-studio/home/promo-photographer.png';
 
 export function AccountShell({
   user,
@@ -58,7 +57,7 @@ export function AccountShell({
         {/* <div className="lg:hidden">
           <MobileAccountNavigation user={user} locale={locale} />
         </div> */}
-        <aside className=" w-64 self-start lg:block mt-2" aria-label={t('title')}>
+        <aside className="mt-2 hidden w-64 self-start lg:block" aria-label={t('title')}>
           <AccountIdentity user={user} />
           <AccountNavigation locale={locale} accountMenuSummary={accountMenuSummary} />
         </aside>
@@ -72,7 +71,6 @@ function AccountIdentity({ user }: { user: CurrentUser }) {
   return (
     <div className="flex w-full items-center gap-3">
       <Avatar className="size-12">
-        <AvatarImage src={ACCOUNT_AVATAR_PLACEHOLDER} alt="" className="object-cover" />
         <AvatarFallback className="bg-primary/10 font-semibold text-primary">
           {userInitials(user.fullName)}
         </AvatarFallback>

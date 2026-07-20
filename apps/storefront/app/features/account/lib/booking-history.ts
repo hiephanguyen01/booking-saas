@@ -25,6 +25,7 @@ export const BOOKING_HISTORY_FILTERS = [
 
 export type BookingHistoryFilter = (typeof BOOKING_HISTORY_FILTERS)[number];
 export type BookingDetailVariant = Exclude<BookingHistoryFilter, 'all'>;
+export type BookingDetailState = 'need-payment' | 'coming-soon' | 'done' | 'absent' | 'cancelled';
 
 export interface AccountBookingReview {
   state: 'pending' | 'reviewed';
@@ -91,6 +92,19 @@ const STATUS_FILTERS: Record<BookingStatus, BookingDetailVariant> = {
   refunded: 'cancelled',
 };
 
+const DETAIL_STATES: Record<BookingStatus, BookingDetailState> = {
+  draft: 'need-payment',
+  pending_approval: 'coming-soon',
+  pending_payment: 'need-payment',
+  confirmed: 'coming-soon',
+  cancelled: 'cancelled',
+  completed: 'done',
+  no_show: 'absent',
+  rejected: 'cancelled',
+  expired: 'cancelled',
+  refunded: 'cancelled',
+};
+
 export function parseBookingHistoryFilter(value: string | null): BookingHistoryFilter {
   return BOOKING_HISTORY_FILTERS.includes(value as BookingHistoryFilter)
     ? (value as BookingHistoryFilter)
@@ -106,6 +120,10 @@ export function bookingMatchesFilter(
 
 export function bookingVariant(status: BookingStatus): BookingDetailVariant {
   return STATUS_FILTERS[status];
+}
+
+export function bookingDetailState(status: BookingStatus): BookingDetailState {
+  return DETAIL_STATES[status];
 }
 
 /**
