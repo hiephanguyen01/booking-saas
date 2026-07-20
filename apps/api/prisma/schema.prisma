@@ -133,6 +133,13 @@ enum ListingStructure {
   @@map("listing_structure")
 }
 
+enum BookingSelection {
+  flexible_duration
+  fixed_packages
+
+  @@map("booking_selection")
+}
+
 /// Post-level moderation state shared by listing_groups + standalone listings.
 enum PublishStatus {
   draft
@@ -784,6 +791,7 @@ model ListingType {
   /// which BookingModes this type may enable / enables by default on a new listing.
   allowedModes                 BookingMode[]    @map("allowed_modes")
   defaultModes                 BookingMode[]    @map("default_modes")
+  bookingSelection             BookingSelection @default(flexible_duration) @map("booking_selection")
   /// [{key,label,type,required,filterable,options}] — validates listing.attributes.
   attributeSchema              Json             @default("[]") @map("attribute_schema")
   /// storefront search controls/facet presentation for this tenant-defined type.
@@ -894,7 +902,7 @@ model Listing {
   attributes              Json             @default("{}")
   /// enabled modes, bounded by listing_type.allowed_modes.
   bookingModes            BookingMode[]    @map("booking_modes")
-  /// per-mode config: prices, blocks (bundle pricing), min/max, granularity, deposit… (§7.3).
+  /// per-mode config: flexible unit pricing or fixed packages, min/max, granularity, deposit… (§7.3).
   modeConfig              Json             @default("{}") @map("mode_config")
   /// units in stock — `inventory` mode only.
   stockQuantity           Int?             @map("stock_quantity")

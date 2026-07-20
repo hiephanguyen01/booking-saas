@@ -1,6 +1,13 @@
 'use client';
 
-import { ExternalLinkIcon, ImageIcon, UploadIcon, XIcon } from 'lucide-react';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ExternalLinkIcon,
+  ImageIcon,
+  UploadIcon,
+  XIcon,
+} from 'lucide-react';
 import * as React from 'react';
 
 import {
@@ -49,6 +56,8 @@ export interface ImageUploadProps {
   maxSizeMb?: number;
   /** Cap on total images in multiple mode. */
   maxFiles?: number;
+  /** Show accessible controls for changing the order in multiple mode. */
+  reorderable?: boolean;
   disabled?: boolean;
   className?: string;
   /** Larger dashed tile used by legal-document and identity forms. */
@@ -77,6 +86,7 @@ export function ImageUpload({
   accept = DEFAULT_IMAGE_ACCEPT,
   maxSizeMb = DEFAULT_MAX_SIZE_MB,
   maxFiles,
+  reorderable = false,
   disabled,
   className,
   variant = 'default',
@@ -118,6 +128,14 @@ export function ImageUpload({
 
   function removeAt(index: number): void {
     onChange(removedImageValue(urls, multiple, index));
+  }
+
+  function move(index: number, direction: -1 | 1): void {
+    const targetIndex = index + direction;
+    if (!multiple || targetIndex < 0 || targetIndex >= urls.length) return;
+    const next = [...urls];
+    [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
+    onChange(next);
   }
 
   const showTrigger = !disabled && !atLimit && (multiple || urls.length === 0);
@@ -190,7 +208,7 @@ export function ImageUpload({
         accept={accept.join(',')}
         multiple={multiple}
         hidden
-        disabled={disabled}
+        disabled={disabled || uploading}
         onChange={(e) => void handleFiles(e.target.files)}
       />
 
@@ -199,8 +217,33 @@ export function ImageUpload({
           <Attachment key={`${url}-${i}`} orientation="vertical" state="done" className="w-28">
             <AttachmentMedia variant="image">
               <img src={url} alt={`Ảnh đã tải lên ${i + 1}`} />
+              {reorderable && i === 0 ? (
+                <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground shadow-sm">
+                  Ảnh đại diện
+                </span>
+              ) : null}
             </AttachmentMedia>
-            <AttachmentActions>
+            <AttachmentActions className="flex-wrap justify-end">
+              {reorderable ? (
+                <>
+                  <AttachmentAction
+                    type="button"
+                    onClick={() => move(i, -1)}
+                    aria-label={`Đưa ảnh ${i + 1} sang trái`}
+                    disabled={disabled || uploading || i === 0}
+                  >
+                    <ChevronLeftIcon />
+                  </AttachmentAction>
+                  <AttachmentAction
+                    type="button"
+                    onClick={() => move(i, 1)}
+                    aria-label={`Đưa ảnh ${i + 1} sang phải`}
+                    disabled={disabled || uploading || i === urls.length - 1}
+                  >
+                    <ChevronRightIcon />
+                  </AttachmentAction>
+                </>
+              ) : null}
               <AttachmentAction asChild aria-label="Xem ảnh">
                 <a href={url} target="_blank" rel="noreferrer">
                   <ExternalLinkIcon />
@@ -210,7 +253,7 @@ export function ImageUpload({
                 type="button"
                 onClick={() => removeAt(i)}
                 aria-label="Xoá ảnh"
-                disabled={disabled}
+                disabled={disabled || uploading}
               >
                 <XIcon />
               </AttachmentAction>
@@ -250,7 +293,7 @@ export function ImageUpload({
           <Button
             type="button"
             variant="outline"
-            disabled={disabled}
+            disabled={disabled || uploading}
             onClick={() => inputRef.current?.click()}
             className="flex h-auto min-h-24 w-28 flex-col items-center justify-center gap-1 border-dashed text-muted-foreground"
           >

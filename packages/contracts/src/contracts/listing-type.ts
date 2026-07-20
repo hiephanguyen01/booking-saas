@@ -6,6 +6,10 @@ import { slugSchema } from './tenancy';
 export const bookingModeSchema = z.enum(['hourly', 'daily', 'appointment', 'class', 'inventory']);
 export type BookingMode = z.infer<typeof bookingModeSchema>;
 
+/** How customers choose a duration for listings of this tenant-defined type. */
+export const bookingSelectionSchema = z.enum(['flexible_duration', 'fixed_packages']);
+export type BookingSelection = z.infer<typeof bookingSelectionSchema>;
+
 /**
  * A listing type's `icon` is an **icon NAME**, not an uploaded image: it is a key
  * into `lucide-react`, which both frontends already depend on. Storing a name
@@ -244,6 +248,7 @@ const listingTypeBaseSchema = z.object({
   icon: listingTypeIconSchema.optional(),
   allowedModes: z.array(bookingModeSchema).min(1),
   defaultModes: z.array(bookingModeSchema).default([]),
+  bookingSelection: bookingSelectionSchema.default('flexible_duration'),
   attributeSchema: attributeSchemaSchema.default([]),
   searchConfig: listingTypeSearchConfigSchema.default({}),
   unitLabel: z.string().max(40).optional(),
@@ -256,7 +261,11 @@ const listingTypeBaseSchema = z.object({
 
 /** `defaultModes` must be a subset of `allowedModes` (only checked when both present). */
 const defaultModesSubsetRefine = (
-  value: { allowedModes?: BookingMode[]; defaultModes?: BookingMode[] },
+  value: {
+    allowedModes?: BookingMode[];
+    defaultModes?: BookingMode[];
+    bookingSelection?: BookingSelection;
+  },
   ctx: z.RefinementCtx,
 ): void => {
   if (!value.allowedModes || !value.defaultModes) return;
@@ -267,6 +276,16 @@ const defaultModesSubsetRefine = (
       code: z.ZodIssueCode.custom,
       message: `defaultModes must be a subset of allowedModes; invalid: ${invalid.join(', ')}`,
       path: ['defaultModes'],
+    });
+  }
+  if (
+    value.bookingSelection === 'fixed_packages' &&
+    value.allowedModes.some((mode) => mode !== 'hourly' && mode !== 'daily')
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'fixed_packages only supports hourly and daily booking modes',
+      path: ['allowedModes'],
     });
   }
 };
@@ -327,6 +346,7 @@ export const listingTypeResponseSchema = z.object({
   icon: z.string().nullable(),
   allowedModes: z.array(bookingModeSchema),
   defaultModes: z.array(bookingModeSchema),
+  bookingSelection: bookingSelectionSchema,
   attributeSchema: z.array(attributeFieldSchema),
   searchConfig: listingTypeSearchConfigSchema,
   unitLabel: z.string().nullable(),
@@ -359,6 +379,7 @@ export const publicListingTypeResponseSchema = z.object({
   itemLabel: z.string().nullable(),
   allowedModes: z.array(bookingModeSchema),
   defaultModes: z.array(bookingModeSchema),
+  bookingSelection: bookingSelectionSchema,
   attributeSchema: z.array(attributeFieldSchema),
   searchConfig: listingTypeSearchConfigSchema,
 });

@@ -58,6 +58,8 @@ export class GetPublicQuoteUseCase {
         endUtc: new Date(query.to),
         quantity: query.quantity,
         depositPercent: listing.depositPercent,
+        bookingSelection: listing.bookingSelection,
+        packageId: query.packageId,
       });
     });
   }

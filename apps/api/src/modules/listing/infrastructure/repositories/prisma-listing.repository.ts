@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type {
   BookingMode,
+  BookingSelection,
   CancellationPolicySource,
   CancellationPolicySummary,
   CancellationTier,
@@ -33,6 +34,7 @@ const LISTING_INCLUDE = {
     select: { name: true, verificationStatus: true, defaultCancellationPolicy: POLICY_SELECT },
   },
   tenant: { select: { defaultCancellationPolicy: POLICY_SELECT } },
+  listingType: { select: { bookingSelection: true } },
 } as const satisfies Prisma.ListingInclude;
 
 type Row = Prisma.ListingGetPayload<{ include: typeof LISTING_INCLUDE }>;
@@ -84,6 +86,7 @@ function toRecord(l: Row): ListingRecord {
     photos: (l.photos ?? []) as string[],
     attributes: (l.attributes ?? {}) as Record<string, unknown>,
     bookingModes: l.bookingModes as BookingMode[],
+    bookingSelection: l.listingType.bookingSelection as BookingSelection,
     modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
     stockQuantity: l.stockQuantity,
     capacity: l.capacity,
@@ -180,7 +183,7 @@ export class PrismaListingRepository implements IListingRepository {
       include: {
         ...LISTING_INCLUDE,
         resource: { select: { timezone: true } },
-        listingType: { select: { slug: true } },
+        listingType: { select: { slug: true, bookingSelection: true } },
         group: { select: { title: true, slug: true, status: true } },
         // Trust signals (§16.1) — partner display name + verification + tenure.
         // Contact info is deliberately NOT selected: it is revealed only after a

@@ -27,6 +27,8 @@ export const enCheckout = {
   total: 'Total',
   payNow: 'Book & pay',
   invalidSlot: 'The selected schedule is invalid. Please pick again.',
+  packageUnavailable: 'This package changed or is no longer available.',
+  selectPackageAgain: 'Choose another package',
   creating: 'Creating booking…',
   dueNow: 'Due now',
   deposit: 'Deposit',

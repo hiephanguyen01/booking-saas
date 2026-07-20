@@ -12,6 +12,7 @@ import type { ListingGroupRecord } from '../domain/ports/listing-group-repositor
 import type { ListingRecord, PublicListingRecord } from '../domain/ports/listing-repository.port';
 import type { ResourceRecord } from '../domain/ports/resource-repository.port';
 import type { PricingRuleRecord } from '../domain/ports/pricing-rule-repository.port';
+import { publicModeConfig } from '../domain/pricing/package-config';
 
 /**
  * A cancellation policy for the partner management screen. `defaultPolicyId` is the
@@ -82,6 +83,7 @@ export function toListingResponse(l: ListingRecord): ListingResponse {
     photos: l.photos,
     attributes: l.attributes,
     bookingModes: l.bookingModes,
+    bookingSelection: l.bookingSelection,
     modeConfig: l.modeConfig,
     stockQuantity: l.stockQuantity,
     capacity: l.capacity,
@@ -150,7 +152,8 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
     photos: l.photos,
     attributes: l.attributes,
     bookingModes: l.bookingModes,
-    modeConfig: l.modeConfig,
+    bookingSelection: l.bookingSelection,
+    modeConfig: publicModeConfig(l.modeConfig),
     depositPercent: l.depositPercent,
     listingTypeSlug: l.listingTypeSlug,
     group: l.group,

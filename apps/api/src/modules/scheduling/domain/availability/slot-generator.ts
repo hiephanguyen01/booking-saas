@@ -35,8 +35,8 @@ export interface HourlySlotInput {
  * `minDuration` to `maxDuration` (stepping by `granularity`), emit a slot for
  * `[s, s+d)` when it fits the window. A slot is available when it starts no
  * sooner than `now + leadTime` and — with buffers applied — overlaps no busy
- * interval. Iterating durations lets block/bundle pricing (§9.1 step 4) surface
- * on the durations that match a `mode_config` block. Busy checks are by resource
+ * interval. Flexible listings iterate their valid range; fixed-package callers
+ * pass the selected package duration as both min and max. Busy checks are by resource
  * (done by the caller). Holds are merged separately via {@link applyLiveHolds}.
  */
 export function generateHourlySlots(input: HourlySlotInput): GeneratedSlot[] {

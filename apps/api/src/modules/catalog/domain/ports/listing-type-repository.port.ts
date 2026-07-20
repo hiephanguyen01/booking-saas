@@ -1,6 +1,7 @@
 import type {
   AttributeField,
   BookingMode,
+  BookingSelection,
   ListingStructure,
   ListingTypeSearchConfig,
 } from '@booking/contracts';
@@ -16,6 +17,7 @@ export interface ListingTypeRecord {
   icon: string | null;
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
+  bookingSelection: BookingSelection;
   attributeSchema: AttributeField[];
   searchConfig: ListingTypeSearchConfig;
   unitLabel: string | null;
@@ -36,6 +38,7 @@ export interface CreateListingTypeData {
   icon: string | null;
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
+  bookingSelection: BookingSelection;
   attributeSchema: AttributeField[];
   searchConfig: ListingTypeSearchConfig;
   unitLabel: string | null;

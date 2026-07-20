@@ -19,6 +19,7 @@ export const enListing = {
     day: 'per day',
     item: 'per item',
     session: 'per session',
+    package: 'per package',
   },
   forHours: 'for {count} hours',
   perDay: 'per day',

@@ -18,8 +18,14 @@ export interface CachedSlot {
  * or block change invalidates every listing on the resource.
  */
 export interface IAvailabilityCache {
-  get(listingId: string, date: string): Promise<CachedSlot[] | null>;
-  set(resourceId: string, listingId: string, date: string, slots: CachedSlot[]): Promise<void>;
+  get(listingId: string, date: string, selectionKey: string): Promise<CachedSlot[] | null>;
+  set(
+    resourceId: string,
+    listingId: string,
+    date: string,
+    selectionKey: string,
+    slots: CachedSlot[],
+  ): Promise<void>;
   /** Drop every cached `(listing, date)` entry for a resource (all listings on it). */
   invalidateResource(resourceId: string): Promise<void>;
   /** Drop cached priced slots for one listing after a pricing-rule change. */

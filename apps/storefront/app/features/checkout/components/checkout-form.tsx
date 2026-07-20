@@ -22,10 +22,12 @@ import {
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
-import { Form, useNavigation } from 'react-router';
+import { Form, Link, useNavigation } from 'react-router';
 import { SectionCard } from '../../../components/section-card';
 import { NsI18n, type ScopedI18n, useTranslation } from '../../../lib/i18n';
 import { formatVnd } from '../../../lib/ui';
+import { storefrontPaths } from '../../../lib/locale-paths';
+import { useLocale } from '../../../lib/use-locale';
 
 export function CheckoutForm({
   listingId,
@@ -34,6 +36,7 @@ export function CheckoutForm({
   start,
   end,
   qty,
+  packageId,
   promoCode,
   currentUser,
   fieldErrors,
@@ -47,6 +50,7 @@ export function CheckoutForm({
   start: string;
   end: string;
   qty: string;
+  packageId: string | null;
   promoCode: string | null;
   currentUser: CurrentUser | null;
   fieldErrors: Partial<Record<string, string[]>> | null;
@@ -56,6 +60,7 @@ export function CheckoutForm({
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   const navigation = useNavigation();
+  const locale = useLocale();
   const submitting = navigation.state === 'submitting';
 
   return (
@@ -66,6 +71,7 @@ export function CheckoutForm({
       <input type="hidden" name="start" value={start} />
       <input type="hidden" name="end" value={end} />
       <input type="hidden" name="qty" value={qty} />
+      {packageId ? <input type="hidden" name="packageId" value={packageId} /> : null}
       <input type="hidden" name="expectedSubtotal" value={expectedSubtotal} />
       {promoCode ? <input type="hidden" name="promoCode" value={promoCode} /> : null}
 
@@ -78,7 +84,18 @@ export function CheckoutForm({
         </h2>
         {serverError ? (
           <Alert variant="destructive" className="mt-4 rounded-sm">
-            <AlertDescription>{checkoutError(serverError, t)}</AlertDescription>
+            <AlertDescription>
+              {checkoutError(serverError, t)}{' '}
+              {serverError === 'PACKAGE_UNAVAILABLE' ||
+              serverError === 'PACKAGE_DURATION_MISMATCH' ? (
+                <Link
+                  className="font-medium underline"
+                  to={storefrontPaths.listing(locale, listingSlug)}
+                >
+                  {t('selectPackageAgain')}
+                </Link>
+              ) : null}
+            </AlertDescription>
           </Alert>
         ) : null}
         <FieldGroup className="mt-4 gap-4">
@@ -286,5 +303,8 @@ function ContactField({
 }
 
 function checkoutError(error: string, t: ScopedI18n<NsI18n.Checkout>['t']): string {
+  if (error === 'PACKAGE_UNAVAILABLE' || error === 'PACKAGE_DURATION_MISMATCH') {
+    return t('packageUnavailable');
+  }
   return error === 'SLOT_TAKEN' || error === 'SLOT_HELD' ? t('invalidSlot') : error;
 }

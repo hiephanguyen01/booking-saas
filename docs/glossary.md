@@ -22,7 +22,7 @@ Every actor is a single `User` row; what they can do is decided by **role assign
 - **Listing type** — a category with a **dynamic attribute schema** and a `searchConfig` (facets/filters
   shown on the storefront). Tenants define their own (e.g. "Studio", "Meeting room").
 - **Listing** — a bookable offering of a listing type, owned by a partner.
-- **Listing group** — a set of listings sold/managed together (e.g. bundle pricing across a group).
+- **Listing group** — a set of listings presented and managed together (for example, rooms in one venue).
 - **Resource** — the actual capacity unit a booking blocks (the GiST exclusion constraint is keyed on
   `resource_id`).
 - **Listing structure** — `standalone` | `grouped` | `flexible`. Standalone = one listing; grouped =
@@ -30,8 +30,10 @@ Every actor is a single `User` row; what they can do is decided by **role assign
 - **Booking mode** — how time/capacity is sold: **hourly**, **daily**, **inventory** (sell N of a
   capacity), **class** (many attendees per slot). Inventory & class modes are excluded from the
   no-double-booking GiST constraint because they oversell up to capacity by design.
-- **modeConfig** — per-mode JSON on a listing (prices, blocks/bundle pricing, min/max, granularity,
-  deposit). Validated by `@booking/contracts`, not the DB.
+- **Booking selection** — Listing Type policy: `flexible_duration` lets customers choose a valid
+  duration; `fixed_packages` requires a named package whose duration and absolute price are fixed.
+- **modeConfig** — per-mode JSON on a listing (unit pricing or fixed packages, ordered package photos,
+  min/max where relevant, granularity and mode settings). Validated by `@booking/contracts`, not the DB.
 
 ## Booking lifecycle
 

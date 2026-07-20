@@ -4,6 +4,7 @@ import {
   listingTypeSearchConfigSchema,
   type AttributeField,
   type BookingMode,
+  type BookingSelection,
   type ListingStructure,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -35,6 +36,7 @@ function toRecord(t: PrismaListingType): ListingTypeRecord {
     icon: t.icon,
     allowedModes: t.allowedModes as BookingMode[],
     defaultModes: t.defaultModes as BookingMode[],
+    bookingSelection: t.bookingSelection as BookingSelection,
     attributeSchema: (t.attributeSchema ?? []) as unknown as AttributeField[],
     searchConfig: listingTypeSearchConfigSchema.parse(t.searchConfig ?? {}),
     unitLabel: t.unitLabel,
@@ -71,6 +73,7 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
           icon: data.icon,
           allowedModes: data.allowedModes as never,
           defaultModes: data.defaultModes as never,
+          bookingSelection: data.bookingSelection,
           attributeSchema: data.attributeSchema as unknown as Prisma.InputJsonValue,
           searchConfig: data.searchConfig as unknown as Prisma.InputJsonValue,
           unitLabel: data.unitLabel,
@@ -127,6 +130,7 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
           icon: data.icon,
           allowedModes: data.allowedModes as never,
           defaultModes: data.defaultModes as never,
+          bookingSelection: data.bookingSelection,
           attributeSchema:
             data.attributeSchema === undefined
               ? undefined

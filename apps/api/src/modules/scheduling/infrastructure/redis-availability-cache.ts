@@ -22,8 +22,8 @@ export class RedisAvailabilityCache implements IAvailabilityCache {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  private entryKey(listingId: string, date: string): string {
-    return `avail:hourly:${listingId}:${date}`;
+  private entryKey(listingId: string, date: string, selectionKey: string): string {
+    return `avail:hourly:${listingId}:${date}:${selectionKey}`;
   }
 
   private indexKey(resourceId: string): string {
@@ -34,8 +34,8 @@ export class RedisAvailabilityCache implements IAvailabilityCache {
     return `avail:listing:${listingId}`;
   }
 
-  async get(listingId: string, date: string): Promise<CachedSlot[] | null> {
-    const raw = await this.redis.get(this.entryKey(listingId, date));
+  async get(listingId: string, date: string, selectionKey: string): Promise<CachedSlot[] | null> {
+    const raw = await this.redis.get(this.entryKey(listingId, date, selectionKey));
     return raw ? (JSON.parse(raw) as CachedSlot[]) : null;
   }
 
@@ -43,9 +43,10 @@ export class RedisAvailabilityCache implements IAvailabilityCache {
     resourceId: string,
     listingId: string,
     date: string,
+    selectionKey: string,
     slots: CachedSlot[],
   ): Promise<void> {
-    const key = this.entryKey(listingId, date);
+    const key = this.entryKey(listingId, date, selectionKey);
     const index = this.indexKey(resourceId);
     const listingIndex = this.listingIndexKey(listingId);
     await this.redis

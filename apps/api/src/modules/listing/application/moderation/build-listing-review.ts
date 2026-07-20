@@ -13,6 +13,21 @@ function modeHasPrice(mode: BookingMode, modeConfig: Record<string, unknown>): b
   return price !== null && price > 0n;
 }
 
+function modeHasActivePackage(mode: BookingMode, modeConfig: Record<string, unknown>): boolean {
+  const cfg = modeConfig[mode];
+  if (!cfg || typeof cfg !== 'object') return false;
+  const packages = (cfg as Record<string, unknown>).packages;
+  return (
+    Array.isArray(packages) &&
+    packages.some((item) => {
+      if (!item || typeof item !== 'object') return false;
+      const row = item as Record<string, unknown>;
+      const price = toVnd(row.price);
+      return row.isActive === true && price !== null && price > 0n;
+    })
+  );
+}
+
 /**
  * Build what a tenant reviewer sees for a listing: the submission checklist plus
  * any contact-info leakage (§7.3). Pure — the use case supplies the record.
@@ -23,7 +38,11 @@ export function buildListingReview(listing: ListingRecord): ListingReviewRespons
     hasDescription: Boolean(listing.description && listing.description.trim().length > 0),
     hasPricePerMode:
       listing.bookingModes.length > 0 &&
-      listing.bookingModes.every((m) => modeHasPrice(m, listing.modeConfig)),
+      listing.bookingModes.every((m) =>
+        listing.bookingSelection === 'fixed_packages'
+          ? modeHasActivePackage(m, listing.modeConfig)
+          : modeHasPrice(m, listing.modeConfig),
+      ),
     hasCancellationPolicy: listing.cancellationPolicyId !== null,
   });
   const contactFlags = scanForContactInfo({

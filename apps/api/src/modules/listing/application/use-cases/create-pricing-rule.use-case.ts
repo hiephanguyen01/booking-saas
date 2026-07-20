@@ -43,6 +43,13 @@ export class CreatePricingRuleUseCase {
           message: `Listing does not enable "${input.bookingMode}"`,
         });
       }
+      if (listing.bookingSelection === 'fixed_packages') {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'PACKAGE_PRICING_FIXED',
+          message: 'Fixed-package prices are managed in the listing package configuration',
+        });
+      }
       const created = await this.rules.create(tx, tenantId, {
         listingId,
         bookingMode: input.bookingMode,

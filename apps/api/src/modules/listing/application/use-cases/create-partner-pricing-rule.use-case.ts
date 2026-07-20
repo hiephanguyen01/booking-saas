@@ -49,6 +49,13 @@ export class CreatePartnerPricingRuleUseCase {
           message: `Listing does not enable "${input.bookingMode}"`,
         });
       }
+      if (listing.bookingSelection === 'fixed_packages') {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'PACKAGE_PRICING_FIXED',
+          message: 'Fixed-package prices are managed in the listing package configuration',
+        });
+      }
       // Calendar edits are save/replace operations. Remove the previous exact
       // override for the same mode and scope so repeated saves stay deterministic.
       if (input.ruleType === 'date_range' || input.ruleType === 'date_time_range') {

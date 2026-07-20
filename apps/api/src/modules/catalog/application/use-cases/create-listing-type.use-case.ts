@@ -38,6 +38,7 @@ export class CreateListingTypeUseCase {
         icon: input.icon ?? null,
         allowedModes: input.allowedModes,
         defaultModes: input.defaultModes,
+        bookingSelection: input.bookingSelection,
         attributeSchema: input.attributeSchema,
         searchConfig: input.searchConfig,
         unitLabel: input.unitLabel ?? null,

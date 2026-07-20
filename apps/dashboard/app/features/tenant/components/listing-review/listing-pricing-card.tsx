@@ -45,7 +45,12 @@ export function ListingPricingCard({ listing }: { listing: ListingResponse }) {
       </CardHeader>
       <CardContent className="space-y-6">
         {listing.bookingModes.map((mode) => (
-          <ModeBlock key={mode} mode={mode} config={asRecord(listing.modeConfig[mode])} />
+          <ModeBlock
+            key={mode}
+            mode={mode}
+            fixedPackages={listing.bookingSelection === 'fixed_packages'}
+            config={asRecord(listing.modeConfig[mode])}
+          />
         ))}
       </CardContent>
     </Card>
@@ -55,19 +60,36 @@ export function ListingPricingCard({ listing }: { listing: ListingResponse }) {
 function ModeBlock({
   mode,
   config,
+  fixedPackages,
 }: {
   mode: BookingMode;
   config: Record<string, unknown> | null;
+  fixedPackages: boolean;
 }) {
   return (
-    <DetailSection title={BOOKING_MODE_LABEL[mode]} emptyMessage="Chưa cấu hình giá cho hình thức này.">
-      {config ? <ModeFields mode={mode} config={config} /> : null}
+    <DetailSection
+      title={BOOKING_MODE_LABEL[mode]}
+      emptyMessage="Chưa cấu hình giá cho hình thức này."
+    >
+      {config ? <ModeFields mode={mode} config={config} fixedPackages={fixedPackages} /> : null}
     </DetailSection>
   );
 }
 
-function ModeFields({ mode, config }: { mode: BookingMode; config: Record<string, unknown> }) {
+function ModeFields({
+  mode,
+  config,
+  fixedPackages,
+}: {
+  mode: BookingMode;
+  config: Record<string, unknown>;
+  fixedPackages: boolean;
+}) {
   if (mode === 'hourly') {
+    if (fixedPackages)
+      return (
+        <Packages packages={config.packages} durationKey="durationMinutes" durationLabel="phút" />
+      );
     return (
       <div className="space-y-3">
         <DetailGrid columns={3}>
@@ -82,11 +104,14 @@ function ModeFields({ mode, config }: { mode: BookingMode; config: Record<string
           <DetailField label="Bước đặt" value={numUnit(config.granularity, 'phút')} />
           <DetailField label="Đặt trước tối thiểu" value={numUnit(config.leadTimeMin, 'phút')} />
         </DetailGrid>
-        <PriceBlocks blocks={config.blocks} unitKey="hours" unitLabel="giờ" />
       </div>
     );
   }
   if (mode === 'daily') {
+    if (fixedPackages)
+      return (
+        <Packages packages={config.packages} durationKey="durationDays" durationLabel="ngày" />
+      );
     return (
       <div className="space-y-3">
         <DetailGrid columns={3}>
@@ -101,7 +126,6 @@ function ModeFields({ mode, config }: { mode: BookingMode; config: Record<string
           <DetailField label="Giờ trả phòng" value={readStr(config.checkoutTime)} />
           <DetailField label="Đặt trước tối thiểu" value={numUnit(config.leadTimeMin, 'phút')} />
         </DetailGrid>
-        <PriceBlocks blocks={config.blocks} unitKey="days" unitLabel="đêm" />
       </div>
     );
   }
@@ -122,7 +146,11 @@ function ModeFields({ mode, config }: { mode: BookingMode; config: Record<string
           value={<Money value={readStr(config.basePrice)} />}
         />
         <DetailField label="Tiền cọc" value={<Money value={readStr(config.securityDeposit)} />} />
-        <DetailField label="Tối thiểu" value={numUnit(config.minDuration, unitWord)} omitWhenEmpty />
+        <DetailField
+          label="Tối thiểu"
+          value={numUnit(config.minDuration, unitWord)}
+          omitWhenEmpty
+        />
         <DetailField label="Tối đa" value={numUnit(config.maxDuration, unitWord)} omitWhenEmpty />
         <DetailField
           label="Phí trả trễ"
@@ -136,25 +164,50 @@ function ModeFields({ mode, config }: { mode: BookingMode; config: Record<string
   return <p className="text-sm text-muted-foreground">Hình thức này chưa có cấu hình giá riêng.</p>;
 }
 
-function PriceBlocks({
-  blocks,
-  unitKey,
-  unitLabel,
+function Packages({
+  packages,
+  durationKey,
+  durationLabel,
 }: {
-  blocks: unknown;
-  unitKey: 'hours' | 'days';
-  unitLabel: string;
+  packages: unknown;
+  durationKey: 'durationMinutes' | 'durationDays';
+  durationLabel: string;
 }) {
-  const rows = (Array.isArray(blocks) ? blocks : [])
+  const rows = (Array.isArray(packages) ? packages : [])
     .map(asRecord)
-    .map((r) => (r ? { n: readNumber(r[unitKey]), price: readStr(r.price) } : null))
-    .filter((r): r is { n: number; price: string } => r !== null && r.n !== null && r.price !== null);
+    .map((row) =>
+      row
+        ? {
+            id: readStr(row.id),
+            name: readStr(row.name),
+            duration: readNumber(row[durationKey]),
+            price: readStr(row.price),
+            active: row.isActive !== false,
+          }
+        : null,
+    )
+    .filter(
+      (
+        row,
+      ): row is { id: string; name: string; duration: number; price: string; active: boolean } =>
+        row !== null &&
+        row.id !== null &&
+        row.name !== null &&
+        row.duration !== null &&
+        row.price !== null,
+    );
   if (rows.length === 0) return null;
   return (
     <div className="space-y-1.5 pt-1">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Gói ưu đãi</p>
-      {rows.map((r, i) => (
-        <DetailRow key={i} label={`${r.n} ${unitLabel}`} value={<Money value={r.price} />} />
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Các gói dịch vụ
+      </p>
+      {rows.map((row) => (
+        <DetailRow
+          key={row.id}
+          label={`${row.name} · ${row.duration} ${durationLabel}${row.active ? '' : ' · Ngừng bán'}`}
+          value={<Money value={row.price} />}
+        />
       ))}
     </div>
   );

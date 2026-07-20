@@ -39,6 +39,7 @@ import {
 } from '../../lib/time';
 import { formatVnd } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
+import { packagesForMode, type PublicPackageOption } from '../../lib/package-options';
 
 /** Local mirror of react-day-picker's DateRange (not a direct storefront dep). */
 type DateRange = { from: Date | undefined; to?: Date | undefined };
@@ -76,6 +77,10 @@ export function BookingPanel({
   const modes = listing.bookingModes.filter((m): m is AvailabilityMode =>
     (BOOKABLE_MODES as string[]).includes(m),
   );
+  const fixedPackages = listing.bookingSelection === 'fixed_packages';
+  const packages = packagesForMode(listing.modeConfig, mode);
+  const packageId = sp.get('packageId');
+  const selectedPackage = packages.find((item) => item.id === packageId) ?? null;
 
   // Inventory opens with a complete default window (today → tomorrow, qty 1)
   // already shown in the picker, so read the selection from the picker's own
@@ -96,6 +101,7 @@ export function BookingPanel({
   if (start) checkoutParams.set('start', start);
   if (end) checkoutParams.set('end', end);
   if (inventory) checkoutParams.set('qty', String(inventory.qty));
+  if (packageId) checkoutParams.set('packageId', packageId);
   const inventoryAvailable = Boolean(
     inventory &&
     availability?.mode === 'inventory' &&
@@ -119,7 +125,19 @@ export function BookingPanel({
 
         {modes.length > 1 ? <ModeToggle modes={modes} active={mode} onSelect={switchMode} /> : null}
 
-        {mode === 'hourly' ? (
+        {fixedPackages ? (
+          <PackagePicker
+            packages={packages}
+            selectedId={packageId}
+            fallbackPhoto={listing.photos[0]}
+            onSelect={(id) => {
+              const next = new URLSearchParams({ mode, packageId: id });
+              setSp(next, { preventScrollReset: true });
+            }}
+          />
+        ) : null}
+
+        {(!fixedPackages || selectedPackage) && mode === 'hourly' ? (
           <HourlyPicker
             availability={availability}
             sp={sp}
@@ -127,15 +145,27 @@ export function BookingPanel({
             tz={tz}
             selectedStart={start}
             selectedEnd={end}
+            fixedPackage={fixedPackages}
           />
-        ) : mode === 'daily' ? (
-          <DailyPicker
-            availability={availability}
-            listing={listing}
-            sp={sp}
-            setSp={setSp}
-            tz={tz}
-          />
+        ) : (!fixedPackages || selectedPackage) && mode === 'daily' ? (
+          fixedPackages && selectedPackage ? (
+            <FixedDailyPicker
+              availability={availability}
+              listing={listing}
+              sp={sp}
+              setSp={setSp}
+              tz={tz}
+              durationDays={selectedPackage.duration}
+            />
+          ) : (
+            <DailyPicker
+              availability={availability}
+              listing={listing}
+              sp={sp}
+              setSp={setSp}
+              tz={tz}
+            />
+          )
         ) : inventory ? (
           <InventoryPicker
             availability={availability}
@@ -162,6 +192,57 @@ export function BookingPanel({
             <span>{t('selectToContinue')}</span>
           )}
         </Button>
+      </div>
+    </div>
+  );
+}
+
+function PackagePicker({
+  packages,
+  selectedId,
+  fallbackPhoto,
+  onSelect,
+}: {
+  packages: PublicPackageOption[];
+  selectedId: string | null;
+  fallbackPhoto?: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <PickerLabel>Chọn gói dịch vụ</PickerLabel>
+      <div className="grid gap-2">
+        {packages.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            className={cn(
+              'rounded-lg border p-3 text-left transition-colors',
+              selectedId === item.id ? 'border-primary bg-primary/5' : 'hover:border-primary/50',
+            )}
+          >
+            <span className="flex items-center gap-3">
+              {item.photos[0] ?? fallbackPhoto ? (
+                <img
+                  src={item.photos[0] ?? fallbackPhoto}
+                  alt=""
+                  className="size-14 shrink-0 rounded-md object-cover"
+                />
+              ) : null}
+              <span className="min-w-0 flex-1">
+                <span className="flex justify-between gap-3 font-medium">
+                  <span>{item.name}</span>
+                  <span>{formatVnd(item.price)}</span>
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {item.duration} {item.durationLabel}
+                  {item.description ? ` · ${item.description}` : ''}
+                </span>
+              </span>
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -255,6 +336,7 @@ function HourlyPicker({
   tz,
   selectedStart,
   selectedEnd,
+  fixedPackage,
 }: {
   availability: AvailabilityResponse | null;
   sp: URLSearchParams;
@@ -262,6 +344,7 @@ function HourlyPicker({
   tz: string;
   selectedStart: string | null;
   selectedEnd: string | null;
+  fixedPackage: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
@@ -270,7 +353,10 @@ function HourlyPicker({
   const availabilityDay = selectedDayValue ?? today;
   const durationSlots: HourlySlot[] =
     availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
-  const slots = useMemo(() => atomicHourlySlots(durationSlots), [durationSlots]);
+  const slots = useMemo(
+    () => (fixedPackage ? durationSlots : atomicHourlySlots(durationSlots)),
+    [durationSlots, fixedPackage],
+  );
   const calendarFormatters = useMemo(() => {
     const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
     const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
@@ -291,9 +377,11 @@ function HourlyPicker({
   const selected = useMemo(
     () =>
       selectedStart && selectedEnd
-        ? contiguousSlotsForInterval(slots, selectedStart, selectedEnd)
+        ? fixedPackage
+          ? slots.filter((slot) => slot.startUtc === selectedStart && slot.endUtc === selectedEnd)
+          : contiguousSlotsForInterval(slots, selectedStart, selectedEnd)
         : [],
-    [selectedEnd, selectedStart, slots],
+    [fixedPackage, selectedEnd, selectedStart, slots],
   );
 
   function pickDay(date: Date | undefined): void {
@@ -314,6 +402,22 @@ function HourlyPicker({
 
   function pickSlot(slot: HourlySlot): void {
     if (!slot.available || !selectedDayValue) return;
+    if (fixedPackage) {
+      const next = new URLSearchParams(sp);
+      next.set('mode', 'hourly');
+      next.set('day', selectedDayValue);
+      next.set('date', selectedDayValue);
+      if (selectedStart === slot.startUtc && selectedEnd === slot.endUtc) {
+        next.delete('start');
+        next.delete('end');
+      } else {
+        next.set('start', slot.startUtc);
+        next.set('end', slot.endUtc);
+      }
+      setSelectionError('');
+      setSp(next, { preventScrollReset: true });
+      return;
+    }
     const result = toggleContiguousSlot(selected, slot);
     if (!result.changed) {
       setSelectionError(t('group.contiguousOnly'));
@@ -479,6 +583,83 @@ function HourlyPicker({
 }
 
 // ── Daily ────────────────────────────────────────────────────────────────────
+
+function FixedDailyPicker({
+  availability,
+  listing,
+  sp,
+  setSp,
+  tz,
+  durationDays,
+}: {
+  availability: AvailabilityResponse | null;
+  listing: PublicListingDetailResponse;
+  sp: URLSearchParams;
+  setSp: SetSearchParams;
+  tz: string;
+  durationDays: number;
+}) {
+  const { t } = useTranslation(NsI18n.Listing);
+  const locale = useLocale();
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const days: DayAvailability[] = availability?.mode === 'daily' ? availability.days : [];
+  const openDates = useMemo(
+    () => new Set(days.filter((day) => day.status === 'available').map((day) => day.date)),
+    [days],
+  );
+  const config = (listing.modeConfig.daily ?? {}) as {
+    checkinTime?: string;
+    checkoutTime?: string;
+  };
+  const selectedDate = sp.get('from');
+  const formatters = useMemo(() => {
+    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
+    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
+    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
+    return {
+      formatCaption: (month: Date) => caption.format(month),
+      formatWeekdayName: (date: Date) => weekday.format(date),
+    };
+  }, [locale]);
+
+  function selectDate(date: Date | undefined): void {
+    if (!date) return;
+    const from = localToDateOnly(date);
+    const to = addDays(from, durationDays);
+    const next = new URLSearchParams(sp);
+    next.set('mode', 'daily');
+    next.set('from', from);
+    next.set('to', to);
+    next.set('start', zonedToUtcIso(from, config.checkinTime ?? '14:00', tz));
+    next.set('end', zonedToUtcIso(to, config.checkoutTime ?? '12:00', tz));
+    setCalendarOpen(false);
+    setSp(next, { preventScrollReset: true });
+  }
+
+  return (
+    <div className="space-y-2">
+      <PickerLabel>{t('pickDay')}</PickerLabel>
+      <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" className="w-full justify-start">
+            <CalendarDays className="size-4" />
+            {selectedDate ? dateLabelInTz(selectedDate, tz, locale) : t('pickDay')}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={selectedDate ? dateOnlyToLocal(selectedDate) : undefined}
+            onSelect={selectDate}
+            disabled={(date) => !openDates.has(localToDateOnly(date))}
+            formatters={formatters}
+          />
+        </PopoverContent>
+      </Popover>
+      <p className="text-xs text-muted-foreground">Thời gian của gói: {durationDays} ngày.</p>
+    </div>
+  );
+}
 
 function DailyPicker({
   availability,

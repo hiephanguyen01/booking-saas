@@ -21,6 +21,7 @@ type CatalogDefinition = {
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
   unitLabel: string;
+  bookingSelection?: 'flexible_duration' | 'fixed_packages';
   requiresIdentityVerification?: boolean;
   attributeSchema: Prisma.InputJsonValue;
   partner: 'service' | 'inventory';
@@ -132,10 +133,7 @@ const CATALOG: CatalogDefinition[] = [
     modeConfig: (index) => ({
       hourly: {
         basePrice: String(280_000 + index * 20_000),
-        blocks: [
-          { hours: 2, price: String(520_000 + index * 35_000) },
-          { hours: 4, price: String(960_000 + index * 60_000) },
-        ],
+        packages: [],
         minDuration: 1,
         maxDuration: 10,
         granularity: 60,
@@ -143,7 +141,7 @@ const CATALOG: CatalogDefinition[] = [
       },
       daily: {
         basePricePerNight: String(1_900_000 + index * 90_000),
-        blocks: [{ days: 3, price: String(5_400_000 + index * 240_000) }],
+        packages: [],
         minNights: 1,
         maxNights: 14,
         checkinTime: '08:00',
@@ -162,6 +160,7 @@ const CATALOG: CatalogDefinition[] = [
     allowedModes: ['hourly'],
     defaultModes: ['hourly'],
     unitLabel: 'gói',
+    bookingSelection: 'fixed_packages',
     partner: 'service',
     bufferBefore: 30,
     bufferAfter: 60,
@@ -179,7 +178,7 @@ const CATALOG: CatalogDefinition[] = [
       { key: 'rawFiles', label: 'Bàn giao file gốc', type: 'boolean', filterable: true },
     ],
     title: (index, location) =>
-      `Gói chụp ${cycle(PHOTO_STYLES, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
+      `Dịch vụ chụp ${cycle(PHOTO_STYLES, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
     description: (index, location) =>
       `Gói chụp ${cycle(PHOTO_STYLES, index).toLowerCase()} tại ${location.shortName}, gồm tư vấn concept, nhiếp ảnh gia, hỗ trợ tạo dáng, hậu kỳ màu và bàn giao album online chất lượng cao.`,
     attributes: (index) => ({
@@ -189,13 +188,28 @@ const CATALOG: CatalogDefinition[] = [
     }),
     modeConfig: (index) => ({
       hourly: {
-        basePrice: String(650_000 + index * 35_000),
-        blocks: [
-          { hours: 2, price: String(1_200_000 + index * 60_000) },
-          { hours: 4, price: String(2_200_000 + index * 100_000) },
+        packages: [
+          {
+            id: packageUuid('photography', index, 1),
+            name: 'Gói 2 giờ',
+            description: 'Buổi chụp tiêu chuẩn trong 120 phút',
+            photos: photosFor('photography-package-2h', index + 1).slice(0, 5),
+            durationMinutes: 120,
+            price: String(1_200_000 + index * 60_000),
+            isActive: true,
+            sortOrder: 0,
+          },
+          {
+            id: packageUuid('photography', index, 2),
+            name: 'Gói 4 giờ',
+            description: 'Buổi chụp mở rộng trong 240 phút',
+            photos: photosFor('photography-package-4h', index + 1).slice(0, 5),
+            durationMinutes: 240,
+            price: String(2_200_000 + index * 100_000),
+            isActive: true,
+            sortOrder: 1,
+          },
         ],
-        minDuration: 1,
-        maxDuration: 8,
         granularity: 60,
         leadTimeMin: 240,
       },
@@ -211,6 +225,7 @@ const CATALOG: CatalogDefinition[] = [
     allowedModes: ['hourly'],
     defaultModes: ['hourly'],
     unitLabel: 'gói',
+    bookingSelection: 'fixed_packages',
     partner: 'service',
     bufferBefore: 30,
     bufferAfter: 30,
@@ -229,7 +244,7 @@ const CATALOG: CatalogDefinition[] = [
       { key: 'touchUpHours', label: 'Số giờ dặm lại', type: 'number' },
     ],
     title: (index, location) =>
-      `Gói makeup ${cycle(MAKEUP_STYLES, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
+      `Dịch vụ makeup ${cycle(MAKEUP_STYLES, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
     description: (index, location) =>
       `Dịch vụ makeup ${cycle(MAKEUP_STYLES, index).toLowerCase()} tại ${location.shortName}, bao gồm tư vấn phong cách, chuẩn bị da, makeup, làm tóc và bộ dụng cụ vệ sinh riêng cho từng khách.`,
     attributes: (index) => ({
@@ -239,13 +254,28 @@ const CATALOG: CatalogDefinition[] = [
     }),
     modeConfig: (index) => ({
       hourly: {
-        basePrice: String(450_000 + index * 30_000),
-        blocks: [
-          { hours: 2, price: String(820_000 + index * 50_000) },
-          { hours: 4, price: String(1_500_000 + index * 90_000) },
+        packages: [
+          {
+            id: packageUuid('makeup', index, 1),
+            name: 'Gói 2 giờ',
+            description: 'Makeup và hoàn thiện trong 120 phút',
+            photos: photosFor('makeup-package-2h', index + 1).slice(0, 5),
+            durationMinutes: 120,
+            price: String(820_000 + index * 50_000),
+            isActive: true,
+            sortOrder: 0,
+          },
+          {
+            id: packageUuid('makeup', index, 2),
+            name: 'Gói 4 giờ',
+            description: 'Makeup, làm tóc và hỗ trợ mở rộng trong 240 phút',
+            photos: photosFor('makeup-package-4h', index + 1).slice(0, 5),
+            durationMinutes: 240,
+            price: String(1_500_000 + index * 90_000),
+            isActive: true,
+            sortOrder: 1,
+          },
         ],
-        minDuration: 1,
-        maxDuration: 6,
         granularity: 60,
         leadTimeMin: 180,
       },
@@ -539,6 +569,7 @@ async function upsertListingType(
     allowedModes: definition.allowedModes as never,
     defaultModes: definition.defaultModes as never,
     unitLabel: definition.unitLabel,
+    bookingSelection: definition.bookingSelection ?? 'flexible_duration',
     sortOrder,
     isActive: true,
     attributeSchema: definition.attributeSchema,
@@ -841,6 +872,15 @@ function photosFor(kind: string, index: number): string[] {
     (_, photoIndex) =>
       `https://picsum.photos/seed/bookify-${kind}-${String(index).padStart(2, '0')}-${String(photoIndex + 1).padStart(2, '0')}/1600/1200`,
   );
+}
+
+/** Stable RFC 4122-shaped IDs keep package selections unchanged across seed reruns. */
+function packageUuid(kind: 'photography' | 'makeup', index: number, variant: number): string {
+  const kindCode = kind === 'photography' ? 1 : 2;
+  const tail = [kindCode, index, variant]
+    .map((value) => value.toString(16).padStart(4, '0'))
+    .join('');
+  return `00000000-0000-4000-8000-${tail}`;
 }
 
 function cycle<T>(items: readonly T[], index: number): T {

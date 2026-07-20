@@ -19,6 +19,15 @@ export function listingPriceFrom(listing: Pick<ListingResponse, 'modeConfig'>): 
   for (const entry of Object.values(config)) {
     if (!entry || typeof entry !== 'object') continue;
     const mode = entry as Record<string, unknown>;
+    if (Array.isArray(mode.packages)) {
+      for (const item of mode.packages) {
+        if (!item || typeof item !== 'object') continue;
+        const pkg = item as Record<string, unknown>;
+        if (pkg.isActive === false) continue;
+        const value = toPositiveVnd(pkg.price);
+        if (value !== null && (min === null || value < min)) min = value;
+      }
+    }
     for (const key of BASE_PRICE_KEYS) {
       const value = toPositiveVnd(mode[key]);
       if (value !== null && (min === null || value < min)) min = value;

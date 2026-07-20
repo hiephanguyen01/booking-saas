@@ -1,12 +1,12 @@
-import type { BookingMode, ListingResponse } from '@booking/contracts';
+import type { BookingMode, BookingSelection, ListingResponse } from '@booking/contracts';
 
 /**
  * The `mode_config` round-trip for the partner listing form (§7.3/§9).
  *
  * Why this is its own module: `PATCH /partner/listings/:id` REPLACES `mode_config`
  * wholesale (update-listing.use-case), so whatever `buildModeConfig` omits is
- * DESTROYED on every save. That made it silent-data-loss territory — bundle
- * `blocks` and the inventory late-return fee (which is billed to customers,
+ * DESTROYED on every save. That made it silent-data-loss territory — packages
+ * and the inventory late-return fee (which is billed to customers,
  * §9.4) used to be wiped by simply opening the form and pressing save. Pure and
  * React-free so the round-trip is unit-testable.
  *
@@ -42,10 +42,17 @@ export const optInt = (v: string): number | undefined => {
  */
 export const optVnd = (v: string): string | undefined => (v.trim() === '' ? undefined : vnd(v));
 
-/** One bundle-price row: N units for a flat price (§9.1). */
-export interface BlockRow {
-  count: string;
+/** One fixed package row in the listing editor. */
+export interface PackageRow {
+  id: string;
+  name: string;
+  description: string;
+  photos: string[];
+  duration: string;
   price: string;
+  isActive: boolean;
+  sortOrder: number;
+  persisted: boolean;
 }
 
 /** The listing's stored `mode_config`, keyed by mode — the round-trip base. */
@@ -55,7 +62,7 @@ export interface DynamicState {
   bookingModes: BookingMode[];
   hourly: {
     basePrice: string;
-    blocks: BlockRow[];
+    packages: PackageRow[];
     minDuration: string;
     maxDuration: string;
     granularity: string;
@@ -63,7 +70,7 @@ export interface DynamicState {
   };
   daily: {
     basePricePerNight: string;
-    blocks: BlockRow[];
+    packages: PackageRow[];
     minNights: string;
     maxNights: string;
     checkinTime: string;
@@ -82,29 +89,54 @@ export interface DynamicState {
   attributes: Record<string, unknown>;
 }
 
-/** Read `blocks` off a saved mode config (the count key differs per mode). */
-export function readBlocks(
+/** Read fixed packages off a saved mode config. */
+export function readPackages(
   config: Record<string, unknown>,
-  countKey: 'hours' | 'days',
-): BlockRow[] {
-  const raw = config.blocks;
+  durationKey: 'durationMinutes' | 'durationDays',
+): PackageRow[] {
+  const raw = config.packages;
   if (!Array.isArray(raw)) return [];
-  return raw.flatMap((b) => {
-    if (!b || typeof b !== 'object') return [];
-    const row = b as Record<string, unknown>;
-    return [{ count: num(row[countKey], ''), price: num(row.price, '') }];
+  return raw.flatMap((item, index) => {
+    if (!item || typeof item !== 'object') return [];
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== 'string') return [];
+    return [
+      {
+        id: row.id,
+        name: typeof row.name === 'string' ? row.name : '',
+        description: typeof row.description === 'string' ? row.description : '',
+        photos: Array.isArray(row.photos)
+          ? row.photos.filter((photo): photo is string => typeof photo === 'string')
+          : [],
+        duration: num(row[durationKey], ''),
+        price: num(row.price, ''),
+        isActive: row.isActive !== false,
+        sortOrder: typeof row.sortOrder === 'number' ? row.sortOrder : index,
+        persisted: true,
+      },
+    ];
   });
 }
 
-/** Serialize block rows back, dropping incomplete ones. */
-export function writeBlocks(
-  rows: BlockRow[],
-  countKey: 'hours' | 'days',
+export function writePackages(
+  rows: PackageRow[],
+  durationKey: 'durationMinutes' | 'durationDays',
 ): Record<string, unknown>[] {
-  return rows.flatMap((row) => {
-    const count = optInt(row.count);
-    if (count === undefined || row.price.trim() === '') return [];
-    return [{ [countKey]: count, price: vnd(row.price) }];
+  return rows.flatMap((row, index) => {
+    const duration = optInt(row.duration);
+    if (!row.id || !row.name.trim() || duration === undefined || row.price.trim() === '') return [];
+    return [
+      {
+        id: row.id,
+        name: row.name.trim(),
+        ...(row.description.trim() ? { description: row.description.trim() } : {}),
+        photos: row.photos,
+        [durationKey]: duration,
+        price: vnd(row.price),
+        isActive: row.isActive,
+        sortOrder: index,
+      },
+    ];
   });
 }
 
@@ -121,7 +153,7 @@ export function initialDynamic(listing?: ListingResponse): DynamicState {
     bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
     hourly: {
       basePrice: num(h.basePrice, '0'),
-      blocks: readBlocks(h, 'hours'),
+      packages: readPackages(h, 'durationMinutes'),
       minDuration: num(h.minDuration, '1'),
       maxDuration: num(h.maxDuration, '8'),
       granularity: num(h.granularity, '60'),
@@ -129,7 +161,7 @@ export function initialDynamic(listing?: ListingResponse): DynamicState {
     },
     daily: {
       basePricePerNight: num(d.basePricePerNight, '0'),
-      blocks: readBlocks(d, 'days'),
+      packages: readPackages(d, 'durationDays'),
       minNights: num(d.minNights, '1'),
       maxNights: num(d.maxNights, '30'),
       checkinTime: num(d.checkinTime, '14:00'),
@@ -150,30 +182,46 @@ export function initialDynamic(listing?: ListingResponse): DynamicState {
 }
 
 /** Assemble the typed `modeConfig` the shared schema expects from the editor state. */
-export function buildModeConfig(s: DynamicState, saved: ModeConfigMap): Record<string, unknown> {
+export function buildModeConfig(
+  s: DynamicState,
+  saved: ModeConfigMap,
+  bookingSelection: BookingSelection,
+): Record<string, unknown> {
   const modes = s.bookingModes;
   const modeConfig: Record<string, unknown> = {};
   if (modes.includes('hourly')) {
     modeConfig.hourly = {
-      ...saved.hourly,
-      basePrice: vnd(s.hourly.basePrice),
-      blocks: writeBlocks(s.hourly.blocks, 'hours'),
-      minDuration: int(s.hourly.minDuration, 1),
-      maxDuration: int(s.hourly.maxDuration, 8),
       granularity: int(s.hourly.granularity, 60),
       leadTimeMin: int(s.hourly.leadTimeMin, 0),
+      packages:
+        bookingSelection === 'fixed_packages'
+          ? writePackages(s.hourly.packages, 'durationMinutes')
+          : [],
+      ...(bookingSelection === 'flexible_duration'
+        ? {
+            basePrice: vnd(s.hourly.basePrice),
+            minDuration: int(s.hourly.minDuration, 1),
+            maxDuration: int(s.hourly.maxDuration, 8),
+          }
+        : {}),
     };
   }
   if (modes.includes('daily')) {
     modeConfig.daily = {
-      ...saved.daily,
-      basePricePerNight: vnd(s.daily.basePricePerNight),
-      blocks: writeBlocks(s.daily.blocks, 'days'),
-      minNights: int(s.daily.minNights, 1),
-      maxNights: int(s.daily.maxNights, 30),
       checkinTime: s.daily.checkinTime,
       checkoutTime: s.daily.checkoutTime,
       leadTimeMin: int(s.daily.leadTimeMin, 0),
+      packages:
+        bookingSelection === 'fixed_packages'
+          ? writePackages(s.daily.packages, 'durationDays')
+          : [],
+      ...(bookingSelection === 'flexible_duration'
+        ? {
+            basePricePerNight: vnd(s.daily.basePricePerNight),
+            minNights: int(s.daily.minNights, 1),
+            maxNights: int(s.daily.maxNights, 30),
+          }
+        : {}),
     };
   }
   if (modes.includes('inventory')) {

@@ -16,6 +16,7 @@ export const viListing = {
     day: 'cho 1 ngày',
     item: 'mỗi sản phẩm',
     session: 'mỗi buổi',
+    package: 'mỗi gói',
   },
   forHours: 'cho {count} giờ',
   perDay: 'cho 1 ngày',

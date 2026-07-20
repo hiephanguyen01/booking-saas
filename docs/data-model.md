@@ -57,6 +57,24 @@ guards the RLS parts in CI.
 
 ## Units & types (hard rules)
 
+### Listing pricing selection
+
+`ListingType.bookingSelection` is `flexible_duration` or `fixed_packages` and is locked once the
+type has listings. Flexible hourly/daily configs use base prices and min/max duration. Fixed configs
+support only hourly/daily and store packages in `Listing.modeConfig`; every enabled mode needs an
+active package. Package IDs are stable UUIDs, prices are positive VND strings, duration is
+`durationMinutes` or `durationDays`, and `photos` is an ordered list of up to eight unique URLs whose
+first entry is the package cover. Empty package galleries fall back to listing photos. The booking
+stores the complete selected package, including its photos, in `pricingSnapshot`, so later edits never
+rewrite history.
+
+- Fixed package prices ignore pricing rules; promotions still apply after package subtotal.
+- Public payloads expose active packages only; catalog price/filter/sort use the cheapest active package.
+- Catalog cards keep using listing photos until a package is selected; detail and checkout surfaces then
+  prefer the selected package gallery and fall back to the listing gallery.
+- Availability cache keys include `packageId` because duration and price differ by package.
+- Legacy `blocks` are ignored for quotes and stripped the next time a listing is saved.
+
 - **Money is `bigint` VND** (đồng) everywhere — never a float, never cents. Format/parse with
   `apps/api/src/shared/money`.
 - **Rates are integer percent 0–100.** `CommissionRule.tenantRate` / `platformRate` are whole percents

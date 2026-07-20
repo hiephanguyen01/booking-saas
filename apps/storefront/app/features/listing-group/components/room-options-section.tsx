@@ -18,9 +18,9 @@ import {
   PolicyList,
   RoomAction,
   RoomDetails,
-  RoomPhotoStrip,
   RoomPrice,
 } from './room-cells';
+import { RoomPhotoStrip } from './room-photo-strip';
 
 type SlotsByRoom = ReadonlyMap<string, HourlySlot[]>;
 

@@ -1,4 +1,4 @@
-import type { BookingMode } from '@booking/contracts';
+import type { BookingMode, BookingSelection } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const LISTING_READ_REPOSITORY = Symbol('LISTING_READ_REPOSITORY');
@@ -12,6 +12,7 @@ export interface PublicListingRecord {
   photos: unknown[];
   modeConfig: Record<string, unknown>;
   bookingModes: BookingMode[];
+  bookingSelection: BookingSelection;
   capacity: number | null;
   stockQuantity: number | null;
   bufferBefore: number;

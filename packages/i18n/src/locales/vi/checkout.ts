@@ -25,6 +25,8 @@ export const viCheckout = {
   total: 'Tổng cộng',
   payNow: 'Đặt & thanh toán',
   invalidSlot: 'Lịch đã chọn không hợp lệ. Vui lòng chọn lại.',
+  packageUnavailable: 'Gói đã thay đổi hoặc không còn khả dụng.',
+  selectPackageAgain: 'Chọn lại gói',
   creating: 'Đang tạo đặt chỗ…',
   dueNow: 'Thanh toán ngay',
   deposit: 'Tiền cọc',

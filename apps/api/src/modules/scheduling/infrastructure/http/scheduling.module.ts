@@ -85,5 +85,9 @@ export class SchedulingModule implements OnModuleInit {
         return this.cache.invalidateListing(listingId);
       });
     }
+    this.registry.register('listing.updated', (event) => {
+      const { listingId } = event.payload as { listingId: string };
+      return this.cache.invalidateListing(listingId);
+    });
   }
 }

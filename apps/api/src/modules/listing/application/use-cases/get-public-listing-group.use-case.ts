@@ -15,16 +15,11 @@ import {
   type IListingRepository,
   type ListingRecord,
 } from '../../domain/ports/listing-repository.port';
+import { basePrices } from '../../domain/group-stats';
 
 function listingPriceFrom(listing: ListingRecord): string | null {
-  const prices = Object.values(listing.modeConfig).flatMap((value) => {
-    if (!value || typeof value !== 'object') return [];
-    const config = value as Record<string, unknown>;
-    return ['basePrice', 'basePricePerNight']
-      .map((key) => Number(config[key]))
-      .filter((price) => Number.isFinite(price) && price > 0);
-  });
-  return prices.length ? String(Math.min(...prices)) : null;
+  const prices = basePrices(listing);
+  return prices.length ? prices.reduce((left, right) => (right < left ? right : left)).toString() : null;
 }
 
 @Injectable()
@@ -60,6 +55,7 @@ export class GetPublicListingGroupUseCase {
         amenities: group.amenities,
         photos: group.photos,
         listingTypeSlug: listingType?.slug ?? '',
+        bookingSelection: listingType?.bookingSelection ?? 'flexible_duration',
         itemLabel: listingType?.itemLabel?.trim() || 'hạng mục',
         ratingAvg: group.ratingAvg,
         reviewCount: group.reviewCount,

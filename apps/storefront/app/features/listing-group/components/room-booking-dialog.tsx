@@ -29,6 +29,7 @@ import { PendingLink } from '../../../components/pending-link';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import {
   DEFAULT_TZ,
+  addDays,
   dateLabelInTz,
   dateOnlyToLocal,
   localToDateOnly,
@@ -36,8 +37,10 @@ import {
 } from '../../../lib/time';
 import { formatVnd } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
+import { packagesForMode } from '../../../lib/package-options';
 import type { loader as bookingDataLoader } from '../../../routes/listing-group-booking-data';
 import type { BookingMode, RoomOption } from '../listing-group-types';
+import { RoomPhotoStrip } from './room-photo-strip';
 import {
   atomicHourlySlots,
   checkoutHref,
@@ -69,11 +72,18 @@ export function RoomBookingDialog({
   const initialMode = supportedModes.includes(preferredMode as RoomBookingMode)
     ? (preferredMode as RoomBookingMode)
     : (supportedModes[0] ?? 'hourly');
+  const fixedPackages = option.detail.bookingSelection === 'fixed_packages';
+  const packageOptions = (selectedMode: RoomBookingMode) =>
+    packagesForMode(option.detail.modeConfig, selectedMode);
   const today = todayInTz(DEFAULT_TZ);
   const todayDate = dateOnlyToLocal(today);
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mode, setMode] = useState<RoomBookingMode>(initialMode);
+  const [packageId, setPackageId] = useState<string | null>(
+    fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null,
+  );
+  const selectedPackage = packageOptions(mode).find((item) => item.id === packageId) ?? null;
   const [date, setDate] = useState<string | null>(null);
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
@@ -91,11 +101,13 @@ export function RoomBookingDialog({
       to?: string | null;
       start?: string;
       end?: string;
+      packageId?: string | null;
     },
     kind: BookingRequestKind,
   ): void {
     setRequestKind(kind);
     const params = new URLSearchParams({ mode: next.mode });
+    if (next.packageId ?? packageId) params.set('packageId', (next.packageId ?? packageId)!);
     if (next.mode === 'hourly' && next.date) params.set('date', next.date);
     if (next.mode === 'daily' && next.from) params.set('from', next.from);
     if (next.mode === 'daily' && next.to) params.set('to', next.to);
@@ -119,23 +131,27 @@ export function RoomBookingDialog({
           date,
           start: draftInterval?.start,
           end: draftInterval?.end,
+          packageId,
         },
         draftInterval ? 'quote' : 'availability',
       );
     } else if (mode === 'daily') {
-      load({ mode, from: from ?? today, to }, from && to ? 'quote' : 'availability');
+      load({ mode, from: from ?? today, to, packageId }, from && to ? 'quote' : 'availability');
     }
   }
 
   function switchMode(next: RoomBookingMode): void {
     if (next === mode) return;
     setMode(next);
+    const nextPackageId = fixedPackages ? (packageOptions(next)[0]?.id ?? null) : null;
+    setPackageId(nextPackageId);
     setDate(null);
     setFrom(null);
     setTo(null);
     setSelectedSlots([]);
     setSelectionError('');
-    if (next === 'daily') load({ mode: next, from: today }, 'availability');
+    if (next === 'daily')
+      load({ mode: next, from: today, packageId: nextPackageId }, 'availability');
   }
 
   const response = fetcher.data;
@@ -153,9 +169,11 @@ export function RoomBookingDialog({
   const slots = useMemo(
     () =>
       availability?.mode === 'hourly'
-        ? atomicHourlySlots(availability.days.flatMap((day) => day.slots))
+        ? fixedPackages
+          ? availability.days.flatMap((day) => day.slots)
+          : atomicHourlySlots(availability.days.flatMap((day) => day.slots))
         : [],
-    [availability],
+    [availability, fixedPackages],
   );
   const openDates = useMemo(
     () =>
@@ -200,6 +218,7 @@ export function RoomBookingDialog({
           mode,
           start: currentData.selectionStart,
           end: currentData.selectionEnd,
+          ...(packageId ? { packageId } : {}),
         })
       : null;
 
@@ -207,7 +226,7 @@ export function RoomBookingDialog({
     setDate(nextDate);
     setSelectedSlots([]);
     setSelectionError('');
-    load({ mode: 'hourly', date: nextDate }, 'availability');
+    load({ mode: 'hourly', date: nextDate, packageId }, 'availability');
   }
 
   function changeDate(): void {
@@ -218,6 +237,19 @@ export function RoomBookingDialog({
 
   function toggleSlot(slot: HourlySlot): void {
     if (!slot.available || !date) return;
+    if (fixedPackages) {
+      const nextSlots = selectedSlots.some(
+        (item) => item.startUtc === slot.startUtc && item.endUtc === slot.endUtc,
+      )
+        ? []
+        : [slot];
+      setSelectedSlots(nextSlots);
+      setSelectionError('');
+      if (nextSlots.length) {
+        load({ mode: 'hourly', date, start: slot.startUtc, end: slot.endUtc, packageId }, 'quote');
+      }
+      return;
+    }
     const result = toggleContiguousSlot(selectedSlots, slot);
     if (!result.changed) {
       setSelectionError(t('group.contiguousOnly'));
@@ -242,12 +274,18 @@ export function RoomBookingDialog({
 
   function selectRange(next: DateRange | undefined): void {
     const nextFrom = next?.from ? localToDateOnly(next.from) : null;
-    const nextTo = next?.to ? localToDateOnly(next.to) : null;
+    const selectedPackage = packageOptions('daily').find((item) => item.id === packageId);
+    const nextTo =
+      fixedPackages && nextFrom && selectedPackage
+        ? addDays(nextFrom, selectedPackage.duration)
+        : next?.to
+          ? localToDateOnly(next.to)
+          : null;
     setFrom(nextFrom);
     setTo(nextTo);
     setSelectionError('');
     if (nextFrom && nextTo) {
-      load({ mode: 'daily', from: nextFrom, to: nextTo }, 'quote');
+      load({ mode: 'daily', from: nextFrom, to: nextTo, packageId }, 'quote');
     }
   }
 
@@ -331,6 +369,58 @@ export function RoomBookingDialog({
               {item === 'hourly' ? t('modeHourly') : t('modeDaily')}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {fixedPackages ? (
+        <div className="mb-5 space-y-2">
+          <h3 className="text-sm font-semibold">Chọn gói dịch vụ</h3>
+          <div className="grid gap-2">
+            {packageOptions(mode).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setPackageId(item.id);
+                  setDate(null);
+                  setFrom(null);
+                  setTo(null);
+                  setSelectedSlots([]);
+                  if (mode === 'daily')
+                    load({ mode, from: today, packageId: item.id }, 'availability');
+                }}
+                className={cn(
+                  'rounded-lg border p-3 text-left',
+                  packageId === item.id && 'border-primary bg-primary/5',
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  {item.photos[0] ?? option.child.photos[0] ? (
+                    <img
+                      src={item.photos[0] ?? option.child.photos[0]}
+                      alt=""
+                      className="size-12 rounded-md object-cover"
+                    />
+                  ) : null}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex justify-between gap-3 text-sm font-medium">
+                      <span>{item.name}</span>
+                      <span>{formatVnd(item.price)}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {item.duration} {item.durationLabel}
+                    </span>
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+          {selectedPackage ? (
+            <RoomPhotoStrip
+              photos={selectedPackage.photos.length ? selectedPackage.photos : option.child.photos}
+              title={`${option.child.title} — ${selectedPackage.name}`}
+            />
+          ) : null}
         </div>
       ) : null}
 

@@ -5,6 +5,7 @@ import type {
   DayAvailability,
   HourlyDay,
   ModeConfig,
+  SelectedPackage,
 } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { utcNow, zonedTimeToUtc } from '../../../../shared/time/time';
@@ -33,11 +34,16 @@ import { openWindowsForDate, type DateException } from '../../domain/availabilit
 import { applyLiveHolds, generateHourlySlots } from '../../domain/availability/slot-generator';
 import { computeDay } from '../../domain/availability/day-availability';
 import type { Interval } from '../../domain/availability/interval';
+import { overlapsAny } from '../../domain/availability/interval';
 import {
   AVAILABILITY_CACHE,
   type CachedSlot,
   type IAvailabilityCache,
 } from '../../domain/ports/availability-cache.port';
+import {
+  findActivePackage,
+  ListingModeConfigError,
+} from '../../../listing/domain/pricing/package-config';
 
 const DAY_MS = 86_400_000;
 
@@ -104,6 +110,21 @@ export class GetAvailabilityUseCase {
       }
 
       const modeConfig = listing.modeConfig as ModeConfig;
+      let selectedPackage: SelectedPackage | undefined;
+      if (listing.bookingSelection === 'fixed_packages') {
+        try {
+          selectedPackage = findActivePackage(modeConfig, query.mode, query.packageId);
+        } catch (error) {
+          if (error instanceof ListingModeConfigError) {
+            throw new BadRequestException({
+              statusCode: 400,
+              code: error.code,
+              message: error.message,
+            });
+          }
+          throw error;
+        }
+      }
       const pv = (await this.pricingRules.listByListing(tx, listing.id)).map((r) => ({
         id: r.id,
         bookingMode: r.bookingMode,
@@ -114,11 +135,13 @@ export class GetAvailabilityUseCase {
         priority: r.priority,
       }));
       const ruleRows = await this.rules.listByListing(tx, listing.id);
+      const extensionDays = selectedPackage?.mode === 'daily' ? selectedPackage.durationDays : 0;
+      const exceptionTo = addCalendarDays(query.to, extensionDays);
       const excRows = await this.exceptions.listByResource(
         tx,
         listing.resourceId,
         query.from,
-        query.to,
+        exceptionTo,
       );
       const excByDate = new Map<string, DateException>(
         excRows.map((e) => [
@@ -129,7 +152,7 @@ export class GetAvailabilityUseCase {
 
       const dayZero = (d: string) => zonedTimeToUtc({ ...parseDate(d), hour: 0, minute: 0 }, tz);
       const rangeStart = dayZero(query.from);
-      const rangeEnd = new Date(dayZero(query.to).getTime() + 2 * DAY_MS);
+      const rangeEnd = new Date(dayZero(exceptionTo).getTime() + 2 * DAY_MS);
       // Holds live in Redis and are never cached — read them fresh for the range
       // and merge at read time so an expired hold never leaves a ghost-busy slot.
       const liveHolds = await this.holds.activeHolds(listing.resourceId, rangeStart, rangeEnd);
@@ -144,6 +167,8 @@ export class GetAvailabilityUseCase {
           endUtc,
           quantity: 1,
           depositPercent: listing.depositPercent,
+          bookingSelection: listing.bookingSelection,
+          packageId: query.packageId,
         }).subtotal;
 
       const dates = eachDate(query.from, query.to);
@@ -151,12 +176,13 @@ export class GetAvailabilityUseCase {
 
       if (query.mode === 'hourly') {
         const hourly = modeConfig.hourly;
+        const selectionKey = selectedPackage?.id ?? 'flexible';
         // Booking-derived busy is resource-scoped; fetch it once, lazily, only
         // when some date misses the cache.
         let bookingBusy: Interval[] | null = null;
         const days: HourlyDay[] = [];
         for (const date of dates) {
-          let cached = hourly ? await this.cache.get(listing.id, date) : [];
+          let cached = hourly ? await this.cache.get(listing.id, date, selectionKey) : [];
           if (hourly && cached === null) {
             bookingBusy ??= await this.busy.busyBookings(
               tx,
@@ -170,8 +196,14 @@ export class GetAvailabilityUseCase {
               busy: bookingBusy,
               now,
               granularityMin: hourly.granularity,
-              minDurationHours: hourly.minDuration,
-              maxDurationHours: hourly.maxDuration,
+              minDurationHours:
+                selectedPackage?.mode === 'hourly'
+                  ? selectedPackage.durationMinutes / 60
+                  : (hourly.minDuration ?? 1),
+              maxDurationHours:
+                selectedPackage?.mode === 'hourly'
+                  ? selectedPackage.durationMinutes / 60
+                  : (hourly.maxDuration ?? hourly.minDuration ?? 1),
               bufferBeforeMin: listing.bufferBefore,
               bufferAfterMin: listing.bufferAfter,
               leadTimeMin: hourly.leadTimeMin,
@@ -183,7 +215,7 @@ export class GetAvailabilityUseCase {
               available: s.available,
               price: s.price,
             }));
-            await this.cache.set(listing.resourceId, listing.id, date, cached);
+            await this.cache.set(listing.resourceId, listing.id, date, selectionKey, cached);
           }
           // Merge live holds on top of the cached booking/config-derived slots.
           const merged = applyLiveHolds(
@@ -217,6 +249,32 @@ export class GetAvailabilityUseCase {
         ...(await this.busy.busyBookings(tx, listing.resourceId, rangeStart, rangeEnd)),
         ...liveHolds,
       ];
+      if (selectedPackage?.mode === 'daily') {
+        const daily = modeConfig.daily;
+        if (!daily) {
+          throw new BadRequestException({
+            statusCode: 400,
+            code: 'MODE_CONFIG_MISSING',
+            message: 'No daily config on this listing',
+          });
+        }
+        return {
+          mode: 'daily',
+          timezone: tz,
+          days: dates.map((date) =>
+            this.fixedDaily(
+              date,
+              selectedPackage!.durationDays,
+              tz,
+              daily,
+              ruleRows,
+              excByDate,
+              dailyBusy,
+              priceFor,
+            ),
+          ),
+        };
+      }
       return {
         mode: 'daily',
         timezone: tz,
@@ -225,6 +283,48 @@ export class GetAvailabilityUseCase {
         ),
       };
     });
+  }
+
+  private fixedDaily(
+    date: string,
+    durationDays: number,
+    tz: string,
+    daily: NonNullable<ModeConfig['daily']>,
+    ruleRows: { dayOfWeek: number }[],
+    exceptions: Map<string, DateException>,
+    busy: Interval[],
+    priceFor: (s: Date, e: Date) => string,
+  ): DayAvailability {
+    const stayDates = Array.from({ length: durationDays }, (_, index) =>
+      addCalendarDays(date, index),
+    );
+    let blocked = false;
+    const open = stayDates.every((stayDate) => {
+      const exception = exceptions.get(stayDate);
+      if (exception?.type === 'closed') {
+        blocked = true;
+        return false;
+      }
+      return (
+        exception?.type === 'custom_hours' ||
+        ruleRows.length === 0 ||
+        ruleRows.some((rule) => rule.dayOfWeek === weekdayOf(stayDate))
+      );
+    });
+    if (!open) return { date, status: blocked ? 'blocked' : 'closed', price: null };
+
+    const startParts = parseDate(date);
+    const endParts = parseDate(addCalendarDays(date, durationDays));
+    const [inH, inM] = daily.checkinTime.split(':').map(Number);
+    const [outH, outM] = daily.checkoutTime.split(':').map(Number);
+    const start = zonedTimeToUtc({ ...startParts, hour: inH, minute: inM }, tz);
+    const end = zonedTimeToUtc({ ...endParts, hour: outH, minute: outM }, tz);
+    const price = priceFor(start, end);
+    return {
+      date,
+      status: overlapsAny({ start, end }, busy) ? 'booked' : 'available',
+      price,
+    };
   }
 
   private daily(
@@ -274,4 +374,11 @@ export class GetAvailabilityUseCase {
     });
     return { date, status: computed.status, price: computed.price };
   }
+}
+
+function addCalendarDays(date: string, days: number): string {
+  const value = parseDate(date);
+  return new Date(Date.UTC(value.year, value.month - 1, value.day + days))
+    .toISOString()
+    .slice(0, 10);
 }

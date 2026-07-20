@@ -15,6 +15,7 @@ export function toListingTypeResponse(t: ListingTypeRecord): ListingTypeResponse
     icon: t.icon,
     allowedModes: t.allowedModes,
     defaultModes: t.defaultModes,
+    bookingSelection: t.bookingSelection,
     attributeSchema: t.attributeSchema,
     searchConfig: t.searchConfig,
     unitLabel: t.unitLabel,
@@ -43,6 +44,7 @@ export function toPublicListingTypeResponse(t: ListingTypeRecord): PublicListing
     itemLabel: t.itemLabel,
     allowedModes: t.allowedModes,
     defaultModes: t.defaultModes,
+    bookingSelection: t.bookingSelection,
     attributeSchema: t.attributeSchema.filter((f) => f.filterable),
     searchConfig: t.searchConfig,
   };
@@ -67,11 +69,25 @@ function toVnd(raw: unknown): bigint | null {
 }
 
 /** Best-effort lowest configured price across booking modes (VND đồng digit string). */
-function priceFrom(modeConfig: Record<string, unknown>): string | null {
+function priceFrom(
+  modeConfig: Record<string, unknown>,
+  bookingSelection: 'flexible_duration' | 'fixed_packages',
+): string | null {
   const prices: bigint[] = [];
   for (const cfg of Object.values(modeConfig)) {
     if (cfg && typeof cfg === 'object') {
       const c = cfg as Record<string, unknown>;
+      if (bookingSelection === 'fixed_packages') {
+        const packages = Array.isArray(c.packages) ? c.packages : [];
+        for (const item of packages) {
+          if (!item || typeof item !== 'object') continue;
+          const row = item as Record<string, unknown>;
+          if (row.isActive !== true) continue;
+          const price = toVnd(row.price);
+          if (price !== null && price > 0n) prices.push(price);
+        }
+        continue;
+      }
       for (const key of ['basePrice', 'basePricePerNight']) {
         const price = toVnd(c[key]);
         if (price !== null && price > 0n) prices.push(price);
@@ -91,7 +107,7 @@ export function toPublicListingResponse(l: PublicListingRecord): PublicListingRe
     listingTypeSlug: l.listingTypeSlug,
     attributes: l.attributes,
     photos: l.group?.photos ?? l.photos,
-    priceFrom: priceFrom(l.modeConfig),
+    priceFrom: priceFrom(l.modeConfig, l.bookingSelection),
     itemLabel: l.group?.itemLabel ?? null,
     ratingAvg: l.group?.ratingAvg ?? l.ratingAvg,
     reviewCount: l.group?.reviewCount ?? l.reviewCount,

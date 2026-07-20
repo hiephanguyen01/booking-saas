@@ -70,15 +70,20 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   }
 
   const mode = pickMode(searchParams.get('mode'), listing);
+  const packageId = searchParams.get('packageId') ?? undefined;
+  const requiresPackage = listing.bookingSelection === 'fixed_packages';
   const today = todayInTz(DEFAULT_TZ);
-  let availabilityPromise: ReturnType<typeof fetchAvailability>;
+  let availabilityPromise: ReturnType<typeof fetchAvailability> | null = null;
 
-  if (mode === 'hourly') {
+  if (requiresPackage && !packageId) {
+    availabilityPromise = null;
+  } else if (mode === 'hourly') {
     const day = searchParams.get('day') || searchParams.get('date') || today;
     availabilityPromise = fetchAvailability(request, params.listingSlug, {
       mode,
       from: day,
       to: day,
+      ...(packageId ? { packageId } : {}),
     });
   } else if (mode === 'daily') {
     const anchor = searchParams.get('from') || today;
@@ -86,6 +91,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       mode,
       from: anchor,
       to: addDays(anchor, 30),
+      ...(packageId ? { packageId } : {}),
     });
   } else {
     const from = (searchParams.get('from') || today).slice(0, 10);
@@ -93,7 +99,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     availabilityPromise = fetchAvailability(request, params.listingSlug, { mode, from, to });
   }
 
-  const availability = await availabilityPromise;
+  const availability = availabilityPromise ? await availabilityPromise : null;
   let selectionStart = searchParams.get('start');
   let selectionEnd = searchParams.get('end');
   const quantity = searchParams.get('qty') || searchParams.get('quantity') || '1';
@@ -102,7 +108,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     const date = searchParams.get('date');
     const startTime = searchParams.get('startTime');
     const endTime = searchParams.get('endTime');
-    if (date && startTime && endTime && startTime < endTime) {
+    if (availability && date && startTime && endTime && startTime < endTime) {
       selectionStart = zonedToUtcIso(date, startTime, availability.timezone);
       selectionEnd = zonedToUtcIso(date, endTime, availability.timezone);
     }
@@ -117,6 +123,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
           selectionEnd,
           quantity,
           searchParams,
+          requiresPackage,
         )
       : false;
   const quote = selectionAvailable
@@ -128,6 +135,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
           from: selectionStart!,
           to: selectionEnd!,
           quantity,
+          ...(packageId ? { packageId } : {}),
         }),
       )
     : null;
@@ -139,13 +147,15 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
 }
 
 function isSelectionAvailable(
-  availability: Awaited<ReturnType<typeof fetchAvailability>>,
+  availability: Awaited<ReturnType<typeof fetchAvailability>> | null,
   mode: AvailabilityMode,
   start: string,
   end: string,
   quantity: string,
   searchParams: URLSearchParams,
+  fixedPackage: boolean,
 ): boolean {
+  if (!availability) return false;
   if (mode === 'hourly') {
     return (
       availability.mode === 'hourly' &&
@@ -165,6 +175,9 @@ function isSelectionAvailable(
   }
   if (availability.mode !== 'daily') return false;
   const from = searchParams.get('from');
+  if (fixedPackage) {
+    return availability.days.some((day) => day.date === from && day.status === 'available');
+  }
   const to = searchParams.get('to');
   const range = normalizeDailyRange(from ?? undefined, to ?? undefined);
   if (!range) return false;

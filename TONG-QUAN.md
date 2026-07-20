@@ -484,7 +484,7 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 | stock_quantity                                                | number of units in stock (`inventory` mode only — e.g. 10 outfits, 3 cameras)                                                                                                                                                                                                     |
 | status                                                        | `draft / pending_review / published / archived` — if part of a group, moderation happens at the post level; a standalone listing is moderated directly as its own post                                                                                                            |
 | published_by, hidden_by                                       | `partner / admin` — same as listing_groups, used to hide/show individual rooms/packages                                                                                                                                                                                           |
-| mode_config                                                   | jsonb — per-enabled-mode config: `{hourly: {basePrice, blocks: [{hours, price}], minDuration, maxDuration, granularity, leadTimeMin}, daily: {basePricePerNight, blocks: [{days, price}], minNights, maxNights, checkinTime, checkoutTime, leadTimeMin}, inventory: {unit: 'hour' | 'day', basePrice, securityDeposit}}`—`blocks` = **package/bundle pricing** (2 hours = 500k, cheaper than the per-hour rate): if duration matches a block, use the block price; otherwise use the per-unit price × duration; the deposit_percent/cancellation_policy/approval_required/balance_due/reschedule fields below can be **overridden per mode** (falling back to the shared value) |
+| mode_config                                                   | jsonb — per-enabled-mode config. A `flexible_duration` type stores unit price + min/max and an empty `packages` array. A `fixed_packages` type stores packages with stable UUID, name, optional description, up to 8 ordered photo URLs (first photo is the cover), absolute VND price, active state, sort order and `durationMinutes`/`durationDays`; base price and min/max are not used. Legacy `blocks` are ignored and stripped on save. |
 | buffer_before, buffer_after                                   | minutes of cleanup/prep time between two bookings                                                                                                                                                                                                                                 |
 | capacity                                                      | max number of guests (class: number of seats)                                                                                                                                                                                                                                     |
 | category_id                                                   | classification within the tenant                                                                                                                                                                                                                                                  |
@@ -509,7 +509,7 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 | booking_mode | which mode the rule applies to (`hourly`/`daily`/`inventory`) — required since base price is split per mode                                                                    |
 | rule_type    | `day_of_week / date_range / time_range / date_time_range`                                                                                                                        |
 | params       | jsonb, e.g. `{days:[6,0], from:"18:00", to:"22:00"}` or `{date:"2026-07-20",from:"18:00",to:"22:00"}`                                                                     |
-| price        | bigint — regular per-unit price replacing `basePrice`; an exact calendar override takes precedence over a matching duration bundle                                               |
+| price        | bigint — regular per-unit price replacing `basePrice`; pricing rules apply only to flexible-duration pricing and are ignored for fixed packages                                      |
 | sale_price   | nullable bigint — partner-funded calendar sale; greater than zero and lower than `price`; promotion codes apply after this price                                                   |
 | priority     | higher-priority rule wins                                                                                                                                                      |
 
@@ -779,16 +779,15 @@ Input: date D (in the **resource's** timezone), listing config, active bookings 
 ```
 1. Get availability_rules for day_of_week(D) → open windows; apply availability_exceptions (closed/custom hours)
 2. Generate a grid of start points using mode_config.hourly.granularity within each open window
-3. For each start point s and duration d (minDuration..maxDuration, stepping by granularity):
+3. For each start point s and duration d (flexible: minDuration..maxDuration; fixed package: exactly the selected package duration):
      occupied range = [s − buffer_before, s + d + buffer_after)
      exclude if it overlaps any booking (status ∈ confirmed, pending_*) or an active hold
      exclude if s < now + leadTimeMin (minimum lead time, in mode_config)
-4. Return slots with prices: an exact calendar override (`date_range` / `date_time_range`) wins;
-   otherwise a duration matching a mode_config block uses the flat bundle price; remaining ranges
-   use per-unit pricing_rules by priority. `sale_price`, when present, is the effective unit price.
+4. Return slots with prices: fixed packages use their absolute package price and ignore pricing
+   rules; flexible bookings use per-unit pricing rules by priority. Promotions apply after subtotal.
 ```
 
-Results are cached in Redis by `(listing, date)` for the booking/config portion only (invalidated on change); **hold state is never cached** — it's merged at read time, so a hold expiring naturally in Redis never leaves a "ghost" slot reported as busy.
+Results are cached in Redis by `(listing, date, packageId | flexible)` for the booking/config portion only (invalidated on change); **hold state is never cached** — it's merged at read time, so a hold expiring naturally in Redis never leaves a "ghost" slot reported as busy.
 
 Two cross-mode notes:
 
@@ -799,7 +798,7 @@ Two cross-mode notes:
 
 - The unit is a **night/day**; the timeslot stores `[check-in time on day A, check-out time on day B)` so it can still use the same tstzrange exclusion constraint.
 - The API returns a **monthly calendar**: each day is `available / booked / blocked / closed` + a per-day price (pricing_rules `date_range`, weekends...).
-- Validation: `mode_config.daily.minNights/maxNights`, and a range cannot contain an already-full day.
+- Validation: flexible bookings use `minNights/maxNights`; fixed bookings require a package and validate the whole package stay from the selected start day.
 
 ### 9.3. `appointment` — service + staff (Phase 3)
 
@@ -1293,7 +1292,7 @@ Additional auth flows (Phase 1): **email verification** at signup; **password re
 ### Phase 1 — Studio Vertical MVP
 
 1. Tenancy: tenant CRUD, domain mapping, plans + manual subscription, expiry/limit enforcement (Phase 1: platform admin creates tenants manually; self-serve signup in Phase 3).
-2. Catalog: partners (signup + tenant approval, individual/company, **house partner**, identity verification for people-booking types), **dynamic listing types** (tenant-defined types + attribute schema, auto-generated menu/filters), **two-tier posts** (`listing_groups` containing multiple rooms/packages), listings with **multiple modes enabled** (`hourly` + `daily` flexibly) + **block pricing** (2-hour/3-day bundle pricing), calendar-sharing resources, post moderation (`pending_review` + `published_by/hidden_by` + a checklist + contact-info scanning), basic pricing rules, image uploads, storefront trust signals.
+2. Catalog: partners (signup + tenant approval, individual/company, **house partner**, identity verification for people-booking types), **dynamic listing types** (tenant-defined types + attribute schema, auto-generated menu/filters), **two-tier posts** (`listing_groups` containing multiple rooms/packages), listings with **multiple modes enabled** (`hourly` + `daily`) and Listing Type pricing selection (`flexible_duration` or mandatory `fixed_packages`), calendar-sharing resources, post moderation, pricing rules for flexible pricing, image uploads, storefront trust signals.
 3. Scheduling: availability rules/exceptions, slot-generation engine + calendar, caching.
 4. Booking: the full state machine (including no-show + **request-to-book/approval** — already part of the state machine), Redis holds, exclusion constraint, cancellation policies, guest checkout + OTP lookup, a date-range calendar for daily mode, **`inventory` mode** (outfit/equipment rental by quantity + security deposit + late-return handling — enough to launch StudioHub with 4 of its 5 listing types).
 5. Payments: the port + `sepay` + `mock` (legacy PayOS adapter retained); instant + deposit; idempotent IPN; refunds (manual when the provider has no refund API).

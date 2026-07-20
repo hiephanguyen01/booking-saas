@@ -105,6 +105,7 @@ export function ListingCalendarPricing({
     [exceptions],
   );
   const basePrice = defaultPrice(listing, mode);
+  const canPricing = canWrite && listing.bookingSelection === 'flexible_duration';
   const enabledModes = listing.bookingModes.filter(
     (item): item is CalendarMode => item === 'hourly' || item === 'daily',
   );
@@ -170,6 +171,11 @@ export function ListingCalendarPricing({
           ) : null}
         </div>
       </div>
+      {listing.bookingSelection === 'fixed_packages' ? (
+        <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+          Giá của tin đăng này được quản lý trong mục “Các gói dịch vụ”. Lịch giá riêng không áp dụng cho gói cố định.
+        </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
@@ -295,18 +301,18 @@ export function ListingCalendarPricing({
             </DialogDescription>
           </DialogHeader>
 
-          {selected && (canAvailability || canWrite) ? (
+          {selected && (canAvailability || canPricing) ? (
             <Tabs defaultValue={canAvailability ? 'availability' : 'price'} className="pt-2">
               <TabsList
                 className={cn(
                   'grid w-full',
-                  canAvailability && canWrite ? 'grid-cols-2' : 'grid-cols-1',
+                  canAvailability && canPricing ? 'grid-cols-2' : 'grid-cols-1',
                 )}
               >
                 {canAvailability ? (
                   <TabsTrigger value="availability">Lịch mở cửa</TabsTrigger>
                 ) : null}
-                {canWrite ? <TabsTrigger value="price">Giá</TabsTrigger> : null}
+                {canPricing ? <TabsTrigger value="price">Giá</TabsTrigger> : null}
               </TabsList>
 
               {canAvailability ? (
@@ -394,7 +400,7 @@ export function ListingCalendarPricing({
                 </TabsContent>
               ) : null}
 
-              {canWrite ? (
+              {canPricing ? (
                 <TabsContent value="price" className="mt-4">
                   {mode === 'hourly' && selectedRules.length > 0 ? (
                     <div className="mb-4 space-y-2">

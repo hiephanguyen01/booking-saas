@@ -1,10 +1,11 @@
-import type { BookingMode, ModeConfig } from '@booking/contracts';
+import type { BookingMode, BookingSelection, ModeConfig } from '@booking/contracts';
 import { wallClockInZone } from '../../../shared/time/time';
 import type { BookingSchedule } from './ports/booking-availability-reader.port';
 
 export interface SlotPolicyInput {
   mode: BookingMode;
   modeConfig: ModeConfig;
+  bookingSelection: BookingSelection;
   timezone: string;
   startUtc: Date;
   endUtc: Date;
@@ -48,10 +49,13 @@ export function validateSlotPolicy(input: SlotPolicyInput): string | null {
     const config = input.modeConfig.hourly;
     if (!config) return 'MODE_CONFIG_MISSING';
     const durationMinutes = (input.endUtc.getTime() - input.startUtc.getTime()) / 60_000;
+    if (durationMinutes % config.granularity !== 0) return 'INVALID_DURATION';
     if (
-      durationMinutes < config.minDuration * 60 ||
-      durationMinutes > config.maxDuration * 60 ||
-      durationMinutes % config.granularity !== 0
+      input.bookingSelection === 'flexible_duration' &&
+      (config.minDuration === undefined ||
+        config.maxDuration === undefined ||
+        durationMinutes < config.minDuration * 60 ||
+        durationMinutes > config.maxDuration * 60)
     )
       return 'INVALID_DURATION';
     if (input.startUtc.getTime() < input.now.getTime() + config.leadTimeMin * 60_000)
@@ -87,7 +91,14 @@ export function validateSlotPolicy(input: SlotPolicyInput): string | null {
   const to = dateKey(endWall);
   const dates: string[] = [];
   for (let cursor = from; cursor < to; cursor = nextDate(cursor)) dates.push(cursor);
-  if (dates.length < config.minNights || dates.length > config.maxNights) return 'INVALID_DURATION';
+  if (
+    input.bookingSelection === 'flexible_duration' &&
+    (config.minNights === undefined ||
+      config.maxNights === undefined ||
+      dates.length < config.minNights ||
+      dates.length > config.maxNights)
+  )
+    return 'INVALID_DURATION';
   if (input.startUtc.getTime() < input.now.getTime() + config.leadTimeMin * 60_000)
     return 'LEAD_TIME_REQUIRED';
   const closed = dates.some((date) => {

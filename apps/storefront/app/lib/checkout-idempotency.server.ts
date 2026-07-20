@@ -7,6 +7,7 @@ export interface CheckoutIdempotencyInput {
   start: string;
   end: string;
   quantity: number;
+  packageId: string | null;
   promoCode: string | null;
   email: string;
   phone: string;
@@ -20,6 +21,7 @@ export function buildCheckoutIdempotencyKey(input: CheckoutIdempotencyInput): st
     start: input.start,
     end: input.end,
     quantity: input.quantity,
+    packageId: input.packageId,
     promoCode: input.promoCode?.trim().toUpperCase() || null,
     email: input.email.trim().toLowerCase(),
     phone: input.phone.trim(),

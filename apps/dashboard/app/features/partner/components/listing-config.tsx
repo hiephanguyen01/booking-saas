@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import { Section, Grid, Field } from './form-layout';
-import { BlockEditor } from './block-editor';
+import { PackageEditor } from './package-editor';
 import { AttributeInput } from './attribute-input';
 import { CONFIGURABLE, useListingModeState } from './use-listing-mode-state';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
@@ -76,11 +76,19 @@ export function ListingConfig({
       </Section>
 
       {state.bookingModes.includes('hourly') ? (
-        <HourlyConfigSection value={state.hourly} onChange={(v) => set('hourly', v)} />
+        <HourlyConfigSection
+          value={state.hourly}
+          fixedPackages={selectedType?.bookingSelection === 'fixed_packages'}
+          onChange={(v) => set('hourly', v)}
+        />
       ) : null}
 
       {state.bookingModes.includes('daily') ? (
-        <DailyConfigSection value={state.daily} onChange={(v) => set('daily', v)} />
+        <DailyConfigSection
+          value={state.daily}
+          fixedPackages={selectedType?.bookingSelection === 'fixed_packages'}
+          onChange={(v) => set('daily', v)}
+        />
       ) : null}
 
       {state.bookingModes.includes('inventory') ? (
@@ -113,22 +121,26 @@ export function ListingConfig({
 
 function HourlyConfigSection({
   value,
+  fixedPackages,
   onChange,
 }: {
   value: DynamicState['hourly'];
+  fixedPackages: boolean;
   onChange: (value: DynamicState['hourly']) => void;
 }) {
   return (
     <Section title="Cấu hình — theo giờ">
       <Grid>
-        <Field label="Giá / giờ (VND)">
-          <Input
-            type="number"
-            min={0}
-            value={value.basePrice}
-            onChange={(e) => onChange({ ...value, basePrice: e.target.value })}
-          />
-        </Field>
+        {!fixedPackages ? (
+          <Field label="Giá / giờ (VND)">
+            <Input
+              type="number"
+              min={0}
+              value={value.basePrice}
+              onChange={(e) => onChange({ ...value, basePrice: e.target.value })}
+            />
+          </Field>
+        ) : null}
         <Field label="Bước (phút)">
           <Input
             type="number"
@@ -137,22 +149,26 @@ function HourlyConfigSection({
             onChange={(e) => onChange({ ...value, granularity: e.target.value })}
           />
         </Field>
-        <Field label="Tối thiểu (giờ)">
-          <Input
-            type="number"
-            min={1}
-            value={value.minDuration}
-            onChange={(e) => onChange({ ...value, minDuration: e.target.value })}
-          />
-        </Field>
-        <Field label="Tối đa (giờ)">
-          <Input
-            type="number"
-            min={1}
-            value={value.maxDuration}
-            onChange={(e) => onChange({ ...value, maxDuration: e.target.value })}
-          />
-        </Field>
+        {!fixedPackages ? (
+          <Field label="Tối thiểu (giờ)">
+            <Input
+              type="number"
+              min={1}
+              value={value.minDuration}
+              onChange={(e) => onChange({ ...value, minDuration: e.target.value })}
+            />
+          </Field>
+        ) : null}
+        {!fixedPackages ? (
+          <Field label="Tối đa (giờ)">
+            <Input
+              type="number"
+              min={1}
+              value={value.maxDuration}
+              onChange={(e) => onChange({ ...value, maxDuration: e.target.value })}
+            />
+          </Field>
+        ) : null}
         <Field label="Đặt trước tối thiểu (phút)">
           <Input
             type="number"
@@ -162,49 +178,60 @@ function HourlyConfigSection({
           />
         </Field>
       </Grid>
-      <BlockEditor
-        rows={value.blocks}
-        unitLabel="giờ"
-        onChange={(blocks) => onChange({ ...value, blocks })}
-      />
+      {fixedPackages ? (
+        <PackageEditor
+          rows={value.packages}
+          durationLabel="Thời lượng (phút)"
+          durationStep={Math.max(1, Number(value.granularity) || 1)}
+          onChange={(packages) => onChange({ ...value, packages })}
+        />
+      ) : null}
     </Section>
   );
 }
 
 function DailyConfigSection({
   value,
+  fixedPackages,
   onChange,
 }: {
   value: DynamicState['daily'];
+  fixedPackages: boolean;
   onChange: (value: DynamicState['daily']) => void;
 }) {
   return (
     <Section title="Cấu hình — theo ngày">
       <Grid>
-        <Field label="Giá / đêm (VND)">
-          <Input
-            type="number"
-            min={0}
-            value={value.basePricePerNight}
-            onChange={(e) => onChange({ ...value, basePricePerNight: e.target.value })}
-          />
-        </Field>
-        <Field label="Tối thiểu (đêm)">
-          <Input
-            type="number"
-            min={1}
-            value={value.minNights}
-            onChange={(e) => onChange({ ...value, minNights: e.target.value })}
-          />
-        </Field>
-        <Field label="Tối đa (đêm)">
-          <Input
-            type="number"
-            min={1}
-            value={value.maxNights}
-            onChange={(e) => onChange({ ...value, maxNights: e.target.value })}
-          />
-        </Field>
+        {!fixedPackages ? (
+          <Field label="Giá / đêm (VND)">
+            <Input
+              type="number"
+              min={0}
+              value={value.basePricePerNight}
+              onChange={(e) => onChange({ ...value, basePricePerNight: e.target.value })}
+            />
+          </Field>
+        ) : null}
+        {!fixedPackages ? (
+          <Field label="Tối thiểu (đêm)">
+            <Input
+              type="number"
+              min={1}
+              value={value.minNights}
+              onChange={(e) => onChange({ ...value, minNights: e.target.value })}
+            />
+          </Field>
+        ) : null}
+        {!fixedPackages ? (
+          <Field label="Tối đa (đêm)">
+            <Input
+              type="number"
+              min={1}
+              value={value.maxNights}
+              onChange={(e) => onChange({ ...value, maxNights: e.target.value })}
+            />
+          </Field>
+        ) : null}
         <Field label="Giờ nhận">
           <Input
             type="time"
@@ -228,11 +255,13 @@ function DailyConfigSection({
           />
         </Field>
       </Grid>
-      <BlockEditor
-        rows={value.blocks}
-        unitLabel="đêm"
-        onChange={(blocks) => onChange({ ...value, blocks })}
-      />
+      {fixedPackages ? (
+        <PackageEditor
+          rows={value.packages}
+          durationLabel="Thời lượng (ngày)"
+          onChange={(packages) => onChange({ ...value, packages })}
+        />
+      ) : null}
     </Section>
   );
 }

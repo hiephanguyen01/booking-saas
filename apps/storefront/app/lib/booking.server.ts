@@ -35,7 +35,7 @@ import { storefrontEnv } from './env.server';
 export function fetchAvailability(
   request: Request,
   slug: string,
-  query: { mode: AvailabilityMode; from: string; to: string },
+  query: { mode: AvailabilityMode; from: string; to: string; packageId?: string },
 ): Promise<AvailabilityResponse> {
   const qs = new URLSearchParams(query).toString();
   return publicGetData(

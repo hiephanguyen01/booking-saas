@@ -9,6 +9,13 @@ import {
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { Controller } from '@booking/ui/components/form/rhf';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@booking/ui/components/ui/select';
 import { isChoice, ListingTypeAttributeFields } from './listing-type-attribute-fields';
 import { IconPicker } from './listing-type-icon-picker';
 import { ListingTypeModesFields } from './listing-type-modes-fields';
@@ -74,6 +81,7 @@ export function listingTypeFormDefaultValues(t?: ListingTypeResponse): CreateLis
     slug: t?.slug ?? '',
     icon: knownIcon(t?.icon),
     unitLabel: t?.unitLabel ?? '',
+    bookingSelection: t?.bookingSelection ?? 'flexible_duration',
     allowedModes: t?.allowedModes ?? ['hourly'],
     defaultModes: t?.defaultModes ?? [],
     sortOrder: t?.sortOrder ?? 0,
@@ -116,6 +124,47 @@ export function ListingTypeForm({
         <div className="space-y-6">
           <Controller
             control={form.control}
+            name="bookingSelection"
+            render={({ field }) => (
+              <section className="space-y-2 rounded-lg border p-4">
+                <h2 className="text-sm font-semibold">Cách khách đặt</h2>
+                <Select
+                  value={field.value}
+                  disabled={Boolean(listingType?.listingCount)}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    if (value === 'fixed_packages') {
+                      const allowed = form
+                        .getValues('allowedModes')
+                        .filter((mode) => mode === 'hourly' || mode === 'daily');
+                      form.setValue('allowedModes', allowed.length ? allowed : ['hourly']);
+                      form.setValue(
+                        'defaultModes',
+                        form
+                          .getValues('defaultModes')
+                          .filter((mode) => mode === 'hourly' || mode === 'daily'),
+                      );
+                    }
+                  }}
+                >
+                  <SelectTrigger className="max-w-md">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="flexible_duration">Đặt thời lượng linh hoạt</SelectItem>
+                    <SelectItem value="fixed_packages">Chọn gói cố định</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {listingType?.listingCount
+                    ? 'Không thể đổi cách đặt vì loại này đã có tin đăng.'
+                    : 'Gói cố định bắt buộc khách chọn một gói trước khi chọn lịch.'}
+                </p>
+              </section>
+            )}
+          />
+          <Controller
+            control={form.control}
             name="icon"
             render={({ field }) => (
               <IconPicker
@@ -139,6 +188,7 @@ export function ListingTypeForm({
         slug: d.slug.trim(),
         icon: d.icon || undefined,
         unitLabel: d.unitLabel?.trim() || undefined,
+        bookingSelection: d.bookingSelection,
         allowedModes: d.allowedModes,
         defaultModes: d.defaultModes,
         sortOrder: Math.max(0, Math.round(Number(d.sortOrder) || 0)),

@@ -149,6 +149,7 @@ export class CreateBookingUseCase {
         const slotError = validateSlotPolicy({
           mode: input.mode,
           modeConfig: listing.modeConfig as ModeConfig,
+          bookingSelection: listing.bookingSelection,
           timezone: resource?.timezone ?? DEFAULT_TIMEZONE,
           startUtc,
           endUtc,
@@ -180,6 +181,8 @@ export class CreateBookingUseCase {
           endUtc,
           quantity: input.mode === 'inventory' ? input.quantity : 1,
           depositPercent: listing.depositPercent,
+          bookingSelection: listing.bookingSelection,
+          packageId: input.packageId,
         });
         if (input.expectedSubtotal && quote.subtotal !== input.expectedSubtotal) {
           throw new ConflictException({

@@ -1,4 +1,4 @@
-export type ListingPriceUnit = 'hour' | 'day' | 'item' | 'session';
+export type ListingPriceUnit = 'hour' | 'day' | 'item' | 'session' | 'package';
 
 export interface ListingCardPresentation {
   originalPrice: string | null;

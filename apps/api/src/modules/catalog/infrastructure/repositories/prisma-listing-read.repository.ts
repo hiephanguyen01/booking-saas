@@ -37,7 +37,7 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       },
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
       include: {
-        listingType: { select: { slug: true, itemLabel: true } },
+        listingType: { select: { slug: true, itemLabel: true, bookingSelection: true } },
         resource: {
           select: {
             id: true,
@@ -95,6 +95,7 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       photos: (l.photos ?? []) as unknown[],
       modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
       bookingModes: l.bookingModes as BookingMode[],
+      bookingSelection: l.listingType.bookingSelection,
       capacity: l.capacity,
       stockQuantity: l.stockQuantity,
       bufferBefore: l.bufferBefore,

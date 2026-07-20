@@ -11,7 +11,7 @@ import { MemberBanner } from './components/member-banner';
 import { PaymentHandoff } from './components/payment-handoff';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
-  const { listing, mode, start, end, qty, quote, promoCode, promo, currentUser } = loaderData;
+  const { listing, mode, start, end, qty, packageId, quote, promoCode, promo, currentUser } = loaderData;
   const { t } = useTranslation(NsI18n.Checkout);
   const { tenant } = useOutletContext<StorefrontContext>();
   const locale = useLocale();
@@ -63,6 +63,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
               start={start}
               end={end}
               qty={qty}
+              packageId={packageId}
               promoCode={promo?.valid ? promoCode : null}
               currentUser={currentUser}
               fieldErrors={actionData?.fieldErrors ?? null}

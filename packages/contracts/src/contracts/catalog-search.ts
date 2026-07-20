@@ -220,7 +220,7 @@ export const publicCatalogSearchItemSchema = z.object({
   priceFrom: moneySchema,
   /** Price before a calendar sale; equals priceFrom when no sale applies. */
   regularPriceFrom: moneySchema,
-  priceUnit: z.enum(['hour', 'day', 'item', 'session']),
+  priceUnit: z.enum(['hour', 'day', 'item', 'session', 'package']),
   completedBookings: z.number().int().nonnegative(),
   ratingAvg: z.number().nullable(),
   reviewCount: z.number().int().nonnegative(),

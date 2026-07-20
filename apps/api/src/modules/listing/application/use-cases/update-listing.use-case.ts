@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { BookingMode, UpdateListingInput } from '@booking/contracts';
+import type { UpdateListingInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -29,6 +29,10 @@ import {
   type IPartnerRepository,
 } from '../../../partner/domain/ports/partner-repository.port';
 import { AssertListingDepositCoverageUseCase } from './assert-listing-deposit-coverage.use-case';
+import {
+  ListingModeConfigError,
+  validateAndNormalizeModeConfig,
+} from '../../domain/pricing/package-config';
 
 @Injectable()
 export class UpdateListingUseCase {
@@ -156,8 +160,13 @@ export class UpdateListingUseCase {
         }
       }
 
-      // Re-validate attributes / modes against the (unchanged) listing type.
-      if (input.attributes !== undefined || input.bookingModes !== undefined) {
+      let normalizedModeConfig: Record<string, unknown> | undefined;
+      // Re-validate attributes / modes / package pricing against the unchanged type.
+      if (
+        input.attributes !== undefined ||
+        input.bookingModes !== undefined ||
+        input.modeConfig !== undefined
+      ) {
         const type = await this.listingTypes.findById(tx, existing.listingTypeId);
         if (!type) {
           throw new NotFoundException({
@@ -169,8 +178,9 @@ export class UpdateListingUseCase {
         if (input.attributes !== undefined) {
           assertValidAttributes(type.attributeSchema, input.attributes);
         }
+        const bookingModes = input.bookingModes ?? existing.bookingModes;
         if (input.bookingModes !== undefined) {
-          const invalid = input.bookingModes.filter((m) => !type.allowedModes.includes(m));
+          const invalid = bookingModes.filter((m) => !type.allowedModes.includes(m));
           if (invalid.length > 0) {
             throw new BadRequestException({
               statusCode: 400,
@@ -178,17 +188,22 @@ export class UpdateListingUseCase {
               message: `Modes not allowed by the listing type: ${invalid.join(', ')}`,
             });
           }
-          const modeConfig = (input.modeConfig ?? existing.modeConfig) as Record<string, unknown>;
-          const missing = input.bookingModes.filter(
-            (m: BookingMode) => modeConfig[m] === undefined,
-          );
-          if (missing.length > 0) {
+        }
+        try {
+          normalizedModeConfig = validateAndNormalizeModeConfig({
+            bookingSelection: type.bookingSelection,
+            bookingModes,
+            modeConfig: input.modeConfig ?? existing.modeConfig,
+          }) as Record<string, unknown>;
+        } catch (error) {
+          if (error instanceof ListingModeConfigError) {
             throw new BadRequestException({
               statusCode: 400,
-              code: 'MISSING_MODE_CONFIG',
-              message: `modeConfig missing for: ${missing.join(', ')}`,
+              code: error.code,
+              message: error.message,
             });
           }
+          throw error;
         }
       }
 
@@ -206,7 +221,7 @@ export class UpdateListingUseCase {
         photos: input.photos,
         attributes: input.attributes,
         bookingModes: input.bookingModes,
-        modeConfig: input.modeConfig as Record<string, unknown> | undefined,
+        modeConfig: normalizedModeConfig,
         stockQuantity: input.stockQuantity,
         capacity: input.capacity,
         bufferBefore: input.bufferBefore,

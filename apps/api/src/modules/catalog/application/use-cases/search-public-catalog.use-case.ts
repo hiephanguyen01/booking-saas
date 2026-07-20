@@ -14,6 +14,7 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import { addMinutes, zonedTimeToUtc } from '../../../../shared/time/time';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { computeQuote } from '../../../listing/domain/pricing/quote-calculator';
+import { activePackages } from '../../../listing/domain/pricing/package-config';
 import { parseDate, weekdayOf } from '../../../scheduling/domain/availability/date-util';
 import {
   contains,
@@ -40,7 +41,7 @@ interface EvaluatedListing {
   listing: PublicListingRecord;
   price: bigint;
   regularPrice: bigint;
-  priceUnit: 'hour' | 'day' | 'item' | 'session';
+  priceUnit: 'hour' | 'day' | 'item' | 'session' | 'package';
 }
 
 interface SearchWindow {
@@ -194,7 +195,17 @@ export class SearchPublicCatalogUseCase {
         code: 'INVALID_SCHEDULE_QUERY',
         message: 'Hourly search uses date, startTime and endTime',
       });
-    if ((mode === 'daily' || mode === 'inventory') && hasHourly) {
+    if (
+      (mode === 'daily' || mode === 'inventory') &&
+      hasHourly &&
+      !(
+        mode === 'daily' &&
+        type.bookingSelection === 'fixed_packages' &&
+        query.date &&
+        !query.startTime &&
+        !query.endTime
+      )
+    ) {
       throw new BadRequestException({
         code: 'INVALID_SCHEDULE_QUERY',
         message: 'Daily and inventory search use from and to',
@@ -279,6 +290,20 @@ export class SearchPublicCatalogUseCase {
           : localInstant(nextDate(query.date), '00:00', tz),
       };
     }
+    if (mode === 'daily' && query.date && listings[0]?.bookingSelection === 'fixed_packages') {
+      const maxDays = Math.max(
+        1,
+        ...listings.flatMap((listing) => {
+          const config = parseModeConfig(listing.modeConfig);
+          return config ? activePackages(config, 'daily').map((item) => item.durationDays) : [];
+        }),
+      );
+      return {
+        mode,
+        start: localInstant(query.date, '00:00', tz),
+        end: localInstant(addDateDays(query.date, maxDays + 1), '00:00', tz),
+      };
+    }
     if ((mode === 'daily' || mode === 'inventory') && query.from && query.to) {
       return {
         mode,
@@ -300,12 +325,16 @@ export class SearchPublicCatalogUseCase {
     if (!mode) return configuredRawPrice(listing);
     const config = parseModeConfig(listing.modeConfig);
     if (!config) return null;
+    if (mode === 'daily' && listing.bookingSelection === 'fixed_packages' && query.date) {
+      return this.evaluateFixedDailyDate(listing, config, query.date, busy, holds);
+    }
     const hasExplicitWindow = mode === 'hourly' ? Boolean(query.date) : Boolean(query.from);
     if (!hasExplicitWindow) return configuredPrice(listing, config, mode);
 
     const tz = listing.resourceTimezone;
     let start: Date;
     let end: Date;
+    let packageId: string | undefined;
     if (mode === 'hourly') {
       const hourly = config.hourly;
       if (!hourly || !query.date) return null;
@@ -315,12 +344,21 @@ export class SearchPublicCatalogUseCase {
       start = localInstant(query.date, query.startTime, tz);
       end = localInstant(query.date, query.endTime, tz);
       const minutes = (end.getTime() - start.getTime()) / 60_000;
-      if (
+      if (listing.bookingSelection === 'fixed_packages') {
+        const selected = activePackages(config, 'hourly')
+          .filter((item) => item.durationMinutes === minutes)
+          .sort((left, right) => (BigInt(left.price) < BigInt(right.price) ? -1 : 1))[0];
+        if (!selected) return null;
+        packageId = selected.id;
+      } else if (
+        hourly.minDuration === undefined ||
+        hourly.maxDuration === undefined ||
         minutes < hourly.minDuration * 60 ||
         minutes > hourly.maxDuration * 60 ||
         minutes % hourly.granularity !== 0
-      )
+      ) {
         return null;
+      }
       if (start.getTime() < Date.now() + hourly.leadTimeMin * 60_000) return null;
       const exception = listing.availabilityExceptions.find((e) => e.date === query.date);
       const windows = openWindowsForDate(query.date, tz, listing.availabilityRules, exception);
@@ -333,10 +371,18 @@ export class SearchPublicCatalogUseCase {
       if (mode === 'inventory' && !inventory) return null;
       const dates = dateRange(query.from, query.to);
       const duration = dates.length;
-      const min = mode === 'daily' ? daily!.minNights : (inventory!.minDuration ?? 1);
-      const max =
-        mode === 'daily' ? daily!.maxNights : (inventory!.maxDuration ?? Number.MAX_SAFE_INTEGER);
-      if (duration < min || duration > max) return null;
+      if (mode === 'daily' && listing.bookingSelection === 'fixed_packages') {
+        const selected = activePackages(config, 'daily')
+          .filter((item) => item.durationDays === duration)
+          .sort((left, right) => (BigInt(left.price) < BigInt(right.price) ? -1 : 1))[0];
+        if (!selected) return null;
+        packageId = selected.id;
+      } else {
+        const min = mode === 'daily' ? daily!.minNights : (inventory!.minDuration ?? 1);
+        const max =
+          mode === 'daily' ? daily!.maxNights : (inventory!.maxDuration ?? Number.MAX_SAFE_INTEGER);
+        if (min === undefined || max === undefined || duration < min || duration > max) return null;
+      }
       if (mode === 'daily') {
         if (!dates.every((date) => this.openDaily(listing, date))) return null;
         start = localInstant(query.from, daily!.checkinTime, tz);
@@ -363,16 +409,68 @@ export class SearchPublicCatalogUseCase {
         endUtc: end,
         quantity: mode === 'inventory' ? query.quantity : 1,
         depositPercent: listing.depositPercent,
+        bookingSelection: listing.bookingSelection,
+        packageId,
       });
       return {
         listing,
         price: quote.subtotal,
         regularPrice: quote.regularSubtotal,
-        priceUnit: unitFor(mode, config),
+        priceUnit:
+          listing.bookingSelection === 'fixed_packages' ? 'package' : unitFor(mode, config),
       };
     } catch {
       return null;
     }
+  }
+
+  private evaluateFixedDailyDate(
+    listing: PublicListingRecord,
+    config: ModeConfig,
+    date: string,
+    busy: Interval[],
+    holds: Interval[],
+  ): EvaluatedListing | null {
+    const daily = config.daily;
+    if (!daily) return null;
+    let cheapest: EvaluatedListing | null = null;
+    for (const selected of activePackages(config, 'daily')) {
+      const endDate = addDateDays(date, selected.durationDays);
+      const dates = dateRange(date, endDate);
+      if (!dates.every((day) => this.openDaily(listing, day))) continue;
+      const start = localInstant(date, daily.checkinTime, listing.resourceTimezone);
+      const end = localInstant(endDate, daily.checkoutTime, listing.resourceTimezone);
+      const blocked = {
+        start: addMinutes(start, -listing.bufferBefore),
+        end: addMinutes(end, listing.bufferAfter),
+      };
+      if (overlapsAny(blocked, [...busy, ...holds])) continue;
+      try {
+        const quote = computeQuote({
+          mode: 'daily',
+          modeConfig: config,
+          pricingRules: listing.pricingRules,
+          timezone: listing.resourceTimezone,
+          startUtc: start,
+          endUtc: end,
+          quantity: 1,
+          depositPercent: listing.depositPercent,
+          bookingSelection: listing.bookingSelection,
+          packageId: selected.id,
+        });
+        if (!cheapest || quote.subtotal < cheapest.price) {
+          cheapest = {
+            listing,
+            price: quote.subtotal,
+            regularPrice: quote.regularSubtotal,
+            priceUnit: 'package',
+          };
+        }
+      } catch {
+        continue;
+      }
+    }
+    return cheapest;
   }
 
   private evaluateHourlyDate(
@@ -391,47 +489,64 @@ export class SearchPublicCatalogUseCase {
       listing.availabilityRules,
       exception,
     );
-    const durationMinutes = hourly.minDuration * 60;
+    const candidates =
+      listing.bookingSelection === 'fixed_packages'
+        ? activePackages(config, 'hourly').map((item) => ({
+            durationMinutes: item.durationMinutes,
+            packageId: item.id,
+          }))
+        : hourly.minDuration === undefined
+          ? []
+          : [{ durationMinutes: hourly.minDuration * 60, packageId: undefined }];
     const earliestStart = Date.now() + hourly.leadTimeMin * 60_000;
     let cheapest: { price: bigint; regularPrice: bigint } | null = null;
 
     for (const window of windows) {
-      const lastStart = addMinutes(window.end, -durationMinutes);
-      for (
-        let start = new Date(window.start);
-        start <= lastStart;
-        start = addMinutes(start, hourly.granularity)
-      ) {
-        if (start.getTime() < earliestStart) continue;
-        const end = addMinutes(start, durationMinutes);
-        const blocked = {
-          start: addMinutes(start, -listing.bufferBefore),
-          end: addMinutes(end, listing.bufferAfter),
-        };
-        if (overlapsAny(blocked, [...busy, ...holds])) continue;
-        try {
-          const quote = computeQuote({
-            mode: 'hourly',
-            modeConfig: config,
-            pricingRules: listing.pricingRules,
-            timezone: listing.resourceTimezone,
-            startUtc: start,
-            endUtc: end,
-            quantity: 1,
-            depositPercent: listing.depositPercent,
-          });
-          if (cheapest === null || quote.subtotal < cheapest.price) {
-            cheapest = { price: quote.subtotal, regularPrice: quote.regularSubtotal };
+      for (const candidate of candidates) {
+        const lastStart = addMinutes(window.end, -candidate.durationMinutes);
+        for (
+          let start = new Date(window.start);
+          start <= lastStart;
+          start = addMinutes(start, hourly.granularity)
+        ) {
+          if (start.getTime() < earliestStart) continue;
+          const end = addMinutes(start, candidate.durationMinutes);
+          const blocked = {
+            start: addMinutes(start, -listing.bufferBefore),
+            end: addMinutes(end, listing.bufferAfter),
+          };
+          if (overlapsAny(blocked, [...busy, ...holds])) continue;
+          try {
+            const quote = computeQuote({
+              mode: 'hourly',
+              modeConfig: config,
+              pricingRules: listing.pricingRules,
+              timezone: listing.resourceTimezone,
+              startUtc: start,
+              endUtc: end,
+              quantity: 1,
+              depositPercent: listing.depositPercent,
+              bookingSelection: listing.bookingSelection,
+              packageId: candidate.packageId,
+            });
+            if (cheapest === null || quote.subtotal < cheapest.price) {
+              cheapest = { price: quote.subtotal, regularPrice: quote.regularSubtotal };
+            }
+          } catch {
+            continue;
           }
-        } catch {
-          continue;
         }
       }
     }
 
     return cheapest === null
       ? null
-      : { listing, price: cheapest.price, regularPrice: cheapest.regularPrice, priceUnit: 'hour' };
+      : {
+          listing,
+          price: cheapest.price,
+          regularPrice: cheapest.regularPrice,
+          priceUnit: listing.bookingSelection === 'fixed_packages' ? 'package' : 'hour',
+        };
   }
 
   private openDaily(listing: PublicListingRecord, date: string): boolean {
@@ -566,8 +681,11 @@ function parseModeConfig(raw: Record<string, unknown>): ModeConfig | null {
     if (!config || typeof config !== 'object') continue;
     for (const key of ['basePrice', 'basePricePerNight', 'securityDeposit', 'lateFeePerUnit'])
       config[key] = normalizePrice(config[key]);
-    if (Array.isArray(config.blocks))
-      config.blocks = config.blocks.map((b) => ({ ...b, price: normalizePrice(b.price) }));
+    if (Array.isArray(config.packages))
+      config.packages = config.packages.map((item) => ({
+        ...item,
+        price: normalizePrice(item.price),
+      }));
   }
   const parsed = modeConfigSchema.safeParse(copy);
   return parsed.success ? parsed.data : null;
@@ -579,6 +697,17 @@ function configuredPrice(
   preferred?: BookingMode,
 ): EvaluatedListing | null {
   const modes = preferred ? [preferred] : listing.bookingModes;
+  if (listing.bookingSelection === 'fixed_packages') {
+    const packages = modes.flatMap((mode) =>
+      mode === 'hourly' || mode === 'daily' ? activePackages(config, mode) : [],
+    );
+    if (!packages.length) return null;
+    const cheapest = packages.reduce((left, right) =>
+      BigInt(right.price) < BigInt(left.price) ? right : left,
+    );
+    const price = BigInt(cheapest.price);
+    return { listing, price, regularPrice: price, priceUnit: 'package' };
+  }
   const prices = modes.flatMap((mode) => {
     const c = config[mode as keyof ModeConfig] as Record<string, unknown> | undefined;
     const raw = c?.basePrice ?? c?.basePricePerNight;
@@ -595,6 +724,11 @@ function configuredPrice(
 }
 
 function configuredRawPrice(listing: PublicListingRecord): EvaluatedListing | null {
+  const parsed = parseModeConfig(listing.modeConfig);
+  if (!parsed) return null;
+  if (listing.bookingSelection === 'fixed_packages') {
+    return configuredPrice(listing, parsed);
+  }
   const prices = listing.bookingModes.flatMap((mode) => {
     const config = listing.modeConfig[mode];
     if (!config || typeof config !== 'object') return [];
@@ -626,7 +760,10 @@ function configuredRawPrice(listing: PublicListingRecord): EvaluatedListing | nu
   };
 }
 
-function unitFor(mode: BookingMode, config: ModeConfig): 'hour' | 'day' | 'item' | 'session' {
+function unitFor(
+  mode: BookingMode,
+  config: ModeConfig,
+): 'hour' | 'day' | 'item' | 'session' | 'package' {
   if (mode === 'daily') return 'day';
   if (mode === 'inventory') return config.inventory?.unit === 'day' ? 'day' : 'item';
   return mode === 'hourly' ? 'hour' : 'session';
@@ -676,6 +813,10 @@ function dateRange(from: string, to: string): string[] {
 
 function nextDate(date: string): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
+}
+
+function addDateDays(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
 function rawValues(raw: unknown): string[] {

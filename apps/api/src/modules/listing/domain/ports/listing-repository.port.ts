@@ -1,6 +1,7 @@
 import type {
   BalanceDue,
   BookingMode,
+  BookingSelection,
   CancellationPolicySource,
   CancellationPolicySummary,
   ListingPartnerSummary,
@@ -30,6 +31,7 @@ export interface ListingRecord {
   photos: string[];
   attributes: Record<string, unknown>;
   bookingModes: BookingMode[];
+  bookingSelection: BookingSelection;
   modeConfig: Record<string, unknown>;
   stockQuantity: number | null;
   capacity: number | null;

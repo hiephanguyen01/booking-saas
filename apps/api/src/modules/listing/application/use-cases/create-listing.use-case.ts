@@ -35,6 +35,10 @@ import {
 } from '../../domain/ports/listing-group-repository.port';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 import { AssertListingDepositCoverageUseCase } from './assert-listing-deposit-coverage.use-case';
+import {
+  ListingModeConfigError,
+  validateAndNormalizeModeConfig,
+} from '../../domain/pricing/package-config';
 
 /**
  * Create a listing. Inside one tenant transaction it validates the attributes
@@ -87,6 +91,23 @@ export class CreateListingUseCase {
         });
       }
       assertValidAttributes(type.attributeSchema, input.attributes);
+      let modeConfig: ReturnType<typeof validateAndNormalizeModeConfig>;
+      try {
+        modeConfig = validateAndNormalizeModeConfig({
+          bookingSelection: type.bookingSelection,
+          bookingModes: input.bookingModes,
+          modeConfig: input.modeConfig,
+        });
+      } catch (error) {
+        if (error instanceof ListingModeConfigError) {
+          throw new BadRequestException({
+            statusCode: 400,
+            code: error.code,
+            message: error.message,
+          });
+        }
+        throw error;
+      }
 
       const partner = await this.partners.findById(tx, input.partnerId);
       if (!partner) {
@@ -191,7 +212,7 @@ export class CreateListingUseCase {
         photos: input.photos,
         attributes: input.attributes,
         bookingModes: input.bookingModes,
-        modeConfig: input.modeConfig as Record<string, unknown>,
+        modeConfig: modeConfig as Record<string, unknown>,
         stockQuantity: input.stockQuantity ?? null,
         capacity: input.capacity ?? null,
         bufferBefore: input.bufferBefore,

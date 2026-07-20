@@ -38,6 +38,8 @@ export type GuestInfo = z.infer<typeof guestInfoSchema>;
 export const createBookingInputSchema = z.object({
   listingId: uuidSchema,
   mode: bookableModeSchema,
+  /** Required for listings whose type uses fixed package selection. */
+  packageId: uuidSchema.optional(),
   /** UTC ISO instants for the requested slot. */
   from: z.string().datetime(),
   to: z.string().datetime(),

@@ -40,6 +40,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
   const start = searchParams.get('start');
   const end = searchParams.get('end');
   const qty = searchParams.get('qty') || '1';
+  const packageId = searchParams.get('packageId') ?? undefined;
   const promoCode = searchParams.get('promo')?.trim().toUpperCase() || null;
 
   if (!slug || !mode || !start || !end) {
@@ -48,7 +49,17 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
 
   const [listing, quote] = await Promise.all([
     fetchListing(request, slug),
-    fetchQuote(request, slug, new URLSearchParams({ mode, from: start, to: end, quantity: qty })),
+    fetchQuote(
+      request,
+      slug,
+      new URLSearchParams({
+        mode,
+        from: start,
+        to: end,
+        quantity: qty,
+        ...(packageId ? { packageId } : {}),
+      }),
+    ),
   ]);
 
   if (!listing) throw redirect(storefrontPaths.home(locale));
@@ -70,6 +81,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
     start,
     end,
     qty,
+    packageId: packageId ?? null,
     quote,
     promoCode,
     promo,
@@ -91,6 +103,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       .toUpperCase() || undefined;
   const note = String(form.get('customerNote') ?? '').trim() || undefined;
   const expectedSubtotal = String(form.get('expectedSubtotal') ?? '');
+  const packageId = String(form.get('packageId') ?? '') || undefined;
   const guest = guestInfoSchema.safeParse({
     fullName: String(form.get('fullName') ?? '').trim(),
     email: String(form.get('email') ?? '').trim(),
@@ -110,6 +123,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     to: end,
     quantity: qty,
     expectedSubtotal,
+    packageId,
     guestCount: 1,
     customerNote: note,
     guest: guest.data,
@@ -133,6 +147,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     start: input.from,
     end: input.to,
     quantity: input.quantity,
+    packageId: input.packageId ?? null,
     promoCode: input.promoCode ?? null,
     email: input.guest?.email ?? '',
     phone: input.guest?.phone ?? '',
@@ -140,8 +155,14 @@ export async function action({ request, params }: Route.ActionArgs) {
   const created = await createBooking(request, input, idempotencyKey);
 
   if (!created.ok || !created.data) {
+    const packageError =
+      created.code === 'PACKAGE_UNAVAILABLE' || created.code === 'PACKAGE_DURATION_MISMATCH';
     return data(
-      { fieldErrors: null, error: created.error ?? 'BOOKING_FAILED', code: created.code },
+      {
+        fieldErrors: null,
+        error: packageError ? created.code : (created.error ?? 'BOOKING_FAILED'),
+        code: created.code,
+      },
       { status: errorStatus(created.status) },
     );
   }

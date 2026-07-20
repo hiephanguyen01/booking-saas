@@ -96,6 +96,7 @@ export function checkoutHref(input: {
   mode: 'hourly' | 'daily';
   start: string;
   end: string;
+  packageId?: string;
 }): string {
   const params = new URLSearchParams({
     listing: input.listingSlug,
@@ -103,6 +104,7 @@ export function checkoutHref(input: {
     start: input.start,
     end: input.end,
   });
+  if (input.packageId) params.set('packageId', input.packageId);
   return `${storefrontPaths.checkout(input.locale)}?${params.toString()}`;
 }
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
 import { slugSchema } from './tenancy';
-import { bookingModeSchema, type BookingMode } from './listing-type';
+import { bookingModeSchema, bookingSelectionSchema, type BookingMode } from './listing-type';
 import { partnerVerificationStatusSchema } from './partner';
 import {
   administrativeAddressInputSchema,
@@ -36,47 +36,99 @@ export type PricingRuleType = z.infer<typeof pricingRuleTypeSchema>;
 
 // ── mode_config (§7.3) ───────────────────────────────────────────────────────
 
+const packageBaseSchema = z.object({
+  id: uuidSchema,
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional(),
+  price: vndAmountSchema.refine((value) => BigInt(value) > 0n, 'Package price must be positive'),
+  photos: z
+    .array(z.string().url())
+    .max(8, 'A package can have at most 8 photos')
+    .refine((photos) => new Set(photos).size === photos.length, 'Package photos must be unique')
+    .default([]),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().nonnegative().default(0),
+});
+
+export const hourlyPackageSchema = packageBaseSchema.extend({
+  durationMinutes: z.number().int().positive(),
+});
+export type HourlyPackage = z.infer<typeof hourlyPackageSchema>;
+
+export const dailyPackageSchema = packageBaseSchema.extend({
+  durationDays: z.number().int().positive(),
+});
+export type DailyPackage = z.infer<typeof dailyPackageSchema>;
+
+export const selectedPackageSchema = z.discriminatedUnion('mode', [
+  hourlyPackageSchema.extend({ mode: z.literal('hourly') }),
+  dailyPackageSchema.extend({ mode: z.literal('daily') }),
+]);
+export type SelectedPackage = z.infer<typeof selectedPackageSchema>;
+
+function uniquePackageIds(packages: ReadonlyArray<{ id: string }>, ctx: z.RefinementCtx): void {
+  const ids = packages.map((item) => item.id);
+  if (new Set(ids).size !== ids.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['packages'],
+      message: 'Package IDs must be unique within a booking mode',
+    });
+  }
+}
+
 export const hourlyModeConfigSchema = z
   .object({
-    basePrice: vndAmountSchema,
-    blocks: z
-      .array(z.object({ hours: z.number().int().positive(), price: vndAmountSchema }))
-      .default([]),
-    minDuration: z.number().int().positive().default(1),
-    maxDuration: z.number().int().positive().default(8),
+    basePrice: vndAmountSchema.optional(),
+    packages: z.array(hourlyPackageSchema).default([]),
+    minDuration: z.number().int().positive().optional(),
+    maxDuration: z.number().int().positive().optional(),
     granularity: z.number().int().positive().default(60),
     leadTimeMin: z.number().int().nonnegative().default(0),
   })
   .superRefine((c, ctx) => {
-    if (c.maxDuration < c.minDuration) {
+    if (
+      c.maxDuration !== undefined &&
+      c.minDuration !== undefined &&
+      c.maxDuration < c.minDuration
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['maxDuration'],
         message: 'maxDuration must be ≥ minDuration',
       });
     }
+    uniquePackageIds(c.packages, ctx);
+    for (const [index, item] of c.packages.entries()) {
+      if (item.durationMinutes % c.granularity !== 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['packages', index, 'durationMinutes'],
+          message: 'Package duration must be a multiple of hourly granularity',
+        });
+      }
+    }
   });
 
 export const dailyModeConfigSchema = z
   .object({
-    basePricePerNight: vndAmountSchema,
-    blocks: z
-      .array(z.object({ days: z.number().int().positive(), price: vndAmountSchema }))
-      .default([]),
-    minNights: z.number().int().positive().default(1),
-    maxNights: z.number().int().positive().default(30),
+    basePricePerNight: vndAmountSchema.optional(),
+    packages: z.array(dailyPackageSchema).default([]),
+    minNights: z.number().int().positive().optional(),
+    maxNights: z.number().int().positive().optional(),
     checkinTime: timeStringSchema.default('14:00'),
     checkoutTime: timeStringSchema.default('12:00'),
     leadTimeMin: z.number().int().nonnegative().default(0),
   })
   .superRefine((c, ctx) => {
-    if (c.maxNights < c.minNights) {
+    if (c.maxNights !== undefined && c.minNights !== undefined && c.maxNights < c.minNights) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['maxNights'],
         message: 'maxNights must be ≥ minNights',
       });
     }
+    uniquePackageIds(c.packages, ctx);
   });
 
 export const inventoryModeConfigSchema = z.object({
@@ -246,6 +298,7 @@ export const quoteQuerySchema = z.object({
   from: z.string().datetime(),
   to: z.string().datetime(),
   quantity: z.coerce.number().int().positive().default(1),
+  packageId: uuidSchema.optional(),
 });
 export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
 
@@ -377,6 +430,7 @@ export const listingResponseSchema = z
     photos: z.array(z.string()),
     attributes: z.record(z.unknown()),
     bookingModes: z.array(bookingModeSchema),
+    bookingSelection: bookingSelectionSchema,
     modeConfig: z.record(z.unknown()),
     stockQuantity: z.number().nullable(),
     capacity: z.number().nullable(),
@@ -485,6 +539,7 @@ export const publicListingDetailResponseSchema = z
     photos: z.array(z.string()),
     attributes: z.record(z.unknown()),
     bookingModes: z.array(bookingModeSchema),
+    bookingSelection: bookingSelectionSchema,
     modeConfig: z.record(z.unknown()),
     depositPercent: z.number(),
     listingTypeSlug: z.string(),
@@ -510,6 +565,7 @@ export const publicListingGroupDetailResponseSchema = z
     amenities: z.array(z.string()),
     photos: z.array(z.string()),
     listingTypeSlug: z.string(),
+    bookingSelection: bookingSelectionSchema,
     itemLabel: z.string(),
     ratingAvg: z.number().nullable(),
     reviewCount: z.number().int().nonnegative(),
@@ -555,6 +611,7 @@ export const quoteResponseSchema = z.object({
   depositAmount: z.string(),
   securityDeposit: z.string(),
   lineItems: z.array(quoteLineItemSchema),
+  selectedPackage: selectedPackageSchema.optional(),
 });
 export type QuoteResponse = z.infer<typeof quoteResponseSchema>;
 

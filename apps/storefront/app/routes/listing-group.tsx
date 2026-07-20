@@ -48,9 +48,11 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   ]);
   if (!group) throw new Response('Listing group not found', { status: 404 });
   const state = parseSearchState(url.searchParams);
-  const hasAvailabilityFilter =
-    (state.mode === 'hourly' && state.hasDateSelection) ||
-    (state.mode === 'daily' && state.hasDailyRange);
+  const fixedPackages = group.bookingSelection === 'fixed_packages';
+  const hasAvailabilityFilter = fixedPackages
+    ? state.hasDateSelection
+    : (state.mode === 'hourly' && state.hasDateSelection) ||
+      (state.mode === 'daily' && state.hasDailyRange);
   const children = group.listings.slice(0, 20);
   const options = await Promise.all(
     children.map(async (child) => {
@@ -72,6 +74,45 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       if (state.mode === 'none') return null;
       if (!detail.bookingModes.includes(state.mode)) return null;
       if (state.mode === 'hourly') {
+        if (detail.bookingSelection === 'fixed_packages') {
+          const packages = publicPackages(detail.modeConfig.hourly, 'durationMinutes');
+          const results = await Promise.all(
+            packages.map(async (item) => ({
+              item,
+              availability: await safe(
+                fetchAvailability(request, child.slug, {
+                  mode: 'hourly',
+                  from: state.date,
+                  to: state.date,
+                  packageId: item.id,
+                }),
+              ),
+            })),
+          );
+          const availableResults = results.flatMap((result) => {
+            const slots =
+              result.availability?.mode === 'hourly'
+                ? result.availability.days
+                    .flatMap((day) => day.slots)
+                    .filter((slot) => slot.available)
+                : [];
+            return slots.length ? [{ ...result, slots }] : [];
+          });
+          const cheapest = availableResults.sort((left, right) =>
+            BigInt(left.item.price) < BigInt(right.item.price) ? -1 : 1,
+          )[0];
+          return {
+            child,
+            detail,
+            browsing: false as const,
+            availability: cheapest?.availability ?? null,
+            available: Boolean(cheapest),
+            price: cheapest?.item.price ?? null,
+            quote: null,
+            start: null,
+            end: null,
+          };
+        }
         const availability = await safe(
           fetchAvailability(request, child.slug, {
             mode: 'hourly',
@@ -135,6 +176,42 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         };
       }
       const daily = (detail.modeConfig.daily ?? {}) as Record<string, unknown>;
+      if (detail.bookingSelection === 'fixed_packages') {
+        const packages = publicPackages(daily, 'durationDays');
+        const results = await Promise.all(
+          packages.map(async (item) => ({
+            item,
+            availability: await safe(
+              fetchAvailability(request, child.slug, {
+                mode: 'daily',
+                from: state.date,
+                to: state.date,
+                packageId: item.id,
+              }),
+            ),
+          })),
+        );
+        const cheapest = results
+          .filter(
+            (result) =>
+              result.availability?.mode === 'daily' &&
+              result.availability.days.some(
+                (day) => day.date === state.date && day.status === 'available',
+              ),
+          )
+          .sort((left, right) => (BigInt(left.item.price) < BigInt(right.item.price) ? -1 : 1))[0];
+        return {
+          child,
+          detail,
+          browsing: false as const,
+          availability: cheapest?.availability ?? null,
+          available: Boolean(cheapest),
+          price: cheapest?.item.price ?? null,
+          quote: null,
+          start: null,
+          end: null,
+        };
+      }
       const minNights = Number(daily.minNights ?? 1);
       const maxNights = Number(daily.maxNights ?? Number.POSITIVE_INFINITY);
       const nights = nightsBetween(state.from, state.to);
@@ -206,6 +283,23 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     relatedListings,
     reviews,
   };
+}
+
+function publicPackages(
+  raw: unknown,
+  durationKey: 'durationMinutes' | 'durationDays',
+): Array<{ id: string; price: string; duration: number }> {
+  if (!raw || typeof raw !== 'object') return [];
+  const packages = (raw as Record<string, unknown>).packages;
+  if (!Array.isArray(packages)) return [];
+  return packages.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const row = item as Record<string, unknown>;
+    const duration = Number(row[durationKey]);
+    return typeof row.id === 'string' && typeof row.price === 'string' && Number.isInteger(duration)
+      ? [{ id: row.id, price: row.price, duration }]
+      : [];
+  });
 }
 
 export default function ListingGroupRoute({ loaderData, params }: Route.ComponentProps) {

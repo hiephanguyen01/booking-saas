@@ -13,6 +13,7 @@ export interface ListingStatsFacts {
   description: string | null;
   photos: readonly string[];
   bookingModes: readonly string[];
+  bookingSelection: 'flexible_duration' | 'fixed_packages';
   modeConfig: Record<string, unknown>;
 }
 
@@ -46,9 +47,21 @@ export function toVnd(raw: unknown): bigint | null {
  */
 export function basePrices(listing: ListingStatsFacts): bigint[] {
   const prices: bigint[] = [];
-  for (const value of Object.values(listing.modeConfig)) {
+  for (const mode of listing.bookingModes) {
+    const value = listing.modeConfig[mode];
     if (!value || typeof value !== 'object') continue;
     const config = value as Record<string, unknown>;
+    if (listing.bookingSelection === 'fixed_packages') {
+      const packages = Array.isArray(config.packages) ? config.packages : [];
+      for (const item of packages) {
+        if (!item || typeof item !== 'object') continue;
+        const row = item as Record<string, unknown>;
+        if (row.isActive !== true) continue;
+        const price = toVnd(row.price);
+        if (price !== null && price > 0n) prices.push(price);
+      }
+      continue;
+    }
     for (const key of ['basePrice', 'basePricePerNight']) {
       const price = toVnd(config[key]);
       if (price !== null && price > 0n) prices.push(price);
@@ -63,7 +76,9 @@ export function isListingReady(listing: ListingStatsFacts): boolean {
     Boolean(listing.description?.trim()) &&
     listing.photos.length > 0 &&
     listing.bookingModes.length > 0 &&
-    basePrices(listing).length >= listing.bookingModes.length
+    listing.bookingModes.every((mode) =>
+      basePrices({ ...listing, bookingModes: [mode] }).some((price) => price > 0n),
+    )
   );
 }
 

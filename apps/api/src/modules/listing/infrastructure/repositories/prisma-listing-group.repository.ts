@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { BookingMode, ModerationActor } from '@booking/contracts';
+import type { BookingMode, BookingSelection, ModerationActor } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CreateListingGroupData,
@@ -17,7 +17,13 @@ import type { ModerationUpdate } from '../../domain/ports/listing-repository.por
  */
 const GROUP_INCLUDE = {
   listings: {
-    select: { description: true, photos: true, bookingModes: true, modeConfig: true },
+    select: {
+      description: true,
+      photos: true,
+      bookingModes: true,
+      modeConfig: true,
+      listingType: { select: { bookingSelection: true } },
+    },
   },
 } as const satisfies Prisma.ListingGroupInclude;
 
@@ -52,6 +58,7 @@ function toRecord(g: Row): ListingGroupRecord {
       description: l.description,
       photos: (l.photos ?? []) as string[],
       bookingModes: l.bookingModes as BookingMode[],
+      bookingSelection: l.listingType.bookingSelection as BookingSelection,
       modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
     })),
     createdAt: g.createdAt,

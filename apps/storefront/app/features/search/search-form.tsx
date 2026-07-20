@@ -109,6 +109,7 @@ export function SearchForm({
     return 0;
   });
   const selectedListingType = listingTypes.find((type) => type.slug === selectedType);
+  const fixedPackages = selectedListingType?.bookingSelection === 'fixed_packages';
   const selectedConfig = selectedListingType?.searchConfig;
   const availableModes = searchableModes(selectedListingType);
   const optionMap = new Map<string, string>();
@@ -125,7 +126,7 @@ export function SearchForm({
   const dailyRange = validDailyRange(rangeFrom, rangeTo);
   const canSubmit =
     canSubmitSearch(mode, rangeFrom, rangeTo) &&
-    (mode !== 'hourly' || !date || startTime < endTime);
+    (mode !== 'hourly' || fixedPackages || !date || startTime < endTime);
 
   function changeType(nextType: string): void {
     const schedule =
@@ -186,7 +187,7 @@ export function SearchForm({
         ) : null}
 
         {mode !== 'none' ? <input type="hidden" name="mode" value={mode} /> : null}
-        {mode === 'hourly' && date ? (
+        {(mode === 'hourly' || (fixedPackages && mode === 'daily')) && date ? (
           <input type="hidden" name="date" value={date} />
         ) : (mode === 'daily' || mode === 'inventory') && dailyRange ? (
           <>
@@ -222,10 +223,11 @@ export function SearchForm({
               setRange={setRange}
               showModeTabs={!isHero}
               availableModes={availableModes}
+              singleDate={fixedPackages}
             />
           ) : null}
 
-          {mode === 'hourly' ? (
+          {mode === 'hourly' && !fixedPackages ? (
             <TimeRangeField
               startTime={startTime}
               endTime={endTime}
@@ -585,6 +587,7 @@ function SearchDatePicker({
   setRange,
   showModeTabs,
   availableModes,
+  singleDate,
 }: {
   mode: SearchMode;
   onModeChange: (mode: SearchMode) => void;
@@ -594,6 +597,7 @@ function SearchDatePicker({
   setRange: (value: DateRange) => void;
   showModeTabs: boolean;
   availableModes: SearchMode[];
+  singleDate: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
@@ -610,7 +614,7 @@ function SearchDatePicker({
   const isSingleDayRange =
     Boolean(range.from && range.to) && localToDateOnly(range.from!) === localToDateOnly(range.to!);
   const label =
-    mode === 'hourly'
+    mode === 'hourly' || singleDate
       ? date
         ? dateLabelInTz(date, DEFAULT_TZ, locale)
         : t('home.pickDate')
@@ -634,7 +638,7 @@ function SearchDatePicker({
 
   function calendar(months: 1 | 2, close: () => void): React.ReactNode {
     const picker =
-      mode === 'hourly' ? (
+      mode === 'hourly' || singleDate ? (
         <Calendar
           mode="single"
           selected={date ? dateOnlyToLocal(date) : undefined}

@@ -83,6 +83,7 @@ export const availabilityQuerySchema = z
     mode: availabilityModeSchema,
     from: dateStringSchema,
     to: dateStringSchema,
+    packageId: uuidSchema.optional(),
   })
   .refine((q) => q.from <= q.to, { path: ['to'], message: 'to must be on/after from' })
   .refine((q) => spanDays(q.from, q.to) <= 31, {

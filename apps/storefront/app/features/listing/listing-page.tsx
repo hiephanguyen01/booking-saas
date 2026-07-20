@@ -7,6 +7,7 @@ import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { formatListingLocation } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
+import { selectedPackageForListing } from '../../lib/package-options';
 import type { StorefrontContext } from '../../root';
 import type { Route } from '../../routes/+types/listing';
 import { BookingPanel } from '../../templates/studio/booking-panel';
@@ -35,6 +36,8 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   }
 
   const location = formatListingLocation(listing, 'full');
+  const selectedPackage = selectedPackageForListing(listing, mode, searchParams.get('packageId'));
+  const galleryPhotos = selectedPackage?.photos.length ? selectedPackage.photos : listing.photos;
   const mapsHref = location
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
     : null;
@@ -87,7 +90,11 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
             </div>
             <HeaderActions title={listing.title} favorite={{ kind: 'listing', id: listing.id }} />
           </header>
-          <StudioGallery photos={listing.photos} title={listing.title} />
+          <StudioGallery
+            key={selectedPackage?.id ?? 'listing'}
+            photos={galleryPhotos}
+            title={selectedPackage ? `${listing.title} — ${selectedPackage.name}` : listing.title}
+          />
         </SectionCard>
 
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,870px)_284px]">

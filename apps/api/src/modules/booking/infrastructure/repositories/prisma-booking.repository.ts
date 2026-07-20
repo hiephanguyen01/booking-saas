@@ -85,7 +85,11 @@ const SELECT = Prisma.sql`
   SELECT b.id,
          b.tenant_id AS "tenantId", b.listing_id AS "listingId", l.title AS "listingTitle",
          l.slug AS "listingSlug",
-         l.description AS "listingDescription", l.photos->>0 AS "listingImageUrl",
+         l.description AS "listingDescription",
+         COALESCE(
+           b.pricing_snapshot #>> '{selectedPackage,photos,0}',
+           l.photos->>0
+         ) AS "listingImageUrl",
          l.attributes AS "listingAttributes",
          b.partner_id AS "partnerId", p.name AS "partnerName",
          b.resource_id AS "resourceId", r.name AS "resourceName", b.customer_id AS "customerId",

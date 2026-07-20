@@ -7,7 +7,10 @@ import { formatCurrency } from '@booking/i18n';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
 import { SectionCard } from '../../../components/section-card';
-import { cancellationCutoffParts, type CancellationPolicyLine } from '../../../lib/cancellation-policy';
+import {
+  cancellationCutoffParts,
+  type CancellationPolicyLine,
+} from '../../../lib/cancellation-policy';
 import { NsI18n, type ScopedI18n, useTranslation } from '../../../lib/i18n';
 import {
   dateLabelInTz,
@@ -57,6 +60,8 @@ export function BookingColumn({
     mode === 'daily'
       ? Math.max(1, nightsBetween(dateOnlyInTz(start, DEFAULT_TZ), dateOnlyInTz(end, DEFAULT_TZ)))
       : 1;
+  const packagePhotos = quote.selectedPackage?.photos ?? [];
+  const coverPhoto = packagePhotos[0] ?? listing.photos[0];
 
   return (
     <SectionCard>
@@ -74,10 +79,10 @@ export function BookingColumn({
 
       <div className="mt-3 flex gap-4">
         <div className="h-27.5 w-39 shrink-0 overflow-hidden rounded-sm bg-muted">
-          {listing.photos[0] ? (
+          {coverPhoto ? (
             <img
-              src={listing.photos[0]}
-              alt={listing.title}
+              src={coverPhoto}
+              alt={quote.selectedPackage?.name ?? listing.title}
               width={312}
               height={220}
               className="size-full object-cover"
@@ -103,6 +108,30 @@ export function BookingColumn({
           </div>
         </div>
       </div>
+
+      {quote.selectedPackage ? (
+        <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+          <p className="text-sm font-semibold">{quote.selectedPackage.name}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {'durationMinutes' in quote.selectedPackage
+              ? `${quote.selectedPackage.durationMinutes} phút`
+              : `${quote.selectedPackage.durationDays} ngày`}
+            {quote.selectedPackage.description ? ` · ${quote.selectedPackage.description}` : ''}
+          </p>
+          {packagePhotos.length > 1 ? (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {packagePhotos.map((photo, index) => (
+                <img
+                  key={`${photo}-${index}`}
+                  src={photo}
+                  alt=""
+                  className="h-14 w-20 shrink-0 rounded-md object-cover"
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-6">
         <h3 className="text-sm leading-5 font-medium text-foreground">{t('policy.title')}</h3>

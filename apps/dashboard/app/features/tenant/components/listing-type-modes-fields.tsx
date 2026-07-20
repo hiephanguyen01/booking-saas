@@ -11,12 +11,12 @@ const ALL_MODES: BookingMode[] = ['hourly', 'daily', 'inventory', 'appointment',
  * it was the search schedule, resets `searchConfig.schedule` to `none` — the two
  * subset invariants the shared schema enforces.
  */
-export function ListingTypeModesFields({
-  form,
-}: {
-  form: UseFormReturn<CreateListingTypeInput>;
-}) {
+export function ListingTypeModesFields({ form }: { form: UseFormReturn<CreateListingTypeInput> }) {
   const errors = form.formState.errors;
+  const fixedPackages = form.watch('bookingSelection') === 'fixed_packages';
+  const modes = fixedPackages
+    ? ALL_MODES.filter((mode) => mode === 'hourly' || mode === 'daily')
+    : ALL_MODES;
 
   return (
     <Controller
@@ -46,7 +46,7 @@ export function ListingTypeModesFields({
           <section className="space-y-3 rounded-lg border p-4">
             <h2 className="text-sm font-semibold">Hình thức đặt cho phép</h2>
             <div className="flex flex-wrap gap-4">
-              {ALL_MODES.map((m) => (
+              {modes.map((m) => (
                 <label key={m} className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={allowed.includes(m)}

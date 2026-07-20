@@ -47,28 +47,35 @@ export function useListingModeState(opts: {
   // key this form doesn't render survives the wholesale PATCH replace.
   const saved = useMemo(() => savedModeConfig(listing), [listing]);
 
-  // Reset modes/attributes when the user switches type (skip the initial mount so
-  // an edit form keeps the listing's saved values).
-  const mounted = useRef(false);
+  // Reset modes/attributes only when the selected type ID actually changes.
+  // Depending on the ListingType object made edit forms lose their saved
+  // attributes whenever loader data was revalidated with a new object identity.
+  const previousListingTypeId = useRef(listingTypeId);
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
+    if (previousListingTypeId.current === listingTypeId) return;
+    previousListingTypeId.current = listingTypeId;
+
     const modes = (selectedType?.defaultModes ?? []).filter((m) => CONFIGURABLE.includes(m));
     setState((s) => ({ ...s, bookingModes: modes, attributes: {} }));
-  }, [listingTypeId, selectedType]);
+  }, [listingTypeId, selectedType?.defaultModes]);
 
   // Mirror the dynamic values into RHF so the schema can validate them.
   useEffect(() => {
     form.setValue('bookingModes', state.bookingModes);
-    form.setValue('modeConfig', buildModeConfig(state, saved) as CreateListingInput['modeConfig']);
+    form.setValue(
+      'modeConfig',
+      buildModeConfig(
+        state,
+        saved,
+        selectedType?.bookingSelection ?? listing?.bookingSelection ?? 'flexible_duration',
+      ) as CreateListingInput['modeConfig'],
+    );
     form.setValue('attributes', state.attributes);
     form.setValue(
       'stockQuantity',
       state.bookingModes.includes('inventory') ? int(state.stockQuantity, 1) : undefined,
     );
-  }, [state, form, saved]);
+  }, [state, form, saved, selectedType?.bookingSelection, listing?.bookingSelection]);
 
   const toggleMode = (mode: BookingMode, on: boolean): void =>
     set(

@@ -1,15 +1,20 @@
-import type { BookingMode, ModeConfig, QuoteResponse } from '@booking/contracts';
+import type {
+  BookingMode,
+  BookingSelection,
+  ModeConfig,
+  QuoteResponse,
+  SelectedPackage,
+} from '@booking/contracts';
 import { percentOfBps, vnd, type Vnd } from '../../../../shared/money/money';
 import { wallClockInZone } from '../../../../shared/time/time';
+import { findActivePackage, ListingModeConfigError } from './package-config';
 
 /**
  * Pure price calculator (TONG-QUAN.md §7.3/§9). No NestJS, no I/O — reused by the
  * public quote endpoint and Task 1.7 (bookings). All money is `bigint` VND.
  *
- * Rules (§9.1): a duration matching a mode_config block → the block (bundle)
- * price, flat, NEVER overridden by a rule. Otherwise per-unit (hour/night) base
- * price, with the highest-priority matching pricing_rule replacing the base for
- * that unit — so a golden-hour window prices only the hours inside it.
+ * Flexible pricing uses a per-unit base with the highest-priority matching rule.
+ * Fixed-package pricing uses the package's absolute price and ignores rules.
  */
 export type RuleType = 'day_of_week' | 'time_range' | 'date_range' | 'date_time_range';
 
@@ -43,6 +48,7 @@ export interface QuoteResult {
   depositAmount: Vnd;
   securityDeposit: Vnd;
   lineItems: QuoteLine[];
+  selectedPackage?: SelectedPackage;
 }
 
 export interface QuoteRequest {
@@ -54,6 +60,8 @@ export interface QuoteRequest {
   endUtc: Date;
   quantity: number;
   depositPercent: number;
+  bookingSelection: BookingSelection;
+  packageId?: string;
 }
 
 /** Input shape of {@link computeQuoteResponse} (the former quote-service input). */
@@ -172,8 +180,42 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
   let regularSubtotal: Vnd = 0n;
   let securityDeposit: Vnd = 0n;
   let lineItems: QuoteLine[];
+  let selectedPackage: SelectedPackage | undefined;
 
-  if (req.mode === 'hourly' || req.mode === 'daily') {
+  if (req.bookingSelection === 'fixed_packages') {
+    try {
+      selectedPackage = findActivePackage(req.modeConfig, req.mode, req.packageId);
+    } catch (error) {
+      if (error instanceof ListingModeConfigError) {
+        throw new PricingError(error.code, error.message);
+      }
+      throw error;
+    }
+    const durationMatches =
+      selectedPackage.mode === 'hourly'
+        ? req.endUtc.getTime() - req.startUtc.getTime() === selectedPackage.durationMinutes * 60_000
+        : calendarDaysBetween(req.startUtc, req.endUtc, req.timezone) ===
+          selectedPackage.durationDays;
+    if (!durationMatches) {
+      throw new PricingError(
+        'PACKAGE_DURATION_MISMATCH',
+        'The requested time range does not match the selected package',
+      );
+    }
+    const price = vnd(selectedPackage.price);
+    subtotal = price;
+    regularSubtotal = price;
+    lineItems = [
+      {
+        label: selectedPackage.name,
+        quantity: 1,
+        unitPrice: price,
+        regularUnitPrice: price,
+        amount: price,
+        regularAmount: price,
+      },
+    ];
+  } else if (req.mode === 'hourly' || req.mode === 'daily') {
     const isHourly = req.mode === 'hourly';
     const hourly = req.modeConfig.hourly;
     const daily = req.modeConfig.daily;
@@ -186,11 +228,11 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
     const count = isHourly
       ? wholeUnits(req.startUtc, req.endUtc, unitMs, 'hour')
       : calendarDaysBetween(req.startUtc, req.endUtc, req.timezone);
-    const basePrice = isHourly ? vnd(hourly!.basePrice) : vnd(daily!.basePricePerNight);
-    // Normalize blocks to {count, price} so the hourly/daily union stays clean.
-    const blocks = isHourly
-      ? hourly!.blocks.map((b) => ({ count: b.hours, price: b.price }))
-      : daily!.blocks.map((b) => ({ count: b.days, price: b.price }));
+    const rawBasePrice = isHourly ? hourly!.basePrice : daily!.basePricePerNight;
+    if (!rawBasePrice) {
+      throw new PricingError('MODE_CONFIG_MISSING', 'No flexible base price on this listing');
+    }
+    const basePrice = vnd(rawBasePrice);
 
     const pricedUnits = Array.from({ length: count }, (_, i) => {
       const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
@@ -204,28 +246,8 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
       };
     });
 
-    const block = blocks.find((b) => b.count === count);
-    // A partner's exact calendar price must not be hidden by an old duration
-    // bundle. Recurring weekday/time rules retain the documented bundle behavior.
-    if (block && !pricedUnits.some((unit) => unit.calendarOverride)) {
-      // Bundle price — flat, not rule-overridable.
-      const price = vnd(block.price);
-      subtotal = price;
-      lineItems = [
-        {
-          label: `${count} ${isHourly ? 'giờ' : 'đêm'} (bundle)`,
-          quantity: 1,
-          unitPrice: price,
-          regularUnitPrice: price,
-          amount: price,
-          regularAmount: price,
-          block: true,
-        },
-      ];
-    } else {
-      lineItems = coalesce(pricedUnits, isHourly ? 'Giờ' : 'Đêm');
-      subtotal = lineItems.reduce((sum, l) => sum + l.amount, 0n);
-    }
+    lineItems = coalesce(pricedUnits, isHourly ? 'Giờ' : 'Đêm');
+    subtotal = lineItems.reduce((sum, l) => sum + l.amount, 0n);
     regularSubtotal = lineItems.reduce((sum, l) => sum + l.regularAmount, 0n);
   } else if (req.mode === 'inventory') {
     const cfg = req.modeConfig.inventory;
@@ -235,7 +257,7 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
     const basePrice = vnd(cfg.basePrice);
     // Per time-unit price with the highest-priority matching pricing_rule
     // replacing the per-unit base (§7.3 line 466) — inventory participates in
-    // rule pricing exactly like hourly/daily (it has no bundle blocks to shield).
+    // rule pricing exactly like flexible hourly/daily pricing.
     const units = Array.from({ length: duration }, (_, i) => {
       const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
       const rule = matchingRule(rules, unitStart, req.timezone);
@@ -267,7 +289,15 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
   }
 
   const depositAmount = percentOfBps(subtotal, req.depositPercent * 100);
-  return { mode: req.mode, subtotal, regularSubtotal, depositAmount, securityDeposit, lineItems };
+  return {
+    mode: req.mode,
+    subtotal,
+    regularSubtotal,
+    depositAmount,
+    securityDeposit,
+    lineItems,
+    ...(selectedPackage ? { selectedPackage } : {}),
+  };
 }
 
 /**
@@ -296,5 +326,6 @@ export function computeQuoteResponse(input: QuoteInput): QuoteResponse {
       ...(l.appliedRuleId ? { appliedRuleId: l.appliedRuleId } : {}),
       ...(l.block ? { block: true } : {}),
     })),
+    ...(result.selectedPackage ? { selectedPackage: result.selectedPackage } : {}),
   };
 }

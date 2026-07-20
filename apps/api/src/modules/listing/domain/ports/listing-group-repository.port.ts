@@ -1,4 +1,9 @@
-import type { BookingMode, ModerationActor, PublishStatus } from '@booking/contracts';
+import type {
+  BookingMode,
+  BookingSelection,
+  ModerationActor,
+  PublishStatus,
+} from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { ModerationUpdate } from './listing-repository.port';
 
@@ -13,6 +18,7 @@ export interface ListingGroupChildFacts {
   description: string | null;
   photos: string[];
   bookingModes: BookingMode[];
+  bookingSelection: BookingSelection;
   modeConfig: Record<string, unknown>;
 }
 
