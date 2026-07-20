@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useRevalidator } from 'react-router';
+import { useFetchers, useSubmit } from 'react-router';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { LoginRequiredDialog } from './components/login-required-dialog';
@@ -49,6 +49,12 @@ interface PendingWrite {
  * the provider itself unmounts (a locale switch changes the `:locale` param),
  * any still-pending write is flushed rather than dropped. A write the server
  * rejects rolls the optimistic heart back and surfaces an error.
+ *
+ * Writes go through a fetcher submission (never a browser `fetch`) so they hit
+ * the `favorites/toggle` action, which owns the authenticated server-to-server
+ * call. Each submission is keyed by target so we can reconcile its result via
+ * `useFetchers()`, and a successful submission revalidates loaders so the server
+ * refs catch up and the optimistic override is dropped.
  */
 export function FavoritesProvider({
   isAuthenticated,
@@ -65,8 +71,12 @@ export function FavoritesProvider({
   const [loginOpen, setLoginOpen] = useState(false);
   const [writeError, setWriteError] = useState(false);
   const [overrides, setOverrides] = useState<Map<string, boolean>>(() => new Map());
-  const revalidator = useRevalidator();
+  const submit = useSubmit();
+  const fetchers = useFetchers();
   const pending = useRef(new Map<string, PendingWrite>());
+  // key → the desired state of the in-flight submission, so a rejected write
+  // can be rolled back to the correct value.
+  const inFlight = useRef(new Map<string, boolean>());
 
   const serverSet = useMemo(() => {
     const set = new Set<string>();
@@ -98,42 +108,43 @@ export function FavoritesProvider({
   serverSetRef.current = serverSet;
   const localeRef = useRef(locale);
   localeRef.current = locale;
-  const revalidatorRef = useRef(revalidator);
-  revalidatorRef.current = revalidator;
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
 
-  // Fire the persisted write. Stable so the unmount flush can reuse it.
-  const postToggle = useCallback((kind: FavoriteTargetKind, id: string, desired: boolean) => {
-    const body = new FormData();
-    body.set('intent', desired ? 'add' : 'remove');
-    body.set('target', kind);
-    body.set('targetId', id);
-    return fetch(storefrontPaths.favoritesToggle(localeRef.current), { method: 'POST', body });
+  // Fire the persisted write via a keyed fetcher submission. Stable so the
+  // unmount flush can reuse it; navigate:false revalidates loaders on success.
+  const sendToggle = useCallback((kind: FavoriteTargetKind, id: string, desired: boolean) => {
+    submitRef.current(
+      { intent: desired ? 'add' : 'remove', target: kind, targetId: id },
+      {
+        method: 'post',
+        action: storefrontPaths.favoritesToggle(localeRef.current),
+        navigate: false,
+        fetcherKey: keyOf(kind, id),
+      },
+    );
   }, []);
 
-  // Debounced write with reconciliation: revalidate on success so server refs
-  // catch up; roll the optimistic override back (and warn) on failure.
-  const runWrite = useCallback(
-    (key: string, kind: FavoriteTargetKind, id: string, desired: boolean) => {
-      postToggle(kind, id, desired)
-        .then(async (res) => {
-          if (!res.ok) throw new Error('toggle failed');
-          const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
-          if (json && json.ok === false) throw new Error('toggle rejected');
-          revalidatorRef.current.revalidate();
-        })
-        .catch(() => {
-          // Roll back only if a newer toggle hasn't since superseded this intent.
-          setOverrides((prev) => {
-            if (prev.get(key) !== desired) return prev;
-            const next = new Map(prev);
-            next.delete(key);
-            return next;
-          });
-          setWriteError(true);
-        });
-    },
-    [postToggle],
-  );
+  // Reconcile completed submissions: a server rejection rolls the optimistic
+  // override back (unless a newer toggle superseded it) and warns the user.
+  useEffect(() => {
+    for (const fetcher of fetchers) {
+      if (fetcher.state !== 'idle' || fetcher.data == null) continue;
+      const key = fetcher.key;
+      if (!inFlight.current.has(key)) continue;
+      const desired = inFlight.current.get(key) as boolean;
+      inFlight.current.delete(key);
+      const rejected = (fetcher.data as { ok?: boolean }).ok === false;
+      if (!rejected) continue;
+      setOverrides((prev) => {
+        if (prev.get(key) !== desired) return prev;
+        const next = new Map(prev);
+        next.delete(key);
+        return next;
+      });
+      setWriteError(true);
+    }
+  }, [fetchers]);
 
   const has = useCallback(
     (kind: FavoriteTargetKind, id: string) => {
@@ -160,26 +171,27 @@ export function FavoritesProvider({
       if (existing) clearTimeout(existing.timer);
       const timer = setTimeout(() => {
         pending.current.delete(key);
-        runWrite(key, kind, id, desired);
+        inFlight.current.set(key, desired);
+        sendToggle(kind, id, desired);
       }, DEBOUNCE_MS);
       pending.current.set(key, { kind, id, desired, timer });
     },
-    [isAuthenticated, runWrite],
+    [isAuthenticated, sendToggle],
   );
 
   // Flush queued writes if the provider unmounts (locale teardown) so a debounced
-  // heart is persisted rather than silently dropped. Fire-and-forget: there is no
-  // live component left to reconcile against.
+  // heart is persisted rather than silently dropped. The submission lives on the
+  // (app-global) router, so it completes even though this subtree is gone.
   useEffect(() => {
     const pendingWrites = pending.current;
     return () => {
       for (const write of pendingWrites.values()) {
         clearTimeout(write.timer);
-        void postToggle(write.kind, write.id, write.desired).catch(() => {});
+        sendToggle(write.kind, write.id, write.desired);
       }
       pendingWrites.clear();
     };
-  }, [postToggle]);
+  }, [sendToggle]);
 
   // Auto-dismiss the write-error toast.
   useEffect(() => {

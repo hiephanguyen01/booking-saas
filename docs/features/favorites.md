@@ -39,23 +39,29 @@ DBs get them without a reseed).
   seeded once from a `GET /customer/favorites/refs` fetch in that layout loader so every child page's
   hearts render correct on SSR) + the `useFavorite(kind, id)` hook.
 - **Optimistic + debounced**: a click flips the heart immediately and schedules a **debounced** (350ms)
-  per-target write to the `routes/favorites-toggle.tsx` resource route, so rapid clicks / add→remove
-  flip-flops coalesce into one request; the optimistic override drops when the layout loader
-  revalidates and the server agrees. The debounce timer **and** the write
-  (`useSubmit(..., {navigate:false, fetcherKey})`) live in the always-mounted provider — so a write is
-  **not lost** if the card that triggered it unmounts (click a heart then navigate away within the
-  window), and a per-target `fetcherKey` keeps concurrent toggles from colliding. If a write **fails**
-  (expired session / 5xx) the provider watches `useFetchers()` and rolls the heart back to the server
-  state. (Known minor edge: switching locale vi↔en *within* the 350ms window unmounts the provider and
-  drops that one pending write — rare; the heart resets on remount.)
+  per-target write, so rapid clicks / add→remove flip-flops coalesce; the optimistic override drops when
+  the layout loader revalidates and the server agrees. The debounce timer **and** the write live in the
+  always-mounted provider — so a write is **not lost** when the card that triggered it unmounts.
+- **Write mechanism**: a **keyed fetcher submission** — `useSubmit(..., {navigate:false, fetcherKey: kind:id})`
+  to the `routes/favorites-toggle.tsx` action, **never a browser `fetch`** (the storefront `security` gate
+  forbids `fetch(`, so every mutation goes through an RR action → `api.server.ts`). `navigate:false`
+  revalidates loaders on success; the per-target `fetcherKey` keeps concurrent toggles from colliding.
+- **Reconciliation on failure**: the provider watches `useFetchers()`; when a keyed submission finishes
+  with `data.ok === false` (expired session 401 / 400 / 5xx) it **rolls the heart back** to the server
+  state (guarded so a newer toggle isn't clobbered) and shows a self-dismissing `role="alert"` toast
+  (`favorites.saveError`). No hearts that lie about an unsaved favorite.
+- **Unmount flush**: if the provider itself unmounts (leaving the `:locale` tree) with writes still
+  pending, the cleanup **submits** them — the submission lives on the app-global router, so it completes
+  even though the subtree is gone.
 - **Logged out** → `components/login-required-dialog.tsx` prompts login (returns to the current page);
   the heart does not change.
 - Wired everywhere via `components/favorite-cards.tsx` (`FavoriteListingCard`, `FavoriteSearchResultCard`)
   and `components/favorite-heart-button.tsx` (detail headers): home, filter/search, listing detail,
   group detail, account favorites + recent. The account favorites page reads **real** data (the old
-  `loadAccountListingItems` mock is no longer used there).
+  `loadAccountListingItems` mock is gone there) and renders an **error state** (`favorites.loadError`)
+  when the list API fails instead of a misleading empty state.
 - i18n: `packages/i18n/src/locales/{vi,en}/account.ts` → `favorites.{add,remove,loginRequiredTitle,
-  loginRequiredBody,loginCta,loginLater}`.
+  loginRequiredBody,loginCta,loginLater,saveError,loadError}`.
 
 ## Dashboard — `apps/dashboard/`
 
