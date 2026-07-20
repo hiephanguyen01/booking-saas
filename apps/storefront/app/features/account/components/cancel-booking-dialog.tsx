@@ -53,26 +53,28 @@ export function CancelBookingDialog({
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="h-10 rounded-lg border-destructive/30 px-6 text-destructive hover:bg-destructive/5 hover:text-destructive"
+          className="h-10 rounded-sm border-[#263247] bg-[#4b5669] px-6 text-white hover:bg-[#3f495a] hover:text-white"
         >
           {t('bookings.cancel')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl p-6 sm:max-w-[562px] sm:p-8">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-none border-0 p-6 shadow-2xl sm:max-w-[562px] sm:p-8">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{t('bookings.cancelDialog.title')}</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold text-[#202a3a]">
+            {t('bookings.cancelDialog.title')}
+          </DialogTitle>
           <DialogDescription className="sr-only">
             {t('bookings.cancelDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="text-sm">
+        <div className="mt-1 text-sm leading-6">
           <CancellationPolicyList booking={booking} locale={locale} />
         </div>
 
-        <Alert className="border-0 bg-amber-100 text-amber-700">
+        <Alert className="rounded-lg border-0 bg-[#fff2bd] px-4 py-3 text-[#ef8b00]">
           <CircleAlert />
-          <AlertDescription className="text-amber-700">
+          <AlertDescription className="text-sm leading-5 text-[#ef8b00]">
             {t('bookings.cancelDialog.warning')}
           </AlertDescription>
         </Alert>
@@ -82,9 +84,15 @@ export function CancelBookingDialog({
           <input type="hidden" name="reason" value={reason} />
           <RadioGroup value={selected} onValueChange={setSelected} className="gap-4">
             {REASON_KEYS.map((key) => (
-              <label key={key} className="flex cursor-pointer items-start gap-3 text-sm leading-5">
-                <RadioGroupItem value={key} className="mt-0.5" />
-                <span>{t(`bookings.cancelDialog.reasons.${key}`)}</span>
+              <label
+                key={key}
+                className="flex cursor-pointer items-start gap-3 text-sm leading-5 text-[#263247]"
+              >
+                <RadioGroupItem
+                  value={key}
+                  className="mt-0.5 border-[#526078] text-[#ff3f44] data-[state=checked]:border-[#ff3f44]"
+                />
+                <span className="pt-px">{t(`bookings.cancelDialog.reasons.${key}`)}</span>
               </label>
             ))}
           </RadioGroup>
@@ -97,7 +105,7 @@ export function CancelBookingDialog({
                 maxLength={500}
                 placeholder={t('bookings.cancelDialog.otherPlaceholder')}
                 aria-invalid={selected === 'other' && otherReason.trim().length === 0}
-                className="min-h-20 rounded-lg"
+                className="min-h-11 rounded-sm border-[#ff8e91] text-sm"
               />
               <p className="mt-1 text-xs text-muted-foreground">{otherReason.length}/500</p>
             </div>
@@ -109,13 +117,21 @@ export function CancelBookingDialog({
             </p>
           ) : null}
 
-          <DialogFooter className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+          <DialogFooter className="grid grid-cols-2 gap-4 sm:grid-cols-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="h-12 rounded-lg">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 rounded-sm border-[#263247] text-[#263247]"
+              >
                 {t('bookings.cancelDialog.back')}
               </Button>
             </DialogClose>
-            <Button type="submit" className="h-12 rounded-lg" disabled={!reason || submitting}>
+            <Button
+              type="submit"
+              className="h-12 rounded-sm bg-[#ff3f44] text-white hover:bg-[#e93439]"
+              disabled={!reason || submitting}
+            >
               {submitting
                 ? t('bookings.cancelDialog.submitting')
                 : t('bookings.cancelDialog.confirm')}

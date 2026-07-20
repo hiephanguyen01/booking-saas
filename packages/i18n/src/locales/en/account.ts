@@ -46,6 +46,7 @@ export const enAccount = {
     detail: 'View details',
     detailTitle: 'Booking details',
     order: 'Booking order',
+    bookingCode: 'Booking code {code}',
     placedAt: 'Placed {date}',
     schedule: 'Booking date',
     timeAndDuration: 'Time',
@@ -151,6 +152,8 @@ export const enAccount = {
       completed: 'Refund completed',
       partialCompleted: 'Partially refunded; the retained amount is awaiting settlement',
       noRefundDue: 'No refund is due; the retained amount is awaiting settlement',
+      policyNote:
+        'This booking uses a {percent}% deposit-refund cancellation policy. Refunds usually take 5–10 business days.',
     },
     noShow: {
       title: 'No-show',
@@ -166,6 +169,7 @@ export const enAccount = {
       uploadOr: 'or',
       chooseFiles: 'Choose files',
       saved: 'Thank you for sharing your experience.',
+      unavailable: 'Review submission is being completed.',
     },
     cancelDialog: {
       title: 'Cancel booking',

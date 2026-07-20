@@ -43,6 +43,7 @@ export const viAccount = {
     detail: 'Xem chi tiết',
     detailTitle: 'Chi tiết đơn đặt',
     order: 'Đơn đặt chỗ',
+    bookingCode: 'Mã booking {code}',
     placedAt: 'Đặt lúc {date}',
     schedule: 'Ngày sử dụng',
     timeAndDuration: 'Thời gian',
@@ -148,6 +149,8 @@ export const viAccount = {
       completed: 'Đã hoàn tiền',
       partialCompleted: 'Đã hoàn một phần; phần giữ lại đang chờ đối soát',
       noRefundDue: 'Không có tiền phải hoàn; phần giữ lại đang chờ đối soát',
+      policyNote:
+        'Đơn của bạn được áp dụng chính sách hủy hoàn {percent}% tiền cọc. Việc hoàn tiền thường mất 5–10 ngày làm việc.',
     },
     noShow: {
       title: 'Vắng mặt',
@@ -163,6 +166,7 @@ export const viAccount = {
       uploadOr: 'hoặc',
       chooseFiles: 'Chọn tập tin',
       saved: 'Cảm ơn bạn đã chia sẻ trải nghiệm.',
+      unavailable: 'Tính năng gửi đánh giá đang được hoàn thiện.',
     },
     cancelDialog: {
       title: 'Hủy đơn',

@@ -29,7 +29,7 @@
 - Consumes: `BookingStatus`, `AccountBookingViewModel.variant`.
 - Produces: `BookingDetailState` and `bookingDetailState(status)` for all shared components.
 
-- [ ] **Step 1: Add an explicit Figma-state type and total status mapping**
+- [x] **Step 1: Add an explicit Figma-state type and total status mapping**
 
 ```ts
 export type BookingDetailState =
@@ -57,13 +57,13 @@ export function bookingDetailState(status: BookingStatus): BookingDetailState {
 }
 ```
 
-- [ ] **Step 2: Align status badges with the Figma status pills**
+- [x] **Step 2: Align status badges with the Figma status pills**
 
 Keep the translated API status label, use a compact uppercase pill, and assign the Figma semantic
 palette: orange for payment, blue for upcoming, green for done, red for absent/cancelled, violet for
 refunded, and neutral for draft/expired.
 
-- [ ] **Step 3: Verify the contract compiles**
+- [x] **Step 3: Verify the contract compiles**
 
 Run: `pnpm --filter=@booking/storefront typecheck`
 
@@ -80,7 +80,7 @@ Expected: React Router type generation and TypeScript complete with exit code 0.
 - Produces: `BookingDetailOverview` with the shared studio header, listing body, dynamic attributes,
   policy strip, and state-specific primary action.
 
-- [ ] **Step 1: Make `BookingDetailPanel` a thin page orchestrator**
+- [x] **Step 1: Make `BookingDetailPanel` a thin page orchestrator**
 
 ```tsx
 const state = bookingDetailState(booking.status);
@@ -108,7 +108,7 @@ return (
 The page heading uses the Figma title `bookings.detailTitle` and a compact back control without
 duplicating the account-shell navigation title.
 
-- [ ] **Step 2: Implement the shared overview structure from the Figma frames**
+- [x] **Step 2: Implement the shared overview structure from the Figma frames**
 
 `BookingDetailOverview` renders:
 
@@ -126,7 +126,7 @@ section rhythm, subtle 1px separators), with mobile grids collapsing to one colu
 summary includes image/fallback, title, resource, date, time, duration, description, booking mode,
 and quantity/guest count. Render arbitrary API attributes by mapping the full array.
 
-- [ ] **Step 3: Render actions only when valid for the API state**
+- [x] **Step 3: Render actions only when valid for the API state**
 
 ```tsx
 const canPay = booking.status === 'pending_payment';
@@ -138,7 +138,7 @@ Pay submits `intent=pay`, cancel opens `CancelBookingDialog`, dispute links to t
 route, and chat links to account messages. No disabled or fake action is shown for unsupported
 states.
 
-- [ ] **Step 4: Verify the shared card**
+- [x] **Step 4: Verify the shared card**
 
 Run: `pnpm --filter=@booking/storefront lint && pnpm --filter=@booking/storefront typecheck`
 
@@ -157,7 +157,7 @@ Expected: both commands exit 0.
 - Produces: `BookingReviewSection`, `BookingContactSection`, `BookingFinancialSection`, and
   `PaymentTaxNote`.
 
-- [ ] **Step 1: Build the Figma section shell and contact details**
+- [x] **Step 1: Build the Figma section shell and contact details**
 
 ```tsx
 function DetailSection({ title, children }: DetailSectionProps) {
@@ -173,7 +173,7 @@ function DetailSection({ title, children }: DetailSectionProps) {
 Contact rows show customer name, phone, email, and note with `-` for genuinely missing optional
 values.
 
-- [ ] **Step 2: Implement one financial selector for every Figma state**
+- [x] **Step 2: Implement one financial selector for every Figma state**
 
 ```ts
 type FinancialVariant = 'payment' | 'cancellation' | 'no-show' | 'post-service-refund';
@@ -190,18 +190,18 @@ type FinancialVariant = 'payment' | 'cancellation' | 'no-show' | 'post-service-r
 
 All arithmetic uses `BigInt`; guard optional values before conversion.
 
-- [ ] **Step 3: Match the completed-booking review block without false persistence**
+- [x] **Step 3: Match the completed-booking review block without false persistence**
 
 Render the five-star selector, textarea, and dashed image drop area from Figma. Until a review API
 exists, the submit control must not transition into a fake saved state; existing API-provided review
 content may still render read-only.
 
-- [ ] **Step 4: Add only the translated labels required by the Figma hierarchy**
+- [x] **Step 4: Add only the translated labels required by the Figma hierarchy**
 
 Add matching Vietnamese and English keys for section labels/status descriptions while retaining
 the existing translation shape. Do not hard-code Vietnamese text inside shared components.
 
-- [ ] **Step 5: Verify focused frontend correctness**
+- [x] **Step 5: Verify focused frontend correctness**
 
 Run: `pnpm --filter=@booking/storefront lint && pnpm --filter=@booking/storefront typecheck`
 
@@ -218,13 +218,13 @@ Expected: both commands exit 0 with no translation-shape or BigInt errors.
 - Consumes: existing `CancelBookingDialog` props and React Router cancellation action.
 - Produces: Figma-node `2869:42948` dialog behavior without changing the mutation contract.
 
-- [ ] **Step 1: Restyle the accessible dialog to the supplied popup**
+- [x] **Step 1: Restyle the accessible dialog to the supplied popup**
 
 Use the Figma width, section spacing, warning treatment, radio rows, optional free-text reason,
 secondary back button, and primary destructive confirmation button. Keep Radix focus trapping,
 Escape handling, `reason` validation, submission state, and server error display.
 
-- [ ] **Step 2: Inspect all available booking states in the running storefront**
+- [x] **Step 2: Inspect all available booking states in the running storefront**
 
 Run: `pnpm --filter=@booking/storefront dev`
 
@@ -232,7 +232,7 @@ Expected: the storefront starts successfully. Compare Need Payment, Coming Soon,
 Canceled/refunded, and the cancellation popup at desktop and mobile widths against nodes
 `820:24333`, `272:35015`, `822:25599`, `2619:39692`, `986:52738`, `983:35562`, and `2869:42948`.
 
-- [ ] **Step 3: Run the production verification suite**
+- [x] **Step 3: Run the production verification suite**
 
 Run:
 
@@ -244,7 +244,7 @@ pnpm --filter=@booking/storefront build
 
 Expected: every command exits 0; no test files are created.
 
-- [ ] **Step 4: Review the final diff for scope and API integrity**
+- [x] **Step 4: Review the final diff for scope and API integrity**
 
 Run: `git diff --check && git status --short`
 
