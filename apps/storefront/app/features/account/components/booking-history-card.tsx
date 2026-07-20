@@ -1,13 +1,13 @@
-import { formatDateTime, type Locale } from '@booking/i18n';
+import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
-import { CalendarDays, Clock3, MessageSquareText } from 'lucide-react';
+import { CalendarDays, Clock3 } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import type { AccountBookingViewModel } from '../lib/booking-history';
 import { AccountPanel, CancellationPolicyList, StudioThumbnail } from './account-primitives';
+import { BookingCardHeader } from './booking-card-header';
 import { BookingFinancialSummary } from './booking-financial-summary';
-import { BookingStatusBadge } from './booking-status-badge';
 
 export function BookingHistoryCard({
   booking,
@@ -21,32 +21,7 @@ export function BookingHistoryCard({
 
   return (
     <AccountPanel className="overflow-hidden rounded-xl border border-border/70 shadow-[0_10px_35px_rgba(15,23,42,0.045)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4 sm:px-6">
-        <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <p className="truncate text-sm font-medium">{booking.partnerName}</p>
-          <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground">
-            <Link to={storefrontPaths.account.messages(locale)}>
-              <MessageSquareText className="size-4" /> {t('bookings.chat')}
-            </Link>
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
-          <div className="min-w-0">
-            <Link
-              to={detailPath}
-              className="font-mono font-medium hover:text-primary hover:underline"
-            >
-              {booking.code}
-            </Link>
-            <p className="mt-0.5 text-muted-foreground">
-              {t('account:bookings.placedAt', {
-                date: formatDateTime(booking.createdAt, locale, 'Asia/Ho_Chi_Minh'),
-              })}
-            </p>
-          </div>
-          <BookingStatusBadge status={booking.status} />
-        </div>
-      </header>
+      <BookingCardHeader booking={booking} locale={locale} />
 
       <div className="px-5 py-5 sm:px-6">
         <div className="grid gap-4 sm:grid-cols-[158px_minmax(0,1fr)]">
