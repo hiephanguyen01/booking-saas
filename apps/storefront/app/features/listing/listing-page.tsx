@@ -85,7 +85,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
                 ) : null}
               </div>
             </div>
-            <HeaderActions title={listing.title} />
+            <HeaderActions title={listing.title} favorite={{ kind: 'listing', id: listing.id }} />
           </header>
           <StudioGallery photos={listing.photos} title={listing.title} />
         </SectionCard>

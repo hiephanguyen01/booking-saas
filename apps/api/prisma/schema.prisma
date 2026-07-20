@@ -463,6 +463,7 @@ model User {
   staffProfiles         Staff[]
   reviewsWritten        Review[]         @relation("ReviewCustomer")
   reviewRepliesAuthored ReviewReply[]    @relation("ReviewReplyAuthor")
+  favorites             Favorite[]       @relation("FavoriteCustomer")
 
   @@map("users")
 }
@@ -623,6 +624,7 @@ model Tenant {
   settlementDisputes        SettlementDispute[]
   reviews                   Review[]
   reviewReplies             ReviewReply[]
+  favorites                 Favorite[]
   payoutAllocations         PayoutAllocation[]
   promotions                Promotion[]
   affiliates                Affiliate[]
@@ -745,6 +747,7 @@ model Partner {
   agreementAcceptances      AgreementAcceptance[]
   reviews                   Review[]
   reviewReplies             ReviewReply[]
+  favorites                 Favorite[]
   cancellationPolicies      CancellationPolicy[]  @relation("PartnerPolicies")
   defaultCancellationPolicy CancellationPolicy?   @relation("PartnerDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
 
@@ -839,6 +842,7 @@ model ListingGroup {
   listingType ListingType @relation(fields: [listingTypeId], references: [id])
   listings    Listing[]
   reviews     Review[]
+  favorites   Favorite[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -932,6 +936,7 @@ model Listing {
   classSessions      ClassSession[]
   listingStaff       ListingStaff[]
   reviews            Review[]
+  favorites          Favorite[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1165,6 +1170,32 @@ model ReviewReply {
   @@index([tenantId, createdAt(sort: Desc)])
   @@index([partnerId, createdAt(sort: Desc)])
   @@map("review_replies")
+}
+
+/// A customer's "heart" on a listing or a listing group (§16.1 wishlist). Exactly
+/// one of listing_id / group_id is set (DB CHECK). partner_id is denormalised from
+/// the target so the partner/tenant dashboard can scope + count without a join.
+model Favorite {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  partnerId  String   @map("partner_id") @db.Uuid
+  listingId  String?  @map("listing_id") @db.Uuid
+  groupId    String?  @map("group_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer User          @relation("FavoriteCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  partner  Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  listing  Listing?      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  group    ListingGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([partnerId, createdAt(sort: Desc)])
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([listingId])
+  @@index([groupId])
+  @@map("favorites")
 }
 
 /// Audit mirror of Redis holds (Redis is the source of truth) — §7.5.

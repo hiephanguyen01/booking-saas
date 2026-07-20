@@ -36,6 +36,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'tenant.roles.manage', scopeLevel: 'tenant' },
   { key: 'tenant.reports.read', scopeLevel: 'tenant' },
   { key: 'tenant.reviews.read', scopeLevel: 'tenant' },
+  { key: 'tenant.favorites.read', scopeLevel: 'tenant' },
   { key: 'tenant.disputes.read', scopeLevel: 'tenant' },
   { key: 'tenant.disputes.resolve', scopeLevel: 'tenant' },
   // Partner
@@ -54,6 +55,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: string; scopeLevel: ScopeL
   { key: 'partner.roles.manage', scopeLevel: 'partner' },
   { key: 'partner.reviews.read', scopeLevel: 'partner' },
   { key: 'partner.reviews.reply', scopeLevel: 'partner' },
+  { key: 'partner.favorites.read', scopeLevel: 'partner' },
   { key: 'partner.disputes.read', scopeLevel: 'partner' },
   { key: 'partner.disputes.respond', scopeLevel: 'partner' },
 ];

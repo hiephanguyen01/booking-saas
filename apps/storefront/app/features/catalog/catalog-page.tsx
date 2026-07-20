@@ -24,7 +24,7 @@ import type { SearchSort, StorefrontSearchState } from '../search/search-state';
 import { SearchForm } from '../search/search-form';
 import { CatalogPagination } from './components/catalog-pagination';
 import { FilterPanel } from './components/filter-panel';
-import { SearchResultCard } from './components/search-result-card';
+import { FavoriteSearchResultCard } from '../favorites/components/favorite-cards';
 
 /**
  * Only the orders `composeSearchResults()` actually applies.
@@ -126,7 +126,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
           ) : (
             <div className="flex flex-col gap-6">
               {search.items.map((listing) => (
-                <SearchResultCard
+                <FavoriteSearchResultCard
                   key={`${listing.kind}:${listing.id}`}
                   listing={listing}
                   state={state}

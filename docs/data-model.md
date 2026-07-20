@@ -22,6 +22,10 @@ read it before touching money, migrations, or tenant tables. Domain term definit
   `Payout`, `PayoutAllocation`.
 - **Promotions & affiliate** — promo codes, partner promotions, campaigns; `ReferralLink`,
   `ReferralClick`, `AffiliateCommission`.
+- **Reviews & engagement** — `Review`, `ReviewReply` (one partner reply per review), `Favorite`
+  (a customer's heart on a `Listing` **or** a `ListingGroup`; `partner_id` denormalised from the
+  target so the partner/tenant dashboard can scope + count without a join). See
+  [`features/favorites.md`](./features/favorites.md).
 - **Reference** — administrative divisions (Vietnamese provinces/wards), audit logs, outbox events,
   notifications.
 
@@ -43,7 +47,12 @@ guards the RLS parts in CI.
    one-sided (debit XOR credit), an **append-only trigger** blocks updates/deletes, and a **deferred
    constraint trigger** enforces `sum(debit) = sum(credit)` per journal at commit. Never post a single
    entry — post a balanced journal. See [`glossary.md`](./glossary.md) → Ledger.
-4. **Other SQL-only bits:** extensions `btree_gist`, `citext`, `pgcrypto`; `NULLS NOT DISTINCT` unique
+4. **One-target favorites (CHECK + partial uniques).** `favorites` carries nullable `listing_id` and
+   `group_id` with `CHECK ((listing_id IS NOT NULL) <> (group_id IS NOT NULL))` (exactly one target),
+   plus two **partial unique** indexes — `UNIQUE (customer_id, listing_id) WHERE listing_id IS NOT NULL`
+   and the `group_id` mirror — so a customer can heart a target at most once. Adds are idempotent (the
+   repository swallows `P2002`).
+5. **Other SQL-only bits:** extensions `btree_gist`, `citext`, `pgcrypto`; `NULLS NOT DISTINCT` unique
    indexes; the `app_user` / `app_admin` / migrate roles.
 
 ## Units & types (hard rules)

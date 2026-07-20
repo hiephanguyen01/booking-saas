@@ -11,13 +11,16 @@ import { storefrontPaths } from '../../../lib/locale-paths';
 import { formatListingLocation, formatVnd } from '../../../lib/ui';
 import { clockHoursBetween } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
+import type { ListingFavoriteControl } from './listing-card.types';
 
 export function SearchResultCard({
   listing,
   state,
+  favoriteControl,
 }: {
   listing: EnrichedSearchListing;
   state: StorefrontSearchState;
+  favoriteControl?: ListingFavoriteControl;
 }) {
   const locale = useLocale();
   const { t } = useTranslation([NsI18n.Catalog, NsI18n.Listing]);
@@ -34,7 +37,20 @@ export function SearchResultCard({
     : null;
 
   return (
-    <article className="group grid overflow-hidden rounded-lg border border-border bg-background transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)]">
+    <article className="group relative grid overflow-hidden rounded-lg border border-border bg-background transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)]">
+      {/* Heart floats over the whole card so it stays reachable on mobile too (the
+          secondary-photo column below is hidden under md). */}
+      {favoriteControl ? (
+        <button
+          type="button"
+          aria-label={favoriteControl.label}
+          aria-pressed={favoriteControl.selected}
+          onClick={favoriteControl.onToggle}
+          className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <Heart className="size-4" fill={favoriteControl.selected ? 'currentColor' : 'none'} />
+        </button>
+      ) : null}
       <Link
         to={href}
         className="relative min-h-52 overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
@@ -52,13 +68,6 @@ export function SearchResultCard({
         {photos.slice(1, 3).map((photo) => (
           <img key={photo} src={photo} alt="" className="size-full min-h-0 object-cover" />
         ))}
-        {/* Decorative only — no wishlist backend exists yet, so this doesn't persist state. */}
-        <span
-          aria-hidden
-          className="absolute right-3 top-6 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md"
-        >
-          <Heart className="size-4" />
-        </span>
       </div>
 
       <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4">

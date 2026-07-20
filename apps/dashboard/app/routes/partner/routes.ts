@@ -26,6 +26,7 @@ export const partnerChildren: RouteConfigEntry[] = [
   ),
   route('revenue', 'routes/partner/revenue.tsx'),
   route('reviews', 'routes/partner/reviews.tsx'),
+  route('favorites', 'routes/partner/favorites.tsx'),
   route('disputes', 'routes/partner/disputes.tsx'),
   route('promotions', 'routes/partner/promotions/_index.tsx'),
   route('promotions/new', 'routes/partner/promotions/new.tsx'),

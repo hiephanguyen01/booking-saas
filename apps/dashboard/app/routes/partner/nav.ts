@@ -8,6 +8,7 @@ import {
   Undo2,
   Wallet,
   Star,
+  Heart,
   Scale,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
@@ -68,6 +69,12 @@ export const partnerNavSections: DashboardNavSection[] = [
         to: dashboardPaths.partner.reviews,
         icon: Star,
         permission: 'partner.reviews.read',
+      },
+      {
+        title: 'Yêu thích',
+        to: dashboardPaths.partner.favorites,
+        icon: Heart,
+        permission: 'partner.favorites.read',
       },
       {
         title: 'Khiếu nại',

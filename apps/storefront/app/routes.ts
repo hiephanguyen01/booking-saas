@@ -10,6 +10,7 @@ export default [
     route('t/:typeSlug', 'routes/catalog.tsx'),
     route('l/:listingSlug', 'routes/listing.tsx'),
     route('g/:groupSlug', 'routes/listing-group.tsx'),
+    route('favorites/toggle', 'routes/favorites-toggle.tsx'),
     route('checkout', 'routes/checkout.tsx'),
     route('bookings', 'routes/bookings.tsx'),
     route('bookings/:code', 'routes/booking-detail.tsx'),

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import { AccountPanel } from '../../features/account/components/account-primitives';
 import { loadAccountListingItems } from '../../features/account/server/account-listings.server';
-import { ListingCard } from '../../features/catalog/components/listing-card';
+import { FavoriteListingCard } from '../../features/favorites/components/favorite-cards';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import type { AccountOutletContext } from './layout';
@@ -55,7 +55,7 @@ export default function RecentPage({ loaderData }: Route.ComponentProps) {
         {visibleItems.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {visibleItems.map((item) => (
-              <ListingCard
+              <FavoriteListingCard
                 key={item.listing.id}
                 listing={item.listing}
                 presentation={item.presentation}
