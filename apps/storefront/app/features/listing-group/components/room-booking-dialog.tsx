@@ -407,6 +407,7 @@ export function RoomBookingDialog({
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">{t('group.pickDayInstruction')}</p>
             <Calendar
+              fullWidth
               mode="single"
               selected={undefined}
               onSelect={(day) => {
@@ -444,6 +445,8 @@ export function RoomBookingDialog({
           ) : (
             <div className="relative mt-3">
               <Calendar
+                fullWidth
+                connectedRange
                 mode="range"
                 numberOfMonths={1}
                 selected={
