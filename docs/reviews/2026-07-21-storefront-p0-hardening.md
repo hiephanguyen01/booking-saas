@@ -7,8 +7,12 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 ## Changes in this branch
 
 - Add a centralized strict `YYYY-MM-DD` validator.
-- Reuse it in daily-range normalization and the booking-data resource loader.
-- Invalid calendar dates such as `2026-02-31` now fall back safely instead of reaching `addDays()` and throwing a `RangeError`.
+- Reuse it in daily-range normalization, booking-data resource loading, and the listing route.
+- Reject impossible calendar dates such as `2026-02-31` before they reach `addDays()` or timezone conversion helpers.
+- Validate hourly, daily, and inventory date query parameters before requesting availability.
+- Serialize refresh-token rotation with a short-lived Redis lock scoped by storefront session ID.
+- Re-read the latest session after acquiring the lock so concurrent requests reuse already-rotated tokens instead of refreshing with an invalidated token.
+- Persist rotated tokens while the lock is held and release the lock with an atomic compare-and-delete Lua command.
 
 ## Fixed-package availability verification
 
