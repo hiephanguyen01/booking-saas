@@ -1,9 +1,9 @@
 import { BadRequestException, Controller, Get, Headers } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { PublicTenantResponse } from '@booking/contracts';
+import type { StorefrontTenantResponse } from '@booking/contracts';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
-import { PublicTenantResponseDto } from './dto/tenancy.dto';
+import { StorefrontTenantResponseDto } from './dto/tenancy.dto';
 
 /**
  * Storefront tenant resolution (§6.1). The RR7 BFF calls this server-side with
@@ -17,11 +17,11 @@ export class PublicTenantController {
   @Public()
   @Get('tenant')
   @ApiOperation({ summary: 'Resolve the tenant + theme for a storefront Host' })
-  @ApiOkResponse({ type: PublicTenantResponseDto })
+  @ApiOkResponse({ type: StorefrontTenantResponseDto })
   async tenant(
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
-  ): Promise<PublicTenantResponse> {
+  ): Promise<StorefrontTenantResponse> {
     // The storefront BFF proxies the visitor's Host via x-forwarded-host
     // (fetch cannot set the forbidden `Host` header). Prefer it, fall back to
     // the direct Host. A proxy chain may comma-join hosts — take the first.
