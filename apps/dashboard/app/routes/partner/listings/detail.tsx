@@ -6,6 +6,7 @@ import {
   type AvailabilityExceptionResponse,
   type AvailabilityRuleResponse,
   type ListingResponse,
+  type ListingTypeResponse,
   type PricingRuleResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -40,11 +41,18 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
-  const res = await apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth);
+  const [res, listingTypesRes] = await Promise.all([
+    apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
+    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+  ]);
   if (!res.ok || !res.data) {
     throw new Response('Không tìm thấy tin đăng.', { status: res.status === 403 ? 403 : 404 });
   }
   const listing = res.data;
+  const listingType =
+    (listingTypesRes.ok ? listingTypesRes.data : null)?.find(
+      (type) => type.id === listing.listingTypeId,
+    ) ?? null;
   const tab = url.searchParams.get('tab') === 'calendar' ? 'calendar' : 'detail';
   const requestedMonth = url.searchParams.get('month');
   const month =
@@ -78,6 +86,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       : [null, null, null];
   return {
     listing,
+    listingType,
     tab,
     month,
     mode,
@@ -306,7 +315,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function PartnerListingDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { listing, canWrite, tab } = loaderData;
+  const { listing, listingType, canWrite, tab } = loaderData;
   const price = listingPriceFrom(listing);
   const source = listing.effectiveCancellationPolicySource;
   const inherited = source !== null && source !== 'listing';
@@ -369,6 +378,7 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
                   label="Trạng thái"
                   value={<ListingStatusBadge status={listing.status} />}
                 />
+                <DetailField label="Loại dịch vụ" value={listingType?.name ?? '—'} />
                 <DetailField
                   label="Hình thức"
                   value={listing.bookingModes.map((m) => BOOKING_MODE_LABEL[m] ?? m).join(', ')}

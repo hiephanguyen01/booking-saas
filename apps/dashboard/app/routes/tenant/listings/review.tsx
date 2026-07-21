@@ -106,7 +106,7 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
         scanDescription="Chống lách sàn (§7.3)"
       />
 
-      {listing ? <ListingContentCard listing={listing} /> : null}
+      {listing ? <ListingContentCard listing={listing} type={listingType} /> : null}
       {listing ? <ListingPricingCard listing={listing} /> : null}
       {listing ? <ListingPolicyCard listing={listing} /> : null}
       {listing ? (

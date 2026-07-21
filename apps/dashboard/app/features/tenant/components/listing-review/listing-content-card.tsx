@@ -1,4 +1,4 @@
-import type { ListingResponse } from '@booking/contracts';
+import type { ListingResponse, ListingTypeResponse } from '@booking/contracts';
 import {
   Card,
   CardContent,
@@ -15,7 +15,13 @@ import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 
 /** "Nội dung" — the photos, description and location the partner submitted. */
-export function ListingContentCard({ listing }: { listing: ListingResponse }) {
+export function ListingContentCard({
+  listing,
+  type,
+}: {
+  listing: ListingResponse;
+  type?: ListingTypeResponse | null;
+}) {
   const hasLocation = Boolean(listing.address || listing.wardName || listing.provinceName);
   return (
     <Card>
@@ -24,6 +30,10 @@ export function ListingContentCard({ listing }: { listing: ListingResponse }) {
         <CardDescription>Nội dung đối tác gửi lên để kiểm duyệt.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <DetailGrid columns={1}>
+          <DetailField label="Loại dịch vụ" value={type?.name ?? '—'} />
+        </DetailGrid>
+
         <DetailSection title="Ảnh" emptyMessage="Chưa có ảnh nào.">
           {listing.photos.length > 0 ? <PhotoStrip photos={listing.photos} alt={listing.title} /> : null}
         </DetailSection>
