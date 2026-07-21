@@ -357,7 +357,11 @@ export const backendRefresh = (request: Request, refreshToken: string) =>
   tracedBackendCall('POST', '/auth/refresh', (traceHeaders) =>
     client().refresh(refreshToken, authOptions(request, traceHeaders)),
   );
-export const backendLogout = (request: Request, accessToken: string) =>
-  tracedBackendCall('POST', '/auth/logout', (traceHeaders) =>
-    client().logout(accessToken, authOptions(request, traceHeaders)),
-  );
+export const backendLogout = async (request: Request, accessToken: string): Promise<void> => {
+  await tracedBackendCall('POST', '/auth/logout', async (traceHeaders) => {
+    await client().logout(accessToken, authOptions(request, traceHeaders));
+    // The shared client intentionally exposes logout as void, so the Storefront
+    // can only record successful completion rather than the backend status code.
+    return { ok: true, status: 204 };
+  });
+};
