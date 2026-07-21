@@ -12,8 +12,41 @@ const rawEnvironmentSchema = z
     SESSION_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
     ALLOW_MOCK_PAYMENTS: z.enum(['true', 'false']).optional(),
     PAYMENT_REDIRECT_ORIGINS: z.string().optional(),
+    OTEL_SDK_DISABLED: z.string().optional(),
+    OTEL_TRACES_EXPORTER: z.string().optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().url().optional(),
+    OTEL_EXPORTER_OTLP_PROTOCOL: z.string().optional(),
+    OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: z.string().optional(),
+    OTEL_EXPORTER_OTLP_HEADERS: z.string().optional(),
+    OTEL_EXPORTER_OTLP_TRACES_HEADERS: z.string().optional(),
+    OTEL_EXPORTER_OTLP_TIMEOUT: z.string().optional(),
+    OTEL_EXPORTER_OTLP_TRACES_TIMEOUT: z.string().optional(),
+    OTEL_EXPORTER_OTLP_COMPRESSION: z.string().optional(),
+    OTEL_EXPORTER_OTLP_TRACES_COMPRESSION: z.string().optional(),
+    OTEL_SERVICE_NAME: z.string().optional(),
+    OTEL_RESOURCE_ATTRIBUTES: z.string().optional(),
+    OTEL_BSP_SCHEDULE_DELAY: z.string().optional(),
+    OTEL_BSP_EXPORT_TIMEOUT: z.string().optional(),
+    OTEL_BSP_MAX_QUEUE_SIZE: z.string().optional(),
+    OTEL_BSP_MAX_EXPORT_BATCH_SIZE: z.string().optional(),
+    STOREFRONT_TRACE_SAMPLE_RATE: z.string().optional(),
   })
   .passthrough();
+
+const HEADER_NAME_RE = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+const FORBIDDEN_OTLP_HEADERS = new Set([
+  'accept',
+  'connection',
+  'content-encoding',
+  'content-length',
+  'content-type',
+  'host',
+  'traceparent',
+  'tracestate',
+  'user-agent',
+  'x-request-id',
+]);
 
 function invalidEnvironment(message: string): never {
   throw new Error(`Invalid Storefront environment: ${message}`);
@@ -41,6 +74,131 @@ function requiredUrl(
     invalidEnvironment(`${name} cannot target a loopback host in production`);
   }
   return url;
+}
+
+function environmentBoolean(name: string, value: string | undefined, fallback = false): boolean {
+  if (!value) return fallback;
+  const normalized = value.toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return invalidEnvironment(`${name} must be true or false`);
+}
+
+function environmentInteger(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  if (!value) return fallback;
+  if (!/^\d+$/.test(value)) invalidEnvironment(`${name} must be an integer`);
+  const parsedValue = Number(value);
+  if (!Number.isSafeInteger(parsedValue) || parsedValue < minimum || parsedValue > maximum) {
+    invalidEnvironment(`${name} must be between ${minimum} and ${maximum}`);
+  }
+  return parsedValue;
+}
+
+function traceSampleRate(value: string | undefined): number {
+  if (!value) return 1;
+  const parsedValue = Number(value);
+  if (!Number.isFinite(parsedValue) || parsedValue < 0 || parsedValue > 1) {
+    invalidEnvironment('STOREFRONT_TRACE_SAMPLE_RATE must be between 0 and 1');
+  }
+  return parsedValue;
+}
+
+function validateOtlpEndpoint(name: string, value: string): URL {
+  const url = new URL(value);
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    invalidEnvironment(`${name} must use http or https`);
+  }
+  if (url.username || url.password || url.hash) {
+    invalidEnvironment(`${name} cannot contain credentials or a fragment`);
+  }
+  return url;
+}
+
+function resolveOtlpTracesEndpoint(): URL | undefined {
+  if (raw.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) {
+    return validateOtlpEndpoint(
+      'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT',
+      raw.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+    );
+  }
+  if (!raw.OTEL_EXPORTER_OTLP_ENDPOINT) return undefined;
+
+  const url = validateOtlpEndpoint('OTEL_EXPORTER_OTLP_ENDPOINT', raw.OTEL_EXPORTER_OTLP_ENDPOINT);
+  const basePath = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`;
+  url.pathname = `${basePath}v1/traces`;
+  return url;
+}
+
+function decodeListValue(name: string, value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return invalidEnvironment(`${name} contains invalid percent encoding`);
+  }
+}
+
+function keyValueList(name: string, value: string | undefined): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const rawMember of value?.split(',') ?? []) {
+    const member = rawMember.trim();
+    if (!member) continue;
+    const separator = member.indexOf('=');
+    if (separator <= 0) invalidEnvironment(`${name} entries must use key=value`);
+    const key = decodeListValue(name, member.slice(0, separator).trim());
+    const memberValue = decodeListValue(name, member.slice(separator + 1).trim());
+    if (!key || Object.hasOwn(result, key)) {
+      invalidEnvironment(`${name} contains an empty or duplicate key`);
+    }
+    result[key] = memberValue;
+  }
+  return result;
+}
+
+function otlpHeaders(): Record<string, string> {
+  const result = {
+    ...keyValueList('OTEL_EXPORTER_OTLP_HEADERS', raw.OTEL_EXPORTER_OTLP_HEADERS),
+    ...keyValueList(
+      'OTEL_EXPORTER_OTLP_TRACES_HEADERS',
+      raw.OTEL_EXPORTER_OTLP_TRACES_HEADERS,
+    ),
+  };
+  for (const key of Object.keys(result)) {
+    const normalized = key.toLowerCase();
+    if (!HEADER_NAME_RE.test(key) || FORBIDDEN_OTLP_HEADERS.has(normalized)) {
+      invalidEnvironment(`OTLP exporter header ${key} is not allowed`);
+    }
+  }
+  return result;
+}
+
+function otlpCompression(): 'none' | 'gzip' {
+  const value = (
+    raw.OTEL_EXPORTER_OTLP_TRACES_COMPRESSION ??
+    raw.OTEL_EXPORTER_OTLP_COMPRESSION ??
+    'none'
+  ).toLowerCase();
+  if (value !== 'none' && value !== 'gzip') {
+    invalidEnvironment('OTLP trace compression must be none or gzip');
+  }
+  return value;
+}
+
+function otlpProtocol(): 'http/json' {
+  const value = (
+    raw.OTEL_EXPORTER_OTLP_TRACES_PROTOCOL ??
+    raw.OTEL_EXPORTER_OTLP_PROTOCOL ??
+    'http/json'
+  ).toLowerCase();
+  if (value !== 'http/json') {
+    invalidEnvironment('Storefront tracing supports only the OTLP http/json protocol');
+  }
+  return value;
 }
 
 const backendUrl = requiredUrl('BACKEND_URL', raw.BACKEND_URL, 'http://localhost:3000');
@@ -98,6 +256,39 @@ if (production && raw.ALLOW_MOCK_PAYMENTS === 'true') {
   invalidEnvironment('ALLOW_MOCK_PAYMENTS cannot be true in production');
 }
 
+const tracesExporter = (raw.OTEL_TRACES_EXPORTER ?? 'otlp').toLowerCase();
+if (!['none', 'otlp'].includes(tracesExporter)) {
+  invalidEnvironment('OTEL_TRACES_EXPORTER must be otlp or none');
+}
+const otlpEndpoint = resolveOtlpTracesEndpoint();
+const tracingDisabled = environmentBoolean('OTEL_SDK_DISABLED', raw.OTEL_SDK_DISABLED);
+const tracingEnabled = !tracingDisabled && tracesExporter === 'otlp' && Boolean(otlpEndpoint);
+const maxQueueSize = environmentInteger(
+  'OTEL_BSP_MAX_QUEUE_SIZE',
+  raw.OTEL_BSP_MAX_QUEUE_SIZE,
+  2048,
+  1,
+  100_000,
+);
+const maxExportBatchSize = environmentInteger(
+  'OTEL_BSP_MAX_EXPORT_BATCH_SIZE',
+  raw.OTEL_BSP_MAX_EXPORT_BATCH_SIZE,
+  512,
+  1,
+  10_000,
+);
+if (maxExportBatchSize > maxQueueSize) {
+  invalidEnvironment('OTEL_BSP_MAX_EXPORT_BATCH_SIZE cannot exceed OTEL_BSP_MAX_QUEUE_SIZE');
+}
+const resourceAttributes = keyValueList(
+  'OTEL_RESOURCE_ATTRIBUTES',
+  raw.OTEL_RESOURCE_ATTRIBUTES,
+);
+const serviceName = raw.OTEL_SERVICE_NAME?.trim() || resourceAttributes['service.name'] || 'booking-storefront';
+if (serviceName.length > 255) invalidEnvironment('OTEL_SERVICE_NAME is too long');
+const serviceVersion = resourceAttributes['service.version'] || '0.0.1';
+resourceAttributes['deployment.environment.name'] ??= raw.NODE_ENV;
+
 export const storefrontEnv = Object.freeze({
   nodeEnv: raw.NODE_ENV,
   production,
@@ -110,4 +301,38 @@ export const storefrontEnv = Object.freeze({
   secureCookies,
   allowMockPayments: raw.ALLOW_MOCK_PAYMENTS === 'true',
   paymentRedirectOrigins,
+  tracing: Object.freeze({
+    enabled: tracingEnabled,
+    endpoint: otlpEndpoint,
+    protocol: otlpProtocol(),
+    headers: Object.freeze(otlpHeaders()),
+    compression: otlpCompression(),
+    timeoutMs: environmentInteger(
+      'OTEL_EXPORTER_OTLP_TRACES_TIMEOUT',
+      raw.OTEL_EXPORTER_OTLP_TRACES_TIMEOUT ?? raw.OTEL_EXPORTER_OTLP_TIMEOUT,
+      10_000,
+      1,
+      120_000,
+    ),
+    scheduledDelayMs: environmentInteger(
+      'OTEL_BSP_SCHEDULE_DELAY',
+      raw.OTEL_BSP_SCHEDULE_DELAY,
+      5_000,
+      1,
+      120_000,
+    ),
+    exportTimeoutMs: environmentInteger(
+      'OTEL_BSP_EXPORT_TIMEOUT',
+      raw.OTEL_BSP_EXPORT_TIMEOUT,
+      30_000,
+      1,
+      300_000,
+    ),
+    maxQueueSize,
+    maxExportBatchSize,
+    sampleRate: traceSampleRate(raw.STOREFRONT_TRACE_SAMPLE_RATE),
+    serviceName,
+    serviceVersion,
+    resourceAttributes: Object.freeze(resourceAttributes),
+  }),
 });
