@@ -18,8 +18,9 @@ import { storefrontEnv } from '../lib/env.server';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import { readRecentCodes } from '../lib/recent.server';
-import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../lib/time';
+import { dateLabelInTz, timeInTz } from '../lib/time';
 import { useLocale } from '../lib/use-locale';
+import { useStorefrontTimezone } from '../lib/use-storefront-context';
 import type { Route } from './+types/bookings';
 import { errorStatus } from '../lib/http-status';
 
@@ -88,6 +89,7 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
   const { recent, myBookings } = loaderData;
   const { t } = useTranslation(NsI18n.Booking);
   const locale = useLocale();
+  const timezone = useStorefrontTimezone();
   const sent = actionData?.sent ?? false;
 
   return (
@@ -123,8 +125,8 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
                     <span>
                       <span className="block font-mono text-sm font-semibold">{booking.code}</span>
                       <span className="text-xs text-muted-foreground">
-                        {dateLabelInTz(booking.startUtc, DEFAULT_TZ, locale)},{' '}
-                        {timeInTz(booking.startUtc, DEFAULT_TZ)}
+                        {dateLabelInTz(booking.startUtc, timezone, locale)},{' '}
+                        {timeInTz(booking.startUtc, timezone)}
                       </span>
                     </span>
                     <span className="shrink-0 rounded-sm bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">

@@ -12,10 +12,10 @@ import {
   partnerPromotionsToggleSchema,
   planResponseSchema,
   platformHealthResponseSchema,
-  publicTenantResponseSchema,
   setDefaultCancellationPolicyInputSchema,
   slugAvailabilityResponseSchema,
   slugSchema,
+  storefrontTenantResponseSchema,
   subscriptionHistoryItemSchema,
   subscriptionResponseSchema,
   subscriptionStatusResponseSchema,
@@ -59,7 +59,7 @@ export class SlugAvailabilityResponseDto extends createZodDto(slugAvailabilityRe
 export class DomainResponseDto extends createZodDto(domainResponseSchema) {}
 export class DomainVerificationResultDto extends createZodDto(domainVerificationResultSchema) {}
 export class SubscriptionStatusResponseDto extends createZodDto(subscriptionStatusResponseSchema) {}
-export class PublicTenantResponseDto extends createZodDto(publicTenantResponseSchema) {}
+export class StorefrontTenantResponseDto extends createZodDto(storefrontTenantResponseSchema) {}
 export class PlatformHealthResponseDto extends createZodDto(platformHealthResponseSchema) {}
 
 /** Newly created tenant plus its auto-provisioned primary domain (POST /admin/tenants). */

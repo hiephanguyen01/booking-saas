@@ -1,10 +1,17 @@
+import {
+  resolveStorefrontTimezone,
+  STOREFRONT_TENANT_TIMEZONE,
+} from './timezone-runtime';
+
 /**
  * Timezone helpers (§18) — the DB/API speak UTC ISO; the storefront shows and
  * accepts wall-clock times in the resource/tenant zone. Uses `Intl` only (no tz
  * lib). Correct for fixed-offset zones like `Asia/Ho_Chi_Minh`; DST zones have a
  * rare ambiguous-hour edge we accept for Phase 1 (VN has no DST).
  */
-export const DEFAULT_TZ = 'Asia/Ho_Chi_Minh';
+export const DEFAULT_TZ = STOREFRONT_TENANT_TIMEZONE;
+
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** ms to add to a UTC instant to get the given zone's wall time (e.g. +7h for ICT). */
 function tzOffsetMs(tz: string, at: Date): number {
@@ -32,17 +39,18 @@ function tzOffsetMs(tz: string, at: Date): number {
 
 /** Convert a wall-clock `YYYY-MM-DD` + `HH:MM` in `tz` to a UTC ISO instant. */
 export function zonedToUtcIso(dateStr: string, timeStr: string, tz: string): string {
+  const timezone = resolveStorefrontTimezone(tz);
   const [y, m, d] = dateStr.split('-').map(Number);
   const [hh, mm] = timeStr.split(':').map(Number);
   const guess = Date.UTC(y, m - 1, d, hh, mm);
-  const offset = tzOffsetMs(tz, new Date(guess));
+  const offset = tzOffsetMs(timezone, new Date(guess));
   return new Date(guess - offset).toISOString();
 }
 
 /** `HH:MM` wall time of a UTC instant in `tz`. */
 export function timeInTz(utcIso: string, tz: string): string {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: tz,
+    timeZone: resolveStorefrontTimezone(tz),
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
@@ -51,19 +59,26 @@ export function timeInTz(utcIso: string, tz: string): string {
 
 /** e.g. "T4, 20 thg 7" — a short date label in `tz`. */
 export function dateLabelInTz(utcIsoOrDate: string, tz: string, locale: string): string {
+  const timezone = resolveStorefrontTimezone(tz);
+  // `new Date('YYYY-MM-DD')` means UTC midnight, which renders as the previous
+  // calendar day in negative-offset zones. Anchor date-only values at local noon
+  // in the tenant zone so the requested wall date remains stable in every zone.
+  const value = DATE_ONLY_RE.test(utcIsoOrDate)
+    ? zonedToUtcIso(utcIsoOrDate, '12:00', timezone)
+    : utcIsoOrDate;
   return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
-    timeZone: tz,
+    timeZone: timezone,
     weekday: 'short',
     day: '2-digit',
     month: 'short',
-  }).format(new Date(utcIsoOrDate));
+  }).format(new Date(value));
 }
 
 /** Today's `YYYY-MM-DD` in `tz`. */
 export function todayInTz(tz: string): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
+      timeZone: resolveStorefrontTimezone(tz),
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -78,7 +93,7 @@ export function todayInTz(tz: string): string {
 export function dateOnlyInTz(utcIso: string, tz: string): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
+      timeZone: resolveStorefrontTimezone(tz),
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

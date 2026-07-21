@@ -28,9 +28,10 @@ import { CalendarDays, ChevronDown, Clock3, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { PendingLink } from '../../../components/pending-link';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '../../../lib/time';
+import { dateLabelInTz, timeInTz } from '../../../lib/time';
 import { formatVnd } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
+import { useStorefrontTimezone } from '../../../lib/use-storefront-context';
 import type { RoomOption } from '../listing-group-types';
 import { checkoutHref, slotInterval, toggleContiguousSlot } from '../listing-group-utils';
 
@@ -96,13 +97,14 @@ function SlotPickerContent({
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
+  const tenantTimezone = useStorefrontTimezone();
   const [selected, setSelected] = useState<HourlySlot[]>([]);
   const [useRequestedInterval, setUseRequestedInterval] = useState(
     Boolean(option.start && option.end),
   );
   const [expanded, setExpanded] = useState(false);
   const [selectionError, setSelectionError] = useState('');
-  const timezone = option.availability?.timezone ?? DEFAULT_TZ;
+  const timezone = option.availability?.timezone ?? tenantTimezone;
   const interval =
     useRequestedInterval && option.start && option.end
       ? { start: option.start, end: option.end }

@@ -13,6 +13,7 @@ import { addDays, nightsBetween, zonedToUtcIso } from '../lib/time';
 import { ListingGroupPage } from '../features/listing-group/listing-group-page';
 import { reviewListResponseSchema } from '@booking/contracts';
 import { publicGetData } from '../lib/api.server';
+import { getCurrentStorefrontTenant } from '../lib/request-context.server';
 
 const LISTING_DETAIL_CONCURRENCY = 4;
 const PACKAGE_AVAILABILITY_CONCURRENCY = 3;
@@ -42,6 +43,7 @@ async function safe<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
+  const tenantTimezone = getCurrentStorefrontTenant().defaultTimezone;
   const group = await fetchListingGroup(request, params.groupSlug);
   if (!group) throw new Response('Listing group not found', { status: 404 });
 
@@ -57,7 +59,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       schema: reviewListResponseSchema,
     }).catch(() => null),
   ]);
-  const state = parseSearchState(url.searchParams);
+  const state = parseSearchState(url.searchParams, tenantTimezone);
   const fixedPackages = group.bookingSelection === 'fixed_packages';
   const hasAvailabilityFilter = fixedPackages
     ? state.hasDateSelection
@@ -136,7 +138,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         const slots =
           availability?.mode === 'hourly' ? availability.days.flatMap((day) => day.slots) : [];
         const openSlots = slots.filter((slot) => slot.available);
-        const timezone = availability?.timezone ?? 'Asia/Ho_Chi_Minh';
+        const timezone = availability?.timezone ?? tenantTimezone;
         const requestedStart = state.hasTimeSelection
           ? zonedToUtcIso(state.date, state.startTime, timezone)
           : null;
@@ -246,7 +248,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         nights >= minNights &&
         nights <= maxNights &&
         rangeDates(state.from, state.to).every((date) => open.has(date));
-      const timezone = availability?.timezone ?? 'Asia/Ho_Chi_Minh';
+      const timezone = availability?.timezone ?? tenantTimezone;
       const checkinTime = typeof daily.checkinTime === 'string' ? daily.checkinTime : '14:00';
       const checkoutTime = typeof daily.checkoutTime === 'string' ? daily.checkoutTime : '12:00';
       const roomStart = zonedToUtcIso(state.from, checkinTime, timezone);

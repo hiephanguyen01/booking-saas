@@ -4,7 +4,8 @@ import { fetchAvailability } from './booking.server';
 import { fetchQuote } from './catalog.server';
 import { isValidDateOnly } from './date-only';
 import { eligibleDailyRange } from './daily-range';
-import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from './time';
+import { getCurrentStorefrontTenant } from './request-context.server';
+import { addDays, todayInTz, zonedToUtcIso } from './time';
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
 
@@ -29,7 +30,7 @@ export async function loadListingBookingData(
       return bookingDataError('invalid-request', 400);
     }
 
-    const timezone = DEFAULT_TZ;
+    const timezone = getCurrentStorefrontTenant().defaultTimezone;
     if (mode === 'hourly') {
       const requestedDate = url.searchParams.get('date');
       const dateValue =

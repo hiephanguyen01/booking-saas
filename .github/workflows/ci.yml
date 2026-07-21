@@ -15,6 +15,10 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      # Prisma generate validates that its datasource URL exists but does not
+      # connect to PostgreSQL during lint/typecheck/build.
+      MIGRATE_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/booking
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -24,7 +28,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@booking/storefront security
-      - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard
+      - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard --filter=@booking/api
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
 

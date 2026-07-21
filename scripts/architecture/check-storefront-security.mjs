@@ -39,7 +39,9 @@ let tenantResolutionCallSites = 0;
 
 for (const file of storefrontFiles) {
   const path = relative(root, file);
+  const extension = extname(file);
   const source = readFileSync(file, 'utf8');
+  const isJsxSource = extension === '.tsx' || extension === '.jsx';
 
   if (/\bfetch\s*\(/.test(source) && !directFetchAllowlist.has(path)) {
     failures.push(
@@ -51,6 +53,14 @@ for (const file of storefrontFiles) {
   }
   if (/http:\/\/localhost:(3000|5174)/.test(source) && !path.endsWith('/lib/env.server.ts')) {
     failures.push(`${path}: production-sensitive localhost fallback`);
+  }
+  if (isJsxSource && /\bstyle\s*=\s*\{/.test(source)) {
+    failures.push(
+      `${path}: JSX inline style is forbidden; use compiled classes or an external stylesheet`,
+    );
+  }
+  if (isJsxSource && /<style(?:\s|>)/i.test(source)) {
+    failures.push(`${path}: inline <style> elements are forbidden; use an external stylesheet`);
   }
   if (path.endsWith('/lib/request-auth.server.ts')) {
     failures.push(`${path}: use request-context.server.ts; compatibility shims are forbidden`);

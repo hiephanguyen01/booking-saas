@@ -111,8 +111,11 @@ function amenityParams(params: URLSearchParams): string[] {
   return amenities;
 }
 
-export function parseSearchState(params: URLSearchParams): StorefrontSearchState {
-  const today = todayInTz(DEFAULT_TZ);
+export function parseSearchState(
+  params: URLSearchParams,
+  timezone: string = DEFAULT_TZ,
+): StorefrontSearchState {
+  const today = todayInTz(timezone);
   const rawMode = params.get('mode');
   const mode: SearchMode = rawMode === 'daily' || rawMode === 'inventory' ? rawMode : 'hourly';
   const rawDate = params.get('date');

@@ -1,5 +1,6 @@
 import { createClient } from 'redis';
 import { storefrontEnv } from './env.server';
+import { storefrontLogError } from './logger.server';
 
 const DELETE_IF_VALUE_SCRIPT = `
 if redis.call('GET', KEYS[1]) == ARGV[1] then
@@ -23,10 +24,16 @@ let clientPromise: Promise<StorefrontRedisClient> | undefined;
 async function client() {
   if (!clientPromise) {
     const instance = createClient({ url: storefrontEnv.redisUrl });
-    instance.on('error', (error: Error) =>
-      console.error('Storefront Redis connection error', error),
-    );
-    clientPromise = instance.connect().then(() => instance) as Promise<StorefrontRedisClient>;
+    instance.on('error', (error: Error) => storefrontLogError('redis.connection_error', error));
+    clientPromise = instance
+      .connect()
+      .then(() => instance)
+      .catch((error: unknown) => {
+        // Do not keep a rejected singleton promise forever. A later request can
+        // establish a fresh connection after Redis or the network recovers.
+        clientPromise = undefined;
+        throw error;
+      }) as Promise<StorefrontRedisClient>;
   }
   return clientPromise;
 }

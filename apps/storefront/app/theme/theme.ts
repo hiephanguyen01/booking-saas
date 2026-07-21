@@ -9,8 +9,9 @@ import {
  * Tenant theming via CSS variables (TONG-QUAN.md §16.2). The tenant's
  * `theme_config.colors` drive the shadcn brand tokens (`--background`/`--primary`/
  * `--ring`) so every `@booking/ui` component renders in the tenant brand — plus
- * the legacy `--sf-*` vars for hand-rolled classNames. Emitted once at SSR into
- * a `<style>:root{…}</style>` (see root.tsx), so a theme change needs no rebuild.
+ * the legacy `--sf-*` vars for hand-rolled classNames. The sanitized output is
+ * served from the tenant-scoped `/theme.css` resource route, so a theme change
+ * needs no application rebuild and document CSP does not require inline styles.
  *
  * `--accent` is deliberately NOT tenant-driven: in shadcn it is the neutral
  * hover/focus surface (dropdown-menu, select, command, calendar, sidebar, …), not
