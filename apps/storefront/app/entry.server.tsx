@@ -34,6 +34,9 @@ function contentSecurityPolicy(nonce: string): string {
     `script-src ${scriptSources.join(' ')}`,
     "script-src-attr 'none'",
     "style-src 'self'",
+    // Radix Popper/Popover/Select use runtime style attributes for measured
+    // positioning and CSS variables. Storefront-authored JSX styles are blocked
+    // by check-storefront-security.mjs, but attr 'none' would break those overlays.
     "style-src-attr 'unsafe-inline'",
     `img-src ${imageSources.join(' ')}`,
     "font-src 'self' data:",
