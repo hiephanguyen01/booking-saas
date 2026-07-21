@@ -12,6 +12,8 @@ import { storefrontEnv } from './env.server';
  */
 const AFF_PREFIX = 'aff_';
 const VISITOR_COOKIE = 'sf_visitor';
+const REF_CODE_RE = /^[A-Z0-9_-]{1,50}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 /** 30-day attribution window (§15.1). Configurable per tenant is a later phase. */
 const AFF_MAX_AGE = 60 * 60 * 24 * 30;
 const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
@@ -36,7 +38,7 @@ const visitorCookie = signedCookie(VISITOR_COOKIE, VISITOR_MAX_AGE);
 /** The referral code currently attributed for this tenant, if any. */
 export async function readRefCode(request: Request, tenantId: string): Promise<string | null> {
   const value: unknown = await attributionCookie(tenantId).parse(request.headers.get('Cookie'));
-  return typeof value === 'string' && value ? value : null;
+  return typeof value === 'string' && REF_CODE_RE.test(value) ? value : null;
 }
 
 /** `Set-Cookie` storing the last-clicked referral code for this tenant. */
@@ -49,7 +51,9 @@ export async function resolveVisitorId(
   request: Request,
 ): Promise<{ id: string; setCookie: string | null }> {
   const existing: unknown = await visitorCookie.parse(request.headers.get('Cookie'));
-  if (typeof existing === 'string' && existing) return { id: existing, setCookie: null };
+  if (typeof existing === 'string' && UUID_RE.test(existing)) {
+    return { id: existing, setCookie: null };
+  }
 
   const id = randomUUID();
   return { id, setCookie: await visitorCookie.serialize(id) };
