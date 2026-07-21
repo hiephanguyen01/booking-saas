@@ -14,14 +14,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const listingType = (types.data ?? []).find(
     (type) => type.id === typeId && type.structure !== 'standalone',
   );
-  if (!listingType) throw new Response('Loại dịch vụ không hỗ trợ bài đăng nhóm.', { status: 404 });
+  if (!listingType) throw new Response('Loại dịch vụ không hỗ trợ tin đăng nhiều hạng mục.', { status: 404 });
   return { listingType, partnerId: membership.partnerId };
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const { auth, membership, can } = await requirePartner(request);
   if (!can('partner.listings.write'))
-    return data({ error: 'Không có quyền tạo bài đăng.', fieldErrors: null }, { status: 403 });
+    return data({ error: 'Không có quyền tạo tin đăng.', fieldErrors: null }, { status: 403 });
   const parsed = createListingGroupInputSchema.safeParse(await request.json());
   if (!parsed.success)
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
@@ -32,7 +32,7 @@ export async function action({ request }: Route.ActionArgs) {
   );
   if (!res.ok || !res.data)
     return data(
-      { error: res.error ?? 'Tạo bài đăng không thành công.', fieldErrors: res.errors ?? null },
+      { error: res.error ?? 'Tạo tin đăng không thành công.', fieldErrors: res.errors ?? null },
       { status: 400 },
     );
   return redirect(`/partner/listing-groups/${res.data.id}`);
@@ -42,10 +42,10 @@ export default function NewListingGroupPage({ loaderData, actionData }: Route.Co
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <BackLink to="/partner/listings" label="Bài đăng" className="mb-2" />
+        <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
         <PageHeader
           title="Thông tin chung"
-          description={`Tạo bài đăng ${loaderData.listingType.name} chứa nhiều ${loaderData.listingType.itemLabel || 'hạng mục'}.`}
+          description={`Tạo tin đăng ${loaderData.listingType.name} chứa nhiều ${loaderData.listingType.itemLabel || 'hạng mục'}.`}
         />
       </div>
       <ListingGroupForm

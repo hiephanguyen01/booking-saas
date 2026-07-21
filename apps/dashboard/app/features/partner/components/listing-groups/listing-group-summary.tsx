@@ -86,7 +86,7 @@ export function ListingGroupContentCard({ group }: { group: ListingGroupDetailRe
     <Card>
       <CardHeader>
         <CardTitle>Nội dung</CardTitle>
-        <CardDescription>Album và thông tin dùng chung cho toàn bộ bài đăng.</CardDescription>
+        <CardDescription>Album và thông tin dùng chung cho toàn bộ tin đăng.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <DetailSection title="Ảnh" emptyMessage="Chưa có ảnh.">

@@ -81,7 +81,7 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
   if (!loaderData.selectedType) {
     return (
       <div className="flex flex-col gap-5">
-        <PageHeader title="Tạo bài đăng" description="Chọn loại dịch vụ để bắt đầu." />
+        <PageHeader title="Tạo tin đăng" description="Chọn loại dịch vụ để bắt đầu." />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {loaderData.listingTypes.map((type) => (
             <Card key={type.id}>
@@ -89,7 +89,7 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
                 <CardTitle>{type.name}</CardTitle>
                 <CardDescription>
                   {type.structure === 'grouped'
-                    ? `Một bài đăng chứa nhiều ${type.itemLabel || 'hạng mục'}.`
+                    ? `Một tin đăng chứa nhiều ${type.itemLabel || 'hạng mục'}.`
                     : type.structure === 'flexible'
                       ? 'Có thể tạo độc lập hoặc theo nhóm.'
                       : 'Một hạng mục độc lập.'}
@@ -131,12 +131,12 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
           <Card>
             <CardHeader>
               <CardTitle>Nhiều {type.itemLabel || 'hạng mục'}</CardTitle>
-              <CardDescription>Một bài đăng chung chứa nhiều lựa chọn có thể đặt.</CardDescription>
+              <CardDescription>Một tin đăng chung chứa nhiều lựa chọn có thể đặt.</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
                 <Link to={`/partner/listings/new?type=${type.id}&mode=grouped`}>
-                  Tạo bài đăng nhóm
+                  Tạo tin đăng nhiều hạng mục
                 </Link>
               </Button>
             </CardContent>

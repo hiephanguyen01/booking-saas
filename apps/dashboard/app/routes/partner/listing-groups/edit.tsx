@@ -21,9 +21,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
   ]);
   if (!groupRes.ok || !groupRes.data)
-    throw new Response('Không tìm thấy bài đăng.', { status: groupRes.status });
+    throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
   if (!['draft', 'archived'].includes(groupRes.data.status))
-    throw new Response('Hãy ẩn bài đăng trước khi chỉnh sửa.', { status: 409 });
+    throw new Response('Hãy ẩn tin đăng trước khi chỉnh sửa.', { status: 409 });
   const listingType = (typesRes.data ?? []).find(
     (type) => type.id === groupRes.data?.listingTypeId,
   );
@@ -55,7 +55,7 @@ export default function EditListingGroupPage({ loaderData, actionData }: Route.C
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <BackLink to={`/partner/listing-groups/${group.id}`} label="Bài đăng" className="mb-2" />
+        <BackLink to={`/partner/listing-groups/${group.id}`} label="Tin đăng" className="mb-2" />
         <PageHeader title="Sửa thông tin chung" description={group.title} />
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
@@ -74,9 +74,9 @@ export default function EditListingGroupPage({ loaderData, actionData }: Route.C
       {group.status === 'archived' ? (
         <Alert>
           <TriangleAlert />
-          <AlertTitle>Bài đăng đang được ẩn</AlertTitle>
+          <AlertTitle>Tin đăng đang được ẩn</AlertTitle>
           <AlertDescription>
-            Lưu thay đổi sẽ chuyển bài đăng và toàn bộ hạng mục về bản nháp; bạn sẽ cần gửi duyệt
+            Lưu thay đổi sẽ chuyển tin đăng và toàn bộ hạng mục về bản nháp; bạn sẽ cần gửi duyệt
             lại để hiển thị.
           </AlertDescription>
         </Alert>

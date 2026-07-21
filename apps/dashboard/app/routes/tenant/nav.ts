@@ -42,7 +42,7 @@ export const tenantNavSections: DashboardNavSection[] = [
         permission: 'tenant.listings.read',
       },
       {
-        title: 'Bài đăng',
+        title: 'Tin đăng nhiều hạng mục',
         to: dashboardPaths.tenant.listingGroups,
         icon: Files,
         permission: 'tenant.listings.read',

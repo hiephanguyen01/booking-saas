@@ -13,23 +13,23 @@ export const GROUP_STATUS_COPY: Record<
 > = {
   draft: {
     label: 'Nháp',
-    title: 'Bài đăng đang ở bản nháp',
+    title: 'Tin đăng đang ở bản nháp',
     description: 'Bạn có thể thêm, sửa, nhân bản hoặc xóa hạng mục trước khi gửi duyệt.',
   },
   pending_review: {
     label: 'Chờ duyệt',
-    title: 'Bài đăng đang chờ duyệt',
+    title: 'Tin đăng đang chờ duyệt',
     description: 'Nội dung tạm thời chỉ đọc trong lúc quản trị viên xem xét.',
   },
   published: {
     label: 'Đang hiển thị',
-    title: 'Bài đăng đang hiển thị',
+    title: 'Tin đăng đang hiển thị',
     description:
-      'Bạn vẫn có thể quản lý giờ hoạt động. Hãy ẩn bài đăng trước khi sửa nội dung hạng mục.',
+      'Bạn vẫn có thể quản lý giờ hoạt động. Hãy ẩn tin đăng trước khi sửa nội dung hạng mục.',
   },
   archived: {
     label: 'Đã ẩn',
-    title: 'Bài đăng đang được ẩn',
+    title: 'Tin đăng đang được ẩn',
     description: 'Chuyển về bản nháp để sửa hạng mục, hoặc đăng lại nội dung hiện tại.',
   },
 };
@@ -56,11 +56,11 @@ export function GroupStatusAlert({
   return (
     <Alert>
       {adminLocked ? <Lock /> : <Info />}
-      <AlertTitle>{adminLocked ? 'Bài đăng bị quản trị viên ẩn' : statusMeta.title}</AlertTitle>
+      <AlertTitle>{adminLocked ? 'Tin đăng bị quản trị viên ẩn' : statusMeta.title}</AlertTitle>
       <AlertDescription>
         <p>
           {adminLocked
-            ? 'Bạn có thể xem nội dung và quản lý giờ hoạt động, nhưng chỉ quản trị viên mới có thể bỏ ẩn bài đăng.'
+            ? 'Bạn có thể xem nội dung và quản lý giờ hoạt động, nhưng chỉ quản trị viên mới có thể bỏ ẩn tin đăng.'
             : statusMeta.description}
         </p>
         <GroupLifecycleActions
@@ -120,12 +120,12 @@ export function GroupLifecycleActions({
               disabled={busy}
               className="text-destructive hover:text-destructive"
             >
-              <Trash2 /> Xóa bài đăng
+              <Trash2 /> Xóa tin đăng
             </Button>
           }
-          title="Xóa bài đăng?"
+          title="Xóa tin đăng?"
           description="Thao tác này không thể hoàn tác."
-          confirmLabel="Xóa bài đăng"
+          confirmLabel="Xóa tin đăng"
           busy={busy}
           onConfirm={() => submit('delete-group')}
         />

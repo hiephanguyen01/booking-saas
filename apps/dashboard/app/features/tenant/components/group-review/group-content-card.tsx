@@ -20,7 +20,7 @@ export function GroupContentCard({ group }: { group: ListingGroupDetailResponse 
     <Card>
       <CardHeader>
         <CardTitle>Nội dung chung</CardTitle>
-        <CardDescription>Album và nội dung dùng chung cho toàn bộ bài đăng.</CardDescription>
+        <CardDescription>Album và nội dung dùng chung cho toàn bộ tin đăng.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <DetailGrid columns={3}>

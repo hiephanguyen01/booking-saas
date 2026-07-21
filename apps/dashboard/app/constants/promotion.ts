@@ -10,7 +10,7 @@ export const SCOPE_LABELS: Record<ScopeKey, string> = {
   all: 'Toàn bộ cửa hàng',
   listing: 'Một listing cụ thể',
   listing_type: 'Loại dịch vụ',
-  listing_group: 'Bài đăng (nhóm)',
+  listing_group: 'Tin đăng (nhiều hạng mục)',
   category: 'Danh mục',
   partner: 'Đối tác',
 };

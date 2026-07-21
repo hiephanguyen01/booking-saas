@@ -48,7 +48,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
   ]);
   if (!groupRes.ok || !groupRes.data)
-    throw new Response('Không tìm thấy bài đăng.', { status: groupRes.status });
+    throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
   return {
     group: groupRes.data,
     listingType:
@@ -81,7 +81,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
     <div className="flex flex-col gap-6">
       <PageHeader
         title={group.title}
-        description={`${loaderData.listingType?.name ?? 'Bài đăng'} · ${group.listingCount} ${itemLabel}`}
+        description={`${loaderData.listingType?.name ?? 'Tin đăng'} · ${group.listingCount} ${itemLabel}`}
         actions={
           <>
             <ListingStatusBadge status={group.status} />
@@ -105,7 +105,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
             <div>
               <CardTitle className="capitalize">{itemLabel} & giá</CardTitle>
               <CardDescription>
-                Những lựa chọn khách hàng có thể đặt trong bài đăng này.
+                Những lựa chọn khách hàng có thể đặt trong tin đăng này.
               </CardDescription>
             </div>
             {canEditItems ? (
@@ -202,7 +202,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         <StatCard
           label="Lượt đặt"
           value={formatNumber(group.bookingCount)}
-          hint="Tổng lượt đặt của bài đăng"
+          hint="Tổng lượt đặt của tin đăng"
           icon={<CalendarCheck className="size-4" aria-hidden />}
         />
       </div>

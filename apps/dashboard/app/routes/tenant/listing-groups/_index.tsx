@@ -24,7 +24,7 @@ const LISTING_GROUP_FILTER_SPEC: FilterSpec = [
 ];
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Bài đăng · Tenant · Bookify' }];
+  return [{ title: 'Tin đăng nhiều hạng mục · Tenant · Bookify' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
@@ -38,7 +38,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     result: res.ok ? res.data : null,
     canModerate: can('tenant.listings.publish'),
     filters,
-    error: res.ok ? null : (res.error ?? 'Không tải được bài đăng.'),
+    error: res.ok ? null : (res.error ?? 'Không tải được tin đăng.'),
   };
 }
 
@@ -71,7 +71,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
 
   const columns: DataTableColumn<ListingGroupResponse>[] = [
     {
-      header: 'Bài đăng',
+      header: 'Tin đăng',
       cell: (g) => (
         <div className="min-w-0">
           <Link
@@ -135,8 +135,8 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Bài đăng"
-        description="Duyệt, ẩn hoặc mở lại các bài đăng nhóm của đối tác."
+        title="Tin đăng nhiều hạng mục"
+        description="Duyệt, ẩn hoặc mở lại các tin đăng nhiều hạng mục của đối tác."
       />
       <ErrorBanner error={error ?? actionError} />
       <ListToolbar
@@ -150,7 +150,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
         data={groups}
         getRowKey={(g) => g.id}
         emptyMessage={
-          hasActiveFilters(filters) ? 'Không có bài đăng khớp bộ lọc.' : 'Chưa có bài đăng nào.'
+          hasActiveFilters(filters) ? 'Không có tin đăng khớp bộ lọc.' : 'Chưa có tin đăng nào.'
         }
       />
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
