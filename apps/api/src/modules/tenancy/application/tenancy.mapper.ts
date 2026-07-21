@@ -3,7 +3,7 @@ import type {
   PartnerPromotionsToggle,
   PlanResponse,
   PlatformHealthResponse,
-  PublicTenantResponse,
+  StorefrontTenantResponse,
   SubscriptionHistoryItem,
   SubscriptionResponse,
   SubscriptionStatusResponse,
@@ -108,12 +108,13 @@ export function toSubscriptionHistoryItem(s: SubscriptionHistoryRecord): Subscri
   return { ...toSubscriptionResponse(s), planName: s.planName };
 }
 
-export function toPublicTenantResponse(t: TenantRecord, live: boolean): PublicTenantResponse {
+export function toPublicTenantResponse(t: TenantRecord, live: boolean): StorefrontTenantResponse {
   return {
     id: t.id,
     name: t.name,
     slug: t.slug,
     vertical: t.vertical as Vertical,
+    defaultTimezone: t.defaultTimezone,
     defaultLocale: t.defaultLocale as 'vi' | 'en',
     themeConfig: toThemeConfig(t.themeConfig),
     live,
