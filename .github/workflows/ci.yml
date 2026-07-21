@@ -28,20 +28,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@booking/storefront security
-      - id: quality-check
-        continue-on-error: true
-        run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard --filter=@booking/api > quality-diagnostics.log 2>&1
-      - name: Upload quality diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: quality-diagnostics
-          path: quality-diagnostics.log
-          if-no-files-found: error
-          retention-days: 1
-      - name: Fail when quality check failed
-        if: steps.quality-check.outcome == 'failure'
-        run: exit 1
+      - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard --filter=@booking/api
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
 
