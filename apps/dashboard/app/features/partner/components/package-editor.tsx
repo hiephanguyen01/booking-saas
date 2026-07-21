@@ -143,7 +143,7 @@ export function PackageEditor({
               reorderable
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Tối đa 8 ảnh. Ảnh đầu tiên là ảnh đại diện; nếu để trống sẽ dùng ảnh của listing.
+              Tối đa 8 ảnh. Ảnh đầu tiên là ảnh đại diện; nếu để trống sẽ dùng ảnh của tin đăng.
             </p>
           </Field>
         </div>

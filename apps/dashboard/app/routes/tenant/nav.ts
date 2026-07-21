@@ -36,13 +36,13 @@ export const tenantNavSections: DashboardNavSection[] = [
     label: 'Danh mục',
     items: [
       {
-        title: 'Listing',
+        title: 'Tin đăng',
         to: dashboardPaths.tenant.listings,
         icon: Store,
         permission: 'tenant.listings.read',
       },
       {
-        title: 'Bài đăng',
+        title: 'Tin đăng nhiều hạng mục',
         to: dashboardPaths.tenant.listingGroups,
         icon: Files,
         permission: 'tenant.listings.read',

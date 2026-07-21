@@ -21,7 +21,7 @@ import { ListingPolicyCard } from '~/features/tenant/components/listing-review/l
 import { ListingAttributesCard } from '~/features/tenant/components/listing-review/listing-attributes-card';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Kiểm duyệt listing · Tenant · Bookify' }];
+  return [{ title: 'Kiểm duyệt tin đăng · Tenant · Bookify' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -31,7 +31,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingReviewResponse>(`/tenant/listings/${params.listingId}/review`, auth),
   ]);
   if (!reviewRes.ok || !reviewRes.data) {
-    throw new Response(reviewRes.error ?? 'Không tìm thấy listing', { status: reviewRes.status });
+    throw new Response(reviewRes.error ?? 'Không tìm thấy tin đăng', { status: reviewRes.status });
   }
   const listing = listingRes.ok ? listingRes.data : null;
 
@@ -60,7 +60,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     basePath: `/tenant/listings/${params.listingId}`,
     intents: ['publish', 'republish', 'hide'],
     contactLeakMessage:
-      'Listing còn lộ thông tin liên hệ. Tích “Bỏ qua kiểm tra” để xuất bản bất chấp cảnh báo.',
+      'Tin đăng còn lộ thông tin liên hệ. Tích “Bỏ qua kiểm tra” để xuất bản bất chấp cảnh báo.',
     redirectTo: '/tenant/listings',
   });
 }
@@ -74,10 +74,10 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/listings" label="Danh sách listing" />
+      <BackLink to="/tenant/listings" label="Danh sách tin đăng" />
 
       <PageHeader
-        title={listing?.title ?? 'Kiểm duyệt listing'}
+        title={listing?.title ?? 'Kiểm duyệt tin đăng'}
         description={listing ? `/${listing.slug}` : undefined}
         actions={<ListingStatusBadge status={review.status} />}
       />
@@ -85,7 +85,7 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
       <ErrorBanner error={actionData?.error} />
       <ErrorBanner
         error={
-          listing ? null : 'Không tải được chi tiết listing — chỉ hiển thị checklist kiểm duyệt.'
+          listing ? null : 'Không tải được chi tiết tin đăng — chỉ hiển thị checklist kiểm duyệt.'
         }
       />
 
@@ -93,7 +93,7 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
         <PartnerSummaryCard
           partnerId={listing.partnerId}
           partner={listing.partner}
-          description="Chủ sở hữu listing đang được kiểm duyệt."
+          description="Chủ sở hữu tin đăng đang được kiểm duyệt."
         />
       ) : null}
 
@@ -106,7 +106,7 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
         scanDescription="Chống lách sàn (§7.3)"
       />
 
-      {listing ? <ListingContentCard listing={listing} /> : null}
+      {listing ? <ListingContentCard listing={listing} type={listingType} /> : null}
       {listing ? <ListingPricingCard listing={listing} /> : null}
       {listing ? <ListingPolicyCard listing={listing} /> : null}
       {listing ? (
@@ -115,7 +115,7 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
       {listing ? <ListingModerationLogCard listing={listing} /> : null}
 
       <ModerationActionsCard
-        entityLabel="listing"
+        entityLabel="tin đăng"
         cardDescription="Quyết định sẽ được ghi vào nhật ký kiểm duyệt."
         status={review.status}
         hiddenBy={listing?.hiddenBy ?? null}
@@ -125,8 +125,8 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
         canPublish={canPublish}
         hasContactLeak={hasContactLeak}
         supportsRepublish
-        publishDescription="Listing sẽ hiển thị công khai trên storefront và bắt đầu nhận đặt chỗ."
-        hidePublishedDescription="Listing sẽ bị gỡ khỏi storefront ngay lập tức và ngừng nhận đặt chỗ mới. Lý do được lưu vào nhật ký kiểm duyệt."
+        publishDescription="Tin đăng sẽ hiển thị công khai trên storefront và bắt đầu nhận đặt chỗ."
+        hidePublishedDescription="Tin đăng sẽ bị gỡ khỏi storefront ngay lập tức và ngừng nhận đặt chỗ mới. Lý do được lưu vào nhật ký kiểm duyệt."
         busy={busy}
       />
     </div>

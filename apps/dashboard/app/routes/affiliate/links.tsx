@@ -17,6 +17,7 @@ import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-f
 import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
+import { PageHeader } from '~/components/page-header';
 
 const LINK_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã hoặc nhãn liên kết…' },
@@ -92,17 +93,21 @@ export default function AffiliateLinks({ loaderData, actionData }: Route.Compone
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Chia sẻ link giới thiệu — khách hàng đặt chỗ trong 30 ngày sau khi click sẽ được ghi nhận cho bạn.
-        </p>
-        <createFetcher.Form method="post">
-          <input type="hidden" name="intent" value="create" />
-          <Button type="submit" size="sm" disabled={createFetcher.state !== 'idle'}>
-            <Plus className="size-4" /> Tạo link mới
-          </Button>
-        </createFetcher.Form>
-      </div>
+      <PageHeader
+        title="Link giới thiệu"
+        description="Tạo và quản lý link giới thiệu; theo dõi lượt nhấp."
+        actions={
+          <createFetcher.Form method="post">
+            <input type="hidden" name="intent" value="create" />
+            <Button type="submit" size="sm" disabled={createFetcher.state !== 'idle'}>
+              <Plus className="size-4" /> Tạo link mới
+            </Button>
+          </createFetcher.Form>
+        }
+      />
+      <p className="text-sm text-muted-foreground">
+        Khách hàng đặt chỗ trong 30 ngày sau khi click sẽ được ghi nhận hoa hồng cho bạn.
+      </p>
 
       <ErrorBanner error={actionData?.error} />
 

@@ -13,6 +13,7 @@ import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
 import { PaginationBar } from '~/components/pagination-bar';
+import { PageHeader } from '~/components/page-header';
 
 const COMMISSION_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã giới thiệu hoặc mã booking…' },
@@ -50,7 +51,7 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
       cell: (c) => <span className="font-mono text-sm">{c.bookingCode ?? '—'}</span>,
     },
     {
-      header: 'Listing',
+      header: 'Tin đăng',
       cell: (c) => <span className="text-sm text-muted-foreground">{c.listingTitle ?? '—'}</span>,
       className: 'hidden md:table-cell',
       headClassName: 'hidden md:table-cell',
@@ -100,6 +101,11 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        title="Hoa hồng"
+        description="Chi tiết hoa hồng bạn nhận được từ các lượt đặt qua link giới thiệu."
+      />
+
       <ListToolbar
         spec={COMMISSION_FILTER_SPEC}
         filters={filters}
@@ -111,7 +117,9 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
         data={commissions}
         getRowKey={(c) => c.id}
         emptyMessage={
-          hasActiveFilters(filters) ? 'Không có hoa hồng khớp bộ lọc.' : 'Chưa có hoa hồng nào.'
+          hasActiveFilters(filters)
+            ? 'Không có hoa hồng khớp bộ lọc.'
+            : 'Chưa có hoa hồng nào. Hoa hồng sẽ xuất hiện sau khi có lượt đặt qua link giới thiệu của bạn.'
         }
       />
 

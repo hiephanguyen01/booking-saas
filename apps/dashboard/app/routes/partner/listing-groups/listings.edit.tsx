@@ -30,7 +30,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   )
     throw new Response('Không tìm thấy hạng mục.', { status: 404 });
   if (groupRes.data.status !== 'draft')
-    throw new Response('Hãy ẩn bài đăng trước khi sửa hạng mục.', { status: 409 });
+    throw new Response('Hãy ẩn tin đăng trước khi sửa hạng mục.', { status: 409 });
   const listingType = (typesRes.data ?? []).find(
     (type) => type.id === groupRes.data?.listingTypeId,
   );

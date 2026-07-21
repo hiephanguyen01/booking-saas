@@ -9,6 +9,7 @@ import {
 } from 'react-router';
 import { SidebarInset, SidebarProvider } from '@booking/ui/components/ui/sidebar';
 import { Toaster } from '@booking/ui/components/ui/sonner';
+import { TooltipProvider } from '@booking/ui/components/ui/tooltip';
 import { ThemeProvider } from '@booking/ui/components/theme/theme-provider';
 import type { Route } from './+types/root';
 import { loadSessionInfo } from './lib/auth.server';
@@ -45,8 +46,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ThemeProvider>
-          {children}
-          <Toaster />
+          <TooltipProvider delayDuration={200}>
+            {children}
+            <Toaster />
+          </TooltipProvider>
         </ThemeProvider>
         <ScrollRestoration />
         <Scripts />

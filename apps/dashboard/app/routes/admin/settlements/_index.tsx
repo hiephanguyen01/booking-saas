@@ -109,7 +109,7 @@ export default function PlatformSettlements({ loaderData }: Route.ComponentProps
   const list = readListParams(searchParams);
   return (
     <div className="space-y-6">
-      <PageHeader title="Đối soát giữ tiền" description="Theo dõi custody, tranh chấp, refund và payout của mọi Tenant." />
+      <PageHeader title="Đối soát giữ tiền" description="Theo dõi tiền đang giữ, tranh chấp, hoàn tiền và chi trả của mọi Tenant." />
       <ListToolbar
         spec={SETTLEMENT_FILTER_SPEC}
         filters={filters}
@@ -117,7 +117,7 @@ export default function PlatformSettlements({ loaderData }: Route.ComponentProps
         pageSize={list.pageSize}
       />
       <ErrorBanner error={error} />
-      <DataTable columns={columns} data={result?.items ?? []} getRowKey={(row) => row.id} emptyMessage="Chưa có settlement." />
+      <DataTable columns={columns} data={result?.items ?? []} getRowKey={(row) => row.id} emptyMessage="Chưa có khoản tiền giữ nào." />
       <PaginationBar page={list.page} pageSize={list.pageSize} total={result?.total ?? 0} hrefFor={list.pageHref} />
     </div>
   );

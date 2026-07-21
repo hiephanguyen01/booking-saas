@@ -8,8 +8,9 @@ import type { Route } from './+types/_index';
 import { apiDelete, apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
+import { RelationshipHint } from '~/components/relationship-hint';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
-import { SEARCH_SCHEDULE_LABEL } from '~/features/tenant/constants';
+import { SEARCH_SCHEDULE_LABEL, STRUCTURE_LABEL } from '~/features/tenant/constants';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
@@ -71,6 +72,21 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
         </div>
       ),
     },
+    {
+      header: 'Cấu trúc',
+      cell: (t) => (
+        <div>
+          <p>{STRUCTURE_LABEL[t.structure] ?? '—'}</p>
+          {t.structure !== 'standalone' && t.itemLabel ? (
+            <p className="whitespace-nowrap text-xs text-muted-foreground">
+              · gọi con là “{t.itemLabel}”
+            </p>
+          ) : null}
+        </div>
+      ),
+      className: 'hidden md:table-cell',
+      headClassName: 'hidden md:table-cell',
+    },
     { header: 'Thuộc tính', cell: (t) => <span className="tabular-nums text-muted-foreground">{t.attributeSchema.length}</span> },
     {
       header: 'Tìm kiếm',
@@ -95,7 +111,7 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
       header: 'Đang dùng',
       cell: (t) => (
         <span className="whitespace-nowrap text-sm text-muted-foreground">
-          <span className="tabular-nums text-foreground">{t.listingCount}</span> listing
+          <span className="tabular-nums text-foreground">{t.listingCount}</span> tin đăng
         </span>
       ),
       className: 'hidden sm:table-cell',
@@ -126,6 +142,7 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
           ) : null
         }
       />
+      <RelationshipHint variant="types" />
       {error || actionError ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error ?? actionError}
@@ -174,7 +191,7 @@ function RowActions({ type }: { type: ListingTypeResponse }) {
           variant="ghost"
           className="text-muted-foreground hover:text-destructive"
           disabled={busy || inUse}
-          title={inUse ? `Đang được ${type.listingCount} listing sử dụng — không thể xoá.` : undefined}
+          title={inUse ? `Đang được ${type.listingCount} tin đăng sử dụng — không thể xoá.` : undefined}
         >
           <Trash2 className="size-3.5" /> Xoá
         </Button>

@@ -108,7 +108,7 @@ export default function TenantOverview({ loaderData }: Route.ComponentProps) {
             tone="positive"
           />
           <StatCard label="Phải trả đối tác" value={<Money value={summary.partnerPayable} />} tone="default" />
-          <StatCard label="Phải trả affiliate" value={<Money value={summary.affiliatePayable} />} tone="default" />
+          <StatCard label="Phải trả cộng tác viên" value={<Money value={summary.affiliatePayable} />} tone="default" />
           <StatCard label="Phí nền tảng" value={<Money value={summary.platformFeePayable} />} tone="muted" />
         </div>
       ) : null}

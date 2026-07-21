@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
+import { Progress } from '@booking/ui/components/ui/progress';
 import {
   Empty,
   EmptyContent,
@@ -48,7 +49,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
   ]);
   if (!groupRes.ok || !groupRes.data)
-    throw new Response('Không tìm thấy bài đăng.', { status: groupRes.status });
+    throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
   return {
     group: groupRes.data,
     listingType:
@@ -69,6 +70,8 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
   const itemLabel = group.itemLabel;
   const adminLocked = isAdminLocked(group);
   const canEditItems = canWrite && group.status === 'draft';
+  const readyPct =
+    group.listingCount > 0 ? Math.round((group.readyListingCount / group.listingCount) * 100) : 0;
   const columns = buildGroupedListingColumns({
     groupId: group.id,
     itemLabel,
@@ -81,7 +84,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
     <div className="flex flex-col gap-6">
       <PageHeader
         title={group.title}
-        description={`${loaderData.listingType?.name ?? 'Bài đăng'} · ${group.listingCount} ${itemLabel}`}
+        description={`${loaderData.listingType?.name ?? 'Tin đăng'} · ${group.listingCount} ${itemLabel}`}
         actions={
           <>
             <ListingStatusBadge status={group.status} />
@@ -105,7 +108,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
             <div>
               <CardTitle className="capitalize">{itemLabel} & giá</CardTitle>
               <CardDescription>
-                Những lựa chọn khách hàng có thể đặt trong bài đăng này.
+                Những lựa chọn khách hàng có thể đặt trong tin đăng này.
               </CardDescription>
             </div>
             {canEditItems ? (
@@ -165,22 +168,27 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Kiểm tra</CardTitle>
+            <CardTitle>Kiểm tra trước khi gửi duyệt</CardTitle>
             <CardDescription>
-              {group.readyListingCount}/{group.listingCount} {itemLabel} sẵn sàng.
+              {group.readyListingCount}/{group.listingCount} {itemLabel} đạt mức sẵn sàng (đủ ảnh,
+              mô tả và giá).
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            <div className="space-y-1.5">
+              <Progress value={readyPct} />
+              <p className="text-xs text-muted-foreground">{readyPct}% hoàn thiện</p>
+            </div>
             <ul className="flex flex-col gap-2 text-sm">
               <li>
-                Thông tin chung:{' '}
+                Thông tin chung (ảnh, mô tả):{' '}
                 {group.description && group.photos.length ? 'Đã đủ' : 'Cần bổ sung'}
               </li>
               <li>
                 Ít nhất một {itemLabel}: {group.listingCount ? 'Đã có' : 'Chưa có'}
               </li>
               <li>
-                Nội dung {itemLabel}:{' '}
+                Nội dung {itemLabel} đạt mức sẵn sàng (đủ ảnh, mô tả và giá):{' '}
                 {group.readyListingCount === group.listingCount && group.listingCount
                   ? 'Đã đủ'
                   : 'Cần bổ sung'}
@@ -202,7 +210,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         <StatCard
           label="Lượt đặt"
           value={formatNumber(group.bookingCount)}
-          hint="Tổng lượt đặt của bài đăng"
+          hint="Tổng lượt đặt của tin đăng"
           icon={<CalendarCheck className="size-4" aria-hidden />}
         />
       </div>

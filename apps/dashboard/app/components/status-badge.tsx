@@ -140,7 +140,7 @@ const PUBLISH: Record<PublishStatus, { label: string; tone: StatusTone }> = {
 };
 
 export function ListingStatusBadge({ status }: { status: PublishStatus }) {
-  const s = PUBLISH[status] ?? { label: status, tone: 'slate' as const };
+  const s = PUBLISH[status] ?? { label: 'Không xác định', tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -153,7 +153,7 @@ const PARTNER: Record<PartnerStatus, { label: string; tone: StatusTone }> = {
 };
 
 export function PartnerStatusBadge({ status }: { status: PartnerStatus }) {
-  const s = PARTNER[status] ?? { label: status, tone: 'slate' as const };
+  const s = PARTNER[status] ?? { label: 'Không xác định', tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -165,7 +165,7 @@ const VERIFICATION: Record<PartnerVerificationStatus, { label: string; tone: Sta
 };
 
 export function PartnerVerificationBadge({ status }: { status: PartnerVerificationStatus }) {
-  const s = VERIFICATION[status] ?? { label: status, tone: 'slate' as const };
+  const s = VERIFICATION[status] ?? { label: 'Không xác định', tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -179,7 +179,7 @@ const PROMO: Record<PromotionStatusDto, { label: string; tone: StatusTone }> = {
 };
 
 export function PromotionStatusBadge({ status }: { status: PromotionStatusDto }) {
-  const s = PROMO[status] ?? { label: status, tone: 'slate' as const };
+  const s = PROMO[status] ?? { label: 'Không xác định', tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -193,7 +193,7 @@ const PAYOUT: Record<PayoutStatusDto, { label: string; tone: StatusTone }> = {
 };
 
 export function PayoutStatusBadge({ status }: { status: PayoutStatusDto }) {
-  const s = PAYOUT[status] ?? { label: status, tone: 'slate' as const };
+  const s = PAYOUT[status] ?? { label: 'Không xác định', tone: 'slate' as const };
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
@@ -215,7 +215,7 @@ export function CommissionStatusBadge({ status }: { status: AffiliateCommissionS
           : 'text-destructive';
   return (
     <span className={`text-sm font-medium ${tone}`}>
-      {COMMISSION_STATUS_LABEL[status] ?? status}
+      {COMMISSION_STATUS_LABEL[status] ?? 'Không xác định'}
     </span>
   );
 }
@@ -234,7 +234,7 @@ const TENANT: Record<TenantStatus, StatusTone> = {
 export function TenantStatusBadge({ status }: { status: string }) {
   return (
     <Pill tone={TENANT[status as TenantStatus] ?? 'slate'}>
-      {TENANT_STATUS_LABELS[status] ?? status}
+      {TENANT_STATUS_LABELS[status] ?? 'Không xác định'}
     </Pill>
   );
 }
@@ -250,7 +250,7 @@ const SUBSCRIPTION: Record<SubscriptionStatus, StatusTone> = {
 export function SubscriptionStatusBadge({ status }: { status: string }) {
   return (
     <Pill tone={SUBSCRIPTION[status as SubscriptionStatus] ?? 'slate'}>
-      {SUBSCRIPTION_STATUS_LABELS[status] ?? status}
+      {SUBSCRIPTION_STATUS_LABELS[status] ?? 'Không xác định'}
     </Pill>
   );
 }

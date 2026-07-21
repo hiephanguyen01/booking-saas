@@ -1,4 +1,4 @@
-import type { ListingResponse } from '@booking/contracts';
+import type { ListingResponse, ListingTypeResponse } from '@booking/contracts';
 import {
   Card,
   CardContent,
@@ -10,12 +10,18 @@ import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { MODERATION_ACTOR_LABEL } from '~/constants/listing';
-import { PhotoStrip } from '~/components/photo-strip';
+import { PhotoAndDescriptionSections } from '~/components/media-detail-sections';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 
 /** "Nội dung" — the photos, description and location the partner submitted. */
-export function ListingContentCard({ listing }: { listing: ListingResponse }) {
+export function ListingContentCard({
+  listing,
+  type,
+}: {
+  listing: ListingResponse;
+  type?: ListingTypeResponse | null;
+}) {
   const hasLocation = Boolean(listing.address || listing.wardName || listing.provinceName);
   return (
     <Card>
@@ -24,15 +30,16 @@ export function ListingContentCard({ listing }: { listing: ListingResponse }) {
         <CardDescription>Nội dung đối tác gửi lên để kiểm duyệt.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <DetailSection title="Ảnh" emptyMessage="Chưa có ảnh nào.">
-          {listing.photos.length > 0 ? <PhotoStrip photos={listing.photos} alt={listing.title} /> : null}
-        </DetailSection>
+        <DetailGrid columns={1}>
+          <DetailField label="Loại dịch vụ" value={type?.name ?? '—'} />
+        </DetailGrid>
 
-        <DetailSection title="Mô tả" emptyMessage="Chưa có mô tả.">
-          {listing.description ? (
-            <p className="whitespace-pre-wrap text-sm">{listing.description}</p>
-          ) : null}
-        </DetailSection>
+        <PhotoAndDescriptionSections
+          photos={listing.photos}
+          alt={listing.title}
+          description={listing.description}
+          photoEmptyMessage="Chưa có ảnh nào."
+        />
 
         <DetailSection title="Vị trí" emptyMessage="Chưa có địa chỉ.">
           {hasLocation ? (

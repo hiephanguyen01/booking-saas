@@ -29,7 +29,7 @@ export const DASHBOARD_AREAS: DashboardArea[] = [
   {
     scope: 'tenant',
     title: 'Tenant',
-    description: 'Điều hành cửa hàng: listing, đặt chỗ, đối tác, khuyến mãi.',
+    description: 'Điều hành cửa hàng: tin đăng, đặt chỗ, đối tác, khuyến mãi.',
     basePath: '/tenant',
     icon: Building2,
     sections: [],

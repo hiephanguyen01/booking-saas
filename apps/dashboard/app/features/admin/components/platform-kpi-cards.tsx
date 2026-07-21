@@ -6,6 +6,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import type { PlatformHealthResponse } from '@booking/contracts';
+import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import { formatNumber, formatVnd } from '~/lib/format';
 import { StatCard } from '~/components/stat-card';
 
@@ -32,14 +33,26 @@ export function PlatformKpiCards({
   return (
     <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       <StatCard
-        label="MRR nền tảng"
+        label={
+          <span className="inline-flex items-center gap-1">
+            MRR nền tảng
+            <InfoHint>Doanh thu định kỳ hàng tháng từ gói thuê bao của các tenant.</InfoHint>
+          </span>
+        }
         value={formatVnd(k.mrr)}
         hint="Doanh thu đăng ký định kỳ / tháng"
         icon={<TrendingUp className="size-4" />}
         tone="positive"
       />
       <StatCard
-        label="GMV toàn thời gian"
+        label={
+          <span className="inline-flex items-center gap-1">
+            GMV toàn thời gian
+            <InfoHint>
+              Tổng giá trị giao dịch qua nền tảng (chưa trừ hoàn tiền/hoa hồng).
+            </InfoHint>
+          </span>
+        }
         value={formatVnd(k.gmvAllTime)}
         hint={`${formatVnd(k.gmv30d)} trong 30 ngày`}
         icon={<Banknote className="size-4" />}

@@ -1,6 +1,11 @@
 import { data as routeData, Link, useFetcher, useSearchParams } from 'react-router';
 import { Check, Eye, EyeOff, Undo2 } from 'lucide-react';
-import type { ListingGroupResponse, Paginated } from '@booking/contracts';
+import type {
+  ListingGroupResponse,
+  ListingTypeResponse,
+  Paginated,
+  PartnerResponse,
+} from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -24,21 +29,37 @@ const LISTING_GROUP_FILTER_SPEC: FilterSpec = [
 ];
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Bài đăng · Tenant · Bookify' }];
+  return [{ title: 'Tin đăng nhiều hạng mục · Tenant · Bookify' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
   const { toApiQuery } = readListParams(url.searchParams);
   const { filters, apiFilters } = readListFilters(url.searchParams, LISTING_GROUP_FILTER_SPEC);
-  const res = await apiGet<Paginated<ListingGroupResponse>>('/tenant/listing-groups', auth, {
-    query: toApiQuery(apiFilters),
-  });
+  // NOTE: `/tenant/listing-groups` has no `status` query param (see
+  // packages/contracts/src/contracts/listing.ts: listListingGroupsQuerySchema) — this is a
+  // bước-đệm (stepping-stone) task that must not touch the backend, so there are no status
+  // tabs here (unlike tenant/listings, whose query does support `status` + counts).
+  const [res, partnersRes, typesRes] = await Promise.all([
+    apiGet<Paginated<ListingGroupResponse>>('/tenant/listing-groups', auth, {
+      query: toApiQuery(apiFilters),
+    }),
+    can('tenant.partners.read')
+      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, { query: { pageSize: 100 } })
+      : Promise.resolve(null),
+    apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
+  ]);
+  const partnerNames: Record<string, string> = {};
+  if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
+  const typeNames: Record<string, string> = {};
+  if (typesRes.ok) for (const t of typesRes.data ?? []) typeNames[t.id] = t.name;
   return {
     result: res.ok ? res.data : null,
+    partnerNames,
+    typeNames,
     canModerate: can('tenant.listings.publish'),
     filters,
-    error: res.ok ? null : (res.error ?? 'Không tải được bài đăng.'),
+    error: res.ok ? null : (res.error ?? 'Không tải được tin đăng.'),
   };
 }
 
@@ -62,7 +83,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantListingGroups({ loaderData, actionData }: Route.ComponentProps) {
-  const { result, canModerate, error, filters } = loaderData;
+  const { result, partnerNames, typeNames, canModerate, error, filters } = loaderData;
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
@@ -71,7 +92,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
 
   const columns: DataTableColumn<ListingGroupResponse>[] = [
     {
-      header: 'Bài đăng',
+      header: 'Tin đăng',
       cell: (g) => (
         <div className="min-w-0">
           <Link
@@ -83,6 +104,34 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
           <p className="truncate font-mono text-xs text-muted-foreground">{g.slug}</p>
         </div>
       ),
+    },
+    {
+      header: 'Đối tác',
+      cell: (g) => (
+        <span className="text-sm text-muted-foreground">
+          {partnerNames[g.partnerId] ?? '—'}
+        </span>
+      ),
+      className: 'hidden sm:table-cell',
+      headClassName: 'hidden sm:table-cell',
+    },
+    {
+      header: 'Loại',
+      cell: (g) => (
+        <span className="text-sm text-muted-foreground">{typeNames[g.listingTypeId] ?? '—'}</span>
+      ),
+      className: 'hidden md:table-cell',
+      headClassName: 'hidden md:table-cell',
+    },
+    {
+      header: 'Số hạng mục',
+      cell: (g) => (
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
+          {g.listingCount} hạng mục
+        </span>
+      ),
+      className: 'hidden sm:table-cell',
+      headClassName: 'hidden sm:table-cell',
     },
     {
       header: 'Địa chỉ',
@@ -135,8 +184,8 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Bài đăng"
-        description="Duyệt, ẩn hoặc mở lại các bài đăng nhóm của đối tác."
+        title="Tin đăng nhiều hạng mục"
+        description="Duyệt, ẩn hoặc mở lại các tin đăng nhiều hạng mục của đối tác."
       />
       <ErrorBanner error={error ?? actionError} />
       <ListToolbar
@@ -150,7 +199,7 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
         data={groups}
         getRowKey={(g) => g.id}
         emptyMessage={
-          hasActiveFilters(filters) ? 'Không có bài đăng khớp bộ lọc.' : 'Chưa có bài đăng nào.'
+          hasActiveFilters(filters) ? 'Không có tin đăng khớp bộ lọc.' : 'Chưa có tin đăng nào.'
         }
       />
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
@@ -198,7 +247,7 @@ function RowActions({ group }: { group: ListingGroupResponse }) {
             variant="outline"
             disabled={busy}
           >
-            <Undo2 data-icon="inline-start" /> Mở lại
+            <Undo2 data-icon="inline-start" /> Đăng lại
           </Button>
         ) : null}
       </fetcher.Form>

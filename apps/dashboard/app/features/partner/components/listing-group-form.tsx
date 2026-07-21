@@ -25,8 +25,8 @@ export function ListingGroupForm({
   fieldErrors?: Record<string, string[]> | null;
 }) {
   const fields: FieldConfig<CreateListingGroupInput>[] = [
-    { name: 'title', type: 'text', label: 'Tên bài đăng', colSpan: 1 },
-    { name: 'slug', type: 'text', label: 'Slug', placeholder: 'ten-bai-dang', colSpan: 1 },
+    { name: 'title', type: 'text', label: 'Tên tin đăng', colSpan: 1 },
+    { name: 'slug', type: 'text', label: 'Slug', placeholder: 'ten-tin-dang', colSpan: 1 },
     { name: 'description', type: 'textarea', label: 'Mô tả', rows: 6, colSpan: 2 },
     {
       name: 'photos',

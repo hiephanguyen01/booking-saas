@@ -29,7 +29,7 @@ export function ListingGroupCard({
             <div className="min-w-0">
               <CardTitle className="truncate">{group.title}</CardTitle>
               <CardDescription>
-                {listingType?.name ?? 'Bài đăng'} · {group.listingCount}{' '}
+                {listingType?.name ?? 'Tin đăng'} · {group.listingCount}{' '}
                 {listingType?.itemLabel || 'hạng mục'}
               </CardDescription>
             </div>

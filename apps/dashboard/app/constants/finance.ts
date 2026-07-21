@@ -32,7 +32,7 @@ export const LEDGER_OWNER_LABEL: Record<LedgerOwnerTypeDto, string> = {
   platform: 'Nền tảng',
   tenant: 'Cửa hàng',
   partner: 'Đối tác',
-  affiliate: 'Affiliate',
+  affiliate: 'Cộng tác viên',
 };
 
 export const SETTLEMENT_STATUS_LABEL: Record<SettlementStatusDto, string> = {

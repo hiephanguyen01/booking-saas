@@ -27,7 +27,7 @@ export function BalanceCards({
     0,
   );
   const label = (b: OwnerBalanceResponse): string =>
-    (b.ownerId && partnerNames[b.ownerId]) || (b.ownerId ? b.ownerId.slice(0, 8) : b.ownerType);
+    (b.ownerId && partnerNames[b.ownerId]) || (b.ownerId ? '(không rõ)' : b.ownerType);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -40,8 +40,8 @@ export function BalanceCards({
         tone="emerald"
       />
       <BalanceCard
-        title="Affiliate"
-        description="Hoa hồng phải trả cho affiliate"
+        title="Cộng tác viên"
+        description="Hoa hồng phải trả cho cộng tác viên"
         balances={affiliateBalances}
         max={balMax}
         label={label}

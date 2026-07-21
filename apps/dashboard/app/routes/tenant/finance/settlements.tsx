@@ -170,7 +170,7 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
     <div className="space-y-6">
       <PageHeader
         title="Tiền đang giữ"
-        description="Theo dõi tiền khách trả Tenant từ lúc gateway xác nhận đến khi ghi nhận công nợ Partner."
+        description="Theo dõi tiền khách trả Tenant từ lúc cổng thanh toán xác nhận đến khi ghi nhận công nợ Partner."
         actions={
           <Button asChild variant="outline" size="sm">
             <Link to={dashboardPaths.tenant.finance}>
@@ -225,7 +225,7 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
         columns={columns}
         data={items}
         getRowKey={(row) => row.id}
-        emptyMessage="Chưa có khoản tiền giữ nào."
+        emptyMessage="Chưa có khoản tiền giữ nào. Khoản tiền giữ sẽ xuất hiện khi có đơn đặt chỗ được thanh toán."
       />
       <PaginationBar
         page={list.page}

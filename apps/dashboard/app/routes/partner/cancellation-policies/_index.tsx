@@ -33,7 +33,7 @@ export async function action({ request }: Route.ActionArgs) {
     const res = await apiDelete(`/partner/cancellation-policies/${String(form.get('id'))}`, auth);
     if (!res.ok) {
       return routeData(
-        { error: res.error ?? 'Không xoá được (có thể đang gắn với listing).' },
+        { error: res.error ?? 'Không xoá được (có thể đang gắn với tin đăng).' },
         { status: 400 },
       );
     }
@@ -98,7 +98,7 @@ export default function PartnerCancellationPolicies({
     <div className="space-y-5">
       <PageHeader
         title="Chính sách huỷ"
-        description="Định nghĩa các mốc hoàn tiền khi khách huỷ. Gán cho từng listing, hoặc đặt một chính sách làm mặc định cho các listing chưa gán."
+        description="Định nghĩa các mốc hoàn tiền khi khách huỷ. Gán cho từng tin đăng, hoặc đặt một chính sách làm mặc định cho các tin đăng chưa gán."
         actions={
           canWrite ? (
             <Button asChild size="sm">
@@ -118,7 +118,7 @@ export default function PartnerCancellationPolicies({
         columns={columns}
         data={policies}
         getRowKey={(p) => p.id}
-        emptyMessage="Chưa có chính sách huỷ nào."
+        emptyMessage='Chưa có chính sách huỷ nào. Nhấn "Thêm chính sách" để tạo chính sách đầu tiên.'
       />
     </div>
   );
