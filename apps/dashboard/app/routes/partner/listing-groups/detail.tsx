@@ -168,7 +168,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Sẵn sàng gửi duyệt</CardTitle>
+            <CardTitle>Kiểm tra trước khi gửi duyệt</CardTitle>
             <CardDescription>
               {group.readyListingCount}/{group.listingCount} {itemLabel} đạt mức sẵn sàng (đủ ảnh,
               mô tả và giá).

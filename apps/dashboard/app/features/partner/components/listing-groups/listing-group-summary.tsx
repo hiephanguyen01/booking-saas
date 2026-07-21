@@ -24,9 +24,9 @@ function addressLine(group: ListingGroupDetailResponse): string {
 }
 
 /**
- * "Tổng quan" — slug, price-from and lifecycle metadata. Readiness itself lives
- * in the "Sẵn sàng gửi duyệt" card on the workspace page — don't add a second
- * readiness readout here (see docs/conventions.md).
+ * "Tổng quan" — slug, price-from and lifecycle metadata. Readiness is shown once,
+ * on the "Kiểm tra trước khi gửi duyệt" card in detail.tsx; keep it out of this
+ * overview card to avoid a duplicate readout.
  */
 export function ListingGroupOverviewCard({ group }: { group: ListingGroupDetailResponse }) {
   return (

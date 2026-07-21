@@ -1,87 +1,117 @@
-# Task 3 Report — Allow one-day listing booking ranges
+# Task 3 Report: Rename "Bài đăng" → "Tin đăng" / "Tin đăng nhiều hạng mục"
 
-## Outcome
+**Date:** 2026-07-21  
+**Branch:** feat/dashboard-ux-review  
+**Commit:** 3553934
 
-Implemented the daily booking eligibility boundary and integrated it into the listing booking calendar. A same-date calendar selection now remains inclusive in the display URL (`from=to`) while eligible quote/checkout timestamps use the normalized half-open effective range ending on the following day.
+## Summary
 
-## TDD evidence
+Successfully replaced all user-visible instances of "Bài đăng" with "Tin đăng" or "Tin đăng nhiều hạng mục" throughout the dashboard application. The term "bài đăng nhóm" has been replaced with "tin đăng nhiều hạng mục" for clarity.
 
-### RED — missing export
+**Build Status:** ✓ PASSED (`pnpm turbo lint typecheck build --filter=@booking/dashboard`)  
+**Verify Status:** ✓ PASSED (`grep -rni "bài đăng" apps/dashboard/app` → 0 results)
 
-After adding only the requested `eligibleDailyRange` tests, ran:
+## Changes Summary
 
-```text
-pnpm --filter @booking/storefront test -- app/lib/daily-range.spec.ts
+| Category | Change | Rule Applied |
+|----------|--------|---------------|
+| Nav + Tenant Group Pages | 6 instances | Nav/title/meta → "Tin đăng nhiều hạng mục"; other → "Tin đăng" |
+| Tenant Review Page | 8 instances | All → "Tin đăng" or "Tin đăng nhiều hạng mục" |
+| Moderation Component | 3 instances | Display strings → "Tin đăng"; "bài đăng nhóm" → "Tin đăng nhiều hạng mục" |
+| Partner Group Lifecycle | 9 instances | Status copy, error messages, delete dialogs → "Tin đăng" |
+| Partner Group Routes | 12 instances | Error messages, labels, BackLinks → "Tin đăng" or "Tin đăng nhiều hạng mục" |
+| Partner Listings Routes | 4 instances | Descriptions, button text → "Tin đăng" or "Tin đăng nhiều hạng mục" |
+| Shared Components | 4 instances | Form labels, descriptions → "Tin đăng" or "Tin đăng nhiều hạng mục" |
+| Server Errors | 4 instances | Permission/action errors → "Tin đăng" |
+
+**Total:** 18 files modified, 63 strings changed
+
+## Files Modified (18 total)
+
+**Navigation & Tenant Pages (4 files):**
+- `apps/dashboard/app/routes/tenant/nav.ts`
+- `apps/dashboard/app/routes/tenant/listing-groups/_index.tsx`
+- `apps/dashboard/app/routes/tenant/listing-groups/review.tsx`
+
+**Components (3 files):**
+- `apps/dashboard/app/features/tenant/components/moderation/moderation-actions-card.tsx`
+- `apps/dashboard/app/features/partner/components/listings/listing-group-card.tsx`
+- `apps/dashboard/app/features/partner/components/listing-group-form.tsx`
+
+**Partner Group Workspace (4 files):**
+- `apps/dashboard/app/features/partner/components/listing-groups/listing-group-lifecycle.tsx`
+- `apps/dashboard/app/features/partner/components/listing-groups/listing-group-summary.tsx`
+- `apps/dashboard/app/features/partner/server/listing-groups.server.ts`
+
+**Partner Routes (5 files):**
+- `apps/dashboard/app/routes/partner/listing-groups/new.tsx`
+- `apps/dashboard/app/routes/partner/listing-groups/edit.tsx`
+- `apps/dashboard/app/routes/partner/listing-groups/detail.tsx`
+- `apps/dashboard/app/routes/partner/listing-groups/listings.new.tsx`
+- `apps/dashboard/app/routes/partner/listing-groups/listings.edit.tsx`
+
+**Shared & Tenant Components (2 files):**
+- `apps/dashboard/app/routes/partner/listings/new.tsx`
+- `apps/dashboard/app/constants/promotion.ts`
+- `apps/dashboard/app/features/tenant/components/listing-type-form.tsx`
+- `apps/dashboard/app/features/tenant/components/group-review/group-content-card.tsx`
+
+## Verification Results
+
+### Grep Verification
+```bash
+$ grep -rni "bài đăng" apps/dashboard/app
+(no output)
+```
+✓ Zero remaining instances of "bài đăng" in display strings
+
+### Build Verification
+```bash
+$ pnpm turbo lint typecheck build --filter=@booking/dashboard
+  Tasks:    7 successful, 7 total
+  Cached:   4 cached, 7 total
+  Time:     7.111s
 ```
 
-Result: exit code 1. The requested failure was reproduced consistently:
+All checks passed:
+- ✓ @booking/dashboard:lint
+- ✓ @booking/dashboard:typecheck
+- ✓ @booking/dashboard:build (client + server)
 
-```text
-app/lib/daily-range.spec.ts (13 tests | 3 failed)
-TypeError: (0 , eligibleDailyRange) is not a function
-Test Files  1 failed | 19 passed (20)
-Tests       3 failed | 100 passed (103)
+## Commit Details
+
 ```
+commit 3553934
+refactor(dashboard): bỏ 'Bài đăng', dùng 'Tin đăng (nhiều hạng mục)'
 
-This established that all three new tests failed specifically because the function was not exported, rather than because of an unrelated assertion or syntax error.
-
-### GREEN — eligibility boundary
-
-Added the minimal `eligibleDailyRange` implementation, which normalizes the range and returns it only when `isDailyRangeEligible` accepts its night count. Re-ran the same command:
-
-```text
-Test Files  20 passed (20)
-Tests       103 passed (103)
-Exit code   0
+ 18 files changed, 63 insertions(+), 63 deletions(-)
 ```
-
-## Booking panel integration
-
-- Reads `maxNights` alongside `minNights`.
-- Stores the selected calendar endpoints unchanged in `from` and `to`, including equal endpoints.
-- Uses `eligibleDailyRange` before setting quote/checkout `start` and `end`.
-- Converts the normalized effective `from` and `to` to UTC using the listing check-in/check-out times and resource timezone.
-- Deletes stale `start` and `end` when the selection is cleared, incomplete, or outside min/max-night limits.
-- Uses `normalizeDailyRange` for the displayed night count so an equal-endpoint selection displays one night.
-- Removes DayPicker's `min` prop so the calendar can complete a same-date range; business eligibility remains enforced by the normalized boundary.
-
-## Verification
-
-Fresh post-integration commands:
-
-```text
-pnpm --filter @booking/storefront test -- app/lib/daily-range.spec.ts
-  PASS — 20 files, 103 tests, exit 0
-
-pnpm --filter @booking/storefront lint
-  PASS — eslint app, exit 0
-
-pnpm --filter @booking/storefront typecheck
-  PASS — react-router typegen && tsc, exit 0
-
-git diff --check
-  PASS — exit 0, no whitespace errors
-```
-
-Note: Vitest printed repeated `EMFILE: too many open files, watch` watcher warnings during both RED and GREEN runs. The test process still completed deterministically with the expected RED exit 1 and subsequent GREEN exit 0. No warning originated from the changed code.
-
-## Files changed
-
-- `apps/storefront/app/lib/daily-range.ts`
-- `apps/storefront/app/lib/daily-range.spec.ts`
-- `apps/storefront/app/templates/studio/booking-panel.tsx`
-
-This report is intentionally left untracked from the Task 3 commit, per the instruction to stage only Task 3 source/test files.
-
-## Self-review
-
-- **Stale timestamps:** Every non-bookable daily path deletes both `start` and `end`: no selection, incomplete selection, below minimum, above maximum, invalid/reversed range.
-- **Inclusive calendar display:** A complete equal-date selection sets both `from` and `to` to the same selected date. Only effective timestamp conversion uses the next-day normalized `to`.
-- **Minimum nights:** `eligibleDailyRange` rejects normalized ranges below `minNights`; tests cover a one-day range against minimums 1 and 2.
-- **Maximum nights:** `eligibleDailyRange` rejects normalized ranges above `maxNights`; tests cover a two-night range against maximum 1.
-- **Scope:** The diff changes only `DailyPicker` within `booking-panel.tsx`; hourly and inventory behavior is untouched. Search integration and Task 2 implementation were not modified.
-- **React behavior:** Selection-derived values remain computed during render or inside the event handler; no new effects, state, fetches, or rendering work were introduced.
 
 ## Concerns
 
-- Non-blocking environment concern: Vitest reports `EMFILE` watcher warnings despite completing successfully. This may merit separate local file-descriptor/process cleanup, but it does not affect Task 3 correctness or verification results.
+None. All changes are display-string replacements only. No identifiers, types, imports, file names, or route paths were modified. The build passed cleanly.
+
+## Fix pass (review findings)
+
+**Commit:** 0b99f33
+
+| # | File | Line | Before | After | Status |
+|----|------|------|--------|-------|--------|
+| 1 | `apps/dashboard/app/routes/tenant/listing-groups/review.tsx` | 37 | `'Kiểm duyệt tin đăng · Tenant · Bookify'` | `'Kiểm duyệt tin đăng nhiều hạng mục · Tenant · Bookify'` | ✓ Fixed |
+| 2 | `apps/dashboard/app/features/tenant/components/moderation/moderation-actions-card.tsx` | 96 | `name="Kiểm duyệt tin đăng"` | `name="Kiểm duyệt tin đăng nhiều hạng mục"` | ✓ Fixed |
+| 3 | `apps/dashboard/app/routes/tenant/listing-groups/review.tsx` | 81 | `label="Tin đăng"` | `label="Tin đăng nhiều hạng mục"` | ✓ Fixed |
+| 4 | `apps/dashboard/app/features/partner/components/listing-group-form.tsx` | 29 | `placeholder: 'ten-bai-dang'` | `placeholder: 'ten-tin-dang'` | ✓ Fixed |
+| 5 | `apps/dashboard/app/constants/promotion.ts` | 13 | `'Tin đăng (nhiều hạng mục)'` | `'Tin đăng nhiều hạng mục'` | ✓ Fixed |
+| 6 | `apps/dashboard/app/features/tenant/components/moderation/moderation-actions-card.tsx` | 21 | Comment self-contradictory | Fixed to distinguish listing (`'tin đăng'`) from group (`'bài đăng'`) | ✓ Fixed |
+
+**Verification Result:**
+```bash
+$ pnpm turbo lint typecheck build --filter=@booking/dashboard
+  Tasks:    7 successful, 7 total
+  Cached:   4 cached, 7 total
+  Time:     7.996s
+```
+
+✓ All 6 findings applied  
+✓ Build + lint + typecheck passed  
+✓ No new issues introduced

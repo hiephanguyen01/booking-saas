@@ -1,120 +1,45 @@
-### Task 2: Allow one-day ranges in storefront search
+### Task 2: Rename "Listing" (EN) → "Tin đăng" phía tenant
 
 **Files:**
-- Modify: `apps/storefront/app/features/search/search-state.spec.ts`
-- Modify: `apps/storefront/app/features/search/search-state.ts`
-- Modify: `apps/storefront/app/features/search/search-form.tsx:422-436`
+- Modify: `apps/dashboard/app/routes/tenant/nav.ts:39` (nav label)
+- Modify: `apps/dashboard/app/routes/tenant/listings/_index.tsx` — title `:162`, column header `:86`, meta `:31`, empty `:187`
+- Modify: `apps/dashboard/app/routes/tenant/listings/review.tsx` — body copy `:63,128-129`, `entityLabel` `:118`, BackLink `:77`
+- Modify: `apps/dashboard/app/routes/tenant/listing-types/_index.tsx:96-99,177` ("N listing" → "N tin đăng")
 
-**Interfaces:**
-- Consumes: `normalizeDailyRange` from Task 1.
-- Produces: existing `validDailyRange(from, to): { from: string; to: string } | null`, now returning an effective next-day `to` for same-date selections.
+**Interfaces:** — (chỉ chuỗi)
 
-- [ ] **Step 1: Change the search-state test to require one-day normalization**
+- [ ] **Step 1: Đổi nav + title + column**
 
-In `apps/storefront/app/features/search/search-state.spec.ts`, replace the same-date rejection inside `accepts only a complete increasing daily range` and rename the test:
+Bảng đổi (đúng token, giữ nguyên phần còn lại của chuỗi):
 
-```ts
-it('accepts complete daily ranges and normalizes one selected day', () => {
-  expect(validDailyRange('2026-08-10', undefined)).toBeNull();
-  expect(validDailyRange('2026-08-10', '2026-08-10')).toEqual({
-    from: '2026-08-10',
-    to: '2026-08-11',
-  });
-  expect(validDailyRange('2026-08-10', '2026-08-09')).toBeNull();
-  expect(validDailyRange('2026-08-10', '2026-08-12')).toEqual({
-    from: '2026-08-10',
-    to: '2026-08-12',
-  });
-});
-```
+| File:line | Cũ | Mới |
+|---|---|---|
+| `nav.ts:39` | `'Listing'` | `'Tin đăng'` |
+| `listings/_index.tsx:162` | `title="Listing"` | `title="Tin đăng"` |
+| `listings/_index.tsx:86` | `header: 'Listing'` | `header: 'Tin đăng'` |
+| `listings/_index.tsx:31` | `'Listing · Tenant · Bookify'` | `'Tin đăng · Tenant · Bookify'` |
+| `listings/_index.tsx:187` | `'Không có listing nào trong nhóm này.'` | `'Không có tin đăng nào khớp bộ lọc.'` |
 
-In `describe('canSubmitSearch')`, move the same-date case out of the rejection test and add:
+> ⚠️ Vì Task 19 (merge) có thể chưa làm, để tránh **2 nav item cùng tên**: ở Task 3 trang group sẽ đặt tên tạm "Tin đăng nhiều hạng mục". Giữ item listing đơn = "Tin đăng".
 
-```ts
-it('allows a completed one-day daily selection', () => {
-  expect(canSubmitSearch('daily', '2026-08-10', '2026-08-10')).toBe(true);
-});
-```
+- [ ] **Step 2: Đổi body copy trong review.tsx**
 
-- [ ] **Step 2: Run the search-state test and verify RED**
+Thay mọi chữ "Listing"/"listing" (EN) trong chuỗi tiếng Việt của `review.tsx` thành "Tin đăng"/"tin đăng": contact-leak `:63`, publish desc `:128-129`, `entityLabel="listing"` → `entityLabel="tin đăng"` `:118`, BackLink `"Danh sách listing"` → `"Danh sách tin đăng"` `:77`.
 
-Run:
+- [ ] **Step 3: Đổi "N listing" ở listing-types**
+
+`listing-types/_index.tsx:96-99` cột "Đang dùng": `"{listingCount} listing"` → `"{listingCount} tin đăng"`. `:177` tooltip delete: `'Đang được {n} listing sử dụng — không thể xoá.'` → `'Đang được {n} tin đăng sử dụng — không thể xoá.'`
+
+- [ ] **Step 4: Verify + Commit**
 
 ```bash
-pnpm --filter @booking/storefront test -- app/features/search/search-state.spec.ts
+pnpm turbo lint typecheck build --filter=@booking/dashboard
+grep -rn "Listing\b\|listing nào\| listing " apps/dashboard/app/routes/tenant/listings apps/dashboard/app/routes/tenant/listing-types apps/dashboard/app/routes/tenant/nav.ts
 ```
-
-Expected: FAIL because same-date input currently returns `null` and cannot submit.
-
-- [ ] **Step 3: Delegate search validation to the shared normalizer**
-
-In `apps/storefront/app/features/search/search-state.ts`, add:
-
-```ts
-import { normalizeDailyRange } from '../../lib/daily-range';
-```
-
-Replace `validDailyRange` with:
-
-```ts
-export function validDailyRange(
-  from: string | undefined,
-  to: string | undefined,
-): { from: string; to: string } | null {
-  const range = normalizeDailyRange(from, to);
-  return range ? { from: range.from, to: range.to } : null;
-}
-```
-
-Do not change `canSubmitSearch`; its delegation to `validDailyRange` will now accept the same-date selection.
-
-- [ ] **Step 4: Let react-day-picker complete the same-date range**
-
-In the daily `<Calendar>` inside `apps/storefront/app/features/search/search-form.tsx`, remove only this prop:
-
-```tsx
-min={1}
-```
-
-Keep `resetOnSelect`, the controlled inclusive `range`, and the existing close condition. With the default zero-night minimum, react-day-picker returns `{ from: day, to: day }`; the label remains one selected date while `validDailyRange` emits the next-day effective boundary.
-
-- [ ] **Step 5: Render a same-date range as one date in the trigger label**
-
-Inside `SearchDatePicker`, add a boolean before `label`:
-
-```ts
-const isSingleDayRange =
-  Boolean(range.from && range.to) &&
-  localToDateOnly(range.from!) === localToDateOnly(range.to!);
-```
-
-Replace the daily branch of `label` with:
-
-```ts
-: range.from
-  ? isSingleDayRange
-    ? day(range.from)
-    : `${day(range.from)} - ${range.to ? day(range.to) : t('home.endDate')}`
-  : t('home.pickDate');
-```
-
-This keeps multi-day and incomplete labels unchanged while avoiding a duplicate `10/08 - 10/08` label for a one-day selection.
-
-- [ ] **Step 6: Run focused and full search tests**
-
-Run:
-
+Expected grep: không còn "Listing" EN trong chuỗi hiển thị tiếng Việt (biến/type tên `Listing`/`ListingResponse` giữ nguyên — chỉ đổi chuỗi UI).
 ```bash
-pnpm --filter @booking/storefront test -- app/lib/daily-range.spec.ts app/features/search/search-state.spec.ts
-```
-
-Expected: both test files PASS.
-
-- [ ] **Step 7: Commit the search behavior**
-
-```bash
-git add apps/storefront/app/features/search/search-state.ts apps/storefront/app/features/search/search-state.spec.ts apps/storefront/app/features/search/search-form.tsx
-git commit -m "fix(storefront): allow one-day search ranges"
+git add apps/dashboard/app/routes/tenant/
+git commit -m "refactor(dashboard): tenant dùng 'Tin đăng' thay 'Listing' (EN)"
 ```
 
 ---

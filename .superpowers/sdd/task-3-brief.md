@@ -1,162 +1,43 @@
-### Task 3: Allow one-day ranges in the listing booking calendar
+### Task 3: Rename "Bài đăng" → "Tin đăng" / "Tin đăng nhiều hạng mục"
 
 **Files:**
-- Modify: `apps/storefront/app/lib/daily-range.ts`
-- Modify: `apps/storefront/app/lib/daily-range.spec.ts`
-- Modify: `apps/storefront/app/templates/studio/booking-panel.tsx:276-360`
+- Modify: `apps/dashboard/app/routes/tenant/nav.ts:45`
+- Modify: `apps/dashboard/app/routes/tenant/listing-groups/_index.tsx` — title `:138`, column `:74`, meta `:27`
+- Modify: `apps/dashboard/app/routes/tenant/listing-groups/review.tsx` — copy `:67,140,147-148`
+- Modify: `apps/dashboard/app/routes/partner/listing-groups/new.tsx:45,48`, `edit.tsx:58`, `detail.tsx:84`
+- Modify: `apps/dashboard/app/features/partner/components/listings/listing-group-lifecycle.tsx:11-35` (`GROUP_STATUS_COPY`)
+- Modify: `apps/dashboard/app/features/partner/components/listings/listing-group-card.tsx:32` (fallback)
+- Modify: `apps/dashboard/app/features/partner/components/listing-group-form.tsx` (submit label, field copy dùng "bài đăng")
 
-**Interfaces:**
-- Consumes: `normalizeDailyRange` and `isDailyRangeEligible` from Task 1; existing `zonedToUtcIso` for the effective half-open timestamps.
-- Produces: `eligibleDailyRange(from, to, minNights, maxNights): NormalizedDailyRange | null`, inclusive `from`/`to` URL values for calendar display, and normalized `start`/`end` values only when the configured night limits are satisfied.
+**Interfaces:** — (chỉ chuỗi)
 
-- [ ] **Step 1: Add failing booking-eligibility tests**
+- [ ] **Step 1: Nav + tenant group index**
 
-Add `eligibleDailyRange` to the import in `apps/storefront/app/lib/daily-range.spec.ts` and extend the file with:
+| File:line | Cũ | Mới |
+|---|---|---|
+| `nav.ts:45` | `'Bài đăng'` | `'Tin đăng nhiều hạng mục'` (tạm, đến khi merge) |
+| `listing-groups/_index.tsx:138` | `title` "Bài đăng" | `title="Tin đăng nhiều hạng mục"` |
+| `listing-groups/_index.tsx:74` | column `'Bài đăng'` | `'Tin đăng'` |
+| `listing-groups/_index.tsx:27` | meta `'Bài đăng · …'` | `'Tin đăng nhiều hạng mục · …'` |
 
-```ts
-describe('eligibleDailyRange', () => {
-  it('returns an effective one-day booking range when one night is allowed', () => {
-    expect(eligibleDailyRange('2026-08-10', '2026-08-10', 1, null)).toMatchObject({
-      selectedFrom: '2026-08-10',
-      selectedTo: '2026-08-10',
-      from: '2026-08-10',
-      to: '2026-08-11',
-      nights: 1,
-    });
-  });
+- [ ] **Step 2: Các nơi copy còn lại → "tin đăng"**
 
-  it('returns null when the normalized range violates listing limits', () => {
-    expect(eligibleDailyRange('2026-08-10', '2026-08-10', 2, null)).toBeNull();
-    expect(eligibleDailyRange('2026-08-10', '2026-08-12', 1, 1)).toBeNull();
-  });
+Thay "bài đăng"/"Bài đăng" → "tin đăng"/"Tin đăng" trong: `listing-groups/review.tsx:67,140,147-148` (bao gồm `entityLabel="bài đăng"` → `"tin đăng"` và "Áp dụng cho bài đăng và toàn bộ hạng mục" → "Áp dụng cho tin đăng và toàn bộ hạng mục"); `partner/listing-groups/new.tsx:45,48`, `edit.tsx:58`, `detail.tsx:84` header fallback; `GROUP_STATUS_COPY` (`listing-group-lifecycle.tsx:11-35`); form copy trong `listing-group-form.tsx` (album chung/tiện ích chung giữ "chung", nhưng "bài đăng" → "tin đăng").
 
-  it('returns null for an incomplete selection', () => {
-    expect(eligibleDailyRange('2026-08-10', undefined, 1, null)).toBeNull();
-  });
-});
-```
+- [ ] **Step 3: Bỏ fallback "Bài đăng" trên card partner**
 
-The complete import becomes:
+`listing-group-card.tsx:32`: `{listingType?.name ?? 'Bài đăng'}` → `{listingType?.name ?? 'Tin đăng'}`.
 
-```ts
-import {
-  eligibleDailyRange,
-  isDailyRangeEligible,
-  normalizeDailyRange,
-} from './daily-range';
-```
-
-- [ ] **Step 2: Run the focused test and verify RED**
-
-Run:
+- [ ] **Step 4: Verify + Commit**
 
 ```bash
-pnpm --filter @booking/storefront test -- app/lib/daily-range.spec.ts
+pnpm turbo lint typecheck build --filter=@booking/dashboard
+grep -rni "bài đăng" apps/dashboard/app
 ```
-
-Expected: FAIL because `eligibleDailyRange` is not exported.
-
-- [ ] **Step 3: Implement the booking eligibility boundary**
-
-Append to `apps/storefront/app/lib/daily-range.ts`:
-
-```ts
-export function eligibleDailyRange(
-  from: string | undefined,
-  to: string | undefined,
-  minNights: number,
-  maxNights?: number | null,
-): NormalizedDailyRange | null {
-  const range = normalizeDailyRange(from, to);
-  return range && isDailyRangeEligible(range, minNights, maxNights) ? range : null;
-}
-```
-
-Run:
-
+Expected grep: 0 kết quả "bài đăng" trong chuỗi hiển thị.
 ```bash
-pnpm --filter @booking/storefront test -- app/lib/daily-range.spec.ts
-```
-
-Expected: all daily-range tests PASS.
-
-- [ ] **Step 4: Normalize selection and enforce night limits in `DailyPicker`**
-
-In `apps/storefront/app/templates/studio/booking-panel.tsx`, import:
-
-```ts
-import { eligibleDailyRange, normalizeDailyRange } from '../../lib/daily-range';
-```
-
-Read `maxNights` next to `minNights`:
-
-```ts
-const maxNights = Number.isFinite(Number(dailyCfg.maxNights))
-  ? Number(dailyCfg.maxNights)
-  : null;
-```
-
-Replace the timestamp portion of `onSelect` with:
-
-```ts
-const fromStr = localToDateOnly(next.from);
-params.set('from', fromStr);
-
-if (next.to) {
-  const selectedTo = localToDateOnly(next.to);
-  params.set('to', selectedTo);
-  const bookable = eligibleDailyRange(fromStr, selectedTo, minNights, maxNights);
-  if (bookable) {
-    params.set('start', zonedToUtcIso(bookable.from, checkinTime, tz));
-    params.set('end', zonedToUtcIso(bookable.to, checkoutTime, tz));
-  } else {
-    params.delete('start');
-    params.delete('end');
-  }
-} else {
-  params.delete('to');
-  params.delete('start');
-  params.delete('end');
-}
-setSp(params);
-```
-
-Replace the raw night calculation with:
-
-```ts
-const normalized = normalizeDailyRange(fromDate ?? undefined, toDate ?? undefined);
-const nights = normalized?.nights ?? 0;
-```
-
-Remove `nightsBetween` from this file's imports if no other call remains.
-
-- [ ] **Step 5: Let the booking calendar complete a same-date selection**
-
-Remove this prop from the daily `<Calendar>`:
-
-```tsx
-min={minNights + 1}
-```
-
-Eligibility now belongs to the normalized business range, not react-day-picker's zero-night UI count. The existing disabled-date function continues to prevent unavailable selections.
-
-- [ ] **Step 6: Verify booking integration GREEN**
-
-Run:
-
-```bash
-pnpm --filter @booking/storefront test -- app/lib/daily-range.spec.ts
-pnpm --filter @booking/storefront lint
-pnpm --filter @booking/storefront typecheck
-```
-
-Expected: unit tests PASS, lint PASS with no unused imports, and type checking PASS.
-
-- [ ] **Step 7: Commit the booking behavior**
-
-```bash
-git add apps/storefront/app/lib/daily-range.ts apps/storefront/app/lib/daily-range.spec.ts apps/storefront/app/templates/studio/booking-panel.tsx
-git commit -m "fix(storefront): allow one-day booking ranges"
+git add apps/dashboard/app/
+git commit -m "refactor(dashboard): bỏ 'Bài đăng', dùng 'Tin đăng (nhiều hạng mục)'"
 ```
 
 ---
