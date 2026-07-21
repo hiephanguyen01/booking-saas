@@ -50,8 +50,7 @@ function forbidden(): Response {
   );
 }
 
-function withSecurityHeaders(response: Response, request: Request): Response {
-  const headers = new Headers(response.headers);
+function applySecurityHeaders(headers: Headers, request: Request): void {
   headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -61,12 +60,24 @@ function withSecurityHeaders(response: Response, request: Request): Response {
   if (storefrontEnv.production && requestOrigin(request)?.startsWith('https://')) {
     headers.set('Strict-Transport-Security', 'max-age=31536000');
   }
+}
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+function withSecurityHeaders(response: Response, request: Request): Response {
+  try {
+    // Most application responses have mutable headers. Updating them in place
+    // preserves separate Set-Cookie values without rebuilding a streaming body.
+    applySecurityHeaders(response.headers, request);
+    return response;
+  } catch {
+    // Redirect responses may expose an immutable header guard. Clone only those.
+    const headers = new Headers(response.headers);
+    applySecurityHeaders(headers, request);
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
 }
 
 export async function storefrontRequestMiddleware(
