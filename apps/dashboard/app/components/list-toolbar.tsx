@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react';
 import { useRef, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
-import { Form, Link, useSubmit } from 'react-router';
+import { Form, Link, useSearchParams, useSubmit } from 'react-router';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
@@ -14,9 +14,10 @@ const SEARCH_DEBOUNCE_MS = 300;
  * URL-driven list toolbar. Renders one GET `<Form>`; each control auto-submits so
  * the loader re-runs (text debounced ~300ms via useSubmit, selects/dates immediate).
  * Because `page` is NOT a form field, any submit drops it -> resets to page 1; the
- * hidden `pageSize` input preserves page size. "Xoá lọc" links back to `resetHref`
- * (the area list index) to clear everything. Single-table pages only — a Form submit
- * drops unrelated params (namespaced sub-table pages should keep their bespoke wiring).
+ * hidden `pageSize` input preserves page size. URL params the toolbar doesn't own
+ * (e.g. a `status` set by an adjacent <StatusFilterTabs>) are re-emitted as hidden
+ * inputs so submitting the search box doesn't wipe them. "Xoá lọc" links back to
+ * `resetHref` (the area list index) to clear everything.
  */
 export function ListToolbar({
   spec,
@@ -32,7 +33,23 @@ export function ListToolbar({
   actions?: ReactNode;
 }) {
   const submit = useSubmit();
+  const [searchParams] = useSearchParams();
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Keys the toolbar controls own — everything else in the URL is preserved verbatim.
+  const owned = new Set<string>(['page', 'pageSize']);
+  for (const field of spec) {
+    if (field.kind === 'date-range') {
+      owned.add(field.fromKey);
+      owned.add(field.toKey);
+    } else {
+      owned.add(field.key);
+    }
+  }
+  const preserved: [string, string][] = [];
+  searchParams.forEach((value, key) => {
+    if (!owned.has(key)) preserved.push([key, value]);
+  });
 
   const submitForm = (form: HTMLFormElement) => submit(form, { replace: true });
   const onSearchInput = (event: FormEvent<HTMLInputElement>) => {
@@ -48,6 +65,9 @@ export function ListToolbar({
   return (
     <Form method="get" className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="pageSize" value={pageSize} />
+      {preserved.map(([key, value], i) => (
+        <input key={`preserved-${key}-${i}`} type="hidden" name={key} value={value} />
+      ))}
       {spec.map((field) => (
         <ToolbarField
           key={fieldKey(field)}

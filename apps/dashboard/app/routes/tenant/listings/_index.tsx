@@ -20,8 +20,11 @@ import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
+import { ListToolbar } from '~/components/list-toolbar';
 import { listingPriceFrom } from '~/lib/listing-price';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
@@ -30,14 +33,19 @@ export function meta(): Route.MetaDescriptors {
 
 const STATUS_VALUES: PublishStatus[] = ['draft', 'pending_review', 'published', 'archived'];
 
+const LISTINGS_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên listing…' },
+];
+
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
   const { toApiQuery } = readListParams(url.searchParams);
   const statusRaw = url.searchParams.get('status') ?? '';
   const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
+  const { filters, apiFilters } = readListFilters(url.searchParams, LISTINGS_FILTER_SPEC);
   const [res, partnersRes] = await Promise.all([
     apiGet<PaginatedWithCounts<ListingResponse>>('/tenant/listings', auth, {
-      query: toApiQuery({ status }),
+      query: toApiQuery({ status, ...apiFilters }),
     }),
     can('tenant.partners.read')
       ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, { query: { pageSize: 100 } })
@@ -49,7 +57,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     result: res.ok ? res.data : null,
     partnerNames,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách listing.'),
-    filters: { status },
+    filters: { status, ...filters },
     canModerate: can('tenant.listings.publish'),
   };
 }
@@ -157,6 +165,13 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
+      <ListToolbar
+        spec={LISTINGS_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.listings}
+        pageSize={pageSize}
+      />
+
       <StatusFilterTabs
         filters={FILTERS}
         value={statusValue}
@@ -168,7 +183,9 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={listings}
         getRowKey={(l) => l.id}
-        emptyMessage="Không có listing nào trong nhóm này."
+        emptyMessage={
+          hasActiveFilters(filters) ? 'Không có listing khớp bộ lọc.' : 'Không có listing nào trong nhóm này.'
+        }
       />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
