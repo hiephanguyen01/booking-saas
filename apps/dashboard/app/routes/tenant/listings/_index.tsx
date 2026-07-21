@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router';
 import type {
   ListingResponse,
+  ListingTypeResponse,
   Paginated,
   PaginatedWithCounts,
   PartnerResponse,
@@ -18,6 +19,7 @@ import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { RelationshipHint } from '~/components/relationship-hint';
+import { EntityRef } from '~/components/entity-ref';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
@@ -44,19 +46,23 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const statusRaw = url.searchParams.get('status') ?? '';
   const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
   const { filters, apiFilters } = readListFilters(url.searchParams, LISTINGS_FILTER_SPEC);
-  const [res, partnersRes] = await Promise.all([
+  const [res, partnersRes, typesRes] = await Promise.all([
     apiGet<PaginatedWithCounts<ListingResponse>>('/tenant/listings', auth, {
       query: toApiQuery({ status, ...apiFilters }),
     }),
     can('tenant.partners.read')
       ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, { query: { pageSize: 100 } })
       : Promise.resolve(null),
+    apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
   ]);
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
+  const typeNames: Record<string, string> = {};
+  if (typesRes.ok) for (const t of typesRes.data ?? []) typeNames[t.id] = t.name;
   return {
     result: res.ok ? res.data : null,
     partnerNames,
+    typeNames,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách listing.'),
     filters: { status, ...filters },
     canModerate: can('tenant.listings.publish'),
@@ -74,7 +80,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 export default function TenantListings({ loaderData }: Route.ComponentProps) {
-  const { result, partnerNames, error, canModerate, filters } = loaderData;
+  const { result, partnerNames, typeNames, error, canModerate, filters } = loaderData;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
   const listings = result?.items ?? [];
@@ -89,6 +95,15 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         <div className="min-w-0">
           <div className="truncate font-medium">{l.title}</div>
           <div className="truncate text-xs text-muted-foreground">/{l.slug}</div>
+          {l.groupId && (
+            <div className="truncate text-xs">
+              <EntityRef
+                to={`/tenant/listing-groups/${l.groupId}/review`}
+                name="Thuộc tin đăng nhiều hạng mục"
+                className="font-normal text-muted-foreground"
+              />
+            </div>
+          )}
         </div>
       ),
     },
@@ -101,6 +116,14 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
       ),
       className: 'hidden sm:table-cell',
       headClassName: 'hidden sm:table-cell',
+    },
+    {
+      header: 'Loại',
+      cell: (l) => (
+        <span className="text-sm text-muted-foreground">{typeNames[l.listingTypeId] ?? '—'}</span>
+      ),
+      className: 'hidden md:table-cell',
+      headClassName: 'hidden md:table-cell',
     },
     {
       header: 'Hình thức',
