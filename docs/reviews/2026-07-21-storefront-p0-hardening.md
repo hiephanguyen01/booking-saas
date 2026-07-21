@@ -6,8 +6,8 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 
 ## Changes in this branch
 
-- Export the existing strict `YYYY-MM-DD` validator from `daily-range.ts`.
-- Reuse that validator in the booking-data resource loader.
+- Add a centralized strict `YYYY-MM-DD` validator.
+- Reuse it in daily-range normalization and the booking-data resource loader.
 - Invalid calendar dates such as `2026-02-31` now fall back safely instead of reaching `addDays()` and throwing a `RangeError`.
 
 ## Fixed-package availability verification
