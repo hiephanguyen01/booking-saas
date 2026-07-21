@@ -15,6 +15,10 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      # Prisma generate validates that its datasource URL exists but does not
+      # connect to PostgreSQL during lint/typecheck/build.
+      MIGRATE_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/booking
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
