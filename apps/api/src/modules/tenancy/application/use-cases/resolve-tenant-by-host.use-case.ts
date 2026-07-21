@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { PublicTenantResponse } from '@booking/contracts';
+import type { StorefrontTenantResponse } from '@booking/contracts';
 import { normalizeHostname } from '../../domain/hostname';
 import { evaluateSubscription } from '../../domain/subscription-status';
 import {
@@ -33,7 +33,7 @@ export class ResolveTenantByHostUseCase {
     @Inject(TENANT_CACHE) private readonly cache: ITenantCache,
   ) {}
 
-  async execute(rawHost: string, now = new Date()): Promise<PublicTenantResponse> {
+  async execute(rawHost: string, now = new Date()): Promise<StorefrontTenantResponse> {
     const hostname = normalizeHostname(rawHost);
 
     let tenantId = await this.cache.getHost(hostname);
