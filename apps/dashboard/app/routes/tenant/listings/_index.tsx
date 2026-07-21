@@ -147,7 +147,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
                 </>
               ) : (
                 <>
-                  <Eye className="size-4" /> Xem
+                  <Eye className="size-4" /> Xem & xử lý
                 </>
               )}
             </Link>
