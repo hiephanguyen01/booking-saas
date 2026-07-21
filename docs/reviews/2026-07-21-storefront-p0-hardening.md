@@ -18,6 +18,9 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 - Bound the partner upload-presign backend call with a 10-second timeout.
 - Include the selected booking start/end window when validating promotion eligibility.
 - Replace raw backend booking/payment messages with localized storefront-safe failures while preserving known selection error codes.
+- Add conservative response security headers, including a non-breaking CSP, framing protection, permissions policy, referrer policy, MIME sniffing protection, and production HSTS.
+- Remove the silent 20-room listing-group cap and bound child-detail fan-out to four concurrent tasks.
+- Bound fixed-package availability fan-out to three concurrent tasks and scope related-listing lookup to the current listing type.
 
 ## Fixed-package availability verification
 
