@@ -13,6 +13,7 @@ import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
 import { PaginationBar } from '~/components/pagination-bar';
+import { PageHeader } from '~/components/page-header';
 
 const COMMISSION_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã giới thiệu hoặc mã booking…' },
@@ -100,6 +101,11 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        title="Hoa hồng"
+        description="Chi tiết hoa hồng bạn nhận được từ các lượt đặt qua link giới thiệu."
+      />
+
       <ListToolbar
         spec={COMMISSION_FILTER_SPEC}
         filters={filters}

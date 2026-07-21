@@ -24,6 +24,7 @@ import { StatCard } from '~/components/stat-card';
 import { Money } from '~/components/money';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
+import { PageHeader } from '~/components/page-header';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
@@ -97,7 +98,15 @@ const payoutFields: FieldConfig<UpdateAffiliatePayoutInfoInput>[] = [
 export default function AffiliateOverview({ loaderData, actionData }: Route.ComponentProps) {
   const { stats, membership } = loaderData;
   if (!stats || !membership) {
-    return <p className="text-sm text-muted-foreground">Chưa có dữ liệu.</p>;
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Tổng quan"
+          description="Thống kê lượt click, đơn đặt và thu nhập hoa hồng của bạn."
+        />
+        <p className="text-sm text-muted-foreground">Chưa có dữ liệu.</p>
+      </div>
+    );
   }
 
   const ok = Boolean(actionData?.ok);
@@ -115,6 +124,11 @@ export default function AffiliateOverview({ loaderData, actionData }: Route.Comp
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title="Tổng quan"
+        description="Thống kê lượt click, đơn đặt và thu nhập hoa hồng của bạn."
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<MousePointerClick className="size-4" />}

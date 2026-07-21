@@ -18,6 +18,7 @@ import { BackLink } from '~/components/back-link';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { EmailLink, PhoneLink } from '~/components/contact-link';
 import { PageHeader } from '~/components/page-header';
+import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 import { readBusinessInfo } from '~/features/tenant/lib/partner-business-info';
@@ -87,7 +88,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
 
       <PageHeader
         title={partner.name}
-        description={`/${partner.slug}`}
+        description="Hồ sơ đối tác, tin đăng và đơn đặt liên quan."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {partner.isHouse ? <Badge variant="outline">Nội bộ</Badge> : null}
@@ -109,6 +110,10 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
         </CardHeader>
         <CardContent>
           <DetailGrid>
+            <DetailField
+              label="Đường dẫn"
+              value={<CopyableCode value={`/${partner.slug}`} label="đường dẫn đối tác" />}
+            />
             <DetailField
               label="Số điện thoại"
               value={contact.phone ? <PhoneLink phone={contact.phone} /> : null}

@@ -38,6 +38,7 @@ import { dashboardPaths } from '~/constants/paths';
 import { BackLink } from '~/components/back-link';
 import { SuccessBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { CopyableCode } from '~/components/copyable-code';
 import { StatCard } from '~/components/stat-card';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
@@ -119,7 +120,7 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
         <BackLink to={dashboardPaths.admin.tenants} label="Danh sách tenant" />
         <PageHeader
           title={tenant.name}
-          description={tenant.slug}
+          description="Thông tin, gói dịch vụ và hoạt động của tenant."
           actions={
             <div className="flex flex-wrap items-center gap-3">
               <TenantStatusBadge status={tenant.status} />
@@ -135,6 +136,12 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
           }
         />
         <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <dt className="text-muted-foreground">Slug</dt>
+            <dd>
+              <CopyableCode value={tenant.slug} label="slug tenant" />
+            </dd>
+          </div>
           <div className="flex items-center gap-2">
             <dt className="text-muted-foreground">Loại hình</dt>
             <dd className="font-medium">
