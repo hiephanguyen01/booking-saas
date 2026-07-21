@@ -90,7 +90,11 @@ function validTraceparent(value: string): {
 
   const parts = value.split('-');
   if (parts.length < 4) return null;
-  const [version, traceId, parentSpanId, traceFlags, ...futureFields] = parts;
+  const version = parts[0];
+  const traceId = parts[1];
+  const parentSpanId = parts[2];
+  const traceFlags = parts[3];
+  if (!version || !traceId || !parentSpanId || !traceFlags) return null;
 
   if (
     version.length !== 2 ||
@@ -108,6 +112,7 @@ function validTraceparent(value: string): {
     return null;
   }
 
+  const futureFields = parts.slice(4);
   // Version 00 has an exact four-field format. Future versions may append
   // fields, but empty extension fields are never accepted.
   if (version === '00' && futureFields.length > 0) return null;
