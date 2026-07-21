@@ -88,7 +88,7 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
 
       <PageHeader
         title={partner.name}
-        description="Hồ sơ đối tác, tin đăng và đơn đặt liên quan."
+        description="Hồ sơ đối tác, thông tin định danh và thanh toán."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {partner.isHouse ? <Badge variant="outline">Nội bộ</Badge> : null}

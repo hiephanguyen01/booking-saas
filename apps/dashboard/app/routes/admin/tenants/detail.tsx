@@ -173,7 +173,7 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
           icon={<Users className="size-4" />}
         />
         <StatCard
-          label="Listing"
+          label="Tin đăng"
           value={tenant.counts.listings.toLocaleString('vi-VN')}
           icon={<ListChecks className="size-4" />}
         />
