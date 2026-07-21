@@ -13,6 +13,7 @@ export interface StorefrontRequestMetadata {
   id: string;
   method: string;
   path: string;
+  startedAtMs: number;
 }
 
 export interface StorefrontRequestContextState {
