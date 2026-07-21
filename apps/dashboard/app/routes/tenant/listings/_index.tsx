@@ -17,6 +17,7 @@ import { formatDateTime } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { RelationshipHint } from '~/components/relationship-hint';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
@@ -162,6 +163,8 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         title="Tin đăng"
         description="Quản lý và kiểm duyệt các tin đăng của đối tác trong marketplace."
       />
+
+      <RelationshipHint variant="listings" />
 
       <ErrorBanner error={error} />
 

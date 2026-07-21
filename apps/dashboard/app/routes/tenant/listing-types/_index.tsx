@@ -8,6 +8,7 @@ import type { Route } from './+types/_index';
 import { apiDelete, apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
+import { RelationshipHint } from '~/components/relationship-hint';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { SEARCH_SCHEDULE_LABEL } from '~/features/tenant/constants';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
@@ -126,6 +127,7 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
           ) : null
         }
       />
+      <RelationshipHint variant="types" />
       {error || actionError ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error ?? actionError}

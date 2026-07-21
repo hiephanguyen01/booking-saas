@@ -18,6 +18,7 @@ import { buildListingColumns } from '~/features/partner/components/listings/list
 import { ListingGroupCard } from '~/features/partner/components/listings/listing-group-card';
 import type { ListingsActionResult } from '~/features/partner/components/listings/types';
 import { PageHeader } from '~/components/page-header';
+import { RelationshipHint } from '~/components/relationship-hint';
 import { ErrorBanner } from '~/components/action-feedback';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
 import { readListParams } from '~/lib/pagination';
@@ -133,6 +134,8 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
           ) : null
         }
       />
+
+      <RelationshipHint variant="listings" />
 
       <StatusFilterTabs
         filters={FILTERS}
