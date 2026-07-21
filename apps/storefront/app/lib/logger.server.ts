@@ -1,5 +1,8 @@
 import { performance } from 'node:perf_hooks';
 import { getCurrentStorefrontRequestContext } from './request-context.server';
+import { initializeStorefrontTracing } from './tracing-runtime.server';
+
+initializeStorefrontTracing();
 
 type StorefrontLogLevel = 'info' | 'warn' | 'error';
 type StorefrontLogDetails = Record<string, unknown>;
