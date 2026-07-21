@@ -11,6 +11,7 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 - Serialize refresh-token rotation with a Redis lock scoped by storefront session ID.
 - Re-read and reuse already-rotated sessions for concurrent requests.
 - Sign affiliate attribution and visitor cookies with the storefront session secrets and enable `Secure` in secure environments.
+- Validate signed referral codes against the API-generated `R-XXXXXX` format and visitor IDs as UUIDs.
 - Remove tracking, booking, and catalog filter state from canonical and alternate URLs.
 - Fetch every catalog page for every listing type when generating the tenant sitemap.
 - Preserve query strings and use permanent 308 redirects for legacy routes.
