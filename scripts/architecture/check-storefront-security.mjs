@@ -52,6 +52,14 @@ for (const file of storefrontFiles) {
   if (/http:\/\/localhost:(3000|5174)/.test(source) && !path.endsWith('/lib/env.server.ts')) {
     failures.push(`${path}: production-sensitive localhost fallback`);
   }
+  if (/\bstyle\s*=\s*\{/.test(source)) {
+    failures.push(
+      `${path}: JSX inline style is forbidden; use compiled classes or an external stylesheet`,
+    );
+  }
+  if (/<style\b/i.test(source)) {
+    failures.push(`${path}: inline <style> elements are forbidden; use an external stylesheet`);
+  }
   if (path.endsWith('/lib/request-auth.server.ts')) {
     failures.push(`${path}: use request-context.server.ts; compatibility shims are forbidden`);
   }
