@@ -18,7 +18,7 @@ import { EntityRef } from '~/components/entity-ref';
 import { WarningCallout } from '~/components/warning-callout';
 
 export interface ModerationActionsCardProps {
-  /** Drives the generated copy: `'tin đăng'` (listing review) or `'bài đăng'` (group review). */
+  /** Drives the generated moderation copy — the noun interpolated into confirm/label text (e.g. 'tin đăng'). */
   entityLabel: 'tin đăng';
   /** Card sub-caption (per-page wording). */
   cardDescription: string;

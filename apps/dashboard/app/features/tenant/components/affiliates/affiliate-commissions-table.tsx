@@ -20,7 +20,7 @@ const commissionColumns: DataTableColumn<AffiliateCommission>[] = [
     ),
   },
   {
-    header: 'Listing',
+    header: 'Tin đăng',
     cell: (c) => <span className="text-sm text-muted-foreground">{c.listingTitle ?? '—'}</span>,
     className: 'hidden md:table-cell',
     headClassName: 'hidden md:table-cell',

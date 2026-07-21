@@ -51,7 +51,7 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
       cell: (c) => <span className="font-mono text-sm">{c.bookingCode ?? '—'}</span>,
     },
     {
-      header: 'Listing',
+      header: 'Tin đăng',
       cell: (c) => <span className="text-sm text-muted-foreground">{c.listingTitle ?? '—'}</span>,
       className: 'hidden md:table-cell',
       headClassName: 'hidden md:table-cell',

@@ -18,7 +18,7 @@ export const COMMISSION_STATUS_LABEL: Record<AffiliateCommissionStatusDto, strin
 /** Referral-link target → Vietnamese label. */
 export const REFERRAL_TARGET_LABEL: Record<ReferralTargetDto, string> = {
   tenant_home: 'Trang chủ',
-  listing: 'Listing',
+  listing: 'Tin đăng',
 };
 
 /** Where the affiliate's effective rate comes from → Vietnamese label. */

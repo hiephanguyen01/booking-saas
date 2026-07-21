@@ -70,7 +70,7 @@ export function buildPlanColumns({
       cell: (p) => formatNumber(p.limits.maxPartners),
     },
     {
-      header: 'Listing',
+      header: 'Tin đăng',
       headClassName: 'text-right',
       className: 'text-right tabular-nums',
       cell: (p) => formatNumber(p.limits.maxListings),
