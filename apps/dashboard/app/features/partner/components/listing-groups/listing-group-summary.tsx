@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
-import { Progress } from '@booking/ui/components/ui/progress';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
@@ -24,10 +23,12 @@ function addressLine(group: ListingGroupDetailResponse): string {
   return [group.address, group.wardName, group.provinceName].filter(Boolean).join(', ');
 }
 
-/** "Tổng quan" — slug, price-from, lifecycle metadata and readiness progress. */
+/**
+ * "Tổng quan" — slug, price-from and lifecycle metadata. Readiness itself lives
+ * in the "Sẵn sàng gửi duyệt" card on the workspace page — don't add a second
+ * readiness readout here (see docs/conventions.md).
+ */
 export function ListingGroupOverviewCard({ group }: { group: ListingGroupDetailResponse }) {
-  const readyPct =
-    group.listingCount > 0 ? Math.round((group.readyListingCount / group.listingCount) * 100) : 0;
   return (
     <Card>
       <CardHeader>
@@ -66,15 +67,6 @@ export function ListingGroupOverviewCard({ group }: { group: ListingGroupDetailR
             }
           />
         </DetailGrid>
-        <DetailSection
-          title="Tiến độ"
-          description={`${group.readyListingCount}/${group.listingCount} ${group.itemLabel} đạt mức sẵn sàng (đủ ảnh, mô tả và giá).`}
-        >
-          <div className="space-y-1.5">
-            <Progress value={readyPct} />
-            <p className="text-xs text-muted-foreground">{readyPct}% hoàn thiện</p>
-          </div>
-        </DetailSection>
       </CardContent>
     </Card>
   );

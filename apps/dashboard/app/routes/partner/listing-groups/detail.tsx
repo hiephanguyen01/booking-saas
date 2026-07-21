@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
+import { Progress } from '@booking/ui/components/ui/progress';
 import {
   Empty,
   EmptyContent,
@@ -69,6 +70,8 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
   const itemLabel = group.itemLabel;
   const adminLocked = isAdminLocked(group);
   const canEditItems = canWrite && group.status === 'draft';
+  const readyPct =
+    group.listingCount > 0 ? Math.round((group.readyListingCount / group.listingCount) * 100) : 0;
   const columns = buildGroupedListingColumns({
     groupId: group.id,
     itemLabel,
@@ -165,22 +168,27 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Kiểm tra</CardTitle>
+            <CardTitle>Sẵn sàng gửi duyệt</CardTitle>
             <CardDescription>
-              {group.readyListingCount}/{group.listingCount} {itemLabel} sẵn sàng.
+              {group.readyListingCount}/{group.listingCount} {itemLabel} đạt mức sẵn sàng (đủ ảnh,
+              mô tả và giá).
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            <div className="space-y-1.5">
+              <Progress value={readyPct} />
+              <p className="text-xs text-muted-foreground">{readyPct}% hoàn thiện</p>
+            </div>
             <ul className="flex flex-col gap-2 text-sm">
               <li>
-                Thông tin chung:{' '}
+                Thông tin chung (ảnh, mô tả):{' '}
                 {group.description && group.photos.length ? 'Đã đủ' : 'Cần bổ sung'}
               </li>
               <li>
                 Ít nhất một {itemLabel}: {group.listingCount ? 'Đã có' : 'Chưa có'}
               </li>
               <li>
-                Nội dung {itemLabel}:{' '}
+                Nội dung {itemLabel} đạt mức sẵn sàng (đủ ảnh, mô tả và giá):{' '}
                 {group.readyListingCount === group.listingCount && group.listingCount
                   ? 'Đã đủ'
                   : 'Cần bổ sung'}
