@@ -48,7 +48,7 @@ pnpm --filter=@booking/dashboard dev   # :5174
 ### Task 1: Sửa 2 lỗi thuật ngữ **sai nghĩa** (ưu tiên cao nhất)
 
 **Files:**
-- Modify: `apps/dashboard/app/routes/tenant/listing-types/constants.ts` (map `SEARCH_SCHEDULE_LABEL`, ~dòng 52-56)
+- Modify: `apps/dashboard/app/features/tenant/constants.ts` (map `SEARCH_SCHEDULE_LABEL`, dòng 52-57)
 - Modify: `apps/dashboard/app/routes/tenant/listing-groups/_index.tsx:201` (verb "Mở lại")
 - Modify: `apps/dashboard/app/features/partner/components/listings/listing-row-actions.tsx:63` + `listing-group-lifecycle.tsx:108` (verb "Đăng lại")
 
@@ -56,7 +56,17 @@ pnpm --filter=@booking/dashboard dev   # :5174
 
 - [ ] **Step 1: Sửa `SEARCH_SCHEDULE_LABEL` đảo nghĩa**
 
-Mở `constants.ts`, đối chiếu với `apps/dashboard/app/constants/booking.ts:14-15` (`BOOKING_MODE_LABEL`: `hourly → 'Theo giờ'`, `daily → 'Theo ngày'`). Sửa `SEARCH_SCHEDULE_LABEL` để KHỚP nghĩa booking-mode thật (không để "Theo ngày" mang nghĩa *hourly*). Xác định đúng nhãn cho từng schedule key theo ngữ nghĩa storefront-search (nếu key `hourly` mô tả "khách chọn khung giờ trong ngày" → nhãn phải là "Theo giờ", không phải "Theo ngày"). Đặt nhãn nhất quán với `BOOKING_MODE_LABEL`.
+`schedule` **chính là một booking mode** (helper text: "Chỉ các hình thức đặt đã bật mới dùng làm lịch tìm kiếm"), nên nhãn phải khớp y hệt `BOOKING_MODE_LABEL` (`apps/dashboard/app/constants/booking.ts:14-18`). Đổi `SEARCH_SCHEDULE_LABEL` (`features/tenant/constants.ts:52-57`) thành **chính xác**:
+
+```ts
+export const SEARCH_SCHEDULE_LABEL: Record<ListingTypeSearchSchedule, string> = {
+  none: 'Không dùng lịch',
+  hourly: 'Theo giờ',      // was 'Theo ngày' (sai — trùng nghĩa daily)
+  daily: 'Theo ngày',      // was 'Theo khoảng ngày'
+  inventory: 'Theo kho',   // was 'Theo khoảng thuê kho'
+};
+```
+Sau fix: trên listing-types list, cột "Hình thức" và cột "Tìm kiếm" của cùng 1 type đọc nhất quán (hourly → "Theo giờ" ở cả hai).
 
 - [ ] **Step 2: Thống nhất verb republish = "Đăng lại"**
 
@@ -298,7 +308,7 @@ git commit -m "feat(dashboard): hiện tên Loại dịch vụ ở listing revie
 
 **Files:**
 - Modify: `apps/dashboard/app/routes/tenant/listing-types/_index.tsx` (columns `:54-107`)
-- Modify: `apps/dashboard/app/routes/tenant/listing-types/constants.ts` (thêm `STRUCTURE_LABEL`)
+- Modify: `apps/dashboard/app/features/tenant/constants.ts` (thêm `STRUCTURE_LABEL`)
 
 **Interfaces:**
 - Produces: `export const STRUCTURE_LABEL: Record<'standalone'|'grouped'|'flexible', string>`
@@ -306,7 +316,7 @@ git commit -m "feat(dashboard): hiện tên Loại dịch vụ ở listing revie
 - [ ] **Step 1: Thêm nhãn structure**
 
 ```ts
-// constants.ts
+// features/tenant/constants.ts
 export const STRUCTURE_LABEL = {
   standalone: 'Tin đăng đơn',
   grouped: 'Nhiều hạng mục',
@@ -334,7 +344,7 @@ git commit -m "feat(dashboard): listing-types list hiện cấu trúc (đơn/nhi
 **Files:**
 - Modify: `apps/dashboard/app/routes/partner/listing-groups/detail.tsx:168-188` (card "Kiểm tra")
 - Modify: `apps/dashboard/app/features/partner/components/listings/listing-group-summary.tsx:69-77` (progress "Tiến độ")
-- Reference: `apps/dashboard/app/routes/tenant/listing-groups/constants.ts` (`GROUP_CHECKLIST_LABEL:38-43`)
+- Reference: `apps/dashboard/app/features/tenant/constants.ts` (`GROUP_CHECKLIST_LABEL`, dòng 38-43)
 
 **Interfaces:** — (nội bộ)
 
