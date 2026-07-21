@@ -26,6 +26,9 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
+import { DateTimeValue } from '~/components/date-time-value';
+import { EntityRef } from '~/components/entity-ref';
+import { WarningCallout } from '~/components/warning-callout';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { CANCELLATION_SOURCE_LABEL, CancellationTiers } from '~/components/cancellation-tiers';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
@@ -319,6 +322,7 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
   const price = listingPriceFrom(listing);
   const source = listing.effectiveCancellationPolicySource;
   const inherited = source !== null && source !== 'listing';
+  const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
 
   return (
     <div className="space-y-5">
@@ -368,6 +372,10 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
         />
       ) : (
         <>
+          {adminLocked ? (
+            <WarningCallout>Bị quản trị viên ẩn — liên hệ tenant để mở lại.</WarningCallout>
+          ) : null}
+
           <Card>
             <CardHeader>
               <CardTitle>Thông tin</CardTitle>
@@ -388,6 +396,21 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
                   value={price ? <Money value={price} /> : 'Chưa có giá'}
                 />
                 <DetailField label="Đặt cọc" value={`${listing.depositPercent}%`} />
+                <DetailField
+                  label="Cập nhật"
+                  value={<DateTimeValue iso={listing.updatedAt} relative />}
+                />
+                {listing.groupId ? (
+                  <DetailField
+                    label="Thuộc tin đăng"
+                    value={
+                      <EntityRef
+                        to={dashboardPaths.partner.listingGroup(listing.groupId)}
+                        name="Xem tin đăng"
+                      />
+                    }
+                  />
+                ) : null}
               </DetailGrid>
             </CardContent>
           </Card>
