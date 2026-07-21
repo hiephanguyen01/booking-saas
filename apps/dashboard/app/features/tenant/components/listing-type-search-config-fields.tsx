@@ -95,7 +95,7 @@ export function ListingTypeSearchConfigFields({
           <div>
             <Label htmlFor="show-guests">Lọc theo số khách</Label>
             <p className="mt-1 text-xs text-muted-foreground">
-              So sánh số khách với sức chứa của từng listing.
+              So sánh số khách với sức chứa của từng tin đăng.
             </p>
           </div>
           <Switch

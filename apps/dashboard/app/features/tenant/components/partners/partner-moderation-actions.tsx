@@ -40,7 +40,7 @@ export function PartnerModerationActions({
           <CardHeader>
             <CardTitle>Duyệt đối tác</CardTitle>
             <CardDescription>
-              Chấp thuận đối tác tham gia marketplace — họ sẽ có thể đăng listing.
+              Chấp thuận đối tác tham gia marketplace — họ sẽ có thể đăng tin đăng.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -81,7 +81,7 @@ export function PartnerModerationActions({
           <CardHeader>
             <CardTitle>Tạm ngưng đối tác</CardTitle>
             <CardDescription>
-              Ẩn listing của đối tác khỏi storefront và chặn nhận đặt chỗ mới.
+              Ẩn tin đăng của đối tác khỏi storefront và chặn nhận đặt chỗ mới.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -92,7 +92,7 @@ export function PartnerModerationActions({
                 </Button>
               }
               title="Tạm ngưng đối tác này?"
-              description="Listing của đối tác sẽ bị ẩn khỏi storefront và không nhận đặt chỗ mới cho tới khi được khôi phục."
+              description="Tin đăng của đối tác sẽ bị ẩn khỏi storefront và không nhận đặt chỗ mới cho tới khi được khôi phục."
               confirmLabel="Tạm ngưng"
               busy={busy}
               onConfirm={() => void submit({ intent: 'suspend' }, { method: 'post' })}

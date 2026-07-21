@@ -139,7 +139,7 @@ export function ListingTypeAttributeFields({
           <section className="space-y-3 rounded-lg border p-4">
             <h2 className="text-sm font-semibold">Thuộc tính tuỳ biến</h2>
             <p className="text-xs text-muted-foreground">
-              Các trường sẽ hiện khi đối tác tạo listing thuộc loại này. “Lọc được” chỉ làm cho
+              Các trường sẽ hiện khi đối tác tạo tin đăng thuộc loại này. “Lọc được” chỉ làm cho
               thuộc tính đủ điều kiện; hãy bật và chọn kiểu hiển thị ở phần bộ lọc bên dưới.
             </p>
             {rootMessage ? (

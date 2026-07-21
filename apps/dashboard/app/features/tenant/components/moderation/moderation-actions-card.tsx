@@ -92,7 +92,7 @@ export function ModerationActionsCard({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Listing này thuộc một bài đăng nhóm và được kiểm duyệt cùng bài đăng.{' '}
+            Tin đăng này thuộc một bài đăng nhóm và được kiểm duyệt cùng bài đăng.{' '}
             <EntityRef to={managedByGroupHref} name="Kiểm duyệt bài đăng" />.
           </p>
         </CardContent>

@@ -37,7 +37,7 @@ export function SystemFacetEditor({
       <div>
         <h3 className="text-sm font-semibold">Bộ lọc hệ thống</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Bật và sắp xếp các bộ lọc lấy từ dữ liệu chuẩn của listing.
+          Bật và sắp xếp các bộ lọc lấy từ dữ liệu chuẩn của tin đăng.
         </p>
       </div>
       <div className="space-y-2">

@@ -51,7 +51,7 @@ export function TenantDefaultCancellationPolicyCard({
       <CardHeader>
         <CardTitle>Chính sách huỷ mặc định</CardTitle>
         <CardDescription>
-          Áp dụng cho lượt đặt khi cả listing lẫn đối tác của nó đều chưa đặt chính sách huỷ riêng.
+          Áp dụng cho lượt đặt khi cả tin đăng lẫn đối tác của nó đều chưa đặt chính sách huỷ riêng.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

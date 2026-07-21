@@ -33,7 +33,7 @@ export function PartnerPromotionsCard({
       <CardHeader>
         <CardTitle>Marketplace</CardTitle>
         <CardDescription>
-          Cho phép đối tác tự tạo mã khuyến mãi cho listing của họ (đối tác chịu chi phí, §12.2).
+          Cho phép đối tác tự tạo mã khuyến mãi cho tin đăng của họ (đối tác chịu chi phí, §12.2).
         </CardDescription>
       </CardHeader>
       <CardContent>
