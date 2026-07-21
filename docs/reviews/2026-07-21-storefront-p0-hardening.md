@@ -1,4 +1,4 @@
-# Storefront P0/P1/P2/P3 hardening — 2026-07-21
+# Storefront P0/P1/P2/P3/P4 hardening — 2026-07-21
 
 ## Scope
 
@@ -30,6 +30,9 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 - Sanitize every structured Storefront API result before it can enter loader/action hydration data.
 - Preserve only bounded `UPPER_SNAKE_CASE` problem codes and field-error codes; replace free-form backend messages with localized generic failures.
 - Limit backend field-error payloads to 50 valid field names and five messages per field.
+- Validate and normalize the storefront `Host` header before forwarding it to the API tenant resolver or auth/payment calls.
+- Reject ambiguous host values containing userinfo, paths, query/hash fragments, control characters, invalid ports, or excessive length.
+- Bound catalog pages to 10,000 and search amenities to 30 values of at most 120 characters before hydration or API forwarding.
 
 ## Fixed-package availability verification
 
