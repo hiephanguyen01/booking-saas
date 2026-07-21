@@ -5,6 +5,7 @@ import { NsI18n, useTranslation } from '../lib/i18n';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { searchListings } from '../lib/catalog.server';
 import { parseSearchState, type StorefrontSearchState } from '../features/search/search-state';
+import { getCurrentStorefrontTenant } from '../lib/request-context.server';
 
 /** Search params that make this a filtered view rather than the canonical catalog page. */
 const FILTER_PARAMS = [
@@ -34,7 +35,8 @@ export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescript
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
-  const state = parseSearchState(url.searchParams);
+  const timezone = getCurrentStorefrontTenant().defaultTimezone;
+  const state = parseSearchState(url.searchParams, timezone);
   const apiSearch = catalogApiSearch(url.searchParams, params.typeSlug, state);
   const [result, provinces] = await Promise.all([
     searchListings(request, apiSearch),
