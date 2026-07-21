@@ -198,7 +198,7 @@ function RowActions({ group }: { group: ListingGroupResponse }) {
             variant="outline"
             disabled={busy}
           >
-            <Undo2 data-icon="inline-start" /> Mở lại
+            <Undo2 data-icon="inline-start" /> Đăng lại
           </Button>
         ) : null}
       </fetcher.Form>
