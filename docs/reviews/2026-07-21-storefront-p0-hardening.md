@@ -7,6 +7,7 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 ## Changes in this branch
 
 - Add a centralized strict `YYYY-MM-DD` validator and reject impossible calendar dates before date arithmetic.
+- Reject date-only inputs whose required day offset would leave the four-digit `YYYY-MM-DD` contract.
 - Validate hourly, daily, and inventory date query parameters before requesting availability.
 - Serialize refresh-token rotation with a Redis lock scoped by storefront session ID.
 - Re-read and reuse already-rotated sessions for concurrent requests.
