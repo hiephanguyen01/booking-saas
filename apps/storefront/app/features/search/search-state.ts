@@ -66,14 +66,17 @@ export interface SearchDateSelection {
 }
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MAX_SEARCH_AMENITIES = 30;
+const MAX_SEARCH_AMENITY_LENGTH = 120;
+const MAX_CATALOG_PAGE = 10_000;
 
 function dateParam(value: string | null, fallback: string, offsetDays = 0): string {
   return value && canOffsetDateOnly(value, offsetDays) ? value : fallback;
 }
 
-function positiveInt(value: string | null, fallback: number): number {
+function positiveInt(value: string | null, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
   const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
 }
 
 function money(value: string | null): number | null {
@@ -91,6 +94,21 @@ function rating(value: string | null): number | null {
     parsed * 2 === Math.round(parsed * 2)
     ? parsed
     : null;
+}
+
+function amenityParams(params: URLSearchParams): string[] {
+  const amenities: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of params.getAll('amenities').flatMap((item) => item.split(','))) {
+    const value = raw.trim().slice(0, MAX_SEARCH_AMENITY_LENGTH);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    amenities.push(value);
+    if (amenities.length >= MAX_SEARCH_AMENITIES) break;
+  }
+
+  return amenities;
 }
 
 export function parseSearchState(params: URLSearchParams): StorefrontSearchState {
@@ -136,17 +154,15 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
       rawStartTime < rawEndTime,
     ),
     hasDailyRange: Boolean(validFrom && validTo && rawFrom && rawTo && rawTo > rawFrom),
-    guests: Math.min(100, positiveInt(params.get('guests'), 1)),
-    quantity: Math.min(100, positiveInt(params.get('quantity'), 1)),
+    guests: positiveInt(params.get('guests'), 1, 100),
+    quantity: positiveInt(params.get('quantity'), 1, 100),
     minPrice: money(params.get('minPrice')),
     maxPrice: money(params.get('maxPrice')),
     minRating: rating(params.get('minRating')),
-    amenities: [...new Set(params.getAll('amenities').flatMap((item) => item.split(',')))].filter(
-      Boolean,
-    ),
+    amenities: amenityParams(params),
     area,
     sort,
-    page: positiveInt(params.get('page'), 1),
+    page: positiveInt(params.get('page'), 1, MAX_CATALOG_PAGE),
   };
 }
 
