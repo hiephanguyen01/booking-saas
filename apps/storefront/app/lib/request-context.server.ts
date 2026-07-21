@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { SessionInfoResponse } from '@booking/contracts';
 import type { StorefrontSessionData } from './session.server';
 import type { StorefrontTenant } from './tenant.server';
+import { registerStorefrontTimezoneResolver } from './timezone-runtime';
 
 export interface StorefrontAuthContext {
   session: StorefrontSessionData;
@@ -15,6 +16,9 @@ export interface StorefrontRequestContextState {
 }
 
 const storage = new AsyncLocalStorage<StorefrontRequestContextState>();
+
+registerStorefrontTimezoneResolver(() => storage.getStore()?.tenant.defaultTimezone);
+
 export const runWithStorefrontRequestContext = <T>(
   state: StorefrontRequestContextState,
   callback: () => T,
