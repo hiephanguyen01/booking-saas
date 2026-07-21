@@ -28,7 +28,7 @@ import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Listing · Tenant · Bookify' }];
+  return [{ title: 'Tin đăng · Tenant · Bookify' }];
 }
 
 const STATUS_VALUES: PublishStatus[] = ['draft', 'pending_review', 'published', 'archived'];
@@ -83,7 +83,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
 
   const columns: DataTableColumn<ListingResponse>[] = [
     {
-      header: 'Listing',
+      header: 'Tin đăng',
       cell: (l) => (
         <div className="min-w-0">
           <div className="truncate font-medium">{l.title}</div>
@@ -159,8 +159,8 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Listing"
-        description="Quản lý và kiểm duyệt các listing của đối tác trong marketplace."
+        title="Tin đăng"
+        description="Quản lý và kiểm duyệt các tin đăng của đối tác trong marketplace."
       />
 
       <ErrorBanner error={error} />
@@ -184,7 +184,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         data={listings}
         getRowKey={(l) => l.id}
         emptyMessage={
-          hasActiveFilters(filters) ? 'Không có listing khớp bộ lọc.' : 'Không có listing nào trong nhóm này.'
+          hasActiveFilters(filters) ? 'Không có tin đăng khớp bộ lọc.' : 'Không có tin đăng nào khớp bộ lọc.'
         }
       />
 

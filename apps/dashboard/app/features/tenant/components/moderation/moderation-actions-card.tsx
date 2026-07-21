@@ -18,8 +18,8 @@ import { EntityRef } from '~/components/entity-ref';
 import { WarningCallout } from '~/components/warning-callout';
 
 export interface ModerationActionsCardProps {
-  /** Drives the generated copy: `'listing'` (listing review) or `'bài đăng'` (group review). */
-  entityLabel: 'listing' | 'bài đăng';
+  /** Drives the generated copy: `'tin đăng'` (listing review) or `'bài đăng'` (group review). */
+  entityLabel: 'tin đăng' | 'bài đăng';
   /** Card sub-caption (per-page wording). */
   cardDescription: string;
   status: PublishStatus;

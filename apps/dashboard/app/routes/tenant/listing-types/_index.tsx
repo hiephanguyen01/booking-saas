@@ -95,7 +95,7 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
       header: 'Đang dùng',
       cell: (t) => (
         <span className="whitespace-nowrap text-sm text-muted-foreground">
-          <span className="tabular-nums text-foreground">{t.listingCount}</span> listing
+          <span className="tabular-nums text-foreground">{t.listingCount}</span> tin đăng
         </span>
       ),
       className: 'hidden sm:table-cell',
@@ -174,7 +174,7 @@ function RowActions({ type }: { type: ListingTypeResponse }) {
           variant="ghost"
           className="text-muted-foreground hover:text-destructive"
           disabled={busy || inUse}
-          title={inUse ? `Đang được ${type.listingCount} listing sử dụng — không thể xoá.` : undefined}
+          title={inUse ? `Đang được ${type.listingCount} tin đăng sử dụng — không thể xoá.` : undefined}
         >
           <Trash2 className="size-3.5" /> Xoá
         </Button>

@@ -36,7 +36,7 @@ export const tenantNavSections: DashboardNavSection[] = [
     label: 'Danh mục',
     items: [
       {
-        title: 'Listing',
+        title: 'Tin đăng',
         to: dashboardPaths.tenant.listings,
         icon: Store,
         permission: 'tenant.listings.read',
