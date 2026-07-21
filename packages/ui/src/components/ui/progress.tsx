@@ -1,31 +1,34 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { Progress as ProgressPrimitive } from "radix-ui"
+import * as React from 'react';
 
-import { cn } from "@booking/ui/lib/utils"
+import { cn } from '@booking/ui/lib/utils';
 
 function Progress({
   className,
-  value,
+  value = 0,
+  max = 100,
   ...props
-}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+}: React.ComponentProps<'progress'>) {
+  const normalizedMax =
+    typeof max === 'number' && Number.isFinite(max) && max > 0 ? max : 100;
+  const normalizedValue =
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.min(normalizedMax, Math.max(0, value))
+      : 0;
+
   return (
-    <ProgressPrimitive.Root
+    <progress
       data-slot="progress"
-      className={cn(
-        "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
-        className
-      )}
       {...props}
-    >
-      <ProgressPrimitive.Indicator
-        data-slot="progress-indicator"
-        className="h-full w-full flex-1 bg-primary transition-all"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-      />
-    </ProgressPrimitive.Root>
-  )
+      max={normalizedMax}
+      value={normalizedValue}
+      className={cn(
+        'h-2 w-full appearance-none overflow-hidden rounded-full bg-primary/20 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-primary [&::-moz-progress-bar]:transition-all [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-primary/20 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary [&::-webkit-progress-value]:transition-all',
+        className,
+      )}
+    />
+  );
 }
 
-export { Progress }
+export { Progress };
