@@ -10,6 +10,10 @@ import { getOptionalAccessToken } from './auth.server';
 import { storefrontEnv } from './env.server';
 
 const client = () => createApiClient(storefrontEnv.backendUrl);
+const SAFE_ERROR_CODE_RE = /^[A-Z][A-Z0-9_]{1,63}$/;
+const SAFE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/;
+const MAX_FIELD_ERROR_KEYS = 50;
+const MAX_FIELD_MESSAGES = 5;
 
 type StorefrontJsonOptions<T> = Omit<ApiRequestOptions<T>, 'signal' | 'schema'> & {
   schema: ZodType<T, ZodTypeDef, unknown>;
@@ -52,6 +56,74 @@ function readFailure(result: ApiResult<unknown>): Response {
   });
 }
 
+function safeErrorCode(value: string | undefined): string | undefined {
+  const code = value?.trim();
+  return code && SAFE_ERROR_CODE_RE.test(code) ? code : undefined;
+}
+
+function safeFieldErrors(
+  value: Record<string, string[]> | undefined,
+): Record<string, string[]> | undefined {
+  if (!value) return undefined;
+
+  const entries = Object.entries(value)
+    .slice(0, MAX_FIELD_ERROR_KEYS)
+    .flatMap(([field, messages]) => {
+      if (!SAFE_FIELD_NAME_RE.test(field) || !Array.isArray(messages)) return [];
+      const safeMessages = [
+        ...new Set(
+          messages
+            .slice(0, MAX_FIELD_MESSAGES)
+            .map((message) => safeErrorCode(message) ?? 'INVALID_VALUE'),
+        ),
+      ];
+      return safeMessages.length ? [[field, safeMessages] as const] : [];
+    });
+
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function safeFailureMessage(request: Request, result: ApiResult<unknown>): string {
+  const english = /^\/en(?:\/|$)/.test(new URL(request.url).pathname);
+  if (result.failure === 'timeout') {
+    return english
+      ? 'The request timed out. Please try again.'
+      : 'Yêu cầu đã hết thời gian chờ. Vui lòng thử lại.';
+  }
+  if (result.failure === 'network') {
+    return english
+      ? 'The service is temporarily unavailable. Please try again.'
+      : 'Dịch vụ tạm thời không khả dụng. Vui lòng thử lại.';
+  }
+  if (result.failure === 'invalid-response') {
+    return english
+      ? 'The service returned an invalid response. Please try again.'
+      : 'Dịch vụ trả về phản hồi không hợp lệ. Vui lòng thử lại.';
+  }
+  return english
+    ? 'Unable to complete the request. Please try again.'
+    : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.';
+}
+
+/**
+ * API responses may contain implementation messages that are useful in backend
+ * logs but must never enter Storefront loader/action hydration payloads.
+ * Preserve only stable problem codes, bounded field-error codes, status and
+ * request IDs; replace every free-form message with a localized generic error.
+ */
+function sanitizeApiResult<T>(request: Request, result: ApiResult<T>): ApiResult<T> {
+  if (result.ok) return result;
+
+  const fieldErrors = safeFieldErrors(result.fieldErrors ?? result.errors);
+  return {
+    ...result,
+    error: safeFailureMessage(request, result),
+    code: safeErrorCode(result.code),
+    errors: fieldErrors,
+    fieldErrors,
+  };
+}
+
 export function publicGetData<T>(
   request: Request,
   path: string,
@@ -77,40 +149,50 @@ export async function publicGetData<T>(
   return result.data;
 }
 
-export const publicPost = <T>(
+export async function publicPost<T>(
   request: Request,
   path: string,
   body: unknown,
   options: StorefrontJsonOptions<T>,
-) => client().publicPost(path, body, requestOptions(request, options));
+): Promise<ApiResult<T>> {
+  const result = await client().publicPost(path, body, requestOptions(request, options));
+  return sanitizeApiResult(request, result);
+}
 
-export const optionalAuthPost = <T>(
+export async function optionalAuthPost<T>(
   request: Request,
   path: string,
   body: unknown,
   options: StorefrontJsonOptions<T>,
-) => {
+): Promise<ApiResult<T>> {
   const accessToken = getOptionalAccessToken();
   const requestOptionsForCall = requestOptions(request, options);
-  return accessToken
-    ? client().post(path, body, accessToken, requestOptionsForCall)
-    : client().publicPost(path, body, requestOptionsForCall);
-};
+  const result = accessToken
+    ? await client().post(path, body, accessToken, requestOptionsForCall)
+    : await client().publicPost(path, body, requestOptionsForCall);
+  return sanitizeApiResult(request, result);
+}
 
-export const apiGet = <T>(
+export async function apiGet<T>(
   request: Request,
   path: string,
   auth: Auth,
   options: StorefrontJsonOptions<T>,
-) => client().get(path, auth, requestOptions(request, options));
+): Promise<ApiResult<T>> {
+  const result = await client().get(path, auth, requestOptions(request, options));
+  return sanitizeApiResult(request, result);
+}
 
-export const apiPost = <T>(
+export async function apiPost<T>(
   request: Request,
   path: string,
   body: unknown,
   auth: Auth,
   options: StorefrontJsonOptions<T>,
-) => client().post(path, body, auth, requestOptions(request, options));
+): Promise<ApiResult<T>> {
+  const result = await client().post(path, body, auth, requestOptions(request, options));
+  return sanitizeApiResult(request, result);
+}
 
 function authOptions(request: Request) {
   return {
