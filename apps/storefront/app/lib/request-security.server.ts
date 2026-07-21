@@ -186,6 +186,7 @@ function exportLifecycleSpan(
     spanId: lifecycle.trace.spanId,
     parentSpanId: lifecycle.trace.parentSpanId,
     traceFlags: lifecycle.trace.traceFlags,
+    ...(lifecycle.trace.tracestate ? { tracestate: lifecycle.trace.tracestate } : {}),
     startedAt: lifecycle.startedAt,
     durationMs: durationMilliseconds(lifecycle.startedAtMs),
     status,
