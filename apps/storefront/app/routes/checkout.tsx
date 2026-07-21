@@ -71,6 +71,8 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
       code: promoCode,
       listingId: listing.id,
       amount: quote.subtotal,
+      start,
+      end,
     });
     promo = result.data;
   }
