@@ -12,6 +12,7 @@ import {
   type StorefrontSessionService,
 } from './session.server';
 import type { StorefrontTenant } from './tenant.server';
+import type { StorefrontTraceContext } from './tracing.server';
 
 type AuthResult =
   | {
@@ -89,6 +90,7 @@ export async function storefrontAuthMiddleware(
   tenant: StorefrontTenant,
   requestId: string,
   startedAtMs: number,
+  trace: StorefrontTraceContext,
 ) {
   const state: StorefrontRequestContextState = {
     tenant,
@@ -99,6 +101,7 @@ export async function storefrontAuthMiddleware(
       path: new URL(request.url).pathname,
       startedAtMs,
     },
+    trace,
     suppressSessionCommit: false,
   };
 
