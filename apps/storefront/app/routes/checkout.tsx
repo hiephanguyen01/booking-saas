@@ -93,6 +93,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
+  const t = createTranslator(locale).t;
   const form = await request.formData();
   const listingId = String(form.get('listingId') ?? '');
   const mode = String(form.get('mode') ?? '');
@@ -157,12 +158,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   const created = await createBooking(request, input, idempotencyKey);
 
   if (!created.ok || !created.data) {
-    const packageError =
-      created.code === 'PACKAGE_UNAVAILABLE' || created.code === 'PACKAGE_DURATION_MISMATCH';
+    const bookingSelectionError =
+      created.code === 'PACKAGE_UNAVAILABLE' ||
+      created.code === 'PACKAGE_DURATION_MISMATCH' ||
+      created.code === 'SLOT_TAKEN' ||
+      created.code === 'SLOT_HELD';
     return data(
       {
         fieldErrors: null,
-        error: packageError ? created.code : (created.error ?? 'BOOKING_FAILED'),
+        error: bookingSelectionError ? created.code : t('bookingFailed'),
         code: created.code,
       },
       { status: errorStatus(created.status) },
@@ -188,7 +192,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       return data(
         {
           fieldErrors: checkout.fieldErrors ?? null,
-          error: checkout.error ?? 'PAYMENT_CHECKOUT_FAILED',
+          error: t('paymentFailed'),
           code: checkout.code,
         },
         { status: errorStatus(checkout.status), headers },
@@ -211,7 +215,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       destination?.type === 'redirect' ? allowedPaymentRedirect(destination.paymentUrl) : null;
     if (!paymentUrl) {
       return data(
-        { fieldErrors: null, error: 'INVALID_PAYMENT_REDIRECT', code: 'INVALID_PAYMENT_REDIRECT' },
+        { fieldErrors: null, error: t('paymentFailed'), code: 'INVALID_PAYMENT_REDIRECT' },
         { status: 502, headers },
       );
     }
