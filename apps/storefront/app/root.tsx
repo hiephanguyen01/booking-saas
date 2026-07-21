@@ -33,6 +33,7 @@ import { storefrontRequestMiddleware } from './lib/request-security.server';
 import { getOptionalAuth } from './lib/auth.server';
 import { getAccountMenuSummary } from './features/account/server/account-menu.server';
 import type { AccountMenuSummary } from './features/account/account-menu';
+import { setClientStorefrontTimezone } from './lib/timezone-runtime';
 
 export const middleware: Route.MiddlewareFunction[] = [storefrontRequestMiddleware];
 
@@ -151,6 +152,10 @@ function ThemeStyle({ theme }: { theme: StorefrontTenant['themeConfig'] }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const { tenant, listingTypes, locale, canonical, currentUser, accountMenuSummary } = loaderData;
+
+  // Browser-side time helpers read this value during descendant render. The setter
+  // intentionally no-ops during SSR, where the request ALS resolver is authoritative.
+  setClientStorefrontTimezone(tenant.defaultTimezone);
 
   const matches = useMatches();
 
