@@ -21,6 +21,10 @@ const FILTER_PARAMS = [
 ];
 
 const API_MODES = new Set(['hourly', 'daily', 'inventory']);
+const ATTRIBUTE_KEY_RE = /^attr\.[A-Za-z][A-Za-z0-9_]{0,49}(\.(min|max))?$/;
+const MAX_ATTRIBUTE_KEYS = 30;
+const MAX_ATTRIBUTE_VALUES = 30;
+const MAX_ATTRIBUTE_VALUE_LENGTH = 120;
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
   return [
@@ -73,57 +77,94 @@ function catalogApiSearch(
   typeSlug: string,
   state: StorefrontSearchState,
 ): URLSearchParams {
-  const search = new URLSearchParams(input);
-  search.set('type', typeSlug);
-
+  // Build from an allowlist rather than forwarding arbitrary browser query
+  // parameters through the BFF to the public catalog endpoint.
+  const search = new URLSearchParams({ type: typeSlug });
   const rawMode = input.get('mode');
-  if (rawMode && API_MODES.has(rawMode)) search.set('mode', rawMode);
-  else search.delete('mode');
+  const mode = rawMode && API_MODES.has(rawMode) ? rawMode : null;
+  if (mode) search.set('mode', mode);
 
-  setOrDelete(search, 'q', state.q);
-  setOrDelete(search, 'location', state.location);
-  setOrDelete(search, 'minPrice', state.minPrice === null ? null : String(state.minPrice));
-  setOrDelete(search, 'maxPrice', state.maxPrice === null ? null : String(state.maxPrice));
-  setOrDelete(search, 'minRating', state.minRating === null ? null : String(state.minRating));
+  setIfPresent(search, 'q', state.q);
+  setIfPresent(search, 'location', state.location);
+  setIfPresent(search, 'minPrice', state.minPrice === null ? null : String(state.minPrice));
+  const validMaxPrice =
+    state.maxPrice !== null && (state.minPrice === null || state.maxPrice >= state.minPrice)
+      ? state.maxPrice
+      : null;
+  setIfPresent(search, 'maxPrice', validMaxPrice === null ? null : String(validMaxPrice));
+  setIfPresent(search, 'minRating', state.minRating === null ? null : String(state.minRating));
   search.set('guests', String(state.guests));
   search.set('quantity', String(state.quantity));
   search.set('sort', state.sort);
   search.set('page', String(state.page));
 
-  search.delete('amenities');
   for (const amenity of state.amenities.map((item) => item.trim()).filter(Boolean).slice(0, 30)) {
     search.append('amenities', amenity.slice(0, 120));
   }
 
-  search.delete('area');
+  appendSafeAttributeFilters(search, input);
   if (state.area) search.set('attr.area', state.area);
-  else if (input.has('area')) search.delete('attr.area');
 
-  if (state.hasDateSelection) search.set('date', state.date);
-  else search.delete('date');
-
-  if (state.hasTimeSelection) {
-    search.set('startTime', state.startTime);
-    search.set('endTime', state.endTime);
-  } else {
-    search.delete('startTime');
-    search.delete('endTime');
+  const supportsHourlyDate = mode === null || mode === 'hourly';
+  if (supportsHourlyDate && state.hasDateSelection) {
+    search.set('date', state.date);
+    if (state.hasTimeSelection) {
+      search.set('startTime', state.startTime);
+      search.set('endTime', state.endTime);
+    }
   }
 
-  if (state.hasDailyRange) {
+  const supportsDailyRange = mode === null || mode === 'daily' || mode === 'inventory';
+  if (supportsDailyRange && state.hasDailyRange) {
     search.set('from', state.from);
     search.set('to', state.to);
-  } else {
-    search.delete('from');
-    search.delete('to');
   }
 
   return search;
 }
 
-function setOrDelete(search: URLSearchParams, key: string, value: string | null): void {
+function appendSafeAttributeFilters(search: URLSearchParams, input: URLSearchParams): void {
+  const keys = [...new Set([...input.keys()].filter((key) => ATTRIBUTE_KEY_RE.test(key)))].slice(
+    0,
+    MAX_ATTRIBUTE_KEYS,
+  );
+  const rangeBases = new Set<string>();
+
+  for (const key of keys) {
+    const values = input
+      .getAll(key)
+      .flatMap((value) => value.split(','))
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, MAX_ATTRIBUTE_VALUES);
+    if (values.length === 0) continue;
+
+    if (key.endsWith('.min') || key.endsWith('.max')) {
+      const value = values[0]!.slice(0, MAX_ATTRIBUTE_VALUE_LENGTH);
+      if (!Number.isFinite(Number(value))) continue;
+      search.set(key, value);
+      rangeBases.add(key.slice(0, -4));
+      continue;
+    }
+
+    for (const value of values) {
+      search.append(key, value.slice(0, MAX_ATTRIBUTE_VALUE_LENGTH));
+    }
+  }
+
+  for (const base of rangeBases) {
+    const minKey = `${base}.min`;
+    const maxKey = `${base}.max`;
+    const min = search.get(minKey);
+    const max = search.get(maxKey);
+    if (min !== null && max !== null && Number(min) > Number(max)) {
+      search.delete(maxKey);
+    }
+  }
+}
+
+function setIfPresent(search: URLSearchParams, key: string, value: string | null): void {
   if (value) search.set(key, value);
-  else search.delete(key);
 }
 
 export default function CatalogRoute(props: Route.ComponentProps) {
