@@ -5,9 +5,9 @@ const TRACESTATE_MAX_LENGTH = 512;
 const ZERO_TRACE_ID = '0'.repeat(32);
 const ZERO_SPAN_ID = '0'.repeat(16);
 const LOWER_HEX_RE = /^[0-9a-f]+$/;
-const SIMPLE_TRACESTATE_KEY_RE = /^[a-z][a-z0-9_\-*\/]{0,255}$/;
+const SIMPLE_TRACESTATE_KEY_RE = /^[a-z][a-z0-9_*\/-]{0,255}$/;
 const MULTI_TENANT_TRACESTATE_KEY_RE =
-  /^[a-z0-9][a-z0-9_\-*\/]{0,240}@[a-z][a-z0-9_\-*\/]{0,13}$/;
+  /^[a-z0-9][a-z0-9_*\/-]{0,240}@[a-z][a-z0-9_*\/-]{0,13}$/;
 
 export interface StorefrontTraceContext {
   traceId: string;
