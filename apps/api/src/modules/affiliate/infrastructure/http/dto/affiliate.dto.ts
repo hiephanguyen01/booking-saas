@@ -9,6 +9,8 @@ import {
   affiliateStatusResponseSchema,
   applyAffiliateInputSchema,
   createReferralLinkInputSchema,
+  listAffiliateCommissionsQuerySchema,
+  listAffiliateLinksQuerySchema,
   listAffiliatesQuerySchema,
   referralLinkResponseSchema,
   tenantAffiliateStatusInputSchema,
@@ -20,6 +22,8 @@ import {
 
 // Query params
 export class ListAffiliatesQueryDto extends createZodDto(listAffiliatesQuerySchema) {}
+export class ListAffiliateCommissionsQueryDto extends createZodDto(listAffiliateCommissionsQuerySchema) {}
+export class ListAffiliateLinksQueryDto extends createZodDto(listAffiliateLinksQuerySchema) {}
 
 // Request bodies
 export class ApplyAffiliateDto extends createZodDto(applyAffiliateInputSchema) {}

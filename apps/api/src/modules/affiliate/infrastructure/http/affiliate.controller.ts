@@ -11,7 +11,6 @@ import {
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
-import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
@@ -37,6 +36,8 @@ import {
   AffiliateStatsResponseDto,
   ApplyAffiliateDto,
   CreateReferralLinkDto,
+  ListAffiliateCommissionsQueryDto,
+  ListAffiliateLinksQueryDto,
   ReferralLinkResponseDto,
   UpdateAffiliatePayoutInfoDto,
 } from './dto/affiliate.dto';
@@ -104,7 +105,7 @@ export class AffiliateController {
   @ApiPaginatedResponse(ReferralLinkResponseDto)
   async links(
     @CurrentPrincipal() principal: SessionPrincipal,
-    @Query() query: PaginationQueryDto,
+    @Query() query: ListAffiliateLinksQueryDto,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<Paginated<ReferralLinkResponse>> {
     const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
@@ -158,7 +159,7 @@ export class AffiliateController {
   @ApiPaginatedResponse(AffiliateCommissionResponseDto)
   async commissions(
     @CurrentPrincipal() principal: SessionPrincipal,
-    @Query() query: PaginationQueryDto,
+    @Query() query: ListAffiliateCommissionsQueryDto,
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<Paginated<AffiliateCommissionResponse>> {
     const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);

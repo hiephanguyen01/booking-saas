@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
+  AffiliateCommissionListFilter,
   AffiliateCommissionRecord,
   AffiliateCommissionStatus,
   AffiliateCommissionTotals,
@@ -11,6 +12,34 @@ import type {
 } from '../../domain/ports/affiliate-commission-repository.port';
 
 type RowWithBooking = Prisma.AffiliateCommissionGetPayload<{ include: typeof WITH_BOOKING }>;
+
+/**
+ * Search / status / created-at filters for the affiliate's commission list. A
+ * commission carries no code of its own, so the text search reaches into the
+ * source booking's code + referral code (a to-one relation filter).
+ */
+function listWhere(
+  affiliateId: string,
+  filter: AffiliateCommissionListFilter,
+): Prisma.AffiliateCommissionWhereInput {
+  const where: Prisma.AffiliateCommissionWhereInput = { affiliateId };
+  if (filter.q) {
+    where.booking = {
+      OR: [
+        { code: { contains: filter.q, mode: 'insensitive' } },
+        { referralCode: { contains: filter.q, mode: 'insensitive' } },
+      ],
+    };
+  }
+  if (filter.status) where.status = filter.status;
+  if (filter.from || filter.to) {
+    where.createdAt = {
+      ...(filter.from ? { gte: new Date(filter.from) } : {}),
+      ...(filter.to ? { lte: new Date(filter.to) } : {}),
+    };
+  }
+  return where;
+}
 
 // A commission row is meaningless on its own: the affiliate needs to know which
 // booking (code, listing, amount) earned it and what state that booking is in.
@@ -97,9 +126,9 @@ export class PrismaAffiliateCommissionRepository implements IAffiliateCommission
   async listByAffiliatePaginated(
     tx: PrismaTx,
     affiliateId: string,
-    params: { page: number; pageSize: number },
+    params: AffiliateCommissionListFilter,
   ): Promise<{ items: AffiliateCommissionWithBooking[]; total: number }> {
-    const where = { affiliateId };
+    const where = listWhere(affiliateId, params);
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([
       tx.affiliateCommission.findMany({ where, include: WITH_BOOKING, orderBy: { createdAt: 'desc' }, skip, take }),
