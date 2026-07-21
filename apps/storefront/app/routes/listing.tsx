@@ -9,7 +9,7 @@ import { ListingPage } from '../features/listing/listing-page';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '../lib/catalog.server';
-import { isValidDateOnly } from '../lib/date-only';
+import { canOffsetDateOnly, isValidDateOnly } from '../lib/date-only';
 import { normalizeDailyRange } from '../lib/daily-range';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
@@ -34,8 +34,8 @@ function pickMode(
   return enabled[0] ?? 'hourly';
 }
 
-function validDateOr(value: string | null, fallback: string): string {
-  return value && isValidDateOnly(value) ? value : fallback;
+function validDateOr(value: string | null, fallback: string, offsetDays = 0): string {
+  return value && canOffsetDateOnly(value, offsetDays) ? value : fallback;
 }
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
@@ -105,7 +105,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       ...(packageId ? { packageId } : {}),
     });
   } else if (mode === 'daily') {
-    const anchor = validDateOr(searchParams.get('from'), today);
+    const anchor = validDateOr(searchParams.get('from'), today, 30);
     availabilityPromise = fetchAvailability(request, params.listingSlug, {
       mode,
       from: anchor,
