@@ -12,6 +12,7 @@ import type { Route } from './+types/uploads.presign';
 import { storefrontEnv } from '../lib/env.server';
 
 const backendUrl = (): string => storefrontEnv.backendUrl;
+const PRESIGN_TIMEOUT_MS = 10_000;
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -26,16 +27,21 @@ export async function action({ request }: Route.ActionArgs): Promise<Response> {
     return json({ message: 'Yêu cầu tải lên không hợp lệ.' }, 400);
   }
 
+  const timeoutSignal = AbortSignal.timeout(PRESIGN_TIMEOUT_MS);
+  const signal = AbortSignal.any([request.signal, timeoutSignal]);
   let response: Response;
   try {
     response = await fetch(`${backendUrl()}/uploads/partner-applications/presign`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify(parsed.data),
-      signal: request.signal,
+      signal,
     });
   } catch (error) {
     if (request.signal.aborted) throw error;
+    if (timeoutSignal.aborted) {
+      return json({ message: 'Dịch vụ tải lên phản hồi quá thời gian cho phép.' }, 504);
+    }
     return json({ message: 'Dịch vụ tải lên hiện không khả dụng.' }, 503);
   }
 
