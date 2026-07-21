@@ -166,7 +166,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data(
       {
         fieldErrors: null,
-        error: bookingSelectionError ? created.code : t('bookingFailed'),
+        error: bookingSelectionError ? created.code : t('checkout.bookingFailed'),
         code: created.code,
       },
       { status: errorStatus(created.status) },
@@ -192,7 +192,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       return data(
         {
           fieldErrors: checkout.fieldErrors ?? null,
-          error: t('paymentFailed'),
+          error: t('checkout.paymentFailed'),
           code: checkout.code,
         },
         { status: errorStatus(checkout.status), headers },
@@ -215,7 +215,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       destination?.type === 'redirect' ? allowedPaymentRedirect(destination.paymentUrl) : null;
     if (!paymentUrl) {
       return data(
-        { fieldErrors: null, error: t('paymentFailed'), code: 'INVALID_PAYMENT_REDIRECT' },
+        {
+          fieldErrors: null,
+          error: t('checkout.paymentFailed'),
+          code: 'INVALID_PAYMENT_REDIRECT',
+        },
         { status: 502, headers },
       );
     }
