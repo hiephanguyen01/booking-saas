@@ -3,6 +3,7 @@ import { index, layout, route, type RouteConfig } from '@react-router/dev/routes
 export default [
   route('healthz', 'routes/healthz.ts'),
   route('readyz', 'routes/readyz.ts'),
+  route('theme.css', 'routes/theme[.]css.ts'),
   route('uploads/presign', 'routes/uploads.presign.tsx'),
   route('administrative-divisions/wards', 'routes/administrative-wards.tsx'),
   route(':locale', 'routes/locale-layout.tsx', [
