@@ -2,7 +2,7 @@ import { addDays, nightsBetween } from './time';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function isValidDateOnly(value: string): boolean {
+export function isValidDateOnly(value: string): boolean {
   if (!DATE_ONLY_RE.test(value)) return false;
 
   const date = new Date(`${value}T00:00:00Z`);
