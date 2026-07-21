@@ -49,7 +49,7 @@ const columns: DataTableColumn<PlatformHealthTenant>[] = [
     ),
   },
   {
-    header: 'Listing đăng',
+    header: 'Tin đăng',
     headClassName: 'text-right',
     className: 'text-right tabular-nums',
     cell: (t) => formatNumber(t.publishedListings),
