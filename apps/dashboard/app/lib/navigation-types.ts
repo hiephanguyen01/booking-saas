@@ -11,6 +11,8 @@ export interface DashboardNavItem {
    * hides it unless the user holds the permission in that area's scope.
    */
   permission?: string;
+  /** Show the item when the user holds at least one of these permissions. */
+  anyPermissions?: string[];
 }
 
 /**

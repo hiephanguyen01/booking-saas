@@ -1168,7 +1168,7 @@ A template is a set of route components + its own layout, sharing `packages/ui` 
 }
 ```
 
-`logoUrl`, `faviconUrl`, `hero.imageUrl`, and every `carousel` entry are **uploaded images** — the tenant settings form (`apps/dashboard/app/routes/tenant/settings/_index.tsx`) uses the GenericForm `file` field (favicon accepts `.ico`); the storefront renders `carousel` as a homepage slideshow (`apps/storefront/app/templates/studio/carousel.tsx`) above the hero, and hides it when empty. Rendered as CSS variables at SSR time (`<style>:root{--color-primary:...}</style>`) — no rebuild needed when a tenant changes its theme. The tenant dashboard has a theme editor with live preview.
+`logoUrl`, `faviconUrl`, `hero.imageUrl`, and every `carousel` entry are **uploaded images** — the tenant settings route (`apps/dashboard/app/routes/tenant/settings.tsx`) uses the GenericForm `file` field (favicon accepts `.ico`); the storefront renders `carousel` as a homepage slideshow (`apps/storefront/app/templates/studio/carousel.tsx`) above the hero, and hides it when empty. Rendered as CSS variables at SSR time (`<style>:root{--color-primary:...}</style>`) — no rebuild needed when a tenant changes its theme. The tenant dashboard groups brand, domains, operational rules, payments, and payouts in one permission-aware settings workspace; its theme editor has a live preview, and tenant-owned cancellation policies can be created, edited, selected as the fallback default, or deleted when unused.
 
 **Storefront SEO**: each domain auto-generates a `sitemap.xml` (homepage + published `listing_groups` + published standalone listings) and `robots.txt`; meta title/description + Open Graph come from `theme_config.seo` and listing data; RR7's SSR ensures crawlers can read the content.
 

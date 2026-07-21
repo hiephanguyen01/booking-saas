@@ -53,7 +53,13 @@ function visibleSections(
   const held = new Set(permissions);
 
   return sections.flatMap((section) => {
-    const items = section.items.filter((item) => !item.permission || held.has(item.permission));
+    const items = section.items.filter((item) => {
+      if (item.permission && !held.has(item.permission)) return false;
+      if (item.anyPermissions && !item.anyPermissions.some((permission) => held.has(permission))) {
+        return false;
+      }
+      return true;
+    });
     return items.length > 0 ? [{ ...section, items }] : [];
   });
 }

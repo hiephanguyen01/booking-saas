@@ -22,8 +22,10 @@ export interface CreateDomainData {
 export interface ITenantDomainRepository {
   create(data: CreateDomainData, tx?: PrismaTx): Promise<DomainRecord>;
   findByHostname(hostname: string): Promise<DomainRecord | null>;
-  findById(id: string): Promise<DomainRecord | null>;
+  findById(id: string, tx?: PrismaTx): Promise<DomainRecord | null>;
   listByTenant(tenantId: string): Promise<DomainRecord[]>;
   markVerified(id: string): Promise<DomainRecord>;
+  /** Atomically make one domain primary and clear the previous primary. */
+  setPrimary(tenantId: string, id: string, tx: PrismaTx): Promise<DomainRecord>;
   delete(id: string): Promise<void>;
 }

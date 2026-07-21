@@ -37,6 +37,7 @@ import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-cas
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
+import { SetPrimaryDomainUseCase } from '../../application/use-cases/set-primary-domain.use-case';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
 import { GetPlatformHealthUseCase } from '../../application/use-cases/get-platform-health.use-case';
 import { GetPlanLimitsUseCase } from '../../application/use-cases/get-plan-limits.use-case';
@@ -95,6 +96,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     VerifyDomainUseCase,
     ListDomainsUseCase,
     DeleteDomainUseCase,
+    SetPrimaryDomainUseCase,
     ResolveTenantByHostUseCase,
     GetPlatformHealthUseCase,
     GetPlanLimitsUseCase,

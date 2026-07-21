@@ -3,7 +3,7 @@ import { redirect, data as routeData } from 'react-router';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { apiPost } from '~/lib/api.server';
-import { CancellationPolicyForm } from '~/features/partner/components/cancellation-policy-form';
+import { CancellationPolicyForm } from '~/features/cancellation-policies/components/cancellation-policy-form';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { dashboardPaths } from '~/constants/paths';
 import type { Route } from './+types/new';

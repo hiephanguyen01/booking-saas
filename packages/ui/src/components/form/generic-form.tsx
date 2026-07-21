@@ -23,11 +23,11 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   /** Zod schema from `@booking/contracts` — validates on the client and (again) in the action. */
   schema: TSchema;
   /** Field configs; `name`s are type-checked against the schema's inferred type. */
-  fields: FieldConfig<z.infer<TSchema>>[]
-  defaultValues?: DefaultValues<z.infer<TSchema>>
-  submitLabel?: string
+  fields: FieldConfig<z.infer<TSchema>>[];
+  defaultValues?: DefaultValues<z.infer<TSchema>>;
+  submitLabel?: string;
   /** Localized label shown while the form is being submitted. */
-  submitPendingLabel?: string
+  submitPendingLabel?: string;
   /** Grid columns for the layout (default 1). Per-field `colSpan` overrides width. */
   columns?: 1 | 2 | 3 | 4;
   /** Form-level error from the action (`data({ error }, …)`). */
@@ -53,7 +53,10 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
    * node remains registered to this GenericForm instance; callers only decide
    * where the already-bound field is rendered.
    */
-  renderFields?: (fields: Array<{ name: string; node: React.ReactNode }>) => React.ReactNode;
+  renderFields?: (
+    fields: Array<{ name: string; node: React.ReactNode }>,
+    values: z.infer<TSchema>,
+  ) => React.ReactNode;
   /**
    * Final mapping of the validated form values into the JSON payload, applied
    * after blank-optional/hidden cleanup. Use it to coerce or assemble nested
@@ -63,6 +66,10 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   /** Extra content rendered below the fields (e.g. a secondary button). */
   children?: React.ReactNode;
   className?: string;
+  /** Warn before closing/reloading a page that contains unsaved changes. */
+  warnOnUnsavedChanges?: boolean;
+  /** Reset react-hook-form's dirty state after the parent confirms a successful save. */
+  resetDirtyOnSuccess?: boolean;
 }
 
 const COLS: Record<1 | 2 | 3 | 4, string> = {
@@ -95,8 +102,8 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   schema,
   fields,
   defaultValues,
-  submitLabel = "Lưu",
-  submitPendingLabel = "Đang lưu...",
+  submitLabel = 'Lưu',
+  submitPendingLabel = 'Đang lưu...',
   columns = 1,
   serverError,
   fieldErrors,
@@ -108,6 +115,8 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   transform,
   children,
   className,
+  warnOnUnsavedChanges,
+  resetDirtyOnSuccess,
 }: GenericFormProps<TSchema>) {
   type Values = z.infer<TSchema>;
   const form = useForm<Values>({
@@ -121,6 +130,20 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   const isSubmitting = navigation.state === 'submitting';
 
   const values = form.watch();
+
+  React.useEffect(() => {
+    if (resetDirtyOnSuccess) form.reset(form.getValues());
+  }, [form, resetDirtyOnSuccess]);
+
+  React.useEffect(() => {
+    if (!warnOnUnsavedChanges || !form.formState.isDirty || isSubmitting) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = true;
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form.formState.isDirty, isSubmitting, warnOnUnsavedChanges]);
 
   // Map server-side field errors onto the inputs.
   const { setError } = form;
@@ -190,7 +213,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
         ) : null}
 
         {renderFields ? (
-          renderFields(renderedFields)
+          renderFields(renderedFields, values as Values)
         ) : (
           <div className={cn('grid gap-5', COLS[columns])}>
             {renderedFields.map((field) => field.node)}

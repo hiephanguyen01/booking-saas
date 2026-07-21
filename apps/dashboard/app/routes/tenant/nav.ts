@@ -144,7 +144,7 @@ export const tenantNavSections: DashboardNavSection[] = [
         title: 'Cài đặt',
         to: dashboardPaths.tenant.settings,
         icon: Settings,
-        permission: 'tenant.theme.manage',
+        anyPermissions: ['tenant.theme.manage', 'tenant.settings.manage', 'tenant.finance.read'],
       },
     ],
   },

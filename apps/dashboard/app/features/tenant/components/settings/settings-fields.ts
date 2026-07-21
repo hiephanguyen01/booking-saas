@@ -93,12 +93,12 @@ export const themeFields: FieldConfig<ThemeConfigInput>[] = [
   {
     name: 'hero.title',
     type: 'text',
-    label: 'Hero — Tiêu đề',
+    label: 'Tiêu đề hero',
     placeholder: 'Đặt chỗ nhanh chóng',
     colSpan: 2,
   },
-  { name: 'hero.subtitle', type: 'textarea', label: 'Hero — Mô tả', rows: 2, colSpan: 2 },
-  { name: 'hero.imageUrl', type: 'file', target: 'tenants', label: 'Hero — Ảnh nền', colSpan: 2 },
+  { name: 'hero.subtitle', type: 'textarea', label: 'Mô tả hero', rows: 2, colSpan: 2 },
+  { name: 'hero.imageUrl', type: 'file', target: 'tenants', label: 'Ảnh nền hero', colSpan: 2 },
   {
     name: 'carousel',
     type: 'file',
@@ -106,7 +106,7 @@ export const themeFields: FieldConfig<ThemeConfigInput>[] = [
     multiple: true,
     maxFiles: 10,
     label: 'Carousel trang chủ',
-    description: 'Tối đa 10 ảnh — hiển thị dạng băng chuyền trên trang chủ.',
+    description: 'Tối đa 10 ảnh, hiển thị dạng băng chuyền trên trang chủ.',
     colSpan: 2,
   },
   {
@@ -117,8 +117,8 @@ export const themeFields: FieldConfig<ThemeConfigInput>[] = [
   },
   { name: 'contact.phone', type: 'text', label: 'Số điện thoại', placeholder: '0900000000' },
   { name: 'contact.address', type: 'text', label: 'Địa chỉ', colSpan: 2 },
-  { name: 'seo.title', type: 'text', label: 'SEO — Tiêu đề', colSpan: 2 },
-  { name: 'seo.description', type: 'textarea', label: 'SEO — Mô tả', rows: 2, colSpan: 2 },
+  { name: 'seo.title', type: 'text', label: 'Tiêu đề SEO', colSpan: 2 },
+  { name: 'seo.description', type: 'textarea', label: 'Mô tả SEO', rows: 2, colSpan: 2 },
   {
     name: 'socialLinks.facebook',
     type: 'url',

@@ -8,7 +8,7 @@ import { apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
-import { CancellationPolicyForm } from '~/features/partner/components/cancellation-policy-form';
+import { CancellationPolicyForm } from '~/features/cancellation-policies/components/cancellation-policy-form';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
