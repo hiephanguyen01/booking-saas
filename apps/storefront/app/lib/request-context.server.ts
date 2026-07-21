@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { SessionInfoResponse } from '@booking/contracts';
 import type { StorefrontSessionData } from './session.server';
 import type { StorefrontTenant } from './tenant.server';
+import type { StorefrontTraceContext } from './tracing.server';
 import { registerStorefrontTimezoneResolver } from './timezone-runtime';
 
 export interface StorefrontAuthContext {
@@ -13,12 +14,14 @@ export interface StorefrontRequestMetadata {
   id: string;
   method: string;
   path: string;
+  startedAtMs: number;
 }
 
 export interface StorefrontRequestContextState {
   tenant: StorefrontTenant;
   auth: StorefrontAuthContext | null;
   request: StorefrontRequestMetadata;
+  trace: StorefrontTraceContext;
   suppressSessionCommit: boolean;
 }
 
