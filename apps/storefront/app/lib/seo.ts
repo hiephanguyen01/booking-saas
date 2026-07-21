@@ -62,7 +62,11 @@ export function canonicalUrl(input: URL): string {
   // A filtered result's page number belongs to that filter state. Once the
   // filter is removed, canonicalize back to the base catalog page rather than a
   // potentially unrelated page of the unfiltered catalog.
-  if (removedState) output.searchParams.delete('page');
+  if (removedState) {
+    for (const key of [...output.searchParams.keys()]) {
+      if (key.toLowerCase() === 'page') output.searchParams.delete(key);
+    }
+  }
 
   return output.toString();
 }
