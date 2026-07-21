@@ -2,7 +2,8 @@ import { data } from 'react-router';
 import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
 import { fetchAvailability } from './booking.server';
 import { fetchQuote } from './catalog.server';
-import { eligibleDailyRange, isValidDateOnly } from './daily-range';
+import { isValidDateOnly } from './date-only';
+import { eligibleDailyRange } from './daily-range';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from './time';
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
