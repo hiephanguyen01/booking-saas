@@ -175,7 +175,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const booking = created.data;
   const headers = new Headers();
-  headers.append('Set-Cookie', appendRecentCookie(request, booking.code));
+  headers.append('Set-Cookie', await appendRecentCookie(request, booking.code));
   headers.append(
     'Set-Cookie',
     await getCheckoutFlowService().create(request, {
