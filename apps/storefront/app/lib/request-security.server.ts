@@ -4,6 +4,7 @@ import { resolveTenant } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
+const CONTENT_SECURITY_POLICY = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'";
 
 function requestOrigin(request: Request): string | null {
   const host = request.headers.get('host')?.split(',')[0]?.trim();
@@ -49,16 +50,37 @@ function forbidden(): Response {
   );
 }
 
+function withSecurityHeaders(response: Response, request: Request): Response {
+  const headers = new Headers(response.headers);
+  headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'SAMEORIGIN');
+
+  if (storefrontEnv.production && requestOrigin(request)?.startsWith('https://')) {
+    headers.set('Strict-Transport-Security', 'max-age=31536000');
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export async function storefrontRequestMiddleware(
   args: { request: Request },
   next: () => Promise<Response>,
 ): Promise<Response> {
   const { request } = args;
   const pathname = new URL(request.url).pathname;
-  if (OPERATIONAL_PATHS.has(pathname)) return next();
+  if (OPERATIONAL_PATHS.has(pathname)) {
+    return withSecurityHeaders(await next(), request);
+  }
 
   const rejected = csrfFailure(request);
-  if (rejected) return rejected;
+  if (rejected) return withSecurityHeaders(rejected, request);
   const tenant = await resolveTenant(request);
-  return storefrontAuthMiddleware({ request }, next, tenant);
+  return withSecurityHeaders(await storefrontAuthMiddleware({ request }, next, tenant), request);
 }
