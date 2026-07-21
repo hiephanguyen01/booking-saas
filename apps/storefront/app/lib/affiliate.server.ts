@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { affiliateResponseSchema, trackReferralResponseSchema } from '@booking/contracts';
+import { createCookie } from 'react-router';
 import { apiPost, publicPost } from './api.server';
+import { storefrontEnv } from './env.server';
 
 /**
  * Server-only affiliate attribution (§15.1). The storefront reads `?ref=CODE`,
@@ -14,32 +16,43 @@ const VISITOR_COOKIE = 'sf_visitor';
 const AFF_MAX_AGE = 60 * 60 * 24 * 30;
 const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
 
-function readCookie(request: Request, name: string): string | null {
-  const match = (request.headers.get('cookie') ?? '').match(
-    new RegExp(`(?:^|;\\s*)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}=([^;]+)`),
-  );
-  return match ? decodeURIComponent(match[1]) : null;
+function signedCookie(name: string, maxAge: number) {
+  return createCookie(name, {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'lax',
+    secure: storefrontEnv.secureCookies,
+    secrets: [...storefrontEnv.sessionSecrets],
+    maxAge,
+  });
 }
 
+function attributionCookie(tenantId: string) {
+  return signedCookie(`${AFF_PREFIX}${tenantId}`, AFF_MAX_AGE);
+}
+
+const visitorCookie = signedCookie(VISITOR_COOKIE, VISITOR_MAX_AGE);
+
 /** The referral code currently attributed for this tenant, if any. */
-export function readRefCode(request: Request, tenantId: string): string | null {
-  return readCookie(request, `${AFF_PREFIX}${tenantId}`);
+export async function readRefCode(request: Request, tenantId: string): Promise<string | null> {
+  const value: unknown = await attributionCookie(tenantId).parse(request.headers.get('Cookie'));
+  return typeof value === 'string' && value ? value : null;
 }
 
 /** `Set-Cookie` storing the last-clicked referral code for this tenant. */
-export function refAttributionCookie(tenantId: string, code: string): string {
-  return `${AFF_PREFIX}${tenantId}=${encodeURIComponent(code)}; Path=/; Max-Age=${AFF_MAX_AGE}; HttpOnly; SameSite=Lax`;
+export function refAttributionCookie(tenantId: string, code: string): Promise<string> {
+  return attributionCookie(tenantId).serialize(code);
 }
 
-/** A stable per-browser id used to de-dup clicks. Returns the existing id or mints one. */
-export function resolveVisitorId(request: Request): { id: string; setCookie: string | null } {
-  const existing = readCookie(request, VISITOR_COOKIE);
-  if (existing) return { id: existing, setCookie: null };
+/** A stable signed per-browser id used to de-dup clicks. */
+export async function resolveVisitorId(
+  request: Request,
+): Promise<{ id: string; setCookie: string | null }> {
+  const existing: unknown = await visitorCookie.parse(request.headers.get('Cookie'));
+  if (typeof existing === 'string' && existing) return { id: existing, setCookie: null };
+
   const id = randomUUID();
-  return {
-    id,
-    setCookie: `${VISITOR_COOKIE}=${id}; Path=/; Max-Age=${VISITOR_MAX_AGE}; HttpOnly; SameSite=Lax`,
-  };
+  return { id, setCookie: await visitorCookie.serialize(id) };
 }
 
 /**
