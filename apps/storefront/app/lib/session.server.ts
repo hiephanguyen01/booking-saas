@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createCookie, redirect } from 'react-router';
 import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
 import { storefrontEnv } from './env.server';
+import { storefrontLogError } from './logger.server';
 import { safeRedirectPath } from './safe-redirect';
 
 const TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -78,7 +79,7 @@ export function createStorefrontSessionService(store: RedisJsonStore = storefron
         return await callback();
       } finally {
         await store.deleteIfValue(key, value).catch((error: unknown) => {
-          console.error('Failed to release storefront session refresh lock', error);
+          storefrontLogError('auth.refresh_lock_release_failed', error);
         });
       }
     },
