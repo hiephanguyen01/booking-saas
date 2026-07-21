@@ -7,6 +7,7 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import { ArrowLeft } from 'lucide-react';
 import type { Route } from './+types/ledger';
 import { apiGet } from '~/lib/api.server';
@@ -88,7 +89,12 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     cell: (e) => <span className="text-sm">{LEDGER_ENTRY_LABEL[e.entryType] ?? e.entryType}</span>,
   },
   {
-    header: 'Nợ',
+    header: (
+      <span className="inline-flex items-center gap-1">
+        Nợ
+        <InfoHint>Ghi sổ kép: mỗi bút toán luôn có Nợ và Có cân bằng nhau.</InfoHint>
+      </span>
+    ),
     headClassName: 'text-right',
     className: 'text-right tabular-nums',
     cell: (e) =>

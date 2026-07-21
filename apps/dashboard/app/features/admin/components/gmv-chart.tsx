@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
+import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import { formatDayMonth, formatVnd, formatVndCompact } from '~/lib/format';
 
 interface Point {
@@ -130,6 +131,7 @@ export function GmvTrendCard({ trend }: { trend: Array<{ date: string; gmv: stri
         <CardTitle className="flex items-center gap-2 text-base">
           <TrendingUp className="size-4 text-muted-foreground" />
           GMV 14 ngày gần nhất
+          <InfoHint>Tổng giá trị giao dịch mỗi ngày trong 14 ngày qua.</InfoHint>
         </CardTitle>
         <CardDescription>Tổng giá trị booking đã xác nhận theo ngày.</CardDescription>
       </CardHeader>
