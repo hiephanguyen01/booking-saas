@@ -1,4 +1,4 @@
-# Storefront P0/P1/P2 hardening — 2026-07-21
+# Storefront P0/P1/P2/P3 hardening — 2026-07-21
 
 ## Scope
 
@@ -27,6 +27,9 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 - Bound and validate dynamic `attr.*` filters before forwarding them through the BFF.
 - Sign the recent-bookings cookie and accept only API-generated `BK-XXXXXX` booking codes.
 - Suppress raw booking lookup failures and prevent development OTP hints from being serialized in production.
+- Sanitize every structured Storefront API result before it can enter loader/action hydration data.
+- Preserve only bounded `UPPER_SNAKE_CASE` problem codes and field-error codes; replace free-form backend messages with localized generic failures.
+- Limit backend field-error payloads to 50 valid field names and five messages per field.
 
 ## Fixed-package availability verification
 
