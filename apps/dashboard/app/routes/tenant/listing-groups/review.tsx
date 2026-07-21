@@ -34,7 +34,7 @@ function contactFieldLabel(field: string): string {
 }
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Kiểm duyệt tin đăng · Tenant · Bookify' }];
+  return [{ title: 'Kiểm duyệt tin đăng nhiều hạng mục · Tenant · Bookify' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -78,7 +78,7 @@ export default function ListingGroupReviewPage({ loaderData, actionData }: Route
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/listing-groups" label="Tin đăng" />
+      <BackLink to="/tenant/listing-groups" label="Tin đăng nhiều hạng mục" />
 
       <PageHeader
         title={group.title}

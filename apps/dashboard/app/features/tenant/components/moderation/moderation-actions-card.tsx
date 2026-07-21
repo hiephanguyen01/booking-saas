@@ -18,7 +18,7 @@ import { EntityRef } from '~/components/entity-ref';
 import { WarningCallout } from '~/components/warning-callout';
 
 export interface ModerationActionsCardProps {
-  /** Drives the generated copy: `'tin đăng'` (listing review) or `'tin đăng'` (group review). */
+  /** Drives the generated copy: `'tin đăng'` (listing review) or `'bài đăng'` (group review). */
   entityLabel: 'tin đăng';
   /** Card sub-caption (per-page wording). */
   cardDescription: string;
@@ -93,7 +93,7 @@ export function ModerationActionsCard({
         <CardContent>
           <p className="text-sm text-muted-foreground">
             Tin đăng này thuộc một tin đăng nhiều hạng mục và được kiểm duyệt cùng tin đăng đó.{' '}
-            <EntityRef to={managedByGroupHref} name="Kiểm duyệt tin đăng" />.
+            <EntityRef to={managedByGroupHref} name="Kiểm duyệt tin đăng nhiều hạng mục" />.
           </p>
         </CardContent>
       </Card>
