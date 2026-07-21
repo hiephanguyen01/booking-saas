@@ -27,6 +27,8 @@ export const viCheckout = {
   invalidSlot: 'Lịch đã chọn không hợp lệ. Vui lòng chọn lại.',
   packageUnavailable: 'Gói đã thay đổi hoặc không còn khả dụng.',
   selectPackageAgain: 'Chọn lại gói',
+  bookingFailed: 'Không thể tạo đặt chỗ lúc này. Vui lòng thử lại.',
+  paymentFailed: 'Không thể khởi tạo thanh toán lúc này. Vui lòng thử lại.',
   creating: 'Đang tạo đặt chỗ…',
   dueNow: 'Thanh toán ngay',
   deposit: 'Tiền cọc',

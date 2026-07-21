@@ -2,10 +2,9 @@ import { data } from 'react-router';
 import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
 import { fetchAvailability } from './booking.server';
 import { fetchQuote } from './catalog.server';
+import { isValidDateOnly } from './date-only';
 import { eligibleDailyRange } from './daily-range';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from './time';
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
 
@@ -34,7 +33,7 @@ export async function loadListingBookingData(
     if (mode === 'hourly') {
       const requestedDate = url.searchParams.get('date');
       const dateValue =
-        requestedDate && DATE_RE.test(requestedDate) ? requestedDate : todayInTz(timezone);
+        requestedDate && isValidDateOnly(requestedDate) ? requestedDate : todayInTz(timezone);
       const availability = await fetchAvailability(request, listing.slug, {
         mode,
         from: dateValue,
@@ -81,9 +80,10 @@ export async function loadListingBookingData(
     }
 
     const requestedFrom = url.searchParams.get('from');
-    const from = requestedFrom && DATE_RE.test(requestedFrom) ? requestedFrom : todayInTz(timezone);
+    const from =
+      requestedFrom && isValidDateOnly(requestedFrom) ? requestedFrom : todayInTz(timezone);
     const requestedTo = url.searchParams.get('to');
-    const to = requestedTo && DATE_RE.test(requestedTo) ? requestedTo : null;
+    const to = requestedTo && isValidDateOnly(requestedTo) ? requestedTo : null;
     const availability = await fetchAvailability(request, listing.slug, {
       mode,
       from,

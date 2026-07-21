@@ -72,10 +72,12 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   // the last-click cookie. Only track when the code differs from what's already
   // attributed, so repeat page views don't re-hit the backend.
   const ref = url.searchParams.get('ref')?.trim().toUpperCase();
-  if (!ref || ref.length > 50 || readRefCode(request, tenant.id) === ref) {
+  const attributedRef = await readRefCode(request, tenant.id);
+  if (!ref || ref.length > 50 || attributedRef === ref) {
     return payload;
   }
-  const visitor = resolveVisitorId(request);
+
+  const visitor = await resolveVisitorId(request);
   const valid = await trackReferral(request, ref, visitor.id);
   if (!valid) {
     // Still persist the visitor id if it was freshly minted.
@@ -84,7 +86,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       : payload;
   }
   const headers = new Headers();
-  headers.append('Set-Cookie', refAttributionCookie(tenant.id, ref));
+  headers.append('Set-Cookie', await refAttributionCookie(tenant.id, ref));
   if (visitor.setCookie) headers.append('Set-Cookie', visitor.setCookie);
   return data(payload, { headers });
 }

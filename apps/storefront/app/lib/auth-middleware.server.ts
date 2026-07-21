@@ -4,7 +4,12 @@ import {
   runWithStorefrontRequestContext,
   type StorefrontRequestContextState,
 } from './request-context.server';
-import { getStorefrontSessionService, type StorefrontSessionData } from './session.server';
+import {
+  getStorefrontSessionService,
+  SessionRefreshLockTimeoutError,
+  type StorefrontSessionData,
+  type StorefrontSessionService,
+} from './session.server';
 import type { StorefrontTenant } from './tenant.server';
 
 type AuthResult =
@@ -12,33 +17,67 @@ type AuthResult =
       kind: 'authenticated';
       info: SessionInfoResponse;
       data: StorefrontSessionData;
-      rotated: boolean;
     }
   | { kind: 'invalid' }
   | { kind: 'unavailable' };
 
-async function authenticate(data: StorefrontSessionData, request: Request): Promise<AuthResult> {
-  const initial = await apiGet<SessionInfoResponse>(request, '/auth/session', data.accessToken, {
+type AccessResult = AuthResult | { kind: 'expired' };
+
+async function checkAccess(data: StorefrontSessionData, request: Request): Promise<AccessResult> {
+  const result = await apiGet<SessionInfoResponse>(request, '/auth/session', data.accessToken, {
     schema: sessionInfoResponseSchema,
   });
-  if (initial.ok && initial.data) {
-    return { kind: 'authenticated', info: initial.data, data, rotated: false };
+  if (result.ok && result.data) {
+    return { kind: 'authenticated', info: result.data, data };
   }
-  if (initial.status !== 401) {
-    return initial.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
+  if (result.status === 401) return { kind: 'expired' };
+  return result.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
+}
+
+async function authenticate(
+  stored: { id: string; data: StorefrontSessionData },
+  request: Request,
+  service: StorefrontSessionService,
+): Promise<AuthResult> {
+  const initial = await checkAccess(stored.data, request);
+  if (initial.kind !== 'expired') return initial;
+
+  try {
+    return await service.withRefreshLock<AuthResult>(stored.id, async () => {
+      const latest = await service.readById(stored.id);
+      if (!latest) return { kind: 'invalid' };
+
+      const unchanged =
+        latest.accessToken === stored.data.accessToken &&
+        latest.refreshToken === stored.data.refreshToken;
+
+      if (!unchanged) {
+        const current = await checkAccess(latest, request);
+        if (current.kind !== 'expired') return current;
+      }
+
+      const refreshed = await backendRefresh(request, latest.refreshToken);
+      if (!refreshed.ok || !refreshed.tokens) {
+        return refreshed.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
+      }
+
+      const next = { ...latest, ...refreshed.tokens };
+      const retried = await checkAccess(next, request);
+      if (retried.kind === 'expired') return { kind: 'invalid' };
+      if (retried.kind !== 'authenticated') return retried;
+
+      // Persist the rotated refresh token while the lock is still held. A waiting
+      // request will then re-read and validate this new session instead of using
+      // the now-invalid previous refresh token.
+      await service.rotate(stored.id, next);
+      return retried;
+    });
+  } catch (error) {
+    if (!(error instanceof SessionRefreshLockTimeoutError)) {
+      console.error('Storefront session refresh failed', error);
+    }
+    return { kind: 'unavailable' };
   }
-  const refreshed = await backendRefresh(request, data.refreshToken);
-  if (!refreshed.ok || !refreshed.tokens) {
-    return refreshed.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
-  }
-  const next = { ...data, ...refreshed.tokens };
-  const retried = await apiGet<SessionInfoResponse>(request, '/auth/session', next.accessToken, {
-    schema: sessionInfoResponseSchema,
-  });
-  if (!retried.ok || !retried.data) {
-    return retried.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
-  }
-  return { kind: 'authenticated', info: retried.data, data: next, rotated: true };
 }
 
 export async function storefrontAuthMiddleware(
@@ -59,7 +98,7 @@ export async function storefrontAuthMiddleware(
       next,
     );
   }
-  const result = await authenticate(stored.data, request);
+  const result = await authenticate(stored, request, service);
   if (result.kind === 'unavailable') {
     throw new Response('Authentication service temporarily unavailable', { status: 503 });
   }
@@ -76,7 +115,5 @@ export async function storefrontAuthMiddleware(
     auth: { session: result.data, info: result.info },
     suppressSessionCommit: false,
   };
-  const response = await runWithStorefrontRequestContext(state, next);
-  if (result.rotated && !state.suppressSessionCommit) await service.rotate(stored.id, result.data);
-  return response;
+  return runWithStorefrontRequestContext(state, next);
 }
