@@ -3,7 +3,13 @@ import { Webhook } from 'lucide-react';
 import type { PlatformHealthTenant } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { Empty, EmptyDescription, EmptyTitle } from '@booking/ui/components/ui/empty';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@booking/ui/components/ui/empty';
 import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import { formatDate, formatHours, formatNumber, formatVnd, formatVndCompact } from '~/lib/format';
 import { VERTICAL_LABELS } from '~/constants/tenancy';
@@ -113,13 +119,17 @@ export function TenantHealthTable({
       </div>
       {tenants.length === 0 && !error ? (
         <Empty className="rounded-xl border">
-          <EmptyTitle>Chưa có tenant</EmptyTitle>
-          <EmptyDescription>
-            Tạo tenant đầu tiên để bắt đầu theo dõi sức khoẻ nền tảng.
-          </EmptyDescription>
-          <Button asChild className="mt-4">
-            <Link to={dashboardPaths.admin.tenantNew}>Tạo tenant</Link>
-          </Button>
+          <EmptyHeader>
+            <EmptyTitle>Chưa có tenant</EmptyTitle>
+            <EmptyDescription>
+              Tạo tenant đầu tiên để bắt đầu theo dõi sức khoẻ nền tảng.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button asChild>
+              <Link to={dashboardPaths.admin.tenantNew}>Tạo tenant</Link>
+            </Button>
+          </EmptyContent>
         </Empty>
       ) : (
         <DataTable

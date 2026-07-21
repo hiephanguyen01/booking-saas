@@ -176,7 +176,9 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
                 data={promotions}
                 columns={columns}
                 emptyMessage={
-                  hasActiveFilters(filters) ? 'Không có mã khớp bộ lọc.' : 'Chưa có khuyến mãi nào.'
+                  hasActiveFilters(filters)
+                    ? 'Không có mã khớp bộ lọc.'
+                    : 'Chưa có khuyến mãi nào. Nhấn "Tạo khuyến mãi" để tạo chương trình đầu tiên.'
                 }
               />
               <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />

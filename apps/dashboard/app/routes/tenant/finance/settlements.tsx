@@ -225,7 +225,7 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
         columns={columns}
         data={items}
         getRowKey={(row) => row.id}
-        emptyMessage="Chưa có khoản tiền giữ nào."
+        emptyMessage="Chưa có khoản tiền giữ nào. Khoản tiền giữ sẽ xuất hiện khi có đơn đặt chỗ được thanh toán."
       />
       <PaginationBar
         page={list.page}

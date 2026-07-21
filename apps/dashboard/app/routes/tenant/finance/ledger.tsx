@@ -164,7 +164,11 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={items}
         getRowKey={(e) => e.id}
-        emptyMessage={hasFilters ? 'Không có bút toán khớp bộ lọc.' : 'Chưa có bút toán nào.'}
+        emptyMessage={
+          hasFilters
+            ? 'Không có bút toán khớp bộ lọc.'
+            : 'Chưa có bút toán nào. Bút toán sẽ xuất hiện sau giao dịch đầu tiên trên cửa hàng.'
+        }
       />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />

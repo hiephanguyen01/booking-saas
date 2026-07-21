@@ -114,7 +114,11 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={promotions}
         getRowKey={(p) => p.id}
-        emptyMessage={hasActiveFilters(filters) ? 'Không có mã khớp bộ lọc.' : 'Chưa có mã khuyến mãi nào.'}
+        emptyMessage={
+          hasActiveFilters(filters)
+            ? 'Không có mã khớp bộ lọc.'
+            : 'Chưa có mã khuyến mãi nào. Nhấn "Tạo mã mới" để tạo chương trình đầu tiên.'
+        }
       />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />

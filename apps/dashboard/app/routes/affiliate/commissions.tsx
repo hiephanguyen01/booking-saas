@@ -117,7 +117,9 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
         data={commissions}
         getRowKey={(c) => c.id}
         emptyMessage={
-          hasActiveFilters(filters) ? 'Không có hoa hồng khớp bộ lọc.' : 'Chưa có hoa hồng nào.'
+          hasActiveFilters(filters)
+            ? 'Không có hoa hồng khớp bộ lọc.'
+            : 'Chưa có hoa hồng nào. Hoa hồng sẽ xuất hiện sau khi có lượt đặt qua link giới thiệu của bạn.'
         }
       />
 

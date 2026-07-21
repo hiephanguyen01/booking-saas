@@ -131,7 +131,11 @@ export function PaymentTransactionsPage({
         columns={columns}
         data={items}
         getRowKey={(item) => item.id}
-        emptyMessage={hasFilters ? 'Không có giao dịch khớp bộ lọc.' : 'Chưa có giao dịch nào.'}
+        emptyMessage={
+          hasFilters
+            ? 'Không có giao dịch khớp bộ lọc.'
+            : 'Chưa có giao dịch nào. Giao dịch sẽ xuất hiện sau lượt thanh toán đầu tiên.'
+        }
       />
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>

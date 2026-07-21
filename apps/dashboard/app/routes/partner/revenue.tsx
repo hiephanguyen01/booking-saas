@@ -402,7 +402,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           columns={journalColumns}
           data={ledger}
           getRowKey={(e) => e.id}
-          emptyMessage="Chưa có bút toán nào."
+          emptyMessage="Chưa có bút toán nào. Bút toán sẽ xuất hiện sau giao dịch đầu tiên."
         />
         <PaginationBar
           page={ledgerParams.page}
@@ -421,7 +421,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           columns={payoutColumns}
           data={payouts}
           getRowKey={(p) => p.id}
-          emptyMessage="Chưa có đợt chi trả nào."
+          emptyMessage="Chưa có đợt chi trả nào. Đợt chi trả sẽ xuất hiện khi có tiền đủ điều kiện chuyển cho bạn."
         />
         <PaginationBar
           page={payoutParams.page}

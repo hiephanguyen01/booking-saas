@@ -118,7 +118,7 @@ export default function PartnerCancellationPolicies({
         columns={columns}
         data={policies}
         getRowKey={(p) => p.id}
-        emptyMessage="Chưa có chính sách huỷ nào."
+        emptyMessage='Chưa có chính sách huỷ nào. Nhấn "Thêm chính sách" để tạo chính sách đầu tiên.'
       />
     </div>
   );
