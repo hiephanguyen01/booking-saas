@@ -8,6 +8,13 @@ import {
   storefrontLogWarn,
 } from './logger.server';
 import { resolveTenant } from './tenant.server';
+import {
+  exportStorefrontSpan,
+  resolveStorefrontTraceContext,
+  storefrontTraceparent,
+  type StorefrontSpanStatus,
+  type StorefrontTraceContext,
+} from './tracing.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
@@ -19,7 +26,9 @@ interface RequestLifecycle {
   requestMethod: string;
   requestPath: string;
   requestSignal: AbortSignal;
+  startedAt: string;
   startedAtMs: number;
+  trace: StorefrontTraceContext;
   tenantId?: string;
 }
 
@@ -72,7 +81,12 @@ function forbidden(): Response {
   );
 }
 
-function applySecurityHeaders(headers: Headers, request: Request, requestId: string): void {
+function applySecurityHeaders(
+  headers: Headers,
+  request: Request,
+  requestId: string,
+  trace: StorefrontTraceContext,
+): void {
   // HTML responses receive the nonce-based policy in entry.server.tsx. Keep a
   // defensive minimal policy for JSON/operational responses and early failures.
   if (!headers.has('Content-Security-Policy')) {
@@ -83,22 +97,30 @@ function applySecurityHeaders(headers: Headers, request: Request, requestId: str
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('X-Frame-Options', 'SAMEORIGIN');
   headers.set('X-Request-Id', requestId);
+  // Return only the standard traceparent correlation value. Vendor-specific
+  // tracestate remains server-to-server and is never exposed in responses.
+  headers.set('traceparent', storefrontTraceparent(trace));
 
   if (storefrontEnv.production && requestOrigin(request)?.startsWith('https://')) {
     headers.set('Strict-Transport-Security', 'max-age=31536000');
   }
 }
 
-function withSecurityHeaders(response: Response, request: Request, requestId: string): Response {
+function withSecurityHeaders(
+  response: Response,
+  request: Request,
+  requestId: string,
+  trace: StorefrontTraceContext,
+): Response {
   try {
     // Most application responses have mutable headers. Updating them in place
     // preserves separate Set-Cookie values without rebuilding a streaming body.
-    applySecurityHeaders(response.headers, request, requestId);
+    applySecurityHeaders(response.headers, request, requestId, trace);
     return response;
   } catch {
     // Redirect responses may expose an immutable header guard. Clone only those.
     const headers = new Headers(response.headers);
-    applySecurityHeaders(headers, request, requestId);
+    applySecurityHeaders(headers, request, requestId, trace);
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -138,6 +160,8 @@ function lifecycleDetails(
     requestMethod: lifecycle.requestMethod,
     requestPath: lifecycle.requestPath,
     ...(lifecycle.tenantId ? { tenantId: lifecycle.tenantId } : {}),
+    traceId: lifecycle.trace.traceId,
+    spanId: lifecycle.trace.spanId,
     durationMs: durationMilliseconds(lifecycle.startedAtMs),
     outcome: responseOutcome(response.status),
     responseKind: responseKind(response),
@@ -145,19 +169,56 @@ function lifecycleDetails(
   };
 }
 
-function shouldLogLifecycle(requestPath: string, statusCode: number): boolean {
+function shouldObserveLifecycle(requestPath: string, statusCode: number): boolean {
   return !OPERATIONAL_PATHS.has(requestPath) || statusCode >= 400;
 }
 
-function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifecycle): Response {
-  if (!shouldLogLifecycle(lifecycle.requestPath, response.status)) return response;
+function exportLifecycleSpan(
+  lifecycle: RequestLifecycle,
+  status: StorefrontSpanStatus,
+  outcome: string,
+  attributes: Record<string, string | number | boolean>,
+): void {
+  exportStorefrontSpan({
+    name: `${lifecycle.requestMethod} ${lifecycle.requestPath}`,
+    kind: 'server',
+    traceId: lifecycle.trace.traceId,
+    spanId: lifecycle.trace.spanId,
+    parentSpanId: lifecycle.trace.parentSpanId,
+    traceFlags: lifecycle.trace.traceFlags,
+    startedAt: lifecycle.startedAt,
+    durationMs: durationMilliseconds(lifecycle.startedAtMs),
+    status,
+    attributes: {
+      'http.request.method': lifecycle.requestMethod,
+      'url.path': lifecycle.requestPath,
+      'request.id': lifecycle.requestId,
+      ...(lifecycle.tenantId ? { 'tenant.id': lifecycle.tenantId } : {}),
+      outcome,
+      ...attributes,
+    },
+  });
+}
 
-  if (!response.body || lifecycle.requestMethod === 'HEAD') {
+function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifecycle): Response {
+  if (!shouldObserveLifecycle(lifecycle.requestPath, response.status)) return response;
+
+  const complete = (responseBytes: number): void => {
+    const outcome = responseOutcome(response.status);
     storefrontLogHttpResponse(
       'http.request_completed',
       response.status,
-      lifecycleDetails(lifecycle, response, 0),
+      lifecycleDetails(lifecycle, response, responseBytes),
     );
+    exportLifecycleSpan(lifecycle, response.status >= 400 ? 'error' : 'ok', outcome, {
+      'http.response.status_code': response.status,
+      'response.kind': responseKind(response),
+      'response.body.size': responseBytes,
+    });
+  };
+
+  if (!response.body || lifecycle.requestMethod === 'HEAD') {
+    complete(0);
     return response;
   }
 
@@ -165,14 +226,10 @@ function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifec
   let responseBytes = 0;
   let finished = false;
 
-  const complete = (): void => {
+  const finish = (): void => {
     if (finished) return;
     finished = true;
-    storefrontLogHttpResponse(
-      'http.request_completed',
-      response.status,
-      lifecycleDetails(lifecycle, response, responseBytes),
-    );
+    complete(responseBytes);
   };
 
   const body = new ReadableStream<Uint8Array>({
@@ -180,7 +237,7 @@ function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifec
       try {
         const chunk = await reader.read();
         if (chunk.done) {
-          complete();
+          finish();
           controller.close();
           return;
         }
@@ -194,6 +251,12 @@ function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifec
             outcome: 'stream_error',
             statusCode: response.status,
           });
+          exportLifecycleSpan(lifecycle, 'error', 'stream_error', {
+            'http.response.status_code': response.status,
+            'response.kind': responseKind(response),
+            'response.body.size': responseBytes,
+            'error.type': error instanceof Error ? error.name : 'unknown',
+          });
         }
         controller.error(error);
       }
@@ -205,6 +268,11 @@ function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifec
           ...lifecycleDetails(lifecycle, response, responseBytes),
           outcome: 'client_cancelled',
           statusCode: response.status,
+        });
+        exportLifecycleSpan(lifecycle, 'cancelled', 'client_cancelled', {
+          'http.response.status_code': response.status,
+          'response.kind': responseKind(response),
+          'response.body.size': responseBytes,
         });
       }
       await reader.cancel(reason);
@@ -220,13 +288,18 @@ function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifec
 
 function logRequestFailure(error: unknown, lifecycle: RequestLifecycle): void {
   const statusCode = error instanceof Response ? error.status : 500;
+  if (!shouldObserveLifecycle(lifecycle.requestPath, statusCode)) return;
+
+  const outcome = lifecycle.requestSignal.aborted ? 'client_aborted' : 'failed_before_response';
   const details = {
     requestId: lifecycle.requestId,
     requestMethod: lifecycle.requestMethod,
     requestPath: lifecycle.requestPath,
     ...(lifecycle.tenantId ? { tenantId: lifecycle.tenantId } : {}),
+    traceId: lifecycle.trace.traceId,
+    spanId: lifecycle.trace.spanId,
     durationMs: durationMilliseconds(lifecycle.startedAtMs),
-    outcome: lifecycle.requestSignal.aborted ? 'client_aborted' : 'failed_before_response',
+    outcome,
   };
 
   if (error instanceof Response) {
@@ -234,6 +307,16 @@ function logRequestFailure(error: unknown, lifecycle: RequestLifecycle): void {
   } else {
     storefrontLogError('http.request_failed', error, { ...details, statusCode });
   }
+
+  exportLifecycleSpan(
+    lifecycle,
+    lifecycle.requestSignal.aborted ? 'cancelled' : 'error',
+    outcome,
+    {
+      'http.response.status_code': statusCode,
+      ...(error instanceof Error ? { 'error.type': error.name } : {}),
+    },
+  );
 }
 
 export async function storefrontRequestMiddleware(
@@ -248,7 +331,9 @@ export async function storefrontRequestMiddleware(
     requestMethod: request.method.toUpperCase(),
     requestPath,
     requestSignal: request.signal,
+    startedAt: new Date().toISOString(),
     startedAtMs: performance.now(),
+    trace: resolveStorefrontTraceContext(request.headers),
   };
 
   try {
@@ -262,6 +347,8 @@ export async function storefrontRequestMiddleware(
           requestId,
           requestMethod: lifecycle.requestMethod,
           requestPath,
+          traceId: lifecycle.trace.traceId,
+          spanId: lifecycle.trace.spanId,
         });
         response = rejected;
       } else {
@@ -273,12 +360,13 @@ export async function storefrontRequestMiddleware(
           tenant,
           requestId,
           lifecycle.startedAtMs,
+          lifecycle.trace,
         );
       }
     }
 
     return withRequestLifecycleLogging(
-      withSecurityHeaders(response, request, requestId),
+      withSecurityHeaders(response, request, requestId, lifecycle.trace),
       lifecycle,
     );
   } catch (error) {
