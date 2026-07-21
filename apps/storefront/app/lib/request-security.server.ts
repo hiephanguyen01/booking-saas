@@ -6,7 +6,7 @@ import { resolveTenant } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
-const CONTENT_SECURITY_POLICY = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'";
+const FALLBACK_CONTENT_SECURITY_POLICY = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'";
 const REQUEST_ID_RE = /^[A-Za-z0-9._:-]{1,100}$/;
 
 function resolveRequestId(request: Request): string {
@@ -59,7 +59,11 @@ function forbidden(): Response {
 }
 
 function applySecurityHeaders(headers: Headers, request: Request, requestId: string): void {
-  headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  // HTML responses receive the nonce-based policy in entry.server.tsx. Keep a
+  // defensive minimal policy for JSON/operational responses and early failures.
+  if (!headers.has('Content-Security-Policy')) {
+    headers.set('Content-Security-Policy', FALLBACK_CONTENT_SECURITY_POLICY);
+  }
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   headers.set('X-Content-Type-Options', 'nosniff');
