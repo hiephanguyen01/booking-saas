@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import { getCurrentStorefrontRequestContext } from './request-context.server';
 
 type StorefrontLogLevel = 'info' | 'warn' | 'error';
@@ -12,6 +13,10 @@ function errorDetails(error: unknown): Record<string, string> | undefined {
   };
 }
 
+function elapsedMilliseconds(startedAtMs: number): number {
+  return Number(Math.max(0, performance.now() - startedAtMs).toFixed(1));
+}
+
 function write(
   level: StorefrontLogLevel,
   event: string,
@@ -24,15 +29,16 @@ function write(
     level,
     service: 'storefront',
     event,
+    ...details,
     ...(context
       ? {
           requestId: context.request.id,
           requestMethod: context.request.method,
           requestPath: context.request.path,
           tenantId: context.tenant.id,
+          requestElapsedMs: elapsedMilliseconds(context.request.startedAtMs),
         }
       : {}),
-    ...details,
     ...(error !== undefined ? { error: errorDetails(error) } : {}),
   };
   const line = JSON.stringify(payload);
@@ -59,4 +65,13 @@ export function storefrontLogError(
   details?: StorefrontLogDetails,
 ): void {
   write('error', event, details, error);
+}
+
+export function storefrontLogHttpResponse(
+  event: string,
+  statusCode: number,
+  details?: StorefrontLogDetails,
+): void {
+  const level: StorefrontLogLevel = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
+  write(level, event, { ...details, statusCode });
 }
