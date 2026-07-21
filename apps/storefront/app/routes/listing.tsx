@@ -12,11 +12,12 @@ import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '../lib/catalog.server';
 import { canOffsetDateOnly, isValidDateOnly } from '../lib/date-only';
 import { normalizeDailyRange } from '../lib/daily-range';
-import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
+import { addDays, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
 import type { StorefrontContext } from '../root';
 import { jsonLd } from '../lib/seo';
 import { publicGetData } from '../lib/api.server';
+import { getCurrentStorefrontTenant } from '../lib/request-context.server';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
@@ -92,7 +93,8 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   const mode = pickMode(searchParams.get('mode'), listing);
   const packageId = searchParams.get('packageId') ?? undefined;
   const requiresPackage = listing.bookingSelection === 'fixed_packages';
-  const today = todayInTz(DEFAULT_TZ);
+  const timezone = getCurrentStorefrontTenant().defaultTimezone;
+  const today = todayInTz(timezone);
   let availabilityPromise: ReturnType<typeof fetchAvailability> | null = null;
 
   if (requiresPackage && !packageId) {
