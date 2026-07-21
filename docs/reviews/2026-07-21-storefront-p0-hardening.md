@@ -1,4 +1,4 @@
-# Storefront P0/P1 hardening — 2026-07-21
+# Storefront P0/P1/P2 hardening — 2026-07-21
 
 ## Scope
 
@@ -21,6 +21,11 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 - Add conservative response security headers, including a non-breaking CSP, framing protection, permissions policy, referrer policy, MIME sniffing protection, and production HSTS.
 - Remove the silent 20-room listing-group cap and bound child-detail fan-out to four concurrent tasks.
 - Bound fixed-package availability fan-out to three concurrent tasks and scope related-listing lookup to the current listing type.
+- Reuse strict calendar validation in the shared storefront search-state parser.
+- Build catalog API queries from an allowlist instead of forwarding arbitrary browser parameters.
+- Bound and validate dynamic `attr.*` filters before forwarding them through the BFF.
+- Sign the recent-bookings cookie and accept only API-generated `BK-XXXXXX` booking codes.
+- Suppress raw booking lookup failures and prevent development OTP hints from being serialized in production.
 
 ## Fixed-package availability verification
 
@@ -28,7 +33,7 @@ The API already computes each fixed daily package start date against the full pa
 
 ## Compatibility note
 
-Legacy unsigned affiliate and visitor cookies are intentionally rejected. A new signed visitor cookie is issued on the next referral visit, and attribution is restored after a valid `?ref=` click.
+Legacy unsigned affiliate, visitor, and recent-bookings cookies are intentionally rejected. New signed cookies are issued through the corresponding storefront flows; attribution is restored after a valid `?ref=` click, and recent bookings are repopulated after the next booking created on the device.
 
 ## Repository policy
 
