@@ -10,7 +10,7 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
 import { RelationshipHint } from '~/components/relationship-hint';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
-import { SEARCH_SCHEDULE_LABEL } from '~/features/tenant/constants';
+import { SEARCH_SCHEDULE_LABEL, STRUCTURE_LABEL } from '~/features/tenant/constants';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
@@ -71,6 +71,21 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
           ))}
         </div>
       ),
+    },
+    {
+      header: 'Cấu trúc',
+      cell: (t) => (
+        <div>
+          <p>{STRUCTURE_LABEL[t.structure] ?? '—'}</p>
+          {t.structure !== 'standalone' && t.itemLabel ? (
+            <p className="whitespace-nowrap text-xs text-muted-foreground">
+              · gọi con là “{t.itemLabel}”
+            </p>
+          ) : null}
+        </div>
+      ),
+      className: 'hidden md:table-cell',
+      headClassName: 'hidden md:table-cell',
     },
     { header: 'Thuộc tính', cell: (t) => <span className="tabular-nums text-muted-foreground">{t.attributeSchema.length}</span> },
     {

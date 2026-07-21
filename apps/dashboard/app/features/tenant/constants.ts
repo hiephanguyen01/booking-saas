@@ -2,6 +2,7 @@ import type {
   AttributeFieldType,
   BalanceDue,
   ContactFlag,
+  ListingStructure,
   ListingTypeSearchSchedule,
 } from '@booking/contracts';
 
@@ -54,6 +55,13 @@ export const SEARCH_SCHEDULE_LABEL: Record<ListingTypeSearchSchedule, string> = 
   hourly: 'Theo giờ',
   daily: 'Theo ngày',
   inventory: 'Theo kho',
+};
+
+/** Listing-type structure (standalone vs multi-item) → Vietnamese label (listing-types list/form). */
+export const STRUCTURE_LABEL: Record<ListingStructure, string> = {
+  standalone: 'Tin đăng đơn',
+  grouped: 'Nhiều hạng mục',
+  flexible: 'Đối tác chọn',
 };
 
 /** Dynamic-attribute field type → Vietnamese label (listing-type builder). */
