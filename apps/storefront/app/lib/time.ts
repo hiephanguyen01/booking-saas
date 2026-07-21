@@ -6,6 +6,8 @@
  */
 export const DEFAULT_TZ = 'Asia/Ho_Chi_Minh';
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 /** ms to add to a UTC instant to get the given zone's wall time (e.g. +7h for ICT). */
 function tzOffsetMs(tz: string, at: Date): number {
   const dtf = new Intl.DateTimeFormat('en-US', {
@@ -51,12 +53,18 @@ export function timeInTz(utcIso: string, tz: string): string {
 
 /** e.g. "T4, 20 thg 7" — a short date label in `tz`. */
 export function dateLabelInTz(utcIsoOrDate: string, tz: string, locale: string): string {
+  // `new Date('YYYY-MM-DD')` means UTC midnight, which renders as the previous
+  // calendar day in negative-offset zones. Anchor date-only values at local noon
+  // in the tenant zone so the requested wall date remains stable in every zone.
+  const value = DATE_ONLY_RE.test(utcIsoOrDate)
+    ? zonedToUtcIso(utcIsoOrDate, '12:00', tz)
+    : utcIsoOrDate;
   return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
     timeZone: tz,
     weekday: 'short',
     day: '2-digit',
     month: 'short',
-  }).format(new Date(utcIsoOrDate));
+  }).format(new Date(value));
 }
 
 /** Today's `YYYY-MM-DD` in `tz`. */
