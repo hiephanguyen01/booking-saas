@@ -13,13 +13,7 @@ import { SectionCard } from '../../../components/section-card';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { BookingMode, RoomOption } from '../listing-group-types';
 import { atomicHourlySlots, roomAvailabilityState } from '../listing-group-utils';
-import {
-  CapacityDetails,
-  PolicyList,
-  RoomAction,
-  RoomDetails,
-  RoomPrice,
-} from './room-cells';
+import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
 import { RoomPhotoStrip } from './room-photo-strip';
 
 type SlotsByRoom = ReadonlyMap<string, HourlySlot[]>;
@@ -84,21 +78,21 @@ export function RoomOptionsSection({
 
       {visibleOptions.length ? (
         <>
-          <div className="hidden overflow-x-auto rounded-md border xl:block">
+          <div className="hidden overflow-hidden rounded-md border xl:block">
             <table className="w-full table-fixed text-left text-sm">
               <caption className="sr-only">{t('group.roomTableLabel')}</caption>
               <thead>
                 <tr className="bg-muted/60 text-xs font-semibold">
-                  <th scope="col" className="w-93.5 p-4">
+                  <th scope="col" className="w-[34%] p-4">
                     {t('group.roomTypes')}
                   </th>
-                  <th scope="col" className="w-70 border-l border-border p-4">
+                  <th scope="col" className="w-[25%] border-l border-border p-4">
                     {t('group.colCapacity')}
                   </th>
-                  <th scope="col" className="w-56 border-l border-border p-4">
+                  <th scope="col" className="w-[20%] border-l border-border p-4">
                     {t('group.colPrice')}
                   </th>
-                  <th scope="col" className="w-61 border-l border-border p-4">
+                  <th scope="col" className="w-[21%] border-l border-border p-4">
                     {t('group.colChoice')}
                   </th>
                 </tr>

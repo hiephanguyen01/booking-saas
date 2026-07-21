@@ -25,7 +25,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
-import { PendingLink } from '../../../components/pending-link';
+import { BookingDialogFooter } from '../../../components/booking-dialog-footer';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import {
   DEFAULT_TZ,
@@ -158,6 +158,7 @@ export function RoomBookingDialog({
   const currentData =
     response?.ok &&
     response.mode === mode &&
+    response.packageId === packageId &&
     (mode === 'hourly'
       ? response.date === date
       : response.from === (from ?? today) && response.to === to)
@@ -165,7 +166,12 @@ export function RoomBookingDialog({
       : null;
   const availability =
     currentData?.availability ??
-    (mode === 'daily' && response?.ok && response.mode === 'daily' ? response.availability : null);
+    (mode === 'daily' &&
+    response?.ok &&
+    response.mode === 'daily' &&
+    response.packageId === packageId
+      ? response.availability
+      : null);
   const slots = useMemo(
     () =>
       availability?.mode === 'hourly'
@@ -395,7 +401,7 @@ export function RoomBookingDialog({
                 )}
               >
                 <span className="flex items-center gap-3">
-                  {item.photos[0] ?? option.child.photos[0] ? (
+                  {(item.photos[0] ?? option.child.photos[0]) ? (
                     <img
                       src={item.photos[0] ?? option.child.photos[0]}
                       alt=""
@@ -595,13 +601,20 @@ export function RoomBookingDialog({
     </div>
   );
   const footer = (
-    <BookingFooter
-      mode={mode}
-      date={date}
+    <BookingDialogFooter
       selectionSummary={selectionSummary}
       quote={quote?.subtotal ?? null}
       quotePending={quotePending}
       bookingHref={bookingHref}
+      disabledLabel={
+        quotePending
+          ? t('group.calculatingPrice')
+          : mode === 'hourly'
+            ? date
+              ? t('group.chooseHoursToContinue')
+              : t('group.chooseDayToContinue')
+            : t('group.chooseRangeToContinue')
+      }
     />
   );
 
@@ -665,71 +678,6 @@ export function RoomBookingDialog({
         </Drawer>
       </div>
     </>
-  );
-}
-
-function BookingFooter({
-  mode,
-  date,
-  selectionSummary,
-  quote,
-  quotePending,
-  bookingHref,
-}: {
-  mode: RoomBookingMode;
-  date: string | null;
-  selectionSummary: string | null;
-  quote: string | null;
-  quotePending: boolean;
-  bookingHref: string | null;
-}) {
-  const { t } = useTranslation(NsI18n.Listing);
-  const disabledLabel = quotePending
-    ? t('group.calculatingPrice')
-    : mode === 'hourly'
-      ? date
-        ? t('group.chooseHoursToContinue')
-        : t('group.chooseDayToContinue')
-      : t('group.chooseRangeToContinue');
-
-  return (
-    <div className="shrink-0 border-t bg-card px-5 py-4 shadow-[0_-8px_24px_-20px_rgba(0,0,0,0.35)]">
-      <div aria-live="polite" aria-atomic="true">
-        {selectionSummary ? (
-          <div className="flex items-end justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">{t('group.selectedSchedule')}</p>
-              <p className="mt-0.5 truncate text-sm font-medium">{selectionSummary}</p>
-            </div>
-            {quote !== null ? (
-              <div className="shrink-0 text-right">
-                <p className="text-xs text-muted-foreground">{t('subtotalEstimate')}</p>
-                <strong className="text-lg text-primary">{formatVnd(quote)}</strong>
-              </div>
-            ) : quotePending ? (
-              <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
-                <Spinner aria-hidden="true" /> {t('group.calculatingPrice')}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-      {bookingHref ? (
-        <PendingLink
-          to={bookingHref}
-          size="control"
-          className={cn('w-full', selectionSummary && 'mt-3')}
-          pendingLabel={t('group.navigating')}
-        >
-          {t('bookNow')}
-        </PendingLink>
-      ) : (
-        <Button disabled size="control" className={cn('w-full', selectionSummary && 'mt-3')}>
-          {quotePending ? <Spinner aria-hidden="true" /> : null}
-          {disabledLabel}
-        </Button>
-      )}
-    </div>
   );
 }
 

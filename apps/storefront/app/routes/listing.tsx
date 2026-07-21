@@ -8,7 +8,7 @@ import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { ListingPage } from '../features/listing/listing-page';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchAvailability } from '../lib/booking.server';
-import { fetchListing, fetchQuote } from '../lib/catalog.server';
+import { fetchListing, fetchListings, fetchQuote } from '../lib/catalog.server';
 import { normalizeDailyRange } from '../lib/daily-range';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
@@ -56,14 +56,28 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const searchParams = url.searchParams;
-  const [listing, provinces, reviews] = await Promise.all([
-    fetchListing(request, params.listingSlug),
-    loadAdministrativeProvinces(request),
+  const requestedRating = Number(searchParams.get('rating'));
+  const rating =
+    Number.isInteger(requestedRating) && requestedRating >= 1 && requestedRating <= 5
+      ? requestedRating
+      : undefined;
+  const reviewRequest = (filterRating?: number) =>
     publicGetData(request, '/public/reviews', {
-      query: { target: 'listing', slug: params.listingSlug, page: 1, pageSize: 6, sort: 'newest' },
+      query: {
+        target: 'listing',
+        slug: params.listingSlug,
+        page: 1,
+        pageSize: 6,
+        sort: 'newest',
+        ...(filterRating ? { rating: filterRating } : {}),
+      },
       schema: reviewListResponseSchema,
-    }).catch(() => null),
-  ]);
+    }).catch(() => null);
+  const listingPromise = fetchListing(request, params.listingSlug);
+  const provincesPromise = loadAdministrativeProvinces(request);
+  const reviewsPromise = reviewRequest(rating);
+  const unfilteredReviewsPromise = rating ? reviewRequest() : Promise.resolve(null);
+  const listing = await listingPromise;
 
   if (!listing) {
     throw new Response('Listing not found', { status: 404 });
@@ -99,7 +113,34 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     availabilityPromise = fetchAvailability(request, params.listingSlug, { mode, from, to });
   }
 
+  const relatedSearch = new URLSearchParams({
+    type: listing.listingTypeSlug,
+    pageSize: '5',
+    sort: 'bookings-desc',
+  });
+  const locations = provincesPromise
+    .then((provinces) =>
+      provinces.map((province) => ({ value: province.code, label: province.name })),
+    )
+    .catch(() => []);
+  const relatedPromise =
+    listing.listingTypeSlug === 'photography'
+      ? fetchListings(request, relatedSearch).catch(() => [])
+      : Promise.resolve([]);
+  const auxiliaryData = Promise.all([
+    reviewsPromise,
+    unfilteredReviewsPromise,
+    relatedPromise,
+  ]).then(([reviews, unfilteredReviews, relatedCandidates]) => ({
+    reviews,
+    reviewSummary: unfilteredReviews?.summary ?? reviews?.summary ?? null,
+    relatedListings: relatedCandidates
+      .filter((candidate) => candidate.id !== listing.id)
+      .slice(0, 4),
+  }));
+
   const availability = availabilityPromise ? await availabilityPromise : null;
+
   let selectionStart = searchParams.get('start');
   let selectionEnd = searchParams.get('end');
   const quantity = searchParams.get('qty') || searchParams.get('quantity') || '1';
@@ -139,11 +180,17 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         }),
       )
     : null;
-  const locations = provinces.map((province) => ({
-    value: province.code,
-    label: province.name,
-  }));
-  return { listing, mode, availability, quote, locations, selectionStart, selectionEnd, reviews };
+  return {
+    listing,
+    mode,
+    availability,
+    quote,
+    locations,
+    selectionStart,
+    selectionEnd,
+    auxiliaryData,
+    rating,
+  };
 }
 
 function isSelectionAvailable(

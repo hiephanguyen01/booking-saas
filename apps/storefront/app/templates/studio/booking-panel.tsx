@@ -223,7 +223,7 @@ function PackagePicker({
             )}
           >
             <span className="flex items-center gap-3">
-              {item.photos[0] ?? fallbackPhoto ? (
+              {(item.photos[0] ?? fallbackPhoto) ? (
                 <img
                   src={item.photos[0] ?? fallbackPhoto}
                   alt=""
@@ -538,7 +538,7 @@ function HourlyPicker({
                     value={slot.startUtc}
                     disabled={!slot.available}
                     aria-label={`${startTime}–${endTime}, ${slotStatus}`}
-                    className="h-auto min-w-0 flex-col gap-0.5 px-1 py-2 whitespace-normal"
+                    className="h-auto min-w-0 flex-col gap-0.5 px-1 py-2 whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
                   >
                     <span>
                       {startTime}–{endTime}

@@ -1,5 +1,6 @@
 import { ImageIcon, MapPin, Ruler, Sparkles, Users } from 'lucide-react';
-import { Link, useOutletContext, useSearchParams } from 'react-router';
+import { Suspense } from 'react';
+import { Await, Link, useOutletContext, useSearchParams } from 'react-router';
 import { ListingRatingSummary } from '../../components/listing-rating-summary';
 import { PublicReviewsSection } from '../../components/public-reviews-section';
 import { SectionCard } from '../../components/section-card';
@@ -18,6 +19,7 @@ import { StudioGallery } from '../listing-group/components/studio-gallery';
 import { roomAttributes, roomCapacity } from '../listing-group/room-attributes';
 import { SearchForm } from '../search/search-form';
 import { parseSearchState } from '../search/search-state';
+import { PhotographerPage } from '../photographer/photographer-page';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote, locations, selectionStart, selectionEnd } =
@@ -35,6 +37,10 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
     );
   }
 
+  if (listing.listingTypeSlug === 'photography') {
+    return <PhotographerPage loaderData={loaderData} />;
+  }
+
   const location = formatListingLocation(listing, 'full');
   const selectedPackage = selectedPackageForListing(listing, mode, searchParams.get('packageId'));
   const galleryPhotos = selectedPackage?.photos.length ? selectedPackage.photos : listing.photos;
@@ -44,14 +50,20 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
 
   return (
     <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
-      <SearchForm
-        key={searchParams.toString()}
-        listingTypes={listingTypes}
-        currentType={listing.listingTypeSlug}
-        initialState={parseSearchState(searchParams)}
-        locations={locations}
-        variant="bar"
-      />
+      <Suspense fallback={<div className="h-39 bg-foreground" />}>
+        <Await resolve={locations}>
+          {(resolvedLocations) => (
+            <SearchForm
+              key={searchParams.toString()}
+              listingTypes={listingTypes}
+              currentType={listing.listingTypeSlug}
+              initialState={parseSearchState(searchParams)}
+              locations={resolvedLocations}
+              variant="bar"
+            />
+          )}
+        </Await>
+      </Suspense>
       <div className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-4 xl:px-0">
         <SectionCard>
           <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -107,7 +119,11 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
             </SectionCard>
 
             <ListingDetails attributes={listing.attributes} />
-            <PublicReviewsSection reviews={loaderData.reviews} locale={locale} />
+            <Suspense fallback={null}>
+              <Await resolve={loaderData.auxiliaryData}>
+                {({ reviews }) => <PublicReviewsSection reviews={reviews} locale={locale} />}
+              </Await>
+            </Suspense>
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
