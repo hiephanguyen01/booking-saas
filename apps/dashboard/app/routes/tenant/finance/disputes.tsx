@@ -16,11 +16,13 @@ import type { Route } from './+types/disputes';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
+import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { formatDateTime, formatVnd } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, type FilterSpec } from '~/lib/list-filters';
 
 const STATUS_LABEL: Record<SettlementDisputeResponse['status'], string> = {
   open: 'Chờ xử lý',
@@ -29,6 +31,29 @@ const STATUS_LABEL: Record<SettlementDisputeResponse['status'], string> = {
   resolved: 'Đã giải quyết',
 };
 
+const DISPUTE_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã booking, dịch vụ, lý do…' },
+  {
+    kind: 'enum',
+    key: 'status',
+    label: 'Trạng thái',
+    options: [
+      { value: 'open', label: 'Chờ xử lý' },
+      { value: 'accepted', label: 'Đã chấp nhận' },
+      { value: 'rejected', label: 'Đã từ chối' },
+    ],
+  },
+  {
+    kind: 'enum',
+    key: 'responseStatus',
+    label: 'Phản hồi',
+    options: [
+      { value: 'pending', label: 'Partner chưa phản hồi' },
+      { value: 'responded', label: 'Partner đã phản hồi' },
+    ],
+  },
+];
+
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tranh chấp · Tài chính · Tenant · Bookify' }];
 }
@@ -36,19 +61,17 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.disputes.read');
   const list = readListParams(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, DISPUTE_FILTER_SPEC);
   const result = await apiGet<Paginated<SettlementDisputeResponse>>(
     '/tenant/finance/disputes',
     auth,
     {
-      query: list.toApiQuery({
-        status: url.searchParams.get('status') || undefined,
-        responseStatus: url.searchParams.get('responseStatus') || undefined,
-        q: url.searchParams.get('q') || undefined,
-      }),
+      query: list.toApiQuery(apiFilters),
     },
   );
   return {
     result: result.ok ? result.data : null,
+    filters,
     canResolve: can('tenant.disputes.resolve'),
     error: result.ok ? null : (result.error ?? 'Không tải được danh sách tranh chấp.'),
   };
@@ -102,28 +125,12 @@ export default function TenantDisputes({ loaderData, actionData }: Route.Compone
       />
       <ErrorBanner error={actionError ?? loaderData.error} />
 
-      <Form method="get" className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
-        <Input
-          name="q"
-          defaultValue={searchParams.get('q') ?? ''}
-          placeholder="Mã booking, dịch vụ, lý do..."
-          className="min-w-64"
-        />
-        <NativeSelect name="status" defaultValue={searchParams.get('status') ?? ''}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="open">Chờ xử lý</option>
-          <option value="accepted">Đã chấp nhận</option>
-          <option value="rejected">Đã từ chối</option>
-        </NativeSelect>
-        <NativeSelect name="responseStatus" defaultValue={searchParams.get('responseStatus') ?? ''}>
-          <option value="">Tất cả phản hồi</option>
-          <option value="pending">Partner chưa phản hồi</option>
-          <option value="responded">Partner đã phản hồi</option>
-        </NativeSelect>
-        <Button type="submit" variant="outline">
-          Lọc
-        </Button>
-      </Form>
+      <ListToolbar
+        spec={DISPUTE_FILTER_SPEC}
+        filters={loaderData.filters}
+        resetHref={dashboardPaths.tenant.disputes}
+        pageSize={list.pageSize}
+      />
 
       {items.length === 0 ? (
         <Card>

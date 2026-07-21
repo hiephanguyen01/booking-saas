@@ -6,11 +6,31 @@ import type { PromoTimeWindow } from '../../domain/promotion-discount';
 import type {
   CreatePromotionData,
   IPromotionRepository,
+  PromotionListFilter,
   PromotionRecord,
   UpdatePromotionData,
 } from '../../domain/ports/promotion-repository.port';
 
 type Row = Prisma.PromotionGetPayload<Record<string, never>>;
+
+/** Search / status / created-at filters shared by the tenant + partner list queries. */
+function listWhere(filter: PromotionListFilter): Prisma.PromotionWhereInput {
+  const where: Prisma.PromotionWhereInput = {};
+  if (filter.q) {
+    where.OR = [
+      { name: { contains: filter.q, mode: 'insensitive' } },
+      { code: { contains: filter.q, mode: 'insensitive' } },
+    ];
+  }
+  if (filter.status) where.status = filter.status;
+  if (filter.from || filter.to) {
+    where.createdAt = {
+      ...(filter.from ? { gte: new Date(filter.from) } : {}),
+      ...(filter.to ? { lte: new Date(filter.to) } : {}),
+    };
+  }
+  return where;
+}
 
 function parseTimeWindows(value: Prisma.JsonValue | null): PromoTimeWindow[] | null {
   if (value === null || !Array.isArray(value)) return null;
@@ -102,12 +122,13 @@ export class PrismaPromotionRepository implements IPromotionRepository {
 
   async list(
     tx: PrismaTx,
-    params: { page: number; pageSize: number },
+    params: PromotionListFilter,
   ): Promise<{ items: PromotionRecord[]; total: number }> {
+    const where = listWhere(params);
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([
-      tx.promotion.findMany({ orderBy: { createdAt: 'desc' }, skip, take }),
-      tx.promotion.count(),
+      tx.promotion.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      tx.promotion.count({ where }),
     ]);
     return { items: rows.map(toRecord), total };
   }
@@ -115,9 +136,9 @@ export class PrismaPromotionRepository implements IPromotionRepository {
   async listByPartner(
     tx: PrismaTx,
     partnerId: string,
-    params: { page: number; pageSize: number },
+    params: PromotionListFilter,
   ): Promise<{ items: PromotionRecord[]; total: number }> {
-    const where: Prisma.PromotionWhereInput = { createdByPartnerId: partnerId };
+    const where: Prisma.PromotionWhereInput = { createdByPartnerId: partnerId, ...listWhere(params) };
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([
       tx.promotion.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),

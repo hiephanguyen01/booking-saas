@@ -117,12 +117,13 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
 
   async listPage(
     tx: PrismaTx,
-    filter: { partnerId?: string },
+    filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingGroupRecord[]; total: number }> {
-    const where: Prisma.ListingGroupWhereInput = filter.partnerId
-      ? { partnerId: filter.partnerId }
-      : {};
+    const where: Prisma.ListingGroupWhereInput = {
+      ...(filter.partnerId ? { partnerId: filter.partnerId } : {}),
+      ...(filter.q ? { title: { contains: filter.q, mode: 'insensitive' } } : {}),
+    };
     const [items, total] = await Promise.all([
       tx.listingGroup.findMany({
         where,

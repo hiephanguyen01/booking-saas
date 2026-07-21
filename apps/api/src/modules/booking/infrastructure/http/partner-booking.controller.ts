@@ -47,8 +47,8 @@ import {
 } from '../../application/partner-calendar.mapper';
 import {
   BookingStatusHistoryResponseDto,
-  CalendarRangeQueryDto,
   CompleteBookingDto,
+  ListPartnerBookingsQueryDto,
   MarkReturnedDto,
   PartnerBookingResponseDto,
   PartnerCalendarBookingResponseDto,
@@ -147,22 +147,25 @@ export class PartnerBookingController {
   }
 
   /**
-   * Master-calendar feed (Task 1.14): every booking across the partner's
-   * resources overlapping `[from,to)`, with listing title + type for rendering
-   * and client-side filtering.
+   * Master-calendar feed (Task 1.14): the partner's bookings with listing title +
+   * type for rendering. Optionally windowed by timeslot (`from`/`to`) and narrowed
+   * by search (`q`) / `status`; the calendar/home views pass a window, the bookings
+   * page drives the filters from the URL.
    */
   @RequirePermissions('partner.bookings.read')
   @Get()
   @ApiOperation({ summary: "Partner master-calendar feed across the partner's resources" })
   @ApiOkResponse({ type: [PartnerCalendarBookingResponseDto] })
   async calendarFeed(
-    @Query() query: CalendarRangeQueryDto,
+    @Query() query: ListPartnerBookingsQueryDto,
   ): Promise<PartnerCalendarBookingResponse[]> {
     const bookings = await this.calendar.execute({
       tenantId: this.tenantContext.tenantIdOrThrow(),
       partnerId: this.tenantContext.partnerIdOrThrow(),
-      from: new Date(query.from),
-      to: new Date(query.to),
+      q: query.q,
+      status: query.status,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
     });
     return bookings.map(toPartnerCalendarResponse);
   }

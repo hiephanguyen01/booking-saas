@@ -320,6 +320,13 @@ export const listPartnerListingsQuerySchema = paginationQuerySchema.extend({
 });
 export type ListPartnerListingsQuery = z.infer<typeof listPartnerListingsQuerySchema>;
 
+/** `GET /tenant/listing-groups` — paginated; case-insensitive search over the group title. */
+export const listListingGroupsQuerySchema = paginationQuerySchema.extend({
+  /** Case-insensitive search over the listing-group title. */
+  q: z.string().trim().max(200).optional(),
+});
+export type ListListingGroupsQuery = z.infer<typeof listListingGroupsQuerySchema>;
+
 // ── Responses ──────────────────────────────────────────────────────────────
 
 export const cancellationPolicySummarySchema = z.object({

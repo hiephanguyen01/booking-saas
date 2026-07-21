@@ -33,6 +33,7 @@ import { UpdateListingTypeUseCase } from '../../application/use-cases/update-lis
 import {
   CreateListingTypeDto,
   ListingTypeResponseDto,
+  ListListingTypesQueryDto,
   UpdateListingTypeDto,
 } from './dto/catalog.dto';
 
@@ -53,12 +54,11 @@ export class TenantListingTypeController {
   @Get()
   @ApiOperation({ summary: "List the tenant's listing types" })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
+  @ApiQuery({ name: 'q', required: false, type: String })
   @ApiOkResponse({ type: [ListingTypeResponseDto] })
-  async list(@Query('includeInactive') includeInactive?: string): Promise<ListingTypeResponse[]> {
+  async list(@Query() query: ListListingTypesQueryDto): Promise<ListingTypeResponse[]> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
-    const items = await this.listListingTypes.execute(tenantId, {
-      includeInactive: includeInactive === 'true',
-    });
+    const items = await this.listListingTypes.execute(tenantId, query);
     return items.map(toListingTypeResponse);
   }
 

@@ -39,20 +39,29 @@ export interface CreatePromotionData {
 
 export type UpdatePromotionData = Partial<CreatePromotionData>;
 
+/** Filters for the paginated promotion lists (tenant + partner). */
+export interface PromotionListFilter {
+  page: number;
+  pageSize: number;
+  /** Case-insensitive search over name / code. */
+  q?: string;
+  status?: 'draft' | 'active' | 'paused' | 'ended';
+  /** Created-at range (inclusive ISO instants). */
+  from?: string;
+  to?: string;
+}
+
 export interface IPromotionRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePromotionData): Promise<PromotionRecord>;
   update(tx: PrismaTx, id: string, data: UpdatePromotionData): Promise<PromotionRecord>;
   findById(tx: PrismaTx, id: string): Promise<PromotionRecord | null>;
   findByCode(tx: PrismaTx, code: string): Promise<PromotionRecord | null>;
-  list(
-    tx: PrismaTx,
-    params: { page: number; pageSize: number },
-  ): Promise<{ items: PromotionRecord[]; total: number }>;
+  list(tx: PrismaTx, params: PromotionListFilter): Promise<{ items: PromotionRecord[]; total: number }>;
   /** Promotions created by a given partner (their own codes, §12.2 Phase 2). */
   listByPartner(
     tx: PrismaTx,
     partnerId: string,
-    params: { page: number; pageSize: number },
+    params: PromotionListFilter,
   ): Promise<{ items: PromotionRecord[]; total: number }>;
   /** Active, code-less auto-applied campaigns for the tenant (§12.1 Phase 2). */
   listActiveAutoCampaigns(tx: PrismaTx): Promise<PromotionRecord[]>;

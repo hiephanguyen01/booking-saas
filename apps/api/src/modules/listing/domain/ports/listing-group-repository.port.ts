@@ -77,7 +77,7 @@ export interface IListingGroupRepository {
   /** One page of `list`, plus the unpaginated total (§13 pagination shape). */
   listPage(
     tx: PrismaTx,
-    filter: { partnerId?: string },
+    filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingGroupRecord[]; total: number }>;
   update(tx: PrismaTx, id: string, data: UpdateListingGroupData): Promise<ListingGroupRecord>;

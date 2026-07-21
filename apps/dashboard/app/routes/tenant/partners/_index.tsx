@@ -12,9 +12,12 @@ import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
+import { ListToolbar } from '~/components/list-toolbar';
 import { PhoneLink } from '~/components/contact-link';
 import { ErrorBanner } from '~/components/action-feedback';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
@@ -23,18 +26,23 @@ export function meta(): Route.MetaDescriptors {
 
 const STATUS_VALUES: PartnerStatus[] = ['pending', 'approved', 'suspended'];
 
+const PARTNERS_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên hoặc slug đối tác…' },
+];
+
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.partners.read');
   const { toApiQuery } = readListParams(url.searchParams);
   const statusRaw = url.searchParams.get('status') ?? '';
   const status = STATUS_VALUES.includes(statusRaw as PartnerStatus) ? statusRaw : '';
+  const { filters, apiFilters } = readListFilters(url.searchParams, PARTNERS_FILTER_SPEC);
   const res = await apiGet<PaginatedWithCounts<PartnerResponse>>('/tenant/partners', auth, {
-    query: toApiQuery({ status }),
+    query: toApiQuery({ status, ...apiFilters }),
   });
   return {
     result: res.ok ? res.data : null,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách đối tác.'),
-    filters: { status },
+    filters: { status, ...filters },
     canApprove: can('tenant.partners.approve'),
     canManage: can('tenant.partners.manage'),
   };
@@ -142,6 +150,13 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
+      <ListToolbar
+        spec={PARTNERS_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.partners}
+        pageSize={pageSize}
+      />
+
       <StatusFilterTabs
         filters={FILTERS}
         value={statusValue}
@@ -153,7 +168,9 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={partners}
         getRowKey={(p) => p.id}
-        emptyMessage="Chưa có đối tác nào trong nhóm này."
+        emptyMessage={
+          hasActiveFilters(filters) ? 'Không có đối tác khớp bộ lọc.' : 'Chưa có đối tác nào trong nhóm này.'
+        }
       />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />

@@ -299,6 +299,21 @@ export const updateListingTypeInputSchema = listingTypeBaseSchema
   .superRefine(defaultModesSubsetRefine);
 export type UpdateListingTypeInput = z.infer<typeof updateListingTypeInputSchema>;
 
+/**
+ * `GET /tenant/listing-types` — the tenant-admin list (not paginated). Optional
+ * case-insensitive search over the type name, plus the include-inactive toggle
+ * the dashboard sends as `?includeInactive=true`.
+ */
+export const listListingTypesQuerySchema = z.object({
+  includeInactive: z
+    .string()
+    .optional()
+    .transform((value) => value === 'true'),
+  /** Case-insensitive search over the listing-type name. */
+  q: z.string().trim().max(200).optional(),
+});
+export type ListListingTypesQuery = z.infer<typeof listListingTypesQuerySchema>;
+
 /** Storefront listing query — `attr.*` filters are parsed separately (dynamic keys). */
 export const listPublicListingsQuerySchema = z.object({
   type: slugSchema.optional(),

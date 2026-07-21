@@ -165,8 +165,26 @@ export interface FulfillmentPatch {
 export interface TenantBookingFilters {
   status?: BookingStatus;
   partnerId?: string;
+  /** Case-insensitive search over the booking code + the customer's name / email. */
+  q?: string;
+  /** Created-at range (inclusive ISO instants). */
+  from?: string;
+  to?: string;
   page: number;
   pageSize: number;
+}
+
+/**
+ * Filters for the partner master-calendar feed (Task 1.14). `from`/`to` window the
+ * feed by TIMESLOT overlap and are OPTIONAL — both omitted returns every matching
+ * booking (unbounded by date). `q` searches the booking code + the customer's
+ * name / email; `status` narrows by state.
+ */
+export interface PartnerCalendarFilters {
+  q?: string;
+  status?: BookingStatus;
+  from?: Date;
+  to?: Date;
 }
 
 /**
@@ -210,15 +228,14 @@ export interface IBookingRepository {
   findByIdempotencyKey(tx: PrismaTx, key: string): Promise<BookingRecord | null>;
   listByCustomer(tx: PrismaTx, customerId: string): Promise<BookingRecord[]>;
   /**
-   * All of a partner's bookings whose timeslot overlaps `[from,to)`, joined with
-   * listing title + type — the master-calendar feed (Task 1.14). Excludes draft
-   * and expired holds (never occupied a slot).
+   * A partner's bookings joined with listing title + type — the master-calendar
+   * feed (Task 1.14). Excludes draft and expired holds (never occupied a slot).
+   * Optionally windowed by timeslot overlap + narrowed by search / status.
    */
   listForPartnerCalendar(
     tx: PrismaTx,
     partnerId: string,
-    from: Date,
-    to: Date,
+    filters: PartnerCalendarFilters,
   ): Promise<PartnerCalendarBooking[]>;
   /** Tenant-wide booking list (RLS-scoped by `forTenant`) for the dashboard, offset-paginated. */
   listByTenant(

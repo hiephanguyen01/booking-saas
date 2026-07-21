@@ -98,9 +98,16 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
     return t ? toRecord(t) : null;
   }
 
-  async list(tx: PrismaTx, opts: { includeInactive: boolean }): Promise<ListingTypeRecord[]> {
+  async list(
+    tx: PrismaTx,
+    opts: { includeInactive: boolean; q?: string },
+  ): Promise<ListingTypeRecord[]> {
+    const where: Prisma.ListingTypeWhereInput = {
+      ...(opts.includeInactive ? {} : { isActive: true }),
+      ...(opts.q ? { name: { contains: opts.q, mode: 'insensitive' } } : {}),
+    };
     const items = await tx.listingType.findMany({
-      where: opts.includeInactive ? {} : { isActive: true },
+      where,
       orderBy,
       include: LISTING_TYPE_INCLUDE,
     });
