@@ -2,6 +2,7 @@ export * from './contracts/common';
 export * from './contracts/administrative-division';
 export * from './contracts/auth';
 export * from './contracts/tenancy';
+export * from './contracts/storefront-tenant';
 export * from './contracts/partner';
 export * from './contracts/listing-type';
 export * from './contracts/catalog-search';
