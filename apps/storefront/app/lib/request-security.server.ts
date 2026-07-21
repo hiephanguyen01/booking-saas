@@ -15,9 +15,10 @@ const FALLBACK_CONTENT_SECURITY_POLICY = "base-uri 'self'; object-src 'none'; fr
 const REQUEST_ID_RE = /^[A-Za-z0-9._:-]{1,100}$/;
 
 interface RequestLifecycle {
-  request: Request;
   requestId: string;
+  requestMethod: string;
   requestPath: string;
+  requestSignal: AbortSignal;
   startedAtMs: number;
   tenantId?: string;
 }
@@ -134,7 +135,7 @@ function lifecycleDetails(
 ): Record<string, unknown> {
   return {
     requestId: lifecycle.requestId,
-    requestMethod: lifecycle.request.method.toUpperCase(),
+    requestMethod: lifecycle.requestMethod,
     requestPath: lifecycle.requestPath,
     ...(lifecycle.tenantId ? { tenantId: lifecycle.tenantId } : {}),
     durationMs: durationMilliseconds(lifecycle.startedAtMs),
@@ -151,7 +152,7 @@ function shouldLogLifecycle(requestPath: string, statusCode: number): boolean {
 function withRequestLifecycleLogging(response: Response, lifecycle: RequestLifecycle): Response {
   if (!shouldLogLifecycle(lifecycle.requestPath, response.status)) return response;
 
-  if (!response.body || lifecycle.request.method.toUpperCase() === 'HEAD') {
+  if (!response.body || lifecycle.requestMethod === 'HEAD') {
     storefrontLogHttpResponse(
       'http.request_completed',
       response.status,
@@ -221,11 +222,11 @@ function logRequestFailure(error: unknown, lifecycle: RequestLifecycle): void {
   const statusCode = error instanceof Response ? error.status : 500;
   const details = {
     requestId: lifecycle.requestId,
-    requestMethod: lifecycle.request.method.toUpperCase(),
+    requestMethod: lifecycle.requestMethod,
     requestPath: lifecycle.requestPath,
     ...(lifecycle.tenantId ? { tenantId: lifecycle.tenantId } : {}),
     durationMs: durationMilliseconds(lifecycle.startedAtMs),
-    outcome: lifecycle.request.signal.aborted ? 'client_aborted' : 'failed_before_response',
+    outcome: lifecycle.requestSignal.aborted ? 'client_aborted' : 'failed_before_response',
   };
 
   if (error instanceof Response) {
@@ -243,9 +244,10 @@ export async function storefrontRequestMiddleware(
   const requestPath = new URL(request.url).pathname;
   const requestId = resolveRequestId(request);
   const lifecycle: RequestLifecycle = {
-    request,
     requestId,
+    requestMethod: request.method.toUpperCase(),
     requestPath,
+    requestSignal: request.signal,
     startedAtMs: performance.now(),
   };
 
@@ -258,7 +260,7 @@ export async function storefrontRequestMiddleware(
       if (rejected) {
         storefrontLogWarn('security.cross_origin_mutation_rejected', {
           requestId,
-          requestMethod: request.method.toUpperCase(),
+          requestMethod: lifecycle.requestMethod,
           requestPath,
         });
         response = rejected;
