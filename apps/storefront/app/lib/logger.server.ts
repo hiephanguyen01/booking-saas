@@ -36,6 +36,8 @@ function write(
           requestMethod: context.request.method,
           requestPath: context.request.path,
           tenantId: context.tenant.id,
+          traceId: context.trace.traceId,
+          spanId: context.trace.spanId,
           requestElapsedMs: elapsedMilliseconds(context.request.startedAtMs),
         }
       : {}),
