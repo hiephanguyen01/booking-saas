@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import {
   createApiClient,
   type ApiRequestOptions,
@@ -8,6 +9,12 @@ import {
 import type { ZodType, ZodTypeDef } from 'zod';
 import { getOptionalAccessToken } from './auth.server';
 import { storefrontEnv } from './env.server';
+import { getCurrentStorefrontRequestContext } from './request-context.server';
+import {
+  createStorefrontChildTraceContext,
+  exportStorefrontSpan,
+  storefrontTraceHeaders,
+} from './tracing.server';
 
 const client = () => createApiClient(storefrontEnv.backendUrl);
 const SAFE_ERROR_CODE_RE = /^[A-Z][A-Z0-9_]{1,63}$/;
@@ -22,6 +29,11 @@ type StorefrontJsonOptions<T> = Omit<ApiRequestOptions<T>, 'signal' | 'schema'> 
 };
 
 type NullableReadOptions<T> = StorefrontJsonOptions<T> & { allowNotFound: true };
+type TraceableBackendResult = {
+  ok: boolean;
+  status: number;
+  failure?: string;
+};
 
 function invalidForwardedHost(): never {
   throw new Response('Invalid storefront host', { status: 400 });
@@ -69,19 +81,96 @@ function forwardedHost(request: Request): string {
   return normalized;
 }
 
+function currentRequestId(request: Request, override?: string): string | undefined {
+  return (
+    override ??
+    getCurrentStorefrontRequestContext()?.request.id ??
+    request.headers.get('x-request-id') ??
+    undefined
+  );
+}
+
 function requestOptions<T>(
   request: Request,
   options: StorefrontJsonOptions<T>,
+  traceHeaders: Record<string, string> = {},
 ): ApiRequestOptions<T> {
   return {
     ...options,
     signal: request.signal,
-    requestId: options.requestId ?? request.headers.get('x-request-id') ?? undefined,
+    requestId: currentRequestId(request, options.requestId),
     headers: {
       ...options.headers,
+      ...traceHeaders,
       'x-forwarded-host': forwardedHost(request),
     },
   };
+}
+
+function backendPathname(path: string): string {
+  try {
+    return new URL(path, 'http://storefront-backend').pathname;
+  } catch {
+    return '/';
+  }
+}
+
+async function tracedBackendCall<T extends TraceableBackendResult>(
+  method: string,
+  path: string,
+  call: (traceHeaders: Record<string, string>) => Promise<T>,
+): Promise<T> {
+  const parent = getCurrentStorefrontRequestContext()?.trace;
+  if (!parent) return call({});
+
+  const trace = createStorefrontChildTraceContext(parent);
+  const startedAt = new Date().toISOString();
+  const startedAtMs = performance.now();
+  const route = backendPathname(path);
+
+  try {
+    const result = await call(storefrontTraceHeaders(trace));
+    exportStorefrontSpan({
+      name: `${method.toUpperCase()} ${route}`,
+      kind: 'client',
+      traceId: trace.traceId,
+      spanId: trace.spanId,
+      parentSpanId: trace.parentSpanId,
+      traceFlags: trace.traceFlags,
+      startedAt,
+      durationMs: Number(Math.max(0, performance.now() - startedAtMs).toFixed(1)),
+      status: result.ok ? 'ok' : 'error',
+      attributes: {
+        'http.request.method': method.toUpperCase(),
+        'url.path': route,
+        'http.response.status_code': result.status,
+        ...(result.failure ? { 'error.type': result.failure } : {}),
+      },
+    });
+    return result;
+  } catch (error) {
+    exportStorefrontSpan({
+      name: `${method.toUpperCase()} ${route}`,
+      kind: 'client',
+      traceId: trace.traceId,
+      spanId: trace.spanId,
+      parentSpanId: trace.parentSpanId,
+      traceFlags: trace.traceFlags,
+      startedAt,
+      durationMs: Number(Math.max(0, performance.now() - startedAtMs).toFixed(1)),
+      status: requestAborted(error) ? 'cancelled' : 'error',
+      attributes: {
+        'http.request.method': method.toUpperCase(),
+        'url.path': route,
+        'error.type': error instanceof Error ? error.name : 'unknown',
+      },
+    });
+    throw error;
+  }
+}
+
+function requestAborted(error: unknown): boolean {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError');
 }
 
 function statusForReadFailure(result: ApiResult<unknown>): number {
@@ -181,10 +270,12 @@ export async function publicGetData<T>(
   options: StorefrontJsonOptions<T> & { allowNotFound?: boolean },
 ): Promise<T | null> {
   const accessToken = getOptionalAccessToken();
-  const requestOptionsForCall = requestOptions(request, options);
-  const result = accessToken
-    ? await client().get(path, accessToken, requestOptionsForCall)
-    : await client().publicGet(path, requestOptionsForCall);
+  const result = await tracedBackendCall('GET', path, (traceHeaders) => {
+    const requestOptionsForCall = requestOptions(request, options, traceHeaders);
+    return accessToken
+      ? client().get(path, accessToken, requestOptionsForCall)
+      : client().publicGet(path, requestOptionsForCall);
+  });
   if (result.status === 404 && options.allowNotFound) return null;
   if (!result.ok || result.data === null) throw readFailure(result);
   return result.data;
@@ -196,7 +287,9 @@ export async function publicPost<T>(
   body: unknown,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await client().publicPost(path, body, requestOptions(request, options));
+  const result = await tracedBackendCall('POST', path, (traceHeaders) =>
+    client().publicPost(path, body, requestOptions(request, options, traceHeaders)),
+  );
   return sanitizeApiResult(request, result);
 }
 
@@ -207,10 +300,12 @@ export async function optionalAuthPost<T>(
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
   const accessToken = getOptionalAccessToken();
-  const requestOptionsForCall = requestOptions(request, options);
-  const result = accessToken
-    ? await client().post(path, body, accessToken, requestOptionsForCall)
-    : await client().publicPost(path, body, requestOptionsForCall);
+  const result = await tracedBackendCall('POST', path, (traceHeaders) => {
+    const requestOptionsForCall = requestOptions(request, options, traceHeaders);
+    return accessToken
+      ? client().post(path, body, accessToken, requestOptionsForCall)
+      : client().publicPost(path, body, requestOptionsForCall);
+  });
   return sanitizeApiResult(request, result);
 }
 
@@ -220,7 +315,9 @@ export async function apiGet<T>(
   auth: Auth,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await client().get(path, auth, requestOptions(request, options));
+  const result = await tracedBackendCall('GET', path, (traceHeaders) =>
+    client().get(path, auth, requestOptions(request, options, traceHeaders)),
+  );
   return sanitizeApiResult(request, result);
 }
 
@@ -231,23 +328,36 @@ export async function apiPost<T>(
   auth: Auth,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await client().post(path, body, auth, requestOptions(request, options));
+  const result = await tracedBackendCall('POST', path, (traceHeaders) =>
+    client().post(path, body, auth, requestOptions(request, options, traceHeaders)),
+  );
   return sanitizeApiResult(request, result);
 }
 
-function authOptions(request: Request) {
+function authOptions(request: Request, traceHeaders: Record<string, string>) {
   return {
     signal: request.signal,
-    requestId: request.headers.get('x-request-id') ?? undefined,
-    headers: { 'x-forwarded-host': forwardedHost(request) },
+    requestId: currentRequestId(request),
+    headers: {
+      ...traceHeaders,
+      'x-forwarded-host': forwardedHost(request),
+    },
   };
 }
 
 export const backendLogin = (request: Request, credentials: { email: string; password: string }) =>
-  client().login(credentials, authOptions(request));
+  tracedBackendCall('POST', '/auth/login', (traceHeaders) =>
+    client().login(credentials, authOptions(request, traceHeaders)),
+  );
 export const backendRegister = (request: Request, credentials: BackendRegisterCredentials) =>
-  client().register(credentials, authOptions(request));
+  tracedBackendCall('POST', '/auth/register', (traceHeaders) =>
+    client().register(credentials, authOptions(request, traceHeaders)),
+  );
 export const backendRefresh = (request: Request, refreshToken: string) =>
-  client().refresh(refreshToken, authOptions(request));
+  tracedBackendCall('POST', '/auth/refresh', (traceHeaders) =>
+    client().refresh(refreshToken, authOptions(request, traceHeaders)),
+  );
 export const backendLogout = (request: Request, accessToken: string) =>
-  client().logout(accessToken, authOptions(request));
+  tracedBackendCall('POST', '/auth/logout', (traceHeaders) =>
+    client().logout(accessToken, authOptions(request, traceHeaders)),
+  );
