@@ -88,6 +88,7 @@ export async function storefrontAuthMiddleware(
   next: () => Promise<Response>,
   tenant: StorefrontTenant,
   requestId: string,
+  startedAtMs: number,
 ) {
   const state: StorefrontRequestContextState = {
     tenant,
@@ -96,6 +97,7 @@ export async function storefrontAuthMiddleware(
       id: requestId,
       method: request.method.toUpperCase(),
       path: new URL(request.url).pathname,
+      startedAtMs,
     },
     suppressSessionCommit: false,
   };
