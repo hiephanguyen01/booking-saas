@@ -1,17 +1,11 @@
-import { Form, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import {
-  settlementStatusSchema,
   type BookingSettlementResponse,
   type Paginated,
   type SettlementStatusDto,
 } from '@booking/contracts';
-import { Filter } from 'lucide-react';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Button } from '@booking/ui/components/ui/button';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { Label } from '@booking/ui/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
@@ -20,28 +14,38 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, type FilterSpec } from '~/lib/list-filters';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối soát giữ tiền · Bookify Admin' }];
 }
 
-function parseStatus(raw: string | null): SettlementStatusDto | '' {
-  const parsed = settlementStatusSchema.safeParse(raw);
-  return parsed.success ? parsed.data : '';
-}
+const SETTLEMENT_FILTER_SPEC: FilterSpec = [
+  {
+    kind: 'enum',
+    key: 'status',
+    label: 'Trạng thái',
+    options: (Object.keys(SETTLEMENT_STATUS_LABEL) as SettlementStatusDto[]).map((value) => ({
+      value,
+      label: SETTLEMENT_STATUS_LABEL[value],
+    })),
+  },
+];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requirePlatform(request, 'platform.finance.read');
   const list = readListParams(url.searchParams);
-  const status = parseStatus(url.searchParams.get('status'));
+  const { filters, apiFilters } = readListFilters(url.searchParams, SETTLEMENT_FILTER_SPEC);
   const result = await apiGet<Paginated<BookingSettlementResponse>>(
     '/platform/finance/settlements',
     auth,
-    { query: list.toApiQuery({ status: status || undefined }) },
+    { query: list.toApiQuery(apiFilters) },
   );
   return {
-    status,
+    filters,
     result: result.ok ? result.data : null,
     error: result.ok ? null : (result.error ?? 'Không tải được sổ đối soát.'),
   };
@@ -100,29 +104,18 @@ const columns: DataTableColumn<BookingSettlementResponse>[] = [
 ];
 
 export default function PlatformSettlements({ loaderData }: Route.ComponentProps) {
-  const { result, error, status } = loaderData;
+  const { result, error, filters } = loaderData;
   const [searchParams] = useSearchParams();
   const list = readListParams(searchParams);
   return (
     <div className="space-y-6">
       <PageHeader title="Đối soát giữ tiền" description="Theo dõi custody, tranh chấp, refund và payout của mọi Tenant." />
-      <Card>
-        <CardContent className="p-4">
-          <Form method="get" className="flex items-end gap-3">
-            <input type="hidden" name="pageSize" value={list.pageSize} />
-            <div className="space-y-1.5">
-              <Label htmlFor="status">Trạng thái</Label>
-              <NativeSelect id="status" name="status" defaultValue={status}>
-                <NativeSelectOption value="">Tất cả</NativeSelectOption>
-                {(Object.keys(SETTLEMENT_STATUS_LABEL) as SettlementStatusDto[]).map((value) => (
-                  <NativeSelectOption key={value} value={value}>{SETTLEMENT_STATUS_LABEL[value]}</NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <Button type="submit" size="control" variant="outline"><Filter className="size-4" /> Lọc</Button>
-          </Form>
-        </CardContent>
-      </Card>
+      <ListToolbar
+        spec={SETTLEMENT_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.admin.settlements}
+        pageSize={list.pageSize}
+      />
       <ErrorBanner error={error} />
       <DataTable columns={columns} data={result?.items ?? []} getRowKey={(row) => row.id} emptyMessage="Chưa có settlement." />
       <PaginationBar page={list.page} pageSize={list.pageSize} total={result?.total ?? 0} hrefFor={list.pageHref} />

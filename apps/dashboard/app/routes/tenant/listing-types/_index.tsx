@@ -1,6 +1,6 @@
 import { data as routeData, Link, useFetcher } from 'react-router';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import type { ListingTypeResponse } from '@booking/contracts';
+import { DEFAULT_PAGE_SIZE, type ListingTypeResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -10,17 +10,28 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { SEARCH_SCHEDULE_LABEL } from '~/features/tenant/constants';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
+
+const LISTING_TYPE_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên loại…' },
+];
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Loại dịch vụ · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
-  const res = await apiGet<ListingTypeResponse[]>('/tenant/listing-types?includeInactive=true', auth);
+  const { filters, apiFilters } = readListFilters(url.searchParams, LISTING_TYPE_FILTER_SPEC);
+  const res = await apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth, {
+    query: { includeInactive: 'true', ...apiFilters },
+  });
   return {
     types: res.ok ? (res.data ?? []) : [],
     canWrite: can('tenant.listings.write'),
+    filters,
     error: res.ok ? null : (res.error ?? 'Không tải được loại dịch vụ.'),
   };
 }
@@ -37,7 +48,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantListingTypes({ loaderData, actionData }: Route.ComponentProps) {
-  const { types, canWrite, error } = loaderData;
+  const { types, canWrite, error, filters } = loaderData;
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
 
   const columns: DataTableColumn<ListingTypeResponse>[] = [
@@ -120,7 +131,20 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
           {error ?? actionError}
         </div>
       ) : null}
-      <DataTable columns={columns} data={types} getRowKey={(t) => t.id} emptyMessage="Chưa có loại dịch vụ nào." />
+      <ListToolbar
+        spec={LISTING_TYPE_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.listingTypes}
+        pageSize={DEFAULT_PAGE_SIZE}
+      />
+      <DataTable
+        columns={columns}
+        data={types}
+        getRowKey={(t) => t.id}
+        emptyMessage={
+          hasActiveFilters(filters) ? 'Không có loại dịch vụ khớp bộ lọc.' : 'Chưa có loại dịch vụ nào.'
+        }
+      />
     </div>
   );
 }

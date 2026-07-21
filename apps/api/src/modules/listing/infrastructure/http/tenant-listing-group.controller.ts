@@ -25,7 +25,6 @@ import {
 } from '@nestjs/swagger';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
-import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -41,6 +40,7 @@ import {
   CreateListingGroupDto,
   ListingGroupResponseDto,
   ListingGroupDetailResponseDto,
+  ListListingGroupsQueryDto,
   UpdateListingGroupDto,
 } from './dto/listing.dto';
 
@@ -61,8 +61,12 @@ export class TenantListingGroupController {
   @Get()
   @ApiOperation({ summary: "List the tenant's listing groups" })
   @ApiPaginatedResponse(ListingGroupResponseDto)
-  async list(@Query() query: PaginationQueryDto): Promise<Paginated<ListingGroupResponse>> {
-    const result = await this.listGroups.execute(this.tenantContext.tenantIdOrThrow(), {}, query);
+  async list(@Query() query: ListListingGroupsQueryDto): Promise<Paginated<ListingGroupResponse>> {
+    const result = await this.listGroups.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      { q: query.q },
+      query,
+    );
     return toPaginated(query, result, toListingGroupResponse);
   }
 

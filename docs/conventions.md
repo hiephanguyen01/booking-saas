@@ -74,7 +74,35 @@ on react-hook-form + zod + shadcn. Rules:
 6. Schemas with `.transform()`/`.default()` (differing in/out types) → build a dedicated
    `useForm<In, Ctx, Out>` instead of `GenericForm`.
 
-Not for: action-only buttons (logout) and GET filter/search forms — those stay plain `<Form>`.
+Not for: action-only buttons (logout). GET search/filter on **list pages** goes through `ListToolbar`
+(below); other one-off GET forms stay plain `<Form>`.
+
+### List pages — `ListToolbar` + filter spec (dashboard)
+
+Every server-paginated list page in `apps/dashboard` filters through one shared, URL-driven mechanism —
+do not hand-roll a `<Form method="get">` with `<Input>`/`<NativeSelect>` per page.
+
+1. **Declare a filter spec** — a `FilterSpec` (`~/lib/list-filters`): an array of typed field
+   descriptors (`text` | `enum` | `date-range`). It is the single source of truth: both the loader
+   (parsing) and the component (rendering) import the same spec, so they cannot drift. Put a spec shared
+   by multiple pages in the feature's `lib/` (e.g. `features/reviews/lib/review-filters.ts`); a
+   page-local spec can live in the route module.
+2. **Loader** — `const { filters, apiFilters } = readListFilters(url.searchParams, SPEC);` then feed
+   `apiFilters` into the existing `readListParams(...).toApiQuery(apiFilters)`. `readListFilters` trims
+   text, drops invalid enum values, and converts `date-range` to ISO day-bounds. Return `filters` for
+   the controlled inputs.
+3. **Component** — render `<ListToolbar spec={SPEC} filters={filters} resetHref={dashboardPaths.…}
+   pageSize={pageSize} />`. Text search is debounced (~300ms) auto-submit via `useSubmit`; selects/dates
+   submit immediately; any submit drops `page` (→ page 1) and preserves `pageSize` + every URL param the
+   toolbar doesn't own (so an adjacent `<StatusFilterTabs>` `status` survives a search). Use
+   `hasActiveFilters(filters)` for the empty-state copy.
+4. **Backend** — a list endpoint's query schema is `paginationQuerySchema.extend({ q, status?, from?,
+   to? })` in `@booking/contracts`; the repo adds `where` clauses (`OR … { contains, mode:
+   'insensitive' }` for `q`, equality for enums, `createdAt`/timeslot range for dates) **inside the
+   existing `forTenant` tx**. See the promotions / booking modules for the reference implementation.
+
+Status that reads best as a tab row with count chips keeps `<StatusFilterTabs>` (it lives beside the
+toolbar, not inside the spec). No column sorting yet — lists keep their default ordering.
 
 ## Error envelope
 

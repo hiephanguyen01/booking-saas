@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PaginationQuery } from '@booking/contracts';
+import type { ListPromotionsQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PROMOTION_REPOSITORY,
@@ -7,7 +7,7 @@ import {
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
 
-/** List the tenant's promotions (§12.2). */
+/** List the tenant's promotions (§12.2) — name/code search + status + date range. */
 @Injectable()
 export class ListPromotionsUseCase {
   constructor(
@@ -17,7 +17,7 @@ export class ListPromotionsUseCase {
 
   async execute(
     tenantId: string,
-    query: PaginationQuery,
+    query: ListPromotionsQuery,
   ): Promise<{ items: PromotionRecord[]; total: number }> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.promotions.list(tx, query));
   }

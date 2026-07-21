@@ -1,16 +1,16 @@
 import type { FavoriteListResponse, FavoriteSummaryResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { Input } from '@booking/ui/components/ui/input';
-import { NativeSelect } from '@booking/ui/components/ui/native-select';
 import { Heart, Users } from 'lucide-react';
-import { Form, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
+import { ListToolbar } from '~/components/list-toolbar';
 import { BarRow, StatCard } from '~/components/stat-card';
+import { readListParams } from '~/lib/pagination';
 import { formatDateTime } from '~/lib/format';
+import { FAVORITE_FILTER_SPEC } from '../lib/favorite-filters';
 
 /** Who-favorited list + KPI header, shared by the partner and tenant favorites screens. */
 export function FavoritesInbox({
@@ -19,14 +19,19 @@ export function FavoritesInbox({
   result,
   summary,
   error,
+  filters,
+  resetHref,
 }: {
   title: string;
   description: string;
   result: FavoriteListResponse | null;
   summary: FavoriteSummaryResponse | null;
   error: string | null;
+  filters: Record<string, string>;
+  resetHref: string;
 }) {
   const [searchParams] = useSearchParams();
+  const { pageSize } = readListParams(searchParams);
   const items = result?.items ?? [];
   const topMax = summary?.topTargets.reduce((max, t) => Math.max(max, t.count), 0) ?? 0;
 
@@ -72,26 +77,12 @@ export function FavoritesInbox({
         </div>
       ) : null}
 
-      <Form method="get" className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
-        <Input
-          name="q"
-          defaultValue={searchParams.get('q') ?? ''}
-          placeholder="Khách hàng hoặc tên dịch vụ..."
-          className="min-w-64"
-        />
-        <NativeSelect
-          name="target"
-          defaultValue={searchParams.get('target') ?? 'all'}
-          aria-label="Loại mục yêu thích"
-        >
-          <option value="all">Tất cả</option>
-          <option value="listing">Dịch vụ</option>
-          <option value="group">Studio</option>
-        </NativeSelect>
-        <Button type="submit" variant="outline">
-          Lọc
-        </Button>
-      </Form>
+      <ListToolbar
+        spec={FAVORITE_FILTER_SPEC}
+        filters={filters}
+        resetHref={resetHref}
+        pageSize={pageSize}
+      />
 
       {items.length ? (
         <Card>

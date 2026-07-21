@@ -9,7 +9,6 @@ import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestj
 import type { Request } from 'express';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
-import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -26,6 +25,7 @@ import { OptInPromotionUseCase } from '../../application/use-cases/opt-in-promot
 import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabled.guard';
 import {
   CreatePartnerPromotionDto,
+  ListPartnerPromotionsQueryDto,
   PromotionDetailResponseDto,
   PromotionResponseDto,
   UpdatePartnerPromotionDto,
@@ -59,7 +59,7 @@ export class PartnerPromotionController {
   @Get()
   @ApiOperation({ summary: "List the partner's own promotions" })
   @ApiPaginatedResponse(PromotionResponseDto)
-  async list(@Query() query: PaginationQueryDto): Promise<Paginated<PromotionResponse>> {
+  async list(@Query() query: ListPartnerPromotionsQueryDto): Promise<Paginated<PromotionResponse>> {
     const { tenantId, partnerId } = this.scope();
     const result = await this.listPromotions.execute(tenantId, partnerId, query);
     return toPaginated(query, result, toPromotionResponse);

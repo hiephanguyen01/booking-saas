@@ -5,6 +5,7 @@ import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.servi
 import type {
   CreateReferralLinkData,
   IReferralLinkRepository,
+  ReferralLinkListFilter,
   ReferralLinkRecord,
 } from '../../domain/ports/referral-link-repository.port';
 
@@ -13,6 +14,22 @@ type Row = Prisma.ReferralLinkGetPayload<{ include: typeof WITH_LISTING }>;
 // A listing-targeted link is unreadable as a bare uuid — join the title so every
 // read of a link can name what it points at.
 const WITH_LISTING = { listing: { select: { title: true } } } as const;
+
+/**
+ * Search filter for the affiliate's referral-link list. A link has no label
+ * column of its own; its human-readable name is the targeted listing's title,
+ * so the text search covers the code + that listing title (a relation filter).
+ */
+function listWhere(affiliateId: string, filter: ReferralLinkListFilter): Prisma.ReferralLinkWhereInput {
+  const where: Prisma.ReferralLinkWhereInput = { affiliateId };
+  if (filter.q) {
+    where.OR = [
+      { code: { contains: filter.q, mode: 'insensitive' } },
+      { listing: { title: { contains: filter.q, mode: 'insensitive' } } },
+    ];
+  }
+  return where;
+}
 
 function toRecord(l: Row): ReferralLinkRecord {
   return {
@@ -63,9 +80,9 @@ export class PrismaReferralLinkRepository implements IReferralLinkRepository {
   async listByAffiliatePaginated(
     tx: PrismaTx,
     affiliateId: string,
-    params: { page: number; pageSize: number },
+    params: ReferralLinkListFilter,
   ): Promise<{ items: ReferralLinkRecord[]; total: number }> {
-    const where = { affiliateId };
+    const where = listWhere(affiliateId, params);
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([
       tx.referralLink.findMany({ where, include: WITH_LISTING, orderBy: { createdAt: 'desc' }, skip, take }),

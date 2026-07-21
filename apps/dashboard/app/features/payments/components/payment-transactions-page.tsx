@@ -1,16 +1,12 @@
 import type { Paginated, PaymentHistoryItem } from '@booking/contracts';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Button } from '@booking/ui/components/ui/button';
-import { Input } from '@booking/ui/components/ui/input';
-import { Label } from '@booking/ui/components/ui/label';
-import { NativeSelect } from '@booking/ui/components/ui/native-select';
-import { Search } from 'lucide-react';
-import { Form, Link, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import type { ReactNode } from 'react';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PaginationBar } from '~/components/pagination-bar';
 import { PageHeader } from '~/components/page-header';
+import { ListToolbar } from '~/components/list-toolbar';
 import {
   PAYMENT_GATEWAY_LABEL,
   PAYMENT_KIND_LABEL,
@@ -20,7 +16,8 @@ import {
 import { dashboardPaths } from '~/constants/paths';
 import { formatDateTime, formatVnd } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
-import type { PaymentHistoryFilters } from '../lib/payment-history';
+import { hasActiveFilters } from '~/lib/list-filters';
+import { PAYMENT_FILTER_SPEC } from '../lib/payment-filters';
 
 function statusClass(status: PaymentHistoryItem['status']): string {
   if (status === 'succeeded') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700';
@@ -37,7 +34,7 @@ export function PaymentTransactionsPage({
   supplementary,
 }: {
   area: 'platform' | 'tenant';
-  filters: PaymentHistoryFilters;
+  filters: Record<string, string>;
   result: Paginated<PaymentHistoryItem> | null;
   error: string | null;
   supplementary?: ReactNode;
@@ -48,9 +45,7 @@ export function PaymentTransactionsPage({
   const total = result?.total ?? 0;
   const resetHref =
     area === 'platform' ? dashboardPaths.admin.transactions : dashboardPaths.tenant.transactions;
-  const hasFilters = Boolean(
-    filters.search || filters.status || filters.kind || filters.from || filters.to,
-  );
+  const hasFilters = hasActiveFilters(filters);
   const columns: DataTableColumn<PaymentHistoryItem>[] = [
     ...(area === 'platform'
       ? [{ header: 'Tenant', cell: (item: PaymentHistoryItem) => item.tenantName ?? '—' }]
@@ -124,57 +119,12 @@ export function PaymentTransactionsPage({
 
       {supplementary}
 
-      <Form method="get" className="flex flex-wrap items-end gap-3">
-        <input type="hidden" name="pageSize" value={pageSize} />
-        <div className="min-w-56 flex-1 space-y-1.5">
-          <Label htmlFor="search">Tìm kiếm</Label>
-          <Input
-            id="search"
-            name="search"
-            type="search"
-            defaultValue={filters.search}
-            placeholder="Mã đặt chỗ, hóa đơn hoặc giao dịch…"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="status">Trạng thái</Label>
-          <NativeSelect id="status" name="status" defaultValue={filters.status}>
-            <option value="">Tất cả</option>
-            {Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="kind">Loại</Label>
-          <NativeSelect id="kind" name="kind" defaultValue={filters.kind}>
-            <option value="">Tất cả</option>
-            {Object.entries(PAYMENT_KIND_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="from">Từ ngày</Label>
-          <Input id="from" name="from" type="date" defaultValue={filters.from} className="w-auto" />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="to">Đến ngày</Label>
-          <Input id="to" name="to" type="date" defaultValue={filters.to} className="w-auto" />
-        </div>
-        <Button type="submit" variant="secondary">
-          <Search className="size-4" /> Lọc
-        </Button>
-        {hasFilters ? (
-          <Button asChild variant="ghost">
-            <Link to={resetHref}>Xoá lọc</Link>
-          </Button>
-        ) : null}
-      </Form>
+      <ListToolbar
+        spec={PAYMENT_FILTER_SPEC}
+        filters={filters}
+        resetHref={resetHref}
+        pageSize={pageSize}
+      />
 
       <ErrorBanner error={error} />
       <DataTable

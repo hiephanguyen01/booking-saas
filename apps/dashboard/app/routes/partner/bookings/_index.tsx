@@ -1,22 +1,19 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
-import type { BookingStatus, PartnerCalendarBookingResponse } from '@booking/contracts';
+import { Link, useSearchParams } from 'react-router';
+import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@booking/ui/components/ui/select';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { PageHeader } from '~/components/page-header';
-import { BookingStatusBadge, bookingStatusMeta } from '~/components/status-badge';
+import { BookingStatusBadge } from '~/components/status-badge';
+import { StatusFilterTabs } from '~/components/status-filter-tabs';
+import { ListToolbar } from '~/components/list-toolbar';
 import { Money } from '~/components/money';
 import { formatDate, formatTime } from '~/lib/format';
-import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from '~/lib/calendar-dates';
+import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
+import { BOOKINGS_FILTER_SPEC } from '~/features/bookings/lib/booking-filters';
+import { dashboardPaths } from '~/constants/paths';
 import { runPartnerBookingAction } from '~/features/bookings/server/partner-booking-actions.server';
 import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
 
@@ -24,16 +21,27 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Lượt đặt · Đối tác · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+// URL-driven status options (no client-side filtering). `all` clears the param.
+const STATUS_FILTERS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'pending_approval', label: 'Chờ duyệt' },
+  { value: 'confirmed', label: 'Đã xác nhận' },
+  { value: 'completed', label: 'Hoàn tất' },
+  { value: 'cancelled', label: 'Đã huỷ' },
+];
+const STATUS_VALUES = STATUS_FILTERS.filter((f) => f.value !== 'all').map((f) => f.value);
+
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.bookings.read');
-  // Window kept under the backend's 62-day feed cap: 14 days back, 45 forward.
-  const today = parseDay(todayString());
-  const from = startOfDayUtc(toDayString(addDays(today, -14)));
-  const to = startOfDayUtc(toDayString(addDays(today, 45)));
-  const feed = await apiGet<PartnerCalendarBookingResponse[]>(
-    `/partner/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-    auth,
-  );
+  const { toApiQuery } = readListParams(url.searchParams);
+  const statusRaw = url.searchParams.get('status') ?? '';
+  const status = STATUS_VALUES.includes(statusRaw) ? statusRaw : '';
+  const { filters, apiFilters } = readListFilters(url.searchParams, BOOKINGS_FILTER_SPEC);
+  // No fixed window any more: `from`/`to` come from the filters (unbounded when unset).
+  const feed = await apiGet<PartnerCalendarBookingResponse[]>('/partner/bookings', auth, {
+    query: toApiQuery({ status, ...apiFilters }),
+    signal: request.signal,
+  });
   return {
     bookings: feed.ok && feed.data ? feed.data : [],
     canApprove: can('partner.bookings.approve'),
@@ -41,6 +49,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     canManage: can('partner.bookings.cancel'),
     canWrite: can('partner.bookings.write'),
     loadError: feed.ok ? null : (feed.error ?? 'Không tải được danh sách lượt đặt.'),
+    filters: { ...filters, status },
   };
 }
 
@@ -49,26 +58,12 @@ export async function action({ request }: Route.ActionArgs) {
   return runPartnerBookingAction({ request, auth, can });
 }
 
-const FILTERS: { value: string; label: string }[] = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'pending_approval', label: 'Chờ duyệt' },
-  { value: 'confirmed', label: 'Đã xác nhận' },
-  { value: 'completed', label: 'Hoàn tất' },
-  { value: 'cancelled', label: 'Đã huỷ' },
-];
-
 export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps) {
-  const { bookings, canApprove, canManage, canWrite, loadError } = loaderData;
-  const [filter, setFilter] = useState<string>('all');
-
-  const rows = useMemo(
-    () => (filter === 'all' ? bookings : bookings.filter((b) => b.status === filter)),
-    [bookings, filter],
-  );
-  const pendingCount = useMemo(
-    () => bookings.filter((b) => b.status === 'pending_approval').length,
-    [bookings],
-  );
+  const { bookings, canApprove, canManage, canWrite, loadError, filters } = loaderData;
+  const [searchParams] = useSearchParams();
+  const { pageSize, filterHref } = readListParams(searchParams);
+  const statusValue = filters.status || 'all';
+  const pendingCount = bookings.filter((b) => b.status === 'pending_approval').length;
 
   const columns: DataTableColumn<PartnerCalendarBookingResponse>[] = [
     {
@@ -162,21 +157,18 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
         }
       />
 
-      <div className="w-full max-w-xs">
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger size="sm" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {FILTERS.map((f) => (
-              <SelectItem key={f.value} value={f.value}>
-                {f.label}
-                {f.value === 'pending_approval' && pendingCount > 0 ? ` (${pendingCount})` : ''}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <ListToolbar
+        spec={BOOKINGS_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.partner.bookings}
+        pageSize={pageSize}
+      />
+
+      <StatusFilterTabs
+        filters={STATUS_FILTERS}
+        value={statusValue}
+        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
+      />
 
       {loadError ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -186,12 +178,12 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={bookings}
         getRowKey={(b) => b.id}
         emptyMessage={
-          filter === 'all'
-            ? 'Chưa có lượt đặt nào trong khoảng thời gian này.'
-            : `Không có lượt đặt ở trạng thái “${bookingStatusMeta(filter as BookingStatus).label}”.`
+          hasActiveFilters(filters)
+            ? 'Không có lượt đặt nào khớp bộ lọc.'
+            : 'Chưa có lượt đặt nào.'
         }
       />
     </div>

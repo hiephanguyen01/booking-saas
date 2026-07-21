@@ -127,6 +127,13 @@ export const referralLinkResponseSchema = z.object({
 });
 export type ReferralLinkResponse = z.infer<typeof referralLinkResponseSchema>;
 
+/** `GET /affiliate/links` — paginated; case-insensitive search over the referral code + link label. */
+export const listAffiliateLinksQuerySchema = paginationQuerySchema.extend({
+  /** Case-insensitive search over the referral code + the link's label (targeted listing title). */
+  q: z.string().trim().max(200).optional(),
+});
+export type ListAffiliateLinksQuery = z.infer<typeof listAffiliateLinksQuerySchema>;
+
 // ── Referral click tracking (storefront BFF) ──────────────────────────────────
 
 /** Public tracking hit (§15.1) — tenant resolved from Host; visitorId de-dups clicks. */
@@ -200,6 +207,16 @@ export const affiliateCommissionResponseSchema = z.object({
   createdAt: z.string(),
 });
 export type AffiliateCommissionResponse = z.infer<typeof affiliateCommissionResponseSchema>;
+
+/** `GET /affiliate/commissions` — paginated; code search + status + created-at range. */
+export const listAffiliateCommissionsQuerySchema = paginationQuerySchema.extend({
+  /** Case-insensitive search over the booking's referral code + booking code. */
+  q: z.string().trim().max(200).optional(),
+  status: affiliateCommissionStatusSchema.optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+export type ListAffiliateCommissionsQuery = z.infer<typeof listAffiliateCommissionsQuerySchema>;
 
 // ── Tenant-side management ─────────────────────────────────────────────────────
 

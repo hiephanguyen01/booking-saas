@@ -2,21 +2,24 @@ import type { ReviewListResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { Input } from '@booking/ui/components/ui/input';
-import { NativeSelect } from '@booking/ui/components/ui/native-select';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { MessageSquareText, Star } from 'lucide-react';
 import { Form, useNavigation, useSearchParams } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
+import { ListToolbar } from '~/components/list-toolbar';
+import { readListParams } from '~/lib/pagination';
 import { formatDateTime } from '~/lib/format';
+import { REVIEW_FILTER_SPEC } from '../lib/review-filters';
 
 export function ReviewInbox({
   title,
   description,
   result,
   error,
+  filters,
+  resetHref,
   actionError,
   canReply = false,
 }: {
@@ -24,11 +27,14 @@ export function ReviewInbox({
   description: string;
   result: ReviewListResponse | null;
   error: string | null;
+  filters: Record<string, string>;
+  resetHref: string;
   actionError?: string | null;
   canReply?: boolean;
 }) {
   const navigation = useNavigation();
   const [searchParams] = useSearchParams();
+  const { pageSize } = readListParams(searchParams);
   const items = result?.items ?? [];
   return (
     <div className="space-y-6">
@@ -41,38 +47,12 @@ export function ReviewInbox({
           <Metric label="Chưa phản hồi" value={String(result.summary.unansweredCount)} />
         </div>
       ) : null}
-      <Form method="get" className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
-        <Input
-          name="q"
-          defaultValue={searchParams.get('q') ?? ''}
-          placeholder="Khách hàng, booking, dịch vụ..."
-          className="min-w-64"
-        />
-        <NativeSelect
-          name="responseStatus"
-          defaultValue={searchParams.get('responseStatus') ?? 'all'}
-          aria-label="Trạng thái phản hồi"
-        >
-          <option value="all">Tất cả phản hồi</option>
-          <option value="pending">Chưa phản hồi</option>
-          <option value="responded">Đã phản hồi</option>
-        </NativeSelect>
-        <NativeSelect
-          name="rating"
-          defaultValue={searchParams.get('rating') ?? ''}
-          aria-label="Số sao"
-        >
-          <option value="">Tất cả số sao</option>
-          {[5, 4, 3, 2, 1].map((rating) => (
-            <option key={rating} value={rating}>
-              {rating} sao
-            </option>
-          ))}
-        </NativeSelect>
-        <Button type="submit" variant="outline">
-          Lọc
-        </Button>
-      </Form>
+      <ListToolbar
+        spec={REVIEW_FILTER_SPEC}
+        filters={filters}
+        resetHref={resetHref}
+        pageSize={pageSize}
+      />
       {items.length ? (
         <div className="space-y-4">
           {items.map((review) => {

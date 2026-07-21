@@ -126,8 +126,31 @@ export type PartnerNoteInput = z.infer<typeof partnerNoteInputSchema>;
 export const tenantBookingsQuerySchema = paginationQuerySchema.extend({
   status: bookingStatusSchema.optional(),
   partnerId: uuidSchema.optional(),
+  /** Case-insensitive search over the booking code + the customer's name / email. */
+  q: z.string().trim().max(200).optional(),
+  /** Created-at range (inclusive ISO instants). */
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
 });
 export type TenantBookingsQuery = z.infer<typeof tenantBookingsQuerySchema>;
+
+/**
+ * Filters for the partner master-calendar feed (`GET /partner/bookings`, Task 1.14).
+ * NOT paginated — returns every matching booking. `from`/`to` are OPTIONAL: when
+ * both are present the feed is windowed by timeslot overlap (the calendar/home
+ * views always pass a window); when omitted the list is unbounded by date so the
+ * partner bookings page can show everything and drive the window from the filters.
+ * `q` searches the booking code + the customer's name / email; `status` narrows by state.
+ */
+export const listPartnerBookingsQuerySchema = z.object({
+  /** Case-insensitive search over the booking code + the customer's name / email. */
+  q: z.string().trim().max(200).optional(),
+  status: bookingStatusSchema.optional(),
+  /** Timeslot-overlap window (inclusive ISO instants); both omitted → unbounded by date. */
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+export type ListPartnerBookingsQuery = z.infer<typeof listPartnerBookingsQuerySchema>;
 
 // ── Responses ────────────────────────────────────────────────────────────────
 

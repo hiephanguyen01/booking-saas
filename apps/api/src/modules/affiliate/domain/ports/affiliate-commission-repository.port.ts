@@ -52,6 +52,18 @@ export interface AffiliateCommissionTotals {
   bookings: number;
 }
 
+/** Filters for the paginated affiliate-commission list (§15.3). */
+export interface AffiliateCommissionListFilter {
+  page: number;
+  pageSize: number;
+  /** Case-insensitive search over the booking's referral code + booking code. */
+  q?: string;
+  status?: AffiliateCommissionStatus;
+  /** Created-at range (inclusive ISO instants). */
+  from?: string;
+  to?: string;
+}
+
 export interface IAffiliateCommissionRepository {
   findByBooking(tx: PrismaTx, bookingId: string): Promise<AffiliateCommissionRecord | null>;
   /** Insert-or-update the single row keyed by the unique `booking_id`. */
@@ -71,7 +83,7 @@ export interface IAffiliateCommissionRepository {
   listByAffiliatePaginated(
     tx: PrismaTx,
     affiliateId: string,
-    params: { page: number; pageSize: number },
+    params: AffiliateCommissionListFilter,
   ): Promise<{ items: AffiliateCommissionWithBooking[]; total: number }>;
   totalsForAffiliate(tx: PrismaTx, affiliateId: string): Promise<AffiliateCommissionTotals>;
   /** Flip an affiliate's `confirmed` commissions to `paid` after a payout settles. */

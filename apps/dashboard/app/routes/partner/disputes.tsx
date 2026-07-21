@@ -7,7 +7,6 @@ import {
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { NativeSelect } from '@booking/ui/components/ui/native-select';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { data, Form, useNavigation, useSearchParams } from 'react-router';
 import type { Route } from './+types/disputes';
@@ -15,28 +14,52 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, type FilterSpec } from '~/lib/list-filters';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khiếu nại booking · Partner · Bookify' }];
 }
 
+const DISPUTE_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã booking, dịch vụ, lý do…' },
+  {
+    kind: 'enum',
+    key: 'status',
+    label: 'Trạng thái',
+    options: [
+      { value: 'open', label: 'Đang xử lý' },
+      { value: 'accepted', label: 'Đã chấp nhận' },
+      { value: 'rejected', label: 'Đã từ chối' },
+    ],
+  },
+  {
+    kind: 'enum',
+    key: 'responseStatus',
+    label: 'Phản hồi',
+    options: [
+      { value: 'pending', label: 'Chưa phản hồi' },
+      { value: 'responded', label: 'Đã phản hồi' },
+    ],
+  },
+];
+
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.disputes.read');
   const list = readListParams(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, DISPUTE_FILTER_SPEC);
   const result = await apiGet('/partner/finance/disputes', auth, {
-    query: list.toApiQuery({
-      status: url.searchParams.get('status') || undefined,
-      responseStatus: url.searchParams.get('responseStatus') || undefined,
-      q: url.searchParams.get('q') || undefined,
-    }),
+    query: list.toApiQuery(apiFilters),
     schema: paginatedSchema(partnerSettlementDisputeResponseSchema),
   });
   return {
     result: result.ok ? result.data : null,
+    filters,
     canRespond: can('partner.disputes.respond'),
     error: result.ok ? null : (result.error ?? 'Không tải được khiếu nại.'),
   };
@@ -61,6 +84,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function PartnerDisputes({ loaderData, actionData }: Route.ComponentProps) {
   const navigation = useNavigation();
   const [searchParams] = useSearchParams();
+  const { pageSize } = readListParams(searchParams);
   const result = loaderData.result;
   return (
     <div className="space-y-6">
@@ -71,28 +95,12 @@ export default function PartnerDisputes({ loaderData, actionData }: Route.Compon
       <ErrorBanner
         error={loaderData.error ?? (actionData && 'error' in actionData ? actionData.error : null)}
       />
-      <Form method="get" className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
-        <input
-          name="q"
-          defaultValue={searchParams.get('q') ?? ''}
-          placeholder="Mã booking, dịch vụ, lý do..."
-          className="h-10 min-w-64 rounded-md border bg-background px-3 text-sm"
-        />
-        <NativeSelect name="status" defaultValue={searchParams.get('status') ?? ''}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="open">Đang xử lý</option>
-          <option value="accepted">Đã chấp nhận</option>
-          <option value="rejected">Đã từ chối</option>
-        </NativeSelect>
-        <NativeSelect name="responseStatus" defaultValue={searchParams.get('responseStatus') ?? ''}>
-          <option value="">Tất cả phản hồi</option>
-          <option value="pending">Chưa phản hồi</option>
-          <option value="responded">Đã phản hồi</option>
-        </NativeSelect>
-        <Button type="submit" variant="outline">
-          Lọc
-        </Button>
-      </Form>
+      <ListToolbar
+        spec={DISPUTE_FILTER_SPEC}
+        filters={loaderData.filters}
+        resetHref={dashboardPaths.partner.disputes}
+        pageSize={pageSize}
+      />
       {result?.items.map((item) => {
         const submitting =
           navigation.state === 'submitting' && navigation.formData?.get('disputeId') === item.id;

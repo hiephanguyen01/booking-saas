@@ -24,6 +24,14 @@ export interface CreateReferralLinkData {
   listingId: string | null;
 }
 
+/** Filters for the paginated referral-link list (§15.3). */
+export interface ReferralLinkListFilter {
+  page: number;
+  pageSize: number;
+  /** Case-insensitive search over the referral code + link label (targeted listing title). */
+  q?: string;
+}
+
 export interface IReferralLinkRepository {
   create(tx: PrismaTx, tenantId: string, data: CreateReferralLinkData): Promise<ReferralLinkRecord>;
   findByCode(tx: PrismaTx, code: string): Promise<ReferralLinkRecord | null>;
@@ -32,7 +40,7 @@ export interface IReferralLinkRepository {
   listByAffiliatePaginated(
     tx: PrismaTx,
     affiliateId: string,
-    params: { page: number; pageSize: number },
+    params: ReferralLinkListFilter,
   ): Promise<{ items: ReferralLinkRecord[]; total: number }>;
   findById(tx: PrismaTx, id: string): Promise<ReferralLinkRecord | null>;
   delete(tx: PrismaTx, id: string): Promise<void>;

@@ -8,11 +8,12 @@ import {
 import { data as routeData } from 'react-router';
 import type { Route } from './+types/transactions';
 import { PaymentTransactionsPage } from '~/features/payments/components/payment-transactions-page';
-import { readPaymentHistoryFilters } from '~/features/payments/lib/payment-history';
+import { PAYMENT_FILTER_SPEC } from '~/features/payments/lib/payment-filters';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { apiGet } from '~/lib/api.server';
 import { apiPost } from '~/lib/api.server';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters } from '~/lib/list-filters';
 import { RefundsPanel } from '~/features/payments/components/refunds-panel';
 
 export function meta(): Route.MetaDescriptors {
@@ -22,7 +23,7 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.finance.read');
   const { toApiQuery } = readListParams(url.searchParams);
-  const { filters, apiFilters } = readPaymentHistoryFilters(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, PAYMENT_FILTER_SPEC);
   const [response, refundsResponse] = await Promise.all([
     apiGet<Paginated<PaymentHistoryItem>>('/tenant/payments', auth, {
       query: toApiQuery(apiFilters),

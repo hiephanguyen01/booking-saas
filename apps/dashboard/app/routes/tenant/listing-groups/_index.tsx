@@ -15,6 +15,13 @@ import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { PaginationBar } from '~/components/pagination-bar';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
+
+const LISTING_GROUP_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên nhóm…' },
+];
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Bài đăng · Tenant · Bookify' }];
@@ -23,12 +30,14 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
   const { toApiQuery } = readListParams(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, LISTING_GROUP_FILTER_SPEC);
   const res = await apiGet<Paginated<ListingGroupResponse>>('/tenant/listing-groups', auth, {
-    query: toApiQuery(),
+    query: toApiQuery(apiFilters),
   });
   return {
     result: res.ok ? res.data : null,
     canModerate: can('tenant.listings.publish'),
+    filters,
     error: res.ok ? null : (res.error ?? 'Không tải được bài đăng.'),
   };
 }
@@ -53,7 +62,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantListingGroups({ loaderData, actionData }: Route.ComponentProps) {
-  const { result, canModerate, error } = loaderData;
+  const { result, canModerate, error, filters } = loaderData;
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
@@ -130,11 +139,19 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
         description="Duyệt, ẩn hoặc mở lại các bài đăng nhóm của đối tác."
       />
       <ErrorBanner error={error ?? actionError} />
+      <ListToolbar
+        spec={LISTING_GROUP_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.listingGroups}
+        pageSize={pageSize}
+      />
       <DataTable
         columns={columns}
         data={groups}
         getRowKey={(g) => g.id}
-        emptyMessage="Chưa có bài đăng nào."
+        emptyMessage={
+          hasActiveFilters(filters) ? 'Không có bài đăng khớp bộ lọc.' : 'Chưa có bài đăng nào.'
+        }
       />
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PaginationQuery } from '@booking/contracts';
+import type { ListAffiliateLinksQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   REFERRAL_LINK_REPOSITORY,
@@ -18,7 +18,7 @@ export class ListAffiliateLinksUseCase {
   async execute(
     tenantId: string,
     affiliateId: string,
-    query: PaginationQuery,
+    query: ListAffiliateLinksQuery,
   ): Promise<{ items: ReferralLinkRecord[]; total: number }> {
     return this.tenantDb.forTenant(tenantId, (tx) =>
       this.links.listByAffiliatePaginated(tx, affiliateId, query),
