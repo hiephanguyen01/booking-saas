@@ -1,5 +1,6 @@
 import type { PriceUnit } from '../../lib/ui';
 import { normalizeDailyRange } from '../../lib/daily-range';
+import { isValidDateOnly } from '../../lib/date-only';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
 export type SearchMode = 'hourly' | 'daily' | 'inventory' | 'none';
@@ -64,11 +65,10 @@ export interface SearchDateSelection {
   to: string;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function dateParam(value: string | null, fallback: string): string {
-  return value && DATE_RE.test(value) ? value : fallback;
+  return value && isValidDateOnly(value) ? value : fallback;
 }
 
 function positiveInt(value: string | null, fallback: number): number {
@@ -102,8 +102,11 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
   const rawTo = params.get('to');
   const rawStartTime = params.get('startTime');
   const rawEndTime = params.get('endTime');
+  const validDateSelection = Boolean(rawDate && isValidDateOnly(rawDate));
+  const validFrom = Boolean(rawFrom && isValidDateOnly(rawFrom));
+  const validTo = Boolean(rawTo && isValidDateOnly(rawTo));
   const from = dateParam(rawFrom, today);
-  const toCandidate = dateParam(params.get('to'), addDays(from, 1));
+  const toCandidate = dateParam(rawTo, addDays(from, 1));
   const to = toCandidate > from ? toCandidate : addDays(from, 1);
   const areaParam = params.get('area');
   const area: SearchArea = ['under-25', '25-50', '50-100', 'over-100'].includes(areaParam ?? '')
@@ -123,19 +126,16 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     endTime: TIME_RE.test(rawEndTime ?? '') ? rawEndTime! : '10:00',
     from,
     to,
-    hasDateSelection: Boolean(rawDate && DATE_RE.test(rawDate)),
+    hasDateSelection: validDateSelection,
     hasTimeSelection: Boolean(
-      rawDate &&
-      DATE_RE.test(rawDate) &&
+      validDateSelection &&
       rawStartTime &&
       rawEndTime &&
       TIME_RE.test(rawStartTime) &&
       TIME_RE.test(rawEndTime) &&
       rawStartTime < rawEndTime,
     ),
-    hasDailyRange: Boolean(
-      rawFrom && rawTo && DATE_RE.test(rawFrom) && DATE_RE.test(rawTo) && rawTo > rawFrom,
-    ),
+    hasDailyRange: Boolean(validFrom && validTo && rawFrom && rawTo && rawTo > rawFrom),
     guests: Math.min(100, positiveInt(params.get('guests'), 1)),
     quantity: Math.min(100, positiveInt(params.get('quantity'), 1)),
     minPrice: money(params.get('minPrice')),
