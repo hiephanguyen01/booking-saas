@@ -1,6 +1,7 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { BookingI18nProvider, type Locale } from '@booking/i18n';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
+import { CalendarTodayProvider } from '@booking/ui/components/ui/calendar';
 import {
   data,
   Links,
@@ -27,12 +28,12 @@ import { fetchListingTypes } from './lib/catalog.server';
 import { resolveLocale } from './lib/i18n.server';
 import { getCurrentStorefrontTenant } from './lib/request-context.server';
 import type { StorefrontTenant } from './lib/tenant.server';
-import { themeCss } from './theme/theme';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
 import { storefrontRequestMiddleware } from './lib/request-security.server';
 import { getOptionalAuth } from './lib/auth.server';
 import { getAccountMenuSummary } from './features/account/server/account-menu.server';
 import type { AccountMenuSummary } from './features/account/account-menu';
+import { dateOnlyToLocal, todayInTz } from './lib/time';
 import { setClientStorefrontTimezone } from './lib/timezone-runtime';
 
 export const middleware: Route.MiddlewareFunction[] = [storefrontRequestMiddleware];
@@ -133,6 +134,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         {favicon ? <link rel="icon" href={favicon} /> : null}
+        <link rel="stylesheet" href="/theme.css" />
         <Meta />
         <Links />
       </head>
@@ -145,17 +147,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Per-tenant brand tokens, injected once at SSR so every UI component re-tints. */
-function ThemeStyle({ theme }: { theme: StorefrontTenant['themeConfig'] }) {
-  return <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
-}
-
 export default function App({ loaderData }: Route.ComponentProps) {
   const { tenant, listingTypes, locale, canonical, currentUser, accountMenuSummary } = loaderData;
 
   // Browser-side time helpers read this value during descendant render. The setter
   // intentionally no-ops during SSR, where the request ALS resolver is authoritative.
   setClientStorefrontTimezone(tenant.defaultTimezone);
+  const calendarToday = dateOnlyToLocal(todayInTz(tenant.defaultTimezone));
 
   const matches = useMatches();
 
@@ -173,30 +171,31 @@ export default function App({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <BookingI18nProvider locale={locale}>
-      <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
-        <ThemeStyle theme={tenant.themeConfig} />
-        {!tenant.live ? (
-          <SuspendedNotice name={tenant.name} />
-        ) : isStandalone ? (
-          <Outlet context={outletContext} />
-        ) : (
-          <>
-            <SiteHeader
-              tenant={tenant}
-              listingTypes={listingTypes}
-              locale={locale}
-              currentUser={currentUser}
-              accountMenuSummary={accountMenuSummary}
-            />
-            <main className="flex-1">
-              <Outlet context={outletContext} />
-            </main>
-            <SiteFooter tenant={tenant} />
-          </>
-        )}
-      </div>
-    </BookingI18nProvider>
+    <CalendarTodayProvider today={calendarToday}>
+      <BookingI18nProvider locale={locale}>
+        <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
+          {!tenant.live ? (
+            <SuspendedNotice name={tenant.name} />
+          ) : isStandalone ? (
+            <Outlet context={outletContext} />
+          ) : (
+            <>
+              <SiteHeader
+                tenant={tenant}
+                listingTypes={listingTypes}
+                locale={locale}
+                currentUser={currentUser}
+                accountMenuSummary={accountMenuSummary}
+              />
+              <main className="flex-1">
+                <Outlet context={outletContext} />
+              </main>
+              <SiteFooter tenant={tenant} />
+            </>
+          )}
+        </div>
+      </BookingI18nProvider>
+    </CalendarTodayProvider>
   );
 }
 
