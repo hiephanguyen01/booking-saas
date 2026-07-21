@@ -73,3 +73,10 @@ export function formatListingLocation(
     );
   return unique.length ? unique.join(', ') : null;
 }
+
+/** A Google Maps search URL for a formatted location, or null when there's none. */
+export function googleMapsHref(location: string | null): string | null {
+  return location
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
+    : null;
+}

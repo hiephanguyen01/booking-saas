@@ -6,6 +6,7 @@ import {
 import type { Route } from './+types/listing';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { ListingPage } from '../features/listing/listing-page';
+import { PackageListingPage } from '../features/packages/package-listing-page';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '../lib/catalog.server';
@@ -240,6 +241,7 @@ function isSelectionAvailable(
 export default function ListingRoute(props: Route.ComponentProps) {
   const { tenant, locale, canonical } = useOutletContext<StorefrontContext>();
   const listing = props.loaderData.listing;
+  const Page = listing.bookingSelection === 'fixed_packages' ? PackageListingPage : ListingPage;
   const structuredData = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -297,7 +299,7 @@ export default function ListingRoute(props: Route.ComponentProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
       />
-      <ListingPage {...props} />
+      <Page {...props} />
     </>
   );
 }

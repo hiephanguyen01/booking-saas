@@ -12,8 +12,7 @@ import { ExpandableDescription } from '../listing-group/components/expandable-de
 import { HeaderActions } from '../listing-group/components/header-actions';
 import { ProviderCard } from '../listing-group/components/provider-card';
 import { StudioGallery } from '../listing-group/components/studio-gallery';
-import { SearchForm } from '../search/search-form';
-import { parseSearchState } from '../search/search-state';
+import { DeferredSearchBar } from '../search/deferred-search-bar';
 import { PackageAlbums } from './package-albums';
 import { PackageBookingDialog } from './package-booking-dialog';
 import { listingPackages, minimumPackagePrice } from './package-data';
@@ -75,20 +74,11 @@ export function PackageListingPage({
 
   return (
     <div className="font-studio overflow-x-clip bg-muted/40 pb-20 text-foreground">
-      <Suspense fallback={<div className="h-39 bg-foreground" />}>
-        <Await resolve={locations}>
-          {(resolvedLocations) => (
-            <SearchForm
-              key={searchParams.toString()}
-              listingTypes={listingTypes}
-              currentType={listing.listingTypeSlug}
-              initialState={parseSearchState(searchParams)}
-              locations={resolvedLocations}
-              variant="bar"
-            />
-          )}
-        </Await>
-      </Suspense>
+      <DeferredSearchBar
+        listingTypes={listingTypes}
+        currentType={listing.listingTypeSlug}
+        locations={locations}
+      />
 
       <main className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-6 xl:px-0">
         <SectionCard>

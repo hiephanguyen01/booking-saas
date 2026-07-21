@@ -5,16 +5,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@booking/ui/components/ui/collapsible';
-import {
-  Check,
-  ChevronDown,
-  Clock3,
-  ImageIcon,
-  MapPin,
-  Ruler,
-  Sparkles,
-  Users,
-} from 'lucide-react';
+import { Check, ChevronDown, Clock3, MapPin, Users } from 'lucide-react';
 import { PendingLink } from '../../../components/pending-link';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { formatListingLocation, formatVnd } from '../../../lib/ui';
@@ -22,7 +13,7 @@ import { hoursBetween } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
 import type { BookingMode, RoomOption } from '../listing-group-types';
 import { checkoutHref, type RoomAvailabilityState } from '../listing-group-utils';
-import { roomAttributes, roomCapacity } from '../room-attributes';
+import { attributeIcon, roomAttributes, roomCapacity } from '../room-attributes';
 import { SlotPicker } from './slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';
 import { RoomPhotoStrip } from './room-photo-strip';
@@ -53,7 +44,7 @@ export function RoomDetails({
       <div className="flex flex-col gap-2.5">
         {attributes.length ? (
           attributes.map((attribute, index) => {
-            const Icon = index === 0 ? Ruler : index === 1 ? ImageIcon : Sparkles;
+            const Icon = attributeIcon(index);
             return (
               <span key={attribute.key} className="flex items-start gap-2.5 text-muted-foreground">
                 <Icon className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden="true" />

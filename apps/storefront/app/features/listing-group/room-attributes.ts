@@ -1,3 +1,4 @@
+import { ImageIcon, Ruler, Sparkles, type LucideIcon } from 'lucide-react';
 import { formatVnd } from '../../lib/ui';
 import type { RoomOption } from './listing-group-types';
 
@@ -44,6 +45,15 @@ export function roomAttributes(attributes: Record<string, unknown>): RoomAttribu
       return [];
     })
     .slice(0, 5);
+}
+
+/**
+ * Attributes are icon-tagged by position (not by `kind`), so the first row
+ * gets a ruler, the second a photo, the rest a spark. Shared by the listing
+ * detail page and the room list so the two never drift.
+ */
+export function attributeIcon(index: number): LucideIcon {
+  return index === 0 ? Ruler : index === 1 ? ImageIcon : Sparkles;
 }
 
 export function humanizeKey(key: string): string {

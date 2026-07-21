@@ -5,7 +5,7 @@ import { ListingRatingSummary } from '../../components/listing-rating-summary';
 import { PublicReviewsSection } from '../../components/public-reviews-section';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { formatListingLocation } from '../../lib/ui';
+import { formatListingLocation, googleMapsHref } from '../../lib/ui';
 import { useLocale } from '../../lib/use-locale';
 import { clockHoursBetween } from '../../lib/time';
 import type { StorefrontContext } from '../../root';
@@ -39,9 +39,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   const selectedHours = state.hasTimeSelection
     ? clockHoursBetween(state.startTime, state.endTime)
     : null;
-  const mapsHref = location
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
-    : null;
+  const mapsHref = googleMapsHref(location);
 
   return (
     <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
