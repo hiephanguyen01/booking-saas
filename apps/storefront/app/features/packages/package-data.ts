@@ -1,17 +1,17 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import { packagesForMode, type PublicPackageOption } from '../../lib/package-options';
 
-export interface PhotographerDetails {
+export interface PackageDetails {
   style: string | null;
   editedPhotos: number | null;
   rawFiles: boolean | null;
 }
 
-export function photographerPackages(listing: PublicListingDetailResponse): PublicPackageOption[] {
+export function listingPackages(listing: PublicListingDetailResponse): PublicPackageOption[] {
   return packagesForMode(listing.modeConfig, 'hourly');
 }
 
-export function photographerDetails(attributes: Record<string, unknown>): PhotographerDetails {
+export function packageDetails(attributes: Record<string, unknown>): PackageDetails {
   const editedPhotos = Number(attributes.editedPhotos);
   return {
     style: typeof attributes.photographyStyle === 'string' ? attributes.photographyStyle : null,

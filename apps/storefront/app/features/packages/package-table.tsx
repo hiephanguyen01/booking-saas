@@ -13,9 +13,9 @@ import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { PublicPackageOption } from '../../lib/package-options';
 import { formatVnd } from '../../lib/ui';
-import { packageDurationHours, photographerDetails } from './photographer-data';
+import { packageDurationHours, packageDetails } from './package-data';
 
-export function PhotographerPackages({
+export function PackageTable({
   listing,
   packages,
   selectedId,
@@ -29,13 +29,9 @@ export function PhotographerPackages({
   const { t } = useTranslation(NsI18n.Listing);
 
   return (
-    <SectionCard
-      id="photographer-packages"
-      aria-labelledby="photographer-packages-title"
-      className="scroll-mt-28"
-    >
-      <h2 id="photographer-packages-title" className="text-base font-semibold">
-        {t('photographer.servicePackages')}
+    <SectionCard id="packages" aria-labelledby="packages-title" className="scroll-mt-28">
+      <h2 id="packages-title" className="text-base font-semibold">
+        {t('packages.servicePackages')}
       </h2>
 
       {!packages.length ? (
@@ -44,28 +40,28 @@ export function PhotographerPackages({
             <EmptyMedia variant="icon">
               <Aperture />
             </EmptyMedia>
-            <EmptyTitle>{t('photographer.noPackagesTitle')}</EmptyTitle>
-            <EmptyDescription>{t('photographer.noPackagesBody')}</EmptyDescription>
+            <EmptyTitle>{t('packages.noPackagesTitle')}</EmptyTitle>
+            <EmptyDescription>{t('packages.noPackagesBody')}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
         <>
           <div className="mt-5 hidden overflow-hidden rounded-md border xl:block">
             <table className="w-full table-fixed text-left text-sm">
-              <caption className="sr-only">{t('photographer.tableLabel')}</caption>
+              <caption className="sr-only">{t('packages.tableLabel')}</caption>
               <thead className="bg-muted/70 text-xs font-semibold">
                 <tr>
                   <th scope="col" className="w-[36%] p-4">
-                    {t('photographer.colPackage')}
+                    {t('packages.colPackage')}
                   </th>
                   <th scope="col" className="w-[25%] border-l p-4">
-                    {t('photographer.colRules')}
+                    {t('packages.colRules')}
                   </th>
                   <th scope="col" className="w-[18%] border-l p-4">
-                    {t('photographer.colPrice')}
+                    {t('packages.colPrice')}
                   </th>
                   <th scope="col" className="w-[21%] border-l p-4">
-                    {t('photographer.colChoice')}
+                    {t('packages.colChoice')}
                   </th>
                 </tr>
               </thead>
@@ -155,18 +151,18 @@ function PackageSummary({
   hidePhotos = false,
 }: Pick<PackageProps, 'item' | 'listing'> & { hidePhotos?: boolean }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const details = photographerDetails(listing.attributes);
+  const details = packageDetails(listing.attributes);
   return (
     <div className="space-y-4">
       <h3 className="text-base font-semibold">{item.name}</h3>
       {!hidePhotos ? <PackagePhotoStrip photos={item.photos} title={item.name} /> : null}
       <p className="text-sm leading-6 text-muted-foreground">
-        {item.description || t('photographer.packageDescriptionFallback')}
+        {item.description || t('packages.packageDescriptionFallback')}
       </p>
       {details.style ? (
         <p className="flex items-start gap-2 text-sm">
           <Aperture className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          {t('photographer.photographyStyle', { value: details.style })}
+          {t('packages.photographyStyle', { value: details.style })}
         </p>
       ) : null}
     </div>
@@ -175,25 +171,23 @@ function PackageSummary({
 
 function PackageFacts({ item, listing }: Pick<PackageProps, 'item' | 'listing'>) {
   const { t } = useTranslation(NsI18n.Listing);
-  const details = photographerDetails(listing.attributes);
+  const details = packageDetails(listing.attributes);
   return (
     <div className="space-y-3 text-sm">
       <p className="flex items-start gap-2">
         <Clock3 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-        {t('photographer.packageDuration', { count: packageDurationHours(item) })}
+        {t('packages.packageDuration', { count: packageDurationHours(item) })}
       </p>
       {details.editedPhotos !== null ? (
         <p className="flex items-start gap-2">
           <Images className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          {t('photographer.editedPhotos', { count: details.editedPhotos })}
+          {t('packages.editedPhotos', { count: details.editedPhotos })}
         </p>
       ) : null}
       {details.rawFiles !== null ? (
         <p className="flex items-start gap-2">
           <FileImage className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          {t(
-            details.rawFiles ? 'photographer.rawFilesIncluded' : 'photographer.rawFilesNotIncluded',
-          )}
+          {t(details.rawFiles ? 'packages.rawFilesIncluded' : 'packages.rawFilesNotIncluded')}
         </p>
       ) : null}
     </div>
@@ -206,7 +200,7 @@ function PackagePrice({ item }: { item: PublicPackageOption }) {
     <div>
       <strong className="text-lg text-primary">{formatVnd(item.price)}</strong>
       <p className="mt-1 text-xs text-muted-foreground">
-        {t('photographer.packageDuration', { count: packageDurationHours(item) })}
+        {t('packages.packageDuration', { count: packageDurationHours(item) })}
       </p>
     </div>
   );
@@ -223,7 +217,7 @@ function PackageChoice({ item, listing, selected, onSelect }: PackageProps) {
         onClick={(event) => onSelect(item.id, event.currentTarget)}
       >
         {selected ? <Check aria-hidden="true" /> : null}
-        {t(selected ? 'photographer.selectedPackage' : 'photographer.selectPackage')}
+        {t(selected ? 'packages.selectedPackage' : 'packages.selectPackage')}
       </Button>
       <div className="mt-4 space-y-2 text-xs text-muted-foreground">
         <p className="flex items-start gap-2">

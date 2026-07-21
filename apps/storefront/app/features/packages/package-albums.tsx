@@ -11,7 +11,7 @@ import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { PublicPackageOption } from '../../lib/package-options';
 
-export function PhotographerAlbums({
+export function PackageAlbums({
   packages,
   fallbackPhotos,
   title,
@@ -35,9 +35,9 @@ export function PhotographerAlbums({
 
   return (
     <>
-      <SectionCard aria-labelledby="photographer-albums-title">
-        <h2 id="photographer-albums-title" className="text-base font-semibold">
-          {t('photographer.albums')}
+      <SectionCard aria-labelledby="packages-albums-title">
+        <h2 id="packages-albums-title" className="text-base font-semibold">
+          {t('packages.albums')}
         </h2>
         <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
           {albums.map((album) => (
@@ -49,7 +49,7 @@ export function PhotographerAlbums({
                 setActiveId(album.id);
               }}
               className="group relative h-20 w-28 shrink-0 overflow-hidden rounded-md bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={t('photographer.viewAlbum', { name: album.name })}
+              aria-label={t('packages.viewAlbum', { name: album.name })}
             >
               <img
                 src={album.photos[0]}

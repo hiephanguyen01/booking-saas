@@ -41,7 +41,7 @@ import { checkoutHref, slotInterval } from '../listing-group/listing-group-utils
 
 type BookingRequestKind = 'availability' | 'quote';
 
-export function PhotographerBookingDialog({
+export function PackageBookingDialog({
   open,
   onOpenChange,
   returnFocusRef,
@@ -225,14 +225,14 @@ export function PhotographerBookingDialog({
   const body = (
     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
       {date ? (
-        <section aria-labelledby="photographer-hourly-step-title" className="space-y-4">
+        <section aria-labelledby="packages-hourly-step-title" className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 id="photographer-hourly-step-title" className="font-semibold">
+              <h3 id="packages-hourly-step-title" className="font-semibold">
                 {t('pickSlot')}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                {dateLabelInTz(date, DEFAULT_TZ, locale)} · {t('photographer.hourlyInstruction')}
+                {dateLabelInTz(date, DEFAULT_TZ, locale)} · {t('packages.hourlyInstruction')}
               </p>
             </div>
             <Button
@@ -307,13 +307,11 @@ export function PhotographerBookingDialog({
           ) : null}
         </section>
       ) : (
-        <section aria-labelledby="photographer-day-step-title">
-          <h3 id="photographer-day-step-title" className="font-semibold">
+        <section aria-labelledby="packages-day-step-title">
+          <h3 id="packages-day-step-title" className="font-semibold">
             {t('pickDay')}
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('photographer.pickDayInstruction')}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('packages.pickDayInstruction')}</p>
           <Calendar
             fullWidth
             mode="single"
@@ -350,7 +348,7 @@ export function PhotographerBookingDialog({
       }
     />
   );
-  const title = t('photographer.bookingTitle', {
+  const title = t('packages.bookingTitle', {
     name: selectedPackage?.name ?? listing.title,
   });
 
@@ -365,7 +363,7 @@ export function PhotographerBookingDialog({
             <DialogTitle ref={titleRef} tabIndex={-1} className="outline-none">
               {title}
             </DialogTitle>
-            <DialogDescription>{t('photographer.bookingDescription')}</DialogDescription>
+            <DialogDescription>{t('packages.bookingDescription')}</DialogDescription>
           </DialogHeader>
           <CloseButton onClick={() => changeOpen(false)} />
           {body}
@@ -382,7 +380,7 @@ export function PhotographerBookingDialog({
           <DrawerTitle ref={titleRef} tabIndex={-1} className="outline-none">
             {title}
           </DrawerTitle>
-          <DrawerDescription>{t('photographer.bookingDescription')}</DrawerDescription>
+          <DrawerDescription>{t('packages.bookingDescription')}</DrawerDescription>
         </DrawerHeader>
         <CloseButton onClick={() => changeOpen(false)} />
         {body}

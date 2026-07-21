@@ -19,7 +19,7 @@ import { StudioGallery } from '../listing-group/components/studio-gallery';
 import { roomAttributes, roomCapacity } from '../listing-group/room-attributes';
 import { SearchForm } from '../search/search-form';
 import { parseSearchState } from '../search/search-state';
-import { PhotographerPage } from '../photographer/photographer-page';
+import { PackageListingPage } from '../packages/package-listing-page';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote, locations, selectionStart, selectionEnd } =
@@ -37,8 +37,8 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
     );
   }
 
-  if (listing.listingTypeSlug === 'photography') {
-    return <PhotographerPage loaderData={loaderData} />;
+  if (listing.bookingSelection === 'fixed_packages') {
+    return <PackageListingPage loaderData={loaderData} />;
   }
 
   const location = formatListingLocation(listing, 'full');

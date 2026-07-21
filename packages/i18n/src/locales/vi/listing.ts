@@ -58,7 +58,7 @@ export const viListing = {
   minNights: 'Tối thiểu {count} đêm',
   package: 'gói',
   descriptionTitle: 'Giới thiệu',
-  photographer: {
+  packages: {
     albums: 'Album',
     viewAlbum: 'Xem album {name}',
     fromPrice: 'từ {price}',

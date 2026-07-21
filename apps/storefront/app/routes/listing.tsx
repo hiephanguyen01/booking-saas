@@ -124,7 +124,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     )
     .catch(() => []);
   const relatedPromise =
-    listing.listingTypeSlug === 'photography'
+    listing.bookingSelection === 'fixed_packages'
       ? fetchListings(request, relatedSearch).catch(() => [])
       : Promise.resolve([]);
   const auxiliaryData = Promise.all([

@@ -61,7 +61,7 @@ export const enListing = {
   minNights: 'Minimum {count} nights',
   package: 'bundle',
   descriptionTitle: 'About',
-  photographer: {
+  packages: {
     albums: 'Albums',
     viewAlbum: 'View {name} album',
     fromPrice: 'from {price}',

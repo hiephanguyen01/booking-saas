@@ -6,7 +6,7 @@ import { RatingStars } from '../../components/rating-stars';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 
-export function PhotographerReviews({
+export function PackageReviews({
   reviews,
   summary,
   locale,
@@ -30,24 +30,24 @@ export function PhotographerReviews({
   };
 
   return (
-    <SectionCard aria-labelledby="photographer-reviews-title">
+    <SectionCard aria-labelledby="packages-reviews-title">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 id="photographer-reviews-title" className="mr-auto text-base font-semibold">
-          {t('photographer.reviews')}
+        <h2 id="packages-reviews-title" className="mr-auto text-base font-semibold">
+          {t('packages.reviews')}
         </h2>
         <RatingStars rating={summary.ratingAvg ?? 0} />
         <span className="text-sm font-medium">{summary.ratingAvg?.toFixed(1)}</span>
         <span className="text-sm text-muted-foreground">{t('reviewCount', { count: total })}</span>
       </div>
 
-      <nav className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label={t('photographer.reviews')}>
+      <nav className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label={t('packages.reviews')}>
         <Link
           to={filterHref()}
           preventScrollReset
           aria-current={selectedRating === undefined ? 'true' : undefined}
           className={filterClass(selectedRating === undefined)}
         >
-          {t('photographer.allRatings')}
+          {t('packages.allRatings')}
         </Link>
         {[5, 4, 3, 2, 1].map((rating) => (
           <Link
@@ -57,7 +57,7 @@ export function PhotographerReviews({
             aria-current={selectedRating === rating ? 'true' : undefined}
             className={filterClass(selectedRating === rating)}
           >
-            {t('photographer.ratingFilter', {
+            {t('packages.ratingFilter', {
               count: rating,
               total: summary.distribution[rating as 1 | 2 | 3 | 4 | 5],
             })}

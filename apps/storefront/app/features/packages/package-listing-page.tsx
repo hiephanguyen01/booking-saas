@@ -14,12 +14,12 @@ import { ProviderCard } from '../listing-group/components/provider-card';
 import { StudioGallery } from '../listing-group/components/studio-gallery';
 import { SearchForm } from '../search/search-form';
 import { parseSearchState } from '../search/search-state';
-import { PhotographerAlbums } from './photographer-albums';
-import { PhotographerBookingDialog } from './photographer-booking-dialog';
-import { minimumPackagePrice, photographerPackages } from './photographer-data';
-import { PhotographerPackages } from './photographer-packages';
-import { PhotographerReviews } from './photographer-reviews';
-import { RelatedPhotographers } from './related-photographers';
+import { PackageAlbums } from './package-albums';
+import { PackageBookingDialog } from './package-booking-dialog';
+import { listingPackages, minimumPackagePrice } from './package-data';
+import { PackageTable } from './package-table';
+import { PackageReviews } from './package-reviews';
+import { RelatedListings } from './related-listings';
 
 const STALE_SELECTION_PARAMS = [
   'day',
@@ -34,7 +34,7 @@ const STALE_SELECTION_PARAMS = [
   'quantity',
 ] as const;
 
-export function PhotographerPage({
+export function PackageListingPage({
   loaderData,
 }: {
   loaderData: Route.ComponentProps['loaderData'];
@@ -46,7 +46,7 @@ export function PhotographerPage({
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const bookingTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const packages = photographerPackages(listing);
+  const packages = listingPackages(listing);
   const selectedPackage = packages.find((item) => item.id === selectedPackageId) ?? null;
   const minimumPrice = minimumPackagePrice(packages);
   const location = formatListingLocation(listing, 'full');
@@ -118,7 +118,7 @@ export function PhotographerPage({
             <HeaderActions title={listing.title} favorite={{ kind: 'listing', id: listing.id }} />
           </header>
           <StudioGallery
-            key={selectedPackage?.id ?? 'photographer'}
+            key={selectedPackage?.id ?? 'packages'}
             photos={galleryPhotos}
             title={selectedPackage ? `${listing.title} — ${selectedPackage.name}` : listing.title}
           />
@@ -126,17 +126,13 @@ export function PhotographerPage({
 
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,870px)_284px]">
           <div className="flex min-w-0 flex-col gap-4">
-            <SectionCard aria-labelledby="photographer-introduction-title">
-              <h2 id="photographer-introduction-title" className="text-base font-semibold">
+            <SectionCard aria-labelledby="packages-introduction-title">
+              <h2 id="packages-introduction-title" className="text-base font-semibold">
                 {t('group.introduction')}
               </h2>
               <ExpandableDescription description={listing.description} />
             </SectionCard>
-            <PhotographerAlbums
-              packages={packages}
-              fallbackPhotos={listing.photos}
-              title={listing.title}
-            />
+            <PackageAlbums packages={packages} fallbackPhotos={listing.photos} title={listing.title} />
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
@@ -151,14 +147,14 @@ export function PhotographerPage({
               )}
               <p className="mt-1 text-xs text-muted-foreground">{t('perSession')}</p>
               <Button asChild className="mt-5 w-full">
-                <a href="#photographer-packages">{t('photographer.viewPackages')}</a>
+                <a href="#packages">{t('packages.viewPackages')}</a>
               </Button>
             </div>
             <ProviderCard trust={listing.trust} />
           </aside>
         </div>
 
-        <PhotographerPackages
+        <PackageTable
           listing={listing}
           packages={packages}
           selectedId={selectedPackage?.id ?? null}
@@ -169,20 +165,20 @@ export function PhotographerPage({
           <Await resolve={auxiliaryData}>
             {({ reviews, reviewSummary, relatedListings }) => (
               <>
-                <PhotographerReviews
+                <PackageReviews
                   reviews={reviews}
                   summary={reviewSummary}
                   locale={locale}
                   selectedRating={rating}
                 />
-                <RelatedPhotographers listings={relatedListings} />
+                <RelatedListings listings={relatedListings} />
               </>
             )}
           </Await>
         </Suspense>
       </main>
 
-      <PhotographerBookingDialog
+      <PackageBookingDialog
         open={bookingOpen}
         onOpenChange={changeBookingOpen}
         returnFocusRef={bookingTriggerRef}
