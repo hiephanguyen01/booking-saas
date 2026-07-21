@@ -61,7 +61,7 @@ export function ListingTypeModesFields({ form }: { form: UseFormReturn<CreateLis
             ) : null}
 
             <p className="pt-2 text-xs font-medium text-muted-foreground">
-              Bật sẵn khi tạo listing:
+              Bật sẵn khi tạo tin đăng:
             </p>
             <Controller
               control={form.control}

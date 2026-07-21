@@ -8,7 +8,7 @@ export type ScopeKey = 'all' | 'listing' | 'listing_type' | 'listing_group' | 'c
 /** Scope enum → Vietnamese label — shared by the form and both detail pages (§12.2). */
 export const SCOPE_LABELS: Record<ScopeKey, string> = {
   all: 'Toàn bộ cửa hàng',
-  listing: 'Một listing cụ thể',
+  listing: 'Một tin đăng cụ thể',
   listing_type: 'Loại dịch vụ',
   listing_group: 'Tin đăng nhiều hạng mục',
   category: 'Danh mục',

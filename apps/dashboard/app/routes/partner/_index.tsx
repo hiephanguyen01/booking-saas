@@ -150,7 +150,7 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
       ) : profileStatus === 'pending' ? (
         <div className="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>
-            Hồ sơ đối tác của bạn đang chờ tenant duyệt. Bạn sẽ đăng được listing sau khi được
+            Hồ sơ đối tác của bạn đang chờ tenant duyệt. Bạn sẽ đăng được tin đăng sau khi được
             duyệt.
           </span>
           <Button asChild variant="outline" size="sm" className="w-fit">
@@ -162,7 +162,7 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
       ) : profileStatus === 'approved' && verificationStatus === 'unsubmitted' ? (
         <div className="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>
-            Bạn chưa gửi thông tin định danh. Một số loại listing yêu cầu xác minh danh tính.
+            Bạn chưa gửi thông tin định danh. Một số loại tin đăng yêu cầu xác minh danh tính.
           </span>
           <Button asChild variant="outline" size="sm" className="w-fit">
             <Link to="/partner/profile" prefetch="intent">

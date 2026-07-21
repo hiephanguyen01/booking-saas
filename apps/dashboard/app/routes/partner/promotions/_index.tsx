@@ -106,7 +106,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
     <div className="space-y-6">
       <PageHeader
         title="Khuyến mãi"
-        description="Tạo mã giảm giá do bạn tài trợ cho listing của mình."
+        description="Tạo mã giảm giá do bạn tài trợ cho tin đăng của mình."
         actions={
           <Button asChild>
             <Link to="/partner/promotions/new">

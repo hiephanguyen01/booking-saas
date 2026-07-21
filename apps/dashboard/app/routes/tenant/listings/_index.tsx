@@ -37,7 +37,7 @@ export function meta(): Route.MetaDescriptors {
 const STATUS_VALUES: PublishStatus[] = ['draft', 'pending_review', 'published', 'archived'];
 
 const LISTINGS_FILTER_SPEC: FilterSpec = [
-  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên listing…' },
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên tin đăng…' },
 ];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
@@ -63,7 +63,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     result: res.ok ? res.data : null,
     partnerNames,
     typeNames,
-    error: res.ok ? null : (res.error ?? 'Không tải được danh sách listing.'),
+    error: res.ok ? null : (res.error ?? 'Không tải được danh sách tin đăng.'),
     filters: { status, ...filters },
     canModerate: can('tenant.listings.publish'),
   };

@@ -41,7 +41,7 @@ export default function NewPartnerPromotion({ loaderData, actionData }: Route.Co
   return (
     <div className="space-y-6">
       <BackLink to="/partner/promotions" label="Khuyến mãi" />
-      <PageHeader title="Tạo khuyến mãi" description="Bạn tài trợ chi phí giảm giá cho listing của mình." />
+      <PageHeader title="Tạo khuyến mãi" description="Bạn tài trợ chi phí giảm giá cho tin đăng của mình." />
       <ErrorBanner error={error} />
       <Card>
         <CardHeader><CardTitle>Thông tin khuyến mãi</CardTitle></CardHeader>
