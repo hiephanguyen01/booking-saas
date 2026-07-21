@@ -34,7 +34,7 @@ function contentSecurityPolicy(nonce: string): string {
     `script-src ${scriptSources.join(' ')}`,
     "script-src-attr 'none'",
     "style-src 'self'",
-    "style-src-attr 'none'",
+    "style-src-attr 'unsafe-inline'",
     `img-src ${imageSources.join(' ')}`,
     "font-src 'self' data:",
     `connect-src ${connectSources.join(' ')}`,
