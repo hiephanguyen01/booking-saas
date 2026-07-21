@@ -4,6 +4,7 @@ import type { Route } from './+types/listing-group';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchListing, fetchListingGroup, fetchListings, fetchQuote } from '../lib/catalog.server';
 import { fetchAvailability } from '../lib/booking.server';
+import { mapWithConcurrency } from '../lib/concurrency.server';
 import { storefrontPaths } from '../lib/locale-paths';
 import type { StorefrontContext } from '../root';
 import { jsonLd } from '../lib/seo';
@@ -12,6 +13,10 @@ import { addDays, nightsBetween, zonedToUtcIso } from '../lib/time';
 import { ListingGroupPage } from '../features/listing-group/listing-group-page';
 import { reviewListResponseSchema } from '@booking/contracts';
 import { publicGetData } from '../lib/api.server';
+
+const LISTING_DETAIL_CONCURRENCY = 4;
+const PACKAGE_AVAILABILITY_CONCURRENCY = 3;
+const RELATED_PAGE_SIZE = 8;
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   const group = loaderData?.group;
@@ -37,25 +42,31 @@ async function safe<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
-  const [group, catalogCandidates, provinces, reviews] = await Promise.all([
-    fetchListingGroup(request, params.groupSlug),
-    safe(fetchListings(request, new URLSearchParams())),
+  const group = await fetchListingGroup(request, params.groupSlug);
+  if (!group) throw new Response('Listing group not found', { status: 404 });
+
+  const relatedSearch = new URLSearchParams({
+    type: group.listingTypeSlug,
+    pageSize: String(RELATED_PAGE_SIZE),
+  });
+  const [catalogCandidates, provinces, reviews] = await Promise.all([
+    safe(fetchListings(request, relatedSearch)),
     loadAdministrativeProvinces(request),
     publicGetData(request, '/public/reviews', {
       query: { target: 'group', slug: params.groupSlug, page: 1, pageSize: 6, sort: 'newest' },
       schema: reviewListResponseSchema,
     }).catch(() => null),
   ]);
-  if (!group) throw new Response('Listing group not found', { status: 404 });
   const state = parseSearchState(url.searchParams);
   const fixedPackages = group.bookingSelection === 'fixed_packages';
   const hasAvailabilityFilter = fixedPackages
     ? state.hasDateSelection
     : (state.mode === 'hourly' && state.hasDateSelection) ||
       (state.mode === 'daily' && state.hasDailyRange);
-  const children = group.listings.slice(0, 20);
-  const options = await Promise.all(
-    children.map(async (child) => {
+  const options = await mapWithConcurrency(
+    group.listings,
+    LISTING_DETAIL_CONCURRENCY,
+    async (child) => {
       const detail = await safe(fetchListing(request, child.slug));
       if (!detail) return null;
       if (!hasAvailabilityFilter) {
@@ -76,8 +87,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       if (state.mode === 'hourly') {
         if (detail.bookingSelection === 'fixed_packages') {
           const packages = publicPackages(detail.modeConfig.hourly, 'durationMinutes');
-          const results = await Promise.all(
-            packages.map(async (item) => ({
+          const results = await mapWithConcurrency(
+            packages,
+            PACKAGE_AVAILABILITY_CONCURRENCY,
+            async (item) => ({
               item,
               availability: await safe(
                 fetchAvailability(request, child.slug, {
@@ -87,7 +100,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
                   packageId: item.id,
                 }),
               ),
-            })),
+            }),
           );
           const availableResults = results.flatMap((result) => {
             const slots =
@@ -178,8 +191,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       const daily = (detail.modeConfig.daily ?? {}) as Record<string, unknown>;
       if (detail.bookingSelection === 'fixed_packages') {
         const packages = publicPackages(daily, 'durationDays');
-        const results = await Promise.all(
-          packages.map(async (item) => ({
+        const results = await mapWithConcurrency(
+          packages,
+          PACKAGE_AVAILABILITY_CONCURRENCY,
+          async (item) => ({
             item,
             availability: await safe(
               fetchAvailability(request, child.slug, {
@@ -189,7 +204,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
                 packageId: item.id,
               }),
             ),
-          })),
+          }),
         );
         const cheapest = results
           .filter(
@@ -256,7 +271,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
         start: roomStart,
         end: roomEnd,
       };
-    }),
+    },
   );
   const roomOptions = options.filter(
     (option): option is NonNullable<typeof option> => option !== null,

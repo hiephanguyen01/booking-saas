@@ -10,6 +10,7 @@ import { PackageListingPage } from '../features/packages/package-listing-page';
 import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
 import { fetchAvailability } from '../lib/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '../lib/catalog.server';
+import { canOffsetDateOnly, isValidDateOnly } from '../lib/date-only';
 import { normalizeDailyRange } from '../lib/daily-range';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
@@ -32,6 +33,10 @@ function pickMode(
   }
 
   return enabled[0] ?? 'hourly';
+}
+
+function validDateOr(value: string | null, fallback: string, offsetDays = 0): string {
+  return value && canOffsetDateOnly(value, offsetDays) ? value : fallback;
 }
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
@@ -93,7 +98,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   if (requiresPackage && !packageId) {
     availabilityPromise = null;
   } else if (mode === 'hourly') {
-    const day = searchParams.get('day') || searchParams.get('date') || today;
+    const day = validDateOr(searchParams.get('day') ?? searchParams.get('date'), today);
     availabilityPromise = fetchAvailability(request, params.listingSlug, {
       mode,
       from: day,
@@ -101,7 +106,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       ...(packageId ? { packageId } : {}),
     });
   } else if (mode === 'daily') {
-    const anchor = searchParams.get('from') || today;
+    const anchor = validDateOr(searchParams.get('from'), today, 30);
     availabilityPromise = fetchAvailability(request, params.listingSlug, {
       mode,
       from: anchor,
@@ -109,8 +114,8 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       ...(packageId ? { packageId } : {}),
     });
   } else {
-    const from = (searchParams.get('from') || today).slice(0, 10);
-    const to = (searchParams.get('to') || from).slice(0, 10);
+    const from = validDateOr(searchParams.get('from'), today);
+    const to = validDateOr(searchParams.get('to'), from);
     availabilityPromise = fetchAvailability(request, params.listingSlug, { mode, from, to });
   }
 
@@ -150,7 +155,14 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     const date = searchParams.get('date');
     const startTime = searchParams.get('startTime');
     const endTime = searchParams.get('endTime');
-    if (availability && date && startTime && endTime && startTime < endTime) {
+    if (
+      availability &&
+      date &&
+      isValidDateOnly(date) &&
+      startTime &&
+      endTime &&
+      startTime < endTime
+    ) {
       selectionStart = zonedToUtcIso(date, startTime, availability.timezone);
       selectionEnd = zonedToUtcIso(date, endTime, availability.timezone);
     }
@@ -224,7 +236,11 @@ function isSelectionAvailable(
   if (availability.mode !== 'daily') return false;
   const from = searchParams.get('from');
   if (fixedPackage) {
-    return availability.days.some((day) => day.date === from && day.status === 'available');
+    return Boolean(
+      from &&
+        isValidDateOnly(from) &&
+        availability.days.some((day) => day.date === from && day.status === 'available'),
+    );
   }
   const to = searchParams.get('to');
   const range = normalizeDailyRange(from ?? undefined, to ?? undefined);

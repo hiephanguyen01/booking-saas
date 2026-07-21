@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { apiGet } from '../lib/api.server';
 import { getOptionalAuth } from '../lib/auth.server';
 import { requestBookingOtp } from '../lib/booking.server';
+import { storefrontEnv } from '../lib/env.server';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import { readRecentCodes } from '../lib/recent.server';
@@ -27,6 +28,7 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const recentPromise = readRecentCodes(request);
   const auth = getOptionalAuth();
   let myBookings: BookingResponse[] = [];
   if (auth) {
@@ -40,7 +42,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     );
     if (result.ok && result.data) myBookings = result.data;
   }
-  return { recent: readRecentCodes(request), myBookings };
+  return { recent: await recentPromise, myBookings };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -67,7 +69,7 @@ export async function action({ request }: Route.ActionArgs) {
         sent: false,
         code,
         devOtp: null,
-        error: result.error ?? 'INVALID_CODE',
+        error: 'INVALID_CODE',
         fieldErrors: null,
       },
       { status: errorStatus(result.status) },
@@ -76,7 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
   return data({
     sent: true,
     code,
-    devOtp: result.data?.devOtp ?? null,
+    devOtp: storefrontEnv.production ? null : (result.data?.devOtp ?? null),
     error: null,
     fieldErrors: null,
   });
@@ -98,66 +100,66 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
           <p className="mt-3 text-base leading-7 text-muted-foreground">{t('lookup.subtitle')}</p>
         </header>
 
-      {myBookings.length > 0 ? (
-        <section
-          className="mt-8 rounded-sm border border-border bg-card p-5 shadow-sm sm:p-6"
-          aria-labelledby="my-bookings-title"
-        >
-          <div>
-            <h2 id="my-bookings-title" className="font-semibold text-foreground">
-              {t('lookup.myBookingsTitle')}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t('lookup.myBookingsDescription')}
-            </p>
-          </div>
-          <ul className="mt-5 divide-y divide-border overflow-hidden rounded-sm border border-border">
-            {myBookings.map((booking) => (
-              <li key={booking.id}>
-                <Link
-                  to={storefrontPaths.booking(locale, booking.code)}
-                  className="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                >
-                  <span>
-                    <span className="block font-mono text-sm font-semibold">{booking.code}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {dateLabelInTz(booking.startUtc, DEFAULT_TZ, locale)},{' '}
-                      {timeInTz(booking.startUtc, DEFAULT_TZ)}
+        {myBookings.length > 0 ? (
+          <section
+            className="mt-8 rounded-sm border border-border bg-card p-5 shadow-sm sm:p-6"
+            aria-labelledby="my-bookings-title"
+          >
+            <div>
+              <h2 id="my-bookings-title" className="font-semibold text-foreground">
+                {t('lookup.myBookingsTitle')}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t('lookup.myBookingsDescription')}
+              </p>
+            </div>
+            <ul className="mt-5 divide-y divide-border overflow-hidden rounded-sm border border-border">
+              {myBookings.map((booking) => (
+                <li key={booking.id}>
+                  <Link
+                    to={storefrontPaths.booking(locale, booking.code)}
+                    className="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    <span>
+                      <span className="block font-mono text-sm font-semibold">{booking.code}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {dateLabelInTz(booking.startUtc, DEFAULT_TZ, locale)},{' '}
+                        {timeInTz(booking.startUtc, DEFAULT_TZ)}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 rounded-sm bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                    {t(`statusLabels.${booking.status}`)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+                    <span className="shrink-0 rounded-sm bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                      {t(`statusLabels.${booking.status}`)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
-      <Card className="mt-6 gap-0 rounded-sm border-border py-0 shadow-sm sm:mt-8">
-        <CardContent className="p-5 sm:p-8">
-          <div className="mb-7">
-            <h2 className="text-lg font-semibold text-foreground">{t('lookup.formTitle')}</h2>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              {t('lookup.formDescription')}
-            </p>
+        <Card className="mt-6 gap-0 rounded-sm border-border py-0 shadow-sm sm:mt-8">
+          <CardContent className="p-5 sm:p-8">
+            <div className="mb-7">
+              <h2 className="text-lg font-semibold text-foreground">{t('lookup.formTitle')}</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                {t('lookup.formDescription')}
+              </p>
+            </div>
+            {sent ? (
+              <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} locale={locale} />
+            ) : (
+              <RequestForm
+                error={actionData?.error ?? null}
+                fieldErrors={actionData?.fieldErrors ?? null}
+              />
+            )}
+          </CardContent>
+          <div className="border-t border-border bg-muted/30 px-5 py-4 text-sm leading-6 text-muted-foreground sm:px-8">
+            {t('lookup.privacyNote')}
           </div>
-          {sent ? (
-            <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} locale={locale} />
-          ) : (
-            <RequestForm
-              error={actionData?.error ?? null}
-              fieldErrors={actionData?.fieldErrors ?? null}
-            />
-          )}
-        </CardContent>
-        <div className="border-t border-border bg-muted/30 px-5 py-4 text-sm leading-6 text-muted-foreground sm:px-8">
-          {t('lookup.privacyNote')}
-        </div>
-      </Card>
+        </Card>
 
-      <RecentList recent={recent} locale={locale} />
+        <RecentList recent={recent} locale={locale} />
       </div>
     </div>
   );

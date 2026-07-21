@@ -1,10 +1,19 @@
 import { createClient } from 'redis';
 import { storefrontEnv } from './env.server';
 
+const DELETE_IF_VALUE_SCRIPT = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+end
+return 0
+`;
+
 export interface RedisJsonStore {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttlSeconds: number): Promise<void>;
   delete(key: string): Promise<void>;
+  setIfAbsent(key: string, value: string, ttlMs: number): Promise<boolean>;
+  deleteIfValue(key: string, value: string): Promise<void>;
   ping(): Promise<void>;
 }
 
@@ -38,6 +47,15 @@ export const storefrontRedisStore: RedisJsonStore = {
   },
   async delete(key) {
     await (await client()).del(key);
+  },
+  async setIfAbsent(key, value, ttlMs) {
+    const result = await (await client()).set(key, value, { NX: true, PX: ttlMs });
+    return result === 'OK';
+  },
+  async deleteIfValue(key, value) {
+    await (
+      await client()
+    ).sendCommand(['EVAL', DELETE_IF_VALUE_SCRIPT, '1', key, value]);
   },
   async ping() {
     await (await client()).ping();

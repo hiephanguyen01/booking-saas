@@ -29,6 +29,8 @@ export const enCheckout = {
   invalidSlot: 'The selected schedule is invalid. Please pick again.',
   packageUnavailable: 'This package changed or is no longer available.',
   selectPackageAgain: 'Choose another package',
+  bookingFailed: 'We could not create the booking right now. Please try again.',
+  paymentFailed: 'We could not start payment right now. Please try again.',
   creating: 'Creating booking…',
   dueNow: 'Due now',
   deposit: 'Deposit',
