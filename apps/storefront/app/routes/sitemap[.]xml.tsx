@@ -58,10 +58,10 @@ async function fetchAllListingPaths(request: Request, typeSlug: string): Promise
       }),
     );
     paths.push(
-      ...result.items.map(
-        (listing) =>
-          `/${listing.kind === 'group' ? 'g' : 'l'}/${encodeURIComponent(listing.slug)}`,
-      ),
+      ...result.items.flatMap((listing) => [
+        `/${listing.kind === 'group' ? 'g' : 'l'}/${encodeURIComponent(listing.slug)}`,
+        `/p/${encodeURIComponent(listing.partnerSlug)}`,
+      ]),
     );
     totalPages = result.pagination.totalPages;
     page += 1;

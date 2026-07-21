@@ -45,6 +45,14 @@ export interface ListingGroupRecord {
   ratingAvg: number | null;
   reviewCount: number;
   bookingCount: number;
+  partnerPublic: {
+    name: string;
+    slug: string;
+    status: 'pending' | 'approved' | 'suspended';
+    verifiedAt: Date | null;
+    createdAt: Date;
+    logoUrl: string | null;
+  };
   /** The post's items, reduced to what the readiness/price aggregates need. */
   children: ListingGroupChildFacts[];
   createdAt: Date;

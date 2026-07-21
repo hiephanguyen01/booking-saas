@@ -133,6 +133,33 @@ enum ListingStructure {
   @@map("listing_structure")
 }
 
+enum ContentReportTarget {
+  listing
+  group
+
+  @@map("content_report_target")
+}
+
+enum ContentReportReason {
+  misleading
+  fraud_or_scam
+  prohibited_content
+  contact_or_off_platform
+  duplicate_or_spam
+  other
+
+  @@map("content_report_reason")
+}
+
+enum ContentReportStatus {
+  open
+  reviewing
+  resolved
+  dismissed
+
+  @@map("content_report_status")
+}
+
 enum BookingSelection {
   flexible_duration
   fixed_packages
@@ -471,6 +498,8 @@ model User {
   reviewsWritten        Review[]         @relation("ReviewCustomer")
   reviewRepliesAuthored ReviewReply[]    @relation("ReviewReplyAuthor")
   favorites             Favorite[]       @relation("FavoriteCustomer")
+  contentReports        ContentReport[]  @relation("ContentReportReporter")
+  contentReportsHandled ContentReport[]  @relation("ContentReportHandler")
 
   @@map("users")
 }
@@ -632,6 +661,7 @@ model Tenant {
   reviews                   Review[]
   reviewReplies             ReviewReply[]
   favorites                 Favorite[]
+  contentReports            ContentReport[]
   payoutAllocations         PayoutAllocation[]
   promotions                Promotion[]
   affiliates                Affiliate[]
@@ -755,6 +785,7 @@ model Partner {
   reviews                   Review[]
   reviewReplies             ReviewReply[]
   favorites                 Favorite[]
+  contentReports            ContentReport[]
   cancellationPolicies      CancellationPolicy[]  @relation("PartnerPolicies")
   defaultCancellationPolicy CancellationPolicy?   @relation("PartnerDefaultPolicy", fields: [defaultCancellationPolicyId], references: [id], onDelete: SetNull)
 
@@ -1204,6 +1235,39 @@ model Favorite {
   @@index([listingId])
   @@index([groupId])
   @@map("favorites")
+}
+
+/// Customer-submitted moderation signal. Target and identity labels are snapshotted
+/// so a tenant can still audit a report after content or accounts are removed.
+model ContentReport {
+  id              String              @id @default(uuid(7)) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  reporterUserId  String?             @map("reporter_user_id") @db.Uuid
+  reporterName    String              @map("reporter_name")
+  partnerId       String?             @map("partner_id") @db.Uuid
+  partnerName     String              @map("partner_name")
+  targetType      ContentReportTarget @map("target_type")
+  targetId        String              @map("target_id") @db.Uuid
+  targetTitle     String              @map("target_title")
+  targetSlug      String              @map("target_slug")
+  reason          ContentReportReason
+  details         String?
+  status          ContentReportStatus @default(open)
+  handledByUserId String?             @map("handled_by_user_id") @db.Uuid
+  resolutionNote  String?             @map("resolution_note")
+  handledAt       DateTime?           @map("handled_at") @db.Timestamptz(6)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reporter  User?    @relation("ContentReportReporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  partner   Partner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  handledBy User?    @relation("ContentReportHandler", fields: [handledByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, targetType, targetId])
+  @@index([reporterUserId, createdAt(sort: Desc)])
+  @@map("content_reports")
 }
 
 /// Audit mirror of Redis holds (Redis is the source of truth) — §7.5.

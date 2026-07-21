@@ -166,6 +166,8 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
       identityVerified: l.partnerVerifiedAt !== null,
       partnerActiveSince: l.partnerActiveSince.toISOString(),
       partnerName: l.partnerName,
+      partnerSlug: l.partnerSlug,
+      partnerLogoUrl: l.partnerLogoUrl,
       completedBookings: l.completedBookings,
       avgApprovalResponseSeconds: l.avgApprovalResponseSeconds,
     },

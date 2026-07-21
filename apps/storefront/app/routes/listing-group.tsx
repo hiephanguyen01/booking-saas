@@ -13,10 +13,28 @@ import { addDays, nightsBetween, zonedToUtcIso } from '../lib/time';
 import { ListingGroupPage } from '../features/listing-group/listing-group-page';
 import { reviewListResponseSchema } from '@booking/contracts';
 import { publicGetData } from '../lib/api.server';
+import { submitContentReport } from '../features/content-reports/content-report.server';
 
 const LISTING_DETAIL_CONCURRENCY = 4;
 const PACKAGE_AVAILABILITY_CONCURRENCY = 3;
 const RELATED_PAGE_SIZE = 8;
+
+export async function action({ request, params }: Route.ActionArgs) {
+  const group = await fetchListingGroup(request, params.groupSlug);
+  return submitContentReport(request, 'group', group?.id ?? '');
+}
+
+export function shouldRevalidate({
+  actionResult,
+  defaultShouldRevalidate,
+}: {
+  actionResult: unknown;
+  defaultShouldRevalidate: boolean;
+}) {
+  return actionResult && typeof actionResult === 'object' && 'reportOk' in actionResult
+    ? false
+    : defaultShouldRevalidate;
+}
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   const group = loaderData?.group;

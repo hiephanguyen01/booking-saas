@@ -44,6 +44,8 @@ export const dashboardPaths = {
     disputes: tenantPath('/finance/disputes'),
     reviews: tenantPath('/reviews'),
     favorites: tenantPath('/favorites'),
+    contentReports: tenantPath('/content-reports'),
+    contentReport: (reportId: string) => tenantPath(`/content-reports/${segment(reportId)}`),
     transactions: tenantPath('/finance/transactions'),
     promotions: tenantPath('/promotions'),
     promotion: (promotionId: string) => tenantPath(`/promotions/${segment(promotionId)}`),

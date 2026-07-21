@@ -21,6 +21,7 @@ const toNonEmptyStrings = (value: unknown): string[] =>
 export const publicCatalogSearchQuerySchema = z
   .object({
     type: z.string().trim().min(1).max(100),
+    partner: z.preprocess(emptyToUndefined, z.string().trim().min(1).max(100).optional()),
     mode: z.preprocess(emptyToUndefined, z.enum(['hourly', 'daily', 'inventory']).optional()),
     q: z.string().trim().max(200).default(''),
     location: z.preprocess(toNonEmptyStrings, z.array(z.string().max(200)).max(30)),
@@ -158,6 +159,7 @@ export const publicCatalogSearchQuerySchema = z
     }
     return {
       type: query.type,
+      partner: query.partner,
       mode: query.mode,
       q: query.q,
       location: query.location,
@@ -210,6 +212,7 @@ export const publicCatalogSearchItemSchema = z.object({
   title: z.string(),
   slug: z.string(),
   listingTypeSlug: z.string(),
+  partnerSlug: z.string(),
   photos: z.array(z.string()),
   address: z.string().nullable(),
   provinceCode: z.string().nullable(),
@@ -233,6 +236,7 @@ export const publicCatalogSearchResponseSchema = z.object({
   type: publicListingTypeResponseSchema,
   applied: z.object({
     type: z.string(),
+    partner: z.string().optional(),
     mode: z.enum(['hourly', 'daily', 'inventory']).optional(),
     q: z.string(),
     location: z.array(z.string()),

@@ -32,7 +32,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const location = formatListingLocation(group, 'full');
-  const trust = roomOptions[0]?.detail.trust ?? null;
+  const trust = group.trust;
   const minimumPrice = minimumRoomPrice(
     roomOptions.filter((option) => option.browsing || option.available),
   );

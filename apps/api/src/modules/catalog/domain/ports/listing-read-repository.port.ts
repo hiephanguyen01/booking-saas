@@ -8,6 +8,7 @@ export interface PublicListingRecord {
   title: string;
   slug: string;
   listingTypeSlug: string;
+  partnerSlug: string;
   attributes: Record<string, unknown>;
   photos: unknown[];
   modeConfig: Record<string, unknown>;
@@ -75,6 +76,7 @@ export interface InventoryUsageRecord {
 
 export interface PublicListingFilter {
   typeSlug?: string;
+  partnerSlug?: string;
   category?: string;
   q?: string;
   attrFilters: Record<string, string>;

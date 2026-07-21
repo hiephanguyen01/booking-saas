@@ -20,6 +20,7 @@ export const storefrontPaths = {
   catalog: (locale: Locale, typeSlug: string) => `/${locale}/t/${segment(typeSlug)}`,
   listing: (locale: Locale, listingSlug: string) => `/${locale}/l/${segment(listingSlug)}`,
   listingGroup: (locale: Locale, groupSlug: string) => `/${locale}/g/${segment(groupSlug)}`,
+  provider: (locale: Locale, partnerSlug: string) => `/${locale}/p/${segment(partnerSlug)}`,
   favoritesToggle: (locale: Locale) => `/${locale}/favorites/toggle`,
   checkout: (locale: Locale) => `/${locale}/checkout`,
   bookings: (locale: Locale) => `/${locale}/bookings`,

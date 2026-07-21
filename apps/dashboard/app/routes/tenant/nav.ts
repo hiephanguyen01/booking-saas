@@ -14,6 +14,7 @@ import {
   Star,
   Heart,
   Scale,
+  ShieldAlert,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
 import { dashboardPaths } from '~/constants/paths';
@@ -81,6 +82,12 @@ export const tenantNavSections: DashboardNavSection[] = [
         to: dashboardPaths.tenant.favorites,
         icon: Heart,
         permission: 'tenant.favorites.read',
+      },
+      {
+        title: 'Báo cáo nội dung',
+        to: dashboardPaths.tenant.contentReports,
+        icon: ShieldAlert,
+        permission: 'tenant.listings.publish',
       },
     ],
   },

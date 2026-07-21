@@ -17,8 +17,29 @@ import { useOutletContext } from 'react-router';
 import type { StorefrontContext } from '../root';
 import { jsonLd } from '../lib/seo';
 import { publicGetData } from '../lib/api.server';
+import { submitContentReport } from '../features/content-reports/content-report.server';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
+
+export async function action({ request, params }: Route.ActionArgs) {
+  return submitContentReport(
+    request,
+    'listing',
+    params.listingSlug ? ((await fetchListing(request, params.listingSlug))?.id ?? '') : '',
+  );
+}
+
+export function shouldRevalidate({
+  actionResult,
+  defaultShouldRevalidate,
+}: {
+  actionResult: unknown;
+  defaultShouldRevalidate: boolean;
+}) {
+  return actionResult && typeof actionResult === 'object' && 'reportOk' in actionResult
+    ? false
+    : defaultShouldRevalidate;
+}
 
 function pickMode(
   requested: string | null,
@@ -238,8 +259,8 @@ function isSelectionAvailable(
   if (fixedPackage) {
     return Boolean(
       from &&
-        isValidDateOnly(from) &&
-        availability.days.some((day) => day.date === from && day.status === 'available'),
+      isValidDateOnly(from) &&
+      availability.days.some((day) => day.date === from && day.status === 'available'),
     );
   }
   const to = searchParams.get('to');

@@ -179,7 +179,7 @@ export class PrismaListingRepository implements IListingRepository {
 
   async findPublicBySlug(tx: PrismaTx, slug: string): Promise<PublicListingRecord | null> {
     const l = await tx.listing.findFirst({
-      where: { slug, status: 'published' },
+      where: { slug, status: 'published', partner: { status: 'approved' } },
       include: {
         ...LISTING_INCLUDE,
         resource: { select: { timezone: true } },
@@ -191,6 +191,8 @@ export class PrismaListingRepository implements IListingRepository {
         partner: {
           select: {
             name: true,
+            slug: true,
+            businessInfo: true,
             verificationStatus: true,
             verifiedAt: true,
             createdAt: true,
@@ -223,6 +225,11 @@ export class PrismaListingRepository implements IListingRepository {
           ? { title: l.group.title, slug: l.group.slug }
           : null,
       partnerName: l.partner.name,
+      partnerSlug: l.partner.slug,
+      partnerLogoUrl:
+        typeof (l.partner.businessInfo as Record<string, unknown>)['logoUrl'] === 'string'
+          ? ((l.partner.businessInfo as Record<string, unknown>)['logoUrl'] as string)
+          : null,
       partnerVerifiedAt: l.partner.verifiedAt,
       partnerActiveSince: l.partner.createdAt,
       completedBookings,

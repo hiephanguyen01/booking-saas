@@ -79,6 +79,7 @@ export class SearchPublicCatalogUseCase {
 
       const candidates = await this.listings.findPublished(tx, {
         typeSlug: type.slug,
+        partnerSlug: query.partner,
         q: query.q || undefined,
         attrFilters: {},
         exceptionFrom:
@@ -575,6 +576,7 @@ export class SearchPublicCatalogUseCase {
         title: g?.title ?? l.title,
         slug: g?.slug ?? l.slug,
         listingTypeSlug: l.listingTypeSlug,
+        partnerSlug: l.partnerSlug,
         photos: stringArrayRaw(g?.photos ?? l.photos),
         address: g?.address ?? l.address,
         provinceCode: g?.provinceCode ?? l.provinceCode,
