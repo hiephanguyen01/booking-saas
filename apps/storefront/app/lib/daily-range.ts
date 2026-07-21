@@ -1,4 +1,4 @@
-import { isValidDateOnly } from './date-only';
+import { canOffsetDateOnly, isValidDateOnly } from './date-only';
 import { addDays, nightsBetween } from './time';
 
 export interface NormalizedDailyRange {
@@ -16,6 +16,8 @@ export function normalizeDailyRange(
   if (!from || !to || !isValidDateOnly(from) || !isValidDateOnly(to) || to < from) {
     return null;
   }
+  if (to === from && !canOffsetDateOnly(from, 1)) return null;
+
   const effectiveTo = to === from ? addDays(from, 1) : to;
   return {
     selectedFrom: from,
