@@ -1,5 +1,7 @@
-import { gzipSync } from 'node:zlib';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { setTimeout as delay } from 'node:timers/promises';
+import { gzipSync } from 'node:zlib';
 import type {
   StorefrontSpanRecord,
   StorefrontTraceExporter,
@@ -34,6 +36,11 @@ interface ExportAttemptResult {
   retryable: boolean;
   retryAfterMs?: number;
   statusCode?: number;
+}
+
+interface OtlpHttpResponse {
+  statusCode: number;
+  retryAfter?: string;
 }
 
 function exporterLog(
@@ -105,11 +112,11 @@ function exportPayload(
   options: OtlpHttpTraceExporterOptions,
 ) {
   const resourceAttributes = {
+    ...options.resourceAttributes,
     'service.name': options.serviceName,
     'service.version': options.serviceVersion,
     'telemetry.sdk.language': 'nodejs',
     'telemetry.sdk.name': 'booking-storefront-native',
-    ...options.resourceAttributes,
   };
 
   return {
@@ -130,7 +137,7 @@ function exportPayload(
   };
 }
 
-function retryAfterMilliseconds(value: string | null): number | undefined {
+function retryAfterMilliseconds(value: string | undefined): number | undefined {
   if (!value) return undefined;
   const seconds = Number(value);
   if (Number.isFinite(seconds) && seconds >= 0) {
@@ -145,6 +152,58 @@ function retryDelayMilliseconds(attempt: number, retryAfterMs?: number): number 
   if (retryAfterMs !== undefined) return retryAfterMs;
   const exponential = Math.min(MAX_RETRY_DELAY_MS, 500 * 2 ** Math.max(0, attempt - 1));
   return exponential + Math.floor(Math.random() * 250);
+}
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function postOtlp(
+  endpoint: URL,
+  headers: Readonly<Record<string, string>>,
+  body: string | Buffer,
+  timeoutMs: number,
+): Promise<OtlpHttpResponse> {
+  return new Promise((resolve, reject) => {
+    const requestFactory = endpoint.protocol === 'https:' ? httpsRequest : httpRequest;
+    let settled = false;
+    const finish = (callback: () => void): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      callback();
+    };
+
+    const request = requestFactory(
+      endpoint,
+      {
+        method: 'POST',
+        headers,
+      },
+      (response) => {
+        response.resume();
+        response.once('end', () => {
+          finish(() =>
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              retryAfter: firstHeader(response.headers['retry-after']),
+            }),
+          );
+        });
+        response.once('error', (error) => finish(() => reject(error)));
+      },
+    );
+
+    const timeout = setTimeout(() => {
+      const error = new Error('OTLP trace export timed out');
+      error.name = 'TimeoutError';
+      request.destroy(error);
+    }, timeoutMs);
+    timeout.unref?.();
+
+    request.once('error', (error) => finish(() => reject(error)));
+    request.end(body);
+  });
 }
 
 export class OtlpHttpTraceExporter implements StorefrontTraceExporter {
@@ -213,8 +272,10 @@ export class OtlpHttpTraceExporter implements StorefrontTraceExporter {
 
   async #sendWithRetry(batch: readonly StorefrontSpanRecord[]): Promise<void> {
     let lastResult: ExportAttemptResult | undefined;
+    let attempts = 0;
 
     for (let attempt = 1; attempt <= MAX_EXPORT_ATTEMPTS; attempt += 1) {
+      attempts = attempt;
       lastResult = await this.#sendBatch(batch);
       if (lastResult.accepted) return;
       if (!lastResult.retryable || attempt === MAX_EXPORT_ATTEMPTS) break;
@@ -223,41 +284,38 @@ export class OtlpHttpTraceExporter implements StorefrontTraceExporter {
 
     exporterLog('error', 'trace.batch_export_failed', {
       batchSize: batch.length,
-      attempts: MAX_EXPORT_ATTEMPTS,
+      attempts,
       ...(lastResult?.statusCode ? { statusCode: lastResult.statusCode } : {}),
       retryable: lastResult?.retryable ?? true,
     });
   }
 
   async #sendBatch(batch: readonly StorefrontSpanRecord[]): Promise<ExportAttemptResult> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.#options.timeoutMs);
-    timeout.unref?.();
-
     try {
       const json = JSON.stringify(exportPayload(batch, this.#options));
       const compressed = this.#options.compression === 'gzip';
       const body = compressed ? gzipSync(json) : json;
-      const headers = new Headers(this.#options.headers);
-      headers.set('content-type', 'application/json');
-      headers.set('accept', 'application/json');
-      headers.set('user-agent', `booking-storefront-otlp/${this.#options.serviceVersion}`);
-      if (compressed) headers.set('content-encoding', 'gzip');
+      const headers: Record<string, string> = {
+        ...this.#options.headers,
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'content-length': String(Buffer.byteLength(body)),
+        'user-agent': `booking-storefront-otlp/${this.#options.serviceVersion}`,
+        ...(compressed ? { 'content-encoding': 'gzip' } : {}),
+      };
 
-      const response = await fetch(this.#options.endpoint, {
-        method: 'POST',
+      const response = await postOtlp(
+        this.#options.endpoint,
         headers,
         body,
-        signal: controller.signal,
-      });
-      await response.arrayBuffer().catch(() => undefined);
-
-      if (response.status === 200) return { accepted: true, retryable: false };
+        this.#options.timeoutMs,
+      );
+      if (response.statusCode === 200) return { accepted: true, retryable: false };
       return {
         accepted: false,
-        retryable: RETRYABLE_STATUS_CODES.has(response.status),
-        retryAfterMs: retryAfterMilliseconds(response.headers.get('retry-after')),
-        statusCode: response.status,
+        retryable: RETRYABLE_STATUS_CODES.has(response.statusCode),
+        retryAfterMs: retryAfterMilliseconds(response.retryAfter),
+        statusCode: response.statusCode,
       };
     } catch (error) {
       exporterLog('warn', 'trace.batch_export_attempt_failed', {
@@ -265,8 +323,6 @@ export class OtlpHttpTraceExporter implements StorefrontTraceExporter {
         batchSize: batch.length,
       });
       return { accepted: false, retryable: true };
-    } finally {
-      clearTimeout(timeout);
     }
   }
 
