@@ -4,6 +4,8 @@ import {
   autoCampaignSchema,
   createPartnerPromotionInputSchema,
   createPromotionInputSchema,
+  listPartnerPromotionsQuerySchema,
+  listPromotionsQuerySchema,
   promoUsageStatsResponseSchema,
   promotionCategoryOptionSchema,
   promotionDetailResponseSchema,
@@ -13,6 +15,10 @@ import {
   validatePromoInputSchema,
   validatePromoResponseSchema,
 } from '@booking/contracts';
+
+// Query params
+export class ListPromotionsQueryDto extends createZodDto(listPromotionsQuerySchema) {}
+export class ListPartnerPromotionsQueryDto extends createZodDto(listPartnerPromotionsQuerySchema) {}
 
 // Request bodies
 export class CreatePromotionDto extends createZodDto(createPromotionInputSchema) {}

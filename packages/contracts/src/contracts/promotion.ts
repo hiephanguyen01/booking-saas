@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import { paginationQuerySchema, uuidSchema } from './common';
 
 /** Discount codes (TONG-QUAN.md §12). Money is always a VND digit string on the wire. */
 const vndDigits = z.string().regex(/^\d+$/, 'Must be a non-negative VND integer string');
@@ -31,6 +31,20 @@ export type PromotionStatusInputDto = z.infer<typeof promotionStatusInputSchema>
 
 export const promotionStatusSchema = z.enum(['draft', 'active', 'paused', 'ended']);
 export type PromotionStatusDto = z.infer<typeof promotionStatusSchema>;
+
+/** `GET /tenant/promotions` — paginated; name/code search + status + created-at range. */
+export const listPromotionsQuerySchema = paginationQuerySchema.extend({
+  /** Case-insensitive search over promotion name / code. */
+  q: z.string().trim().max(200).optional(),
+  status: promotionStatusSchema.optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+export type ListPromotionsQuery = z.infer<typeof listPromotionsQuerySchema>;
+
+/** `GET /partner/promotions` — same filters, scoped to the partner's own promotions. */
+export const listPartnerPromotionsQuerySchema = listPromotionsQuerySchema;
+export type ListPartnerPromotionsQuery = z.infer<typeof listPartnerPromotionsQuerySchema>;
 
 /** Off-peak window (§12.1 Phase 2): the booking must start on one of `days` within [from, to). */
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM (24h)');
