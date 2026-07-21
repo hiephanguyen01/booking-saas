@@ -8,6 +8,10 @@ const LOWER_HEX_RE = /^[0-9a-f]+$/;
 const SIMPLE_TRACESTATE_KEY_RE = /^[a-z][a-z0-9_*/-]{0,255}$/;
 const MULTI_TENANT_TRACESTATE_KEY_RE =
   /^[a-z0-9][a-z0-9_*/-]{0,240}@[a-z][a-z0-9_*/-]{0,13}$/;
+const SAMPLED_FLAG = 0x01;
+const TRACE_RANDOMNESS_BITS = 56n;
+const TRACE_RANDOMNESS_SPACE = 1n << TRACE_RANDOMNESS_BITS;
+const SAMPLE_RATE_SCALE = 1_000_000n;
 
 export interface StorefrontTraceContext {
   traceId: string;
@@ -27,6 +31,7 @@ export interface StorefrontSpanRecord {
   spanId: string;
   parentSpanId?: string;
   traceFlags: string;
+  tracestate?: string;
   startedAt: string;
   durationMs: number;
   status: StorefrontSpanStatus;
@@ -35,9 +40,11 @@ export interface StorefrontSpanRecord {
 
 export interface StorefrontTraceExporter {
   export(span: StorefrontSpanRecord): void | Promise<void>;
+  forceFlush?(): void | Promise<void>;
 }
 
 let exporter: StorefrontTraceExporter | null = null;
+let rootSampleRate = 0;
 
 /**
  * Vendor-neutral registration point. A runtime integration may register an
@@ -48,11 +55,33 @@ export function registerStorefrontTraceExporter(next: StorefrontTraceExporter | 
   exporter = next;
 }
 
+/** Configure the parent-based, trace-ID-ratio root sampling decision. */
+export function configureStorefrontTraceSampling(sampleRate: number): void {
+  if (!Number.isFinite(sampleRate) || sampleRate < 0 || sampleRate > 1) {
+    throw new RangeError('Storefront trace sample rate must be between 0 and 1');
+  }
+  rootSampleRate = sampleRate;
+}
+
+export function isStorefrontTraceSampled(traceFlags: string): boolean {
+  const parsed = Number.parseInt(traceFlags, 16);
+  return Number.isFinite(parsed) && (parsed & SAMPLED_FLAG) === SAMPLED_FLAG;
+}
+
 /** Export failures are isolated from the request path and never fail a response. */
 export function exportStorefrontSpan(span: StorefrontSpanRecord): void {
-  if (!exporter) return;
+  if (!exporter || !isStorefrontTraceSampled(span.traceFlags)) return;
   try {
     void Promise.resolve(exporter.export(span)).catch(logExporterFailure);
+  } catch (error) {
+    logExporterFailure(error);
+  }
+}
+
+export async function forceFlushStorefrontTraceExporter(): Promise<void> {
+  if (!exporter?.forceFlush) return;
+  try {
+    await exporter.forceFlush();
   } catch (error) {
     logExporterFailure(error);
   }
@@ -79,6 +108,23 @@ function randomNonZeroHex(bytes: number): string {
   let value = zero;
   while (value === zero) value = randomBytes(bytes).toString('hex');
   return value;
+}
+
+function traceFlagsWithSampling(traceFlags: string, sampled: boolean): string {
+  const parsed = Number.parseInt(traceFlags, 16) & 0xff;
+  const next = sampled ? parsed | SAMPLED_FLAG : parsed & ~SAMPLED_FLAG;
+  return next.toString(16).padStart(2, '0');
+}
+
+function shouldSampleRootTrace(traceId: string): boolean {
+  if (rootSampleRate <= 0) return false;
+  if (rootSampleRate >= 1) return true;
+
+  // Use the trailing 56 trace-ID bits as a stable randomness source. A fixed
+  // decimal scale avoids unsafe Number conversion of the 56-bit range.
+  const randomness = BigInt(`0x${traceId.slice(-14)}`);
+  const scaledRate = BigInt(Math.round(rootSampleRate * Number(SAMPLE_RATE_SCALE)));
+  return randomness * SAMPLE_RATE_SCALE < TRACE_RANDOMNESS_SPACE * scaledRate;
 }
 
 function validTraceparent(value: string): {
@@ -153,19 +199,22 @@ function normalizeTracestate(value: string | null, hasValidTraceparent: boolean)
   return members.join(',');
 }
 
-/** Resolve an incoming remote parent or start a fresh trace when it is invalid. */
+/** Resolve an incoming remote parent or start a freshly sampled root trace. */
 export function resolveStorefrontTraceContext(headers: Headers): StorefrontTraceContext {
   const parsed = validTraceparent(headers.get('traceparent') ?? '');
   const tracestate = normalizeTracestate(headers.get('tracestate'), Boolean(parsed));
 
   if (!parsed) {
+    const traceId = randomNonZeroHex(16);
     return {
-      traceId: randomNonZeroHex(16),
+      traceId,
       spanId: randomNonZeroHex(8),
-      traceFlags: '00',
+      traceFlags: traceFlagsWithSampling('00', shouldSampleRootTrace(traceId)),
     };
   }
 
+  // Parent-based sampling preserves the upstream decision and guarantees all
+  // Storefront and backend child spans in the trace stay coherent.
   return {
     traceId: parsed.traceId,
     spanId: randomNonZeroHex(8),
