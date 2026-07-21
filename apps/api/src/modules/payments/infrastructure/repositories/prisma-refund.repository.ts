@@ -26,6 +26,9 @@ function toRecord(r: Row): RefundRecord {
     reason: r.reason,
     affectsBookingStatus: r.affectsBookingStatus,
     evidence: (r.evidence as RefundRecord['evidence']) ?? null,
+    executionMode: r.executionMode,
+    dueAt: r.dueAt,
+    completedAt: r.completedAt,
   };
 }
 
@@ -44,6 +47,9 @@ export class PrismaRefundRepository implements IRefundRepository {
           affectsBookingStatus: data.affectsBookingStatus,
           reason: data.reason ?? null,
           gatewayRefundId: data.gatewayRefundId ?? null,
+          executionMode: data.executionMode ?? 'manual',
+          dueAt: data.dueAt ?? null,
+          completedAt: data.status === 'succeeded' ? new Date() : null,
         },
       }),
     );
@@ -58,6 +64,34 @@ export class PrismaRefundRepository implements IRefundRepository {
     return refund ? toRecord(refund) : null;
   }
 
+  async manualReferenceExists(tx: PrismaTx, tenantId: string, reference: string): Promise<boolean> {
+    return (
+      (await tx.refund.count({
+        where: { tenantId, evidence: { path: ['reference'], equals: reference } },
+      })) > 0
+    );
+  }
+
+  async completeAutomatic(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null> {
+    await tx.refund.updateMany({
+      where: { id, status: 'pending', executionMode: 'automatic' },
+      data: { status: 'succeeded', gatewayRefundId, completedAt: new Date() },
+    });
+    return this.findById(tx, id);
+  }
+
+  async requireManual(tx: PrismaTx, id: string, dueAt: Date): Promise<RefundRecord | null> {
+    await tx.refund.updateMany({
+      where: { id, status: 'pending', executionMode: 'automatic' },
+      data: { status: 'manual_required', executionMode: 'manual', dueAt },
+    });
+    return this.findById(tx, id);
+  }
+
   async markSucceeded(
     tx: PrismaTx,
     id: string,
@@ -65,7 +99,7 @@ export class PrismaRefundRepository implements IRefundRepository {
   ): Promise<RefundRecord | null> {
     const changed = await tx.refund.updateMany({
       where: { id, status: { in: ['pending', 'manual_required'] } },
-      data: { status: 'succeeded', evidence },
+      data: { status: 'succeeded', evidence, completedAt: new Date() },
     });
     if (changed.count === 0) return this.findById(tx, id);
     return this.findById(tx, id);

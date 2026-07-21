@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -10,9 +11,9 @@ import {
   type IRefundRepository,
 } from '../../domain/ports/refund-repository.port';
 import {
-  GATEWAY_REGISTRY,
-  type GatewayRegistryPort,
-} from '../../domain/ports/gateway-registry.port';
+  GATEWAY_CONFIG_REPOSITORY,
+  type IGatewayConfigRepository,
+} from '../../domain/ports/gateway-config-repository.port';
 
 /**
  * Execute a refund (§11.3). Triggered by `booking.cancelled` / `booking.returned`
@@ -25,7 +26,7 @@ export class ExecuteRefundUseCase {
   constructor(
     @Inject(PAYMENT_REPOSITORY) private readonly payments: IPaymentRepository,
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
-    @Inject(GATEWAY_REGISTRY) private readonly registry: GatewayRegistryPort,
+    @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -47,24 +48,40 @@ export class ExecuteRefundUseCase {
       const payment = await this.payments.findSucceededByBooking(tx, bookingId);
       if (!payment) return; // nothing was paid to refund
 
-      const gateway = await this.registry.resolveForTenant(tx, tenantId, payment.gateway);
-      const res = await gateway.refund({
-        gatewayTxnId: payment.gatewayTxnId ?? payment.gatewayOrderRef ?? payment.id,
-        amountVnd: amount,
-        reason,
-      });
+      if (amount > payment.amount) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'REFUND_AMOUNT_EXCEEDS_PAYMENT',
+          message: 'Refund amount exceeds the captured payment',
+        });
+      }
+
+      const config = await this.configs.findActive(tx, tenantId);
+      const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
+      const automatic =
+        settings.refundStrategy === 'automatic_preferred' &&
+        payment.gateway === 'sepay' &&
+        payment.paymentMethod === 'CARD' &&
+        amount === payment.amount &&
+        reason !== 'security_deposit';
+
+      const dueAt = automatic
+        ? null
+        : new Date(Date.now() + settings.manualRefundSlaHours * 60 * 60 * 1000);
       const refund = await this.refunds.create(tx, tenantId, {
         paymentId: payment.id,
         bookingId,
         amount,
-        status: res.supported ? 'succeeded' : 'manual_required',
+        status: automatic ? 'pending' : 'manual_required',
         affectsBookingStatus,
         reason,
-        gatewayRefundId: res.refundId ?? null,
+        gatewayRefundId: null,
+        executionMode: automatic ? 'automatic' : 'manual',
+        dueAt,
       });
       await this.outbox.emit(tx, {
         tenantId,
-        eventType: res.supported ? 'refund.completed' : 'refund.requested',
+        eventType: automatic ? 'refund.execution_requested' : 'refund.requested',
         payload: {
           refundId: refund.id,
           paymentId: payment.id,

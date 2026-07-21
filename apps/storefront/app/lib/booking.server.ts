@@ -9,6 +9,8 @@ import type {
   CheckoutResponse,
   CreateBookingInput,
   PaymentStatusResponse,
+  PublicPaymentOptions,
+  CustomerPaymentMethod,
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
@@ -19,6 +21,7 @@ import {
   cancelBookingResponseSchema,
   checkoutResponseSchema,
   paymentStatusResponseSchema,
+  publicPaymentOptionsSchema,
   validatePromoResponseSchema,
 } from '@booking/contracts';
 import { optionalAuthPost, publicGetData } from './api.server';
@@ -38,11 +41,9 @@ export function fetchAvailability(
   query: { mode: AvailabilityMode; from: string; to: string; packageId?: string },
 ): Promise<AvailabilityResponse> {
   const qs = new URLSearchParams(query).toString();
-  return publicGetData(
-    request,
-    `/public/listings/${encodeURIComponent(slug)}/availability?${qs}`,
-    { schema: availabilityResponseSchema },
-  );
+  return publicGetData(request, `/public/listings/${encodeURIComponent(slug)}/availability?${qs}`, {
+    schema: availabilityResponseSchema,
+  });
 }
 
 // ── Promotions (§12.3) ──────────────────────────────────────────────────────────
@@ -82,13 +83,20 @@ export function createBooking(
 export function checkoutBooking(
   request: Request,
   bookingId: string,
+  paymentMethod: CustomerPaymentMethod,
 ): Promise<ApiResult<CheckoutResponse>> {
   return optionalAuthPost(
     request,
     `/public/bookings/${encodeURIComponent(bookingId)}/checkout`,
-    {},
+    { paymentMethod },
     { schema: checkoutResponseSchema },
   );
+}
+
+export function fetchPaymentOptions(request: Request): Promise<PublicPaymentOptions> {
+  return publicGetData(request, '/public/payment-options', {
+    schema: publicPaymentOptionsSchema,
+  });
 }
 
 export function fetchBookingByCode(
@@ -123,12 +131,9 @@ export function cancelBooking(
   code: string,
   body: { reason?: string; otp?: string },
 ): Promise<ApiResult<CancelBookingResponse>> {
-  return optionalAuthPost(
-    request,
-    `/public/bookings/${encodeURIComponent(code)}/cancel`,
-    body,
-    { schema: cancelBookingResponseSchema },
-  );
+  return optionalAuthPost(request, `/public/bookings/${encodeURIComponent(code)}/cancel`, body, {
+    schema: cancelBookingResponseSchema,
+  });
 }
 
 // ── Payments (§11) ──────────────────────────────────────────────────────────────

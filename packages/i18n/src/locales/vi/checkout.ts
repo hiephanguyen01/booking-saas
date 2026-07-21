@@ -35,14 +35,12 @@ export const viCheckout = {
   payment: {
     title: 'Thanh toán',
     method: 'Phương thức thanh toán',
-    payos: 'PayOS QRCode',
-    sepay: 'SePay',
     transfer: 'Chuyển khoản',
     internationalCard: 'Visa/Master/JCB',
-    domesticCard: 'Thẻ ATM nội địa',
+    domesticCard: 'Napas QR / Thẻ nội địa',
     soon: 'Sắp hỗ trợ',
-    handoffTitle: 'Đang mở SePay',
-    handoffDescription: 'Bạn sẽ được chuyển tới trang thanh toán bảo mật của SePay.',
+    handoffTitle: 'Đang mở cổng thanh toán',
+    handoffDescription: 'Bạn sẽ được chuyển tới trang thanh toán bảo mật.',
     handoffContinue: 'Tiếp tục thanh toán',
   },
   policy: {

@@ -7,7 +7,7 @@ import { NsI18n, useTranslation } from '../../../lib/i18n';
 
 type FormPostDestination = Extract<CheckoutDestination, { type: 'form_post' }>;
 
-/** Browser handoff required by SePay: submit the server-signed fields directly
+/** Browser handoff for form-post gateways: submit server-signed fields directly
  * to the gateway. No merchant credential is present in this payload. */
 export function PaymentHandoff({ destination }: { destination: FormPostDestination }) {
   const formRef = useRef<HTMLFormElement>(null);

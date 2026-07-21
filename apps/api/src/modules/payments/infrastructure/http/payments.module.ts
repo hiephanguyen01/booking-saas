@@ -27,6 +27,9 @@ import { ListTenantPaymentsUseCase } from '../../application/use-cases/list-tena
 import { ListPlatformPaymentsUseCase } from '../../application/use-cases/list-platform-payments.use-case';
 import { ConfirmManualRefundUseCase } from '../../application/use-cases/confirm-manual-refund.use-case';
 import { ListTenantRefundsUseCase } from '../../application/use-cases/list-tenant-refunds.use-case';
+import { UpdateGatewayPaymentSettingsUseCase } from '../../application/use-cases/update-gateway-payment-settings.use-case';
+import { GetPublicPaymentOptionsUseCase } from '../../application/use-cases/get-public-payment-options.use-case';
+import { ExecuteAutomaticRefundUseCase } from '../../application/use-cases/execute-automatic-refund.use-case';
 import { PublicPaymentController } from './public-payment.controller';
 import { WebhookController } from './webhook.controller';
 import { TenantGatewayController } from './tenant-gateway.controller';
@@ -61,6 +64,9 @@ import { PlatformPaymentController } from './platform-payment.controller';
     ListPlatformPaymentsUseCase,
     ConfirmManualRefundUseCase,
     ListTenantRefundsUseCase,
+    UpdateGatewayPaymentSettingsUseCase,
+    GetPublicPaymentOptionsUseCase,
+    ExecuteAutomaticRefundUseCase,
   ],
   exports: [ExecuteRefundUseCase],
 })
@@ -68,9 +74,14 @@ export class PaymentsModule implements OnModuleInit {
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly refunds: ExecuteRefundUseCase,
+    private readonly automaticRefunds: ExecuteAutomaticRefundUseCase,
   ) {}
 
   onModuleInit(): void {
+    this.registry.register('refund.execution_requested', (event) => {
+      const p = event.payload as { refundId: string };
+      return this.automaticRefunds.execute(event.tenantId ?? '', p.refundId);
+    });
     // Execute refunds when a booking is cancelled (policy refund) or an inventory
     // rental is returned (deposit refund). Ledger entries are Task 1.10.
     this.registry.register('booking.cancelled', (event) => {

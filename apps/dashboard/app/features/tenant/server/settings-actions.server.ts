@@ -6,6 +6,7 @@ import {
   type DomainResponse,
   type TenantThemeResponse,
   payoutPolicySchema,
+  updateGatewayPaymentSettingsInputSchema,
 } from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost, apiPut, type ApiAuth } from '~/lib/api.server';
 import { TENANT_FLAGS_PATH, type TenantFlags } from '~/features/tenant/lib/flags';
@@ -99,6 +100,28 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   const formData = await request.formData();
   const intent = String(formData.get('intent'));
+
+  if (intent === 'payment-settings') {
+    const parsed = updateGatewayPaymentSettingsInputSchema.safeParse({
+      enabledMethods: formData.getAll('enabledMethods'),
+      refundStrategy: formData.get('refundStrategy'),
+      manualRefundSlaHours: Number(formData.get('manualRefundSlaHours')),
+    });
+    if (!parsed.success) {
+      return routeData(
+        { form: 'payment-settings', error: 'Hãy bật ít nhất một phương thức thanh toán.' },
+        { status: 400 },
+      );
+    }
+    const res = await apiPut('/tenant/gateway-config/settings', parsed.data, auth);
+    if (!res.ok) {
+      return routeData(
+        { form: 'payment-settings', error: res.error ?? 'Không lưu được cài đặt thanh toán.' },
+        { status: 400 },
+      );
+    }
+    return { form: 'payment-settings', ok: true };
+  }
 
   if (intent === 'toggle-partner-promos') {
     const enabled = formData.get('partnerPromotionsEnabled') === 'true';

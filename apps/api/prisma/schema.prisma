@@ -265,6 +265,13 @@ enum RefundStatus {
   @@map("refund_status")
 }
 
+enum RefundExecutionMode {
+  manual
+  automatic
+
+  @@map("refund_execution_mode")
+}
+
 enum GatewayEnvironment {
   sandbox
   production
@@ -1364,18 +1371,21 @@ model Payment {
 }
 
 model Refund {
-  id                   String       @id @default(uuid(7)) @db.Uuid
-  tenantId             String       @map("tenant_id") @db.Uuid
-  paymentId            String       @map("payment_id") @db.Uuid
-  bookingId            String       @map("booking_id") @db.Uuid
+  id                   String              @id @default(uuid(7)) @db.Uuid
+  tenantId             String              @map("tenant_id") @db.Uuid
+  paymentId            String              @map("payment_id") @db.Uuid
+  bookingId            String              @map("booking_id") @db.Uuid
   amount               BigInt
-  status               RefundStatus @default(pending)
+  status               RefundStatus        @default(pending)
   reason               String?
-  affectsBookingStatus Boolean      @default(true) @map("affects_booking_status")
-  gatewayRefundId      String?      @map("gateway_refund_id")
+  affectsBookingStatus Boolean             @default(true) @map("affects_booking_status")
+  gatewayRefundId      String?             @map("gateway_refund_id")
+  executionMode        RefundExecutionMode @default(manual) @map("execution_mode")
+  dueAt                DateTime?           @map("due_at") @db.Timestamptz(6)
+  completedAt          DateTime?           @map("completed_at") @db.Timestamptz(6)
   evidence             Json?
-  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   payment    Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   booking    Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -1394,6 +1404,8 @@ model TenantGatewayConfig {
   tenantId    String             @map("tenant_id") @db.Uuid
   gateway     PaymentGateway
   credentials Json               @default("{}")
+  /// Non-secret checkout/refund policy. Validated by @booking/contracts.
+  settings    Json               @default("{\"enabledMethods\":[\"bank_transfer\"],\"refundStrategy\":\"manual\",\"manualRefundSlaHours\":72}")
   isActive    Boolean            @default(true) @map("is_active")
   environment GatewayEnvironment @default(sandbox)
   createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)

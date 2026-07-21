@@ -37,14 +37,12 @@ export const enCheckout = {
   payment: {
     title: 'Payment',
     method: 'Payment method',
-    payos: 'PayOS QRCode',
-    sepay: 'SePay',
     transfer: 'Bank transfer',
     internationalCard: 'Visa/Master/JCB',
-    domesticCard: 'Domestic ATM card',
+    domesticCard: 'Napas QR / Domestic card',
     soon: 'Coming soon',
-    handoffTitle: 'Opening SePay',
-    handoffDescription: "You'll be redirected to SePay's secure payment page.",
+    handoffTitle: 'Opening payment gateway',
+    handoffDescription: "You'll be redirected to a secure payment page.",
     handoffContinue: 'Continue to payment',
   },
   policy: {

@@ -10,7 +10,7 @@ import {
 import { BookingDetailPanel } from '../../features/account/components/booking-detail-panel';
 import { PaymentHandoff } from '../../features/checkout/components/payment-handoff';
 import { loadAccountBooking } from '../../features/account/server/booking-history.server';
-import { cancelBooking, checkoutBooking } from '../../lib/booking.server';
+import { cancelBooking, checkoutBooking, fetchPaymentOptions } from '../../lib/booking.server';
 import { errorStatus } from '../../lib/http-status';
 import { storefrontPaths } from '../../lib/locale-paths';
 import {
@@ -106,7 +106,8 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (booking.status !== 'pending_payment') {
       return data({ ok: false, error: 'PAYMENT_NOT_AVAILABLE' }, { status: 409 });
     }
-    const result = await checkoutBooking(request, booking.id);
+    const options = await fetchPaymentOptions(request);
+    const result = await checkoutBooking(request, booking.id, options.methods[0]);
     const destination = result.data?.destination;
     if (
       result.ok &&

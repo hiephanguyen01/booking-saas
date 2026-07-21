@@ -1,3 +1,4 @@
+import type { GatewayPaymentSettings } from '@booking/contracts';
 import type { GatewayEnvironment } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { GatewayKey } from './payment-gateway.port';
@@ -10,12 +11,14 @@ export interface GatewayConfigRecord {
   environment: GatewayEnvironment;
   /** Decrypted credentials — the repository decrypts on read. */
   credentials: Record<string, string>;
+  settings: GatewayPaymentSettings;
 }
 
 export interface UpsertGatewayConfigData {
   gateway: GatewayKey;
   environment: GatewayEnvironment;
   credentials: Record<string, string>;
+  settings?: GatewayPaymentSettings;
 }
 
 export interface IGatewayConfigRepository {
@@ -32,4 +35,9 @@ export interface IGatewayConfigRepository {
     tenantId: string,
     data: UpsertGatewayConfigData,
   ): Promise<GatewayConfigRecord>;
+  updateSettings(
+    tx: PrismaTx,
+    tenantId: string,
+    settings: GatewayPaymentSettings,
+  ): Promise<GatewayConfigRecord | null>;
 }

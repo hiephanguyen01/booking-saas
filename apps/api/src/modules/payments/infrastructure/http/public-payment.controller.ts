@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -7,13 +7,24 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { uuidSchema, type CheckoutResponse, type PaymentStatusResponse } from '@booking/contracts';
+import {
+  uuidSchema,
+  type CheckoutResponse,
+  type PaymentStatusResponse,
+  type PublicPaymentOptions,
+} from '@booking/contracts';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { CheckoutUseCase } from '../../application/use-cases/checkout.use-case';
 import { GetPaymentStatusUseCase } from '../../application/use-cases/get-payment-status.use-case';
-import { CheckoutResponseDto, PaymentStatusResponseDto } from './dto/payments.dto';
+import { GetPublicPaymentOptionsUseCase } from '../../application/use-cases/get-public-payment-options.use-case';
+import {
+  CheckoutResponseDto,
+  PaymentStatusResponseDto,
+  PublicPaymentOptionsDto,
+  StartCheckoutDto,
+} from './dto/payments.dto';
 
 /** Storefront payment (§11.2). Tenant resolved from Host (BFF). */
 @ApiTags('public-payments')
@@ -22,7 +33,16 @@ export class PublicPaymentController {
   constructor(
     private readonly checkout: CheckoutUseCase,
     private readonly paymentStatus: GetPaymentStatusUseCase,
+    private readonly paymentOptions: GetPublicPaymentOptionsUseCase,
   ) {}
+
+  @Public()
+  @Get('payment-options')
+  @ApiOperation({ summary: 'List the tenant-enabled storefront payment methods' })
+  @ApiOkResponse({ type: PublicPaymentOptionsDto })
+  options(@Req() req: Request): Promise<PublicPaymentOptions> {
+    return this.paymentOptions.execute(hostOf(req));
+  }
 
   @Public()
   @Post('bookings/:id/checkout')
@@ -31,9 +51,10 @@ export class PublicPaymentController {
   @ApiCreatedResponse({ type: CheckoutResponseDto })
   async startCheckout(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Body() input: StartCheckoutDto,
     @Req() req: Request,
   ): Promise<CheckoutResponse> {
-    return this.checkout.execute(hostOf(req), id);
+    return this.checkout.execute(hostOf(req), id, input.paymentMethod);
   }
 
   @Public()

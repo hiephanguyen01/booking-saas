@@ -6,12 +6,7 @@ import type {
   PayoutPolicyDto,
 } from '@booking/contracts';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@booking/ui/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { Globe2, Palette, SlidersHorizontal, WalletCards } from 'lucide-react';
 import type { Route } from './+types/settings';
 import { apiGet } from '~/lib/api.server';
@@ -30,6 +25,8 @@ import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
 import { SepayGatewayCard } from '~/features/tenant/components/settings/sepay-gateway-card';
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
+import { PaymentMethodSettingsCard } from '~/features/tenant/components/settings/payment-method-settings-card';
+import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
 
 const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   theme: 'brand',
@@ -38,6 +35,7 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   flags: 'operations',
   'cancellation-default': 'operations',
   sepay: 'payments',
+  'payment-settings': 'payments',
   'payout-policy': 'payments',
 };
 
@@ -47,26 +45,27 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request);
-  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes] = await Promise.all([
-    can('tenant.theme.manage')
-      ? apiGet<TenantThemeResponse>('/tenant/theme', auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<DomainResponse[]>('/tenant/domains', auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<GatewayConfigResponse | null>('/tenant/gateway-config', auth)
-      : Promise.resolve(null),
-    can('tenant.finance.read')
-      ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
-      : Promise.resolve(null),
-  ]);
+  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes] =
+    await Promise.all([
+      can('tenant.theme.manage')
+        ? apiGet<TenantThemeResponse>('/tenant/theme', auth)
+        : Promise.resolve(null),
+      can('tenant.settings.manage')
+        ? apiGet<DomainResponse[]>('/tenant/domains', auth)
+        : Promise.resolve(null),
+      can('tenant.settings.manage')
+        ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth)
+        : Promise.resolve(null),
+      can('tenant.settings.manage')
+        ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
+        : Promise.resolve(null),
+      can('tenant.settings.manage')
+        ? apiGet<GatewayConfigResponse | null>('/tenant/gateway-config', auth)
+        : Promise.resolve(null),
+      can('tenant.finance.read')
+        ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
+        : Promise.resolve(null),
+    ]);
   return {
     theme: themeRes?.ok ? themeRes.data : null,
     domains: domainsRes?.ok ? (domainsRes.data ?? []) : null,
@@ -250,13 +249,21 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
           {canDomains || payoutPolicy ? (
             <TabsContent value="payments" className="min-w-0 w-full space-y-5 lg:max-w-5xl">
               {canDomains ? (
-                <SepayGatewayCard
-                  config={gatewayConfig}
-                  readOnly={readOnly}
-                  saved={okFor('sepay')}
-                  error={errFor('sepay')}
-                  fieldErrors={fieldErrorsFor('sepay')}
-                />
+                <>
+                  <SepayGatewayCard
+                    config={gatewayConfig}
+                    readOnly={readOnly}
+                    saved={okFor('sepay')}
+                    error={errFor('sepay')}
+                    fieldErrors={fieldErrorsFor('sepay')}
+                  />
+                  <PaymentMethodSettingsCard
+                    settings={gatewayConfig?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS}
+                    readOnly={readOnly || !canDomains}
+                    error={errFor('payment-settings')}
+                    success={okFor('payment-settings')}
+                  />
+                </>
               ) : null}
               {payoutPolicy ? (
                 <PayoutPolicyCard

@@ -23,4 +23,5 @@ export const PAYMENT_GATEWAY_LABEL: Record<PaymentHistoryItem['gateway'], string
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   BANK_TRANSFER: 'Chuyển khoản ngân hàng',
   NAPAS_BANK_TRANSFER: 'Napas',
+  CARD: 'Visa / Mastercard / JCB',
 };

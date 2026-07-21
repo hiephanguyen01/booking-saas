@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import type { CustomerPaymentMethod } from '@booking/contracts';
 import type {
   CreatePaymentInput,
   CreatePaymentResult,
@@ -39,6 +40,11 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     this.base = creds.baseUrl ?? 'https://api-merchant.payos.vn';
   }
 
+  providerPaymentMethod(method: CustomerPaymentMethod): string {
+    if (method !== 'bank_transfer') throw new Error('PayOS only supports bank transfer checkout');
+    return 'BANK_TRANSFER';
+  }
+
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const body = {
       orderCode: Number(input.orderCode),
@@ -62,6 +68,7 @@ export class PayosGatewayAdapter implements PaymentGatewayPort {
     return {
       destination: { type: 'redirect', paymentUrl: json.data.checkoutUrl },
       gatewayTxnId: json.data.paymentLinkId,
+      paymentMethod: this.providerPaymentMethod(input.paymentMethod),
     };
   }
 

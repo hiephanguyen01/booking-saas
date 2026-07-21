@@ -6,8 +6,36 @@ export type GatewayKey = z.infer<typeof gatewayKeySchema>;
 
 export const gatewayEnvironmentSchema = z.enum(['sandbox', 'production']);
 
-export const sepayPaymentMethodSchema = z.enum(['BANK_TRANSFER', 'NAPAS_BANK_TRANSFER']);
+export const sepayPaymentMethodSchema = z.enum(['BANK_TRANSFER', 'NAPAS_BANK_TRANSFER', 'CARD']);
 export type SepayPaymentMethod = z.infer<typeof sepayPaymentMethodSchema>;
+
+/** Provider-neutral choices exposed by the storefront. Provider codes stay in adapters. */
+export const customerPaymentMethodSchema = z.enum([
+  'bank_transfer',
+  'napas_qr',
+  'international_card',
+]);
+export type CustomerPaymentMethod = z.infer<typeof customerPaymentMethodSchema>;
+
+export const refundStrategySchema = z.enum(['manual', 'automatic_preferred']);
+export type RefundStrategy = z.infer<typeof refundStrategySchema>;
+
+export const gatewayPaymentSettingsSchema = z.object({
+  enabledMethods: z.array(customerPaymentMethodSchema).min(1).max(3),
+  refundStrategy: refundStrategySchema,
+  manualRefundSlaHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30),
+});
+export type GatewayPaymentSettings = z.infer<typeof gatewayPaymentSettingsSchema>;
+
+export const DEFAULT_GATEWAY_PAYMENT_SETTINGS: GatewayPaymentSettings = {
+  enabledMethods: ['bank_transfer'],
+  refundStrategy: 'manual',
+  manualRefundSlaHours: 72,
+};
 
 export const sepayGatewayConfigInputSchema = z.object({
   gateway: z.literal('sepay'),
@@ -31,8 +59,24 @@ export const upsertGatewayConfigInputSchema = z.object({
   gateway: gatewayKeySchema,
   environment: gatewayEnvironmentSchema.default('sandbox'),
   credentials: z.record(z.string()).default({}),
+  settings: gatewayPaymentSettingsSchema.optional(),
 });
 export type UpsertGatewayConfigInput = z.infer<typeof upsertGatewayConfigInputSchema>;
+
+export const updateGatewayPaymentSettingsInputSchema = gatewayPaymentSettingsSchema;
+export type UpdateGatewayPaymentSettingsInput = z.infer<
+  typeof updateGatewayPaymentSettingsInputSchema
+>;
+
+export const publicPaymentOptionsSchema = z.object({
+  methods: z.array(customerPaymentMethodSchema).min(1),
+});
+export type PublicPaymentOptions = z.infer<typeof publicPaymentOptionsSchema>;
+
+export const startCheckoutInputSchema = z.object({
+  paymentMethod: customerPaymentMethodSchema,
+});
+export type StartCheckoutInput = z.infer<typeof startCheckoutInputSchema>;
 
 export const checkoutDestinationSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('redirect'), paymentUrl: z.string() }),
@@ -64,6 +108,7 @@ export const gatewayConfigResponseSchema = z.object({
   environment: gatewayEnvironmentSchema,
   isActive: z.boolean(),
   merchantId: z.string().nullable(),
+  settings: gatewayPaymentSettingsSchema,
 });
 export type GatewayConfigResponse = z.infer<typeof gatewayConfigResponseSchema>;
 
@@ -115,6 +160,9 @@ export const refundResponseSchema = z.object({
   affectsBookingStatus: z.boolean(),
   gatewayRefundId: z.string().nullable(),
   reference: z.string().nullable(),
+  executionMode: z.enum(['manual', 'automatic']),
+  dueAt: z.string().nullable(),
+  completedAt: z.string().nullable(),
 });
 export type RefundResponse = z.infer<typeof refundResponseSchema>;
 

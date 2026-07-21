@@ -34,8 +34,8 @@ export function RefundsPanel({
       <CardHeader>
         <CardTitle>Hoàn tiền khách hàng</CardTitle>
         <p className="text-sm text-muted-foreground">
-          SePay không tự chuyển hoàn. Chỉ xác nhận sau khi Tenant đã chuyển khoản và lưu mã tham
-          chiếu ngân hàng.
+          Giao dịch thẻ đủ điều kiện có thể được hoàn tự động. Các khoản còn lại cần chuyển thủ công
+          và lưu mã tham chiếu ngân hàng.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -59,6 +59,14 @@ export function RefundsPanel({
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {refund.reason ?? 'Hoàn tiền'} · {formatDateTime(refund.createdAt)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {refund.executionMode === 'automatic'
+                      ? 'Tự động qua cổng thanh toán'
+                      : 'Xử lý thủ công'}
+                    {refund.dueAt && refund.status === 'manual_required'
+                      ? ` · hạn ${formatDateTime(refund.dueAt)}`
+                      : ''}
                   </p>
                   {!refund.affectsBookingStatus ? (
                     <p className="mt-1 text-xs text-muted-foreground">

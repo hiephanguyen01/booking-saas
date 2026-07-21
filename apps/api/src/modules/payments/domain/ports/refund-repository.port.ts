@@ -1,4 +1,4 @@
-import type { RefundStatus } from '@prisma/client';
+import type { RefundExecutionMode, RefundStatus } from '@prisma/client';
 import type { RefundHistoryQuery } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
@@ -15,6 +15,9 @@ export interface RefundRecord {
   reason: string | null;
   affectsBookingStatus: boolean;
   evidence: { reference?: string; evidenceKey?: string; note?: string } | null;
+  executionMode: RefundExecutionMode;
+  dueAt: Date | null;
+  completedAt: Date | null;
 }
 
 export interface CreateRefundData {
@@ -25,6 +28,8 @@ export interface CreateRefundData {
   affectsBookingStatus: boolean;
   reason?: string | null;
   gatewayRefundId?: string | null;
+  executionMode?: RefundExecutionMode;
+  dueAt?: Date | null;
 }
 
 export interface RefundHistoryRecord extends RefundRecord {
@@ -54,6 +59,13 @@ export interface IRefundRepository {
   create(tx: PrismaTx, tenantId: string, data: CreateRefundData): Promise<RefundRecord>;
   existsForBooking(tx: PrismaTx, bookingId: string, reason: string): Promise<boolean>;
   findById(tx: PrismaTx, id: string): Promise<RefundRecord | null>;
+  manualReferenceExists(tx: PrismaTx, tenantId: string, reference: string): Promise<boolean>;
+  completeAutomatic(
+    tx: PrismaTx,
+    id: string,
+    gatewayRefundId: string | null,
+  ): Promise<RefundRecord | null>;
+  requireManual(tx: PrismaTx, id: string, dueAt: Date): Promise<RefundRecord | null>;
   markSucceeded(
     tx: PrismaTx,
     id: string,

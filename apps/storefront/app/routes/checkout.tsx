@@ -1,5 +1,6 @@
 import {
   createBookingInputSchema,
+  customerPaymentMethodSchema,
   guestInfoSchema,
   type ValidatePromoResponse,
 } from '@booking/contracts';
@@ -8,7 +9,12 @@ import type { Route } from './+types/checkout';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { CheckoutPage } from '../features/checkout/checkout-page';
 import { readRefCode } from '../lib/affiliate.server';
-import { checkoutBooking, createBooking, validatePromo } from '../lib/booking.server';
+import {
+  checkoutBooking,
+  createBooking,
+  fetchPaymentOptions,
+  validatePromo,
+} from '../lib/booking.server';
 import { fetchListing, fetchQuote } from '../lib/catalog.server';
 import { buildCheckoutIdempotencyKey } from '../lib/checkout-idempotency.server';
 import { appendRecentCookie } from '../lib/recent.server';
@@ -47,7 +53,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
     throw redirect(slug ? storefrontPaths.listing(locale, slug) : storefrontPaths.home(locale));
   }
 
-  const [listing, quote] = await Promise.all([
+  const [listing, quote, paymentOptions] = await Promise.all([
     fetchListing(request, slug),
     fetchQuote(
       request,
@@ -60,6 +66,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
         ...(packageId ? { packageId } : {}),
       }),
     ),
+    fetchPaymentOptions(request),
   ]);
 
   if (!listing) throw redirect(storefrontPaths.home(locale));
@@ -88,6 +95,7 @@ export async function loader({ request, url, params }: Route.LoaderArgs) {
     promoCode,
     promo,
     currentUser: getOptionalAuth()?.info.user ?? null,
+    paymentMethods: paymentOptions.methods,
   };
 }
 
@@ -95,6 +103,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
   const t = createTranslator(locale).t;
   const form = await request.formData();
+  const paymentMethod = customerPaymentMethodSchema.safeParse(form.get('paymentMethod'));
   const listingId = String(form.get('listingId') ?? '');
   const mode = String(form.get('mode') ?? '');
   const start = String(form.get('start') ?? '');
@@ -113,8 +122,15 @@ export async function action({ request, params }: Route.ActionArgs) {
     phone: String(form.get('phone') ?? '').trim(),
   });
 
-  if (!guest.success) {
-    return data({ fieldErrors: guest.error.flatten().fieldErrors, error: null }, { status: 400 });
+  if (!guest.success || !paymentMethod.success) {
+    return data(
+      {
+        fieldErrors: guest.success ? null : guest.error.flatten().fieldErrors,
+        error: paymentMethod.success ? null : 'PAYMENT_METHOD_UNAVAILABLE',
+        code: paymentMethod.success ? null : 'PAYMENT_METHOD_UNAVAILABLE',
+      },
+      { status: 400 },
+    );
   }
 
   const tenant = getCurrentStorefrontTenant();
@@ -187,7 +203,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   );
 
   if (booking.status === 'pending_payment') {
-    const checkout = await checkoutBooking(request, booking.id);
+    const checkout = await checkoutBooking(request, booking.id, paymentMethod.data);
     if (!checkout.ok) {
       return data(
         {
