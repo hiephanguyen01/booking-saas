@@ -12,6 +12,8 @@ import { storefrontEnv } from './env.server';
 const client = () => createApiClient(storefrontEnv.backendUrl);
 const SAFE_ERROR_CODE_RE = /^[A-Z][A-Z0-9_]{1,63}$/;
 const SAFE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/;
+const INVALID_HOST_CHAR_RE = /[\u0000-\u0020\u007f\\/?#@]/;
+const MAX_FORWARDED_HOST_LENGTH = 255;
 const MAX_FIELD_ERROR_KEYS = 50;
 const MAX_FIELD_MESSAGES = 5;
 
@@ -21,11 +23,41 @@ type StorefrontJsonOptions<T> = Omit<ApiRequestOptions<T>, 'signal' | 'schema'> 
 
 type NullableReadOptions<T> = StorefrontJsonOptions<T> & { allowNotFound: true };
 
+function invalidForwardedHost(): never {
+  throw new Response('Invalid storefront host', { status: 400 });
+}
+
 function forwardedHost(request: Request): string {
   // Keep the port: checkout callbacks must return to the exact storefront host
-  // the customer used (for example localhost:5173). The API tenant resolver
-  // normalizes the hostname itself before looking up the tenant.
-  return request.headers.get('host')?.split(',')[0]?.trim() || new URL(request.url).host;
+  // the customer used (for example localhost:5173). The API still owns the
+  // Host→tenant authorization decision; the BFF only rejects ambiguous or
+  // malformed values before forwarding them.
+  const raw = request.headers.get('host')?.split(',')[0]?.trim() || new URL(request.url).host;
+  if (!raw || raw.length > MAX_FORWARDED_HOST_LENGTH || INVALID_HOST_CHAR_RE.test(raw)) {
+    invalidForwardedHost();
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(`http://${raw}`);
+  } catch {
+    invalidForwardedHost();
+  }
+
+  if (
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== '/' ||
+    parsed.search ||
+    parsed.hash ||
+    !parsed.hostname
+  ) {
+    invalidForwardedHost();
+  }
+
+  const normalized = parsed.host.toLowerCase();
+  if (!normalized || normalized.length > MAX_FORWARDED_HOST_LENGTH) invalidForwardedHost();
+  return normalized;
 }
 
 function requestOptions<T>(
