@@ -41,6 +41,16 @@ deny-by-default. See [`architecture.md`](./architecture.md).
   never `text-gray-*`/`bg-white`/hardcoded palette on a themed surface. Non-primitive interactive
   elements need a visible focus ring (`focus-visible:ring-2 focus-visible:ring-ring
   focus-visible:ring-offset-2`). Narrow exceptions: text/scrims over a photo, universal status green.
+- **Branch and name UI by the schema's structural enums, never by a specific listing type or vertical.**
+  Which renderer, dialog, or component a listing gets is a function of its structural fields
+  (`BookingSelection` = `flexible_duration` | `fixed_packages`, `BookingMode`, `ListingStructure`) —
+  read those, e.g. `if (listing.bookingSelection === 'fixed_packages')`. Do **not** gate on a
+  listing-type slug or vertical name (`listingTypeSlug === 'photography'`, `'studio'`, `'salon'`, …),
+  and do **not** name files, components, exports, or i18n namespaces after one vertical
+  (`PhotographerPage`, `photographer.*`). Name them after the structural concept (`PackageListingPage`,
+  `packages.*`). A vertical name in structural code is a bug: it silently mis-renders every other
+  listing type that shares the same booking selection. Vertical-specific *content* (e.g. a photography
+  attribute row) is fine only when it renders conditionally on the data being present.
 
 ### Forms — always `GenericForm`
 
