@@ -21,6 +21,71 @@ export function ChildPrice({ listing }: { listing: ListingResponse }) {
   );
 }
 
+/** Thumbnail or muted placeholder for a child listing; `sizeClassName` differs desktop/mobile. */
+function ChildThumbnail({ listing, sizeClassName }: { listing: ListingResponse; sizeClassName: string }) {
+  return listing.photos[0] ? (
+    <img
+      src={listing.photos[0]}
+      alt={listing.title}
+      className={`${sizeClassName} shrink-0 rounded-md object-cover`}
+    />
+  ) : (
+    <div className={`${sizeClassName} shrink-0 rounded-md bg-muted`} />
+  );
+}
+
+/** The child's title — a link when the caller can edit it, plain text otherwise. */
+function ChildTitleLink({
+  groupId,
+  listing,
+  canEdit,
+}: {
+  groupId: string;
+  listing: ListingResponse;
+  canEdit: boolean;
+}) {
+  return canEdit ? (
+    <EntityRef
+      to={`/partner/listing-groups/${groupId}/listings/${listing.id}/edit`}
+      name={listing.title}
+    />
+  ) : (
+    <>{listing.title}</>
+  );
+}
+
+/** The `/slug` line under a child's title (identical on the table row and the mobile card). */
+function ChildSlugLine({ slug }: { slug: string }) {
+  return <p className="truncate text-xs text-muted-foreground">/{slug}</p>;
+}
+
+/** Booking-mode badges for a child listing (caller supplies the wrapping div + className). */
+function ChildModeBadges({ modes }: { modes: ListingResponse['bookingModes'] }) {
+  return (
+    <>
+      {modes.map((mode) => (
+        <Badge key={mode} variant="outline" className="font-normal">
+          <EnumValue map={BOOKING_MODE_LABEL} value={mode} />
+        </Badge>
+      ))}
+    </>
+  );
+}
+
+/** "Cọc X% / Kho: N" — caller supplies the wrapping div + className. */
+function ChildDepositStock({ listing }: { listing: ListingResponse }) {
+  return (
+    <>
+      <span>Cọc {listing.depositPercent}%</span>
+      {listing.stockQuantity != null ? (
+        <span className="block text-xs text-muted-foreground">
+          Kho: {formatNumber(listing.stockQuantity)}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 /** Desktop table columns for the group's child listings. */
 export function buildGroupedListingColumns(opts: {
   groupId: string;
@@ -35,27 +100,12 @@ export function buildGroupedListingColumns(opts: {
       header: itemLabel,
       cell: (listing) => (
         <div className="flex min-w-0 items-center gap-3">
-          {listing.photos[0] ? (
-            <img
-              src={listing.photos[0]}
-              alt={listing.title}
-              className="size-12 shrink-0 rounded-md object-cover"
-            />
-          ) : (
-            <div className="size-12 shrink-0 rounded-md bg-muted" />
-          )}
+          <ChildThumbnail listing={listing} sizeClassName="size-12" />
           <div className="min-w-0">
             <p className="truncate font-medium">
-              {canEdit ? (
-                <EntityRef
-                  to={`/partner/listing-groups/${groupId}/listings/${listing.id}/edit`}
-                  name={listing.title}
-                />
-              ) : (
-                listing.title
-              )}
+              <ChildTitleLink groupId={groupId} listing={listing} canEdit={canEdit} />
             </p>
-            <p className="truncate text-xs text-muted-foreground">/{listing.slug}</p>
+            <ChildSlugLine slug={listing.slug} />
           </div>
         </div>
       ),
@@ -64,11 +114,7 @@ export function buildGroupedListingColumns(opts: {
       header: 'Hình thức',
       cell: (listing) => (
         <div className="flex flex-wrap gap-1">
-          {listing.bookingModes.map((mode) => (
-            <Badge key={mode} variant="outline" className="font-normal">
-              <EnumValue map={BOOKING_MODE_LABEL} value={mode} />
-            </Badge>
-          ))}
+          <ChildModeBadges modes={listing.bookingModes} />
         </div>
       ),
     },
@@ -78,12 +124,7 @@ export function buildGroupedListingColumns(opts: {
       header: 'Cọc / Kho',
       cell: (listing) => (
         <div className="text-sm">
-          <span>Cọc {listing.depositPercent}%</span>
-          {listing.stockQuantity != null ? (
-            <span className="block text-xs text-muted-foreground">
-              Kho: {formatNumber(listing.stockQuantity)}
-            </span>
-          ) : null}
+          <ChildDepositStock listing={listing} />
         </div>
       ),
     },
@@ -132,36 +173,17 @@ export function GroupedListingCard({
   return (
     <div className="flex min-w-0 flex-col gap-3 rounded-lg border p-3">
       <div className="flex min-w-0 gap-3">
-        {listing.photos[0] ? (
-          <img
-            src={listing.photos[0]}
-            alt={listing.title}
-            className="size-16 shrink-0 rounded-md object-cover"
-          />
-        ) : (
-          <div className="size-16 shrink-0 rounded-md bg-muted" />
-        )}
+        <ChildThumbnail listing={listing} sizeClassName="size-16" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 truncate font-medium">
-              {canEdit ? (
-                <EntityRef
-                  to={`/partner/listing-groups/${groupId}/listings/${listing.id}/edit`}
-                  name={listing.title}
-                />
-              ) : (
-                listing.title
-              )}
+              <ChildTitleLink groupId={groupId} listing={listing} canEdit={canEdit} />
             </p>
             <ListingStatusBadge status={listing.status} />
           </div>
-          <p className="truncate text-xs text-muted-foreground">/{listing.slug}</p>
+          <ChildSlugLine slug={listing.slug} />
           <div className="mt-2 flex flex-wrap gap-1">
-            {listing.bookingModes.map((mode) => (
-              <Badge key={mode} variant="outline" className="font-normal">
-                <EnumValue map={BOOKING_MODE_LABEL} value={mode} />
-              </Badge>
-            ))}
+            <ChildModeBadges modes={listing.bookingModes} />
           </div>
         </div>
       </div>
@@ -173,12 +195,7 @@ export function GroupedListingCard({
           </p>
         </div>
         <div className="text-right text-sm">
-          <span>Cọc {listing.depositPercent}%</span>
-          {listing.stockQuantity != null ? (
-            <span className="block text-xs text-muted-foreground">
-              Kho: {formatNumber(listing.stockQuantity)}
-            </span>
-          ) : null}
+          <ChildDepositStock listing={listing} />
         </div>
       </div>
       <div>

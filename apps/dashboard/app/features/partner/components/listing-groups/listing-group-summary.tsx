@@ -1,5 +1,4 @@
 import type { ListingGroupDetailResponse } from '@booking/contracts';
-import { Badge } from '@booking/ui/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -7,14 +6,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
-import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { MODERATION_ACTOR_LABEL } from '~/constants/listing';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
-import { PhotoStrip } from '~/components/photo-strip';
+import { PhotoAndDescriptionSections, AmenitiesSection } from '~/components/media-detail-sections';
 import { CopyableCode } from '~/components/copyable-code';
 import { ListingStatusBadge } from '~/components/status-badge';
 
@@ -81,29 +79,16 @@ export function ListingGroupContentCard({ group }: { group: ListingGroupDetailRe
         <CardDescription>Album và thông tin dùng chung cho toàn bộ tin đăng.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <DetailSection title="Ảnh" emptyMessage="Chưa có ảnh.">
-          {group.photos.length ? <PhotoStrip photos={group.photos} alt={group.title} /> : null}
-        </DetailSection>
-        <DetailSection title="Mô tả" emptyMessage="Chưa có mô tả.">
-          {group.description ? (
-            <p className="whitespace-pre-wrap text-sm">{group.description}</p>
-          ) : null}
-        </DetailSection>
+        <PhotoAndDescriptionSections
+          photos={group.photos}
+          alt={group.title}
+          description={group.description}
+        />
         <DetailGrid>
           <DetailField label="Khu vực hoạt động" value={group.workingArea} />
           <DetailField label="Địa chỉ" value={addressLine(group) || undefined} />
         </DetailGrid>
-        <DetailSection title="Tiện ích" emptyMessage="Chưa có tiện ích.">
-          {group.amenities.length ? (
-            <div className="flex flex-wrap gap-2">
-              {group.amenities.map((amenity) => (
-                <Badge key={amenity} variant="secondary">
-                  {amenity}
-                </Badge>
-              ))}
-            </div>
-          ) : null}
-        </DetailSection>
+        <AmenitiesSection amenities={group.amenities} />
       </CardContent>
     </Card>
   );

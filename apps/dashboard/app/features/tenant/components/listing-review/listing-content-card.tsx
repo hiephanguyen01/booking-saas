@@ -10,7 +10,7 @@ import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { MODERATION_ACTOR_LABEL } from '~/constants/listing';
-import { PhotoStrip } from '~/components/photo-strip';
+import { PhotoAndDescriptionSections } from '~/components/media-detail-sections';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 
@@ -34,15 +34,12 @@ export function ListingContentCard({
           <DetailField label="Loại dịch vụ" value={type?.name ?? '—'} />
         </DetailGrid>
 
-        <DetailSection title="Ảnh" emptyMessage="Chưa có ảnh nào.">
-          {listing.photos.length > 0 ? <PhotoStrip photos={listing.photos} alt={listing.title} /> : null}
-        </DetailSection>
-
-        <DetailSection title="Mô tả" emptyMessage="Chưa có mô tả.">
-          {listing.description ? (
-            <p className="whitespace-pre-wrap text-sm">{listing.description}</p>
-          ) : null}
-        </DetailSection>
+        <PhotoAndDescriptionSections
+          photos={listing.photos}
+          alt={listing.title}
+          description={listing.description}
+          photoEmptyMessage="Chưa có ảnh nào."
+        />
 
         <DetailSection title="Vị trí" emptyMessage="Chưa có địa chỉ.">
           {hasLocation ? (
