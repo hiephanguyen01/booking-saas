@@ -14,7 +14,7 @@ import { EmptyLine } from './empty-line';
 export function PayablesCard({ summary }: { summary: TenantFinanceSummaryResponse }) {
   const payables = [
     { label: 'Trả đối tác', value: Number(summary.partnerPayable), tone: 'emerald' as const },
-    { label: 'Trả affiliate', value: Number(summary.affiliatePayable), tone: 'sky' as const },
+    { label: 'Trả cộng tác viên', value: Number(summary.affiliatePayable), tone: 'sky' as const },
     { label: 'Phí nền tảng', value: Number(summary.platformFeePayable), tone: 'warning' as const },
   ];
   const payMax = payables.reduce((m, p) => Math.max(m, Math.abs(p.value)), 0);

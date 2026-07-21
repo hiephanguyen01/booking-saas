@@ -170,7 +170,7 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
     <div className="space-y-6">
       <PageHeader
         title="Tiền đang giữ"
-        description="Theo dõi tiền khách trả Tenant từ lúc gateway xác nhận đến khi ghi nhận công nợ Partner."
+        description="Theo dõi tiền khách trả Tenant từ lúc cổng thanh toán xác nhận đến khi ghi nhận công nợ Partner."
         actions={
           <Button asChild variant="outline" size="sm">
             <Link to={dashboardPaths.tenant.finance}>

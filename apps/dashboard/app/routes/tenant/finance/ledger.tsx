@@ -56,19 +56,22 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   };
 }
 
-/** First non-null reference on a ledger line, labelled for the table. */
-function refLabel(e: LedgerEntryResponse): string {
-  if (e.bookingId) return `Đơn ${e.bookingId.slice(0, 8)}`;
-  if (e.paymentId) return `TT ${e.paymentId.slice(0, 8)}`;
-  if (e.payoutId) return `Chi ${e.payoutId.slice(0, 8)}`;
-  return '—';
+/** First non-null reference on a ledger line, labelled for the table; `fullId` carries the
+ * untruncated id for a `title=` tooltip since no friendly `code` exists on this payload. */
+function refLabel(e: LedgerEntryResponse): { text: string; fullId?: string } {
+  if (e.bookingId) return { text: `Đơn ${e.bookingId.slice(0, 8)}`, fullId: e.bookingId };
+  if (e.paymentId) return { text: `TT ${e.paymentId.slice(0, 8)}`, fullId: e.paymentId };
+  if (e.payoutId) return { text: `Chi ${e.payoutId.slice(0, 8)}`, fullId: e.payoutId };
+  return { text: '—' };
 }
 
 const columns: DataTableColumn<LedgerEntryResponse>[] = [
   {
     header: 'Bút toán',
     cell: (e) => (
-      <span className="font-mono text-xs text-muted-foreground">{e.journalId.slice(0, 8)}</span>
+      <span className="font-mono text-xs text-muted-foreground" title={e.journalId}>
+        {e.journalId.slice(0, 8)}
+      </span>
     ),
   },
   {
@@ -78,7 +81,7 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     cell: (e) => (
       <div className="flex flex-col gap-0.5">
         <Badge variant="secondary" className="w-fit">
-          {LEDGER_OWNER_LABEL[e.ownerType] ?? e.ownerType}
+          {LEDGER_OWNER_LABEL[e.ownerType] ?? 'Không xác định'}
         </Badge>
         {e.ownerName ? <span className="text-xs text-muted-foreground">{e.ownerName}</span> : null}
       </div>
@@ -86,7 +89,9 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
   },
   {
     header: 'Loại bút toán',
-    cell: (e) => <span className="text-sm">{LEDGER_ENTRY_LABEL[e.entryType] ?? e.entryType}</span>,
+    cell: (e) => (
+      <span className="text-sm">{LEDGER_ENTRY_LABEL[e.entryType] ?? 'Không xác định'}</span>
+    ),
   },
   {
     header: (
@@ -119,7 +124,14 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     header: 'Tham chiếu',
     className: 'hidden md:table-cell',
     headClassName: 'hidden md:table-cell',
-    cell: (e) => <span className="font-mono text-xs text-muted-foreground">{refLabel(e)}</span>,
+    cell: (e) => {
+      const { text, fullId } = refLabel(e);
+      return (
+        <span className="font-mono text-xs text-muted-foreground" title={fullId}>
+          {text}
+        </span>
+      );
+    },
   },
   {
     header: 'Thời gian',

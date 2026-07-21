@@ -30,7 +30,7 @@ export default function AdminOverview({ loaderData }: Route.ComponentProps) {
     <div className="space-y-8">
       <PageHeader
         title="Tổng quan nền tảng"
-        description="Sức khoẻ toàn nền tảng: GMV, tenant, listing, webhook và payout."
+        description="Sức khoẻ toàn nền tảng: GMV, tenant, tin đăng, sự kiện webhook và chi trả."
         actions={
           <Button asChild>
             <Link to={dashboardPaths.admin.tenants}>

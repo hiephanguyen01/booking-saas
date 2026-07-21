@@ -92,7 +92,7 @@ export function buildPlanColumns({
       ),
     },
     {
-      header: 'Affiliate',
+      header: 'Cộng tác viên',
       headClassName: 'text-center',
       className: 'text-center',
       cell: (p) => (
