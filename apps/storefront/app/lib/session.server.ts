@@ -7,7 +7,9 @@ import { safeRedirectPath } from './safe-redirect';
 const TTL_SECONDS = 60 * 60 * 24 * 30;
 const PREFIX = 'bookify:storefront:session:';
 const REFRESH_LOCK_PREFIX = 'bookify:storefront:session-refresh-lock:';
-const REFRESH_LOCK_TTL_MS = 15_000;
+// A contended path can validate a newly-rotated token, refresh it if needed,
+// and validate once more. Keep the lock above the API client's 3 × 10s budget.
+const REFRESH_LOCK_TTL_MS = 35_000;
 const REFRESH_LOCK_WAIT_MS = 2_500;
 const REFRESH_LOCK_RETRY_MS = 50;
 
