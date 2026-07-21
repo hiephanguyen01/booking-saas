@@ -1,6 +1,6 @@
 import {
   resolveStorefrontTimezone,
-  STOREFRONT_FALLBACK_TIMEZONE,
+  STOREFRONT_TENANT_TIMEZONE,
 } from './timezone-runtime';
 
 /**
@@ -9,7 +9,7 @@ import {
  * lib). Correct for fixed-offset zones like `Asia/Ho_Chi_Minh`; DST zones have a
  * rare ambiguous-hour edge we accept for Phase 1 (VN has no DST).
  */
-export const DEFAULT_TZ = STOREFRONT_FALLBACK_TIMEZONE;
+export const DEFAULT_TZ = STOREFRONT_TENANT_TIMEZONE;
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
