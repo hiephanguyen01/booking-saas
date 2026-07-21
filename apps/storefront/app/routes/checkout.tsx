@@ -115,7 +115,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   const tenant = getCurrentStorefrontTenant();
-  const refCode = readRefCode(request, tenant.id) ?? undefined;
+  const refCode = (await readRefCode(request, tenant.id)) ?? undefined;
   const parsed = createBookingInputSchema.safeParse({
     listingId,
     mode,
