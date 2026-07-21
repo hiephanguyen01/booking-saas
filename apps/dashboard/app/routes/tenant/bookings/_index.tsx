@@ -15,9 +15,12 @@ import { StatCard } from '~/components/stat-card';
 import { BookingStatusBadge } from '~/components/status-badge';
 import { Money } from '~/components/money';
 import { parseBookingStatus, type BookingStatusFilter } from '~/features/bookings/lib/booking-list';
+import { BOOKINGS_FILTER_SPEC } from '~/features/bookings/lib/booking-filters';
 import { fetchBookingList } from '~/features/bookings/server/booking-list.server';
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
+import { ListToolbar } from '~/components/list-toolbar';
 import { PaginationBar } from '~/components/pagination-bar';
 
 interface PartnerStat {
@@ -39,8 +42,9 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.bookings.read');
   const status = parseBookingStatus(url.searchParams.get('status'));
   const { page, pageSize } = readListParams(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, BOOKINGS_FILTER_SPEC);
   const [list, statsRes, partnersRes] = await Promise.all([
-    fetchBookingList(auth, status, page, pageSize, request.signal),
+    fetchBookingList(auth, status, page, pageSize, request.signal, apiFilters),
     apiGet<PartnerStat[]>('/tenant/bookings/partner-stats', auth, { signal: request.signal }),
     can('tenant.partners.read')
       ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, {
@@ -60,6 +64,8 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     total: list.total,
     stats: statsRes.ok ? (statsRes.data ?? []) : [],
     partnerNames,
+    // Merge the status into the filter map so "Xoá lọc" clears it too.
+    filters: { ...filters, status: status === 'all' ? '' : status },
   };
 }
 
@@ -71,6 +77,7 @@ export default function TenantBookings({ loaderData }: Route.ComponentProps) {
       total={loaderData.total}
       stats={loaderData.stats}
       partnerNames={loaderData.partnerNames}
+      filters={loaderData.filters}
     />
   );
 }
@@ -81,9 +88,10 @@ interface TenantBookingsPageProps {
   total: number;
   stats: PartnerStat[];
   partnerNames: Record<string, string>;
+  filters: Record<string, string>;
 }
 
-function TenantBookingsPage({ status, bookings, total, stats, partnerNames }: TenantBookingsPageProps) {
+function TenantBookingsPage({ status, bookings, total, stats, partnerNames, filters }: TenantBookingsPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
   // Tenant-wide KPIs come from the partner-stats aggregate (accurate across the
@@ -165,21 +173,32 @@ function TenantBookingsPage({ status, bookings, total, stats, partnerNames }: Te
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
-          <div className="flex items-center justify-end">
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="pending_approval">Chờ duyệt</SelectItem>
-                <SelectItem value="pending_payment">Chờ thanh toán</SelectItem>
-                <SelectItem value="confirmed">Đã xác nhận</SelectItem>
-                <SelectItem value="completed">Hoàn tất</SelectItem>
-                <SelectItem value="cancelled">Đã huỷ</SelectItem>
-                <SelectItem value="no_show">Không đến</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <DataTable columns={bookingColumns} data={bookings} getRowKey={(b) => b.id} emptyMessage="Không có đơn nào." />
+          <ListToolbar
+            spec={BOOKINGS_FILTER_SPEC}
+            filters={filters}
+            resetHref={dashboardPaths.tenant.bookings}
+            pageSize={pageSize}
+            actions={
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="pending_approval">Chờ duyệt</SelectItem>
+                  <SelectItem value="pending_payment">Chờ thanh toán</SelectItem>
+                  <SelectItem value="confirmed">Đã xác nhận</SelectItem>
+                  <SelectItem value="completed">Hoàn tất</SelectItem>
+                  <SelectItem value="cancelled">Đã huỷ</SelectItem>
+                  <SelectItem value="no_show">Không đến</SelectItem>
+                </SelectContent>
+              </Select>
+            }
+          />
+          <DataTable
+            columns={bookingColumns}
+            data={bookings}
+            getRowKey={(b) => b.id}
+            emptyMessage={hasActiveFilters(filters) ? 'Không có đơn nào khớp bộ lọc.' : 'Không có đơn nào.'}
+          />
           <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
         </TabsContent>
 
