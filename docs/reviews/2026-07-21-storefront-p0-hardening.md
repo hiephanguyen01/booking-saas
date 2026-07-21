@@ -17,6 +17,7 @@ Storefront and shared frontend packages only. Dashboard and API implementation a
 - Preserve query strings and use permanent 308 redirects for legacy routes.
 - Bound the partner upload-presign backend call with a 10-second timeout.
 - Include the selected booking start/end window when validating promotion eligibility.
+- Replace raw backend booking/payment messages with localized storefront-safe failures while preserving known selection error codes.
 
 ## Fixed-package availability verification
 
