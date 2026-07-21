@@ -1,6 +1,6 @@
 import type { PriceUnit } from '../../lib/ui';
 import { normalizeDailyRange } from '../../lib/daily-range';
-import { isValidDateOnly } from '../../lib/date-only';
+import { canOffsetDateOnly, isValidDateOnly } from '../../lib/date-only';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
 export type SearchMode = 'hourly' | 'daily' | 'inventory' | 'none';
@@ -67,8 +67,8 @@ export interface SearchDateSelection {
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-function dateParam(value: string | null, fallback: string): string {
-  return value && isValidDateOnly(value) ? value : fallback;
+function dateParam(value: string | null, fallback: string, offsetDays = 0): string {
+  return value && canOffsetDateOnly(value, offsetDays) ? value : fallback;
 }
 
 function positiveInt(value: string | null, fallback: number): number {
@@ -103,9 +103,9 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
   const rawStartTime = params.get('startTime');
   const rawEndTime = params.get('endTime');
   const validDateSelection = Boolean(rawDate && isValidDateOnly(rawDate));
-  const validFrom = Boolean(rawFrom && isValidDateOnly(rawFrom));
+  const validFrom = Boolean(rawFrom && canOffsetDateOnly(rawFrom, 1));
   const validTo = Boolean(rawTo && isValidDateOnly(rawTo));
-  const from = dateParam(rawFrom, today);
+  const from = dateParam(rawFrom, today, 1);
   const toCandidate = dateParam(rawTo, addDays(from, 1));
   const to = toCandidate > from ? toCandidate : addDays(from, 1);
   const areaParam = params.get('area');
