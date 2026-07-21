@@ -1,5 +1,6 @@
 import { sessionInfoResponseSchema, type SessionInfoResponse } from '@booking/contracts';
 import { apiGet, backendRefresh } from './api.server';
+import { storefrontLogError, storefrontLogWarn } from './logger.server';
 import {
   runWithStorefrontRequestContext,
   type StorefrontRequestContextState,
@@ -73,8 +74,10 @@ async function authenticate(
       return retried;
     });
   } catch (error) {
-    if (!(error instanceof SessionRefreshLockTimeoutError)) {
-      console.error('Storefront session refresh failed', error);
+    if (error instanceof SessionRefreshLockTimeoutError) {
+      storefrontLogWarn('auth.refresh_lock_timeout');
+    } else {
+      storefrontLogError('auth.session_refresh_failed', error);
     }
     return { kind: 'unavailable' };
   }
@@ -84,36 +87,41 @@ export async function storefrontAuthMiddleware(
   { request }: { request: Request },
   next: () => Promise<Response>,
   tenant: StorefrontTenant,
+  requestId: string,
 ) {
-  const service = getStorefrontSessionService();
-  let stored: Awaited<ReturnType<typeof service.read>>;
-  try {
-    stored = await service.read(request);
-  } catch {
-    throw new Response('Session service temporarily unavailable', { status: 503 });
-  }
-  if (!stored) {
-    return runWithStorefrontRequestContext(
-      { tenant, auth: null, suppressSessionCommit: false },
-      next,
-    );
-  }
-  const result = await authenticate(stored, request, service);
-  if (result.kind === 'unavailable') {
-    throw new Response('Authentication service temporarily unavailable', { status: 503 });
-  }
-  if (result.kind === 'invalid') {
-    const response = await runWithStorefrontRequestContext(
-      { tenant, auth: null, suppressSessionCommit: false },
-      next,
-    );
-    response.headers.append('Set-Cookie', await service.destroy(request));
-    return response;
-  }
   const state: StorefrontRequestContextState = {
     tenant,
-    auth: { session: result.data, info: result.info },
+    auth: null,
+    request: {
+      id: requestId,
+      method: request.method.toUpperCase(),
+      path: new URL(request.url).pathname,
+    },
     suppressSessionCommit: false,
   };
-  return runWithStorefrontRequestContext(state, next);
+
+  return runWithStorefrontRequestContext(state, async () => {
+    const service = getStorefrontSessionService();
+    let stored: Awaited<ReturnType<typeof service.read>>;
+    try {
+      stored = await service.read(request);
+    } catch (error) {
+      storefrontLogError('auth.session_read_failed', error);
+      throw new Response('Session service temporarily unavailable', { status: 503 });
+    }
+    if (!stored) return next();
+
+    const result = await authenticate(stored, request, service);
+    if (result.kind === 'unavailable') {
+      throw new Response('Authentication service temporarily unavailable', { status: 503 });
+    }
+    if (result.kind === 'invalid') {
+      const response = await next();
+      response.headers.append('Set-Cookie', await service.destroy(request));
+      return response;
+    }
+
+    state.auth = { session: result.data, info: result.info };
+    return next();
+  });
 }
