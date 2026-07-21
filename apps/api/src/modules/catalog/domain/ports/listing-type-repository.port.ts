@@ -56,7 +56,7 @@ export interface IListingTypeRepository {
   create(tx: PrismaTx, tenantId: string, data: CreateListingTypeData): Promise<ListingTypeRecord>;
   findById(tx: PrismaTx, id: string): Promise<ListingTypeRecord | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingTypeRecord | null>;
-  list(tx: PrismaTx, opts: { includeInactive: boolean }): Promise<ListingTypeRecord[]>;
+  list(tx: PrismaTx, opts: { includeInactive: boolean; q?: string }): Promise<ListingTypeRecord[]>;
   listActive(tx: PrismaTx): Promise<ListingTypeRecord[]>;
   update(tx: PrismaTx, id: string, data: UpdateListingTypeData): Promise<ListingTypeRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;

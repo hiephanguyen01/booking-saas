@@ -1,6 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 import {
   createListingTypeInputSchema,
+  listListingTypesQuerySchema,
   publicCatalogSearchQuerySchema,
   publicCatalogSearchResponseSchema,
   listingTypeResponseSchema,
@@ -13,6 +14,7 @@ export class CreateListingTypeDto extends createZodDto(createListingTypeInputSch
 export class UpdateListingTypeDto extends createZodDto(updateListingTypeInputSchema) {}
 
 // Query params
+export class ListListingTypesQueryDto extends createZodDto(listListingTypesQuerySchema) {}
 export class ListPublicListingsQueryDto extends createZodDto(publicCatalogSearchQuerySchema) {}
 
 // Responses
