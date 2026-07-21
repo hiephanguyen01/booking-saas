@@ -1,9 +1,42 @@
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import * as React from 'react';
-import { DayPicker, getDefaultClassNames, type DayButton } from 'react-day-picker';
+import { DayPicker, getDefaultClassNames, type DayButton, type Matcher } from 'react-day-picker';
 
 import { Button, buttonVariants } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
+
+const CalendarTodayContext = React.createContext<Date | undefined>(undefined);
+
+type CalendarTodayProviderProps = {
+  today: Date;
+  children: React.ReactNode;
+};
+
+function CalendarTodayProvider({ today, children }: CalendarTodayProviderProps) {
+  return <CalendarTodayContext.Provider value={today}>{children}</CalendarTodayContext.Provider>;
+}
+
+type DisabledMatchers = React.ComponentProps<typeof DayPicker>['disabled'];
+
+function alignDisabledBefore(matcher: Matcher, today: Date): Matcher {
+  if (
+    matcher instanceof Date ||
+    typeof matcher === 'boolean' ||
+    typeof matcher === 'function' ||
+    !('before' in matcher)
+  ) {
+    return matcher;
+  }
+
+  return { ...matcher, before: today };
+}
+
+function calendarDisabled(disabled: DisabledMatchers, today: Date | undefined): DisabledMatchers {
+  if (!disabled || !today) return disabled;
+  return Array.isArray(disabled)
+    ? disabled.map((matcher) => alignDisabledBefore(matcher, today))
+    : alignDisabledBefore(disabled, today);
+}
 
 function Calendar({
   className,
@@ -15,6 +48,8 @@ function Calendar({
   connectedRange = false,
   formatters,
   components,
+  disabled,
+  today,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>['variant'];
@@ -22,6 +57,9 @@ function Calendar({
   connectedRange?: boolean;
 }) {
   const defaultClassNames = getDefaultClassNames();
+  const contextToday = React.useContext(CalendarTodayContext);
+  const resolvedToday = today ?? contextToday;
+  const resolvedDisabled = calendarDisabled(disabled, resolvedToday);
 
   return (
     <DayPicker
@@ -35,6 +73,8 @@ function Calendar({
       data-full-width={fullWidth || undefined}
       data-connected-range={connectedRange || undefined}
       captionLayout={captionLayout}
+      today={resolvedToday}
+      disabled={resolvedDisabled}
       formatters={{
         formatMonthDropdown: (date) => date.toLocaleString('default', { month: 'short' }),
         ...formatters,
@@ -201,4 +241,4 @@ function CalendarDayButton({
   );
 }
 
-export { Calendar, CalendarDayButton };
+export { Calendar, CalendarDayButton, CalendarTodayProvider };
