@@ -26,7 +26,15 @@ async function client() {
     instance.on('error', (error: Error) =>
       console.error('Storefront Redis connection error', error),
     );
-    clientPromise = instance.connect().then(() => instance) as Promise<StorefrontRedisClient>;
+    clientPromise = instance
+      .connect()
+      .then(() => instance)
+      .catch((error: unknown) => {
+        // Do not keep a rejected singleton promise forever. A later request can
+        // establish a fresh connection after Redis or the network recovers.
+        clientPromise = undefined;
+        throw error;
+      }) as Promise<StorefrontRedisClient>;
   }
   return clientPromise;
 }
