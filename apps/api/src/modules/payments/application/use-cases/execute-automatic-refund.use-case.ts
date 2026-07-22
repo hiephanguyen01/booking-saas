@@ -39,7 +39,9 @@ export class ExecuteAutomaticRefundUseCase {
       const payment = await this.payments.findSucceededByBooking(tx, refund.bookingId);
       if (!payment || payment.id !== refund.paymentId) return null;
       const gateway = await this.registry.resolveForTenant(tx, tenantId, payment.gateway);
-      const config = await this.configs.findActiveBase(tx, tenantId);
+      // Parallel gateways: settings must come from the PAYMENT's own gateway, not
+      // the base config (which may not even be the gateway that took the payment).
+      const config = await this.configs.findByGateway(tx, tenantId, payment.gateway);
       return {
         refund,
         payment,

@@ -1,5 +1,9 @@
 import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { DEFAULT_GATEWAY_PAYMENT_SETTINGS, type PublicPaymentOptions } from '@booking/contracts';
+import {
+  DEFAULT_GATEWAY_PAYMENT_SETTINGS,
+  GATEWAY_SUPPORTED_METHODS,
+  type PublicPaymentOptions,
+} from '@booking/contracts';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
@@ -18,12 +22,10 @@ export class GetPublicPaymentOptionsUseCase {
 
   async execute(host: string): Promise<PublicPaymentOptions> {
     const tenant = await this.resolveTenant.execute(host);
-    // TODO(Task 5): a wallet gateway alongside a base gateway should widen `methods`,
-    // not just the base config's settings. Kept to base-only for now to compile.
-    const config = await this.tenantDb.forTenant(tenant.id, (tx) =>
-      this.configs.findActiveBase(tx, tenant.id),
+    const configs = await this.tenantDb.forTenant(tenant.id, (tx) =>
+      this.configs.findActiveAll(tx, tenant.id),
     );
-    if (!config) {
+    if (configs.length === 0) {
       if (process.env.ALLOW_MOCK_PAYMENTS === 'true' && process.env.NODE_ENV !== 'production') {
         return { methods: DEFAULT_GATEWAY_PAYMENT_SETTINGS.enabledMethods };
       }
@@ -33,6 +35,20 @@ export class GetPublicPaymentOptionsUseCase {
         message: 'This storefront is not accepting online payments',
       });
     }
-    return { methods: config.settings.enabledMethods };
+    const methods = [
+      ...new Set(
+        configs.flatMap((c) =>
+          c.settings.enabledMethods.filter((m) => GATEWAY_SUPPORTED_METHODS[c.gateway].includes(m)),
+        ),
+      ),
+    ];
+    if (methods.length === 0) {
+      throw new ServiceUnavailableException({
+        statusCode: 503,
+        code: 'PAYMENT_NOT_CONFIGURED',
+        message: 'This storefront is not accepting online payments',
+      });
+    }
+    return { methods };
   }
 }

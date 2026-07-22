@@ -7,8 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { CheckoutResponse } from '@booking/contracts';
-import { DEFAULT_GATEWAY_PAYMENT_SETTINGS, type CustomerPaymentMethod } from '@booking/contracts';
+import type { CustomerPaymentMethod } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { pickConfigForMethod } from '../../domain/method-routing';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import {
   PAYMENT_BOOKING_READER,
@@ -107,20 +108,23 @@ export class CheckoutUseCase {
         });
       }
 
-      const config = await this.configs.findActiveBase(tx, tenant.id);
-      const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
-      if (!settings.enabledMethods.includes(paymentMethod)) {
+      const configs = await this.configs.findActiveAll(tx, tenant.id);
+      const routed = pickConfigForMethod(configs, paymentMethod);
+      if (!routed && configs.length > 0) {
         throw new BadRequestException({
           statusCode: 400,
           code: 'PAYMENT_METHOD_UNAVAILABLE',
           message: 'The selected payment method is not enabled for this storefront',
         });
       }
-      const gateway = await this.registry.resolveForTenant(tx, tenant.id);
+      // configs rỗng → resolveForTenant trả mock (dev); guard NO_ACTIVE_GATEWAY prod giữ nguyên phía dưới
+      const gateway = await this.registry.resolveForTenant(tx, tenant.id, routed?.gateway);
       const providerPaymentMethod = gateway.providerPaymentMethod(paymentMethod);
 
-      // Idempotent: reuse the existing pending payment link rather than minting a
-      // second gateway payment (which could double-charge on a retry/double-click).
+      // Idempotent per method: with parallel wallet gateways, a booking could end up
+      // with 2 pending links (e.g. one MoMo, one ZaloPay) if the customer switches
+      // methods before either resolves — the webhook confirms whichever one succeeds
+      // first, the other is left to expire via reconciliation. Acceptable trade-off.
       const existing = await this.payments.findPendingCheckout(
         tx,
         bookingId,
