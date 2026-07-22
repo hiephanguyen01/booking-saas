@@ -3,6 +3,7 @@ import type {
   MomoGatewaySettingsForm,
   SepayGatewaySettingsForm,
   ThemeConfigInput,
+  ZalopayGatewaySettingsForm,
 } from '@booking/contracts';
 import { FAVICON_ACCEPT } from '@booking/ui/components/form/image-upload';
 import type { FieldConfig } from '@booking/ui/components/form/types';
@@ -82,6 +83,44 @@ export const momoGatewayFields: FieldConfig<MomoGatewaySettingsForm>[] = [
     placeholder: 'Nhập Secret Key',
     autoComplete: 'new-password',
     required: true,
+  },
+];
+
+export const zalopayGatewayFields: FieldConfig<ZalopayGatewaySettingsForm>[] = [
+  {
+    name: 'environment',
+    type: 'radio',
+    label: 'Môi trường',
+    variant: 'segmented',
+    options: [
+      { label: 'Sandbox', value: 'sandbox' },
+      { label: 'Production', value: 'production' },
+    ],
+    colSpan: 2,
+  },
+  {
+    name: 'appId',
+    type: 'text',
+    label: 'App ID',
+    placeholder: '2553',
+    required: true,
+  },
+  {
+    name: 'key1',
+    type: 'password',
+    label: 'Key1',
+    description: 'Ký create/refund/query gửi ZaloPay.',
+    autoComplete: 'new-password',
+    required: true,
+  },
+  {
+    name: 'key2',
+    type: 'password',
+    label: 'Key2',
+    description: 'Xác thực callback (IPN) từ ZaloPay.',
+    autoComplete: 'new-password',
+    required: true,
+    colSpan: 2,
   },
 ];
 

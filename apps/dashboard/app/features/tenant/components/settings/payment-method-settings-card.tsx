@@ -64,6 +64,7 @@ export function PaymentMethodSettingsCard({
       <CardContent>
         <Form method="post" className="space-y-6">
           <input type="hidden" name="intent" value="payment-settings" />
+          <input type="hidden" name="gateway" value={gateway ?? ''} />
           <ErrorBanner error={error} />
           <SuccessBanner message={success ? 'Đã lưu phương thức thanh toán và hoàn tiền.' : null} />
 

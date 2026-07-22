@@ -53,6 +53,7 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   'cancellation-policy-delete': 'operations',
   sepay: 'payments',
   momo: 'payments',
+  zalopay: 'payments',
   'gateway-off': 'payments',
   'payment-settings': 'payments',
   'payout-policy': 'payouts',
@@ -77,7 +78,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
         : Promise.resolve(null),
       canSettings
-        ? apiGet<GatewayConfigResponse | null>('/tenant/gateway-config', auth)
+        ? apiGet<GatewayConfigResponse[]>('/tenant/gateway-config', auth)
         : Promise.resolve(null),
       canFinance
         ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
@@ -95,7 +96,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     partnerPromotions: toPartnerPromotionsState(flagsRes),
     cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : null,
     cancellationPoliciesError: apiError(policiesRes, 'Không tải được chính sách huỷ.'),
-    gatewayConfig: gatewayRes?.ok ? (gatewayRes.data ?? null) : null,
+    gatewayConfigs: gatewayRes?.ok ? (gatewayRes.data ?? []) : null,
     gatewayError: apiError(gatewayRes, 'Không tải được cấu hình thanh toán.'),
     payoutPolicy: payoutPolicyRes?.ok ? (payoutPolicyRes.data ?? null) : null,
     payoutPolicyError: apiError(payoutPolicyRes, 'Không tải được chính sách chi trả.'),
@@ -120,12 +121,14 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     partnerPromotions,
     cancellationPolicies,
     cancellationPoliciesError,
-    gatewayConfig,
+    gatewayConfigs,
     gatewayError,
     payoutPolicy,
     payoutPolicyError,
     canManagePayoutPolicy,
   } = loaderData;
+  const baseGatewayConfig =
+    gatewayConfigs?.find((c) => c.gateway !== 'momo' && c.gateway !== 'zalopay') ?? null;
   const { readOnly, subscription } = useTenantArea();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -245,7 +248,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               domainsError={domainsError}
               cancellationPolicies={cancellationPolicies}
               cancellationPoliciesError={cancellationPoliciesError}
-              gatewayConfig={gatewayConfig}
+              gatewayConfig={baseGatewayConfig}
               gatewayError={gatewayError}
               payoutPolicy={payoutPolicy}
               payoutPolicyError={payoutPolicyError}
@@ -348,7 +351,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               className="w-full space-y-5 data-[state=inactive]:hidden"
             >
               <PaymentGatewayCard
-                config={gatewayConfig}
+                configs={gatewayConfigs ?? []}
                 readOnly={readOnly}
                 sepaySaved={okFor('sepay')}
                 sepayError={errFor('sepay')}
@@ -356,12 +359,15 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 momoSaved={okFor('momo')}
                 momoError={errFor('momo')}
                 momoFieldErrors={fieldErrorsFor('momo')}
+                zalopaySaved={okFor('zalopay')}
+                zalopayError={errFor('zalopay')}
+                zalopayFieldErrors={fieldErrorsFor('zalopay')}
                 offError={errFor('gateway-off')}
               />
               {!gatewayError ? (
                 <PaymentMethodSettingsCard
-                  settings={gatewayConfig?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS}
-                  gateway={gatewayConfig?.gateway ?? null}
+                  settings={baseGatewayConfig?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS}
+                  gateway={baseGatewayConfig?.gateway ?? null}
                   readOnly={readOnly}
                   error={errFor('payment-settings')}
                   success={okFor('payment-settings')}
