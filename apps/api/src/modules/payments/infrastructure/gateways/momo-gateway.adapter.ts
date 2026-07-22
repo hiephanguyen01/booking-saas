@@ -138,11 +138,15 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
   }
 
   async refund(input: RefundInput): Promise<RefundResult> {
+    const transId = Number(input.gatewayTxnId);
+    if (!Number.isInteger(transId) || transId <= 0) {
+      // No MoMo transaction id to target (e.g. a payment recovered without one) →
+      // fall back to the manual refund path instead of sending an invalid request.
+      return { supported: false };
+    }
     if (input.amountVnd < MOMO_MIN_REFUND_VND || input.amountVnd > MOMO_MAX_PAYMENT_VND) {
-      // Checkout caps the payment to the refund limit, so this is a defensive guard.
-      throw new Error(
-        `MoMo refund amount ${input.amountVnd} outside [${MOMO_MIN_REFUND_VND}, ${MOMO_MAX_PAYMENT_VND}]`,
-      );
+      // Outside MoMo's single-refund limits (checkout caps this) → manual fallback.
+      return { supported: false };
     }
     const { partnerCode, accessKey } = this.creds;
     // Deterministic refund id (gatewayOrderRef + reason) → MoMo stays idempotent on retry.
@@ -151,8 +155,10 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
     const description = input.reason;
     const raw =
       `accessKey=${accessKey}&amount=${amount}&description=${description}&orderId=${id}` +
-      `&partnerCode=${partnerCode}&requestId=${id}&transId=${input.gatewayTxnId}`;
+      `&partnerCode=${partnerCode}&requestId=${id}&transId=${transId}`;
 
+    // A network/timeout error throws here → the refund row stays pending automatic and
+    // refund.execution_requested re-drives it (deterministic id keeps MoMo idempotent).
     const res = await fetch(`${this.base}/v2/gateway/api/refund`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -161,19 +167,18 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
         orderId: id,
         requestId: id,
         amount,
-        transId: Number(input.gatewayTxnId),
+        transId,
         lang: 'vi',
         description,
         signature: this.sign(raw),
       }),
       signal: AbortSignal.timeout(30_000), // MoMo requires ≥30s to respond
     });
-    const json = (await res.json()) as { resultCode?: number; transId?: number; message?: string };
+    const json = (await res.json()) as { resultCode?: number; transId?: number };
     if (json.resultCode !== 0) {
-      // Throw (not supported:false): the refund row stays 'pending' automatic and the
-      // refund.execution_requested handler re-drives it; the deterministic id keeps
-      // MoMo idempotent across retries.
-      throw new Error(`MoMo refund failed (${json.resultCode}): ${json.message ?? 'unknown'}`);
+      // MoMo definitively rejected the refund. Return unsupported (not throw) so the
+      // caller hands off to the manual path with an SLA instead of retrying forever.
+      return { supported: false };
     }
     return { supported: true, refundId: json.transId !== undefined ? String(json.transId) : id };
   }

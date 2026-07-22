@@ -19,6 +19,7 @@ import {
   Phone,
   QrCode,
   UserRound,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { Form, Link, useNavigation } from 'react-router';
@@ -167,12 +168,17 @@ const PAYMENT_METHODS: Record<
   CustomerPaymentMethod,
   {
     icon: LucideIcon;
-    label: 'payment.transfer' | 'payment.domesticCard' | 'payment.internationalCard';
+    label:
+      | 'payment.transfer'
+      | 'payment.domesticCard'
+      | 'payment.internationalCard'
+      | 'payment.momoWallet';
   }
 > = {
   bank_transfer: { icon: Landmark, label: 'payment.transfer' },
   napas_qr: { icon: QrCode, label: 'payment.domesticCard' },
   international_card: { icon: CreditCard, label: 'payment.internationalCard' },
+  momo_wallet: { icon: Wallet, label: 'payment.momoWallet' },
 };
 
 function PaymentMethods({ methods }: { methods: CustomerPaymentMethod[] }) {

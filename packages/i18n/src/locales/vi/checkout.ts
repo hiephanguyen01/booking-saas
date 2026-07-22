@@ -38,6 +38,7 @@ export const viCheckout = {
     transfer: 'Chuyển khoản',
     internationalCard: 'Visa/Master/JCB',
     domesticCard: 'Napas QR / Thẻ nội địa',
+    momoWallet: 'Ví MoMo',
     soon: 'Sắp hỗ trợ',
     handoffTitle: 'Đang mở cổng thanh toán',
     handoffDescription: 'Bạn sẽ được chuyển tới trang thanh toán bảo mật.',

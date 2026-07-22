@@ -14,14 +14,23 @@ export const customerPaymentMethodSchema = z.enum([
   'bank_transfer',
   'napas_qr',
   'international_card',
+  'momo_wallet',
 ]);
 export type CustomerPaymentMethod = z.infer<typeof customerPaymentMethodSchema>;
+
+/** Which storefront methods each gateway can actually process. */
+export const GATEWAY_SUPPORTED_METHODS: Record<GatewayKey, CustomerPaymentMethod[]> = {
+  sepay: ['bank_transfer', 'napas_qr', 'international_card'],
+  payos: ['bank_transfer'],
+  momo: ['momo_wallet'],
+  mock: ['bank_transfer', 'napas_qr', 'international_card', 'momo_wallet'],
+};
 
 export const refundStrategySchema = z.enum(['manual', 'automatic_preferred']);
 export type RefundStrategy = z.infer<typeof refundStrategySchema>;
 
 export const gatewayPaymentSettingsSchema = z.object({
-  enabledMethods: z.array(customerPaymentMethodSchema).min(1).max(3),
+  enabledMethods: z.array(customerPaymentMethodSchema).min(1).max(4),
   refundStrategy: refundStrategySchema,
   manualRefundSlaHours: z
     .number()
@@ -36,6 +45,20 @@ export const DEFAULT_GATEWAY_PAYMENT_SETTINGS: GatewayPaymentSettings = {
   refundStrategy: 'manual',
   manualRefundSlaHours: 72,
 };
+
+/**
+ * Sensible defaults when a gateway is first configured: enable exactly the methods
+ * it supports, and turn on automatic refunds for gateways that can push money back
+ * (MoMo wallet, SePay card). Tenants can still override via the settings card.
+ */
+export function defaultGatewayPaymentSettings(gateway: GatewayKey): GatewayPaymentSettings {
+  const enabledMethods = GATEWAY_SUPPORTED_METHODS[gateway];
+  return {
+    enabledMethods: enabledMethods.length ? enabledMethods : ['bank_transfer'],
+    refundStrategy: gateway === 'momo' || gateway === 'sepay' ? 'automatic_preferred' : 'manual',
+    manualRefundSlaHours: 72,
+  };
+}
 
 export const sepayGatewayConfigInputSchema = z.object({
   gateway: z.literal('sepay'),

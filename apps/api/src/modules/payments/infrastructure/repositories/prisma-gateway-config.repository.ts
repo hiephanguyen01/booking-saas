@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   DEFAULT_GATEWAY_PAYMENT_SETTINGS,
+  defaultGatewayPaymentSettings,
   gatewayPaymentSettingsSchema,
   type GatewayPaymentSettings,
 } from '@booking/contracts';
@@ -74,7 +75,8 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
         gateway: data.gateway,
         environment: data.environment,
         credentials,
-        settings: (data.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS) as Prisma.InputJsonObject,
+        settings: (data.settings ??
+          defaultGatewayPaymentSettings(data.gateway)) as Prisma.InputJsonObject,
         isActive: true,
       },
       update: {

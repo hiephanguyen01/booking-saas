@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import type { GatewayPaymentSettings } from '@booking/contracts';
+import {
+  GATEWAY_SUPPORTED_METHODS,
+  type CustomerPaymentMethod,
+  type GatewayKey,
+  type GatewayPaymentSettings,
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,
@@ -20,19 +25,27 @@ const METHODS = [
   ['bank_transfer', 'Chuyển khoản ngân hàng', 'VietQR và chuyển khoản theo thông tin đơn hàng.'],
   ['napas_qr', 'Napas QR và thẻ nội địa', 'Cho phép khách thanh toán qua mạng lưới Napas.'],
   ['international_card', 'Thẻ quốc tế', 'Visa, Mastercard và JCB khi merchant hỗ trợ.'],
-] as const;
+  ['momo_wallet', 'Ví MoMo', 'Khách thanh toán bằng ví MoMo (chuyển hướng sang MoMo).'],
+] as const satisfies readonly (readonly [CustomerPaymentMethod, string, string])[];
 
 export function PaymentMethodSettingsCard({
   settings,
+  gateway,
   readOnly,
   error,
   success,
 }: {
   settings: GatewayPaymentSettings;
+  /** Active gateway — only its supported methods are offered. */
+  gateway: GatewayKey | null;
   readOnly: boolean;
   error: string | null;
   success: boolean;
 }) {
+  const supported = gateway ? GATEWAY_SUPPORTED_METHODS[gateway] : null;
+  const visibleMethods = supported
+    ? METHODS.filter(([value]) => supported.includes(value))
+    : METHODS;
   const navigation = useNavigation();
   const [refundStrategy, setRefundStrategy] = useState(settings.refundStrategy);
   const isSubmitting =
@@ -60,7 +73,7 @@ export function PaymentMethodSettingsCard({
               Khách chỉ nhìn thấy các phương thức được bật và được tài khoản merchant hỗ trợ.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              {METHODS.map(([value, label, description]) => (
+              {visibleMethods.map(([value, label, description]) => (
                 <Label
                   key={value}
                   className="flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border bg-muted/15 p-4 font-normal transition-colors hover:bg-muted/35 has-data-[state=checked]:border-primary/35 has-data-[state=checked]:bg-primary/[0.035]"

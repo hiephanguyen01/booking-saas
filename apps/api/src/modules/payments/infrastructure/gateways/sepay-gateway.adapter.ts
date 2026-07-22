@@ -69,12 +69,14 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
   constructor(private readonly creds: SepayCredentials) {}
 
   providerPaymentMethod(method: CustomerPaymentMethod): string {
-    const mapping: Record<CustomerPaymentMethod, string> = {
+    const mapping: Partial<Record<CustomerPaymentMethod, string>> = {
       bank_transfer: 'BANK_TRANSFER',
       napas_qr: 'NAPAS_BANK_TRANSFER',
       international_card: 'CARD',
     };
-    return mapping[method];
+    const code = mapping[method];
+    if (!code) throw new Error(`SePay does not support payment method ${method}`);
+    return code;
   }
 
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {

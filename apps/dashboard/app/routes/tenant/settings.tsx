@@ -361,6 +361,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               {!gatewayError ? (
                 <PaymentMethodSettingsCard
                   settings={gatewayConfig?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS}
+                  gateway={gatewayConfig?.gateway ?? null}
                   readOnly={readOnly}
                   error={errFor('payment-settings')}
                   success={okFor('payment-settings')}
