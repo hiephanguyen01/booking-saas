@@ -107,6 +107,11 @@ async function seedDemo(): Promise<void> {
   const logoUrl = `${storagePublicUrl}/defaults/booking-studio/logo.png`;
   const appIconUrl = `${storagePublicUrl}/defaults/booking-studio/app-icon.png`;
   const backgroundUrl = `${storagePublicUrl}/defaults/booking-studio/background.png`;
+  const carouselUrls = Array.from(
+    { length: 4 },
+    (_, index) =>
+      `${storagePublicUrl}/defaults/booking-studio/carousel/${String(index + 1).padStart(2, '0')}.jpg`,
+  );
   const studioHubTheme = {
     colors: { primary: '#E21114', accent: '#F97316', background: '#FFFFFF' },
     logoUrl,
@@ -117,7 +122,7 @@ async function seedDemo(): Promise<void> {
       subtitle: 'Không gian chuyên nghiệp cho mọi ý tưởng hình ảnh của bạn.',
       imageUrl: backgroundUrl,
     },
-    carousel: [backgroundUrl],
+    carousel: carouselUrls,
     contact: {
       email: 'hello@studiohub.vn',
       phone: '0900 000 001',
