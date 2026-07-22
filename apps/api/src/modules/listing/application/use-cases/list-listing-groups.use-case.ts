@@ -16,7 +16,7 @@ export class ListListingGroupsUseCase {
 
   execute(
     tenantId: string,
-    filter: { partnerId?: string },
+    filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingGroupRecord[]; total: number }> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.repo.listPage(tx, filter, page));

@@ -14,6 +14,10 @@ import { PromotionStatusBadge } from '~/components/status-badge';
 import { EnumValue } from '~/components/enum-value';
 import { SCOPE_LABELS } from '~/constants/promotion';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
+import { PROMOTION_FILTER_SPEC } from '~/features/promotions/lib/promotion-filters';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
@@ -23,17 +27,19 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.promotions.manage');
   const { toApiQuery } = readListParams(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, PROMOTION_FILTER_SPEC);
   const res = await apiGet<Paginated<PromotionResponse>>('/tenant/promotions', auth, {
-    query: toApiQuery(),
+    query: toApiQuery(apiFilters),
   });
   return {
     result: res.ok ? res.data : null,
+    filters,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách khuyến mãi.'),
   };
 }
 
 export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
-  const { result, error } = loaderData;
+  const { result, error, filters } = loaderData;
   const { readOnly } = useTenantArea();
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
@@ -97,7 +103,23 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
         <Card><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>
       ) : null}
 
-      <DataTable columns={columns} data={promotions} getRowKey={(p) => p.id} emptyMessage="Chưa có mã khuyến mãi nào." />
+      <ListToolbar
+        spec={PROMOTION_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.promotions}
+        pageSize={pageSize}
+      />
+
+      <DataTable
+        columns={columns}
+        data={promotions}
+        getRowKey={(p) => p.id}
+        emptyMessage={
+          hasActiveFilters(filters)
+            ? 'Không có mã khớp bộ lọc.'
+            : 'Chưa có mã khuyến mãi nào. Nhấn "Tạo mã mới" để tạo chương trình đầu tiên.'
+        }
+      />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>

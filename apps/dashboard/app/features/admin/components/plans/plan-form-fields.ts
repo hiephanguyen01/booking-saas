@@ -12,10 +12,10 @@ export const planCreateFields: FieldConfig<CreatePlanInput>[] = [
     description: 'Số nguyên đồng, không dấu chấm.',
   },
   { name: 'limits.maxPartners', type: 'number', label: 'Số partner tối đa' },
-  { name: 'limits.maxListings', type: 'number', label: 'Số listing tối đa' },
+  { name: 'limits.maxListings', type: 'number', label: 'Số tin đăng tối đa' },
   { name: 'limits.maxBookingsPerMonth', type: 'number', label: 'Booking / tháng' },
   { name: 'limits.customDomain', type: 'switch', label: 'Cho phép tên miền riêng' },
-  { name: 'limits.affiliateModule', type: 'switch', label: 'Bật module affiliate' },
+  { name: 'limits.affiliateModule', type: 'switch', label: 'Bật module cộng tác viên' },
   { name: 'isActive', type: 'switch', label: 'Kích hoạt gói' },
 ];
 
@@ -29,10 +29,10 @@ export const planEditFields: FieldConfig<UpdatePlanInput>[] = [
     description: 'Số nguyên đồng, không dấu chấm.',
   },
   { name: 'limits.maxPartners', type: 'number', label: 'Số partner tối đa' },
-  { name: 'limits.maxListings', type: 'number', label: 'Số listing tối đa' },
+  { name: 'limits.maxListings', type: 'number', label: 'Số tin đăng tối đa' },
   { name: 'limits.maxBookingsPerMonth', type: 'number', label: 'Booking / tháng' },
   { name: 'limits.customDomain', type: 'switch', label: 'Cho phép tên miền riêng' },
-  { name: 'limits.affiliateModule', type: 'switch', label: 'Bật module affiliate' },
+  { name: 'limits.affiliateModule', type: 'switch', label: 'Bật module cộng tác viên' },
   { name: 'isActive', type: 'switch', label: 'Kích hoạt gói' },
   {
     name: 'repriceExistingSubscribers',

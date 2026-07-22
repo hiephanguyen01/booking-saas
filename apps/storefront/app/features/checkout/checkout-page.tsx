@@ -4,6 +4,7 @@ import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { useLocale } from '../../lib/use-locale';
 import type { StorefrontContext } from '../../root';
+import { checkoutDestinationSchema } from '@booking/contracts';
 import { checkoutAmounts, checkoutCancellationLines } from './checkout-presentation';
 import { BookingColumn } from './components/booking-column';
 import { CheckoutForm } from './components/checkout-form';
@@ -11,7 +12,19 @@ import { MemberBanner } from './components/member-banner';
 import { PaymentHandoff } from './components/payment-handoff';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
-  const { listing, mode, start, end, qty, packageId, quote, promoCode, promo, currentUser } = loaderData;
+  const {
+    listing,
+    mode,
+    start,
+    end,
+    qty,
+    packageId,
+    quote,
+    promoCode,
+    promo,
+    currentUser,
+    paymentMethods,
+  } = loaderData;
   const { t } = useTranslation(NsI18n.Checkout);
   const { tenant } = useOutletContext<StorefrontContext>();
   const locale = useLocale();
@@ -20,8 +33,11 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const amounts = checkoutAmounts(quote, promo?.valid ? promo : null);
   const checkoutPath = `${location.pathname}${location.search}`;
 
-  if (actionData && 'handoff' in actionData && actionData.handoff) {
-    return <PaymentHandoff destination={actionData.handoff} />;
+  const handoff = checkoutDestinationSchema.safeParse(
+    actionData && 'handoff' in actionData ? actionData.handoff : null,
+  );
+  if (handoff.success && handoff.data.type === 'form_post') {
+    return <PaymentHandoff destination={handoff.data} />;
   }
 
   return (
@@ -70,6 +86,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
               serverError={actionData?.error ?? null}
               dueNow={amounts.dueNow}
               expectedSubtotal={quote.subtotal}
+              paymentMethods={paymentMethods}
             />
           </div>
         </div>

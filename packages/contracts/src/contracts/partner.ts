@@ -16,6 +16,34 @@ export type PartnerType = z.infer<typeof partnerTypeSchema>;
 export const partnerStatusSchema = z.enum(['pending', 'approved', 'suspended']);
 export type PartnerStatus = z.infer<typeof partnerStatusSchema>;
 
+export const publicPartnerListingTypeSchema = z.object({
+  id: uuidSchema,
+  name: z.string(),
+  slug: z.string(),
+  icon: z.string().nullable(),
+  publishedCount: z.number().int().nonnegative(),
+});
+export type PublicPartnerListingType = z.infer<typeof publicPartnerListingTypeSchema>;
+
+export const publicPartnerProfileResponseSchema = z.object({
+  id: uuidSchema,
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  logoUrl: z.string().url().nullable(),
+  partnerType: partnerTypeSchema,
+  identityVerified: z.boolean(),
+  activeSince: z.string(),
+  stats: z.object({
+    publishedOfferings: z.number().int().nonnegative(),
+    completedBookings: z.number().int().nonnegative(),
+    ratingAvg: z.number().min(1).max(5).nullable(),
+    reviewCount: z.number().int().nonnegative(),
+  }),
+  listingTypes: z.array(publicPartnerListingTypeSchema),
+});
+export type PublicPartnerProfileResponse = z.infer<typeof publicPartnerProfileResponseSchema>;
+
 /** Identity-verification state for people-booking listing types (§7.3). */
 export const partnerVerificationStatusSchema = z.enum([
   'unsubmitted',

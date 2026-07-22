@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import type { CustomerPaymentMethod } from '@booking/contracts';
 import type {
   CreatePaymentInput,
   CreatePaymentResult,
@@ -46,6 +47,10 @@ export class MockGatewayAdapter implements PaymentGatewayPort {
   readonly key: GatewayKey = 'mock';
   private readonly ledger = new Map<string, MockTxnState>();
 
+  providerPaymentMethod(method: CustomerPaymentMethod): string {
+    return method;
+  }
+
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const gatewayTxnId = `mock_${randomUUID()}`;
     this.ledger.set(gatewayTxnId, { status: 'pending', amountVnd: input.amountVnd });
@@ -55,6 +60,7 @@ export class MockGatewayAdapter implements PaymentGatewayPort {
         paymentUrl: `mock://pay/${gatewayTxnId}?order=${input.orderCode}`,
       },
       gatewayTxnId,
+      paymentMethod: input.paymentMethod,
     });
   }
 

@@ -50,8 +50,8 @@ export function RefundsPanel({
       <CardHeader>
         <CardTitle>Hoàn tiền khách hàng</CardTitle>
         <p className="text-sm text-muted-foreground">
-          MoMo hoàn tự động về ví khách khi huỷ đơn. SePay không tự chuyển hoàn — Tenant chuyển khoản
-          rồi xác nhận mã tham chiếu ngân hàng.
+          MoMo và giao dịch thẻ đủ điều kiện được hoàn tự động về khách khi huỷ đơn. Các khoản còn lại
+          (SePay chuyển khoản) cần chuyển thủ công rồi xác nhận mã tham chiếu ngân hàng.
         </p>
         {refunds.length > 0 ? (
           <p className="mt-1 text-sm">
@@ -74,7 +74,7 @@ export function RefundsPanel({
             navigation.state === 'submitting' && navigation.formData?.get('refundId') === refund.id;
           const auto = isAuto(refund);
           const statusLabel =
-            refund.status === 'succeeded' && auto ? 'Đã hoàn về ví MoMo' : STATUS_LABEL[refund.status];
+            refund.status === 'succeeded' && auto ? 'Đã hoàn tự động' : STATUS_LABEL[refund.status];
           return (
             <div key={refund.id} className="rounded-md border p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -88,10 +88,18 @@ export function RefundsPanel({
                   <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-medium text-foreground/80">
                       {auto ? <Wallet className="size-3" /> : null}
-                      {auto ? 'Tự động (MoMo)' : 'Thủ công (SePay)'}
+                      {auto ? 'Tự động' : 'Thủ công'}
                     </span>
                     <span>· {refund.reason ?? 'Hoàn tiền'}</span>
                     <span>· {formatDateTime(refund.createdAt)}</span>
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {refund.executionMode === 'automatic'
+                      ? 'Tự động qua cổng thanh toán'
+                      : 'Xử lý thủ công'}
+                    {refund.dueAt && refund.status === 'manual_required'
+                      ? ` · hạn ${formatDateTime(refund.dueAt)}`
+                      : ''}
                   </p>
                   {!refund.affectsBookingStatus ? (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -154,7 +162,7 @@ export function RefundsPanel({
                 </Form>
               ) : refund.status === 'succeeded' && auto ? (
                 <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
-                  Mã giao dịch hoàn MoMo:{' '}
+                  Mã giao dịch hoàn:{' '}
                   <span className="font-mono text-foreground">{refund.gatewayRefundId}</span>
                 </p>
               ) : refund.reference ? (

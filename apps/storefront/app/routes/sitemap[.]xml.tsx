@@ -1,26 +1,27 @@
 import type { Route } from './+types/sitemap[.]xml';
-import { fetchListings, fetchListingTypes } from '../lib/catalog.server';
+import { fetchListingTypes, searchListings } from '../lib/catalog.server';
 import { requestPublicUrl } from '../lib/seo';
 
+const SITEMAP_PAGE_SIZE = 48;
+
 /**
- * Per-domain sitemap (§16.2): homepage + active listing-type pages + published
- * listings for the tenant resolved from this Host. Absolute URLs use the public
- * host the crawler requested.
+ * Per-domain sitemap (§16.2): homepage + active listing-type pages + every
+ * published listing for the tenant resolved from this Host. Absolute URLs use
+ * the public host the crawler requested.
  */
 export async function loader({ request, url }: Route.LoaderArgs) {
   const origin = requestPublicUrl(request, url).origin;
+  const types = await fetchListingTypes(request);
+  const listingPathBatches = await Promise.all(
+    types.map((type) => fetchAllListingPaths(request, type.slug)),
+  );
 
-  const [types, listings] = await Promise.all([
-    fetchListingTypes(request),
-    fetchListings(request, new URLSearchParams()),
-  ]);
-
-  const paths = [
+  const paths = new Set<string>([
     '',
     ...types.map((type) => `/t/${encodeURIComponent(type.slug)}`),
-    ...listings.map((listing) => `/${listing.kind === 'group' ? 'g' : 'l'}/${encodeURIComponent(listing.slug)}`),
-  ];
-  const entries = paths.flatMap((path) =>
+    ...listingPathBatches.flat(),
+  ]);
+  const entries = [...paths].flatMap((path) =>
     (['vi', 'en'] as const).map((locale) => ({ locale, path })),
   );
 
@@ -35,8 +36,38 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`;
 
   return new Response(body, {
-    headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' },
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    },
   });
+}
+
+async function fetchAllListingPaths(request: Request, typeSlug: string): Promise<string[]> {
+  const paths: string[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const result = await searchListings(
+      request,
+      new URLSearchParams({
+        type: typeSlug,
+        page: String(page),
+        pageSize: String(SITEMAP_PAGE_SIZE),
+      }),
+    );
+    paths.push(
+      ...result.items.flatMap((listing) => [
+        `/${listing.kind === 'group' ? 'g' : 'l'}/${encodeURIComponent(listing.slug)}`,
+        `/p/${encodeURIComponent(listing.partnerSlug)}`,
+      ]),
+    );
+    totalPages = result.pagination.totalPages;
+    page += 1;
+  } while (page <= totalPages);
+
+  return paths;
 }
 
 function escapeXml(value: string): string {

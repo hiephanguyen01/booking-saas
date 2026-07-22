@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiAcceptedResponse,
   ApiCreatedResponse,
@@ -27,6 +37,7 @@ import { AddDomainUseCase } from '../../application/use-cases/add-domain.use-cas
 import { ListDomainsUseCase } from '../../application/use-cases/list-domains.use-case';
 import { VerifyDomainUseCase } from '../../application/use-cases/verify-domain.use-case';
 import { DeleteDomainUseCase } from '../../application/use-cases/delete-domain.use-case';
+import { SetPrimaryDomainUseCase } from '../../application/use-cases/set-primary-domain.use-case';
 import { GetSubscriptionStatusUseCase } from '../../application/use-cases/get-subscription-status.use-case';
 import { SetPartnerPromotionsUseCase } from '../../application/use-cases/set-partner-promotions.use-case';
 import { SetTenantDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-tenant-default-cancellation-policy.use-case';
@@ -64,6 +75,7 @@ export class TenantSettingsController {
     private readonly listDomains: ListDomainsUseCase,
     private readonly verifyDomain: VerifyDomainUseCase,
     private readonly deleteDomain: DeleteDomainUseCase,
+    private readonly setPrimaryDomain: SetPrimaryDomainUseCase,
     private readonly getSubscriptionStatus: GetSubscriptionStatusUseCase,
     private readonly setPartnerPromotions: SetPartnerPromotionsUseCase,
     private readonly setDefaultPolicy: SetTenantDefaultCancellationPolicyUseCase,
@@ -191,6 +203,20 @@ export class TenantSettingsController {
       id,
     );
     return { status, domain: toDomainResponse(domain) };
+  }
+
+  @RequirePermissions('tenant.settings.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Patch('domains/:id/primary')
+  @ApiOperation({ summary: 'Make a verified custom domain primary' })
+  @UuidParam()
+  @ApiOkResponse({ type: DomainResponseDto })
+  async setPrimary(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+  ): Promise<DomainResponse> {
+    return toDomainResponse(
+      await this.setPrimaryDomain.execute(this.tenantContext.tenantIdOrThrow(), id),
+    );
   }
 
   @RequirePermissions('tenant.settings.manage')

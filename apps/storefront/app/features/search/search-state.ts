@@ -1,5 +1,6 @@
 import type { PriceUnit } from '../../lib/ui';
 import { normalizeDailyRange } from '../../lib/daily-range';
+import { canOffsetDateOnly, isValidDateOnly } from '../../lib/date-only';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
 export type SearchMode = 'hourly' | 'daily' | 'inventory' | 'none';
@@ -64,16 +65,18 @@ export interface SearchDateSelection {
   to: string;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MAX_SEARCH_AMENITIES = 30;
+const MAX_SEARCH_AMENITY_LENGTH = 120;
+const MAX_CATALOG_PAGE = 10_000;
 
-function dateParam(value: string | null, fallback: string): string {
-  return value && DATE_RE.test(value) ? value : fallback;
+function dateParam(value: string | null, fallback: string, offsetDays = 0): string {
+  return value && canOffsetDateOnly(value, offsetDays) ? value : fallback;
 }
 
-function positiveInt(value: string | null, fallback: number): number {
+function positiveInt(value: string | null, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
   const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
 }
 
 function money(value: string | null): number | null {
@@ -93,6 +96,21 @@ function rating(value: string | null): number | null {
     : null;
 }
 
+function amenityParams(params: URLSearchParams): string[] {
+  const amenities: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of params.getAll('amenities').flatMap((item) => item.split(','))) {
+    const value = raw.trim().slice(0, MAX_SEARCH_AMENITY_LENGTH);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    amenities.push(value);
+    if (amenities.length >= MAX_SEARCH_AMENITIES) break;
+  }
+
+  return amenities;
+}
+
 export function parseSearchState(params: URLSearchParams): StorefrontSearchState {
   const today = todayInTz(DEFAULT_TZ);
   const rawMode = params.get('mode');
@@ -102,8 +120,11 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
   const rawTo = params.get('to');
   const rawStartTime = params.get('startTime');
   const rawEndTime = params.get('endTime');
-  const from = dateParam(rawFrom, today);
-  const toCandidate = dateParam(params.get('to'), addDays(from, 1));
+  const validDateSelection = Boolean(rawDate && isValidDateOnly(rawDate));
+  const validFrom = Boolean(rawFrom && canOffsetDateOnly(rawFrom, 1));
+  const validTo = Boolean(rawTo && isValidDateOnly(rawTo));
+  const from = dateParam(rawFrom, today, 1);
+  const toCandidate = dateParam(rawTo, addDays(from, 1));
   const to = toCandidate > from ? toCandidate : addDays(from, 1);
   const areaParam = params.get('area');
   const area: SearchArea = ['under-25', '25-50', '50-100', 'over-100'].includes(areaParam ?? '')
@@ -123,30 +144,25 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     endTime: TIME_RE.test(rawEndTime ?? '') ? rawEndTime! : '10:00',
     from,
     to,
-    hasDateSelection: Boolean(rawDate && DATE_RE.test(rawDate)),
+    hasDateSelection: validDateSelection,
     hasTimeSelection: Boolean(
-      rawDate &&
-      DATE_RE.test(rawDate) &&
+      validDateSelection &&
       rawStartTime &&
       rawEndTime &&
       TIME_RE.test(rawStartTime) &&
       TIME_RE.test(rawEndTime) &&
       rawStartTime < rawEndTime,
     ),
-    hasDailyRange: Boolean(
-      rawFrom && rawTo && DATE_RE.test(rawFrom) && DATE_RE.test(rawTo) && rawTo > rawFrom,
-    ),
-    guests: Math.min(100, positiveInt(params.get('guests'), 1)),
-    quantity: Math.min(100, positiveInt(params.get('quantity'), 1)),
+    hasDailyRange: Boolean(validFrom && validTo && rawFrom && rawTo && rawTo > rawFrom),
+    guests: positiveInt(params.get('guests'), 1, 100),
+    quantity: positiveInt(params.get('quantity'), 1, 100),
     minPrice: money(params.get('minPrice')),
     maxPrice: money(params.get('maxPrice')),
     minRating: rating(params.get('minRating')),
-    amenities: [...new Set(params.getAll('amenities').flatMap((item) => item.split(',')))].filter(
-      Boolean,
-    ),
+    amenities: amenityParams(params),
     area,
     sort,
-    page: positiveInt(params.get('page'), 1),
+    page: positiveInt(params.get('page'), 1, MAX_CATALOG_PAGE),
   };
 }
 

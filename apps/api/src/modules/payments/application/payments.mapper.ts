@@ -19,6 +19,7 @@ export function toGatewayConfigResponse(config: GatewayConfigRecord): GatewayCon
     isActive: true,
     merchantId: config.gateway === 'sepay' ? (config.credentials.merchantId ?? null) : null,
     partnerCode: config.gateway === 'momo' ? (config.credentials.partnerCode ?? null) : null,
+    settings: config.settings,
   };
 }
 
@@ -33,6 +34,9 @@ export function toRefundResponse(refund: RefundRecord): RefundResponse {
     affectsBookingStatus: refund.affectsBookingStatus,
     gatewayRefundId: refund.gatewayRefundId,
     reference: refund.evidence?.reference ?? null,
+    executionMode: refund.executionMode,
+    dueAt: refund.dueAt?.toISOString() ?? null,
+    completedAt: refund.completedAt?.toISOString() ?? null,
   };
 }
 

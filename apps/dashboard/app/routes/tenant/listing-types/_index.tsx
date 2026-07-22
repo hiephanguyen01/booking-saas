@@ -1,6 +1,6 @@
 import { data as routeData, Link, useFetcher } from 'react-router';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import type { ListingTypeResponse } from '@booking/contracts';
+import { DEFAULT_PAGE_SIZE, type ListingTypeResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
@@ -8,19 +8,31 @@ import type { Route } from './+types/_index';
 import { apiDelete, apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PageHeader } from '~/components/page-header';
+import { RelationshipHint } from '~/components/relationship-hint';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
-import { SEARCH_SCHEDULE_LABEL } from '~/features/tenant/constants';
+import { SEARCH_SCHEDULE_LABEL, STRUCTURE_LABEL } from '~/features/tenant/constants';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
+
+const LISTING_TYPE_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên loại…' },
+];
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Loại dịch vụ · Tenant · Bookify' }];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
-  const res = await apiGet<ListingTypeResponse[]>('/tenant/listing-types?includeInactive=true', auth);
+  const { filters, apiFilters } = readListFilters(url.searchParams, LISTING_TYPE_FILTER_SPEC);
+  const res = await apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth, {
+    query: { includeInactive: 'true', ...apiFilters },
+  });
   return {
     types: res.ok ? (res.data ?? []) : [],
     canWrite: can('tenant.listings.write'),
+    filters,
     error: res.ok ? null : (res.error ?? 'Không tải được loại dịch vụ.'),
   };
 }
@@ -37,7 +49,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantListingTypes({ loaderData, actionData }: Route.ComponentProps) {
-  const { types, canWrite, error } = loaderData;
+  const { types, canWrite, error, filters } = loaderData;
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
 
   const columns: DataTableColumn<ListingTypeResponse>[] = [
@@ -59,6 +71,21 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
           ))}
         </div>
       ),
+    },
+    {
+      header: 'Cấu trúc',
+      cell: (t) => (
+        <div>
+          <p>{STRUCTURE_LABEL[t.structure] ?? '—'}</p>
+          {t.structure !== 'standalone' && t.itemLabel ? (
+            <p className="whitespace-nowrap text-xs text-muted-foreground">
+              · gọi con là “{t.itemLabel}”
+            </p>
+          ) : null}
+        </div>
+      ),
+      className: 'hidden md:table-cell',
+      headClassName: 'hidden md:table-cell',
     },
     { header: 'Thuộc tính', cell: (t) => <span className="tabular-nums text-muted-foreground">{t.attributeSchema.length}</span> },
     {
@@ -84,7 +111,7 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
       header: 'Đang dùng',
       cell: (t) => (
         <span className="whitespace-nowrap text-sm text-muted-foreground">
-          <span className="tabular-nums text-foreground">{t.listingCount}</span> listing
+          <span className="tabular-nums text-foreground">{t.listingCount}</span> tin đăng
         </span>
       ),
       className: 'hidden sm:table-cell',
@@ -115,12 +142,26 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
           ) : null
         }
       />
+      <RelationshipHint variant="types" />
       {error || actionError ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error ?? actionError}
         </div>
       ) : null}
-      <DataTable columns={columns} data={types} getRowKey={(t) => t.id} emptyMessage="Chưa có loại dịch vụ nào." />
+      <ListToolbar
+        spec={LISTING_TYPE_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.listingTypes}
+        pageSize={DEFAULT_PAGE_SIZE}
+      />
+      <DataTable
+        columns={columns}
+        data={types}
+        getRowKey={(t) => t.id}
+        emptyMessage={
+          hasActiveFilters(filters) ? 'Không có loại dịch vụ khớp bộ lọc.' : 'Chưa có loại dịch vụ nào.'
+        }
+      />
     </div>
   );
 }
@@ -150,7 +191,7 @@ function RowActions({ type }: { type: ListingTypeResponse }) {
           variant="ghost"
           className="text-muted-foreground hover:text-destructive"
           disabled={busy || inUse}
-          title={inUse ? `Đang được ${type.listingCount} listing sử dụng — không thể xoá.` : undefined}
+          title={inUse ? `Đang được ${type.listingCount} tin đăng sử dụng — không thể xoá.` : undefined}
         >
           <Trash2 className="size-3.5" /> Xoá
         </Button>

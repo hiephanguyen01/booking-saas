@@ -8,47 +8,55 @@ import {
   CardTitle,
 } from '@booking/ui/components/ui/card';
 import { Switch } from '@booking/ui/components/ui/switch';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, Megaphone } from 'lucide-react';
 import { useBusy } from '~/hooks/use-busy';
 import type { PartnerPromotionsState } from '~/features/tenant/lib/flags';
+import { SuccessBanner } from '~/components/action-feedback';
 
 /**
- * Marketplace flag card — lets partners create their own promo codes (§12.2).
+ * Marketplace flag card: lets partners create their own promo codes (§12.2).
  * Submits `intent=toggle-partner-promos` to the settings route's action.
  */
 export function PartnerPromotionsCard({
   state,
   readOnly,
   error,
+  saved,
 }: {
   state: PartnerPromotionsState;
   readOnly: boolean;
   error: string | null;
+  saved: boolean;
 }) {
   const submit = useSubmit();
   const busy = useBusy();
 
   return (
-    <Card>
+    <Card className="shadow-none">
       <CardHeader>
-        <CardTitle>Marketplace</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Megaphone className="size-4 text-primary" aria-hidden="true" /> Khuyến mãi của đối tác
+        </CardTitle>
         <CardDescription>
-          Cho phép đối tác tự tạo mã khuyến mãi cho listing của họ (đối tác chịu chi phí, §12.2).
+          Cho phép đối tác tự tạo mã giảm giá cho tin đăng của họ. Phần giảm giá do đối tác chịu.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {error ? (
           <Alert variant="destructive" className="mb-4">
             <CircleAlert className="size-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
+        <SuccessBanner message={saved ? 'Đã cập nhật quyền tạo khuyến mãi của đối tác.' : null} />
         {state.ok ? (
-          <label className="flex items-center justify-between gap-4">
+          <label className="flex min-h-16 items-center justify-between gap-4 rounded-xl border bg-muted/20 p-4">
             <span className="text-sm">
-              Đối tác được tạo khuyến mãi
-              <span className="block text-muted-foreground">
-                {state.enabled ? 'Đang bật' : 'Đang tắt'}
+              <span className="font-semibold">Đối tác được tự tạo mã giảm giá</span>
+              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                {state.enabled
+                  ? 'Đang bật. Đối tác có thể tạo và quản lý khuyến mãi của riêng họ.'
+                  : 'Đang tắt. Chỉ tenant có thể quản lý chương trình khuyến mãi.'}
               </span>
             </span>
             <Switch

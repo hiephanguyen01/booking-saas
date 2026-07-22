@@ -14,6 +14,7 @@ import {
   Star,
   Heart,
   Scale,
+  ShieldAlert,
 } from 'lucide-react';
 import type { DashboardNavSection } from '~/lib/navigation-types';
 import { dashboardPaths } from '~/constants/paths';
@@ -36,13 +37,13 @@ export const tenantNavSections: DashboardNavSection[] = [
     label: 'Danh mục',
     items: [
       {
-        title: 'Listing',
+        title: 'Tin đăng',
         to: dashboardPaths.tenant.listings,
         icon: Store,
         permission: 'tenant.listings.read',
       },
       {
-        title: 'Bài đăng',
+        title: 'Tin đăng nhiều hạng mục',
         to: dashboardPaths.tenant.listingGroups,
         icon: Files,
         permission: 'tenant.listings.read',
@@ -81,6 +82,12 @@ export const tenantNavSections: DashboardNavSection[] = [
         to: dashboardPaths.tenant.favorites,
         icon: Heart,
         permission: 'tenant.favorites.read',
+      },
+      {
+        title: 'Báo cáo nội dung',
+        to: dashboardPaths.tenant.contentReports,
+        icon: ShieldAlert,
+        permission: 'tenant.listings.publish',
       },
     ],
   },
@@ -137,7 +144,7 @@ export const tenantNavSections: DashboardNavSection[] = [
         title: 'Cài đặt',
         to: dashboardPaths.tenant.settings,
         icon: Settings,
-        permission: 'tenant.theme.manage',
+        anyPermissions: ['tenant.theme.manage', 'tenant.settings.manage', 'tenant.finance.read'],
       },
     ],
   },

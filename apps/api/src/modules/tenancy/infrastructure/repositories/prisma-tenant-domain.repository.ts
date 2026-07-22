@@ -35,8 +35,9 @@ export class PrismaTenantDomainRepository implements ITenantDomainRepository {
     return d ? toRecord(d) : null;
   }
 
-  async findById(id: string): Promise<DomainRecord | null> {
-    const d = await this.prisma.admin.tenantDomain.findUnique({ where: { id } });
+  async findById(id: string, tx?: PrismaTx): Promise<DomainRecord | null> {
+    const client = tx ?? this.prisma.admin;
+    const d = await client.tenantDomain.findUnique({ where: { id } });
     return d ? toRecord(d) : null;
   }
 
@@ -53,6 +54,19 @@ export class PrismaTenantDomainRepository implements ITenantDomainRepository {
       await this.prisma.admin.tenantDomain.update({
         where: { id },
         data: { verifiedAt: new Date(), verificationToken: null },
+      }),
+    );
+  }
+
+  async setPrimary(tenantId: string, id: string, tx: PrismaTx): Promise<DomainRecord> {
+    await tx.tenantDomain.updateMany({
+      where: { tenantId, isPrimary: true },
+      data: { isPrimary: false },
+    });
+    return toRecord(
+      await tx.tenantDomain.update({
+        where: { id },
+        data: { isPrimary: true },
       }),
     );
   }

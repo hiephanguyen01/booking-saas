@@ -1,7 +1,7 @@
 # Data model
 
 The schema is the source of truth: **[`../apps/api/prisma/schema.prisma`](../apps/api/prisma/schema.prisma)**
-(50 models, 45 enums). This page documents the **invariants and units** that Prisma can't express —
+(51 models, 48 enums). This page documents the **invariants and units** that Prisma can't express —
 read it before touching money, migrations, or tenant tables. Domain term definitions are in
 [`glossary.md`](./glossary.md).
 
@@ -22,10 +22,11 @@ read it before touching money, migrations, or tenant tables. Domain term definit
   `Payout`, `PayoutAllocation`.
 - **Promotions & affiliate** — promo codes, partner promotions, campaigns; `ReferralLink`,
   `ReferralClick`, `AffiliateCommission`.
-- **Reviews & engagement** — `Review`, `ReviewReply` (one partner reply per review), `Favorite`
+- **Reviews, trust & engagement** — `Review`, `ReviewReply` (one partner reply per review), `Favorite`
   (a customer's heart on a `Listing` **or** a `ListingGroup`; `partner_id` denormalised from the
   target so the partner/tenant dashboard can scope + count without a join). See
-  [`features/favorites.md`](./features/favorites.md).
+  [`features/favorites.md`](./features/favorites.md), and `ContentReport` (customer moderation reports
+  with immutable target/reporter/partner display snapshots and a tenant-owned resolution workflow).
 - **Reference** — administrative divisions (Vietnamese provinces/wards), audit logs, outbox events,
   notifications.
 
@@ -52,7 +53,11 @@ guards the RLS parts in CI.
    plus two **partial unique** indexes — `UNIQUE (customer_id, listing_id) WHERE listing_id IS NOT NULL`
    and the `group_id` mirror — so a customer can heart a target at most once. Adds are idempotent (the
    repository swallows `P2002`).
-5. **Other SQL-only bits:** extensions `btree_gist`, `citext`, `pgcrypto`; `NULLS NOT DISTINCT` unique
+5. **One active report per customer and target.** `content_reports` uses a partial unique index over
+   `(tenant_id, reporter_user_id, target_type, target_id)` while status is `open` or `reviewing`.
+   Repeated submissions are idempotent; resolved/dismissed reports remain an audit trail and allow a
+   later, genuinely new report.
+6. **Other SQL-only bits:** extensions `btree_gist`, `citext`, `pgcrypto`; `NULLS NOT DISTINCT` unique
    indexes; the `app_user` / `app_admin` / migrate roles.
 
 ## Units & types (hard rules)

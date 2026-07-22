@@ -15,7 +15,7 @@ export interface CancellationPolicyRecord {
 }
 
 export interface CreateCancellationPolicyData {
-  partnerId: string;
+  partnerId: string | null;
   name: string;
   rules: CancellationTier[];
 }
@@ -31,8 +31,16 @@ export interface ICancellationPolicyRepository {
   /** Tenant-level shared policies only (partner_id null) — the tenant default picker. */
   listTenantLevel(tx: PrismaTx): Promise<CancellationPolicyRecord[]>;
   findById(tx: PrismaTx, id: string): Promise<CancellationPolicyRecord | null>;
-  create(tx: PrismaTx, tenantId: string, data: CreateCancellationPolicyData): Promise<CancellationPolicyRecord>;
-  update(tx: PrismaTx, id: string, data: UpdateCancellationPolicyData): Promise<CancellationPolicyRecord>;
+  create(
+    tx: PrismaTx,
+    tenantId: string,
+    data: CreateCancellationPolicyData,
+  ): Promise<CancellationPolicyRecord>;
+  update(
+    tx: PrismaTx,
+    id: string,
+    data: UpdateCancellationPolicyData,
+  ): Promise<CancellationPolicyRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   /** Listings whose OWN cancellationPolicyId points at this policy (delete guard). */
   countListingsUsing(tx: PrismaTx, id: string): Promise<number>;

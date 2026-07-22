@@ -2,17 +2,24 @@ import type {
   CancellationPolicyResponse,
   DomainResponse,
   GatewayConfigResponse,
-  TenantThemeResponse,
   PayoutPolicyDto,
+  TenantThemeResponse,
 } from '@booking/contracts';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
+import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
+import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
+import { Button } from '@booking/ui/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@booking/ui/components/ui/tabs';
-import { Globe2, Palette, SlidersHorizontal, WalletCards } from 'lucide-react';
+  CircleAlert,
+  CreditCard,
+  ExternalLink,
+  Globe2,
+  LayoutDashboard,
+  Palette,
+  SlidersHorizontal,
+  WalletCards,
+} from 'lucide-react';
+import { useSearchParams } from 'react-router';
 import type { Route } from './+types/settings';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
@@ -30,56 +37,68 @@ import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
 import { PaymentGatewayCard } from '~/features/tenant/components/settings/payment-gateway-card';
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
+import { PaymentMethodSettingsCard } from '~/features/tenant/components/settings/payment-method-settings-card';
+import { SettingsOverview } from '~/features/tenant/components/settings/settings-overview';
 
 const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   theme: 'brand',
   domain: 'domains',
-  verify: 'domains',
+  'domain-verify': 'domains',
+  'domain-primary': 'domains',
+  'domain-delete': 'domains',
   flags: 'operations',
   'cancellation-default': 'operations',
+  'cancellation-policy-create': 'operations',
+  'cancellation-policy-update': 'operations',
+  'cancellation-policy-delete': 'operations',
   sepay: 'payments',
   momo: 'payments',
   'gateway-off': 'payments',
-  'payout-policy': 'payments',
+  'payment-settings': 'payments',
+  'payout-policy': 'payouts',
 };
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Cài đặt · Tenant · Bookify' }];
+  return [{ title: 'Cài đặt cửa hàng | Bookify' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request);
-  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes] = await Promise.all([
-    can('tenant.theme.manage')
-      ? apiGet<TenantThemeResponse>('/tenant/theme', auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<DomainResponse[]>('/tenant/domains', auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
-      : Promise.resolve(null),
-    can('tenant.settings.manage')
-      ? apiGet<GatewayConfigResponse | null>('/tenant/gateway-config', auth)
-      : Promise.resolve(null),
-    can('tenant.finance.read')
-      ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
-      : Promise.resolve(null),
-  ]);
+  const canTheme = can('tenant.theme.manage');
+  const canSettings = can('tenant.settings.manage');
+  const canFinance = can('tenant.finance.read');
+
+  const [themeRes, domainsRes, flagsRes, policiesRes, gatewayRes, payoutPolicyRes] =
+    await Promise.all([
+      canTheme ? apiGet<TenantThemeResponse>('/tenant/theme', auth) : Promise.resolve(null),
+      canSettings ? apiGet<DomainResponse[]>('/tenant/domains', auth) : Promise.resolve(null),
+      canSettings ? apiGet<TenantFlags>(TENANT_FLAGS_PATH, auth) : Promise.resolve(null),
+      canSettings
+        ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
+        : Promise.resolve(null),
+      canSettings
+        ? apiGet<GatewayConfigResponse | null>('/tenant/gateway-config', auth)
+        : Promise.resolve(null),
+      canFinance
+        ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
+        : Promise.resolve(null),
+    ]);
+
   return {
     theme: themeRes?.ok ? themeRes.data : null,
+    themeError: apiError(themeRes, 'Không tải được cấu hình thương hiệu.'),
     domains: domainsRes?.ok ? (domainsRes.data ?? []) : null,
-    canTheme: can('tenant.theme.manage'),
-    canDomains: can('tenant.settings.manage'),
-    // An explicit read state, never a bare boolean: a failed read must not be
-    // indistinguishable from a flag that is genuinely off.
+    domainsError: apiError(domainsRes, 'Không tải được danh sách tên miền.'),
+    canTheme,
+    canSettings,
+    canFinance,
     partnerPromotions: toPartnerPromotionsState(flagsRes),
-    cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : [],
+    cancellationPolicies: policiesRes?.ok ? (policiesRes.data ?? []) : null,
+    cancellationPoliciesError: apiError(policiesRes, 'Không tải được chính sách huỷ.'),
     gatewayConfig: gatewayRes?.ok ? (gatewayRes.data ?? null) : null,
+    gatewayError: apiError(gatewayRes, 'Không tải được cấu hình thanh toán.'),
     payoutPolicy: payoutPolicyRes?.ok ? (payoutPolicyRes.data ?? null) : null,
+    payoutPolicyError: apiError(payoutPolicyRes, 'Không tải được chính sách chi trả.'),
     canManagePayoutPolicy: can('tenant.payouts.manage'),
   };
 }
@@ -92,19 +111,24 @@ export async function action({ request }: Route.ActionArgs) {
 export default function TenantSettings({ loaderData, actionData }: Route.ComponentProps) {
   const {
     theme,
+    themeError,
     domains,
+    domainsError,
     canTheme,
-    canDomains,
+    canSettings,
+    canFinance,
     partnerPromotions,
     cancellationPolicies,
+    cancellationPoliciesError,
     gatewayConfig,
+    gatewayError,
     payoutPolicy,
+    payoutPolicyError,
     canManagePayoutPolicy,
   } = loaderData;
-  const { readOnly } = useTenantArea();
+  const { readOnly, subscription } = useTenantArea();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Feedback narrowing: every action branch tags its result with `form`, so each
-  // card only surfaces the outcome of ITS OWN submission.
   const errFor = (form: string): string | null => {
     if (
       actionData &&
@@ -118,72 +142,83 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
     return null;
   };
   const okFor = (form: string): boolean =>
-    !!actionData && 'form' in actionData && actionData.form === form && 'ok' in actionData;
-
+    Boolean(actionData && 'form' in actionData && actionData.form === form && 'ok' in actionData);
   const fieldErrorsFor = (form: string): Record<string, string[]> | null =>
     actionData && 'form' in actionData && actionData.form === form && 'fieldErrors' in actionData
       ? ((actionData.fieldErrors as Record<string, string[]> | undefined) ?? null)
       : null;
 
   const settingsTabs = [
-    canTheme && theme
-      ? {
-          value: 'brand',
-          label: 'Thương hiệu',
-          description: 'Giao diện storefront',
-          icon: Palette,
-        }
-      : null,
-    canDomains
-      ? {
-          value: 'domains',
-          label: 'Tên miền',
-          description: 'Địa chỉ cửa hàng',
-          icon: Globe2,
-        }
-      : null,
-    canDomains
+    {
+      value: 'overview',
+      label: 'Tổng quan',
+      icon: LayoutDashboard,
+    },
+    canTheme ? { value: 'brand', label: 'Thương hiệu', icon: Palette } : null,
+    canSettings ? { value: 'domains', label: 'Tên miền', icon: Globe2 } : null,
+    canSettings
       ? {
           value: 'operations',
           label: 'Vận hành',
-          description: 'Quy tắc đặt chỗ',
           icon: SlidersHorizontal,
         }
       : null,
-    canDomains || payoutPolicy
+    canSettings
       ? {
           value: 'payments',
           label: 'Thanh toán',
-          description: 'Thu tiền & chi trả',
+          icon: CreditCard,
+        }
+      : null,
+    canFinance
+      ? {
+          value: 'payouts',
+          label: 'Chi trả đối tác',
           icon: WalletCards,
         }
       : null,
   ].filter((tab) => tab !== null);
+
   const feedbackForm =
     actionData && 'form' in actionData && typeof actionData.form === 'string'
       ? actionData.form
       : null;
   const feedbackTab = feedbackForm ? SETTINGS_TAB_BY_FORM[feedbackForm] : null;
-  const defaultTab =
-    settingsTabs.find((tab) => tab.value === feedbackTab)?.value ?? settingsTabs[0]?.value;
-  const mobileTabGridClass = settingsTabs.length === 1 ? 'grid-cols-1' : 'grid-cols-2';
+  const requestedTab = searchParams.get('section');
+  const activeTab =
+    settingsTabs.find((tab) => tab.value === requestedTab)?.value ??
+    settingsTabs.find((tab) => tab.value === feedbackTab)?.value ??
+    'overview';
+  const primaryDomain = domains?.find((domain) => domain.isPrimary && domain.verifiedAt) ?? null;
+  const publicUrl = primaryDomain ? storefrontUrl(primaryDomain.hostname) : null;
+
+  const selectTab = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('section', value);
+    setSearchParams(next, { preventScrollReset: true, replace: true });
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[90rem] space-y-6">
       <PageHeader
-        title="Cài đặt"
-        description="Quản lý thương hiệu, vận hành và dòng tiền của cửa hàng tại một nơi."
+        title="Cài đặt cửa hàng"
+        description="Quản lý nhận diện, vận hành và dòng tiền của storefront tại một nơi."
+        actions={
+          publicUrl ? (
+            <Button asChild variant="outline" size="sm">
+              <a href={publicUrl} target="_blank" rel="noreferrer">
+                Mở storefront <ExternalLink className="size-4" />
+              </a>
+            </Button>
+          ) : null
+        }
       />
 
-      {defaultTab ? (
-        <Tabs
-          defaultValue={defaultTab}
-          orientation="vertical"
-          className="flex-col gap-5 lg:flex-row lg:items-start lg:gap-8"
-        >
+      <Tabs value={activeTab} onValueChange={selectTab} className="gap-5">
+        <div className="sticky top-20 z-10 -mx-1 overflow-x-auto rounded-xl border bg-background/95 p-1.5 shadow-xs backdrop-blur-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsList
             aria-label="Nhóm cài đặt"
-            className={`grid h-auto w-full shrink-0 gap-1.5 rounded-xl border bg-card p-2 shadow-xs lg:sticky lg:top-6 lg:w-64 lg:grid-cols-1 xl:w-72 ${mobileTabGridClass}`}
+            className="h-auto min-w-max w-full justify-start gap-1 bg-transparent p-0"
           >
             {settingsTabs.map((tab) => {
               const Icon = tab.icon;
@@ -191,79 +226,151 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="group h-auto min-h-14 justify-start gap-3 rounded-lg px-2.5 py-2.5 text-left text-foreground/70 shadow-none hover:bg-muted/70 hover:text-foreground active:scale-[0.99] data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-primary/15"
+                  className="min-h-11 min-w-36 flex-1 justify-center gap-2 rounded-lg px-3.5 py-2 font-semibold text-foreground/60 shadow-none hover:bg-muted/60 hover:text-foreground active:scale-[0.98] data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm dark:data-[state=active]:border-border dark:data-[state=active]:bg-muted/70 sm:min-w-40 lg:min-w-0"
                 >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground">
-                    <Icon className="size-4" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-semibold leading-5">{tab.label}</span>
-                    <span className="hidden truncate text-xs font-normal text-muted-foreground lg:block">
-                      {tab.description}
-                    </span>
-                  </span>
+                  <Icon className="size-4" aria-hidden="true" />
+                  {tab.label}
                 </TabsTrigger>
               );
             })}
           </TabsList>
+        </div>
 
-          {canTheme && theme ? (
-            <TabsContent value="brand" className="min-w-0 w-full lg:max-w-5xl">
-              <ThemeSettingsCard
-                theme={theme}
-                readOnly={readOnly}
-                saved={okFor('theme')}
-                error={errFor('theme')}
-                fieldErrors={fieldErrorsFor('theme')}
-              />
+        <div className="min-w-0">
+          <TabsContent value="overview" forceMount className="w-full data-[state=inactive]:hidden">
+            <SettingsOverview
+              theme={theme}
+              themeError={themeError}
+              domains={domains}
+              domainsError={domainsError}
+              cancellationPolicies={cancellationPolicies}
+              cancellationPoliciesError={cancellationPoliciesError}
+              gatewayConfig={gatewayConfig}
+              gatewayError={gatewayError}
+              payoutPolicy={payoutPolicy}
+              payoutPolicyError={payoutPolicyError}
+              subscription={subscription}
+              canTheme={canTheme}
+              canSettings={canSettings}
+              canFinance={canFinance}
+            />
+          </TabsContent>
+
+          {canTheme ? (
+            <TabsContent value="brand" forceMount className="w-full data-[state=inactive]:hidden">
+              {theme ? (
+                <ThemeSettingsCard
+                  theme={theme}
+                  storefrontUrl={publicUrl}
+                  readOnly={readOnly}
+                  saved={okFor('theme')}
+                  error={errFor('theme')}
+                  fieldErrors={fieldErrorsFor('theme')}
+                />
+              ) : (
+                <SettingsLoadError message={themeError ?? 'Không có dữ liệu thương hiệu.'} />
+              )}
             </TabsContent>
           ) : null}
 
-          {canDomains ? (
-            <TabsContent value="domains" className="min-w-0 w-full lg:max-w-5xl">
+          {canSettings ? (
+            <TabsContent value="domains" forceMount className="w-full data-[state=inactive]:hidden">
               <TenantDomainsCard
                 domains={domains}
+                loadError={domainsError}
                 readOnly={readOnly}
-                verifyError={errFor('verify')}
+                actionError={
+                  errFor('domain-verify') ?? errFor('domain-primary') ?? errFor('domain-delete')
+                }
                 domainError={errFor('domain')}
                 domainFieldErrors={fieldErrorsFor('domain')}
+                successMessage={
+                  okFor('domain')
+                    ? 'Đã thêm tên miền. Hãy cấu hình DNS để hoàn tất xác minh.'
+                    : okFor('domain-verify')
+                      ? 'Đã gửi yêu cầu kiểm tra DNS. Trạng thái sẽ cập nhật khi bản ghi được tìm thấy.'
+                      : okFor('domain-primary')
+                        ? 'Đã cập nhật tên miền chính của storefront.'
+                        : okFor('domain-delete')
+                          ? 'Đã xoá tên miền khỏi storefront.'
+                          : null
+                }
               />
             </TabsContent>
           ) : null}
 
-          {canDomains ? (
-            <TabsContent value="operations" className="min-w-0 w-full space-y-5 lg:max-w-5xl">
+          {canSettings ? (
+            <TabsContent
+              value="operations"
+              forceMount
+              className="w-full space-y-5 data-[state=inactive]:hidden"
+            >
               {partnerPromotions ? (
                 <PartnerPromotionsCard
                   state={partnerPromotions}
                   readOnly={readOnly}
                   error={errFor('flags')}
+                  saved={okFor('flags')}
                 />
               ) : null}
               <TenantDefaultCancellationPolicyCard
                 policies={cancellationPolicies}
+                loadError={cancellationPoliciesError}
                 readOnly={readOnly}
                 error={errFor('cancellation-default')}
                 saved={okFor('cancellation-default')}
+                manageError={
+                  errFor('cancellation-policy-create') ??
+                  errFor('cancellation-policy-update') ??
+                  errFor('cancellation-policy-delete')
+                }
+                manageFieldErrors={
+                  fieldErrorsFor('cancellation-policy-create') ??
+                  fieldErrorsFor('cancellation-policy-update')
+                }
+                manageSuccess={
+                  okFor('cancellation-policy-create')
+                    ? 'Đã tạo chính sách huỷ cấp tổ chức.'
+                    : okFor('cancellation-policy-update')
+                      ? 'Đã cập nhật chính sách huỷ.'
+                      : okFor('cancellation-policy-delete')
+                        ? 'Đã xoá chính sách huỷ.'
+                        : null
+                }
               />
             </TabsContent>
           ) : null}
 
-          {canDomains || payoutPolicy ? (
-            <TabsContent value="payments" className="min-w-0 w-full space-y-5 lg:max-w-5xl">
-              {canDomains ? (
-                <PaymentGatewayCard
-                  config={gatewayConfig}
+          {canSettings ? (
+            <TabsContent
+              value="payments"
+              forceMount
+              className="w-full space-y-5 data-[state=inactive]:hidden"
+            >
+              <PaymentGatewayCard
+                config={gatewayConfig}
+                readOnly={readOnly}
+                sepaySaved={okFor('sepay')}
+                sepayError={errFor('sepay')}
+                sepayFieldErrors={fieldErrorsFor('sepay')}
+                momoSaved={okFor('momo')}
+                momoError={errFor('momo')}
+                momoFieldErrors={fieldErrorsFor('momo')}
+                offError={errFor('gateway-off')}
+              />
+              {!gatewayError ? (
+                <PaymentMethodSettingsCard
+                  settings={gatewayConfig?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS}
                   readOnly={readOnly}
-                  sepaySaved={okFor('sepay')}
-                  sepayError={errFor('sepay')}
-                  sepayFieldErrors={fieldErrorsFor('sepay')}
-                  momoSaved={okFor('momo')}
-                  momoError={errFor('momo')}
-                  momoFieldErrors={fieldErrorsFor('momo')}
-                  offError={errFor('gateway-off')}
+                  error={errFor('payment-settings')}
+                  success={okFor('payment-settings')}
                 />
               ) : null}
+            </TabsContent>
+          ) : null}
+
+          {canFinance ? (
+            <TabsContent value="payouts" forceMount className="w-full data-[state=inactive]:hidden">
               {payoutPolicy ? (
                 <PayoutPolicyCard
                   policy={payoutPolicy}
@@ -271,19 +378,30 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                   saved={okFor('payout-policy')}
                   error={errFor('payout-policy')}
                 />
-              ) : null}
+              ) : (
+                <SettingsLoadError message={payoutPolicyError ?? 'Không có dữ liệu chi trả.'} />
+              )}
             </TabsContent>
           ) : null}
-        </Tabs>
-      ) : null}
-
-      {!canTheme && !canDomains && !payoutPolicy ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Bạn không có quyền chỉnh sửa cài đặt.
-          </CardContent>
-        </Card>
-      ) : null}
+        </div>
+      </Tabs>
     </div>
   );
+}
+
+function SettingsLoadError({ message }: { message: string }) {
+  return (
+    <Alert variant="destructive">
+      <CircleAlert className="size-4" />
+      <AlertDescription>{message} Hãy tải lại trang hoặc thử lại sau.</AlertDescription>
+    </Alert>
+  );
+}
+
+function apiError(result: { ok: boolean; error?: string } | null, fallback: string): string | null {
+  return result && !result.ok ? (result.error ?? fallback) : null;
+}
+
+function storefrontUrl(hostname: string): string {
+  return `${hostname.includes('localhost') || hostname.startsWith('127.') ? 'http' : 'https'}://${hostname}`;
 }

@@ -1,27 +1,25 @@
-import { Form, Link, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import {
-  ledgerEntryTypeSchema,
   type LedgerEntryResponse,
   type LedgerEntryTypeDto,
   type Paginated,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Label } from '@booking/ui/components/ui/label';
-import { Input } from '@booking/ui/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { ArrowLeft, Filter } from 'lucide-react';
+import { InfoHint } from '@booking/ui/components/ui/info-hint';
+import { ArrowLeft } from 'lucide-react';
 import type { Route } from './+types/ledger';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { TZ_OFFSET } from '~/constants/time';
 import { LEDGER_ENTRY_LABEL, LEDGER_OWNER_LABEL } from '~/constants/finance';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { amountToneClass } from '~/components/money';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { PaginationBar } from '~/components/pagination-bar';
 import { ErrorBanner } from '~/components/action-feedback';
 
@@ -29,60 +27,51 @@ export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sổ cái · Tài chính · Tenant · Bookify' }];
 }
 
-/** VN market timezone offset — pins a `YYYY-MM-DD` filter bound to the local calendar day. */
-
-/** Turn a `YYYY-MM-DD` form value into an ISO instant at the start/end of that local day. */
-function boundIso(day: string, edge: 'start' | 'end'): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
-  const time = edge === 'start' ? '00:00:00.000' : '23:59:59.999';
-  const d = new Date(`${day}T${time}${TZ_OFFSET}`);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-/** A validated `entryType` filter, or `''` when absent/invalid. */
-function parseEntryType(raw: string | null): LedgerEntryTypeDto | '' {
-  const r = ledgerEntryTypeSchema.safeParse(raw);
-  return r.success ? r.data : '';
-}
+const LEDGER_FILTER_SPEC: FilterSpec = [
+  {
+    kind: 'enum',
+    key: 'entryType',
+    label: 'Loại bút toán',
+    options: (Object.keys(LEDGER_ENTRY_LABEL) as LedgerEntryTypeDto[]).map((t) => ({
+      value: t,
+      label: LEDGER_ENTRY_LABEL[t],
+    })),
+  },
+  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày' },
+];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.finance.read');
   const { toApiQuery } = readListParams(url.searchParams);
-  const entryType = parseEntryType(url.searchParams.get('entryType'));
-  // Keep the raw `YYYY-MM-DD` for the date inputs; send ISO bounds to the API.
-  const fromDay = url.searchParams.get('from') ?? '';
-  const toDay = url.searchParams.get('to') ?? '';
-  const fromIso = boundIso(fromDay, 'start');
-  const toIso = boundIso(toDay, 'end');
+  const { filters, apiFilters } = readListFilters(url.searchParams, LEDGER_FILTER_SPEC);
 
   const res = await apiGet<Paginated<LedgerEntryResponse>>('/tenant/finance/ledger', auth, {
-    query: toApiQuery({
-      entryType: entryType || undefined,
-      from: fromIso ?? undefined,
-      to: toIso ?? undefined,
-    }),
+    query: toApiQuery(apiFilters),
   });
 
   return {
-    filters: { entryType, from: fromDay, to: toDay },
+    filters,
     result: res.ok ? res.data : null,
     error: res.ok ? null : (res.error ?? 'Không tải được sổ cái.'),
   };
 }
 
-/** First non-null reference on a ledger line, labelled for the table. */
-function refLabel(e: LedgerEntryResponse): string {
-  if (e.bookingId) return `Đơn ${e.bookingId.slice(0, 8)}`;
-  if (e.paymentId) return `TT ${e.paymentId.slice(0, 8)}`;
-  if (e.payoutId) return `Chi ${e.payoutId.slice(0, 8)}`;
-  return '—';
+/** First non-null reference on a ledger line, labelled for the table; `fullId` carries the
+ * untruncated id for a `title=` tooltip since no friendly `code` exists on this payload. */
+function refLabel(e: LedgerEntryResponse): { text: string; fullId?: string } {
+  if (e.bookingId) return { text: `Đơn ${e.bookingId.slice(0, 8)}`, fullId: e.bookingId };
+  if (e.paymentId) return { text: `TT ${e.paymentId.slice(0, 8)}`, fullId: e.paymentId };
+  if (e.payoutId) return { text: `Chi ${e.payoutId.slice(0, 8)}`, fullId: e.payoutId };
+  return { text: '—' };
 }
 
 const columns: DataTableColumn<LedgerEntryResponse>[] = [
   {
     header: 'Bút toán',
     cell: (e) => (
-      <span className="font-mono text-xs text-muted-foreground">{e.journalId.slice(0, 8)}</span>
+      <span className="font-mono text-xs text-muted-foreground" title={e.journalId}>
+        {e.journalId.slice(0, 8)}
+      </span>
     ),
   },
   {
@@ -92,7 +81,7 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     cell: (e) => (
       <div className="flex flex-col gap-0.5">
         <Badge variant="secondary" className="w-fit">
-          {LEDGER_OWNER_LABEL[e.ownerType] ?? e.ownerType}
+          {LEDGER_OWNER_LABEL[e.ownerType] ?? 'Không xác định'}
         </Badge>
         {e.ownerName ? <span className="text-xs text-muted-foreground">{e.ownerName}</span> : null}
       </div>
@@ -100,10 +89,17 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
   },
   {
     header: 'Loại bút toán',
-    cell: (e) => <span className="text-sm">{LEDGER_ENTRY_LABEL[e.entryType] ?? e.entryType}</span>,
+    cell: (e) => (
+      <span className="text-sm">{LEDGER_ENTRY_LABEL[e.entryType] ?? 'Không xác định'}</span>
+    ),
   },
   {
-    header: 'Nợ',
+    header: (
+      <span className="inline-flex items-center gap-1">
+        Nợ
+        <InfoHint>Ghi sổ kép: mỗi bút toán luôn có Nợ và Có cân bằng nhau.</InfoHint>
+      </span>
+    ),
     headClassName: 'text-right',
     className: 'text-right tabular-nums',
     cell: (e) =>
@@ -128,7 +124,14 @@ const columns: DataTableColumn<LedgerEntryResponse>[] = [
     header: 'Tham chiếu',
     className: 'hidden md:table-cell',
     headClassName: 'hidden md:table-cell',
-    cell: (e) => <span className="font-mono text-xs text-muted-foreground">{refLabel(e)}</span>,
+    cell: (e) => {
+      const { text, fullId } = refLabel(e);
+      return (
+        <span className="font-mono text-xs text-muted-foreground" title={fullId}>
+          {text}
+        </span>
+      );
+    },
   },
   {
     header: 'Thời gian',
@@ -144,7 +147,7 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
   const { page, pageSize, pageHref } = readListParams(searchParams);
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
-  const hasFilters = filters.entryType !== '' || filters.from !== '' || filters.to !== '';
+  const hasFilters = hasActiveFilters(filters);
 
   return (
     <div className="space-y-6">
@@ -160,52 +163,12 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      <Card>
-        <CardContent className="p-4">
-          {/* GET filter form — submitting drops `page`, so any filter change returns to page 1. */}
-          <Form method="get" className="flex flex-wrap items-end gap-3">
-            {/* Keep the chosen page size across a filter change. */}
-            <input type="hidden" name="pageSize" value={pageSize} />
-            <div className="space-y-1.5">
-              <Label htmlFor="entryType">Loại bút toán</Label>
-              <NativeSelect id="entryType" name="entryType" defaultValue={filters.entryType}>
-                <NativeSelectOption value="">Tất cả</NativeSelectOption>
-                {(Object.keys(LEDGER_ENTRY_LABEL) as LedgerEntryTypeDto[]).map((t) => (
-                  <NativeSelectOption key={t} value={t}>
-                    {LEDGER_ENTRY_LABEL[t]}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="from">Từ ngày</Label>
-              <Input
-                id="from"
-                name="from"
-                type="date"
-                defaultValue={filters.from}
-                className="w-auto"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="to">Đến ngày</Label>
-              <Input id="to" name="to" type="date" defaultValue={filters.to} className="w-auto" />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" size="control" variant="outline">
-                <Filter className="size-4" /> Lọc
-              </Button>
-              {hasFilters ? (
-                <Button asChild size="control" variant="ghost">
-                  <Link to="?" prefetch="intent">
-                    Xoá lọc
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-          </Form>
-        </CardContent>
-      </Card>
+      <ListToolbar
+        spec={LEDGER_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.ledger}
+        pageSize={pageSize}
+      />
 
       <ErrorBanner error={error} />
 
@@ -213,7 +176,11 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={items}
         getRowKey={(e) => e.id}
-        emptyMessage={hasFilters ? 'Không có bút toán khớp bộ lọc.' : 'Chưa có bút toán nào.'}
+        emptyMessage={
+          hasFilters
+            ? 'Không có bút toán khớp bộ lọc.'
+            : 'Chưa có bút toán nào. Bút toán sẽ xuất hiện sau giao dịch đầu tiên trên cửa hàng.'
+        }
       />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />

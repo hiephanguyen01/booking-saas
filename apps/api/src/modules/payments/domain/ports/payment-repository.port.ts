@@ -72,6 +72,7 @@ export interface IPaymentRepository {
   findPendingCheckout(
     tx: PrismaTx,
     bookingId: string,
+    paymentMethod: string,
   ): Promise<{ id: string; destination: CheckoutDestination } | null>;
   findSucceededByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   /** Atomically mark succeeded (only if not already) — the webhook idempotency guard. */

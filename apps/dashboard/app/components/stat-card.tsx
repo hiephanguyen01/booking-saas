@@ -20,7 +20,7 @@ const TONE_TEXT: Record<StatTone, string> = {
 };
 
 export interface StatCardProps {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   /** Secondary line under the figure. */
   hint?: ReactNode;

@@ -20,9 +20,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<CancellationPolicySummary[]>('/partner/cancellation-policies', auth),
   ]);
   if (!groupRes.ok || !groupRes.data)
-    throw new Response('Không tìm thấy bài đăng.', { status: groupRes.status });
+    throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
   if (groupRes.data.status !== 'draft')
-    throw new Response('Chỉ có thể thêm hạng mục vào bài đăng nháp.', { status: 409 });
+    throw new Response('Chỉ có thể thêm hạng mục vào tin đăng nháp.', { status: 409 });
   const listingType = (typesRes.data ?? []).find(
     (type) => type.id === groupRes.data?.listingTypeId,
   );

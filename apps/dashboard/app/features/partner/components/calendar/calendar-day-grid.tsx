@@ -1,7 +1,14 @@
 import { useMemo } from 'react';
 import { Ban, Clock } from 'lucide-react';
 import { Button } from '@booking/ui/components/ui/button';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@booking/ui/components/ui/empty';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@booking/ui/components/ui/empty';
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
 import { bucketByHour, deriveHourRows } from './calendar-buckets';
 import { CalendarEventChip } from './calendar-event-chip';
@@ -38,6 +45,11 @@ export function CalendarDayGrid({
             <EmptyTitle>Chưa có lượt đặt</EmptyTitle>
             <EmptyDescription>Ngày này chưa có lượt đặt nào trên các tài nguyên của bạn.</EmptyDescription>
           </EmptyHeader>
+          <EmptyContent>
+            <Button size="sm" variant="outline" onClick={() => onQuickBlock(day)}>
+              <Ban className="size-3.5" aria-hidden /> Chặn lịch ngày này
+            </Button>
+          </EmptyContent>
         </Empty>
       </div>
     );

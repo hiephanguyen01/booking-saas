@@ -91,10 +91,10 @@ export async function runListingGroupAction(args: {
     ['submit', 'reopen', 'delete-group', 'delete-child', 'duplicate-child'].includes(intent) &&
     !can('partner.listings.write')
   ) {
-    return groupResult({ ok: false, error: 'Không có quyền thay đổi bài đăng.' }, 403);
+    return groupResult({ ok: false, error: 'Không có quyền thay đổi tin đăng.' }, 403);
   }
   if (['hide', 'republish'].includes(intent) && !can('partner.listings.publish')) {
-    return groupResult({ ok: false, error: 'Không có quyền hiển thị hoặc ẩn bài đăng.' }, 403);
+    return groupResult({ ok: false, error: 'Không có quyền hiển thị hoặc ẩn tin đăng.' }, 403);
   }
   if (intent === 'submit') {
     const res = await apiPost(`/partner/listing-groups/${groupId}/submit`, {}, auth);
@@ -115,14 +115,14 @@ export async function runListingGroupAction(args: {
     return res.ok
       ? groupResult({ ok: true, error: null })
       : groupResult(
-          { ok: false, error: res.error ?? 'Không thể chuyển bài đăng về bản nháp.' },
+          { ok: false, error: res.error ?? 'Không thể chuyển tin đăng về bản nháp.' },
           400,
         );
   }
   if (intent === 'delete-group') {
     const res = await apiDelete(`/partner/listing-groups/${groupId}`, auth);
     if (!res.ok) {
-      return groupResult({ ok: false, error: res.error ?? 'Xóa bài đăng không thành công.' }, 400);
+      return groupResult({ ok: false, error: res.error ?? 'Xóa tin đăng không thành công.' }, 400);
     }
     return redirect('/partner/listings');
   }

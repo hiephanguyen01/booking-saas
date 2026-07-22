@@ -45,6 +45,14 @@ export interface ListingGroupRecord {
   ratingAvg: number | null;
   reviewCount: number;
   bookingCount: number;
+  partnerPublic: {
+    name: string;
+    slug: string;
+    status: 'pending' | 'approved' | 'suspended';
+    verifiedAt: Date | null;
+    createdAt: Date;
+    logoUrl: string | null;
+  };
   /** The post's items, reduced to what the readiness/price aggregates need. */
   children: ListingGroupChildFacts[];
   createdAt: Date;
@@ -77,7 +85,7 @@ export interface IListingGroupRepository {
   /** One page of `list`, plus the unpaginated total (§13 pagination shape). */
   listPage(
     tx: PrismaTx,
-    filter: { partnerId?: string },
+    filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingGroupRecord[]; total: number }>;
   update(tx: PrismaTx, id: string, data: UpdateListingGroupData): Promise<ListingGroupRecord>;

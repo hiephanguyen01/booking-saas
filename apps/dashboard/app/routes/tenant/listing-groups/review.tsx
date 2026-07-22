@@ -34,7 +34,7 @@ function contactFieldLabel(field: string): string {
 }
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Kiểm duyệt bài đăng · Tenant · Bookify' }];
+  return [{ title: 'Kiểm duyệt tin đăng nhiều hạng mục · Tenant · Bookify' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -46,7 +46,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingGroupReviewResponse>(`/tenant/listing-groups/${params.groupId}/review`, auth),
   ]);
   if (!detailRes.ok || !detailRes.data) {
-    throw new Response('Không tìm thấy bài đăng.', { status: detailRes.status });
+    throw new Response('Không tìm thấy tin đăng.', { status: detailRes.status });
   }
   return {
     group: detailRes.data,
@@ -64,7 +64,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     basePath: `/tenant/listing-groups/${params.groupId}`,
     intents: ['publish', 'republish', 'hide'],
     contactLeakMessage:
-      'Bài đăng còn lộ thông tin liên hệ. Tích “Bỏ qua kiểm tra” để xuất bản bất chấp cảnh báo.',
+      'Tin đăng còn lộ thông tin liên hệ. Tích “Bỏ qua kiểm tra” để xuất bản bất chấp cảnh báo.',
     redirectTo: '/tenant/listing-groups',
   });
 }
@@ -78,7 +78,7 @@ export default function ListingGroupReviewPage({ loaderData, actionData }: Route
 
   return (
     <div className="space-y-6">
-      <BackLink to="/tenant/listing-groups" label="Bài đăng" />
+      <BackLink to="/tenant/listing-groups" label="Tin đăng nhiều hạng mục" />
 
       <PageHeader
         title={group.title}
@@ -91,7 +91,7 @@ export default function ListingGroupReviewPage({ loaderData, actionData }: Route
       <PartnerSummaryCard
         partnerId={group.partnerId}
         partner={partner}
-        description="Chủ sở hữu bài đăng này."
+        description="Chủ sở hữu tin đăng này."
       />
 
       {review ? (
@@ -129,23 +129,23 @@ export default function ListingGroupReviewPage({ loaderData, actionData }: Route
           {group.listings.length > 0 ? (
             group.listings.map((listing) => <ChildListingCard key={listing.id} listing={listing} />)
           ) : (
-            <p className="text-sm text-muted-foreground">Bài đăng chưa có hạng mục nào.</p>
+            <p className="text-sm text-muted-foreground">Tin đăng chưa có hạng mục nào.</p>
           )}
         </CardContent>
       </Card>
 
       {canModerate ? (
         <ModerationActionsCard
-          entityLabel="bài đăng"
-          cardDescription="Áp dụng cho bài đăng và toàn bộ hạng mục; ghi vào nhật ký kiểm duyệt."
+          entityLabel="tin đăng"
+          cardDescription="Áp dụng cho tin đăng và toàn bộ hạng mục; ghi vào nhật ký kiểm duyệt."
           status={group.status}
           hiddenBy={group.hiddenBy}
           canPublish={canPublish}
           hasContactLeak={(review?.contactFlags.length ?? 0) > 0}
           reviewUnverified={reviewFailed}
           supportsRepublish
-          publishDescription="Bài đăng và toàn bộ hạng mục sẽ hiển thị công khai trên storefront."
-          hidePublishedDescription="Bài đăng và toàn bộ hạng mục sẽ bị gỡ khỏi storefront ngay lập tức. Lý do được lưu vào nhật ký kiểm duyệt."
+          publishDescription="Tin đăng và toàn bộ hạng mục sẽ hiển thị công khai trên storefront."
+          hidePublishedDescription="Tin đăng và toàn bộ hạng mục sẽ bị gỡ khỏi storefront ngay lập tức. Lý do được lưu vào nhật ký kiểm duyệt."
           busy={busy}
         />
       ) : null}

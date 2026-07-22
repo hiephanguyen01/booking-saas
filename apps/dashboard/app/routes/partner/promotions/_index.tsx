@@ -21,6 +21,10 @@ import { PromotionStatusBadge } from '~/components/status-badge';
 import { formatDiscount } from '~/lib/format';
 import { PaginationBar } from '~/components/pagination-bar';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
+import { PROMOTION_FILTER_SPEC } from '~/features/promotions/lib/promotion-filters';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Đối tác · Bookify' }];
@@ -29,13 +33,17 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.promotions.manage');
   const { toApiQuery } = readListParams(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, PROMOTION_FILTER_SPEC);
   const [mine, pending] = await Promise.all([
-    apiGet<Paginated<PromotionResponse>>('/partner/promotions', auth, { query: toApiQuery() }),
+    apiGet<Paginated<PromotionResponse>>('/partner/promotions', auth, {
+      query: toApiQuery(apiFilters),
+    }),
     apiGet<PromotionResponse[]>('/partner/promotions/pending-optin', auth),
   ]);
   return {
     result: mine.ok ? mine.data : null,
     pending: pending.ok ? (pending.data ?? []) : [],
+    filters,
     error: mine.ok ? null : (mine.error ?? 'Không tải được khuyến mãi.'),
   };
 }
@@ -53,7 +61,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerPromotions({ loaderData, actionData }: Route.ComponentProps) {
-  const { result, pending, error } = loaderData;
+  const { result, pending, error, filters } = loaderData;
   const busy = useBusy();
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
   const [searchParams] = useSearchParams();
@@ -98,7 +106,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
     <div className="space-y-6">
       <PageHeader
         title="Khuyến mãi"
-        description="Tạo mã giảm giá do bạn tài trợ cho listing của mình."
+        description="Tạo mã giảm giá do bạn tài trợ cho tin đăng của mình."
         actions={
           <Button asChild>
             <Link to="/partner/promotions/new">
@@ -158,10 +166,20 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
             <ErrorBanner error={error} />
           ) : (
             <div className="space-y-4">
+              <ListToolbar
+                spec={PROMOTION_FILTER_SPEC}
+                filters={filters}
+                resetHref={dashboardPaths.partner.promotions}
+                pageSize={pageSize}
+              />
               <DataTable
                 data={promotions}
                 columns={columns}
-                emptyMessage="Chưa có khuyến mãi nào."
+                emptyMessage={
+                  hasActiveFilters(filters)
+                    ? 'Không có mã khớp bộ lọc.'
+                    : 'Chưa có khuyến mãi nào. Nhấn "Tạo khuyến mãi" để tạo chương trình đầu tiên.'
+                }
               />
               <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
             </div>

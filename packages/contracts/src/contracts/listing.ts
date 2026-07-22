@@ -320,6 +320,13 @@ export const listPartnerListingsQuerySchema = paginationQuerySchema.extend({
 });
 export type ListPartnerListingsQuery = z.infer<typeof listPartnerListingsQuerySchema>;
 
+/** `GET /tenant/listing-groups` — paginated; case-insensitive search over the group title. */
+export const listListingGroupsQuerySchema = paginationQuerySchema.extend({
+  /** Case-insensitive search over the listing-group title. */
+  q: z.string().trim().max(200).optional(),
+});
+export type ListListingGroupsQuery = z.infer<typeof listListingGroupsQuerySchema>;
+
 // ── Responses ──────────────────────────────────────────────────────────────
 
 export const cancellationPolicySummarySchema = z.object({
@@ -518,6 +525,10 @@ export const trustSignalsSchema = z.object({
   partnerActiveSince: z.string(),
   /** Public partner display name (never phone/email). */
   partnerName: z.string(),
+  /** Stable public storefront route key. */
+  partnerSlug: z.string(),
+  /** Optional public logo from the partner business profile. */
+  partnerLogoUrl: z.string().url().nullable(),
   /** Count of completed bookings for this listing (0 until the booking module lands). */
   completedBookings: z.number(),
   /**
@@ -569,6 +580,7 @@ export const publicListingGroupDetailResponseSchema = z
     itemLabel: z.string(),
     ratingAvg: z.number().nullable(),
     reviewCount: z.number().int().nonnegative(),
+    trust: trustSignalsSchema,
     listings: z.array(
       z.object({
         id: z.string(),

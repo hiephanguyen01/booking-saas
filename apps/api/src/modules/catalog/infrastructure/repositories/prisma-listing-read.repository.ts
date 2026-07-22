@@ -18,6 +18,10 @@ export class PrismaListingReadRepository implements IListingReadRepository {
     const items = await tx.listing.findMany({
       where: {
         status: 'published',
+        partner: {
+          status: 'approved',
+          ...(filter.partnerSlug ? { slug: filter.partnerSlug } : {}),
+        },
         ...(filter.typeSlug ? { listingType: { slug: filter.typeSlug, isActive: true } } : {}),
         ...(filter.category ? { category: { slug: filter.category } } : {}),
         AND: [
@@ -38,6 +42,7 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
       include: {
         listingType: { select: { slug: true, itemLabel: true, bookingSelection: true } },
+        partner: { select: { slug: true } },
         resource: {
           select: {
             id: true,
@@ -91,6 +96,7 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       title: l.title,
       slug: l.slug,
       listingTypeSlug: l.listingType.slug,
+      partnerSlug: l.partner.slug,
       attributes: (l.attributes ?? {}) as Record<string, unknown>,
       photos: (l.photos ?? []) as unknown[],
       modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,

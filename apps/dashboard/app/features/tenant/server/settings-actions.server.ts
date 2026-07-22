@@ -7,14 +7,15 @@ import {
   type DomainResponse,
   type TenantThemeResponse,
   payoutPolicySchema,
+  updateGatewayPaymentSettingsInputSchema,
+  createCancellationPolicyInputSchema,
 } from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost, apiPut, type ApiAuth } from '~/lib/api.server';
 import { TENANT_FLAGS_PATH, type TenantFlags } from '~/features/tenant/lib/flags';
 
 /**
  * The tenant settings route's multi-intent action, kept out of the route module.
- * Handles: theme save + domain add (JSON via GenericForm), and the formData
- * intents (partner-promotions flag toggle, domain verify, domain delete).
+ * Handles every settings mutation while keeping the route module focused on composition.
  */
 export async function handleSettingsAction(request: Request, auth: ApiAuth) {
   const contentType = request.headers.get('content-type') ?? '';
@@ -23,6 +24,48 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
   // They carry disjoint keys, so `hostname` disambiguates the domain payload.
   if (contentType.includes('application/json')) {
     const body: unknown = await request.json();
+
+    if (body && typeof body === 'object' && 'intent' in body) {
+      const intent = String((body as { intent?: unknown }).intent ?? '');
+      if (
+        intent === 'create-tenant-cancellation-policy' ||
+        intent === 'update-tenant-cancellation-policy'
+      ) {
+        const form =
+          intent === 'create-tenant-cancellation-policy'
+            ? 'cancellation-policy-create'
+            : 'cancellation-policy-update';
+        const parsed = createCancellationPolicyInputSchema.safeParse(body);
+        if (!parsed.success) {
+          return routeData(
+            { form, fieldErrors: parsed.error.flatten().fieldErrors },
+            { status: 400 },
+          );
+        }
+        const res =
+          intent === 'create-tenant-cancellation-policy'
+            ? await apiPost('/tenant/cancellation-policies', parsed.data, auth)
+            : await apiPatch(
+                `/tenant/cancellation-policies/${String((body as { policyId?: unknown }).policyId ?? '')}`,
+                parsed.data,
+                auth,
+              );
+        if (!res.ok) {
+          return routeData(
+            {
+              form,
+              error:
+                res.error ??
+                (intent === 'create-tenant-cancellation-policy'
+                  ? 'Không tạo được chính sách huỷ.'
+                  : 'Không lưu được chính sách huỷ.'),
+            },
+            { status: 400 },
+          );
+        }
+        return { form, ok: true };
+      }
+    }
 
     if (body && typeof body === 'object' && 'gateway' in body) {
       const raw = body as {
@@ -153,6 +196,28 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     return { form: 'gateway-off', ok: true };
   }
 
+  if (intent === 'payment-settings') {
+    const parsed = updateGatewayPaymentSettingsInputSchema.safeParse({
+      enabledMethods: formData.getAll('enabledMethods'),
+      refundStrategy: formData.get('refundStrategy'),
+      manualRefundSlaHours: Number(formData.get('manualRefundSlaHours')),
+    });
+    if (!parsed.success) {
+      return routeData(
+        { form: 'payment-settings', error: 'Hãy bật ít nhất một phương thức thanh toán.' },
+        { status: 400 },
+      );
+    }
+    const res = await apiPut('/tenant/gateway-config/settings', parsed.data, auth);
+    if (!res.ok) {
+      return routeData(
+        { form: 'payment-settings', error: res.error ?? 'Không lưu được cài đặt thanh toán.' },
+        { status: 400 },
+      );
+    }
+    return { form: 'payment-settings', ok: true };
+  }
+
   if (intent === 'toggle-partner-promos') {
     const enabled = formData.get('partnerPromotionsEnabled') === 'true';
     const res = await apiPatch<TenantFlags>(
@@ -205,15 +270,44 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     return { form: 'cancellation-default', ok: true };
   }
 
+  if (intent === 'delete-tenant-cancellation-policy') {
+    const id = String(formData.get('policyId') ?? '');
+    const res = await apiDelete(`/tenant/cancellation-policies/${id}`, auth);
+    if (!res.ok) {
+      return routeData(
+        {
+          form: 'cancellation-policy-delete',
+          error:
+            res.error ??
+            'Không xoá được chính sách. Hãy kiểm tra các tin đăng đang sử dụng chính sách này.',
+        },
+        { status: 400 },
+      );
+    }
+    return { form: 'cancellation-policy-delete', ok: true };
+  }
+
   if (intent === 'verify-domain') {
     const id = String(formData.get('domainId'));
     const res = await apiPost<DomainResponse>(`/tenant/domains/${id}/verify`, {}, auth);
     if (!res.ok)
       return routeData(
-        { form: 'verify', error: res.error ?? 'Xác minh thất bại. Kiểm tra bản ghi TXT.' },
+        { form: 'domain-verify', error: res.error ?? 'Xác minh thất bại. Kiểm tra bản ghi TXT.' },
         { status: 400 },
       );
-    return { form: 'verify', ok: true };
+    return { form: 'domain-verify', ok: true };
+  }
+
+  if (intent === 'set-primary-domain') {
+    const id = String(formData.get('domainId'));
+    const res = await apiPatch<DomainResponse>(`/tenant/domains/${id}/primary`, {}, auth);
+    if (!res.ok) {
+      return routeData(
+        { form: 'domain-primary', error: res.error ?? 'Không đặt được tên miền chính.' },
+        { status: 400 },
+      );
+    }
+    return { form: 'domain-primary', ok: true };
   }
 
   if (intent === 'delete-domain') {
@@ -221,10 +315,10 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
     const res = await apiDelete(`/tenant/domains/${id}`, auth);
     if (!res.ok)
       return routeData(
-        { form: 'verify', error: res.error ?? 'Không xoá được tên miền.' },
+        { form: 'domain-delete', error: res.error ?? 'Không xoá được tên miền.' },
         { status: 400 },
       );
-    return { form: 'verify', ok: true };
+    return { form: 'domain-delete', ok: true };
   }
 
   return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });

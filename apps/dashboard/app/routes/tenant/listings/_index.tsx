@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router';
 import type {
   ListingResponse,
+  ListingTypeResponse,
   Paginated,
   PaginatedWithCounts,
   PartnerResponse,
@@ -17,39 +18,53 @@ import { formatDateTime } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { RelationshipHint } from '~/components/relationship-hint';
+import { EntityRef } from '~/components/entity-ref';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
+import { ListToolbar } from '~/components/list-toolbar';
 import { listingPriceFrom } from '~/lib/listing-price';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Listing · Tenant · Bookify' }];
+  return [{ title: 'Tin đăng · Tenant · Bookify' }];
 }
 
 const STATUS_VALUES: PublishStatus[] = ['draft', 'pending_review', 'published', 'archived'];
+
+const LISTINGS_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Tên tin đăng…' },
+];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
   const { toApiQuery } = readListParams(url.searchParams);
   const statusRaw = url.searchParams.get('status') ?? '';
   const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
-  const [res, partnersRes] = await Promise.all([
+  const { filters, apiFilters } = readListFilters(url.searchParams, LISTINGS_FILTER_SPEC);
+  const [res, partnersRes, typesRes] = await Promise.all([
     apiGet<PaginatedWithCounts<ListingResponse>>('/tenant/listings', auth, {
-      query: toApiQuery({ status }),
+      query: toApiQuery({ status, ...apiFilters }),
     }),
     can('tenant.partners.read')
       ? apiGet<Paginated<PartnerResponse>>('/tenant/partners', auth, { query: { pageSize: 100 } })
       : Promise.resolve(null),
+    apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
   ]);
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
+  const typeNames: Record<string, string> = {};
+  if (typesRes.ok) for (const t of typesRes.data ?? []) typeNames[t.id] = t.name;
   return {
     result: res.ok ? res.data : null,
     partnerNames,
-    error: res.ok ? null : (res.error ?? 'Không tải được danh sách listing.'),
-    filters: { status },
+    typeNames,
+    error: res.ok ? null : (res.error ?? 'Không tải được danh sách tin đăng.'),
+    filters: { status, ...filters },
     canModerate: can('tenant.listings.publish'),
   };
 }
@@ -65,7 +80,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 export default function TenantListings({ loaderData }: Route.ComponentProps) {
-  const { result, partnerNames, error, canModerate, filters } = loaderData;
+  const { result, partnerNames, typeNames, error, canModerate, filters } = loaderData;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
   const listings = result?.items ?? [];
@@ -75,11 +90,20 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
 
   const columns: DataTableColumn<ListingResponse>[] = [
     {
-      header: 'Listing',
+      header: 'Tin đăng',
       cell: (l) => (
         <div className="min-w-0">
           <div className="truncate font-medium">{l.title}</div>
           <div className="truncate text-xs text-muted-foreground">/{l.slug}</div>
+          {l.groupId && (
+            <div className="truncate text-xs">
+              <EntityRef
+                to={`/tenant/listing-groups/${l.groupId}/review`}
+                name="Thuộc tin đăng nhiều hạng mục"
+                className="font-normal text-muted-foreground"
+              />
+            </div>
+          )}
         </div>
       ),
     },
@@ -92,6 +116,14 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
       ),
       className: 'hidden sm:table-cell',
       headClassName: 'hidden sm:table-cell',
+    },
+    {
+      header: 'Loại',
+      cell: (l) => (
+        <span className="text-sm text-muted-foreground">{typeNames[l.listingTypeId] ?? '—'}</span>
+      ),
+      className: 'hidden md:table-cell',
+      headClassName: 'hidden md:table-cell',
     },
     {
       header: 'Hình thức',
@@ -139,7 +171,7 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
                 </>
               ) : (
                 <>
-                  <Eye className="size-4" /> Xem
+                  <Eye className="size-4" /> Xem & xử lý
                 </>
               )}
             </Link>
@@ -151,11 +183,20 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Listing"
-        description="Quản lý và kiểm duyệt các listing của đối tác trong marketplace."
+        title="Tin đăng"
+        description="Quản lý và kiểm duyệt các tin đăng của đối tác trong marketplace."
       />
 
+      <RelationshipHint variant="listings" />
+
       <ErrorBanner error={error} />
+
+      <ListToolbar
+        spec={LISTINGS_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.tenant.listings}
+        pageSize={pageSize}
+      />
 
       <StatusFilterTabs
         filters={FILTERS}
@@ -168,7 +209,9 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={listings}
         getRowKey={(l) => l.id}
-        emptyMessage="Không có listing nào trong nhóm này."
+        emptyMessage={
+          hasActiveFilters(filters) ? 'Không có tin đăng khớp bộ lọc.' : 'Không có tin đăng nào khớp bộ lọc.'
+        }
       />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />

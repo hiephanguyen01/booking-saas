@@ -5,9 +5,10 @@
  * Only the webhook is the source of truth for payment (§11.2).
  */
 import type { CheckoutDestination } from '@booking/contracts';
+import type { CustomerPaymentMethod } from '@booking/contracts';
 
 export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'mock';
-export type WebhookEvent = 'succeeded' | 'failed' | 'expired';
+export type WebhookEvent = 'succeeded' | 'failed' | 'expired' | 'refunded';
 
 export interface CreatePaymentInput {
   amountVnd: bigint;
@@ -17,12 +18,14 @@ export interface CreatePaymentInput {
   errorUrl: string;
   cancelUrl: string;
   expiresInSec: number;
+  paymentMethod: CustomerPaymentMethod;
 }
 
 export interface CreatePaymentResult {
   destination: CheckoutDestination;
   gatewayTxnId?: string;
   gatewayOrderRef?: string;
+  paymentMethod?: string;
 }
 
 export interface WebhookVerification {
@@ -37,14 +40,9 @@ export interface WebhookVerification {
 
 export interface RefundInput {
   gatewayTxnId: string;
+  gatewayOrderRef: string;
   amountVnd: bigint;
   reason: string;
-  /**
-   * Stable key for gateway-level refund idempotency (e.g. `${bookingId}:${reason}`).
-   * Gateways that support refunds (MoMo) use it as their refund requestId/orderId so a
-   * retried refund does not double-pay. Ignored by gateways without a refund API.
-   */
-  idempotencyKey: string;
 }
 
 export interface RefundResult {
@@ -54,7 +52,7 @@ export interface RefundResult {
 }
 
 export interface PaymentStatusResult {
-  status: 'pending' | 'succeeded' | 'failed' | 'expired';
+  status: 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
   amountVnd: bigint;
   /**
    * Provider transaction id, when the status query exposes it (MoMo returns `transId`).
@@ -67,6 +65,8 @@ export interface PaymentStatusResult {
 export interface PaymentGatewayPort {
   readonly key: GatewayKey;
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
+  /** Map the storefront-neutral choice to the provider code persisted with the payment. */
+  providerPaymentMethod(method: CustomerPaymentMethod): string;
   /** Unauthenticated read of the gateway txn id from a webhook body (to resolve the tenant). */
   peekReference(rawBody: Buffer): string | null;
   verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification;

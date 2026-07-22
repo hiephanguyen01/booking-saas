@@ -1,4 +1,4 @@
-import { Form, Link, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import {
   settlementStatusSchema,
   type BookingSettlementResponse,
@@ -8,13 +8,10 @@ import {
   type PartnerResponse,
   uuidSchema,
 } from '@booking/contracts';
-import { ArrowLeft, CircleDollarSign, Clock3, Filter, HandCoins, Scale } from 'lucide-react';
+import { ArrowLeft, CircleDollarSign, Clock3, HandCoins, Scale } from 'lucide-react';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { Label } from '@booking/ui/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import type { Route } from './+types/settlements';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
@@ -24,9 +21,11 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
+import { ListToolbar } from '~/components/list-toolbar';
 import { StatCard } from '~/components/stat-card';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
+import type { FilterSpec } from '~/lib/list-filters';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tiền đang giữ · Tài chính · Tenant · Bookify' }];
@@ -149,12 +148,29 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
   const list = readListParams(searchParams);
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
+  const filterSpec: FilterSpec = [
+    {
+      kind: 'enum',
+      key: 'status',
+      label: 'Trạng thái',
+      options: (Object.keys(SETTLEMENT_STATUS_LABEL) as SettlementStatusDto[]).map((value) => ({
+        value,
+        label: SETTLEMENT_STATUS_LABEL[value],
+      })),
+    },
+    {
+      kind: 'enum',
+      key: 'partnerId',
+      label: 'Partner',
+      options: partners.map((partner) => ({ value: partner.id, label: partner.name })),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Tiền đang giữ"
-        description="Theo dõi tiền khách trả Tenant từ lúc gateway xác nhận đến khi ghi nhận công nợ Partner."
+        description="Theo dõi tiền khách trả Tenant từ lúc cổng thanh toán xác nhận đến khi ghi nhận công nợ Partner."
         actions={
           <Button asChild variant="outline" size="sm">
             <Link to={dashboardPaths.tenant.finance}>
@@ -197,45 +213,19 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
         </div>
       ) : null}
 
-      <Card>
-        <CardContent className="p-4">
-          <Form method="get" className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="pageSize" value={list.pageSize} />
-            <div className="space-y-1.5">
-              <Label htmlFor="status">Trạng thái</Label>
-              <NativeSelect id="status" name="status" defaultValue={status}>
-                <NativeSelectOption value="">Tất cả</NativeSelectOption>
-                {(Object.keys(SETTLEMENT_STATUS_LABEL) as SettlementStatusDto[]).map((value) => (
-                  <NativeSelectOption key={value} value={value}>
-                    {SETTLEMENT_STATUS_LABEL[value]}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="partnerId">Partner</Label>
-              <NativeSelect id="partnerId" name="partnerId" defaultValue={partnerId}>
-                <NativeSelectOption value="">Tất cả</NativeSelectOption>
-                {partners.map((partner) => (
-                  <NativeSelectOption key={partner.id} value={partner.id}>
-                    {partner.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <Button type="submit" size="control" variant="outline">
-              <Filter className="size-4" /> Lọc
-            </Button>
-          </Form>
-        </CardContent>
-      </Card>
+      <ListToolbar
+        spec={filterSpec}
+        filters={{ status, partnerId }}
+        resetHref={dashboardPaths.tenant.settlements}
+        pageSize={list.pageSize}
+      />
 
       <ErrorBanner error={error} />
       <DataTable
         columns={columns}
         data={items}
         getRowKey={(row) => row.id}
-        emptyMessage="Chưa có khoản tiền giữ nào."
+        emptyMessage="Chưa có khoản tiền giữ nào. Khoản tiền giữ sẽ xuất hiện khi có đơn đặt chỗ được thanh toán."
       />
       <PaginationBar
         page={list.page}

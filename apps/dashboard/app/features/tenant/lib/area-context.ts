@@ -12,6 +12,15 @@ export interface TenantAreaContext {
   readOnly: boolean;
   /** True when the tenant is over its soft monthly-bookings quota (non-blocking). */
   overLimit: boolean;
+  /** Subscription state used by overview and settings surfaces. */
+  subscription: {
+    status: 'trial' | 'active' | 'past_due' | 'expired' | 'cancelled' | null;
+    phase: 'active' | 'grace' | 'expired' | null;
+    storefrontLive: boolean;
+    daysUntilExpiry: number | null;
+    expiresAt: string | null;
+    quota: { used: number; limit: number; overLimit: boolean } | null;
+  };
 }
 
 /** Read the tenant-area context provided by `routes/tenant/_layout.tsx`. */

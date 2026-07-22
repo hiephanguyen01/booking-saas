@@ -1,3 +1,4 @@
+import type { GatewayPaymentSettings } from '@booking/contracts';
 import type { GatewayEnvironment } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { GatewayKey } from './payment-gateway.port';
@@ -10,12 +11,14 @@ export interface GatewayConfigRecord {
   environment: GatewayEnvironment;
   /** Decrypted credentials — the repository decrypts on read. */
   credentials: Record<string, string>;
+  settings: GatewayPaymentSettings;
 }
 
 export interface UpsertGatewayConfigData {
   gateway: GatewayKey;
   environment: GatewayEnvironment;
   credentials: Record<string, string>;
+  settings?: GatewayPaymentSettings;
 }
 
 export interface IGatewayConfigRepository {
@@ -34,4 +37,9 @@ export interface IGatewayConfigRepository {
   ): Promise<GatewayConfigRecord>;
   /** Turn off every active gateway for the tenant (disables checkout). */
   deactivateAll(tx: PrismaTx, tenantId: string): Promise<void>;
+  updateSettings(
+    tx: PrismaTx,
+    tenantId: string,
+    settings: GatewayPaymentSettings,
+  ): Promise<GatewayConfigRecord | null>;
 }

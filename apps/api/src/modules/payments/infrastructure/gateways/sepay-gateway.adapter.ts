@@ -7,8 +7,10 @@ import type {
   PaymentGatewayPort,
   PaymentStatusResult,
   RefundResult,
+  RefundInput,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
+import type { CustomerPaymentMethod } from '@booking/contracts';
 
 export interface SepayCredentials {
   merchantId: string;
@@ -66,6 +68,15 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
 
   constructor(private readonly creds: SepayCredentials) {}
 
+  providerPaymentMethod(method: CustomerPaymentMethod): string {
+    const mapping: Record<CustomerPaymentMethod, string> = {
+      bank_transfer: 'BANK_TRANSFER',
+      napas_qr: 'NAPAS_BANK_TRANSFER',
+      international_card: 'CARD',
+    };
+    return mapping[method];
+  }
+
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     if (input.amountVnd <= 0n || input.amountVnd > BigInt(Number.MAX_SAFE_INTEGER)) {
       throw new Error('SePay amount is outside the supported integer range');
@@ -79,7 +90,9 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
     });
     const rawFields = client.checkout.initOneTimePaymentFields({
       operation: 'PURCHASE',
-      payment_method: 'BANK_TRANSFER',
+      // SePay's published API accepts CARD; the installed SDK declaration has
+      // not yet added that provider code.
+      payment_method: this.providerPaymentMethod(input.paymentMethod) as never,
       order_invoice_number: input.orderCode,
       order_amount: Number(input.amountVnd),
       currency: 'VND',
@@ -100,6 +113,7 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
         fields,
       },
       gatewayOrderRef: input.orderCode,
+      paymentMethod: this.providerPaymentMethod(input.paymentMethod),
     });
   }
 
@@ -112,6 +126,7 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
     const reference = body?.order?.order_invoice_number ?? '';
     const txnId = body?.transaction?.transaction_id ?? body?.transaction?.id ?? reference;
     const currency = body?.transaction?.transaction_currency ?? body?.order?.order_currency;
+    const voided = body?.notification_type === 'TRANSACTION_VOID';
     const approved =
       body?.notification_type === 'ORDER_PAID' &&
       body.transaction?.transaction_status === 'APPROVED';
@@ -119,7 +134,7 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
       valid:
         Boolean(body && reference && txnId && currency === 'VND') &&
         sameSecret(this.creds.secretKey, headers['x-secret-key']),
-      event: approved ? 'succeeded' : 'failed',
+      event: voided ? 'refunded' : approved ? 'succeeded' : 'failed',
       gatewayTxnId: txnId,
       gatewayOrderRef: reference,
       gatewayOrderId: body?.order?.order_id ?? body?.order?.id,
@@ -128,8 +143,26 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
     };
   }
 
-  refund(): Promise<RefundResult> {
-    return Promise.resolve({ supported: false });
+  async refund(input: RefundInput): Promise<RefundResult> {
+    const base =
+      this.creds.environment === 'sandbox'
+        ? 'https://pgapi-sandbox.sepay.vn'
+        : 'https://pgapi.sepay.vn';
+    const auth = Buffer.from(`${this.creds.merchantId}:${this.creds.secretKey}`).toString('base64');
+    const response = await fetch(`${base}/v1/order/voidTransaction`, {
+      method: 'POST',
+      headers: {
+        authorization: `Basic ${auth}`,
+        accept: 'application/json',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ order_invoice_number: input.gatewayOrderRef }),
+    });
+    // SePay only voids full CARD payments before settlement. Business-level
+    // rejections fall back to the tenant's manual queue; 5xx remains retryable.
+    if ([400, 403, 404, 409, 422].includes(response.status)) return { supported: false };
+    if (!response.ok) throw new Error(`SePay void failed with ${response.status}`);
+    return { supported: true, refundId: `sepay:void:${input.gatewayOrderRef}` };
   }
 
   async queryPaymentStatus(orderInvoiceNumber: string): Promise<PaymentStatusResult> {
@@ -152,9 +185,11 @@ export class SepayGatewayAdapter implements PaymentGatewayPort {
         ? 'succeeded'
         : orderStatus === 'EXPIRED'
           ? 'expired'
-          : orderStatus === 'CANCELLED' || orderStatus === 'VOIDED'
-            ? 'failed'
-            : 'pending';
+          : orderStatus === 'VOIDED'
+            ? 'refunded'
+            : orderStatus === 'CANCELLED'
+              ? 'failed'
+              : 'pending';
     return { status, amountVnd: parseVnd(json.data?.order_amount) };
   }
 }

@@ -13,7 +13,15 @@ import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
 import { EnumValue } from '~/components/enum-value';
 import { readListParams } from '~/lib/pagination';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
+import { ListToolbar } from '~/components/list-toolbar';
+import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
+import { PageHeader } from '~/components/page-header';
+
+const LINK_FILTER_SPEC: FilterSpec = [
+  { kind: 'text', key: 'q', label: 'Tìm kiếm', placeholder: 'Mã hoặc nhãn liên kết…' },
+];
 
 /**
  * The origin an affiliate's referral links must point at.
@@ -36,14 +44,16 @@ function storefrontOrigin(tenantHostname: string | null): string {
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, active } = await requireAffiliate(request);
   const { toApiQuery } = readListParams(url.searchParams);
+  const { filters, apiFilters } = readListFilters(url.searchParams, LINK_FILTER_SPEC);
   const links = active
     ? await apiGet<Paginated<ReferralLinkResponse>>('/affiliate/links', auth, {
-        query: toApiQuery(),
+        query: toApiQuery(apiFilters),
       })
     : null;
   return {
     result: links?.ok ? links.data : null,
     storefrontUrl: storefrontOrigin(active?.tenantHostname ?? null),
+    filters,
   };
 }
 
@@ -74,7 +84,7 @@ function referralUrl(storefrontUrl: string, code: string): string {
 }
 
 export default function AffiliateLinks({ loaderData, actionData }: Route.ComponentProps) {
-  const { result, storefrontUrl } = loaderData;
+  const { result, storefrontUrl, filters } = loaderData;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
   const links = result?.items ?? [];
@@ -83,24 +93,37 @@ export default function AffiliateLinks({ loaderData, actionData }: Route.Compone
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Chia sẻ link giới thiệu — khách hàng đặt chỗ trong 30 ngày sau khi click sẽ được ghi nhận cho bạn.
-        </p>
-        <createFetcher.Form method="post">
-          <input type="hidden" name="intent" value="create" />
-          <Button type="submit" size="sm" disabled={createFetcher.state !== 'idle'}>
-            <Plus className="size-4" /> Tạo link mới
-          </Button>
-        </createFetcher.Form>
-      </div>
+      <PageHeader
+        title="Link giới thiệu"
+        description="Tạo và quản lý link giới thiệu; theo dõi lượt nhấp."
+        actions={
+          <createFetcher.Form method="post">
+            <input type="hidden" name="intent" value="create" />
+            <Button type="submit" size="sm" disabled={createFetcher.state !== 'idle'}>
+              <Plus className="size-4" /> Tạo link mới
+            </Button>
+          </createFetcher.Form>
+        }
+      />
+      <p className="text-sm text-muted-foreground">
+        Khách hàng đặt chỗ trong 30 ngày sau khi click sẽ được ghi nhận hoa hồng cho bạn.
+      </p>
 
       <ErrorBanner error={actionData?.error} />
+
+      <ListToolbar
+        spec={LINK_FILTER_SPEC}
+        filters={filters}
+        resetHref={dashboardPaths.affiliate.links}
+        pageSize={pageSize}
+      />
 
       {links.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            Chưa có link nào. Nhấn “Tạo link mới” để bắt đầu.
+            {hasActiveFilters(filters)
+              ? 'Không có link khớp bộ lọc.'
+              : 'Chưa có link nào. Nhấn “Tạo link mới” để bắt đầu.'}
           </CardContent>
         </Card>
       ) : (

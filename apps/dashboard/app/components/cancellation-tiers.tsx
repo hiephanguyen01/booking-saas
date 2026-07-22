@@ -6,7 +6,7 @@ import { asRecord, readNumber } from '~/lib/records';
 
 /** Human label for where a listing's effective policy came from (partner's point of view). */
 export const CANCELLATION_SOURCE_LABEL: Record<CancellationPolicySource, string> = {
-  listing: 'Riêng listing',
+  listing: 'Riêng tin đăng',
   partner: 'Mặc định của bạn',
   tenant: 'Mặc định hệ thống',
 };

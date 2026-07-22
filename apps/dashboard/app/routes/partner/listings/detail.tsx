@@ -6,6 +6,7 @@ import {
   type AvailabilityExceptionResponse,
   type AvailabilityRuleResponse,
   type ListingResponse,
+  type ListingTypeResponse,
   type PricingRuleResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -25,6 +26,9 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
+import { DateTimeValue } from '~/components/date-time-value';
+import { EntityRef } from '~/components/entity-ref';
+import { WarningCallout } from '~/components/warning-callout';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { CANCELLATION_SOURCE_LABEL, CancellationTiers } from '~/components/cancellation-tiers';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
@@ -40,11 +44,18 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
-  const res = await apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth);
+  const [res, listingTypesRes] = await Promise.all([
+    apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
+    apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+  ]);
   if (!res.ok || !res.data) {
     throw new Response('Không tìm thấy tin đăng.', { status: res.status === 403 ? 403 : 404 });
   }
   const listing = res.data;
+  const listingType =
+    (listingTypesRes.ok ? listingTypesRes.data : null)?.find(
+      (type) => type.id === listing.listingTypeId,
+    ) ?? null;
   const tab = url.searchParams.get('tab') === 'calendar' ? 'calendar' : 'detail';
   const requestedMonth = url.searchParams.get('month');
   const month =
@@ -78,6 +89,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
       : [null, null, null];
   return {
     listing,
+    listingType,
     tab,
     month,
     mode,
@@ -306,10 +318,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function PartnerListingDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { listing, canWrite, tab } = loaderData;
+  const { listing, listingType, canWrite, tab } = loaderData;
   const price = listingPriceFrom(listing);
   const source = listing.effectiveCancellationPolicySource;
   const inherited = source !== null && source !== 'listing';
+  const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
 
   return (
     <div className="space-y-5">
@@ -359,6 +372,10 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
         />
       ) : (
         <>
+          {adminLocked ? (
+            <WarningCallout>Bị quản trị viên ẩn — liên hệ tenant để mở lại.</WarningCallout>
+          ) : null}
+
           <Card>
             <CardHeader>
               <CardTitle>Thông tin</CardTitle>
@@ -369,6 +386,7 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
                   label="Trạng thái"
                   value={<ListingStatusBadge status={listing.status} />}
                 />
+                <DetailField label="Loại dịch vụ" value={listingType?.name ?? '—'} />
                 <DetailField
                   label="Hình thức"
                   value={listing.bookingModes.map((m) => BOOKING_MODE_LABEL[m] ?? m).join(', ')}
@@ -378,6 +396,21 @@ export default function PartnerListingDetail({ loaderData, actionData }: Route.C
                   value={price ? <Money value={price} /> : 'Chưa có giá'}
                 />
                 <DetailField label="Đặt cọc" value={`${listing.depositPercent}%`} />
+                <DetailField
+                  label="Cập nhật"
+                  value={<DateTimeValue iso={listing.updatedAt} relative />}
+                />
+                {listing.groupId ? (
+                  <DetailField
+                    label="Thuộc tin đăng"
+                    value={
+                      <EntityRef
+                        to={dashboardPaths.partner.listingGroup(listing.groupId)}
+                        name="Xem tin đăng"
+                      />
+                    }
+                  />
+                ) : null}
               </DetailGrid>
             </CardContent>
           </Card>

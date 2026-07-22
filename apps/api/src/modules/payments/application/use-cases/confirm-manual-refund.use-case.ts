@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import type { ConfirmManualRefundInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import {
   REFUND_REPOSITORY,
   type IRefundRepository,
@@ -13,6 +14,7 @@ import {
 export class ConfirmManualRefundUseCase {
   constructor(
     @Inject(REFUND_REPOSITORY) private readonly refunds: IRefundRepository,
+    @Inject(AUDIT_WRITER) private readonly audit: IAuditWriter,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -21,6 +23,7 @@ export class ConfirmManualRefundUseCase {
     tenantId: string,
     refundId: string,
     input: ConfirmManualRefundInput,
+    actorUserId: string,
   ): Promise<RefundRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       let found = await this.refunds.findById(tx, refundId);
@@ -41,8 +44,28 @@ export class ConfirmManualRefundUseCase {
           message: `Refund is ${found.status}`,
         });
       }
+      if (await this.refunds.manualReferenceExists(tx, tenantId, input.reference)) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'REFUND_REFERENCE_ALREADY_USED',
+          message: 'Refund reference has already been used',
+        });
+      }
       const updated = await this.refunds.markSucceeded(tx, refundId, input);
       if (!updated) throw new NotFoundException();
+      await this.audit.write(tx, {
+        tenantId,
+        actorUserId,
+        action: 'refund.manual_confirmed',
+        entityType: 'refund',
+        entityId: updated.id,
+        data: {
+          reference: input.reference,
+          evidenceKey: input.evidenceKey ?? null,
+          note: input.note ?? null,
+          amount: updated.amount.toString(),
+        },
+      });
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'refund.completed',

@@ -143,7 +143,7 @@ export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
         columns={columns}
         data={affiliates}
         getRowKey={(a) => a.id}
-        emptyMessage="Chưa có cộng tác viên nào trong nhóm này."
+        emptyMessage="Chưa có cộng tác viên nào trong nhóm này. Cộng tác viên sẽ xuất hiện khi có người đăng ký chương trình giới thiệu của cửa hàng."
       />
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />

@@ -1,4 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
+import type { CustomerPaymentMethod } from '@booking/contracts';
 import type {
   CreatePaymentInput,
   CreatePaymentResult,
@@ -42,6 +43,11 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
       creds.environment === 'production'
         ? 'https://payment.momo.vn'
         : 'https://test-payment.momo.vn';
+  }
+
+  /** MoMo only settles to the customer's MoMo wallet, whatever storefront choice was made. */
+  providerPaymentMethod(_method: CustomerPaymentMethod): string {
+    return 'MOMO_WALLET';
   }
 
   private sign(raw: string): string {
@@ -93,7 +99,10 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
     if (json.resultCode !== 0 || !json.payUrl) {
       throw new Error(`MoMo create failed (${json.resultCode}): ${json.message ?? 'unknown'}`);
     }
-    return { destination: { type: 'redirect', paymentUrl: json.payUrl } };
+    return {
+      destination: { type: 'redirect', paymentUrl: json.payUrl },
+      paymentMethod: 'MOMO_WALLET',
+    };
     // gatewayTxnId is unknown at create time — MoMo only returns transId on the IPN.
     // The minted orderCode is persisted as gatewayOrderRef (checkout fallback) and is
     // what the IPN echoes back, so findByGatewayReference locates the payment.
@@ -136,7 +145,8 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
       );
     }
     const { partnerCode, accessKey } = this.creds;
-    const id = momoRefundId(input.idempotencyKey); // deterministic → MoMo idempotent on retry
+    // Deterministic refund id (gatewayOrderRef + reason) → MoMo stays idempotent on retry.
+    const id = momoRefundId(`${input.gatewayOrderRef}:${input.reason}`);
     const amount = Number(input.amountVnd);
     const description = input.reason;
     const raw =
@@ -160,8 +170,9 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
     });
     const json = (await res.json()) as { resultCode?: number; transId?: number; message?: string };
     if (json.resultCode !== 0) {
-      // Throw (not supported:false) so ExecuteRefundUseCase writes no row and the
-      // reconciliation worker re-drives it; the deterministic id keeps retries safe.
+      // Throw (not supported:false): the refund row stays 'pending' automatic and the
+      // refund.execution_requested handler re-drives it; the deterministic id keeps
+      // MoMo idempotent across retries.
       throw new Error(`MoMo refund failed (${json.resultCode}): ${json.message ?? 'unknown'}`);
     }
     return { supported: true, refundId: json.transId !== undefined ? String(json.transId) : id };

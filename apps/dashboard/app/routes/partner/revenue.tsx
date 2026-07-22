@@ -12,6 +12,7 @@ import type {
 import { respondSettlementDisputeInputSchema } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
 import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import type { Route } from './+types/revenue';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
@@ -264,13 +265,25 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           tone={balanceNegative ? 'negative' : 'positive'}
         />
         <StatCard
-          label="Tổng ghi có"
+          label={
+            <span className="inline-flex items-center gap-1">
+              Tổng ghi có
+              <InfoHint>Tổng tiền đã ghi có vào số dư của bạn.</InfoHint>
+            </span>
+          }
           value={<Money value={totalCredit} />}
           hint="Cộng dồn theo sổ cái"
           icon={<TrendingUp className="size-4" />}
         />
         <StatCard
-          label="Đang giữ/chờ tranh chấp"
+          label={
+            <span className="inline-flex items-center gap-1">
+              Đang giữ/chờ tranh chấp
+              <InfoHint>
+                Tiền tạm giữ do đang trong thời gian giữ hoặc có tranh chấp.
+              </InfoHint>
+            </span>
+          }
           value={<Money value={settlementTotals.held} />}
           hint="Chưa đủ điều kiện vào kỳ chi"
           icon={<Clock3 className="size-4" />}
@@ -282,7 +295,14 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           icon={<Scale className="size-4" />}
         />
         <StatCard
-          label="Đang chờ chuyển"
+          label={
+            <span className="inline-flex items-center gap-1">
+              Đang chờ chuyển
+              <InfoHint>
+                Tiền đã đủ điều kiện, đang chờ chuyển về tài khoản của bạn.
+              </InfoHint>
+            </span>
+          }
           value={<Money value={settlementTotals.pending} />}
           hint="Đã nằm trong lệnh chi"
           icon={<HandCoins className="size-4" />}
@@ -382,7 +402,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           columns={journalColumns}
           data={ledger}
           getRowKey={(e) => e.id}
-          emptyMessage="Chưa có bút toán nào."
+          emptyMessage="Chưa có bút toán nào. Bút toán sẽ xuất hiện sau giao dịch đầu tiên."
         />
         <PaginationBar
           page={ledgerParams.page}
@@ -401,7 +421,7 @@ export default function PartnerRevenuePage({ loaderData, actionData }: Route.Com
           columns={payoutColumns}
           data={payouts}
           getRowKey={(p) => p.id}
-          emptyMessage="Chưa có đợt chi trả nào."
+          emptyMessage="Chưa có đợt chi trả nào. Đợt chi trả sẽ xuất hiện khi có tiền đủ điều kiện chuyển cho bạn."
         />
         <PaginationBar
           page={payoutParams.page}

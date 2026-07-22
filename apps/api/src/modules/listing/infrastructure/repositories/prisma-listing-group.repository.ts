@@ -16,6 +16,16 @@ import type { ModerationUpdate } from '../../domain/ports/listing-repository.por
  * `readyListingCount` / `priceFrom` never cost a follow-up round trip.
  */
 const GROUP_INCLUDE = {
+  partner: {
+    select: {
+      name: true,
+      slug: true,
+      status: true,
+      verifiedAt: true,
+      createdAt: true,
+      businessInfo: true,
+    },
+  },
   listings: {
     select: {
       description: true,
@@ -54,6 +64,17 @@ function toRecord(g: Row): ListingGroupRecord {
     ratingAvg: g.ratingAvg === null ? null : g.ratingAvg.toNumber(),
     reviewCount: g.reviewCount,
     bookingCount: g.bookingCount,
+    partnerPublic: {
+      name: g.partner.name,
+      slug: g.partner.slug,
+      status: g.partner.status,
+      verifiedAt: g.partner.verifiedAt,
+      createdAt: g.partner.createdAt,
+      logoUrl:
+        typeof (g.partner.businessInfo as Record<string, unknown>)['logoUrl'] === 'string'
+          ? ((g.partner.businessInfo as Record<string, unknown>)['logoUrl'] as string)
+          : null,
+    },
     children: g.listings.map((l) => ({
       description: l.description,
       photos: (l.photos ?? []) as string[],
@@ -117,12 +138,13 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
 
   async listPage(
     tx: PrismaTx,
-    filter: { partnerId?: string },
+    filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingGroupRecord[]; total: number }> {
-    const where: Prisma.ListingGroupWhereInput = filter.partnerId
-      ? { partnerId: filter.partnerId }
-      : {};
+    const where: Prisma.ListingGroupWhereInput = {
+      ...(filter.partnerId ? { partnerId: filter.partnerId } : {}),
+      ...(filter.q ? { title: { contains: filter.q, mode: 'insensitive' } } : {}),
+    };
     const [items, total] = await Promise.all([
       tx.listingGroup.findMany({
         where,

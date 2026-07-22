@@ -78,9 +78,10 @@ export class PrismaPaymentRepository implements IPaymentRepository {
   async findPendingCheckout(
     tx: PrismaTx,
     bookingId: string,
+    paymentMethod: string,
   ): Promise<{ id: string; destination: CheckoutDestination } | null> {
     const payment = await tx.payment.findFirst({
-      where: { bookingId, status: 'pending' },
+      where: { bookingId, status: 'pending', paymentMethod },
       select: { id: true, gatewayPayload: true },
       orderBy: { createdAt: 'desc' },
     });

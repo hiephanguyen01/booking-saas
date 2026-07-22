@@ -19,7 +19,9 @@ import { basePrices } from '../../domain/group-stats';
 
 function listingPriceFrom(listing: ListingRecord): string | null {
   const prices = basePrices(listing);
-  return prices.length ? prices.reduce((left, right) => (right < left ? right : left)).toString() : null;
+  return prices.length
+    ? prices.reduce((left, right) => (right < left ? right : left)).toString()
+    : null;
 }
 
 @Injectable()
@@ -41,6 +43,8 @@ export class GetPublicListingGroupUseCase {
         this.listings.list(tx, { groupId: group.id, partnerId: group.partnerId }),
         this.listingTypes.findById(tx, group.listingTypeId),
       ]);
+      const partner = group.partnerPublic;
+      if (partner.status !== 'approved') return null;
       return {
         id: group.id,
         title: group.title,
@@ -59,6 +63,15 @@ export class GetPublicListingGroupUseCase {
         itemLabel: listingType?.itemLabel?.trim() || 'hạng mục',
         ratingAvg: group.ratingAvg,
         reviewCount: group.reviewCount,
+        trust: {
+          identityVerified: partner.verifiedAt !== null,
+          partnerActiveSince: partner.createdAt.toISOString(),
+          partnerName: partner.name,
+          partnerSlug: partner.slug,
+          partnerLogoUrl: partner.logoUrl,
+          completedBookings: group.bookingCount,
+          avgApprovalResponseSeconds: null,
+        },
         listings: children
           .filter((listing) => listing.status === 'published')
           .map((listing) => ({

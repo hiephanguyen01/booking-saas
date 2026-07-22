@@ -55,6 +55,10 @@ export class HandleWebhookUseCase {
           message: 'Webhook signature invalid',
         });
 
+      // A SePay TRANSACTION_VOID confirms an already-recorded automatic refund;
+      // it must never downgrade the original successful payment.
+      if (v.event === 'refunded') return false;
+
       if (v.event !== 'succeeded') {
         // One-way machine (§11.2): a late/out-of-order failed/expired only applies
         // while still pending. The write is atomic (UPDATE ... WHERE status =

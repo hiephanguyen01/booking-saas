@@ -15,10 +15,15 @@ export async function fetchBookingList(
   page: number,
   pageSize: number,
   signal: AbortSignal,
+  apiFilters: Record<string, string | undefined> = {},
 ): Promise<BookingListData> {
+  const cleanFilters: Record<string, string> = {};
+  for (const [key, value] of Object.entries(apiFilters)) {
+    if (value) cleanFilters[key] = value;
+  }
   const result = await apiGet<Paginated<BookingResponse>>('/tenant/bookings', auth, {
     signal,
-    query: { page, pageSize, ...(status === 'all' ? {} : { status }) },
+    query: { page, pageSize, ...cleanFilters, ...(status === 'all' ? {} : { status }) },
   });
   const data = unwrapApiResult(result, 'Không tải được đặt chỗ.');
   return { items: data.items, total: data.total };

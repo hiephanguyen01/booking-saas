@@ -116,7 +116,7 @@ export default function AffiliateDetail({ loaderData, actionData }: Route.Compon
 
       <PageHeader
         title={affiliate.userName}
-        description={affiliate.userEmail}
+        description="Hiệu suất giới thiệu và hoa hồng của cộng tác viên."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <PartnerStatusBadge status={affiliate.status} />

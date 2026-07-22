@@ -73,6 +73,8 @@ export interface PublicListingRecord extends ListingRecord {
   listingTypeSlug: string;
   group: { title: string; slug: string } | null;
   partnerName: string;
+  partnerSlug: string;
+  partnerLogoUrl: string | null;
   partnerVerifiedAt: Date | null;
   partnerActiveSince: Date;
   completedBookings: number;

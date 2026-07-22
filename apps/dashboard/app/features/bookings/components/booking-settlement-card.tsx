@@ -59,7 +59,7 @@ export function BookingSettlementCard({
             />
             <DetailField label="Phí nền tảng" value={<Money value={settlement.platformFee} />} />
             <DetailField
-              label="Hoa hồng affiliate"
+              label="Hoa hồng cộng tác viên"
               value={<Money value={settlement.affiliateCommission} />}
             />
             <DetailField

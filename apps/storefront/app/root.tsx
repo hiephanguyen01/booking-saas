@@ -13,26 +13,26 @@ import {
 } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
+import type { AccountMenuSummary } from './features/account/account-menu';
+import { getAccountMenuSummary } from './features/account/server/account-menu.server';
 import { SiteFooter } from './layouts/site-footer';
 import { SiteHeader } from './layouts/site-header';
-import { NsI18n, useTranslation } from './lib/i18n';
-import { storefrontPaths } from './lib/locale-paths';
 import {
   readRefCode,
   refAttributionCookie,
   resolveVisitorId,
   trackReferral,
 } from './lib/affiliate.server';
+import { getOptionalAuth } from './lib/auth.server';
 import { fetchListingTypes } from './lib/catalog.server';
+import { NsI18n, useTranslation } from './lib/i18n';
 import { resolveLocale } from './lib/i18n.server';
+import { storefrontPaths } from './lib/locale-paths';
 import { getCurrentStorefrontTenant } from './lib/request-context.server';
+import { storefrontRequestMiddleware } from './lib/request-security.server';
+import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
 import type { StorefrontTenant } from './lib/tenant.server';
 import { themeCss } from './theme/theme';
-import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
-import { storefrontRequestMiddleware } from './lib/request-security.server';
-import { getOptionalAuth } from './lib/auth.server';
-import { getAccountMenuSummary } from './features/account/server/account-menu.server';
-import type { AccountMenuSummary } from './features/account/account-menu';
 
 export const middleware: Route.MiddlewareFunction[] = [storefrontRequestMiddleware];
 
@@ -72,10 +72,12 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   // the last-click cookie. Only track when the code differs from what's already
   // attributed, so repeat page views don't re-hit the backend.
   const ref = url.searchParams.get('ref')?.trim().toUpperCase();
-  if (!ref || ref.length > 50 || readRefCode(request, tenant.id) === ref) {
+  const attributedRef = await readRefCode(request, tenant.id);
+  if (!ref || ref.length > 50 || attributedRef === ref) {
     return payload;
   }
-  const visitor = resolveVisitorId(request);
+
+  const visitor = await resolveVisitorId(request);
   const valid = await trackReferral(request, ref, visitor.id);
   if (!valid) {
     // Still persist the visitor id if it was freshly minted.
@@ -84,7 +86,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       : payload;
   }
   const headers = new Headers();
-  headers.append('Set-Cookie', refAttributionCookie(tenant.id, ref));
+  headers.append('Set-Cookie', await refAttributionCookie(tenant.id, ref));
   if (visitor.setCookie) headers.append('Set-Cookie', visitor.setCookie);
   return data(payload, { headers });
 }
@@ -206,6 +208,7 @@ function SuspendedNotice({ name }: { name: string }) {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   // The root loader may be what threw, so fall back to the default locale.
   const locale = useRouteLoaderData<typeof loader>('root')?.locale ?? 'vi';
+  console.log('test-');
   return (
     <BookingI18nProvider locale={locale}>
       <RootErrorNotice error={error} locale={locale} />

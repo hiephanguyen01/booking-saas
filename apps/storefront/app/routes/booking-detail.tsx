@@ -33,6 +33,7 @@ import {
   checkoutBooking,
   fetchBookingByCode,
   fetchPaymentStatus,
+  fetchPaymentOptions,
   mockPay,
   mockPaymentsEnabled,
 } from '../lib/booking.server';
@@ -136,7 +137,8 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!bookingId) {
       return data({ ok: false, error: 'PAYMENT_RETRY_UNAVAILABLE' }, { status: 403 });
     }
-    const checkout = await checkoutBooking(request, bookingId);
+    const options = await fetchPaymentOptions(request);
+    const checkout = await checkoutBooking(request, bookingId, options.methods[0]);
     const destination = checkout.data?.destination;
     if (
       checkout.ok &&

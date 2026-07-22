@@ -47,8 +47,19 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function TenantLayout({ loaderData }: Route.ComponentProps) {
   const { status, phase, storefrontLive, readOnly, daysUntilExpiry, expiresAt, quota, overLimit } =
     loaderData;
-  // The children only need the two write-gating flags; the backend enforces the same rules.
-  const context: TenantAreaContext = { readOnly, overLimit };
+  // Children consume write-gating flags plus subscription context for status-oriented surfaces.
+  const context: TenantAreaContext = {
+    readOnly,
+    overLimit,
+    subscription: {
+      status,
+      phase,
+      storefrontLive,
+      daysUntilExpiry,
+      expiresAt,
+      quota,
+    },
+  };
 
   const expiredOn = expiresAt ? ` (hết hạn ${formatDate(expiresAt)})` : '';
   const preExpiry =
@@ -70,7 +81,10 @@ export default function TenantLayout({ loaderData }: Route.ComponentProps) {
           </AlertDescription>
         </Alert>
       ) : phase === 'grace' ? (
-        <WarningAlert icon={<TriangleAlert className="size-4" />} title="Gói dịch vụ đã hết hạn — đang trong thời gian gia hạn">
+        <WarningAlert
+          icon={<TriangleAlert className="size-4" />}
+          title="Gói dịch vụ đã hết hạn — đang trong thời gian gia hạn"
+        >
           {storefrontLive
             ? 'Storefront vẫn đang hoạt động tạm thời. Gia hạn ngay để tránh bị khoá và tạm ngưng trang đặt chỗ.'
             : 'Storefront đã tạm ngưng. Gia hạn ngay để khôi phục trang đặt chỗ trước khi bảng điều khiển bị khoá.'}
@@ -92,7 +106,10 @@ export default function TenantLayout({ loaderData }: Route.ComponentProps) {
 
       {/* Soft booking-quota indicator (never blocks checkout) — independent of the ladder above. */}
       {!readOnly && overLimit ? (
-        <WarningAlert icon={<TriangleAlert className="size-4" />} title="Vượt hạn mức đặt chỗ tháng này">
+        <WarningAlert
+          icon={<TriangleAlert className="size-4" />}
+          title="Vượt hạn mức đặt chỗ tháng này"
+        >
           {quota ? `Đã dùng ${quota.used}/${quota.limit} lượt đặt chỗ. ` : ''}
           Đơn đặt mới vẫn được nhận, nhưng hãy cân nhắc nâng cấp gói để tránh gián đoạn.
         </WarningAlert>

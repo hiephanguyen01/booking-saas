@@ -57,6 +57,11 @@ export function PayoutsTable({
   ];
 
   return (
-    <DataTable columns={columns} data={payouts} getRowKey={(p) => p.id} emptyMessage="Chưa có lệnh chi nào." />
+    <DataTable
+      columns={columns}
+      data={payouts}
+      getRowKey={(p) => p.id}
+      emptyMessage="Chưa có lệnh chi nào. Lệnh chi sẽ xuất hiện khi có khoản tiền đủ điều kiện chi trả."
+    />
   );
 }

@@ -1,6 +1,6 @@
 import { data, Link } from 'react-router';
 import { useSearchParams } from 'react-router';
-import { Plus } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import type {
   ListingGroupResponse,
   ListingResponse,
@@ -11,6 +11,12 @@ import type {
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable } from '@booking/ui/components/data-table/data-table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@booking/ui/components/ui/dropdown-menu';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
@@ -18,10 +24,12 @@ import { buildListingColumns } from '~/features/partner/components/listings/list
 import { ListingGroupCard } from '~/features/partner/components/listings/listing-group-card';
 import type { ListingsActionResult } from '~/features/partner/components/listings/types';
 import { PageHeader } from '~/components/page-header';
+import { RelationshipHint } from '~/components/relationship-hint';
 import { ErrorBanner } from '~/components/action-feedback';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
 import { readListParams } from '~/lib/pagination';
 import { PaginationBar } from '~/components/pagination-bar';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng · Đối tác · Bookify' }];
@@ -115,6 +123,7 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
   const total = result?.total ?? 0;
   const counts = result?.counts;
   const statusValue = filters.status || 'all';
+  const eligibleTypes = listingTypes.filter((type) => type.structure !== 'standalone');
 
   const columns = buildListingColumns({ canWrite, canPublish, canAvailability });
 
@@ -125,14 +134,35 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
         description="Tạo, gửi duyệt, hiển thị hoặc ẩn các tin đăng của bạn."
         actions={
           canWrite ? (
-            <Button asChild size="sm">
-              <Link to="/partner/listings/new">
-                <Plus className="size-4" aria-hidden /> Thêm tin đăng
-              </Link>
-            </Button>
+            <>
+              <Button asChild size="sm">
+                <Link to="/partner/listings/new">
+                  <Plus className="size-4" aria-hidden /> Thêm tin đăng
+                </Link>
+              </Button>
+              {eligibleTypes.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="size-4" aria-hidden /> Thêm tin đăng nhiều hạng mục
+                      <ChevronDown className="size-4" aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {eligibleTypes.map((type) => (
+                      <DropdownMenuItem key={type.id} asChild>
+                        <Link to={dashboardPaths.partner.newListingGroup(type.id)}>{type.name}</Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+            </>
           ) : null
         }
       />
+
+      <RelationshipHint variant="listings" />
 
       <StatusFilterTabs
         filters={FILTERS}
@@ -144,23 +174,29 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
       <ErrorBanner error={loadError} />
 
       {groups.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {groups.map((group) => (
-            <ListingGroupCard
-              key={group.id}
-              group={group}
-              listingType={listingTypes.find((item) => item.id === group.listingTypeId)}
-            />
-          ))}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold">Tin đăng nhiều hạng mục</h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {groups.map((group) => (
+              <ListingGroupCard
+                key={group.id}
+                group={group}
+                listingType={listingTypes.find((item) => item.id === group.listingTypeId)}
+              />
+            ))}
+          </div>
         </div>
       ) : null}
 
-      <DataTable
-        columns={columns}
-        data={listings}
-        getRowKey={(l) => l.id}
-        emptyMessage="Chưa có tin đăng nào."
-      />
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold">Tin đăng đơn</h2>
+        <DataTable
+          columns={columns}
+          data={listings}
+          getRowKey={(l) => l.id}
+          emptyMessage="Chưa có tin đăng nào."
+        />
+      </div>
 
       <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>

@@ -75,10 +75,10 @@ released booking debt into guarded payout runs. Other consumers react independen
 
 `apps/api/src/`:
 
-- `modules/*` — 13 bounded contexts, each `domain/ · application/ · infrastructure/`:
+- `modules/*` — bounded contexts, each `domain/ · application/ · infrastructure/`:
   identity-access, tenancy, partner, catalog, listing, scheduling, booking, payments, promotions,
-  finance, affiliate, notification, **administrative-division** (Vietnamese provinces/wards reference
-  data).
+  finance, affiliate, notification, reviews, favorites, content-reports, and
+  **administrative-division** (Vietnamese provinces/wards reference data).
 - `shared/*` — 11 cross-cutting concerns (no business logic): tenant-context, prisma, redis, outbox,
   audit, storage, validation, openapi, health, money, time.
 

@@ -13,7 +13,10 @@ export class ListListingTypesUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, opts: { includeInactive: boolean }): Promise<ListingTypeRecord[]> {
+  execute(
+    tenantId: string,
+    opts: { includeInactive: boolean; q?: string },
+  ): Promise<ListingTypeRecord[]> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.repo.list(tx, opts));
   }
 }

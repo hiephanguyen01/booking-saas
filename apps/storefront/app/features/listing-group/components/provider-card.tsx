@@ -1,8 +1,11 @@
-import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
-import { Check, MessageCircle, ShieldCheck } from 'lucide-react';
+import { Check, Store, ShieldCheck } from 'lucide-react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { RoomTrust } from '../listing-group-types';
+import { Link } from 'react-router';
+import { storefrontPaths } from '../../../lib/locale-paths';
+import { useLocale } from '../../../lib/use-locale';
 
 /**
  * The partner behind the group's rooms.
@@ -14,11 +17,13 @@ import type { RoomTrust } from '../listing-group-types';
  */
 export function ProviderCard({ trust }: { trust: RoomTrust | null }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const locale = useLocale();
   const partnerName = trust?.partnerName || t('group.partnerFallback');
   return (
     <div className="rounded-lg bg-card p-5 text-card-foreground shadow-sm">
       <div className="flex items-center gap-3">
         <Avatar className="size-11">
+          {trust?.partnerLogoUrl ? <AvatarImage src={trust.partnerLogoUrl} alt="" /> : null}
           <AvatarFallback>{initials(partnerName)}</AvatarFallback>
         </Avatar>
         <p className="min-w-0 truncate font-semibold">{partnerName}</p>
@@ -37,14 +42,10 @@ export function ProviderCard({ trust }: { trust: RoomTrust | null }) {
           </span>
         ) : null}
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-5 w-full"
-        disabled
-        title={t('group.viewProviderComingSoon')}
-      >
-        <MessageCircle /> {t('group.viewProvider')}
+      <Button asChild variant="outline" className="mt-5 w-full">
+        <Link to={storefrontPaths.provider(locale, trust?.partnerSlug ?? '')}>
+          <Store /> {t('group.viewProvider')}
+        </Link>
       </Button>
     </div>
   );

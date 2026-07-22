@@ -7,10 +7,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
-import { Copy, EllipsisVertical } from 'lucide-react';
+import { Copy, EllipsisVertical, Flag } from 'lucide-react';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { FavoriteHeartButton } from '../../favorites/components/favorite-heart-button';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { ContentReportDialog } from '../../content-reports/content-report-dialog';
 
 const COPIED_FEEDBACK_MS = 1800;
 
@@ -22,7 +24,9 @@ export function HeaderActions({
   favorite: { kind: FavoriteTargetKind; id: string };
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const [searchParams] = useSearchParams();
   const [copied, setCopied] = useState(false);
+  const [reportOpen, setReportOpen] = useState(searchParams.get('report') === '1');
 
   async function copyLink(): Promise<void> {
     try {
@@ -63,9 +67,22 @@ export function HeaderActions({
             <DropdownMenuItem onSelect={() => void copyLink()}>
               <Copy /> {copied ? t('group.linkCopied') : t('group.copyLink')}
             </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => setReportOpen(true)}
+            >
+              <Flag /> {t('report.menu')}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ContentReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        target={favorite.kind}
+        targetId={favorite.id}
+        title={title}
+      />
     </div>
   );
 }

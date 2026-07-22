@@ -10,6 +10,8 @@ import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/deco
 import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
+import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import {
   toPaymentHistoryItem,
   toRefundHistoryItem,
@@ -61,9 +63,15 @@ export class TenantPaymentController {
   async confirmRefund(
     @Param('id') id: string,
     @Body() input: ConfirmManualRefundDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<RefundResponse> {
     return toRefundResponse(
-      await this.confirmManualRefund.execute(this.tenantContext.tenantIdOrThrow(), id, input),
+      await this.confirmManualRefund.execute(
+        this.tenantContext.tenantIdOrThrow(),
+        id,
+        input,
+        principal.userId,
+      ),
     );
   }
 }

@@ -71,6 +71,9 @@ import { GetCancellationPolicyUseCase } from '../../application/use-cases/get-ca
 import { CreateCancellationPolicyUseCase } from '../../application/use-cases/create-cancellation-policy.use-case';
 import { UpdateCancellationPolicyUseCase } from '../../application/use-cases/update-cancellation-policy.use-case';
 import { DeleteCancellationPolicyUseCase } from '../../application/use-cases/delete-cancellation-policy.use-case';
+import { CreateTenantCancellationPolicyUseCase } from '../../application/use-cases/create-tenant-cancellation-policy.use-case';
+import { UpdateTenantCancellationPolicyUseCase } from '../../application/use-cases/update-tenant-cancellation-policy.use-case';
+import { DeleteTenantCancellationPolicyUseCase } from '../../application/use-cases/delete-tenant-cancellation-policy.use-case';
 import { PartnerCancellationPolicyController } from './partner-cancellation-policy.controller';
 import { GetListingDepositRequirementUseCase } from '../../application/use-cases/get-listing-deposit-requirement.use-case';
 import { TenantCancellationPolicyController } from './tenant-cancellation-policy.controller';
@@ -137,6 +140,9 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     CreateCancellationPolicyUseCase,
     UpdateCancellationPolicyUseCase,
     DeleteCancellationPolicyUseCase,
+    CreateTenantCancellationPolicyUseCase,
+    UpdateTenantCancellationPolicyUseCase,
+    DeleteTenantCancellationPolicyUseCase,
     GetPublicQuoteUseCase,
     ReviewListingUseCase,
     ReviewListingGroupUseCase,

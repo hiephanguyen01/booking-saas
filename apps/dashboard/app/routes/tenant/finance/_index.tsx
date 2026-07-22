@@ -191,7 +191,7 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Doanh thu ròng" value={formatVnd(summary.netRevenue)} tone="positive" />
           <StatCard label="Phải trả đối tác" value={formatVnd(summary.partnerPayable)} />
-          <StatCard label="Phải trả affiliate" value={formatVnd(summary.affiliatePayable)} />
+          <StatCard label="Phải trả cộng tác viên" value={formatVnd(summary.affiliatePayable)} />
           <StatCard
             label="Phí nền tảng"
             value={formatVnd(summary.platformFeePayable)}

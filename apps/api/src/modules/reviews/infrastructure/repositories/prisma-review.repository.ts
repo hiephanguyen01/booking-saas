@@ -262,13 +262,27 @@ export class PrismaReviewRepository implements IReviewRepository {
       });
       if (!listing) return null;
       targetWhere = { listingId: listing.id };
-    } else {
+    } else if (query.target === 'group') {
       const group = await tx.listingGroup.findFirst({
         where: { slug: query.slug, status: 'published' },
         select: { id: true },
       });
       if (!group) return null;
       targetWhere = { groupId: group.id };
+    } else {
+      const partner = await tx.partner.findFirst({
+        where: {
+          slug: query.slug,
+          status: 'approved',
+          OR: [
+            { listings: { some: { status: 'published' } } },
+            { listingGroups: { some: { status: 'published' } } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!partner) return null;
+      targetWhere = { partnerId: partner.id };
     }
     const where = { ...targetWhere, ...(query.rating ? { rating: query.rating } : {}) };
     const orderBy =

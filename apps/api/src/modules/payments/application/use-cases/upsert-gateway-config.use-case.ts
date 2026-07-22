@@ -42,6 +42,7 @@ export class UpsertGatewayConfigUseCase {
         gateway: validated.data.gateway,
         environment: validated.data.environment,
         credentials: validated.data.credentials,
+        settings: 'settings' in validated.data ? validated.data.settings : undefined,
       }),
     );
   }

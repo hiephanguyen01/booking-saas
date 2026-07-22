@@ -25,6 +25,10 @@ import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/us
 import { PartnerApplicationController } from './partner-application.controller';
 import { TenantPartnerController } from './tenant-partner.controller';
 import { PartnerProfileController } from './partner-profile.controller';
+import { PUBLIC_PARTNER_REPOSITORY } from '../../domain/ports/public-partner-repository.port';
+import { PrismaPublicPartnerRepository } from '../repositories/prisma-public-partner.repository';
+import { GetPublicPartnerProfileUseCase } from '../../application/use-cases/get-public-partner-profile.use-case';
+import { PublicPartnerController } from './public-partner.controller';
 
 @Module({
   imports: [
@@ -34,11 +38,17 @@ import { PartnerProfileController } from './partner-profile.controller';
     TenancyModule,
     AdministrativeDivisionModule,
   ],
-  controllers: [PartnerApplicationController, TenantPartnerController, PartnerProfileController],
+  controllers: [
+    PartnerApplicationController,
+    TenantPartnerController,
+    PartnerProfileController,
+    PublicPartnerController,
+  ],
   providers: [
     { provide: PARTNER_REPOSITORY, useClass: PrismaPartnerRepository },
     { provide: AGREEMENT_REPOSITORY, useClass: PrismaAgreementRepository },
     { provide: PARTNER_ROLES, useClass: PrismaPartnerRoles },
+    { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },
     ApplyAsPartnerUseCase,
     CreateHousePartnerUseCase,
     ApprovePartnerUseCase,
@@ -51,6 +61,7 @@ import { PartnerProfileController } from './partner-profile.controller';
     GetPartnerUseCase,
     GetPartnerProfileUseCase,
     SetPartnerDefaultCancellationPolicyUseCase,
+    GetPublicPartnerProfileUseCase,
   ],
   // Exported so Task 1.4 (listing creation) reads the partner's verification status.
   // The identity-verification gate itself is a plain function

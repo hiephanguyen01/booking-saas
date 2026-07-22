@@ -1,4 +1,4 @@
-import type { CurrentUser } from '@booking/contracts';
+import type { CurrentUser, CustomerPaymentMethod } from '@booking/contracts';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@booking/ui/components/ui/field';
@@ -11,7 +11,6 @@ import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-grou
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { cn } from '@booking/ui/lib/utils';
 import {
-  Banknote,
   CircleAlert,
   CreditCard,
   Landmark,
@@ -43,6 +42,7 @@ export function CheckoutForm({
   serverError,
   dueNow,
   expectedSubtotal,
+  paymentMethods,
 }: {
   listingId: string;
   listingSlug: string;
@@ -57,6 +57,7 @@ export function CheckoutForm({
   serverError: string | null;
   dueNow: string;
   expectedSubtotal: string;
+  paymentMethods: CustomerPaymentMethod[];
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   const navigation = useNavigation();
@@ -146,7 +147,7 @@ export function CheckoutForm({
             {formatVnd(dueNow)}
           </strong>
         </div>
-        <PaymentMethods showUnavailable={Boolean(currentUser)} />
+        <PaymentMethods methods={paymentMethods} />
       </SectionCard>
 
       <Button
@@ -162,12 +163,19 @@ export function CheckoutForm({
   );
 }
 
-/**
- * SePay is selected by the tenant gateway configuration. The group is
- * presentational for now because a tenant exposes one active gateway.
- * Wire a `name` here only together with an action that honours the choice.
- */
-function PaymentMethods({ showUnavailable }: { showUnavailable: boolean }) {
+const PAYMENT_METHODS: Record<
+  CustomerPaymentMethod,
+  {
+    icon: LucideIcon;
+    label: 'payment.transfer' | 'payment.domesticCard' | 'payment.internationalCard';
+  }
+> = {
+  bank_transfer: { icon: Landmark, label: 'payment.transfer' },
+  napas_qr: { icon: QrCode, label: 'payment.domesticCard' },
+  international_card: { icon: CreditCard, label: 'payment.internationalCard' },
+};
+
+function PaymentMethods({ methods }: { methods: CustomerPaymentMethod[] }) {
   const { t } = useTranslation(NsI18n.Checkout);
   return (
     <fieldset className="mt-4">
@@ -175,33 +183,17 @@ function PaymentMethods({ showUnavailable }: { showUnavailable: boolean }) {
         {t('payment.method')}
       </legend>
       <RadioGroup
-        defaultValue="sepay"
-        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+        name="paymentMethod"
+        defaultValue={methods[0]}
+        className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3"
         aria-label={t('payment.method')}
       >
-        <PaymentMethod value="sepay" icon={QrCode} label={t('payment.sepay')} />
-        {showUnavailable ? (
-          <>
-            <PaymentMethod
-              value="transfer"
-              icon={Landmark}
-              label={t('payment.transfer')}
-              disabled
-            />
-            <PaymentMethod
-              value="international-card"
-              icon={CreditCard}
-              label={t('payment.internationalCard')}
-              disabled
-            />
-            <PaymentMethod
-              value="domestic-card"
-              icon={Banknote}
-              label={t('payment.domesticCard')}
-              disabled
-            />
-          </>
-        ) : null}
+        {methods.map((method) => {
+          const option = PAYMENT_METHODS[method];
+          return (
+            <PaymentMethod key={method} value={method} icon={option.icon} label={t(option.label)} />
+          );
+        })}
       </RadioGroup>
     </fieldset>
   );
@@ -211,14 +203,11 @@ function PaymentMethod({
   value,
   icon: Icon,
   label,
-  disabled,
 }: {
   value: string;
   icon: LucideIcon;
   label: string;
-  disabled?: boolean;
 }) {
-  const { t } = useTranslation(NsI18n.Checkout);
   const id = `payment-${value}`;
   return (
     <FieldLabel
@@ -228,17 +217,11 @@ function PaymentMethod({
         'relative flex h-17 w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border border-border bg-card p-2 text-center',
         'has-data-[state=checked]:border-primary has-data-[state=checked]:bg-card',
         'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2',
-        disabled && 'cursor-not-allowed opacity-55',
       )}
     >
-      <RadioGroupItem id={id} value={value} disabled={disabled} className="sr-only" />
+      <RadioGroupItem id={id} value={value} className="sr-only" />
       <Icon className="size-6 shrink-0 text-primary" strokeWidth={1.5} aria-hidden="true" />
       <span className="text-[11px] leading-4 font-medium text-foreground sm:text-xs">{label}</span>
-      {disabled ? (
-        <span className="absolute top-1 right-1 text-[8px] leading-3 text-muted-foreground">
-          {t('payment.soon')}
-        </span>
-      ) : null}
     </FieldLabel>
   );
 }

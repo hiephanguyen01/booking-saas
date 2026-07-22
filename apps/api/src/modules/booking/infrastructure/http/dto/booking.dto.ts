@@ -1,5 +1,4 @@
 import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod';
 import {
   bookingOtpResponseSchema,
   bookingResponseSchema,
@@ -8,6 +7,7 @@ import {
   cancelBookingResponseSchema,
   completeBookingInputSchema,
   createBookingInputSchema,
+  listPartnerBookingsQuerySchema,
   markReturnedInputSchema,
   partnerBookingResponseSchema,
   partnerBookingStatsResponseSchema,
@@ -30,21 +30,8 @@ export class PartnerNoteDto extends createZodDto(partnerNoteInputSchema) {}
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
-/** Window query for the partner master-calendar feed — UTC ISO instants, max 62 days. */
-const calendarRangeSchema = z
-  .object({
-    from: z.string().datetime(),
-    to: z.string().datetime(),
-  })
-  .refine((q) => Date.parse(q.from) < Date.parse(q.to), {
-    path: ['to'],
-    message: 'to must be after from',
-  })
-  .refine((q) => Date.parse(q.to) - Date.parse(q.from) <= 62 * 86_400_000, {
-    path: ['to'],
-    message: 'Range must be at most 62 days',
-  });
-export class CalendarRangeQueryDto extends createZodDto(calendarRangeSchema) {}
+/** Filters for the partner master-calendar feed (search / status / optional timeslot window). */
+export class ListPartnerBookingsQueryDto extends createZodDto(listPartnerBookingsQuerySchema) {}
 
 /** Query filters for the tenant booking overview (Task 1.13) — shared FE↔BE contract. */
 export class TenantBookingsQueryDto extends createZodDto(tenantBookingsQuerySchema) {}

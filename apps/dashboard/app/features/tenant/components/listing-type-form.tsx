@@ -44,11 +44,11 @@ const fields: FieldConfig<CreateListingTypeInput>[] = [
   {
     name: 'structure',
     type: 'select',
-    label: 'Cấu trúc bài đăng',
+    label: 'Cấu trúc tin đăng',
     colSpan: 1,
     options: [
       { value: 'standalone', label: 'Một hạng mục độc lập' },
-      { value: 'grouped', label: 'Một bài đăng chứa nhiều hạng mục' },
+      { value: 'grouped', label: 'Một tin đăng chứa nhiều hạng mục' },
       { value: 'flexible', label: 'Cho đối tác lựa chọn' },
     ],
   },

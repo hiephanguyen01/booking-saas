@@ -12,6 +12,7 @@ import type {
   InsertBookingData,
   PartnerBookingStat,
   PartnerCalendarBooking,
+  PartnerCalendarFilters,
   TenantBookingFilters,
   TransitionParams,
 } from '../../domain/ports/booking-repository.port';
@@ -252,9 +253,28 @@ export class PrismaBookingRepository implements IBookingRepository {
   async listForPartnerCalendar(
     tx: PrismaTx,
     partnerId: string,
-    from: Date,
-    to: Date,
+    filters: PartnerCalendarFilters,
   ): Promise<PartnerCalendarBooking[]> {
+    const conds: Prisma.Sql[] = [
+      Prisma.sql`b.partner_id = ${partnerId}::uuid`,
+      Prisma.sql`b.status NOT IN ('draft', 'expired')`,
+    ];
+    // Timeslot window (the partner date semantics): overlap when both bounds are
+    // given (the calendar/home feeds always pass a window); open-ended otherwise.
+    if (filters.from && filters.to) {
+      conds.push(Prisma.sql`b.timeslot && tstzrange(${filters.from}, ${filters.to}, '[)')`);
+    } else if (filters.from) {
+      conds.push(Prisma.sql`upper(b.timeslot) > ${filters.from}`);
+    } else if (filters.to) {
+      conds.push(Prisma.sql`lower(b.timeslot) < ${filters.to}`);
+    }
+    if (filters.status) conds.push(Prisma.sql`b.status = ${filters.status}::booking_status`);
+    if (filters.q) {
+      const pattern = `%${filters.q}%`;
+      conds.push(
+        Prisma.sql`(b.code ILIKE ${pattern} OR u.full_name ILIKE ${pattern} OR u.email::text ILIKE ${pattern})`,
+      );
+    }
     const rows = await tx.$queryRaw<
       {
         id: string;
@@ -319,9 +339,7 @@ export class PrismaBookingRepository implements IBookingRepository {
       JOIN listings l ON l.id = b.listing_id
       JOIN listing_types lt ON lt.id = l.listing_type_id
       JOIN users u ON u.id = b.customer_id
-      WHERE b.partner_id = ${partnerId}::uuid
-        AND b.status NOT IN ('draft', 'expired')
-        AND b.timeslot && tstzrange(${from}, ${to}, '[)')
+      WHERE ${Prisma.join(conds, ' AND ')}
       ORDER BY lower(b.timeslot) ASC`);
     return rows.map(({ customerId, customerFullName, customerPhone, customerEmail, ...r }) => ({
       ...r,
@@ -342,6 +360,16 @@ export class PrismaBookingRepository implements IBookingRepository {
     const conds: Prisma.Sql[] = [];
     if (filters.status) conds.push(Prisma.sql`b.status = ${filters.status}::booking_status`);
     if (filters.partnerId) conds.push(Prisma.sql`b.partner_id = ${filters.partnerId}::uuid`);
+    // Search reaches the booking's own code + the customer joined from `users`
+    // (`u`) — both are already joined by SELECT and the COUNT below.
+    if (filters.q) {
+      const pattern = `%${filters.q}%`;
+      conds.push(
+        Prisma.sql`(b.code ILIKE ${pattern} OR u.full_name ILIKE ${pattern} OR u.email::text ILIKE ${pattern})`,
+      );
+    }
+    if (filters.from) conds.push(Prisma.sql`b.created_at >= ${new Date(filters.from)}`);
+    if (filters.to) conds.push(Prisma.sql`b.created_at <= ${new Date(filters.to)}`);
     const where = conds.length ? Prisma.sql`WHERE ${Prisma.join(conds, ' AND ')}` : Prisma.empty;
     const { skip, take } = pageOffset(filters);
     // COUNT over the SAME joins + WHERE as SELECT so `total` filters identically.

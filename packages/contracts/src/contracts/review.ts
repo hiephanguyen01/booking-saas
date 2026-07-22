@@ -101,7 +101,7 @@ export const customerReviewListResponseSchema = z.object({
 export type CustomerReviewListResponse = z.infer<typeof customerReviewListResponseSchema>;
 
 export const publicReviewsQuerySchema = paginationQuerySchema.extend({
-  target: z.enum(['listing', 'group']),
+  target: z.enum(['listing', 'group', 'partner']),
   slug: z.string().trim().min(1).max(200),
   rating: reviewRatingSchema.optional(),
   sort: z.enum(['newest', 'highest', 'lowest']).default('newest'),

@@ -67,6 +67,9 @@ export class TenantBookingController {
     const result = await this.listBookings.execute(this.tenantContext.tenantIdOrThrow(), {
       status: query.status,
       partnerId: query.partnerId,
+      q: query.q,
+      from: query.from,
+      to: query.to,
       page: query.page,
       pageSize: query.pageSize,
     });

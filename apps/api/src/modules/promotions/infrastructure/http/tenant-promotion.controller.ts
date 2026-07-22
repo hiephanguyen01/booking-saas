@@ -10,7 +10,6 @@ import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@ne
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
-import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -30,6 +29,7 @@ import { PromoUsageStatsUseCase } from '../../application/use-cases/promo-usage-
 import { UpdatePromotionUseCase } from '../../application/use-cases/update-promotion.use-case';
 import {
   CreatePromotionDto,
+  ListPromotionsQueryDto,
   PromotionCategoryOptionDto,
   PromotionDetailResponseDto,
   PromotionResponseDto,
@@ -56,7 +56,7 @@ export class TenantPromotionController {
   @Get()
   @ApiOperation({ summary: 'List all promotions for the tenant' })
   @ApiPaginatedResponse(PromotionResponseDto)
-  async list(@Query() query: PaginationQueryDto): Promise<Paginated<PromotionResponse>> {
+  async list(@Query() query: ListPromotionsQueryDto): Promise<Paginated<PromotionResponse>> {
     const result = await this.listPromotions.execute(this.tenantContext.tenantIdOrThrow(), query);
     return toPaginated(query, result, toPromotionResponse);
   }

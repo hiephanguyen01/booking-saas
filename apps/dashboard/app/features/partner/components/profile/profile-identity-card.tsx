@@ -62,7 +62,7 @@ export function ProfileIdentityCard({
       <CardHeader>
         <CardTitle>Danh tính</CardTitle>
         <CardDescription>
-          Gửi thông tin giấy tờ tuỳ thân để tenant xác minh. Cần thiết cho các loại listing gắn
+          Gửi thông tin giấy tờ tuỳ thân để tenant xác minh. Cần thiết cho các loại tin đăng gắn
           với con người.
         </CardDescription>
       </CardHeader>

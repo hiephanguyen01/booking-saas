@@ -20,7 +20,7 @@ export function ListingPolicyCard({ listing }: { listing: ListingResponse }) {
     <Card>
       <CardHeader>
         <CardTitle>Chính sách</CardTitle>
-        <CardDescription>Điều khoản áp dụng cho mọi lượt đặt của listing.</CardDescription>
+        <CardDescription>Điều khoản áp dụng cho mọi lượt đặt của tin đăng.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <DetailGrid columns={3}>
