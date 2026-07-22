@@ -20,6 +20,18 @@ Lúc merge, `main` đã có sẵn kiến trúc payment mới (`bdeaa5d`) — MoM
 
 **Follow-up UX**: `customerPaymentMethod` chưa có `momo_wallet` → khi cổng active là MoMo, khách chọn method nào cũng ra MoMo redirect.
 
+### Cập nhật tiếp theo — ZaloPay song song (2026-07-22)
+
+Model single-active ở trên đã đổi thành **grouped-active**: mỗi tenant có **1 cổng BASE** (SePay/PayOS,
+như cũ) **+ tối đa 2 ví song song** (MoMo, ZaloPay) bật/tắt độc lập — không còn loại trừ lẫn nhau.
+ZaloPay dùng **chung pipeline auto-refund** ở trên (không có use-case refund riêng), chỉ khác adapter:
+`ZalopayGatewayAdapter.refund()` là **async** — query-before-refund với `m_refund_id` deterministic
+theo ngày VN (check cả hôm nay lẫn hôm qua để an toàn qua nửa đêm), `return_code 3` (đang xử lý) thì
+poll ngắn rồi throw để redeliver qua outbox. Method `zalopay_wallet` map 1:1 với cổng `zalopay` (không
+đi qua `enabledMethods` như MoMo/BASE). Hai điểm còn cần **verify sandbox thật** trước khi bật prod:
+origin thật của `order_url` (đang đoán `sbgateway.zalopay.vn`/`gateway.zalopay.vn` cho
+`PAYMENT_REDIRECT_ORIGINS`) và giới hạn số ngày ZaloPay còn cho phép gọi `/v2/refund` sau khi thanh toán.
+
 ---
 
 ## 1. Mục tiêu & phạm vi

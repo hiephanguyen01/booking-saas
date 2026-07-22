@@ -39,6 +39,7 @@ export const viCheckout = {
     internationalCard: 'Visa/Master/JCB',
     domesticCard: 'Napas QR / Thẻ nội địa',
     momoWallet: 'Ví MoMo',
+    zaloWallet: 'Ví ZaloPay',
     soon: 'Sắp hỗ trợ',
     handoffTitle: 'Đang mở cổng thanh toán',
     handoffDescription: 'Bạn sẽ được chuyển tới trang thanh toán bảo mật.',
