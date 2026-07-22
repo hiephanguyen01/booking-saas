@@ -105,6 +105,19 @@ export class CheckoutUseCase {
       const kind = booking.depositAmount >= booking.finalAmount ? 'full' : 'deposit';
       const origin = storefrontOrigin(host); // the tenant's own domain (from the Host the customer used)
       const gateway = await this.registry.resolveForTenant(tx, tenant.id);
+      // No active gateway → registry falls back to mock. That is only acceptable in
+      // dev/test; in production, refuse rather than silently take fake payments.
+      if (
+        gateway.key === 'mock' &&
+        process.env.NODE_ENV === 'production' &&
+        process.env.ALLOW_MOCK_PAYMENTS !== 'true'
+      ) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'NO_ACTIVE_GATEWAY',
+          message: 'Cửa hàng chưa bật cổng thanh toán',
+        });
+      }
       const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
       const bookingReturnUrl = `${origin}/bookings/${booking.code}`;
       const created = await gateway.createPayment({

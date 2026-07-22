@@ -6,7 +6,7 @@
  */
 import type { CheckoutDestination } from '@booking/contracts';
 
-export type GatewayKey = 'sepay' | 'payos' | 'mock';
+export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'mock';
 export type WebhookEvent = 'succeeded' | 'failed' | 'expired';
 
 export interface CreatePaymentInput {
@@ -39,6 +39,12 @@ export interface RefundInput {
   gatewayTxnId: string;
   amountVnd: bigint;
   reason: string;
+  /**
+   * Stable key for gateway-level refund idempotency (e.g. `${bookingId}:${reason}`).
+   * Gateways that support refunds (MoMo) use it as their refund requestId/orderId so a
+   * retried refund does not double-pay. Ignored by gateways without a refund API.
+   */
+  idempotencyKey: string;
 }
 
 export interface RefundResult {
@@ -50,6 +56,12 @@ export interface RefundResult {
 export interface PaymentStatusResult {
   status: 'pending' | 'succeeded' | 'failed' | 'expired';
   amountVnd: bigint;
+  /**
+   * Provider transaction id, when the status query exposes it (MoMo returns `transId`).
+   * Lets reconciliation persist it for a payment recovered without an IPN, so a later
+   * refund still has the original txn id to target.
+   */
+  gatewayTxnId?: string;
 }
 
 export interface PaymentGatewayPort {

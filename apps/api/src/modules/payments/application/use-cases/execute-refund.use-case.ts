@@ -52,6 +52,9 @@ export class ExecuteRefundUseCase {
         gatewayTxnId: payment.gatewayTxnId ?? payment.gatewayOrderRef ?? payment.id,
         amountVnd: amount,
         reason,
+        // Stable across retries (matches the existsForBooking idempotency dimension)
+        // so a re-driven refund reuses the same gateway requestId and never double-pays.
+        idempotencyKey: `${bookingId}:${reason}`,
       });
       const refund = await this.refunds.create(tx, tenantId, {
         paymentId: payment.id,

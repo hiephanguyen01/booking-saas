@@ -68,4 +68,11 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
     });
     return this.toRecord(c);
   }
+
+  async deactivateAll(tx: PrismaTx, tenantId: string): Promise<void> {
+    await tx.tenantGatewayConfig.updateMany({
+      where: { tenantId, isActive: true },
+      data: { isActive: false },
+    });
+  }
 }
