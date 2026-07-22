@@ -24,7 +24,14 @@ export function BookingHistoryCard({
 
   return (
     <AccountPanel className="overflow-hidden rounded-xl border border-border/70 shadow-[0_10px_35px_rgba(15,23,42,0.045)]">
-      <BookingCardHeader booking={booking} locale={locale} />
+      <BookingCardHeader
+        partnerName={booking.partnerName}
+        listingSlug={booking.listingSlug}
+        bookingCode={booking.code}
+        status={booking.status}
+        locale={locale}
+        createdAt={booking.createdAt}
+      />
 
       <div className="px-5 py-5 sm:px-6">
         <div className="grid gap-4 sm:grid-cols-[158px_minmax(0,1fr)]">

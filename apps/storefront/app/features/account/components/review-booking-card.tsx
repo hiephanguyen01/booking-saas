@@ -2,11 +2,12 @@ import type { CustomerReviewItem } from '@booking/contracts';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
-import { Building2, CalendarDays, MessageSquareText, Star } from 'lucide-react';
+import { CalendarDays, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { AccountPanel } from './account-primitives';
+import { BookingCardHeader } from './booking-card-header';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 
@@ -24,27 +25,13 @@ export function ReviewBookingCard({
 
   return (
     <AccountPanel className="overflow-hidden border border-border/50 shadow-[0_4px_16px_rgba(16,24,40,0.04)]">
-      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <span className="inline-flex min-w-0 items-center gap-2 text-sm font-medium">
-            <Building2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="truncate">{review.partnerName}</span>
-          </span>
-          <Button asChild variant="outline" size="sm" className="text-primary">
-            <Link to={storefrontPaths.account.messages(locale)}>
-              <MessageSquareText className="size-4" aria-hidden="true" />
-              {t('reviews.chat')}
-            </Link>
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase">
-          <span className="text-muted-foreground">
-            {t('reviews.bookingCode', { code: review.bookingCode })}
-          </span>
-          <span className="h-4 w-px bg-border" aria-hidden="true" />
-          <span className="text-primary">{t('reviews.completed')}</span>
-        </div>
-      </div>
+      <BookingCardHeader
+        partnerName={review.partnerName}
+        listingSlug={review.listingSlug}
+        bookingCode={review.bookingCode}
+        status="completed"
+        locale={locale}
+      />
 
       <div className="grid gap-4 border-b border-border px-5 py-5 sm:grid-cols-[158px_1fr] sm:px-6">
         {review.listingImageUrl ? (

@@ -24,7 +24,14 @@ export function BookingDetailOverview({
 }) {
   return (
     <section className="overflow-hidden bg-background shadow-[0_3px_14px_rgba(15,23,42,0.035)]">
-      <BookingCardHeader booking={booking} locale={locale} />
+      <BookingCardHeader
+        partnerName={booking.partnerName}
+        listingSlug={booking.listingSlug}
+        bookingCode={booking.code}
+        status={booking.status}
+        locale={locale}
+        createdAt={booking.createdAt}
+      />
       <ListingSummary booking={booking} />
       <PolicyActions
         booking={booking}

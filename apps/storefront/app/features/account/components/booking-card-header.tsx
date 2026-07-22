@@ -1,18 +1,26 @@
+import type { BookingStatus } from '@booking/contracts';
 import { formatDateTime, type Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { Building2, MessageSquareText } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
-import type { AccountBookingViewModel } from '../lib/booking-history';
 import { BookingStatusBadge } from './booking-status-badge';
 
 export function BookingCardHeader({
-  booking,
+  partnerName,
+  listingSlug,
+  bookingCode,
+  status,
   locale,
+  createdAt,
 }: {
-  booking: AccountBookingViewModel;
+  partnerName: string;
+  listingSlug: string;
+  bookingCode: string;
+  status: BookingStatus;
   locale: Locale;
+  createdAt?: string;
 }) {
   const { t } = useTranslation(NsI18n.Account);
 
@@ -20,11 +28,11 @@ export function BookingCardHeader({
     <header className="mx-5 flex min-h-18 flex-col justify-center gap-3 border-b border-[#d8dee8] py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-5">
         <Link
-          to={storefrontPaths.listing(locale, booking.listingSlug)}
+          to={storefrontPaths.listing(locale, listingSlug)}
           className="inline-flex min-w-0 items-center gap-2 text-sm font-medium text-[#263247] hover:underline"
         >
           <Building2 aria-hidden="true" className="size-4 shrink-0" />
-          <span className="truncate">{booking.partnerName}</span>
+          <span className="truncate">{partnerName}</span>
         </Link>
         <Button
           asChild
@@ -40,15 +48,17 @@ export function BookingCardHeader({
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs text-[#263247] sm:justify-end">
         <span className="font-medium uppercase">
-          {t('bookings.bookingCode', { code: booking.code })}
+          {t('bookings.bookingCode', { code: bookingCode })}
         </span>
         <span aria-hidden="true" className="h-4 w-px bg-[#cbd2dc]" />
-        <BookingStatusBadge status={booking.status} />
-        <span className="sr-only">
-          {t('bookings.placedAt', {
-            date: formatDateTime(booking.createdAt, locale, 'Asia/Ho_Chi_Minh'),
-          })}
-        </span>
+        <BookingStatusBadge status={status} />
+        {createdAt ? (
+          <span className="sr-only">
+            {t('bookings.placedAt', {
+              date: formatDateTime(createdAt, locale, 'Asia/Ho_Chi_Minh'),
+            })}
+          </span>
+        ) : null}
       </div>
     </header>
   );

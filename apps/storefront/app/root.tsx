@@ -1,8 +1,10 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { BookingI18nProvider, type Locale } from '@booking/i18n';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
+import { Button } from '@booking/ui/components/ui/button';
 import {
   data,
+  Link,
   Links,
   Meta,
   Outlet,
@@ -17,6 +19,7 @@ import type { AccountMenuSummary } from './features/account/account-menu';
 import { getAccountMenuSummary } from './features/account/server/account-menu.server';
 import { SiteFooter } from './layouts/site-footer';
 import { SiteHeader } from './layouts/site-header';
+import { TenantBrand } from './layouts/tenant-brand';
 import {
   readRefCode,
   refAttributionCookie,
@@ -208,7 +211,6 @@ function SuspendedNotice({ name }: { name: string }) {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   // The root loader may be what threw, so fall back to the default locale.
   const locale = useRouteLoaderData<typeof loader>('root')?.locale ?? 'vi';
-  console.log('test-');
   return (
     <BookingI18nProvider locale={locale}>
       <RootErrorNotice error={error} locale={locale} />
@@ -218,6 +220,60 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
 function RootErrorNotice({ error, locale }: { error: unknown; locale: Locale }) {
   const { t } = useTranslation(NsI18n.Error);
+  const rootData = useRouteLoaderData<typeof loader>('root');
+
+  if (isNotFoundError(error)) {
+    return (
+      <div className="flex min-h-dvh flex-col bg-[#f9fafb] font-studio text-[#344054]">
+        {rootData?.tenant ? (
+          <>
+            <ThemeStyle theme={rootData.tenant.themeConfig} />
+            <header className="h-18 shrink-0">
+              <div className="mx-auto flex h-full w-full max-w-292.5 items-center px-4 sm:px-6 xl:px-0">
+                <Link
+                  to={storefrontPaths.home(locale)}
+                  aria-label={rootData.tenant.name}
+                  className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <TenantBrand
+                    name={rootData.tenant.name}
+                    logoUrl={rootData.tenant.themeConfig.logoUrl || null}
+                    width={133}
+                    height={40}
+                  />
+                </Link>
+              </div>
+            </header>
+          </>
+        ) : null}
+
+        <main className="flex flex-1 justify-center px-4 pb-12 pt-8 sm:px-6 lg:pt-22">
+          <section className="flex w-full max-w-125 flex-col items-center gap-6 text-center">
+            <div className="flex w-full flex-col items-center">
+              <img
+                src="/booking-studio/404-illustration.png"
+                alt=""
+                width={500}
+                height={500}
+                className="aspect-square w-full object-contain"
+              />
+              <h1 className="w-full text-[28px] leading-10 font-semibold sm:text-[32px] sm:leading-12">
+                {t('pageNotFound')}
+              </h1>
+            </div>
+
+            <Button
+              asChild
+              className="h-12 rounded-sm bg-[#475467] px-5 text-base font-semibold text-white shadow-xs hover:bg-[#344054]"
+            >
+              <Link to={storefrontPaths.home(locale)}>{t('home')}</Link>
+            </Button>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <main className="flex min-h-dvh flex-col justify-center bg-background text-foreground">
       <RouteErrorState
@@ -226,5 +282,14 @@ function RootErrorNotice({ error, locale }: { error: unknown; locale: Locale }) 
         homeLabel={t('home')}
       />
     </main>
+  );
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      'status' in error &&
+      (error as { status?: unknown }).status === 404,
   );
 }
