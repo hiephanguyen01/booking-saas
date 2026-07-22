@@ -553,13 +553,24 @@ async function seedDemo(): Promise<void> {
     partnerId: partner.id,
     resourceId: studioA.resourceId,
     customerId: customer.id,
+    cancellationPolicyId: cancelPolicy.id,
     code: 'BK-HEALTH01',
     idempotencyKey: 'seed-health-booking-1',
     status: 'completed',
     finalAmount: 700_000,
+    paidAmount: 700_000,
+    customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
     createdAt: daysAgo(40), // first realized booking → sets time-to-first-booking
     startAt: atHour(daysAgo(39), 9),
     endAt: atHour(daysAgo(39), 11),
+    history: [
+      {
+        fromStatus: null,
+        toStatus: 'completed',
+        reason: 'Khởi tạo dữ liệu demo sức khỏe nền tảng.',
+        createdAt: daysAgo(40),
+      },
+    ],
   });
   await seedBooking({
     tenantId: tenant.id,
@@ -567,13 +578,24 @@ async function seedDemo(): Promise<void> {
     partnerId: partner.id,
     resourceId: studioA.resourceId,
     customerId: customer.id,
+    cancellationPolicyId: cancelPolicy.id,
     code: 'BK-HEALTH02',
     idempotencyKey: 'seed-health-booking-2',
     status: 'confirmed', // upcoming → constrained by the GiST exclusion (future slot)
     finalAmount: 500_000,
+    paidAmount: 500_000,
+    customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
     createdAt: daysAgo(12),
     startAt: atHour(daysFromNow(3), 14),
     endAt: atHour(daysFromNow(3), 16),
+    history: [
+      {
+        fromStatus: null,
+        toStatus: 'confirmed',
+        reason: 'Khởi tạo dữ liệu demo sức khỏe nền tảng.',
+        createdAt: daysAgo(12),
+      },
+    ],
   });
   await seedBooking({
     tenantId: tenant.id,
@@ -581,13 +603,24 @@ async function seedDemo(): Promise<void> {
     partnerId: partner.id,
     resourceId: studioA.resourceId,
     customerId: customer.id,
+    cancellationPolicyId: cancelPolicy.id,
     code: 'BK-HEALTH03',
     idempotencyKey: 'seed-health-booking-3',
     status: 'completed',
     finalAmount: 1_800_000,
+    paidAmount: 1_800_000,
+    customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
     createdAt: daysAgo(4),
     startAt: atHour(daysAgo(3), 8),
     endAt: atHour(daysAgo(3), 12),
+    history: [
+      {
+        fromStatus: null,
+        toStatus: 'completed',
+        reason: 'Khởi tạo dữ liệu demo sức khỏe nền tảng.',
+        createdAt: daysAgo(4),
+      },
+    ],
   });
 
   const demoReview = await prisma.review.upsert({
@@ -818,56 +851,116 @@ async function ensure<T>(find: () => Promise<T | null>, create: () => Promise<T>
   return (await find()) ?? (await create());
 }
 
-/**
- * Seeds one realized (`confirmed`/`completed`) hourly booking for the health
- * board. `timeslot`/`blocked_period` are Prisma `Unsupported("tstzrange")`, so
- * they are written via raw SQL after the insert. Slots must be non-overlapping
- * per resource for `confirmed` rows (the GiST exclusion constraint). Idempotent
- * on `(tenantId, idempotencyKey)`.
- */
-async function seedBooking(input: {
+type SeedBookingStatus = 'pending_payment' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+
+type SeedBookingHistoryStep = {
+  fromStatus: SeedBookingStatus | 'draft' | null;
+  toStatus: SeedBookingStatus | 'draft';
+  reason: string;
+  createdAt: Date;
+};
+
+type SeedBookingInput = {
   tenantId: string;
   listingId: string;
   partnerId: string;
   resourceId: string;
   customerId: string;
+  cancellationPolicyId: string;
   code: string;
   idempotencyKey: string;
-  status: 'confirmed' | 'completed';
+  status: SeedBookingStatus;
   finalAmount: number;
+  paidAmount: number;
+  refundDueAmount?: number;
+  refundPercent?: number;
+  expiresAt?: Date;
+  customerNote: string;
   createdAt: Date;
   startAt: Date;
   endAt: Date;
-}) {
+  history: SeedBookingHistoryStep[];
+};
+
+/**
+ * Seeds one hourly booking with deterministic monetary and status-history
+ * snapshots. `timeslot`/`blocked_period` are Prisma
+ * `Unsupported("tstzrange")`, so they are written via parameterized raw SQL.
+ * Idempotent on `(tenantId, idempotencyKey)`.
+ */
+async function seedBooking(input: SeedBookingInput) {
+  const amount = BigInt(input.finalAmount);
+  const bookingData = {
+    listingId: input.listingId,
+    partnerId: input.partnerId,
+    resourceId: input.resourceId,
+    customerId: input.customerId,
+    cancellationPolicyId: input.cancellationPolicyId,
+    bookingMode: 'hourly' as const,
+    status: input.status,
+    totalAmount: amount,
+    finalAmount: amount,
+    depositAmount: amount / 2n,
+    paidAmount: BigInt(input.paidAmount),
+    refundDueAmount: input.refundDueAmount === undefined ? null : BigInt(input.refundDueAmount),
+    refundPercent: input.refundPercent ?? null,
+    expiresAt: input.expiresAt ?? null,
+    customerNote: input.customerNote,
+    cancellationPolicySnapshot: [
+      { hoursBefore: 168, refundPercent: 100 },
+      { hoursBefore: 48, refundPercent: 50 },
+      { hoursBefore: 0, refundPercent: 0 },
+    ],
+    pricingSnapshot: {
+      lineItems: [
+        {
+          label: 'Thuê Studio A — Hàn Quốc',
+          quantity: 2,
+          unitPrice: (amount / 2n).toString(),
+          regularUnitPrice: (amount / 2n).toString(),
+          amount: amount.toString(),
+          regularAmount: amount.toString(),
+        },
+      ],
+    },
+    createdAt: input.createdAt,
+  };
+
   const existing = await prisma.booking.findFirst({
     where: { tenantId: input.tenantId, idempotencyKey: input.idempotencyKey },
   });
-  if (existing) return existing;
+  const booking = existing
+    ? await prisma.booking.update({
+        where: { id: existing.id },
+        data: { code: input.code, ...bookingData },
+      })
+    : await prisma.booking.create({
+        data: {
+          tenantId: input.tenantId,
+          code: input.code,
+          idempotencyKey: input.idempotencyKey,
+          ...bookingData,
+        },
+      });
 
-  const amount = BigInt(input.finalAmount);
-  const booking = await prisma.booking.create({
-    data: {
-      tenantId: input.tenantId,
-      listingId: input.listingId,
-      partnerId: input.partnerId,
-      resourceId: input.resourceId,
-      customerId: input.customerId,
-      code: input.code,
-      idempotencyKey: input.idempotencyKey,
-      bookingMode: 'hourly',
-      status: input.status,
-      totalAmount: amount,
-      finalAmount: amount,
-      depositAmount: amount / 2n,
-      paidAmount: amount,
-      createdAt: input.createdAt,
-    },
-  });
   await prisma.$executeRaw`
     UPDATE bookings
        SET timeslot = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)'),
            blocked_period = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)')
      WHERE id = ${booking.id}::uuid`;
+
+  await prisma.bookingStatusHistory.deleteMany({ where: { bookingId: booking.id } });
+  await prisma.bookingStatusHistory.createMany({
+    data: input.history.map((step) => ({
+      tenantId: input.tenantId,
+      bookingId: booking.id,
+      fromStatus: step.fromStatus,
+      toStatus: step.toStatus,
+      reason: step.reason,
+      createdAt: step.createdAt,
+    })),
+  });
+
   return booking;
 }
 
