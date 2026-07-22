@@ -5,8 +5,9 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import { ChevronLeft, ChevronRight, MessageSquareText } from 'lucide-react';
 import { useState } from 'react';
-import { Form, Link } from 'react-router';
+import { Form, Link, useLocation, useNavigation } from 'react-router';
 import { z } from 'zod';
+import { AccountResultsSkeleton } from '../../components/loading-skeletons';
 import { AccountPanel, PageHeading } from '../../features/account/components/account-primitives';
 import { ReviewBookingCard } from '../../features/account/components/review-booking-card';
 import { ReviewDialog } from '../../features/account/components/review-dialog';
@@ -15,6 +16,7 @@ import { apiGet } from '../../lib/api.server';
 import { requireAuth } from '../../lib/auth.server';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
+import { isReadNavigationMethod, useMinimumPending } from '../../lib/use-minimum-pending';
 import type { Route } from './+types/reviews';
 
 const filterSchema = z.enum(['all', 'pending', 'reviewed']).catch('all');
@@ -44,17 +46,31 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function ReviewsPage({ loaderData }: Route.ComponentProps) {
-  const { t } = useTranslation(NsI18n.Account);
+  const { t } = useTranslation([NsI18n.Account, NsI18n.Common]);
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
+  const location = useLocation();
+  const navigation = useNavigation();
+  const readNavigationActive =
+    navigation.state === 'loading' &&
+    navigation.location?.pathname === location.pathname &&
+    isReadNavigationMethod(navigation.formMethod);
+  const pending = useMinimumPending(readNavigationActive);
+  const activeStatus = readNavigationActive
+    ? filterSchema.parse(
+        new URLSearchParams(navigation.location?.search).get('status') ?? 'all',
+      )
+    : loaderData.status;
 
   return (
     <div className="space-y-4 py-2 font-studio">
       <PageHeading
         title={t('reviews.title')}
-        action={<ReviewFilter active={loaderData.status} />}
+        action={<ReviewFilter active={activeStatus} />}
       />
 
-      {loaderData.error ? (
+      {pending ? (
+        <AccountResultsSkeleton label={t('common:loading')} />
+      ) : loaderData.error ? (
         <ReviewEmptyState text={t('reviews.unavailable')} />
       ) : loaderData.result.items.length === 0 ? (
         <ReviewEmptyState text={t('reviews.empty')} />
@@ -71,12 +87,14 @@ export default function ReviewsPage({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      <ReviewPagination
-        page={loaderData.result.page}
-        pageSize={loaderData.result.pageSize}
-        total={loaderData.result.total}
-        status={loaderData.status}
-      />
+      {pending ? null : (
+        <ReviewPagination
+          page={loaderData.result.page}
+          pageSize={loaderData.result.pageSize}
+          total={loaderData.result.total}
+          status={loaderData.status}
+        />
+      )}
 
       <ReviewDialog
         review={activeReview}

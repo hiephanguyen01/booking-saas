@@ -37,7 +37,7 @@ export const enCommon = {
     noLocationResults: 'No matching locations.',
     guestsPlaceholder: '1 - 5 guests',
     search: 'Search',
-    topListings: 'Featured studios',
+    topListings: 'Featured {type}',
     recommended: 'Recommended for you',
     loadMore: 'Show more',
     emptyTitle: 'No studios yet',

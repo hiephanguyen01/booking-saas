@@ -19,12 +19,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@booking/ui/components/ui/drawer';
-import { Skeleton } from '@booking/ui/components/ui/skeleton';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useFetcher } from 'react-router';
 import { BookingDialogFooter } from '../../components/booking-dialog-footer';
+import { AvailabilitySkeleton } from '../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { PublicPackageOption } from '../../lib/package-options';
 import {
@@ -54,7 +54,7 @@ export function PackageBookingDialog({
   selectedPackage: PublicPackageOption | null;
   listing: PublicListingDetailResponse;
 }) {
-  const { t } = useTranslation(NsI18n.Listing);
+  const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const fetcher = useFetcher<typeof bookingDataLoader>();
   const isDesktop = useDesktopBookingDialog();
@@ -247,7 +247,7 @@ export function PackageBookingDialog({
           </div>
 
           {availabilityPending && !availability ? (
-            <AvailabilitySkeleton label={t('group.loadingAvailability')} />
+            <AvailabilitySkeleton label={t('common:loading')} />
           ) : availabilityError ? (
             <ErrorMessage onRetry={() => load({ date }, 'availability')} />
           ) : slots.length ? (
@@ -403,17 +403,6 @@ function CloseButton({ onClick }: { onClick: () => void }) {
     >
       <X aria-hidden="true" />
     </Button>
-  );
-}
-
-function AvailabilitySkeleton({ label }: { label: string }) {
-  return (
-    <div className="grid grid-cols-2 gap-2" role="status" aria-label={label}>
-      {Array.from({ length: 8 }, (_, index) => (
-        <Skeleton key={index} className="h-14" />
-      ))}
-      <span className="sr-only">{label}</span>
-    </div>
   );
 }
 

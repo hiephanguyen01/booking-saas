@@ -34,10 +34,7 @@ export const viCommon = {
     noLocationResults: 'Không có địa điểm phù hợp.',
     guestsPlaceholder: '1 - 5 khách',
     search: 'Tìm kiếm',
-    // Was "Top 10 Studio đặt nhiều nhất". The ranking behind that claim was a
-    // booking count hashed from the listing id, so the copy is now neutral
-    // until the public contract exposes real popularity.
-    topListings: 'Studio nổi bật',
+    topListings: '{type} nổi bật',
     recommended: 'Đề xuất dành cho bạn',
     loadMore: 'Xem thêm',
     emptyTitle: 'Chưa có studio phù hợp',

@@ -2,7 +2,8 @@ import type { CustomerReviewItem } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { ReceiptText, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation, useNavigation } from 'react-router';
+import { AccountResultsSkeleton } from '../../components/loading-skeletons';
 import { AccountPanel, PageHeading } from '../../features/account/components/account-primitives';
 import { BookingHistoryCard } from '../../features/account/components/booking-history-card';
 import { ReviewDialog } from '../../features/account/components/review-dialog';
@@ -15,6 +16,7 @@ import { submitCustomerReview } from '../../features/account/server/customer-rev
 import { requireAuth } from '../../lib/auth.server';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
+import { isReadNavigationMethod, useMinimumPending } from '../../lib/use-minimum-pending';
 import type { Route } from './+types/bookings';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
@@ -34,16 +36,30 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function AccountBookingsPage({ loaderData }: Route.ComponentProps) {
-  const { t } = useTranslation(NsI18n.Account);
+  const { t } = useTranslation([NsI18n.Account, NsI18n.Common]);
   const locale = loaderData.locale === 'en' ? 'en' : 'vi';
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
+  const location = useLocation();
+  const navigation = useNavigation();
+  const readNavigationActive =
+    navigation.state === 'loading' &&
+    navigation.location?.pathname === location.pathname &&
+    isReadNavigationMethod(navigation.formMethod);
+  const pending = useMinimumPending(readNavigationActive);
+  const activeFilter = readNavigationActive
+    ? parseBookingHistoryFilter(
+        new URLSearchParams(navigation.location?.search).get('status'),
+      )
+    : loaderData.filter;
 
   return (
     <div className="space-y-3">
       <PageHeading title={t('bookings.title')} />
-      <BookingTabs active={loaderData.filter} locale={locale} />
+      <BookingTabs active={activeFilter} locale={locale} />
 
-      {loaderData.error ? (
+      {pending ? (
+        <AccountResultsSkeleton label={t('common:loading')} />
+      ) : loaderData.error ? (
         <AccountPanel className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-none p-8 text-center">
           <RefreshCw className="size-9 text-destructive" />
           <p className="text-sm text-destructive">{t('bookings.unavailable')}</p>

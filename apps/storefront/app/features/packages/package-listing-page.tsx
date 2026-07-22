@@ -3,6 +3,10 @@ import { MapPin } from 'lucide-react';
 import { Suspense, useRef, useState } from 'react';
 import { Await, useOutletContext, useSearchParams } from 'react-router';
 import { ListingRatingSummary } from '../../components/listing-rating-summary';
+import {
+  RelatedListingsSkeleton,
+  ReviewsSectionSkeleton,
+} from '../../components/loading-skeletons';
 import { PublicReviewsSection } from '../../components/public-reviews-section';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
@@ -40,7 +44,7 @@ export function PackageListingPage({
 }) {
   const { listing, locations, auxiliaryData } = loaderData;
   const { listingTypes, locale } = useOutletContext<StorefrontContext>();
-  const { t } = useTranslation(NsI18n.Listing);
+  const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
@@ -155,7 +159,14 @@ export function PackageListingPage({
           onSelect={selectPackage}
         />
 
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <div className="space-y-4">
+              <ReviewsSectionSkeleton label={t('common:loading')} />
+              <RelatedListingsSkeleton label={t('common:loading')} />
+            </div>
+          }
+        >
           <Await resolve={auxiliaryData}>
             {({ reviews, reviewSummary, reviewRating, reviewLimit, relatedListings }) => (
               <>

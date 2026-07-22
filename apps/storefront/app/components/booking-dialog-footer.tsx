@@ -1,5 +1,6 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { Spinner } from '@booking/ui/components/ui/spinner';
+import { QuoteSkeleton } from './loading-skeletons';
 import { PendingLink } from './pending-link';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { formatVnd } from '../lib/ui';
@@ -17,7 +18,7 @@ export function BookingDialogFooter({
   bookingHref: string | null;
   disabledLabel: string;
 }) {
-  const { t } = useTranslation(NsI18n.Listing);
+  const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const showQuote = quote !== null && !quotePending;
 
   return (
@@ -26,6 +27,7 @@ export function BookingDialogFooter({
         className="grid h-11 grid-cols-[minmax(0,1fr)_minmax(8rem,auto)] items-stretch gap-4"
         aria-live="polite"
         aria-atomic="true"
+        aria-busy={quotePending}
       >
         <div className="flex min-w-0 flex-col justify-center">
           <p
@@ -58,9 +60,7 @@ export function BookingDialogFooter({
             {showQuote ? (
               <strong className="text-lg text-primary">{formatVnd(quote)}</strong>
             ) : quotePending && selectionSummary ? (
-              <span className="flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
-                <Spinner aria-hidden="true" /> {t('group.calculatingPrice')}
-              </span>
+              <QuoteSkeleton label={t('common:loading')} />
             ) : (
               <span className="invisible text-lg select-none" aria-hidden="true">
                 0&nbsp;₫

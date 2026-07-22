@@ -1,6 +1,7 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { useState } from 'react';
+import { HomeListingCardsSkeleton } from '../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { FavoriteListingCard } from '../../features/favorites/components/favorite-cards';
 import { LocationTabs } from './location-tabs';
@@ -16,11 +17,17 @@ const PAGE_SIZE = 8;
  * "Xem thêm" reveal. No new fetch/route: it
  * pages through the array already loaded by the home route's SSR loader.
  */
-export function RecommendedSection({ listings }: { listings: PublicListingResponse[] }) {
+export function RecommendedSection({
+  listings,
+  pending,
+}: {
+  listings: PublicListingResponse[];
+  pending: boolean;
+}) {
   const { t } = useTranslation(NsI18n.Common);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [location, setLocation] = useState<HomeLocationKey>('hcm');
-  if (listings.length === 0) return null;
+  if (!pending && listings.length === 0) return null;
 
   const filtered = filterHomeListingsByLocation(listings, location);
   const shown = filtered.slice(0, visible);
@@ -37,7 +44,9 @@ export function RecommendedSection({ listings }: { listings: PublicListingRespon
         <h2 className="text-lg leading-7 font-semibold text-foreground">{t('home.recommended')}</h2>
         <LocationTabs value={location} onValueChange={changeLocation} />
       </div>
-      {shown.length > 0 ? (
+      {pending ? (
+        <HomeListingCardsSkeleton label={t('loading')} count={8} layout="grid" />
+      ) : shown.length > 0 ? (
         <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {shown.map((listing) => (
             <FavoriteListingCard key={listing.id} listing={listing} />
@@ -48,7 +57,7 @@ export function RecommendedSection({ listings }: { listings: PublicListingRespon
           {t('home.emptyInLocation')}
         </p>
       )}
-      {hasMore ? (
+      {!pending && hasMore ? (
         <div className="flex justify-center pt-3">
           <Button
             type="button"

@@ -19,13 +19,13 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@booking/ui/components/ui/drawer';
-import { Skeleton } from '@booking/ui/components/ui/skeleton';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { BookingDialogFooter } from '../../../components/booking-dialog-footer';
+import { AvailabilitySkeleton } from '../../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import {
   DEFAULT_TZ,
@@ -63,7 +63,7 @@ export function ListingBookingDialog({
   groupSlug?: string;
   preferredMode: ListingBookingMode;
 }) {
-  const { t } = useTranslation(NsI18n.Listing);
+  const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const fetcher = useFetcher<typeof bookingDataLoader>();
   const supportedModes = listing.bookingModes.filter(
@@ -467,7 +467,7 @@ export function ListingBookingDialog({
             </div>
 
             {availabilityPending && !availability ? (
-              <AvailabilitySkeleton label={t('group.loadingAvailability')} />
+              <AvailabilitySkeleton label={t('common:loading')} />
             ) : requestError ? (
               <ErrorMessage onRetry={() => load({ mode, date }, 'availability')} />
             ) : slots.length ? (
@@ -708,17 +708,6 @@ export function RoomBookingDialog({
       groupSlug={groupSlug}
       preferredMode={preferredMode === 'daily' ? 'daily' : 'hourly'}
     />
-  );
-}
-
-function AvailabilitySkeleton({ label }: { label: string }) {
-  return (
-    <div className="grid grid-cols-2 gap-2" role="status" aria-label={label}>
-      {Array.from({ length: 8 }, (_, index) => (
-        <Skeleton key={index} className="h-14" />
-      ))}
-      <span className="sr-only">{label}</span>
-    </div>
   );
 }
 

@@ -3,6 +3,7 @@ import { MapPin, Users } from 'lucide-react';
 import { Suspense } from 'react';
 import { Await, Link, useOutletContext } from 'react-router';
 import { ListingRatingSummary } from '../../components/listing-rating-summary';
+import { ReviewsSectionSkeleton } from '../../components/loading-skeletons';
 import { PublicReviewsSection } from '../../components/public-reviews-section';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
@@ -23,7 +24,7 @@ import { StudioBookingCard } from './components/studio-booking-card';
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote, locations, selectionStart, selectionEnd } =
     loaderData;
-  const { t } = useTranslation(NsI18n.Listing);
+  const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const { listingTypes } = useOutletContext<StorefrontContext>();
 
@@ -68,7 +69,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
             </SectionCard>
 
             <ListingDetails attributes={listing.attributes} />
-            <Suspense fallback={null}>
+            <Suspense fallback={<ReviewsSectionSkeleton label={t('common:loading')} />}>
               <Await resolve={loaderData.auxiliaryData}>
                 {({ reviews, reviewSummary, reviewRating, reviewLimit }) => (
                   <PublicReviewsSection

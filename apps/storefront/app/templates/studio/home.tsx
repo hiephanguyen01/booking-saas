@@ -11,6 +11,7 @@ import { useState } from 'react';
 import type { LocationOption } from '../../features/search/search-form';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
+import { useMinimumPendingPulse } from '../../lib/use-minimum-pending';
 import { BrandCarousel } from './brand-carousel';
 import { StudioHero } from './hero';
 import { splitHomeListings } from './home-listing-presentation';
@@ -37,10 +38,18 @@ export function StudioHome({
   const [selectedType, setSelectedType] = useState(
     listingTypes.find((type) => type.slug === 'studio')?.slug ?? listingTypes[0]?.slug ?? '',
   );
+  const [filterPending, triggerFilterPending] = useMinimumPendingPulse();
+  const selectedListingType = listingTypes.find((type) => type.slug === selectedType);
   const visibleListings = selectedType
     ? listings.filter((listing) => listing.listingTypeSlug === selectedType)
     : listings;
   const sections = splitHomeListings(visibleListings);
+
+  function changeType(nextType: string): void {
+    if (nextType === selectedType) return;
+    setSelectedType(nextType);
+    triggerFilterPending();
+  }
 
   return (
     <div className="bg-background">
@@ -48,17 +57,21 @@ export function StudioHome({
         tenant={tenant}
         listingTypes={listingTypes}
         locations={locations}
-        onTypeChange={setSelectedType}
+        onTypeChange={changeType}
       />
       <div className="mx-auto flex max-w-292.5 flex-col gap-10 px-4 pb-24 sm:px-6 xl:px-0">
         <BrandCarousel
           images={(tenant.themeConfig.carousel ?? []).filter(Boolean)}
           tenantName={tenant.name}
         />
-        {visibleListings.length > 0 ? (
+        {filterPending || visibleListings.length > 0 ? (
           <>
-            <TopListingsSection listings={sections.top} />
-            <RecommendedSection listings={sections.recommended} />
+            <TopListingsSection
+              listings={sections.top}
+              listingTypeName={selectedListingType?.name ?? ''}
+              pending={filterPending}
+            />
+            <RecommendedSection listings={sections.recommended} pending={filterPending} />
           </>
         ) : (
           <Empty className="border border-border bg-card py-20">

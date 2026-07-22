@@ -14,9 +14,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
-import { Skeleton } from '@booking/ui/components/ui/skeleton';
 import { SlidersHorizontal } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import {
   Link,
   useLocation,
@@ -24,7 +22,9 @@ import {
   useOutletContext,
   useSearchParams,
 } from 'react-router';
+import { CatalogResultSkeleton } from '../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../lib/i18n';
+import { isReadNavigationMethod, useMinimumPending } from '../../lib/use-minimum-pending';
 import type { StorefrontContext } from '../../root';
 import type { Route } from '../../routes/+types/catalog';
 import type { SearchSort, StorefrontSearchState } from '../search/search-state';
@@ -46,42 +46,17 @@ const SORT_OPTIONS = [
   { value: 'price-asc', labelKey: 'sort.priceAsc' },
 ] as const satisfies readonly { value: SearchSort; labelKey: string }[];
 
-const MINIMUM_SKELETON_MS = 250;
-
-function useStableCatalogLoading(minimumMs: number): boolean {
-  const location = useLocation();
-  const navigation = useNavigation();
-  const navigationIsLoading =
-    navigation.state === 'loading' && navigation.location?.pathname === location.pathname;
-  const [minimumVisible, setMinimumVisible] = useState(false);
-  const visibleSince = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (navigationIsLoading) {
-      if (visibleSince.current === null) visibleSince.current = Date.now();
-      setMinimumVisible(true);
-      return;
-    }
-
-    if (!minimumVisible || visibleSince.current === null) return;
-
-    const remaining = Math.max(minimumMs - (Date.now() - visibleSince.current), 0);
-    const timeout = window.setTimeout(() => {
-      visibleSince.current = null;
-      setMinimumVisible(false);
-    }, remaining);
-
-    return () => window.clearTimeout(timeout);
-  }, [minimumMs, minimumVisible, navigationIsLoading]);
-
-  return navigationIsLoading || minimumVisible;
-}
-
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, search, state } = loaderData;
   const { listingTypes } = useOutletContext<StorefrontContext>();
-  const { t } = useTranslation(NsI18n.Catalog);
-  const pending = useStableCatalogLoading(MINIMUM_SKELETON_MS);
+  const { t } = useTranslation([NsI18n.Catalog, NsI18n.Common]);
+  const location = useLocation();
+  const navigation = useNavigation();
+  const pending = useMinimumPending(
+    navigation.state === 'loading' &&
+      navigation.location?.pathname === location.pathname &&
+      isReadNavigationMethod(navigation.formMethod),
+  );
   const booleanFacetKeys = type.attributeSchema
     .filter((field) => field.type === 'boolean')
     .map((field) => `attr.${field.key}`);
@@ -144,11 +119,13 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
           {pending ? (
             <div
               className="flex flex-col gap-6"
+              role="status"
               aria-live="polite"
-              aria-label={t('loadingResults')}
+              aria-busy="true"
+              aria-label={t('common:loading')}
             >
               {Array.from({ length: 4 }, (_, index) => (
-                <ResultSkeleton key={index} />
+                <CatalogResultSkeleton key={index} />
               ))}
             </div>
           ) : search.items.length === 0 ? (
@@ -238,36 +215,5 @@ function SortChip({
         {label}
       </Link>
     </Button>
-  );
-}
-
-function ResultSkeleton() {
-  return (
-    <div
-      className="grid overflow-hidden rounded-lg border border-border bg-background md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)]"
-      aria-hidden="true"
-    >
-      <Skeleton className="min-h-52 rounded-none md:min-h-0" />
-      <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
-        <Skeleton className="rounded-none" />
-        <Skeleton className="rounded-none" />
-      </div>
-      <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4">
-        <div className="flex flex-col gap-1.5">
-          <Skeleton className="h-5 w-3/5" />
-          <Skeleton className="h-3.5 w-2/5" />
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3.5 w-24" />
-        </div>
-
-        <div className="flex flex-col items-end gap-1">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-3.5 w-20" />
-        </div>
-      </div>
-    </div>
   );
 }
