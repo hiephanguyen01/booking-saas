@@ -10,6 +10,7 @@ import { MockGatewayAdapter } from './gateways/mock-gateway.adapter';
 import { MomoGatewayAdapter } from './gateways/momo-gateway.adapter';
 import { PayosGatewayAdapter } from './gateways/payos-gateway.adapter';
 import { SepayGatewayAdapter } from './gateways/sepay-gateway.adapter';
+import { ZalopayGatewayAdapter } from './gateways/zalopay-gateway.adapter';
 
 /**
  * Picks the gateway adapter for a tenant (§11.1). Falls back to the mock when no
@@ -43,6 +44,9 @@ export class GatewayRegistry implements GatewayRegistryPort {
         environment: 'sandbox',
       });
     }
+    if (key === 'zalopay') {
+      return new ZalopayGatewayAdapter({ appId: '', key1: '', key2: '', environment: 'sandbox' });
+    }
     return this.mock;
   }
 
@@ -67,6 +71,14 @@ export class GatewayRegistry implements GatewayRegistryPort {
         partnerCode: cfg.credentials.partnerCode ?? '',
         accessKey: cfg.credentials.accessKey ?? '',
         secretKey: cfg.credentials.secretKey ?? '',
+        environment: cfg.environment,
+      });
+    }
+    if (cfg.gateway === 'zalopay') {
+      return new ZalopayGatewayAdapter({
+        appId: cfg.credentials.appId ?? '',
+        key1: cfg.credentials.key1 ?? '',
+        key2: cfg.credentials.key2 ?? '',
         environment: cfg.environment,
       });
     }
