@@ -6,11 +6,14 @@ import { Link, useLocation, useNavigation } from 'react-router';
 import { AccountResultsSkeleton } from '../../components/loading-skeletons';
 import { AccountPanel, PageHeading } from '../../features/account/components/account-primitives';
 import { BookingHistoryCard } from '../../features/account/components/booking-history-card';
+import { CancelBookingDialog } from '../../features/account/components/cancel-booking-dialog';
 import { ReviewDialog } from '../../features/account/components/review-dialog';
 import {
   BOOKING_HISTORY_FILTERS,
   parseBookingHistoryFilter,
+  type AccountBookingViewModel,
 } from '../../features/account/lib/booking-history';
+import { submitBookingCancellation } from '../../features/account/server/booking-cancellation.server';
 import { loadAccountBookings } from '../../features/account/server/booking-history.server';
 import { submitCustomerReview } from '../../features/account/server/customer-reviews.server';
 import { requireAuth } from '../../lib/auth.server';
@@ -32,13 +35,26 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
-  return submitCustomerReview(request, locale);
+  const formData = await request.formData();
+  if (formData.get('intent') === 'cancel') {
+    const bookingCode = formData.get('bookingCode');
+    return submitBookingCancellation(
+      request,
+      locale,
+      typeof bookingCode === 'string' ? bookingCode : '',
+      formData,
+    );
+  }
+  return submitCustomerReview(request, locale, formData);
 }
 
 export default function AccountBookingsPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Common]);
   const locale = loaderData.locale === 'en' ? 'en' : 'vi';
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
+  const [activeCancellation, setActiveCancellation] = useState<AccountBookingViewModel | null>(
+    null,
+  );
   const location = useLocation();
   const navigation = useNavigation();
   const readNavigationActive =
@@ -47,9 +63,7 @@ export default function AccountBookingsPage({ loaderData }: Route.ComponentProps
     isReadNavigationMethod(navigation.formMethod);
   const pending = useMinimumPending(readNavigationActive);
   const activeFilter = readNavigationActive
-    ? parseBookingHistoryFilter(
-        new URLSearchParams(navigation.location?.search).get('status'),
-      )
+    ? parseBookingHistoryFilter(new URLSearchParams(navigation.location?.search).get('status'))
     : loaderData.filter;
 
   return (
@@ -80,6 +94,7 @@ export default function AccountBookingsPage({ loaderData }: Route.ComponentProps
               booking={booking}
               locale={locale}
               onReview={setActiveReview}
+              onCancel={setActiveCancellation}
             />
           ))}
         </div>
@@ -91,6 +106,15 @@ export default function AccountBookingsPage({ loaderData }: Route.ComponentProps
         action={storefrontPaths.account.bookings(locale)}
         onOpenChange={(open) => !open && setActiveReview(null)}
       />
+      {activeCancellation ? (
+        <CancelBookingDialog
+          booking={activeCancellation}
+          locale={locale}
+          open
+          action={storefrontPaths.account.bookings(locale)}
+          onOpenChange={(open) => !open && setActiveCancellation(null)}
+        />
+      ) : null}
     </div>
   );
 }

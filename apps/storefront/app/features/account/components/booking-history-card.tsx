@@ -14,10 +14,12 @@ export function BookingHistoryCard({
   booking,
   locale,
   onReview,
+  onCancel,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
   onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
+  onCancel: (booking: AccountBookingViewModel) => void;
 }) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Booking]);
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
@@ -92,6 +94,7 @@ export function BookingHistoryCard({
         detailPath={detailPath}
         locale={locale}
         onReview={onReview}
+        onCancel={onCancel}
       />
     </AccountPanel>
   );
@@ -102,11 +105,13 @@ function CardFooter({
   detailPath,
   locale,
   onReview,
+  onCancel,
 }: {
   booking: AccountBookingViewModel;
   detailPath: string;
   locale: Locale;
   onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
+  onCancel: (booking: AccountBookingViewModel) => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const review = booking.review;
@@ -114,9 +119,9 @@ function CardFooter({
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/15 px-5 py-4 sm:px-6">
       <PolicyNotes booking={booking} locale={locale} />
       <div className="flex flex-wrap gap-2">
-        {booking.variant === 'upcoming' ? (
-          <Button asChild variant="outline" size="sm">
-            <Link to={`${detailPath}?cancel=1`}>{t('bookings.cancel')}</Link>
+        {booking.status === 'confirmed' ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => onCancel(booking)}>
+            {t('bookings.cancel')}
           </Button>
         ) : null}
         {booking.variant === 'payment' ? (

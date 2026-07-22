@@ -1,6 +1,7 @@
 import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3, PackageCheck, Users } from 'lucide-react';
+import { useState } from 'react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
@@ -14,13 +15,11 @@ export function BookingDetailOverview({
   locale,
   state,
   defaultCancelOpen,
-  actionError,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
   state: BookingDetailState;
   defaultCancelOpen: boolean;
-  actionError: string | null;
 }) {
   return (
     <section className="overflow-hidden bg-background shadow-[0_3px_14px_rgba(15,23,42,0.035)]">
@@ -38,7 +37,6 @@ export function BookingDetailOverview({
         locale={locale}
         state={state}
         defaultCancelOpen={defaultCancelOpen}
-        actionError={actionError}
       />
     </section>
   );
@@ -146,15 +144,14 @@ function PolicyActions({
   locale,
   state,
   defaultCancelOpen,
-  actionError,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
   state: BookingDetailState;
   defaultCancelOpen: boolean;
-  actionError: string | null;
 }) {
   const { t } = useTranslation(NsI18n.Account);
+  const [cancelOpen, setCancelOpen] = useState(defaultCancelOpen);
   const canPay = booking.status === 'pending_payment';
   const canCancel = booking.status === 'confirmed';
   const canDispute = state === 'absent';
@@ -190,12 +187,22 @@ function PolicyActions({
           </Form>
         ) : null}
         {canCancel ? (
-          <CancelBookingDialog
-            booking={booking}
-            locale={locale}
-            defaultOpen={defaultCancelOpen}
-            serverError={actionError}
-          />
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-sm border-[#263247] bg-[#4b5669] px-6 text-white hover:bg-[#3f495a] hover:text-white"
+              onClick={() => setCancelOpen(true)}
+            >
+              {t('bookings.cancel')}
+            </Button>
+            <CancelBookingDialog
+              booking={booking}
+              locale={locale}
+              open={cancelOpen}
+              onOpenChange={setCancelOpen}
+            />
+          </>
         ) : null}
         {canDispute ? (
           <Button

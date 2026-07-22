@@ -8,16 +8,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@booking/ui/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import type { Locale } from '@booking/i18n';
 import { CircleAlert } from 'lucide-react';
-import { useState } from 'react';
-import { Form, useNavigation } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useFetcher } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { AccountBookingViewModel } from '../lib/booking-history';
+import type { BookingCancellationActionData } from '../server/booking-cancellation.server';
 import { CancellationPolicyList } from './account-primitives';
 
 const REASON_KEYS = [
@@ -32,32 +32,43 @@ const REASON_KEYS = [
 export function CancelBookingDialog({
   booking,
   locale,
-  defaultOpen = false,
-  serverError = null,
+  open,
+  action,
+  onOpenChange,
 }: {
-  booking: Pick<AccountBookingViewModel, 'startUtc' | 'depositAmount' | 'cancellationTiers'>;
+  booking: Pick<
+    AccountBookingViewModel,
+    'code' | 'startUtc' | 'depositAmount' | 'cancellationTiers'
+  >;
   locale: Locale;
-  defaultOpen?: boolean;
-  serverError?: string | null;
+  open: boolean;
+  action?: string;
+  onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
-  const navigation = useNavigation();
-  const [open, setOpen] = useState(defaultOpen || Boolean(serverError));
+  const fetcher = useFetcher<BookingCancellationActionData>();
   const [selected, setSelected] = useState('');
   const [otherReason, setOtherReason] = useState('');
   const reason = selected === 'other' ? otherReason.trim() : selected;
-  const submitting = navigation.state === 'submitting';
+  const submitting = fetcher.state !== 'idle';
+  const serverError =
+    fetcher.data?.bookingCode === booking.code && !fetcher.data.ok ? fetcher.data.error : null;
+
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data?.ok && fetcher.data.bookingCode === booking.code) {
+      onOpenChange(false);
+    }
+  }, [booking.code, fetcher.data, fetcher.state, onOpenChange]);
+
+  useEffect(() => {
+    if (!open) {
+      setSelected('');
+      setOtherReason('');
+    }
+  }, [booking.code, open]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="h-10 rounded-sm border-[#263247] bg-[#4b5669] px-6 text-white hover:bg-[#3f495a] hover:text-white"
-        >
-          {t('bookings.cancel')}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={(nextOpen) => !submitting && onOpenChange(nextOpen)}>
       <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-none border-0 p-6 shadow-2xl sm:max-w-[562px] sm:p-8">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-[#202a3a]">
@@ -79,8 +90,9 @@ export function CancelBookingDialog({
           </AlertDescription>
         </Alert>
 
-        <Form method="post" className="space-y-5">
+        <fetcher.Form method="post" action={action} className="space-y-5">
           <input type="hidden" name="intent" value="cancel" />
+          <input type="hidden" name="bookingCode" value={booking.code} />
           <input type="hidden" name="reason" value={reason} />
           <RadioGroup value={selected} onValueChange={setSelected} className="gap-4">
             {REASON_KEYS.map((key) => (
@@ -123,6 +135,7 @@ export function CancelBookingDialog({
                 type="button"
                 variant="outline"
                 className="h-12 rounded-sm border-[#263247] text-[#263247]"
+                disabled={submitting}
               >
                 {t('bookings.cancelDialog.back')}
               </Button>
@@ -137,7 +150,7 @@ export function CancelBookingDialog({
                 : t('bookings.cancelDialog.confirm')}
             </Button>
           </DialogFooter>
-        </Form>
+        </fetcher.Form>
       </DialogContent>
     </Dialog>
   );

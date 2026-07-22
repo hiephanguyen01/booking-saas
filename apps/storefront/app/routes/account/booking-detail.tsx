@@ -10,8 +10,9 @@ import {
 import { BookingDetailPanel } from '../../features/account/components/booking-detail-panel';
 import { PaymentHandoff } from '../../features/checkout/components/payment-handoff';
 import { loadAccountBooking } from '../../features/account/server/booking-history.server';
+import { submitBookingCancellation } from '../../features/account/server/booking-cancellation.server';
 import { submitCustomerReview } from '../../features/account/server/customer-reviews.server';
-import { cancelBooking, checkoutBooking, fetchPaymentOptions } from '../../lib/booking.server';
+import { checkoutBooking, fetchPaymentOptions } from '../../lib/booking.server';
 import { errorStatus } from '../../lib/http-status';
 import { storefrontPaths } from '../../lib/locale-paths';
 import {
@@ -25,10 +26,6 @@ import type { Route } from './+types/booking-detail';
 
 const bookingActionSchema = z.discriminatedUnion('intent', [
   z.object({ intent: z.literal('pay') }),
-  z.object({
-    intent: z.literal('cancel'),
-    reason: z.string().trim().min(1, 'CANCEL_REASON_REQUIRED').max(500),
-  }),
   z.object({
     intent: z.literal('dispute'),
     reason: z.string().trim().min(10, 'DISPUTE_REASON_REQUIRED').max(2000),
@@ -64,11 +61,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
-  const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
   const formData = await request.formData();
   if (formData.get('intent') === 'review') {
     return submitCustomerReview(request, locale, formData);
   }
+  if (formData.get('intent') === 'cancel') {
+    return submitBookingCancellation(request, locale, params.code, formData);
+  }
+
+  const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
   const parsed = bookingActionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return data({ ok: false, error: 'CANCEL_REASON_REQUIRED' }, { status: 400 });
@@ -138,18 +139,6 @@ export async function action({ request, params }: Route.ActionArgs) {
       { status: result.ok ? 502 : errorStatus(result.status) },
     );
   }
-
-  if (booking.status !== 'confirmed') {
-    return data({ ok: false, error: 'CANCELLATION_NOT_AVAILABLE' }, { status: 409 });
-  }
-  const result = await cancelBooking(request, booking.code, { reason: parsed.data.reason });
-  if (!result.ok) {
-    return data(
-      { ok: false, error: result.error ?? result.code ?? 'CANCELLATION_FAILED' },
-      { status: errorStatus(result.status) },
-    );
-  }
-  return redirect(storefrontPaths.account.booking(locale, booking.code));
 }
 
 export default function AccountBookingDetail({ loaderData, actionData }: Route.ComponentProps) {

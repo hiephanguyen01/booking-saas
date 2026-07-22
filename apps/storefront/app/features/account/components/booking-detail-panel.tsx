@@ -67,7 +67,6 @@ export function BookingDetailPanel({
           locale={locale}
           state={state}
           defaultCancelOpen={defaultCancelOpen}
-          actionError={actionError}
         />
         {state === 'done' ? (
           <BookingReviewSection
