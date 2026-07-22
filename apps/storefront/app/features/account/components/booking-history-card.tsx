@@ -1,3 +1,4 @@
+import type { CustomerReviewItem } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3 } from 'lucide-react';
@@ -12,9 +13,11 @@ import { BookingFinancialSummary } from './booking-financial-summary';
 export function BookingHistoryCard({
   booking,
   locale,
+  onReview,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
+  onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
 }) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Booking]);
   const detailPath = storefrontPaths.account.booking(locale, booking.code);
@@ -77,7 +80,12 @@ export function BookingHistoryCard({
         className="mx-5 mb-5 sm:mx-6"
       />
 
-      <CardFooter booking={booking} detailPath={detailPath} locale={locale} />
+      <CardFooter
+        booking={booking}
+        detailPath={detailPath}
+        locale={locale}
+        onReview={onReview}
+      />
     </AccountPanel>
   );
 }
@@ -86,12 +94,15 @@ function CardFooter({
   booking,
   detailPath,
   locale,
+  onReview,
 }: {
   booking: AccountBookingViewModel;
   detailPath: string;
   locale: Locale;
+  onReview: (review: Extract<CustomerReviewItem, { status: 'pending' }>) => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
+  const review = booking.review;
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/15 px-5 py-4 sm:px-6">
       <PolicyNotes booking={booking} locale={locale} />
@@ -107,9 +118,14 @@ function CardFooter({
             <Button size="sm">{t('bookings.payNow')}</Button>
           </Form>
         ) : null}
-        {booking.variant === 'completed' ? (
+        {booking.variant === 'completed' && review?.status === 'pending' ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => onReview(review)}>
+            {t('bookings.review')}
+          </Button>
+        ) : null}
+        {booking.variant === 'completed' && review?.status === 'reviewed' ? (
           <Button asChild variant="outline" size="sm">
-            <Link to={detailPath}>{t('bookings.review')}</Link>
+            <Link to={detailPath}>{t('reviews.reviewed')}</Link>
           </Button>
         ) : null}
         {booking.variant === 'no-show' ? (

@@ -5,6 +5,7 @@ import { ADMIN_REVIEW_READER } from '../../domain/ports/admin-review-reader.port
 import { REVIEW_REPOSITORY } from '../../domain/ports/review-repository.port';
 import { REVIEW_TENANT_READER } from '../../domain/ports/review-tenant-reader.port';
 import { CreateReviewUseCase } from '../../application/use-cases/create-review.use-case';
+import { CreateReviewMediaUploadUseCase } from '../../application/use-cases/create-review-media-upload.use-case';
 import { ListAdminReviewsUseCase } from '../../application/use-cases/list-admin-reviews.use-case';
 import { ListCustomerReviewsUseCase } from '../../application/use-cases/list-customer-reviews.use-case';
 import { ListPartnerReviewsUseCase } from '../../application/use-cases/list-partner-reviews.use-case';
@@ -34,6 +35,7 @@ import { TenantReviewController } from './tenant-review.controller';
     { provide: REVIEW_TENANT_READER, useClass: PrismaReviewTenantReader },
     { provide: ADMIN_REVIEW_READER, useClass: PrismaAdminReviewReader },
     CreateReviewUseCase,
+    CreateReviewMediaUploadUseCase,
     ListCustomerReviewsUseCase,
     ListPublicReviewsUseCase,
     ListPartnerReviewsUseCase,

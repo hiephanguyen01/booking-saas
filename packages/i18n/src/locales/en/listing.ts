@@ -21,6 +21,8 @@ export const enListing = {
     listingLabel: 'Listing: {title}',
     emptyRating: 'There are no reviews with this rating yet.',
     showMore: 'Show more',
+    mediaView: 'View review attachment',
+    mediaViewerTitle: 'Review photos and videos',
   },
   report: {
     menu: 'Report listing',

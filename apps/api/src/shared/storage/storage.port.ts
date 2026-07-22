@@ -25,4 +25,6 @@ export interface CreateUploadInput {
  */
 export interface StoragePort {
   createPresignedUpload(input: CreateUploadInput): Promise<PresignedUpload>;
+  /** Resolve a validated object key to the public CDN/MinIO URL persisted by domain records. */
+  publicUrlForKey(key: string): string;
 }

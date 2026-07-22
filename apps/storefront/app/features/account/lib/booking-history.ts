@@ -3,6 +3,7 @@ import type {
   BookingResponse,
   BookingStatus,
   CancellationTier,
+  CustomerReviewItem,
   QuoteLineItem,
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
@@ -26,14 +27,6 @@ export const BOOKING_HISTORY_FILTERS = [
 export type BookingHistoryFilter = (typeof BOOKING_HISTORY_FILTERS)[number];
 export type BookingDetailVariant = Exclude<BookingHistoryFilter, 'all'>;
 export type BookingDetailState = 'need-payment' | 'coming-soon' | 'done' | 'absent' | 'cancelled';
-
-export interface AccountBookingReview {
-  state: 'pending' | 'reviewed';
-  rating?: number;
-  body?: string;
-  response?: string;
-  photos?: string[];
-}
 
 export interface AccountBookingViewModel {
   id: string;
@@ -77,7 +70,7 @@ export interface AccountBookingViewModel {
   cancelledAt: string | null;
   cancellationReason: string | null;
   attributes: Array<{ label: string; value: string }>;
-  review: AccountBookingReview | null;
+  review: CustomerReviewItem | null;
 }
 
 const STATUS_FILTERS: Record<BookingStatus, BookingDetailVariant> = {
@@ -210,6 +203,7 @@ function subtractMoney(total: string, paid: string): string {
 export function toAccountBookingViewModel(
   booking: BookingResponse,
   locale: Locale,
+  review: CustomerReviewItem | null = null,
 ): AccountBookingViewModel {
   return {
     id: booking.id,
@@ -255,7 +249,7 @@ export function toAccountBookingViewModel(
     cancelledAt: null,
     cancellationReason: null,
     attributes: displayAttributes(booking.listingAttributes),
-    review: null,
+    review,
   };
 }
 

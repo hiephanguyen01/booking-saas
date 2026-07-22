@@ -4,6 +4,7 @@ export default [
   route('healthz', 'routes/healthz.ts'),
   route('readyz', 'routes/readyz.ts'),
   route('uploads/presign', 'routes/uploads.presign.tsx'),
+  route('uploads/reviews/presign', 'routes/uploads.reviews.presign.tsx'),
   route('administrative-divisions/wards', 'routes/administrative-wards.tsx'),
   route(':locale', 'routes/locale-layout.tsx', [
     index('routes/home.tsx'),
