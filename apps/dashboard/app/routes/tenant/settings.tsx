@@ -5,7 +5,6 @@ import type {
   PayoutPolicyDto,
   TenantThemeResponse,
 } from '@booking/contracts';
-import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
@@ -365,13 +364,20 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
                 offError={errFor('gateway-off')}
               />
               {!gatewayError ? (
-                <PaymentMethodSettingsCard
-                  settings={baseGatewayConfig?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS}
-                  gateway={baseGatewayConfig?.gateway ?? null}
-                  readOnly={readOnly}
-                  error={errFor('payment-settings')}
-                  success={okFor('payment-settings')}
-                />
+                baseGatewayConfig ? (
+                  <PaymentMethodSettingsCard
+                    settings={baseGatewayConfig.settings}
+                    gateway={baseGatewayConfig.gateway}
+                    readOnly={readOnly}
+                    error={errFor('payment-settings')}
+                    success={okFor('payment-settings')}
+                  />
+                ) : (gatewayConfigs?.length ?? 0) > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Ví điện tử dùng cấu hình hoàn tiền tự động mặc định. Bật một cổng cơ bản (SePay)
+                    để tuỳ chỉnh phương thức hiển thị và chính sách hoàn tiền.
+                  </p>
+                ) : null
               ) : null}
             </TabsContent>
           ) : null}
