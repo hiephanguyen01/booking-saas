@@ -230,6 +230,7 @@ enum PaymentGateway {
   sepay
   payos
   momo
+  zalopay
   vnpay
   mock
 

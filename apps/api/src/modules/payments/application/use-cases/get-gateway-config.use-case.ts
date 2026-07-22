@@ -16,8 +16,8 @@ export class GetGatewayConfigUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(): Promise<GatewayConfigRecord | null> {
+  execute(): Promise<GatewayConfigRecord[]> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
-    return this.tenantDb.forTenant(tenantId, (tx) => this.configs.findActive(tx, tenantId));
+    return this.tenantDb.forTenant(tenantId, (tx) => this.configs.findActiveAll(tx, tenantId));
   }
 }

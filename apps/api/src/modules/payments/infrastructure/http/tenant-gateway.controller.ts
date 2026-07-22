@@ -1,10 +1,11 @@
-import { type GatewayConfigResponse } from '@booking/contracts';
-import { Body, Controller, Delete, Get, HttpCode, Put, UseGuards } from '@nestjs/common';
+import { gatewayKeySchema, type GatewayConfigResponse, type GatewayKey } from '@booking/contracts';
+import { Body, Controller, Delete, Get, HttpCode, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
 import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway-config.use-case';
 import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
@@ -29,11 +30,10 @@ export class TenantGatewayController {
 
   @RequirePermissions('tenant.settings.manage')
   @Get()
-  @ApiOperation({ summary: 'Get the active tenant payment gateway configuration' })
-  @ApiOkResponse({ type: GatewayConfigResponseDto })
-  async get(): Promise<GatewayConfigResponse | null> {
-    const config = await this.getConfig.execute();
-    return config ? toGatewayConfigResponse(config) : null;
+  @ApiOperation({ summary: 'Get the tenant active payment gateway configurations' })
+  @ApiOkResponse({ type: GatewayConfigResponseDto, isArray: true })
+  async get(): Promise<GatewayConfigResponse[]> {
+    return (await this.getConfig.execute()).map(toGatewayConfigResponse);
   }
 
   @RequirePermissions('tenant.settings.manage')
@@ -48,10 +48,14 @@ export class TenantGatewayController {
   @RequirePermissions('tenant.settings.manage')
   @Delete()
   @HttpCode(204)
-  @ApiOperation({ summary: 'Disable the tenant payment gateway (turn off checkout)' })
+  @ApiOperation({
+    summary: 'Disable one tenant payment gateway, or every gateway when none is given',
+  })
   @ApiNoContentResponse()
-  async remove(): Promise<void> {
-    await this.deactivate.execute();
+  async remove(
+    @Query('gateway', new ZodValidationPipe(gatewayKeySchema.optional())) gateway?: GatewayKey,
+  ): Promise<void> {
+    await this.deactivate.execute(gateway);
   }
 
   @RequirePermissions('tenant.settings.manage')

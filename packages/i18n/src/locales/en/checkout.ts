@@ -41,6 +41,7 @@ export const enCheckout = {
     internationalCard: 'Visa/Master/JCB',
     domesticCard: 'Napas QR / Domestic card',
     momoWallet: 'MoMo wallet',
+    zaloWallet: 'ZaloPay wallet',
     soon: 'Coming soon',
     handoffTitle: 'Opening payment gateway',
     handoffDescription: "You'll be redirected to a secure payment page.",

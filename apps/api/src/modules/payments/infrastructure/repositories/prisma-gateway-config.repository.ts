@@ -3,6 +3,8 @@ import {
   DEFAULT_GATEWAY_PAYMENT_SETTINGS,
   defaultGatewayPaymentSettings,
   gatewayPaymentSettingsSchema,
+  isWalletGateway,
+  WALLET_GATEWAYS,
   type GatewayPaymentSettings,
 } from '@booking/contracts';
 import type { Prisma } from '@prisma/client';
@@ -35,8 +37,19 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
     };
   }
 
-  async findActive(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null> {
-    const c = await tx.tenantGatewayConfig.findFirst({ where: { tenantId, isActive: true } });
+  async findActiveAll(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord[]> {
+    const rows = await tx.tenantGatewayConfig.findMany({
+      where: { tenantId, isActive: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((c) => this.toRecord(c));
+  }
+
+  async findActiveBase(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null> {
+    const c = await tx.tenantGatewayConfig.findFirst({
+      where: { tenantId, isActive: true, gateway: { notIn: [...WALLET_GATEWAYS] } },
+      orderBy: { createdAt: 'asc' },
+    });
     return c ? this.toRecord(c) : null;
   }
 
@@ -47,7 +60,7 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
   ): Promise<GatewayConfigRecord | null> {
     const c = await tx.tenantGatewayConfig.findFirst({
       where: { tenantId, gateway },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
     });
     return c ? this.toRecord(c) : null;
   }
@@ -58,8 +71,18 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
     data: UpsertGatewayConfigData,
   ): Promise<GatewayConfigRecord> {
     const credentials = { enc: this.crypto.encrypt(JSON.stringify(data.credentials)) };
+    // BASE gateways stay max-1-active as a group; wallets run in parallel but each
+    // wallet must itself be single-active (one environment at a time) — otherwise a
+    // sandbox row and a production row can both stay live and webhook verification
+    // may pick the wrong credentials.
     await tx.tenantGatewayConfig.updateMany({
-      where: { tenantId, isActive: true },
+      where: {
+        tenantId,
+        isActive: true,
+        ...(isWalletGateway(data.gateway)
+          ? { gateway: data.gateway }
+          : { gateway: { notIn: [...WALLET_GATEWAYS] } }),
+      },
       data: { isActive: false },
     });
     const c = await tx.tenantGatewayConfig.upsert({
@@ -88,9 +111,9 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
     return this.toRecord(c);
   }
 
-  async deactivateAll(tx: PrismaTx, tenantId: string): Promise<void> {
+  async deactivate(tx: PrismaTx, tenantId: string, gateway?: GatewayKey): Promise<void> {
     await tx.tenantGatewayConfig.updateMany({
-      where: { tenantId, isActive: true },
+      where: { tenantId, isActive: true, ...(gateway ? { gateway } : {}) },
       data: { isActive: false },
     });
   }
@@ -98,10 +121,11 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
   async updateSettings(
     tx: PrismaTx,
     tenantId: string,
+    gateway: GatewayKey,
     settings: GatewayPaymentSettings,
   ): Promise<GatewayConfigRecord | null> {
     const current = await tx.tenantGatewayConfig.findFirst({
-      where: { tenantId, isActive: true },
+      where: { tenantId, gateway, isActive: true },
       select: { id: true },
     });
     if (!current) return null;

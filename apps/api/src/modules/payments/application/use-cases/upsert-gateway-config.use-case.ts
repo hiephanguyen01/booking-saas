@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
   momoGatewayConfigInputSchema,
   sepayGatewayConfigInputSchema,
+  zalopayGatewayConfigInputSchema,
   type UpsertGatewayConfigInput,
 } from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -27,7 +28,9 @@ export class UpsertGatewayConfigUseCase {
         ? sepayGatewayConfigInputSchema.safeParse(input)
         : input.gateway === 'momo'
           ? momoGatewayConfigInputSchema.safeParse(input)
-          : { success: true as const, data: input };
+          : input.gateway === 'zalopay'
+            ? zalopayGatewayConfigInputSchema.safeParse(input)
+            : { success: true as const, data: input };
     if (!validated.success) {
       throw new BadRequestException({
         statusCode: 400,

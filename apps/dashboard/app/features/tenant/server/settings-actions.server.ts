@@ -3,6 +3,7 @@ import {
   addDomainInputSchema,
   momoGatewaySettingsFormSchema,
   sepayGatewaySettingsFormSchema,
+  zalopayGatewaySettingsFormSchema,
   themeConfigSchema,
   type DomainResponse,
   type TenantThemeResponse,
@@ -76,8 +77,46 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
           secretKey?: unknown;
           partnerCode?: unknown;
           accessKey?: unknown;
+          appId?: unknown;
+          key1?: unknown;
+          key2?: unknown;
         };
       };
+
+      if (raw.gateway === 'zalopay') {
+        const parsed = zalopayGatewaySettingsFormSchema.safeParse({
+          environment: raw.environment,
+          appId: raw.credentials?.appId,
+          key1: raw.credentials?.key1,
+          key2: raw.credentials?.key2,
+        });
+        if (!parsed.success) {
+          return routeData(
+            { form: 'zalopay', fieldErrors: parsed.error.flatten().fieldErrors },
+            { status: 400 },
+          );
+        }
+        const res = await apiPut(
+          '/tenant/gateway-config',
+          {
+            gateway: 'zalopay',
+            environment: parsed.data.environment,
+            credentials: {
+              appId: parsed.data.appId,
+              key1: parsed.data.key1,
+              key2: parsed.data.key2,
+            },
+          },
+          auth,
+        );
+        if (!res.ok) {
+          return routeData(
+            { form: 'zalopay', error: res.error ?? 'Không lưu được cấu hình ZaloPay.' },
+            { status: res.status >= 400 && res.status <= 599 ? res.status : 400 },
+          );
+        }
+        return { form: 'zalopay', ok: true };
+      }
 
       if (raw.gateway === 'momo') {
         const parsed = momoGatewaySettingsFormSchema.safeParse({
@@ -187,7 +226,11 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
   const intent = String(formData.get('intent'));
 
   if (intent === 'disable-gateway') {
-    const res = await apiDelete('/tenant/gateway-config', auth);
+    const gateway = String(formData.get('gateway') ?? '').trim();
+    const res = await apiDelete(
+      `/tenant/gateway-config${gateway ? `?gateway=${encodeURIComponent(gateway)}` : ''}`,
+      auth,
+    );
     if (!res.ok)
       return routeData(
         { form: 'gateway-off', error: res.error ?? 'Không tắt được cổng thanh toán.' },
@@ -198,6 +241,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   if (intent === 'payment-settings') {
     const parsed = updateGatewayPaymentSettingsInputSchema.safeParse({
+      gateway: formData.get('gateway'),
       enabledMethods: formData.getAll('enabledMethods'),
       refundStrategy: formData.get('refundStrategy'),
       manualRefundSlaHours: Number(formData.get('manualRefundSlaHours')),

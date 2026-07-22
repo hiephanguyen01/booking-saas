@@ -56,18 +56,21 @@ export class ExecuteRefundUseCase {
         });
       }
 
-      const config = await this.configs.findActive(tx, tenantId);
+      // With parallel gateways the base config's settings don't reflect a wallet
+      // payment's own refund strategy — always read the config for the PAYMENT's
+      // own gateway.
+      const config = await this.configs.findByGateway(tx, tenantId, payment.gateway);
       const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
       // SePay only auto-voids a full card charge (no partial refunds).
       const isSepayCardFull =
         payment.gateway === 'sepay' && payment.paymentMethod === 'CARD' && amount === payment.amount;
-      // MoMo can auto-refund any (incl. partial) order amount to the wallet.
-      const isMomo = payment.gateway === 'momo';
+      // MoMo/ZaloPay can auto-refund any (incl. partial) order amount to the wallet.
+      const isWalletAuto = payment.gateway === 'momo' || payment.gateway === 'zalopay';
       // The security deposit is never auto-refunded (manual path for both gateways).
       const automatic =
         settings.refundStrategy === 'automatic_preferred' &&
         reason !== 'security_deposit' &&
-        (isSepayCardFull || isMomo);
+        (isSepayCardFull || isWalletAuto);
 
       const dueAt = automatic
         ? null

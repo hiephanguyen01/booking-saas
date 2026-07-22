@@ -28,24 +28,20 @@ export class UpdateGatewayPaymentSettingsUseCase {
   ): Promise<GatewayConfigRecord> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const active = await this.configs.findActive(tx, tenantId);
-      if (!active) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'GATEWAY_CONFIG_NOT_FOUND',
-          message: 'Configure payment credentials before enabling payment methods',
-        });
-      }
-      const supported = GATEWAY_SUPPORTED_METHODS[active.gateway];
+      const supported = GATEWAY_SUPPORTED_METHODS[input.gateway];
       const invalid = input.enabledMethods.filter((m) => !supported.includes(m));
       if (invalid.length > 0) {
         throw new BadRequestException({
           statusCode: 400,
           code: 'UNSUPPORTED_PAYMENT_METHOD',
-          message: `Cổng ${active.gateway} không hỗ trợ phương thức: ${invalid.join(', ')}`,
+          message: `Cổng ${input.gateway} không hỗ trợ phương thức: ${invalid.join(', ')}`,
         });
       }
-      const updated = await this.configs.updateSettings(tx, tenantId, input);
+      const updated = await this.configs.updateSettings(tx, tenantId, input.gateway, {
+        enabledMethods: input.enabledMethods,
+        refundStrategy: input.refundStrategy,
+        manualRefundSlaHours: input.manualRefundSlaHours,
+      });
       if (!updated) {
         throw new NotFoundException({
           statusCode: 404,

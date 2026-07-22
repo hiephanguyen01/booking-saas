@@ -23,7 +23,7 @@ export class WebhookController {
   async receive(
     @Param('gateway', new ZodValidationPipe(gatewayKeySchema)) gateway: GatewayKey,
     @Req() req: Request & { rawBody?: Buffer },
-  ): Promise<{ success: true }> {
+  ): Promise<Record<string, unknown>> {
     const raw =
       req.rawBody ??
       (Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body ?? {})));
@@ -40,6 +40,6 @@ export class WebhookController {
       }),
     );
     await this.handle.execute(gateway, raw, headers);
-    return { success: true };
+    return gateway === 'zalopay' ? { return_code: 1, return_message: 'success' } : { success: true };
   }
 }

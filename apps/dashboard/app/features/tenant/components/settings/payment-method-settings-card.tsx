@@ -36,16 +36,14 @@ export function PaymentMethodSettingsCard({
   success,
 }: {
   settings: GatewayPaymentSettings;
-  /** Active gateway — only its supported methods are offered. */
-  gateway: GatewayKey | null;
+  /** Active base gateway — only its supported methods are offered. */
+  gateway: GatewayKey;
   readOnly: boolean;
   error: string | null;
   success: boolean;
 }) {
-  const supported = gateway ? GATEWAY_SUPPORTED_METHODS[gateway] : null;
-  const visibleMethods = supported
-    ? METHODS.filter(([value]) => supported.includes(value))
-    : METHODS;
+  const supported = GATEWAY_SUPPORTED_METHODS[gateway];
+  const visibleMethods = METHODS.filter(([value]) => supported.includes(value));
   const navigation = useNavigation();
   const [refundStrategy, setRefundStrategy] = useState(settings.refundStrategy);
   const isSubmitting =
@@ -64,6 +62,7 @@ export function PaymentMethodSettingsCard({
       <CardContent>
         <Form method="post" className="space-y-6">
           <input type="hidden" name="intent" value="payment-settings" />
+          <input type="hidden" name="gateway" value={gateway} />
           <ErrorBanner error={error} />
           <SuccessBanner message={success ? 'Đã lưu phương thức thanh toán và hoàn tiền.' : null} />
 
