@@ -1,4 +1,4 @@
-import { publicPartnerProfileResponseSchema, reviewListResponseSchema } from '@booking/contracts';
+import { publicPartnerProfileResponseSchema } from '@booking/contracts';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { StorefrontContext } from '../root';
@@ -6,6 +6,7 @@ import { ProviderProfilePage } from '../features/provider/provider-profile-page'
 import { publicGetData } from '../lib/api.server';
 import { fetchListings } from '../lib/catalog.server';
 import { jsonLd } from '../lib/seo';
+import { loadPublicReviews } from '../lib/public-reviews.server';
 import type { Route } from './+types/provider';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
@@ -36,14 +37,11 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     pageSize: '48',
     sort: 'bookings-desc',
   });
-  const [listings, reviews] = await Promise.all([
+  const [listings, reviewData] = await Promise.all([
     activeType ? fetchListings(request, search) : Promise.resolve([]),
-    publicGetData(request, '/public/reviews', {
-      query: { target: 'partner', slug: profile.slug, page: 1, pageSize: 6, sort: 'newest' },
-      schema: reviewListResponseSchema,
-    }).catch(() => null),
+    loadPublicReviews(request, url.searchParams, 'partner', profile.slug),
   ]);
-  return { profile, listings, reviews, activeType };
+  return { profile, listings, activeType, ...reviewData };
 }
 
 export default function ProviderRoute({ loaderData }: Route.ComponentProps) {

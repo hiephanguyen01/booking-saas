@@ -14,6 +14,14 @@ export const enListing = {
   bookedCount: '{count} booked',
   reviewCount: '{count} reviews',
   noReviews: 'No reviews yet',
+  reviews: {
+    title: 'Reviews',
+    countLabel: 'reviews',
+    filterLabel: 'Filter reviews by star rating',
+    listingLabel: 'Listing: {title}',
+    emptyRating: 'There are no reviews with this rating yet.',
+    showMore: 'Show more',
+  },
   report: {
     menu: 'Report listing',
     title: 'Report content',

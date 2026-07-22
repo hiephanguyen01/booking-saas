@@ -1,8 +1,4 @@
-import {
-  reviewListResponseSchema,
-  type AvailabilityMode,
-  type PublicListingDetailResponse,
-} from '@booking/contracts';
+import { type AvailabilityMode, type PublicListingDetailResponse } from '@booking/contracts';
 import type { Route } from './+types/listing';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { ListingPage } from '../features/listing/listing-page';
@@ -16,8 +12,8 @@ import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../lib/time';
 import { useOutletContext } from 'react-router';
 import type { StorefrontContext } from '../root';
 import { jsonLd } from '../lib/seo';
-import { publicGetData } from '../lib/api.server';
 import { submitContentReport } from '../features/content-reports/content-report.server';
+import { loadPublicReviews } from '../lib/public-reviews.server';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
@@ -83,27 +79,9 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const searchParams = url.searchParams;
-  const requestedRating = Number(searchParams.get('rating'));
-  const rating =
-    Number.isInteger(requestedRating) && requestedRating >= 1 && requestedRating <= 5
-      ? requestedRating
-      : undefined;
-  const reviewRequest = (filterRating?: number) =>
-    publicGetData(request, '/public/reviews', {
-      query: {
-        target: 'listing',
-        slug: params.listingSlug,
-        page: 1,
-        pageSize: 6,
-        sort: 'newest',
-        ...(filterRating ? { rating: filterRating } : {}),
-      },
-      schema: reviewListResponseSchema,
-    }).catch(() => null);
   const listingPromise = fetchListing(request, params.listingSlug);
   const provincesPromise = loadAdministrativeProvinces(request);
-  const reviewsPromise = reviewRequest(rating);
-  const unfilteredReviewsPromise = rating ? reviewRequest() : Promise.resolve(null);
+  const reviewsPromise = loadPublicReviews(request, searchParams, 'listing', params.listingSlug);
   const listing = await listingPromise;
 
   if (!listing) {
@@ -154,17 +132,14 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     listing.bookingSelection === 'fixed_packages'
       ? fetchListings(request, relatedSearch).catch(() => [])
       : Promise.resolve([]);
-  const auxiliaryData = Promise.all([
-    reviewsPromise,
-    unfilteredReviewsPromise,
-    relatedPromise,
-  ]).then(([reviews, unfilteredReviews, relatedCandidates]) => ({
-    reviews,
-    reviewSummary: unfilteredReviews?.summary ?? reviews?.summary ?? null,
-    relatedListings: relatedCandidates
-      .filter((candidate) => candidate.id !== listing.id)
-      .slice(0, 4),
-  }));
+  const auxiliaryData = Promise.all([reviewsPromise, relatedPromise]).then(
+    ([reviewData, relatedCandidates]) => ({
+      ...reviewData,
+      relatedListings: relatedCandidates
+        .filter((candidate) => candidate.id !== listing.id)
+        .slice(0, 4),
+    }),
+  );
 
   const availability = availabilityPromise ? await availabilityPromise : null;
 
@@ -223,7 +198,6 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     selectionStart,
     selectionEnd,
     auxiliaryData,
-    rating,
   };
 }
 

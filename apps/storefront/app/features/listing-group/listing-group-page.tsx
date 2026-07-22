@@ -126,7 +126,13 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           hideUnavailableByDefault={state.hasTimeSelection || state.hasDailyRange}
         />
 
-        <PublicReviewsSection reviews={loaderData.reviews} locale={locale} />
+        <PublicReviewsSection
+          reviews={loaderData.reviews}
+          summary={loaderData.reviewSummary}
+          locale={locale}
+          selectedRating={loaderData.reviewRating}
+          visibleLimit={loaderData.reviewLimit}
+        />
 
         <RelatedStudios listings={relatedListings} />
       </div>

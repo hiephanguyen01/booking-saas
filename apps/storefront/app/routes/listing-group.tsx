@@ -11,9 +11,8 @@ import { jsonLd } from '../lib/seo';
 import { parseSearchState, rangeDates } from '../features/search/search-state';
 import { addDays, nightsBetween, zonedToUtcIso } from '../lib/time';
 import { ListingGroupPage } from '../features/listing-group/listing-group-page';
-import { reviewListResponseSchema } from '@booking/contracts';
-import { publicGetData } from '../lib/api.server';
 import { submitContentReport } from '../features/content-reports/content-report.server';
+import { loadPublicReviews } from '../lib/public-reviews.server';
 
 const LISTING_DETAIL_CONCURRENCY = 4;
 const PACKAGE_AVAILABILITY_CONCURRENCY = 3;
@@ -67,13 +66,10 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     type: group.listingTypeSlug,
     pageSize: String(RELATED_PAGE_SIZE),
   });
-  const [catalogCandidates, provinces, reviews] = await Promise.all([
+  const [catalogCandidates, provinces, reviewData] = await Promise.all([
     safe(fetchListings(request, relatedSearch)),
     loadAdministrativeProvinces(request),
-    publicGetData(request, '/public/reviews', {
-      query: { target: 'group', slug: params.groupSlug, page: 1, pageSize: 6, sort: 'newest' },
-      schema: reviewListResponseSchema,
-    }).catch(() => null),
+    loadPublicReviews(request, url.searchParams, 'group', params.groupSlug),
   ]);
   const state = parseSearchState(url.searchParams);
   const fixedPackages = group.bookingSelection === 'fixed_packages';
@@ -314,7 +310,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     roomOptions,
     locations,
     relatedListings,
-    reviews,
+    ...reviewData,
   };
 }
 

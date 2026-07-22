@@ -22,6 +22,7 @@ import {
   slotInterval,
   toggleContiguousSlot,
 } from '../../features/listing-group/listing-group-utils';
+import { minimumConfiguredPrice } from '../../lib/booking-presentation';
 import { eligibleDailyRange, normalizeDailyRange } from '../../lib/daily-range';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
@@ -264,7 +265,7 @@ function QuoteHeader({
   selectedDays: number | null;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const from = formatVnd(fromPrice(listing.modeConfig));
+  const from = formatVnd(minimumConfiguredPrice(listing.modeConfig));
   const selectedHours = start && end ? hoursBetween(start, end) : null;
   const unitLabel: Record<AvailabilityMode, string> = {
     hourly: quote && selectedHours ? t('forHours', { count: selectedHours }) : t('perHour'),
@@ -976,19 +977,4 @@ function PickerLabel({ children }: { children: ReactNode }) {
       {children}
     </span>
   );
-}
-
-/** Cheapest configured base price across modes (for the "from" price). */
-function fromPrice(modeConfig: Record<string, unknown>): string | null {
-  const prices: number[] = [];
-  for (const cfg of Object.values(modeConfig)) {
-    if (cfg && typeof cfg === 'object') {
-      const c = cfg as Record<string, unknown>;
-      for (const key of ['basePrice', 'basePricePerNight']) {
-        const n = Number(c[key]);
-        if (Number.isFinite(n) && n > 0) prices.push(n);
-      }
-    }
-  }
-  return prices.length > 0 ? String(Math.min(...prices)) : null;
 }
