@@ -36,6 +36,10 @@ export interface UploadedImage {
   key: string
 }
 
+export interface UploadedReviewMedia {
+  key: string
+}
+
 /**
  * Presign then PUT a single file, returning the public URL to persist. Throws a
  * Vietnamese-message `Error` on any failure (surfaced by the uploader UI).
@@ -70,6 +74,40 @@ export async function presignAndPut(
   }
 
   return { publicUrl: grant.publicUrl, key: grant.key }
+}
+
+/**
+ * Upload one booking-scoped review image/video through the Storefront BFF.
+ * Validation and size limits remain owned by the shared review contract/API;
+ * this low-level helper only transports the typed browser File.
+ */
+export async function presignAndPutReviewMedia(
+  file: File,
+  bookingId: string,
+  { presignEndpoint = "/uploads/reviews/presign", signal }: Pick<PresignAndPutOptions, "presignEndpoint" | "signal"> = {},
+): Promise<UploadedReviewMedia> {
+  const presignRes = await fetch(presignEndpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ bookingId, contentType: file.type, sizeBytes: file.size }),
+    signal,
+  })
+  if (!presignRes.ok) {
+    throw new Error(
+      (await safeMessage(presignRes)) ?? `Không thể tạo liên kết tải lên (${presignRes.status})`,
+    )
+  }
+  const grant = (await presignRes.json()) as PresignGrant
+  if (!grant.uploadUrl || !grant.key) throw new Error("Liên kết tải lên không hợp lệ")
+
+  const putRes = await fetch(grant.uploadUrl, {
+    method: "PUT",
+    headers: { "content-type": file.type },
+    body: file,
+    signal,
+  })
+  if (!putRes.ok) throw new Error(`Tải tệp lên thất bại (${putRes.status})`)
+  return { key: grant.key }
 }
 
 async function safeMessage(res: Response): Promise<string | undefined> {

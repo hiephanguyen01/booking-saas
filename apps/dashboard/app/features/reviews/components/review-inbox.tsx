@@ -3,6 +3,7 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Textarea } from '@booking/ui/components/ui/textarea';
+import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { MessageSquareText, Star } from 'lucide-react';
 import { Form, useNavigation, useSearchParams } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
@@ -86,6 +87,12 @@ export function ReviewInbox({
                   <div>
                     <p className="text-sm font-medium">{review.customerName}</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.content}</p>
+                    <ReviewMediaGallery
+                      items={review.media}
+                      className="mt-3"
+                      viewLabel="Xem nội dung đính kèm"
+                      viewerTitle="Ảnh và video đánh giá"
+                    />
                   </div>
                   {review.reply ? (
                     <div className="rounded-lg bg-muted/60 p-4">

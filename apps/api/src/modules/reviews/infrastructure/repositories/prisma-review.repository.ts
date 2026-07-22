@@ -50,6 +50,7 @@ export function toReviewRecord(row: Row): ReviewRecord {
     customerName: row.customer.fullName,
     rating: row.rating,
     content: row.content,
+    media: parseReviewMedia(row.media),
     reply: row.reply
       ? {
           id: row.reply.id,
@@ -59,8 +60,43 @@ export function toReviewRecord(row: Row): ReviewRecord {
         }
       : null,
     serviceCompletedAt: row.booking.settlement?.completedAt ?? null,
+    bookingStartsAt: null,
+    bookingEndsAt: null,
     createdAt: row.createdAt,
   };
+}
+
+function parseReviewMedia(value: Prisma.JsonValue): ReviewRecord['media'] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const kind = 'kind' in item ? item.kind : null;
+    const key = 'key' in item ? item.key : null;
+    const url = 'url' in item ? item.url : null;
+    return (kind === 'image' || kind === 'video') && typeof key === 'string' && typeof url === 'string'
+      ? [{ kind, key, url }]
+      : [];
+  });
+}
+
+interface BookingTimeRow {
+  id: string;
+  startsAt: Date | null;
+  endsAt: Date | null;
+}
+
+async function bookingTimes(
+  tx: PrismaTx,
+  bookingIds: string[],
+): Promise<Map<string, BookingTimeRow>> {
+  if (bookingIds.length === 0) return new Map();
+  const bookingIdValues = Prisma.join(bookingIds.map((id) => Prisma.sql`${id}::uuid`));
+  const rows = await tx.$queryRaw<BookingTimeRow[]>(Prisma.sql`
+    SELECT id, lower(timeslot) AS "startsAt", upper(timeslot) AS "endsAt"
+    FROM bookings
+    WHERE id IN (${bookingIdValues})
+  `);
+  return new Map(rows.map((row) => [row.id, row]));
 }
 
 function reviewWhere(
@@ -138,11 +174,28 @@ async function listPage(
 
 @Injectable()
 export class PrismaReviewRepository implements IReviewRepository {
+  async isReviewableBooking(
+    tx: PrismaTx,
+    customerId: string,
+    bookingId: string,
+  ): Promise<boolean> {
+    const booking = await tx.booking.findFirst({
+      where: { id: bookingId, customerId, status: 'completed', review: null },
+      select: { id: true },
+    });
+    return Boolean(booking);
+  }
+
   async create(
     tx: PrismaTx,
     tenantId: string,
     customerId: string,
-    data: { bookingId: string; rating: number; content: string },
+    data: {
+      bookingId: string;
+      rating: number;
+      content: string;
+      media: ReviewRecord['media'];
+    },
   ): Promise<ReviewRecord | null> {
     const booking = await tx.booking.findFirst({
       where: { id: data.bookingId, customerId, status: 'completed', review: null },
@@ -164,6 +217,7 @@ export class PrismaReviewRepository implements IReviewRepository {
         customerId,
         rating: data.rating,
         content: data.content,
+        media: data.media as unknown as Prisma.InputJsonValue,
       },
       include: REVIEW_INCLUDE,
     });
@@ -223,10 +277,19 @@ export class PrismaReviewRepository implements IReviewRepository {
             orderBy: { updatedAt: 'desc' },
           }),
     ]);
-    const reviewed = reviewRows.map((row) => ({
-      ...toReviewRecord(row),
-      status: 'reviewed' as const,
-    }));
+    const times = await bookingTimes(tx, [
+      ...reviewRows.map((row) => row.bookingId),
+      ...pendingRows.map((row) => row.id),
+    ]);
+    const reviewed = reviewRows.map((row) => {
+      const time = times.get(row.bookingId);
+      return {
+        ...toReviewRecord(row),
+        status: 'reviewed' as const,
+        bookingStartsAt: time?.startsAt ?? null,
+        bookingEndsAt: time?.endsAt ?? null,
+      };
+    });
     const pending: PendingReviewRecord[] = pendingRows.map((row) => {
       const photos = Array.isArray(row.listing.photos)
         ? row.listing.photos.filter((item): item is string => typeof item === 'string')
@@ -242,6 +305,8 @@ export class PrismaReviewRepository implements IReviewRepository {
         groupTitle: row.listing.group?.title ?? null,
         partnerName: row.partner.name,
         serviceCompletedAt: row.settlement?.completedAt ?? row.updatedAt,
+        bookingStartsAt: times.get(row.id)?.startsAt ?? null,
+        bookingEndsAt: times.get(row.id)?.endsAt ?? null,
       };
     });
     const combined = [...pending, ...reviewed].sort((a, b) => {

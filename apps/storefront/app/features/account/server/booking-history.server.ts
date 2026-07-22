@@ -9,6 +9,7 @@ import {
   type BookingHistoryFilter,
   toAccountBookingViewModel,
 } from '../lib/booking-history';
+import { loadCustomerReviewsByBooking } from './customer-reviews.server';
 
 export async function loadAccountBookings(
   request: Request,
@@ -16,12 +17,17 @@ export async function loadAccountBookings(
   locale: Locale,
   filter: BookingHistoryFilter,
 ): Promise<{ bookings: AccountBookingViewModel[]; error: string | null }> {
-  const result = await apiGet<BookingResponse[]>(request, '/public/my-bookings', accessToken, {
-    schema: z.array(bookingResponseSchema),
-  });
+  const [result, reviews] = await Promise.all([
+    apiGet<BookingResponse[]>(request, '/public/my-bookings', accessToken, {
+      schema: z.array(bookingResponseSchema),
+    }),
+    loadCustomerReviewsByBooking(request, accessToken),
+  ]);
 
   if (result.ok) {
-    const bookings = (result.data ?? []).map((item) => toAccountBookingViewModel(item, locale));
+    const bookings = (result.data ?? []).map((item) =>
+      toAccountBookingViewModel(item, locale, reviews.get(item.id) ?? null),
+    );
     return {
       bookings: bookings.filter((item) => bookingMatchesFilter(item, filter)),
       error: null,
@@ -38,8 +44,14 @@ export async function loadAccountBooking(
   request: Request,
   code: string,
   locale: Locale,
+  accessToken: string,
 ): Promise<AccountBookingViewModel | null> {
   const normalizedCode = code.trim().toUpperCase();
-  const booking = await fetchBookingByCode(request, normalizedCode);
-  return booking ? toAccountBookingViewModel(booking, locale) : null;
+  const [booking, reviews] = await Promise.all([
+    fetchBookingByCode(request, normalizedCode),
+    loadCustomerReviewsByBooking(request, accessToken),
+  ]);
+  return booking
+    ? toAccountBookingViewModel(booking, locale, reviews.get(booking.id) ?? null)
+    : null;
 }

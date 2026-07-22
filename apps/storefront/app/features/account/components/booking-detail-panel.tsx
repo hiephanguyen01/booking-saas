@@ -1,17 +1,21 @@
-import type { CustomerBookingSettlementResponse } from '@booking/contracts';
+import type { CustomerBookingSettlementResponse, CustomerReviewItem } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { bookingDetailState, type AccountBookingViewModel } from '../lib/booking-history';
 import { BookingDetailOverview } from './booking-detail-overview';
+import { ReviewDialog } from './review-dialog';
 import {
   BookingContactSection,
   BookingFinancialSection,
   BookingReviewSection,
   PaymentTaxNote,
 } from './booking-detail-sections';
+
+type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 
 export function BookingDetailPanel({
   booking,
@@ -28,6 +32,10 @@ export function BookingDetailPanel({
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const state = bookingDetailState(booking.status);
+  const pendingReview: PendingReview | null =
+    booking.review?.status === 'pending' ? booking.review : null;
+  const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
+  const detailPath = storefrontPaths.account.booking(locale, booking.code);
 
   return (
     <div className="mx-auto w-full max-w-[870px]">
@@ -61,11 +69,23 @@ export function BookingDetailPanel({
           defaultCancelOpen={defaultCancelOpen}
           actionError={actionError}
         />
-        {state === 'done' ? <BookingReviewSection booking={booking} /> : null}
+        {state === 'done' ? (
+          <BookingReviewSection
+            booking={booking}
+            onReview={() => pendingReview && setActiveReview(pendingReview)}
+          />
+        ) : null}
         <BookingContactSection booking={booking} />
         <BookingFinancialSection booking={booking} locale={locale} settlement={settlement} />
         <PaymentTaxNote booking={booking} />
       </div>
+
+      <ReviewDialog
+        review={activeReview}
+        open={activeReview !== null}
+        action={detailPath}
+        onOpenChange={(open) => !open && setActiveReview(null)}
+      />
     </div>
   );
 }

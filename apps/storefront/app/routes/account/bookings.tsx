@@ -1,17 +1,23 @@
+import type { CustomerReviewItem } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { ReceiptText, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { AccountPanel, PageHeading } from '../../features/account/components/account-primitives';
 import { BookingHistoryCard } from '../../features/account/components/booking-history-card';
+import { ReviewDialog } from '../../features/account/components/review-dialog';
 import {
   BOOKING_HISTORY_FILTERS,
   parseBookingHistoryFilter,
 } from '../../features/account/lib/booking-history';
 import { loadAccountBookings } from '../../features/account/server/booking-history.server';
+import { submitCustomerReview } from '../../features/account/server/customer-reviews.server';
 import { requireAuth } from '../../lib/auth.server';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { storefrontPaths } from '../../lib/locale-paths';
 import type { Route } from './+types/bookings';
+
+type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
@@ -22,9 +28,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return { locale, filter, ...result };
 }
 
+export async function action({ request, params }: Route.ActionArgs) {
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+  return submitCustomerReview(request, locale);
+}
+
 export default function AccountBookingsPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation(NsI18n.Account);
   const locale = loaderData.locale === 'en' ? 'en' : 'vi';
+  const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
 
   return (
     <div className="space-y-3">
@@ -47,10 +59,22 @@ export default function AccountBookingsPage({ loaderData }: Route.ComponentProps
       ) : (
         <div className="space-y-3 [content-visibility:auto]">
           {loaderData.bookings.map((booking) => (
-            <BookingHistoryCard key={booking.id} booking={booking} locale={locale} />
+            <BookingHistoryCard
+              key={booking.id}
+              booking={booking}
+              locale={locale}
+              onReview={setActiveReview}
+            />
           ))}
         </div>
       )}
+
+      <ReviewDialog
+        review={activeReview}
+        open={activeReview !== null}
+        action={storefrontPaths.account.bookings(locale)}
+        onOpenChange={(open) => !open && setActiveReview(null)}
+      />
     </div>
   );
 }

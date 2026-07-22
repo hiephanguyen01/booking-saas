@@ -1,6 +1,7 @@
 import type { ReviewListResponse, ReviewResponse, ReviewSummary } from '@booking/contracts';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { cn } from '@booking/ui/lib/utils';
+import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { ChevronDown, Star } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router';
 import { PUBLIC_REVIEW_LIMIT_STEP, PUBLIC_REVIEW_MAX_LIMIT } from '../lib/public-reviews';
@@ -140,6 +141,11 @@ function ReviewItem({ review, locale }: { review: ReviewResponse; locale: 'vi' |
       </div>
 
       <p className="text-sm leading-5 text-foreground/85">{review.content}</p>
+      <ReviewMediaGallery
+        items={review.media}
+        viewLabel={t('reviews.mediaView')}
+        viewerTitle={t('reviews.mediaViewerTitle')}
+      />
       <p className="text-sm leading-5 text-muted-foreground">
         {t('reviews.listingLabel', { title: review.listingTitle })}
       </p>
