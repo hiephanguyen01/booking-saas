@@ -107,7 +107,7 @@ export class CheckoutUseCase {
         });
       }
 
-      const config = await this.configs.findActive(tx, tenant.id);
+      const config = await this.configs.findActiveBase(tx, tenant.id);
       const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
       if (!settings.enabledMethods.includes(paymentMethod)) {
         throw new BadRequestException({

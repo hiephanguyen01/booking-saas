@@ -39,7 +39,7 @@ export class ExecuteAutomaticRefundUseCase {
       const payment = await this.payments.findSucceededByBooking(tx, refund.bookingId);
       if (!payment || payment.id !== refund.paymentId) return null;
       const gateway = await this.registry.resolveForTenant(tx, tenantId, payment.gateway);
-      const config = await this.configs.findActive(tx, tenantId);
+      const config = await this.configs.findActiveBase(tx, tenantId);
       return {
         refund,
         payment,

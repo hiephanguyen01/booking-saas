@@ -57,7 +57,7 @@ export class GatewayRegistry implements GatewayRegistryPort {
   ): Promise<PaymentGatewayPort> {
     const cfg = gateway
       ? await this.configs.findByGateway(tx, tenantId, gateway)
-      : await this.configs.findActive(tx, tenantId);
+      : await this.configs.findActiveBase(tx, tenantId);
     if (!cfg || cfg.gateway === 'mock') return this.mock;
     if (cfg.gateway === 'sepay') {
       return new SepayGatewayAdapter({

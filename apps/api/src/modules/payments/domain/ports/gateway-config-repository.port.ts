@@ -22,8 +22,10 @@ export interface UpsertGatewayConfigData {
 }
 
 export interface IGatewayConfigRepository {
-  /** The tenant's active gateway config (decrypted), or null → fall back to mock. */
-  findActive(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null>;
+  /** Every active gateway config (decrypted) for the tenant — base + wallets. */
+  findActiveAll(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord[]>;
+  /** Cổng BASE (sepay/payos/mock) đang active — tối đa 1; ví KHÔNG tính. */
+  findActiveBase(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null>;
   /** Provider-specific config, including inactive records needed by old webhooks. */
   findByGateway(
     tx: PrismaTx,
@@ -35,11 +37,12 @@ export interface IGatewayConfigRepository {
     tenantId: string,
     data: UpsertGatewayConfigData,
   ): Promise<GatewayConfigRecord>;
-  /** Turn off every active gateway for the tenant (disables checkout). */
-  deactivateAll(tx: PrismaTx, tenantId: string): Promise<void>;
+  /** Tắt 1 cổng (gateway) hoặc tắt hết (không truyền). */
+  deactivate(tx: PrismaTx, tenantId: string, gateway?: GatewayKey): Promise<void>;
   updateSettings(
     tx: PrismaTx,
     tenantId: string,
+    gateway: GatewayKey,
     settings: GatewayPaymentSettings,
   ): Promise<GatewayConfigRecord | null>;
 }

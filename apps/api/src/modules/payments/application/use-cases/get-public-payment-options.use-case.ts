@@ -18,8 +18,10 @@ export class GetPublicPaymentOptionsUseCase {
 
   async execute(host: string): Promise<PublicPaymentOptions> {
     const tenant = await this.resolveTenant.execute(host);
+    // TODO(Task 5): a wallet gateway alongside a base gateway should widen `methods`,
+    // not just the base config's settings. Kept to base-only for now to compile.
     const config = await this.tenantDb.forTenant(tenant.id, (tx) =>
-      this.configs.findActive(tx, tenant.id),
+      this.configs.findActiveBase(tx, tenant.id),
     );
     if (!config) {
       if (process.env.ALLOW_MOCK_PAYMENTS === 'true' && process.env.NODE_ENV !== 'production') {

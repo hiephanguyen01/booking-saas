@@ -56,7 +56,7 @@ export class ExecuteRefundUseCase {
         });
       }
 
-      const config = await this.configs.findActive(tx, tenantId);
+      const config = await this.configs.findActiveBase(tx, tenantId);
       const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
       // SePay only auto-voids a full card charge (no partial refunds).
       const isSepayCardFull =
