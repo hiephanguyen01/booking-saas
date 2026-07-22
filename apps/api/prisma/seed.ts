@@ -547,6 +547,7 @@ async function seedDemo(): Promise<void> {
   // zeros. Seed a small, idempotent scenario so GMV, gmv30d, bookings30d,
   // time-to-first-booking, overdue payouts, webhook failures and the
   // expiring-subscription queue are all demonstrably non-empty.
+  const healthBooking1CreatedAt = daysAgo(40);
   const reviewedBooking = await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -560,18 +561,12 @@ async function seedDemo(): Promise<void> {
     finalAmount: 700_000,
     paidAmount: 700_000,
     customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
-    createdAt: daysAgo(40), // first realized booking → sets time-to-first-booking
+    createdAt: healthBooking1CreatedAt, // first realized booking → sets time-to-first-booking
     startAt: atHour(daysAgo(39), 9),
     endAt: atHour(daysAgo(39), 11),
-    history: [
-      {
-        fromStatus: null,
-        toStatus: 'completed',
-        reason: 'Khởi tạo dữ liệu demo sức khỏe nền tảng.',
-        createdAt: daysAgo(40),
-      },
-    ],
+    history: bookingHistory(healthBooking1CreatedAt, 'completed'),
   });
+  const healthBooking2CreatedAt = daysAgo(12);
   await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -585,18 +580,12 @@ async function seedDemo(): Promise<void> {
     finalAmount: 500_000,
     paidAmount: 500_000,
     customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
-    createdAt: daysAgo(12),
-    startAt: atHour(daysFromNow(3), 14),
-    endAt: atHour(daysFromNow(3), 16),
-    history: [
-      {
-        fromStatus: null,
-        toStatus: 'confirmed',
-        reason: 'Khởi tạo dữ liệu demo sức khỏe nền tảng.',
-        createdAt: daysAgo(12),
-      },
-    ],
+    createdAt: healthBooking2CreatedAt,
+    startAt: atHour(daysFromNow(30), 14),
+    endAt: atHour(daysFromNow(30), 16),
+    history: bookingHistory(healthBooking2CreatedAt, 'confirmed'),
   });
+  const healthBooking3CreatedAt = daysAgo(4);
   await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -610,17 +599,73 @@ async function seedDemo(): Promise<void> {
     finalAmount: 1_800_000,
     paidAmount: 1_800_000,
     customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
-    createdAt: daysAgo(4),
+    createdAt: healthBooking3CreatedAt,
     startAt: atHour(daysAgo(3), 8),
     endAt: atHour(daysAgo(3), 12),
-    history: [
-      {
-        fromStatus: null,
-        toStatus: 'completed',
-        reason: 'Khởi tạo dữ liệu demo sức khỏe nền tảng.',
-        createdAt: daysAgo(4),
-      },
-    ],
+    history: bookingHistory(healthBooking3CreatedAt, 'completed'),
+  });
+
+  const pendingPaymentCreatedAt = daysAgo(1);
+  await seedBooking({
+    tenantId: tenant.id,
+    listingId: studioA.id,
+    partnerId: partner.id,
+    resourceId: studioA.resourceId,
+    customerId: customer.id,
+    cancellationPolicyId: cancelPolicy.id,
+    code: 'BK-DEMO-PAY',
+    idempotencyKey: 'seed-demo-booking-payment',
+    status: 'pending_payment',
+    finalAmount: 900_000,
+    paidAmount: 0,
+    expiresAt: daysFromNow(1),
+    customerNote: 'Chờ thanh toán để xác nhận lịch chụp sản phẩm.',
+    createdAt: pendingPaymentCreatedAt,
+    startAt: atHour(daysFromNow(31), 9),
+    endAt: atHour(daysFromNow(31), 11),
+    history: bookingHistory(pendingPaymentCreatedAt, 'pending_payment'),
+  });
+
+  const cancelledCreatedAt = daysAgo(10);
+  await seedBooking({
+    tenantId: tenant.id,
+    listingId: studioA.id,
+    partnerId: partner.id,
+    resourceId: studioA.resourceId,
+    customerId: customer.id,
+    cancellationPolicyId: cancelPolicy.id,
+    code: 'BK-DEMO-CANCEL',
+    idempotencyKey: 'seed-demo-booking-cancelled',
+    status: 'cancelled',
+    finalAmount: 1_200_000,
+    paidAmount: 600_000,
+    refundDueAmount: 600_000,
+    refundPercent: 100,
+    customerNote: 'Khách hàng hủy lịch và đang chờ hoàn tiền đặt cọc.',
+    createdAt: cancelledCreatedAt,
+    startAt: atHour(daysFromNow(12), 13),
+    endAt: atHour(daysFromNow(12), 15),
+    history: bookingHistory(cancelledCreatedAt, 'cancelled'),
+  });
+
+  const noShowCreatedAt = daysAgo(5);
+  await seedBooking({
+    tenantId: tenant.id,
+    listingId: studioA.id,
+    partnerId: partner.id,
+    resourceId: studioA.resourceId,
+    customerId: customer.id,
+    cancellationPolicyId: cancelPolicy.id,
+    code: 'BK-DEMO-NOSHOW',
+    idempotencyKey: 'seed-demo-booking-no-show',
+    status: 'no_show',
+    finalAmount: 750_000,
+    paidAmount: 750_000,
+    customerNote: 'Khách hàng không đến studio trong khung giờ đã đặt.',
+    createdAt: noShowCreatedAt,
+    startAt: atHour(daysAgo(2), 10),
+    endAt: atHour(daysAgo(2), 12),
+    history: bookingHistory(noShowCreatedAt, 'no_show'),
   });
 
   const demoReview = await prisma.review.upsert({
@@ -841,7 +886,7 @@ async function seedDemo(): Promise<void> {
   }
 
   console.log(
-    `Seeded demo tenant "${tenant.name}" (6 listing types, 120 listings across 5 locations, 5 studio groups, 10 photos per item, commission rules, WELCOME10) + themed tenant "Aperture Rentals" (trial expiring soon) + health fixtures (3 bookings, 1 overdue payout, 1 webhook failure) + an approved affiliate (affiliate@studiohub.vn) with referral link R-DEMO01.`,
+    `Seeded demo tenant "${tenant.name}" (6 listing types, 120 listings across 5 locations, 5 studio groups, 10 photos per item, commission rules, WELCOME10) + themed tenant "Aperture Rentals" (trial expiring soon) + booking-history fixtures covering 5 UI states (1 overdue payout, 1 webhook failure) + an approved affiliate (affiliate@studiohub.vn) with referral link R-DEMO01.`,
   );
 }
 
@@ -858,6 +903,39 @@ type SeedBookingHistoryStep = {
   toStatus: SeedBookingStatus | 'draft';
   reason: string;
   createdAt: Date;
+};
+
+const minutesAfter = (value: Date, minutes: number) =>
+  new Date(value.getTime() + minutes * 60 * 1000);
+
+const bookingHistory = (
+  createdAt: Date,
+  finalStatus: SeedBookingStatus,
+): SeedBookingHistoryStep[] => {
+  const steps: SeedBookingHistoryStep[] = [
+    { fromStatus: null, toStatus: 'draft', reason: 'seed booking created', createdAt },
+  ];
+  steps.push({
+    fromStatus: 'draft',
+    toStatus: 'pending_payment',
+    reason: 'seed booking awaiting payment',
+    createdAt: minutesAfter(createdAt, 5),
+  });
+  if (finalStatus === 'pending_payment') return steps;
+  steps.push({
+    fromStatus: 'pending_payment',
+    toStatus: 'confirmed',
+    reason: 'seed payment confirmed',
+    createdAt: minutesAfter(createdAt, 10),
+  });
+  if (finalStatus === 'confirmed') return steps;
+  steps.push({
+    fromStatus: 'confirmed',
+    toStatus: finalStatus,
+    reason: `seed booking ${finalStatus}`,
+    createdAt: minutesAfter(createdAt, 15),
+  });
+  return steps;
 };
 
 type SeedBookingInput = {
