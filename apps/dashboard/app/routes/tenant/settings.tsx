@@ -35,7 +35,7 @@ import { PartnerPromotionsCard } from '~/features/tenant/components/settings/par
 import { TenantDefaultCancellationPolicyCard } from '~/features/tenant/components/settings/tenant-default-cancellation-policy-card';
 import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-domains-card';
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
-import { SepayGatewayCard } from '~/features/tenant/components/settings/sepay-gateway-card';
+import { PaymentGatewayCard } from '~/features/tenant/components/settings/payment-gateway-card';
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
 import { PaymentMethodSettingsCard } from '~/features/tenant/components/settings/payment-method-settings-card';
 import { SettingsOverview } from '~/features/tenant/components/settings/settings-overview';
@@ -52,6 +52,8 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   'cancellation-policy-update': 'operations',
   'cancellation-policy-delete': 'operations',
   sepay: 'payments',
+  momo: 'payments',
+  'gateway-off': 'payments',
   'payment-settings': 'payments',
   'payout-policy': 'payouts',
 };
@@ -345,13 +347,16 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
               forceMount
               className="w-full space-y-5 data-[state=inactive]:hidden"
             >
-              <SepayGatewayCard
+              <PaymentGatewayCard
                 config={gatewayConfig}
-                loadError={gatewayError}
                 readOnly={readOnly}
-                saved={okFor('sepay')}
-                error={errFor('sepay')}
-                fieldErrors={fieldErrorsFor('sepay')}
+                sepaySaved={okFor('sepay')}
+                sepayError={errFor('sepay')}
+                sepayFieldErrors={fieldErrorsFor('sepay')}
+                momoSaved={okFor('momo')}
+                momoError={errFor('momo')}
+                momoFieldErrors={fieldErrorsFor('momo')}
+                offError={errFor('gateway-off')}
               />
               {!gatewayError ? (
                 <PaymentMethodSettingsCard

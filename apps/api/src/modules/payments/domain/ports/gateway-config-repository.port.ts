@@ -35,6 +35,8 @@ export interface IGatewayConfigRepository {
     tenantId: string,
     data: UpsertGatewayConfigData,
   ): Promise<GatewayConfigRecord>;
+  /** Turn off every active gateway for the tenant (disables checkout). */
+  deactivateAll(tx: PrismaTx, tenantId: string): Promise<void>;
   updateSettings(
     tx: PrismaTx,
     tenantId: string,

@@ -58,12 +58,15 @@ export class ExecuteRefundUseCase {
 
       const config = await this.configs.findActive(tx, tenantId);
       const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
-      const automatic =
-        settings.refundStrategy === 'automatic_preferred' &&
+      const isSepayCardFull =
         payment.gateway === 'sepay' &&
         payment.paymentMethod === 'CARD' &&
-        amount === payment.amount &&
-        reason !== 'security_deposit';
+        amount === payment.amount;
+      const isMomo = payment.gateway === 'momo';
+      const automatic =
+        settings.refundStrategy === 'automatic_preferred' &&
+        reason !== 'security_deposit' &&
+        (isSepayCardFull || isMomo);
 
       const dueAt = automatic
         ? null

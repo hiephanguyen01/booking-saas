@@ -7,6 +7,7 @@ import {
   type IGatewayConfigRepository,
 } from '../domain/ports/gateway-config-repository.port';
 import { MockGatewayAdapter } from './gateways/mock-gateway.adapter';
+import { MomoGatewayAdapter } from './gateways/momo-gateway.adapter';
 import { PayosGatewayAdapter } from './gateways/payos-gateway.adapter';
 import { SepayGatewayAdapter } from './gateways/sepay-gateway.adapter';
 
@@ -33,6 +34,15 @@ export class GatewayRegistry implements GatewayRegistryPort {
     if (key === 'payos') {
       return new PayosGatewayAdapter({ clientId: '', apiKey: '', checksumKey: '' });
     }
+    if (key === 'momo') {
+      // peekReference only parses the IPN body — no credentials needed.
+      return new MomoGatewayAdapter({
+        partnerCode: '',
+        accessKey: '',
+        secretKey: '',
+        environment: 'sandbox',
+      });
+    }
     return this.mock;
   }
 
@@ -48,6 +58,14 @@ export class GatewayRegistry implements GatewayRegistryPort {
     if (cfg.gateway === 'sepay') {
       return new SepayGatewayAdapter({
         merchantId: cfg.credentials.merchantId ?? '',
+        secretKey: cfg.credentials.secretKey ?? '',
+        environment: cfg.environment,
+      });
+    }
+    if (cfg.gateway === 'momo') {
+      return new MomoGatewayAdapter({
+        partnerCode: cfg.credentials.partnerCode ?? '',
+        accessKey: cfg.credentials.accessKey ?? '',
         secretKey: cfg.credentials.secretKey ?? '',
         environment: cfg.environment,
       });

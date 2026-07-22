@@ -22,6 +22,7 @@ import {
   GATEWAY_REGISTRY,
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
+import { MOMO_MAX_PAYMENT_VND } from '../../domain/gateway-limits';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
@@ -130,6 +131,28 @@ export class CheckoutUseCase {
       const amount = booking.depositAmount + booking.securityDeposit;
       const kind = booking.depositAmount >= booking.finalAmount ? 'full' : 'deposit';
       const origin = storefrontOrigin(host); // the tenant's own domain (from the Host the customer used)
+      // No active gateway → registry falls back to mock. That is only acceptable in
+      // dev/test; in production, refuse rather than silently take fake payments.
+      if (
+        gateway.key === 'mock' &&
+        process.env.NODE_ENV === 'production' &&
+        process.env.ALLOW_MOCK_PAYMENTS !== 'true'
+      ) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'NO_ACTIVE_GATEWAY',
+          message: 'Cửa hàng chưa bật cổng thanh toán',
+        });
+      }
+      // MoMo caps a single payment/refund at 50M VND. Reject over-limit orders up
+      // front so every MoMo booking stays fully auto-refundable (refund ≤ amount).
+      if (gateway.key === 'momo' && amount > MOMO_MAX_PAYMENT_VND) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'AMOUNT_EXCEEDS_GATEWAY_LIMIT',
+          message: 'Đơn hàng vượt hạn mức thanh toán MoMo (tối đa 50.000.000đ)',
+        });
+      }
       const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
       const bookingReturnUrl = `${origin}/bookings/${booking.code}`;
       const created = await gateway.createPayment({

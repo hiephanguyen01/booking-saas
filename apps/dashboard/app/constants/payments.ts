@@ -17,11 +17,13 @@ export const PAYMENT_KIND_LABEL: Record<PaymentHistoryItem['kind'], string> = {
 export const PAYMENT_GATEWAY_LABEL: Record<PaymentHistoryItem['gateway'], string> = {
   sepay: 'SePay',
   payos: 'PayOS',
+  momo: 'MoMo',
   mock: 'Giả lập',
 };
 
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   BANK_TRANSFER: 'Chuyển khoản ngân hàng',
   NAPAS_BANK_TRANSFER: 'Napas',
+  MOMO_WALLET: 'Ví MoMo',
   CARD: 'Visa / Mastercard / JCB',
 };

@@ -1,12 +1,13 @@
 import { type GatewayConfigResponse } from '@booking/contracts';
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Put, UseGuards } from '@nestjs/common';
+import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
 import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway-config.use-case';
+import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
 import { UpdateGatewayPaymentSettingsUseCase } from '../../application/use-cases/update-gateway-payment-settings.use-case';
 import { toGatewayConfigResponse } from '../../application/payments.mapper';
 import {
@@ -22,6 +23,7 @@ export class TenantGatewayController {
   constructor(
     private readonly getConfig: GetGatewayConfigUseCase,
     private readonly upsert: UpsertGatewayConfigUseCase,
+    private readonly deactivate: DeactivateGatewayUseCase,
     private readonly updateSettings: UpdateGatewayPaymentSettingsUseCase,
   ) {}
 
@@ -41,6 +43,15 @@ export class TenantGatewayController {
   @ApiOkResponse({ type: GatewayConfigResponseDto })
   async put(@Body() input: UpsertGatewayConfigDto): Promise<GatewayConfigResponse> {
     return toGatewayConfigResponse(await this.upsert.execute(input));
+  }
+
+  @RequirePermissions('tenant.settings.manage')
+  @Delete()
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Disable the tenant payment gateway (turn off checkout)' })
+  @ApiNoContentResponse()
+  async remove(): Promise<void> {
+    await this.deactivate.execute();
   }
 
   @RequirePermissions('tenant.settings.manage')

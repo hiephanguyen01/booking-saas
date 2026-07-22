@@ -1,0 +1,22 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
+import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import {
+  GATEWAY_CONFIG_REPOSITORY,
+  type IGatewayConfigRepository,
+} from '../../domain/ports/gateway-config-repository.port';
+
+/** Turn off the tenant's payment gateway ("Tắt", §11.1) — checkout then rejects. */
+@Injectable()
+export class DeactivateGatewayUseCase {
+  constructor(
+    @Inject(GATEWAY_CONFIG_REPOSITORY) private readonly configs: IGatewayConfigRepository,
+    private readonly tenantContext: TenantContextService,
+    private readonly tenantDb: TenantDbService,
+  ) {}
+
+  execute(): Promise<void> {
+    const tenantId = this.tenantContext.tenantIdOrThrow();
+    return this.tenantDb.forTenant(tenantId, (tx) => this.configs.deactivateAll(tx, tenantId));
+  }
+}

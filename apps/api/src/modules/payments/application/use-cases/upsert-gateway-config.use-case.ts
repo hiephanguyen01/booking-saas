@@ -1,5 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { sepayGatewayConfigInputSchema, type UpsertGatewayConfigInput } from '@booking/contracts';
+import {
+  momoGatewayConfigInputSchema,
+  sepayGatewayConfigInputSchema,
+  type UpsertGatewayConfigInput,
+} from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
@@ -21,12 +25,14 @@ export class UpsertGatewayConfigUseCase {
     const validated =
       input.gateway === 'sepay'
         ? sepayGatewayConfigInputSchema.safeParse(input)
-        : { success: true as const, data: input };
+        : input.gateway === 'momo'
+          ? momoGatewayConfigInputSchema.safeParse(input)
+          : { success: true as const, data: input };
     if (!validated.success) {
       throw new BadRequestException({
         statusCode: 400,
         code: 'INVALID_GATEWAY_CONFIG',
-        message: 'Cấu hình SePay không hợp lệ',
+        message: 'Cấu hình cổng thanh toán không hợp lệ',
         details: validated.error.flatten(),
       });
     }

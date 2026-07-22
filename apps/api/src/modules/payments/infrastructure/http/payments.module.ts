@@ -23,6 +23,7 @@ import { ExecuteRefundUseCase } from '../../application/use-cases/execute-refund
 import { GetPaymentStatusUseCase } from '../../application/use-cases/get-payment-status.use-case';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
 import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway-config.use-case';
+import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
 import { ListTenantPaymentsUseCase } from '../../application/use-cases/list-tenant-payments.use-case';
 import { ListPlatformPaymentsUseCase } from '../../application/use-cases/list-platform-payments.use-case';
 import { ConfirmManualRefundUseCase } from '../../application/use-cases/confirm-manual-refund.use-case';
@@ -60,6 +61,7 @@ import { PlatformPaymentController } from './platform-payment.controller';
     GetPaymentStatusUseCase,
     UpsertGatewayConfigUseCase,
     GetGatewayConfigUseCase,
+    DeactivateGatewayUseCase,
     ListTenantPaymentsUseCase,
     ListPlatformPaymentsUseCase,
     ConfirmManualRefundUseCase,

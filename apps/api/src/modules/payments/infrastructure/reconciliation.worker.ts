@@ -81,9 +81,14 @@ export class ReconciliationWorker implements OnModuleInit, OnApplicationShutdown
             );
             return false;
           }
-          const succeeded = await this.payments.markSucceeded(tx, p.id, {
-            reconciled: true,
-          });
+          const succeeded = await this.payments.markSucceeded(
+            tx,
+            p.id,
+            { reconciled: true },
+            // Persist the provider txn id when the status query exposes it (MoMo),
+            // so a payment recovered without an IPN stays refundable.
+            status.gatewayTxnId ? { gatewayTxnId: status.gatewayTxnId } : undefined,
+          );
           if (succeeded) {
             await this.outbox.emit(tx, {
               tenantId: p.tenantId,

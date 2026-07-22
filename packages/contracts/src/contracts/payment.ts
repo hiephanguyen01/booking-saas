@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from './common';
 
-export const gatewayKeySchema = z.enum(['sepay', 'payos', 'mock']);
+export const gatewayKeySchema = z.enum(['sepay', 'payos', 'momo', 'mock']);
 export type GatewayKey = z.infer<typeof gatewayKeySchema>;
 
 export const gatewayEnvironmentSchema = z.enum(['sandbox', 'production']);
@@ -53,6 +53,26 @@ export const sepayGatewaySettingsFormSchema = z.object({
   secretKey: z.string().trim().min(16, 'Secret key phải có ít nhất 16 ký tự').max(500),
 });
 export type SepayGatewaySettingsForm = z.infer<typeof sepayGatewaySettingsFormSchema>;
+
+/** MoMo credentials (partnerCode/accessKey/secretKey from MoMo Business). */
+export const momoGatewayConfigInputSchema = z.object({
+  gateway: z.literal('momo'),
+  environment: gatewayEnvironmentSchema,
+  credentials: z.object({
+    partnerCode: z.string().trim().min(1, 'Partner Code là bắt buộc').max(100),
+    accessKey: z.string().trim().min(1, 'Access Key là bắt buộc').max(200),
+    secretKey: z.string().trim().min(16, 'Secret Key phải có ít nhất 16 ký tự').max(500),
+  }),
+});
+export type MomoGatewayConfigInput = z.infer<typeof momoGatewayConfigInputSchema>;
+
+export const momoGatewaySettingsFormSchema = z.object({
+  environment: gatewayEnvironmentSchema,
+  partnerCode: z.string().trim().min(1, 'Partner Code là bắt buộc').max(100),
+  accessKey: z.string().trim().min(1, 'Access Key là bắt buộc').max(200),
+  secretKey: z.string().trim().min(16, 'Secret Key phải có ít nhất 16 ký tự').max(500),
+});
+export type MomoGatewaySettingsForm = z.infer<typeof momoGatewaySettingsFormSchema>;
 
 /** Tenant admin stores gateway credentials (encrypted at rest, §11.1). */
 export const upsertGatewayConfigInputSchema = z.object({
@@ -107,7 +127,10 @@ export const gatewayConfigResponseSchema = z.object({
   gateway: gatewayKeySchema,
   environment: gatewayEnvironmentSchema,
   isActive: z.boolean(),
+  /** SePay merchant id (null for other gateways). */
   merchantId: z.string().nullable(),
+  /** MoMo partner code (null for other gateways). */
+  partnerCode: z.string().nullable().default(null),
   settings: gatewayPaymentSettingsSchema,
 });
 export type GatewayConfigResponse = z.infer<typeof gatewayConfigResponseSchema>;

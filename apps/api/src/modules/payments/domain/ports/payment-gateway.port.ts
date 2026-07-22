@@ -7,7 +7,7 @@
 import type { CheckoutDestination } from '@booking/contracts';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 
-export type GatewayKey = 'sepay' | 'payos' | 'mock';
+export type GatewayKey = 'sepay' | 'payos' | 'momo' | 'mock';
 export type WebhookEvent = 'succeeded' | 'failed' | 'expired' | 'refunded';
 
 export interface CreatePaymentInput {
@@ -54,6 +54,12 @@ export interface RefundResult {
 export interface PaymentStatusResult {
   status: 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
   amountVnd: bigint;
+  /**
+   * Provider transaction id, when the status query exposes it (MoMo returns `transId`).
+   * Lets reconciliation persist it for a payment recovered without an IPN, so a later
+   * refund still has the original txn id to target.
+   */
+  gatewayTxnId?: string;
 }
 
 export interface PaymentGatewayPort {

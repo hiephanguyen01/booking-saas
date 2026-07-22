@@ -1,5 +1,6 @@
 import type {
   AddDomainInput,
+  MomoGatewaySettingsForm,
   SepayGatewaySettingsForm,
   ThemeConfigInput,
 } from '@booking/contracts';
@@ -42,6 +43,43 @@ export const sepayGatewayFields: FieldConfig<SepayGatewaySettingsForm>[] = [
     label: 'Merchant Secret Key',
     description: 'Dùng để ký checkout, gọi API và xác thực IPN từ SePay.',
     placeholder: 'Nhập Merchant Secret Key',
+    autoComplete: 'new-password',
+    required: true,
+  },
+];
+
+export const momoGatewayFields: FieldConfig<MomoGatewaySettingsForm>[] = [
+  {
+    name: 'environment',
+    type: 'radio',
+    label: 'Môi trường',
+    variant: 'segmented',
+    options: [
+      { label: 'Sandbox', value: 'sandbox' },
+      { label: 'Production', value: 'production' },
+    ],
+    colSpan: 2,
+  },
+  {
+    name: 'partnerCode',
+    type: 'text',
+    label: 'Partner Code',
+    placeholder: 'MOMO…',
+    required: true,
+  },
+  {
+    name: 'accessKey',
+    type: 'text',
+    label: 'Access Key',
+    placeholder: 'Access Key từ MoMo Business',
+    required: true,
+  },
+  {
+    name: 'secretKey',
+    type: 'password',
+    label: 'Secret Key',
+    description: 'Dùng để ký create/refund và xác thực IPN từ MoMo.',
+    placeholder: 'Nhập Secret Key',
     autoComplete: 'new-password',
     required: true,
   },
