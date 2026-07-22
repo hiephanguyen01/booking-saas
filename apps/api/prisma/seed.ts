@@ -8,6 +8,8 @@ import {
 } from '../src/modules/identity-access/domain/permission-catalog';
 import { seedAdministrativeDivisions } from './seed-administrative-divisions';
 import { removeLegacySeedListing, seedDemoCatalog } from './seed-demo-catalog';
+import { percentOfBps } from '../src/shared/money/money';
+import { addMinutes, wallClockInZone, zonedTimeToUtc } from '../src/shared/time/time';
 
 /**
  * Seeds the permission catalog + system roles (idempotent), and in dev a
@@ -94,10 +96,13 @@ async function seedDemo(): Promise<void> {
   const seedNow = Date.now();
   const daysAgo = (days: number): Date => new Date(seedNow - days * 24 * 60 * 60 * 1000);
   const daysFromNow = (days: number): Date => new Date(seedNow + days * 24 * 60 * 60 * 1000);
-  const atHour = (day: Date, hour: number): Date => {
-    const d = new Date(day);
-    d.setUTCHours(hour, 0, 0, 0);
-    return d;
+  const demoTimezone = 'Asia/Ho_Chi_Minh';
+  const atLocalHour = (date: Date, hour: number): Date => {
+    const wall = wallClockInZone(date, demoTimezone);
+    return zonedTimeToUtc(
+      { year: wall.year, month: wall.month, day: wall.day, hour, minute: 0 },
+      demoTimezone,
+    );
   };
   const tenantCreatedAt = daysAgo(45);
   const storagePublicUrl = (process.env.S3_PUBLIC_URL ?? 'http://localhost:9000/bookify').replace(
@@ -548,6 +553,8 @@ async function seedDemo(): Promise<void> {
   // time-to-first-booking, overdue payouts, webhook failures and the
   // expiring-subscription queue are all demonstrably non-empty.
   const healthBooking1CreatedAt = daysAgo(40);
+  const healthBooking1StartAt = atLocalHour(daysAgo(39), 9);
+  const healthBooking1EndAt = atLocalHour(daysAgo(39), 11);
   const reviewedBooking = await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -558,15 +565,22 @@ async function seedDemo(): Promise<void> {
     code: 'BK-HEALTH01',
     idempotencyKey: 'seed-health-booking-1',
     status: 'completed',
-    finalAmount: 700_000,
-    paidAmount: 700_000,
+    finalAmount: 700_000n,
+    paidAmount: 700_000n,
     customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
     createdAt: healthBooking1CreatedAt, // first realized booking → sets time-to-first-booking
-    startAt: atHour(daysAgo(39), 9),
-    endAt: atHour(daysAgo(39), 11),
-    history: bookingHistory(healthBooking1CreatedAt, 'completed'),
+    startAt: healthBooking1StartAt,
+    endAt: healthBooking1EndAt,
+    history: bookingHistory(
+      healthBooking1CreatedAt,
+      healthBooking1StartAt,
+      healthBooking1EndAt,
+      'completed',
+    ),
   });
   const healthBooking2CreatedAt = daysAgo(12);
+  const healthBooking2StartAt = atLocalHour(daysFromNow(30), 14);
+  const healthBooking2EndAt = atLocalHour(daysFromNow(30), 16);
   await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -577,15 +591,22 @@ async function seedDemo(): Promise<void> {
     code: 'BK-HEALTH02',
     idempotencyKey: 'seed-health-booking-2',
     status: 'confirmed', // upcoming → constrained by the GiST exclusion (future slot)
-    finalAmount: 500_000,
-    paidAmount: 500_000,
+    finalAmount: 500_000n,
+    paidAmount: 500_000n,
     customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
     createdAt: healthBooking2CreatedAt,
-    startAt: atHour(daysFromNow(30), 14),
-    endAt: atHour(daysFromNow(30), 16),
-    history: bookingHistory(healthBooking2CreatedAt, 'confirmed'),
+    startAt: healthBooking2StartAt,
+    endAt: healthBooking2EndAt,
+    history: bookingHistory(
+      healthBooking2CreatedAt,
+      healthBooking2StartAt,
+      healthBooking2EndAt,
+      'confirmed',
+    ),
   });
   const healthBooking3CreatedAt = daysAgo(4);
+  const healthBooking3StartAt = atLocalHour(daysAgo(3), 10);
+  const healthBooking3EndAt = atLocalHour(daysAgo(3), 14);
   await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -596,16 +617,23 @@ async function seedDemo(): Promise<void> {
     code: 'BK-HEALTH03',
     idempotencyKey: 'seed-health-booking-3',
     status: 'completed',
-    finalAmount: 1_800_000,
-    paidAmount: 1_800_000,
+    finalAmount: 1_800_000n,
+    paidAmount: 1_800_000n,
     customerNote: 'Dữ liệu demo sức khỏe nền tảng.',
     createdAt: healthBooking3CreatedAt,
-    startAt: atHour(daysAgo(3), 8),
-    endAt: atHour(daysAgo(3), 12),
-    history: bookingHistory(healthBooking3CreatedAt, 'completed'),
+    startAt: healthBooking3StartAt,
+    endAt: healthBooking3EndAt,
+    history: bookingHistory(
+      healthBooking3CreatedAt,
+      healthBooking3StartAt,
+      healthBooking3EndAt,
+      'completed',
+    ),
   });
 
   const pendingPaymentCreatedAt = daysAgo(1);
+  const pendingPaymentStartAt = atLocalHour(daysFromNow(31), 9);
+  const pendingPaymentEndAt = atLocalHour(daysFromNow(31), 11);
   await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -616,17 +644,24 @@ async function seedDemo(): Promise<void> {
     code: 'BK-DEMO-PAY',
     idempotencyKey: 'seed-demo-booking-payment',
     status: 'pending_payment',
-    finalAmount: 900_000,
-    paidAmount: 0,
+    finalAmount: 900_000n,
+    paidAmount: 0n,
     expiresAt: daysFromNow(1),
     customerNote: 'Chờ thanh toán để xác nhận lịch chụp sản phẩm.',
     createdAt: pendingPaymentCreatedAt,
-    startAt: atHour(daysFromNow(31), 9),
-    endAt: atHour(daysFromNow(31), 11),
-    history: bookingHistory(pendingPaymentCreatedAt, 'pending_payment'),
+    startAt: pendingPaymentStartAt,
+    endAt: pendingPaymentEndAt,
+    history: bookingHistory(
+      pendingPaymentCreatedAt,
+      pendingPaymentStartAt,
+      pendingPaymentEndAt,
+      'pending_payment',
+    ),
   });
 
   const cancelledCreatedAt = daysAgo(10);
+  const cancelledStartAt = atLocalHour(daysFromNow(12), 13);
+  const cancelledEndAt = atLocalHour(daysFromNow(12), 15);
   await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -637,18 +672,20 @@ async function seedDemo(): Promise<void> {
     code: 'BK-DEMO-CANCEL',
     idempotencyKey: 'seed-demo-booking-cancelled',
     status: 'cancelled',
-    finalAmount: 1_200_000,
-    paidAmount: 600_000,
-    refundDueAmount: 600_000,
+    finalAmount: 1_200_000n,
+    paidAmount: 600_000n,
+    refundDueAmount: 600_000n,
     refundPercent: 100,
     customerNote: 'Khách hàng hủy lịch và đang chờ hoàn tiền đặt cọc.',
     createdAt: cancelledCreatedAt,
-    startAt: atHour(daysFromNow(12), 13),
-    endAt: atHour(daysFromNow(12), 15),
-    history: bookingHistory(cancelledCreatedAt, 'cancelled'),
+    startAt: cancelledStartAt,
+    endAt: cancelledEndAt,
+    history: bookingHistory(cancelledCreatedAt, cancelledStartAt, cancelledEndAt, 'cancelled'),
   });
 
   const noShowCreatedAt = daysAgo(5);
+  const noShowStartAt = atLocalHour(daysAgo(2), 10);
+  const noShowEndAt = atLocalHour(daysAgo(2), 12);
   await seedBooking({
     tenantId: tenant.id,
     listingId: studioA.id,
@@ -659,18 +696,19 @@ async function seedDemo(): Promise<void> {
     code: 'BK-DEMO-NOSHOW',
     idempotencyKey: 'seed-demo-booking-no-show',
     status: 'no_show',
-    finalAmount: 750_000,
-    paidAmount: 750_000,
+    finalAmount: 750_000n,
+    paidAmount: 750_000n,
     customerNote: 'Khách hàng không đến studio trong khung giờ đã đặt.',
     createdAt: noShowCreatedAt,
-    startAt: atHour(daysAgo(2), 10),
-    endAt: atHour(daysAgo(2), 12),
-    history: bookingHistory(noShowCreatedAt, 'no_show'),
+    startAt: noShowStartAt,
+    endAt: noShowEndAt,
+    history: bookingHistory(noShowCreatedAt, noShowStartAt, noShowEndAt, 'no_show'),
   });
 
+  const demoReviewCreatedAt = addMinutes(healthBooking1EndAt, 60);
   const demoReview = await prisma.review.upsert({
     where: { bookingId: reviewedBooking.id },
-    update: {},
+    update: { createdAt: demoReviewCreatedAt },
     create: {
       tenantId: tenant.id,
       bookingId: reviewedBooking.id,
@@ -681,12 +719,13 @@ async function seedDemo(): Promise<void> {
       rating: 5,
       content:
         'Không gian đúng như hình, thiết bị sạch và nhân viên hỗ trợ set up rất nhanh. Mình sẽ quay lại cho buổi chụp tiếp theo.',
-      createdAt: daysAgo(38),
+      createdAt: demoReviewCreatedAt,
     },
   });
+  const demoReviewReplyCreatedAt = addMinutes(demoReviewCreatedAt, 60);
   await prisma.reviewReply.upsert({
     where: { reviewId: demoReview.id },
-    update: {},
+    update: { createdAt: demoReviewReplyCreatedAt },
     create: {
       tenantId: tenant.id,
       reviewId: demoReview.id,
@@ -694,7 +733,7 @@ async function seedDemo(): Promise<void> {
       authorUserId: partnerUser.id,
       content:
         'Cảm ơn bạn đã tin tưởng Giang Studio. Đội ngũ rất vui khi buổi chụp diễn ra thuận lợi và mong sớm được đón bạn trở lại.',
-      createdAt: daysAgo(37),
+      createdAt: demoReviewReplyCreatedAt,
     },
   });
   await prisma.listing.update({
@@ -905,13 +944,23 @@ type SeedBookingHistoryStep = {
   createdAt: Date;
 };
 
-const minutesAfter = (value: Date, minutes: number) =>
-  new Date(value.getTime() + minutes * 60 * 1000);
-
 const bookingHistory = (
   createdAt: Date,
+  startAt: Date,
+  endAt: Date,
   finalStatus: SeedBookingStatus,
 ): SeedBookingHistoryStep[] => {
+  const pendingPaymentAt = addMinutes(createdAt, 5);
+  const confirmedAt = addMinutes(createdAt, 10);
+  if (
+    pendingPaymentAt >= startAt ||
+    (finalStatus !== 'pending_payment' && confirmedAt >= startAt)
+  ) {
+    throw new Error(
+      `Seed booking ${finalStatus} lifecycle must complete before its service starts`,
+    );
+  }
+
   const steps: SeedBookingHistoryStep[] = [
     { fromStatus: null, toStatus: 'draft', reason: 'seed booking created', createdAt },
   ];
@@ -919,21 +968,31 @@ const bookingHistory = (
     fromStatus: 'draft',
     toStatus: 'pending_payment',
     reason: 'seed booking awaiting payment',
-    createdAt: minutesAfter(createdAt, 5),
+    createdAt: pendingPaymentAt,
   });
   if (finalStatus === 'pending_payment') return steps;
   steps.push({
     fromStatus: 'pending_payment',
     toStatus: 'confirmed',
     reason: 'seed payment confirmed',
-    createdAt: minutesAfter(createdAt, 10),
+    createdAt: confirmedAt,
   });
   if (finalStatus === 'confirmed') return steps;
+
+  const terminalAt =
+    finalStatus === 'completed' || finalStatus === 'no_show'
+      ? addMinutes(endAt, 5)
+      : addMinutes(createdAt, 15);
+  if (terminalAt <= confirmedAt || (finalStatus === 'cancelled' && terminalAt >= startAt)) {
+    throw new Error(
+      `Seed booking ${finalStatus} terminal transition is out of chronological order`,
+    );
+  }
   steps.push({
     fromStatus: 'confirmed',
     toStatus: finalStatus,
     reason: `seed booking ${finalStatus}`,
-    createdAt: minutesAfter(createdAt, 15),
+    createdAt: terminalAt,
   });
   return steps;
 };
@@ -948,9 +1007,9 @@ type SeedBookingInput = {
   code: string;
   idempotencyKey: string;
   status: SeedBookingStatus;
-  finalAmount: number;
-  paidAmount: number;
-  refundDueAmount?: number;
+  finalAmount: bigint;
+  paidAmount: bigint;
+  refundDueAmount?: bigint;
   refundPercent?: number;
   expiresAt?: Date;
   customerNote: string;
@@ -967,7 +1026,17 @@ type SeedBookingInput = {
  * Idempotent on `(tenantId, idempotencyKey)`.
  */
 async function seedBooking(input: SeedBookingInput) {
-  const amount = BigInt(input.finalAmount);
+  const amount = input.finalAmount;
+  const durationMs = input.endAt.getTime() - input.startAt.getTime();
+  const durationHours = durationMs / (60 * 60 * 1000);
+  if (!Number.isInteger(durationHours) || durationHours <= 0) {
+    throw new Error(`Seed booking ${input.code} must span a positive whole number of hours`);
+  }
+  const unitPrice = amount / BigInt(durationHours);
+  if (unitPrice * BigInt(durationHours) !== amount) {
+    throw new Error(`Seed booking ${input.code} amount must divide evenly across its hourly slot`);
+  }
+  const depositAmount = percentOfBps(amount, 5_000);
   const bookingData = {
     listingId: input.listingId,
     partnerId: input.partnerId,
@@ -975,12 +1044,11 @@ async function seedBooking(input: SeedBookingInput) {
     customerId: input.customerId,
     cancellationPolicyId: input.cancellationPolicyId,
     bookingMode: 'hourly' as const,
-    status: input.status,
     totalAmount: amount,
     finalAmount: amount,
-    depositAmount: amount / 2n,
-    paidAmount: BigInt(input.paidAmount),
-    refundDueAmount: input.refundDueAmount === undefined ? null : BigInt(input.refundDueAmount),
+    depositAmount,
+    paidAmount: input.paidAmount,
+    refundDueAmount: input.refundDueAmount ?? null,
     refundPercent: input.refundPercent ?? null,
     expiresAt: input.expiresAt ?? null,
     customerNote: input.customerNote,
@@ -990,12 +1058,19 @@ async function seedBooking(input: SeedBookingInput) {
       { hoursBefore: 0, refundPercent: 0 },
     ],
     pricingSnapshot: {
+      currency: 'VND',
+      mode: 'hourly',
+      subtotal: amount.toString(),
+      regularSubtotal: amount.toString(),
+      savingsAmount: '0',
+      depositAmount: depositAmount.toString(),
+      securityDeposit: '0',
       lineItems: [
         {
           label: 'Thuê Studio A — Hàn Quốc',
-          quantity: 2,
-          unitPrice: (amount / 2n).toString(),
-          regularUnitPrice: (amount / 2n).toString(),
+          quantity: durationHours,
+          unitPrice: unitPrice.toString(),
+          regularUnitPrice: unitPrice.toString(),
           amount: amount.toString(),
           regularAmount: amount.toString(),
         },
@@ -1004,42 +1079,62 @@ async function seedBooking(input: SeedBookingInput) {
     createdAt: input.createdAt,
   };
 
-  const existing = await prisma.booking.findFirst({
-    where: { tenantId: input.tenantId, idempotencyKey: input.idempotencyKey },
-  });
-  const booking = existing
-    ? await prisma.booking.update({
+  return prisma.$transaction(async (tx) => {
+    const listing = await tx.listing.findUniqueOrThrow({
+      where: { id: input.listingId },
+      select: { bufferBefore: true, bufferAfter: true },
+    });
+    const blockedStartAt = addMinutes(input.startAt, -listing.bufferBefore);
+    const blockedEndAt = addMinutes(input.endAt, listing.bufferAfter);
+    const existing = await tx.booking.findFirst({
+      where: { tenantId: input.tenantId, idempotencyKey: input.idempotencyKey },
+    });
+
+    let booking;
+    if (existing) {
+      // Temporarily leave the exclusion-constraint predicate before moving a
+      // previously live row. The transaction makes this neutral state invisible.
+      await tx.booking.update({ where: { id: existing.id }, data: { status: 'cancelled' } });
+      booking = await tx.booking.update({
         where: { id: existing.id },
         data: { code: input.code, ...bookingData },
-      })
-    : await prisma.booking.create({
+      });
+    } else {
+      booking = await tx.booking.create({
         data: {
           tenantId: input.tenantId,
           code: input.code,
           idempotencyKey: input.idempotencyKey,
+          status: 'cancelled',
           ...bookingData,
         },
       });
+    }
 
-  await prisma.$executeRaw`
-    UPDATE bookings
-       SET timeslot = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)'),
-           blocked_period = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)')
-     WHERE id = ${booking.id}::uuid`;
+    await tx.$executeRaw`
+      UPDATE bookings
+         SET timeslot = tstzrange(${input.startAt}::timestamptz, ${input.endAt}::timestamptz, '[)'),
+             blocked_period = tstzrange(${blockedStartAt}::timestamptz, ${blockedEndAt}::timestamptz, '[)')
+       WHERE id = ${booking.id}::uuid`;
 
-  await prisma.bookingStatusHistory.deleteMany({ where: { bookingId: booking.id } });
-  await prisma.bookingStatusHistory.createMany({
-    data: input.history.map((step) => ({
-      tenantId: input.tenantId,
-      bookingId: booking.id,
-      fromStatus: step.fromStatus,
-      toStatus: step.toStatus,
-      reason: step.reason,
-      createdAt: step.createdAt,
-    })),
+    const finalBooking = await tx.booking.update({
+      where: { id: booking.id },
+      data: { status: input.status },
+    });
+    await tx.bookingStatusHistory.deleteMany({ where: { bookingId: booking.id } });
+    await tx.bookingStatusHistory.createMany({
+      data: input.history.map((step) => ({
+        tenantId: input.tenantId,
+        bookingId: booking.id,
+        fromStatus: step.fromStatus,
+        toStatus: step.toStatus,
+        reason: step.reason,
+        createdAt: step.createdAt,
+      })),
+    });
+
+    return finalBooking;
   });
-
-  return booking;
 }
 
 async function ensureRoleAssignment(
