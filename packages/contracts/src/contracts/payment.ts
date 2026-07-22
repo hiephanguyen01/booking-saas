@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from './common';
 
-export const gatewayKeySchema = z.enum(['sepay', 'payos', 'momo', 'mock']);
+export const gatewayKeySchema = z.enum(['sepay', 'payos', 'momo', 'zalopay', 'mock']);
 export type GatewayKey = z.infer<typeof gatewayKeySchema>;
 
 export const gatewayEnvironmentSchema = z.enum(['sandbox', 'production']);
@@ -15,6 +15,7 @@ export const customerPaymentMethodSchema = z.enum([
   'napas_qr',
   'international_card',
   'momo_wallet',
+  'zalopay_wallet',
 ]);
 export type CustomerPaymentMethod = z.infer<typeof customerPaymentMethodSchema>;
 
@@ -23,14 +24,25 @@ export const GATEWAY_SUPPORTED_METHODS: Record<GatewayKey, CustomerPaymentMethod
   sepay: ['bank_transfer', 'napas_qr', 'international_card'],
   payos: ['bank_transfer'],
   momo: ['momo_wallet'],
-  mock: ['bank_transfer', 'napas_qr', 'international_card', 'momo_wallet'],
+  zalopay: ['zalopay_wallet'],
+  mock: ['bank_transfer', 'napas_qr', 'international_card', 'momo_wallet', 'zalopay_wallet'],
 };
+
+/** Wallet gateways can be enabled in parallel; base gateways stay single-active. */
+export const WALLET_GATEWAYS = ['momo', 'zalopay'] as const;
+export function isWalletGateway(gateway: GatewayKey): boolean {
+  return (WALLET_GATEWAYS as readonly string[]).includes(gateway);
+}
+/** 1:1 wallet-method → wallet-gateway routing; null = base-gateway method. */
+export function walletGatewayForMethod(method: CustomerPaymentMethod): GatewayKey | null {
+  return method === 'momo_wallet' ? 'momo' : method === 'zalopay_wallet' ? 'zalopay' : null;
+}
 
 export const refundStrategySchema = z.enum(['manual', 'automatic_preferred']);
 export type RefundStrategy = z.infer<typeof refundStrategySchema>;
 
 export const gatewayPaymentSettingsSchema = z.object({
-  enabledMethods: z.array(customerPaymentMethodSchema).min(1).max(4),
+  enabledMethods: z.array(customerPaymentMethodSchema).min(1).max(5),
   refundStrategy: refundStrategySchema,
   manualRefundSlaHours: z
     .number()
@@ -49,13 +61,16 @@ export const DEFAULT_GATEWAY_PAYMENT_SETTINGS: GatewayPaymentSettings = {
 /**
  * Sensible defaults when a gateway is first configured: enable exactly the methods
  * it supports, and turn on automatic refunds for gateways that can push money back
- * (MoMo wallet, SePay card). Tenants can still override via the settings card.
+ * (MoMo wallet, ZaloPay wallet, SePay card). Tenants can still override via the settings card.
  */
 export function defaultGatewayPaymentSettings(gateway: GatewayKey): GatewayPaymentSettings {
   const enabledMethods = GATEWAY_SUPPORTED_METHODS[gateway];
   return {
     enabledMethods: enabledMethods.length ? enabledMethods : ['bank_transfer'],
-    refundStrategy: gateway === 'momo' || gateway === 'sepay' ? 'automatic_preferred' : 'manual',
+    refundStrategy:
+      gateway === 'momo' || gateway === 'zalopay' || gateway === 'sepay'
+        ? 'automatic_preferred'
+        : 'manual',
     manualRefundSlaHours: 72,
   };
 }
@@ -97,6 +112,25 @@ export const momoGatewaySettingsFormSchema = z.object({
 });
 export type MomoGatewaySettingsForm = z.infer<typeof momoGatewaySettingsFormSchema>;
 
+export const zalopayGatewayConfigInputSchema = z.object({
+  gateway: z.literal('zalopay'),
+  environment: gatewayEnvironmentSchema,
+  credentials: z.object({
+    appId: z.string().trim().regex(/^\d+$/, 'App ID là số').max(20),
+    key1: z.string().trim().min(16, 'Key1 phải có ít nhất 16 ký tự').max(500),
+    key2: z.string().trim().min(16, 'Key2 phải có ít nhất 16 ký tự').max(500),
+  }),
+});
+export type ZalopayGatewayConfigInput = z.infer<typeof zalopayGatewayConfigInputSchema>;
+
+export const zalopayGatewaySettingsFormSchema = z.object({
+  environment: gatewayEnvironmentSchema,
+  appId: z.string().trim().regex(/^\d+$/, 'App ID là số').max(20),
+  key1: z.string().trim().min(16, 'Key1 phải có ít nhất 16 ký tự').max(500),
+  key2: z.string().trim().min(16, 'Key2 phải có ít nhất 16 ký tự').max(500),
+});
+export type ZalopayGatewaySettingsForm = z.infer<typeof zalopayGatewaySettingsFormSchema>;
+
 /** Tenant admin stores gateway credentials (encrypted at rest, §11.1). */
 export const upsertGatewayConfigInputSchema = z.object({
   gateway: gatewayKeySchema,
@@ -106,7 +140,9 @@ export const upsertGatewayConfigInputSchema = z.object({
 });
 export type UpsertGatewayConfigInput = z.infer<typeof upsertGatewayConfigInputSchema>;
 
-export const updateGatewayPaymentSettingsInputSchema = gatewayPaymentSettingsSchema;
+export const updateGatewayPaymentSettingsInputSchema = gatewayPaymentSettingsSchema.extend({
+  gateway: gatewayKeySchema,
+});
 export type UpdateGatewayPaymentSettingsInput = z.infer<
   typeof updateGatewayPaymentSettingsInputSchema
 >;
@@ -154,9 +190,14 @@ export const gatewayConfigResponseSchema = z.object({
   merchantId: z.string().nullable(),
   /** MoMo partner code (null for other gateways). */
   partnerCode: z.string().nullable().default(null),
+  /** ZaloPay app ID (null for other gateways). */
+  appId: z.string().nullable().default(null),
   settings: gatewayPaymentSettingsSchema,
 });
 export type GatewayConfigResponse = z.infer<typeof gatewayConfigResponseSchema>;
+
+export const gatewayConfigsResponseSchema = z.array(gatewayConfigResponseSchema);
+export type GatewayConfigsResponse = z.infer<typeof gatewayConfigsResponseSchema>;
 
 export const paymentKindSchema = z.enum(['deposit', 'balance', 'full', 'security_deposit']);
 export const paymentRecordStatusSchema = z.enum(['pending', 'succeeded', 'failed', 'expired']);
