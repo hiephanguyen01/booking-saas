@@ -7,6 +7,7 @@ import {
   customerReviewsQuerySchema,
   partnerReviewsQuerySchema,
   publicReviewsQuerySchema,
+  reviewMediaPresignInputSchema,
   replyReviewInputSchema,
   reviewListResponseSchema,
   reviewResponseSchema,
@@ -14,6 +15,7 @@ import {
 } from '@booking/contracts';
 
 export class CreateReviewDto extends createZodDto(createReviewInputSchema) {}
+export class ReviewMediaPresignDto extends createZodDto(reviewMediaPresignInputSchema) {}
 export class ReplyReviewDto extends createZodDto(replyReviewInputSchema) {}
 export class PublicReviewsQueryDto extends createZodDto(publicReviewsQuerySchema) {}
 export class CustomerReviewsQueryDto extends createZodDto(customerReviewsQuerySchema) {}

@@ -1,9 +1,8 @@
 import type { CustomerBookingSettlementResponse, QuoteLineItem } from '@booking/contracts';
 import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
+import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Button } from '@booking/ui/components/ui/button';
-import { Textarea } from '@booking/ui/components/ui/textarea';
-import { Info, Star, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { Info, Star } from 'lucide-react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { bookingDetailState, type AccountBookingViewModel } from '../lib/booking-history';
 
@@ -85,92 +84,73 @@ export function PaymentTaxNote({ booking }: { booking: AccountBookingViewModel }
   );
 }
 
-export function BookingReviewSection({ booking }: { booking: AccountBookingViewModel }) {
+export function BookingReviewSection({
+  booking,
+  onReview,
+}: {
+  booking: AccountBookingViewModel;
+  onReview: () => void;
+}) {
   const { t } = useTranslation(NsI18n.Account);
   const review = booking.review;
-  const [rating, setRating] = useState(review?.rating ?? 0);
 
   return (
     <DetailSection title={t('bookings.reviewSection.title')}>
-      {review?.state === 'reviewed' ? (
+      {review?.status === 'reviewed' ? (
         <div className="text-xs leading-5 text-[#4d5a70]">
-          <div className="flex gap-1 text-amber-500" aria-label={`${review.rating ?? 0}/5`}>
+          <div className="flex gap-1 text-amber-500" aria-label={`${review.rating}/5`}>
             {[1, 2, 3, 4, 5].map((value) => (
               <Star
                 key={value}
                 className="size-4"
-                fill={value <= (review.rating ?? 0) ? 'currentColor' : 'none'}
+                fill={value <= review.rating ? 'currentColor' : 'none'}
               />
             ))}
           </div>
-          {review.body ? <p className="mt-3">{review.body}</p> : null}
-          {review.photos?.length ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {review.photos.map((photo) => (
-                <img key={photo} src={photo} alt="" className="size-20 object-cover" />
-              ))}
-            </div>
-          ) : null}
-          {review.response ? (
+          <p className="mt-3">{review.content}</p>
+          <ReviewMediaGallery
+            items={review.media}
+            className="mt-3"
+            viewLabel={t('reviews.mediaView')}
+            viewerTitle={t('reviews.mediaViewerTitle')}
+          />
+          {review.reply ? (
             <div className="mt-4 bg-[#f1f3f7] p-4">
-              <p className="font-semibold text-[#263247]">{booking.partnerName}</p>
-              <p className="mt-1">{review.response}</p>
+              <p className="font-semibold text-[#263247]">{review.reply.partnerName}</p>
+              <p className="mt-1">{review.reply.content}</p>
             </div>
           ) : null}
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-1 text-amber-500">
-              {[1, 2, 3, 4, 5].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setRating(value)}
-                  className="p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`${value}/5`}
-                >
-                  <Star className="size-5" fill={value <= rating ? 'currentColor' : 'none'} />
-                </button>
-              ))}
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              disabled
-              title={t('bookings.reviewSection.unavailable')}
-              className="h-8 rounded-sm bg-[#ff3f44] px-5 text-xs text-white"
-            >
-              {t('bookings.reviewSection.submit')}
-            </Button>
-          </div>
-          <Textarea
-            placeholder={t('bookings.reviewSection.placeholder')}
-            className="min-h-30 rounded-none border-[#d8dee8] text-xs"
-          />
-          <div className="flex min-h-48 flex-col items-center justify-center gap-4 border border-dashed border-[#ff8e91] p-8 text-center">
-            <Upload aria-hidden="true" className="size-9 text-[#ff3f44]" />
-            <p className="text-xs font-medium text-[#263247]">
-              {t('bookings.reviewSection.uploadHint')}
+      ) : review?.status === 'pending' ? (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[#263247]">{t('reviews.invitation')}</p>
+            <p className="mt-1 text-xs leading-5 text-[#4d5a70]">
+              {t('reviews.dialog.description', { title: booking.listingTitle })}
             </p>
-            <div className="flex w-full max-w-40 items-center gap-3">
-              <span className="h-px flex-1 bg-[#d8dee8]" />
-              <span className="text-[11px] text-muted-foreground">
-                {t('bookings.reviewSection.uploadOr')}
-              </span>
-              <span className="h-px flex-1 bg-[#d8dee8]" />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled
-              title={t('bookings.reviewSection.unavailable')}
-              className="h-8 rounded-sm border-primary text-xs text-primary"
-            >
-              {t('bookings.reviewSection.chooseFiles')}
-            </Button>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onReview}
+            className="h-9 shrink-0 rounded-sm bg-[#ff3f44] px-5 text-xs text-white"
+          >
+            {t('bookings.reviewSection.submit')}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs leading-5 text-[#4d5a70]">
+            {t('bookings.reviewSection.unavailable')}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            disabled
+            className="h-9 rounded-sm px-5 text-xs"
+          >
+            {t('bookings.reviewSection.submit')}
+          </Button>
         </div>
       )}
     </DetailSection>

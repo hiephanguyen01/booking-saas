@@ -2,6 +2,7 @@ import type {
   CustomerReviewsQuery,
   PartnerReviewsQuery,
   PublicReviewsQuery,
+  ReviewMediaKind,
   TenantReviewsQuery,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -13,6 +14,12 @@ export interface ReviewReplyRecord {
   content: string;
   partnerName: string;
   createdAt: Date;
+}
+
+export interface ReviewMediaRecord {
+  kind: ReviewMediaKind;
+  key: string;
+  url: string;
 }
 
 export interface ReviewRecord {
@@ -32,8 +39,11 @@ export interface ReviewRecord {
   customerName: string;
   rating: number;
   content: string;
+  media: ReviewMediaRecord[];
   reply: ReviewReplyRecord | null;
   serviceCompletedAt: Date | null;
+  bookingStartsAt: Date | null;
+  bookingEndsAt: Date | null;
   createdAt: Date;
 }
 
@@ -48,6 +58,8 @@ export interface PendingReviewRecord {
   groupTitle: string | null;
   partnerName: string;
   serviceCompletedAt: Date | null;
+  bookingStartsAt: Date | null;
+  bookingEndsAt: Date | null;
 }
 
 export interface ReviewSummaryRecord {
@@ -73,8 +85,9 @@ export interface IReviewRepository {
     tx: PrismaTx,
     tenantId: string,
     customerId: string,
-    data: { bookingId: string; rating: number; content: string },
+    data: { bookingId: string; rating: number; content: string; media: ReviewMediaRecord[] },
   ): Promise<ReviewRecord | null>;
+  isReviewableBooking(tx: PrismaTx, customerId: string, bookingId: string): Promise<boolean>;
   reply(
     tx: PrismaTx,
     tenantId: string,

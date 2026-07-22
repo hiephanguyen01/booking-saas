@@ -4,10 +4,67 @@ import { paginationQuerySchema, uuidSchema } from './common';
 export const reviewRatingSchema = z.coerce.number().int().min(1).max(5);
 export type ReviewRating = z.infer<typeof reviewRatingSchema>;
 
+export const reviewMediaKindSchema = z.enum(['image', 'video']);
+export type ReviewMediaKind = z.infer<typeof reviewMediaKindSchema>;
+
+export const reviewMediaInputSchema = z.object({
+  key: z.string().trim().min(1).max(500),
+});
+export type ReviewMediaInput = z.infer<typeof reviewMediaInputSchema>;
+
+export const reviewMediaResponseSchema = z.object({
+  kind: reviewMediaKindSchema,
+  url: z.string().url(),
+});
+export type ReviewMediaResponse = z.infer<typeof reviewMediaResponseSchema>;
+
+export const reviewImageContentTypeSchema = z.enum([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+]);
+export const reviewVideoContentTypeSchema = z.enum([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+]);
+export const reviewMediaContentTypeSchema = z.union([
+  reviewImageContentTypeSchema,
+  reviewVideoContentTypeSchema,
+]);
+export type ReviewMediaContentType = z.infer<typeof reviewMediaContentTypeSchema>;
+
+export const REVIEW_MEDIA_MAX_FILES = 5;
+export const REVIEW_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const REVIEW_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+
+export const reviewMediaPresignInputSchema = z
+  .object({
+    bookingId: uuidSchema,
+    contentType: reviewMediaContentTypeSchema,
+    sizeBytes: z.coerce.number().int().positive(),
+  })
+  .superRefine((input, context) => {
+    const maxBytes = input.contentType.startsWith('image/')
+      ? REVIEW_IMAGE_MAX_BYTES
+      : REVIEW_VIDEO_MAX_BYTES;
+    if (input.sizeBytes > maxBytes) {
+      context.addIssue({
+        code: 'custom',
+        path: ['sizeBytes'],
+        message: 'File exceeds the review media size limit',
+      });
+    }
+  });
+export type ReviewMediaPresignInput = z.infer<typeof reviewMediaPresignInputSchema>;
+
 export const createReviewInputSchema = z.object({
   bookingId: uuidSchema,
   rating: reviewRatingSchema,
   content: z.string().trim().min(10).max(2000),
+  media: z.array(reviewMediaInputSchema).max(REVIEW_MEDIA_MAX_FILES).default([]),
 });
 export type CreateReviewInput = z.infer<typeof createReviewInputSchema>;
 
@@ -40,6 +97,7 @@ export const reviewResponseSchema = z.object({
   customerName: z.string(),
   rating: reviewRatingSchema,
   content: z.string(),
+  media: z.array(reviewMediaResponseSchema),
   reply: reviewReplyResponseSchema.nullable(),
   serviceCompletedAt: z.string().nullable(),
   createdAt: z.string(),
@@ -57,10 +115,14 @@ export const pendingReviewResponseSchema = z.object({
   groupTitle: z.string().nullable(),
   partnerName: z.string(),
   serviceCompletedAt: z.string().nullable(),
+  bookingStartsAt: z.string().nullable(),
+  bookingEndsAt: z.string().nullable(),
 });
 
 export const completedReviewResponseSchema = reviewResponseSchema.extend({
   status: z.literal('reviewed'),
+  bookingStartsAt: z.string().nullable(),
+  bookingEndsAt: z.string().nullable(),
 });
 
 export const customerReviewItemSchema = z.discriminatedUnion('status', [

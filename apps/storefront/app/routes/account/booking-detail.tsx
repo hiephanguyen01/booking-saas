@@ -10,6 +10,7 @@ import {
 import { BookingDetailPanel } from '../../features/account/components/booking-detail-panel';
 import { PaymentHandoff } from '../../features/checkout/components/payment-handoff';
 import { loadAccountBooking } from '../../features/account/server/booking-history.server';
+import { submitCustomerReview } from '../../features/account/server/customer-reviews.server';
 import { cancelBooking, checkoutBooking, fetchPaymentOptions } from '../../lib/booking.server';
 import { errorStatus } from '../../lib/http-status';
 import { storefrontPaths } from '../../lib/locale-paths';
@@ -43,7 +44,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
   const url = new URL(request.url);
   const auth = requireAuth(storefrontPaths.login(locale, `${url.pathname}${url.search}`));
-  const booking = await loadAccountBooking(request, params.code, locale);
+  const booking = await loadAccountBooking(request, params.code, locale, auth.session.accessToken);
   if (!booking) throw new Response('Booking not found', { status: 404 });
   let settlement: CustomerBookingSettlementResponse | null = null;
   const response = await apiGet<CustomerBookingSettlementResponse>(
@@ -65,12 +66,15 @@ export async function action({ request, params }: Route.ActionArgs) {
   const locale = params.locale === 'en' ? 'en' : 'vi';
   const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
   const formData = await request.formData();
+  if (formData.get('intent') === 'review') {
+    return submitCustomerReview(request, locale, formData);
+  }
   const parsed = bookingActionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return data({ ok: false, error: 'CANCEL_REASON_REQUIRED' }, { status: 400 });
   }
 
-  const booking = await loadAccountBooking(request, params.code, locale);
+  const booking = await loadAccountBooking(request, params.code, locale, auth.session.accessToken);
   if (!booking) return data({ ok: false, error: 'BOOKING_NOT_FOUND' }, { status: 404 });
 
   if (parsed.data.intent === 'dispute') {

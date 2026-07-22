@@ -1178,6 +1178,8 @@ model Review {
   customerId String   @map("customer_id") @db.Uuid
   rating     Int
   content    String
+  /// Immutable ordered review attachments: [{ kind, key, url }].
+  media      Json     @default("[]")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

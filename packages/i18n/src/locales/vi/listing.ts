@@ -18,6 +18,8 @@ export const viListing = {
     listingLabel: 'Phòng: {title}',
     emptyRating: 'Chưa có đánh giá ở mức sao này.',
     showMore: 'Xem thêm',
+    mediaView: 'Xem nội dung đính kèm',
+    mediaViewerTitle: 'Ảnh và video đánh giá',
   },
   report: {
     menu: 'Báo cáo bài đăng',

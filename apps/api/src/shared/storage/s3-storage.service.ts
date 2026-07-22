@@ -16,7 +16,7 @@ export interface S3StorageConfig {
   presignExpiresSec: number;
 }
 
-const IMAGE_EXT: Record<string, string> = {
+const MEDIA_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
@@ -25,6 +25,9 @@ const IMAGE_EXT: Record<string, string> = {
   // .ico is used for tenant favicons (§16.2 theme_config.faviconUrl).
   'image/x-icon': 'ico',
   'image/vnd.microsoft.icon': 'ico',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
 };
 
 export function s3ConfigFromEnv(): S3StorageConfig {
@@ -60,12 +63,12 @@ export class S3StorageService implements StoragePort {
   }
 
   async createPresignedUpload(input: CreateUploadInput): Promise<PresignedUpload> {
-    const ext = IMAGE_EXT[input.contentType];
+    const ext = MEDIA_EXT[input.contentType];
     if (!ext) {
       throw new BadRequestException({
         statusCode: 400,
         code: 'UNSUPPORTED_MEDIA_TYPE',
-        message: `Only images are allowed (${Object.keys(IMAGE_EXT).join(', ')})`,
+        message: `Unsupported upload content type (${Object.keys(MEDIA_EXT).join(', ')})`,
       });
     }
     const prefix = input.keyPrefix.replace(/[^a-z0-9/_-]/gi, '').replace(/^\/+|\/+$/g, '') || 'uploads';
@@ -84,8 +87,20 @@ export class S3StorageService implements StoragePort {
     return {
       uploadUrl,
       key,
-      publicUrl: `${this.config.publicUrl.replace(/\/+$/, '')}/${key}`,
+      publicUrl: this.publicUrlForKey(key),
       expiresInSec: this.config.presignExpiresSec,
     };
+  }
+
+  publicUrlForKey(key: string): string {
+    const normalized = key.replace(/^\/+/, '');
+    if (!normalized || normalized.includes('..')) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'INVALID_STORAGE_KEY',
+        message: 'Invalid storage object key',
+      });
+    }
+    return `${this.config.publicUrl.replace(/\/+$/, '')}/${normalized}`;
   }
 }

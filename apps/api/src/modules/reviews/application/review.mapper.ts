@@ -32,6 +32,7 @@ export function toReviewResponse(review: ReviewRecord): ReviewResponse {
     customerName: review.customerName,
     rating: review.rating,
     content: review.content,
+    media: review.media.map(({ kind, url }) => ({ kind, url })),
     reply: review.reply
       ? {
           id: review.reply.id,
@@ -49,6 +50,8 @@ function toPendingResponse(item: PendingReviewRecord): CustomerReviewItem {
   return {
     ...item,
     serviceCompletedAt: item.serviceCompletedAt?.toISOString() ?? null,
+    bookingStartsAt: item.bookingStartsAt?.toISOString() ?? null,
+    bookingEndsAt: item.bookingEndsAt?.toISOString() ?? null,
   };
 }
 
@@ -77,7 +80,12 @@ export function toCustomerReviewListResponse(
     items: page.items.map((item) =>
       'status' in item
         ? toPendingResponse(item)
-        : { ...toReviewResponse(item), status: 'reviewed' as const },
+        : {
+            ...toReviewResponse(item),
+            status: 'reviewed' as const,
+            bookingStartsAt: item.bookingStartsAt?.toISOString() ?? null,
+            bookingEndsAt: item.bookingEndsAt?.toISOString() ?? null,
+          },
     ),
     page: query.page,
     pageSize: query.pageSize,
