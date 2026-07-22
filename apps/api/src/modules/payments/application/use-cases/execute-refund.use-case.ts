@@ -58,15 +58,17 @@ export class ExecuteRefundUseCase {
 
       const config = await this.configs.findActive(tx, tenantId);
       const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
+      // SePay only auto-voids a full card charge (no partial, deposits go manual).
       const isSepayCardFull =
         payment.gateway === 'sepay' &&
         payment.paymentMethod === 'CARD' &&
-        amount === payment.amount;
+        amount === payment.amount &&
+        reason !== 'security_deposit';
+      // MoMo's refund API pushes money back to the wallet for any amount/reason,
+      // including partial policy refunds and the security deposit.
       const isMomo = payment.gateway === 'momo';
       const automatic =
-        settings.refundStrategy === 'automatic_preferred' &&
-        reason !== 'security_deposit' &&
-        (isSepayCardFull || isMomo);
+        settings.refundStrategy === 'automatic_preferred' && (isSepayCardFull || isMomo);
 
       const dueAt = automatic
         ? null

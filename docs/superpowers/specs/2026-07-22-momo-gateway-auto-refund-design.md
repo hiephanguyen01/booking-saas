@@ -1,8 +1,26 @@
 # MoMo Gateway + Auto-refund về ví MoMo — Design
 
-> Ngày: 2026-07-22 · Branch dự kiến: `feat/momo-gateway`
-> Trạng thái: **DESIGN (đã verify với code thật + MoMo API docs, chờ review trước khi lập plan)**
+> Ngày: 2026-07-22 · Branch: `feat/momo-gateway` → **ĐÃ MERGE vào `main`** (origin a4c48ee)
+> Trạng thái: **IMPLEMENTED & MERGED** (verify typecheck+lint+build xanh; CHƯA e2e sandbox thật)
 > Liên quan: `apps/api/src/modules/payments`, `apps/api/src/modules/finance`, `apps/dashboard`, `apps/storefront`, `packages/contracts`
+
+---
+
+## ⚠️ Cập nhật sau merge (code hiện tại khác một số mô tả bên dưới)
+
+Lúc merge, `main` đã có sẵn kiến trúc payment mới (`bdeaa5d`) — MoMo được **re-fit** vào đó. Những chỗ dưới đây là **nguồn sự thật**, đè lên phần thiết kế cũ ở §2–§9:
+
+1. **Refund là two-phase** (không còn `ExecuteRefundUseCase` tự gọi gateway):
+   `booking.cancelled` → `ExecuteRefundUseCase` tạo **refund row** (`executionMode` automatic/manual, `dueAt`) rồi emit `refund.execution_requested` (automatic) / `refund.requested` (manual) → **`ExecuteAutomaticRefundUseCase`** mới gọi `gateway.refund(...)`. Retry khi lỗi = redeliver `refund.execution_requested`.
+2. **MoMo luôn nằm nhánh `automatic`** khi `refundStrategy = automatic_preferred` — cho **cả refund một phần LẪN tiền cọc (`security_deposit`)**. (SePay chỉ auto khi thẻ `CARD` + full + không phải cọc.)
+3. **Port mới**: `RefundInput = { gatewayTxnId, gatewayOrderRef, amountVnd, reason }` — **bỏ `idempotencyKey`**; MoMo adapter derive requestId deterministic từ `` `${gatewayOrderRef}:${reason}` ``. Adapter thêm `providerPaymentMethod(method) → 'MOMO_WALLET'`; `createPayment` nhận `paymentMethod` (bỏ qua) và trả `paymentMethod: 'MOMO_WALLET'`. `WebhookEvent`/`PaymentStatusResult` thêm `'refunded'`.
+4. **Config gateway có thêm `settings`** (`enabledMethods`, `refundStrategy`, `manualRefundSlaHours`); checkout nhận `paymentMethod: CustomerPaymentMethod` và validate theo `enabledMethods`. `gatewayConfigResponseSchema` mang cả `settings` (origin) lẫn `partnerCode` (momo).
+5. **Dashboard**: payments tab render **cả** `PaymentGatewayCard` (selector SePay/MoMo/Tắt — **single-active**) **lẫn** `PaymentMethodSettingsCard` (cấu hình methods + refundStrategy cho cổng đang active). RefundsPanel nhãn trung tính **Tự động / Thủ công** (không gán tên gateway).
+6. **Vẫn giữ**: guard `NO_ACTIVE_GATEWAY` + cap MoMo 50tr ở checkout; persist `transId` qua webhook + reconciliation; custody+clawback (không thêm ledger leg).
+
+**Follow-up UX**: `customerPaymentMethod` chưa có `momo_wallet` → khi cổng active là MoMo, khách chọn method nào cũng ra MoMo redirect.
+
+---
 
 ## 1. Mục tiêu & phạm vi
 
