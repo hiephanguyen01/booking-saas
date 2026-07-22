@@ -1,0 +1,3 @@
+export const DEFAULT_PUBLIC_REVIEW_LIMIT = 3;
+export const PUBLIC_REVIEW_LIMIT_STEP = 3;
+export const PUBLIC_REVIEW_MAX_LIMIT = 99;

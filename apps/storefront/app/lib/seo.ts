@@ -30,6 +30,7 @@ const nonCanonicalParameters = new Set([
   'packageid',
   'promo',
   'rating',
+  'reviewlimit',
   'q',
   'location',
   'amenities',

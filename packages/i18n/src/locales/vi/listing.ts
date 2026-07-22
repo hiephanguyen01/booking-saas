@@ -11,6 +11,14 @@ export const viListing = {
   bookedCount: '{count} đã đặt',
   reviewCount: '{count} đánh giá',
   noReviews: 'Chưa có đánh giá',
+  reviews: {
+    title: 'Đánh giá',
+    countLabel: 'đánh giá',
+    filterLabel: 'Lọc đánh giá theo số sao',
+    listingLabel: 'Phòng: {title}',
+    emptyRating: 'Chưa có đánh giá ở mức sao này.',
+    showMore: 'Xem thêm',
+  },
   report: {
     menu: 'Báo cáo bài đăng',
     title: 'Báo cáo nội dung',

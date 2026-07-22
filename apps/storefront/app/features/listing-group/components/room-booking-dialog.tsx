@@ -1,4 +1,4 @@
-import type { HourlySlot } from '@booking/contracts';
+import type { HourlySlot, PublicListingDetailResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import {
@@ -48,38 +48,38 @@ import {
   toggleContiguousSlot,
 } from '../listing-group-utils';
 
-type RoomBookingMode = 'hourly' | 'daily';
+export type ListingBookingMode = 'hourly' | 'daily';
 type BookingRequestKind = 'availability' | 'quote';
 type DateRange = { from: Date | undefined; to?: Date | undefined };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function RoomBookingDialog({
-  option,
+export function ListingBookingDialog({
+  listing,
   groupSlug,
   preferredMode,
 }: {
-  option: RoomOption;
-  groupSlug: string;
-  preferredMode: BookingMode;
+  listing: PublicListingDetailResponse;
+  groupSlug?: string;
+  preferredMode: ListingBookingMode;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const fetcher = useFetcher<typeof bookingDataLoader>();
-  const supportedModes = option.detail.bookingModes.filter(
-    (item): item is RoomBookingMode => item === 'hourly' || item === 'daily',
+  const supportedModes = listing.bookingModes.filter(
+    (item): item is ListingBookingMode => item === 'hourly' || item === 'daily',
   );
-  const initialMode = supportedModes.includes(preferredMode as RoomBookingMode)
-    ? (preferredMode as RoomBookingMode)
+  const initialMode = supportedModes.includes(preferredMode)
+    ? preferredMode
     : (supportedModes[0] ?? 'hourly');
-  const fixedPackages = option.detail.bookingSelection === 'fixed_packages';
-  const packageOptions = (selectedMode: RoomBookingMode) =>
-    packagesForMode(option.detail.modeConfig, selectedMode);
+  const fixedPackages = listing.bookingSelection === 'fixed_packages';
+  const packageOptions = (selectedMode: ListingBookingMode) =>
+    packagesForMode(listing.modeConfig, selectedMode);
   const today = todayInTz(DEFAULT_TZ);
   const todayDate = dateOnlyToLocal(today);
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mode, setMode] = useState<RoomBookingMode>(initialMode);
+  const [mode, setMode] = useState<ListingBookingMode>(initialMode);
   const [packageId, setPackageId] = useState<string | null>(
     fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null,
   );
@@ -91,11 +91,14 @@ export function RoomBookingDialog({
   const [selectionError, setSelectionError] = useState('');
   const [requestKind, setRequestKind] = useState<BookingRequestKind>('availability');
   const dialogTitleRef = useRef<HTMLHeadingElement>(null);
-  const basePath = `/${locale}/g/${encodeURIComponent(groupSlug)}/rooms/${encodeURIComponent(option.child.slug)}/booking-data`;
+  const encodedListingSlug = encodeURIComponent(listing.slug);
+  const basePath = groupSlug
+    ? `/${locale}/g/${encodeURIComponent(groupSlug)}/rooms/${encodedListingSlug}/booking-data`
+    : `/${locale}/l/${encodedListingSlug}/booking-data`;
 
   function load(
     next: {
-      mode: RoomBookingMode;
+      mode: ListingBookingMode;
       date?: string;
       from?: string | null;
       to?: string | null;
@@ -121,7 +124,17 @@ export function RoomBookingDialog({
   function handleOpen(next: boolean, target: 'desktop' | 'mobile'): void {
     if (target === 'desktop') setDesktopOpen(next);
     else setMobileOpen(next);
-    if (!next) return;
+    if (!next) {
+      setMode(initialMode);
+      setPackageId(fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null);
+      setDate(null);
+      setFrom(null);
+      setTo(null);
+      setSelectedSlots([]);
+      setSelectionError('');
+      setRequestKind('availability');
+      return;
+    }
 
     if (mode === 'hourly' && date) {
       const draftInterval = slotInterval(selectedSlots);
@@ -140,7 +153,7 @@ export function RoomBookingDialog({
     }
   }
 
-  function switchMode(next: RoomBookingMode): void {
+  function switchMode(next: ListingBookingMode): void {
     if (next === mode) return;
     setMode(next);
     const nextPackageId = fixedPackages ? (packageOptions(next)[0]?.id ?? null) : null;
@@ -220,7 +233,7 @@ export function RoomBookingDialog({
     canBook && currentData?.selectionStart && currentData.selectionEnd
       ? checkoutHref({
           locale,
-          listingSlug: option.child.slug,
+          listingSlug: listing.slug,
           mode,
           start: currentData.selectionStart,
           end: currentData.selectionEnd,
@@ -401,9 +414,9 @@ export function RoomBookingDialog({
                 )}
               >
                 <span className="flex items-center gap-3">
-                  {(item.photos[0] ?? option.child.photos[0]) ? (
+                  {(item.photos[0] ?? listing.photos[0]) ? (
                     <img
-                      src={item.photos[0] ?? option.child.photos[0]}
+                      src={item.photos[0] ?? listing.photos[0]}
                       alt=""
                       className="size-12 rounded-md object-cover"
                     />
@@ -423,8 +436,8 @@ export function RoomBookingDialog({
           </div>
           {selectedPackage ? (
             <RoomPhotoStrip
-              photos={selectedPackage.photos.length ? selectedPackage.photos : option.child.photos}
-              title={`${option.child.title} — ${selectedPackage.name}`}
+              photos={selectedPackage.photos.length ? selectedPackage.photos : listing.photos}
+              title={`${listing.title} — ${selectedPackage.name}`}
             />
           ) : null}
         </div>
@@ -458,7 +471,7 @@ export function RoomBookingDialog({
             ) : requestError ? (
               <ErrorMessage onRetry={() => load({ mode, date }, 'availability')} />
             ) : slots.length ? (
-              <div className="grid grid-cols-2 gap-2" aria-busy={quotePending}>
+              <div className="grid grid-cols-2 gap-2">
                 {slots.map((slot) => {
                   const selected = selectedSlots.some((item) => item.startUtc === slot.startUtc);
                   const startLabel = timeFormatter.format(new Date(slot.startUtc));
@@ -468,13 +481,12 @@ export function RoomBookingDialog({
                       key={`${slot.startUtc}:${slot.endUtc}`}
                       type="button"
                       aria-pressed={selected}
-                      disabled={!slot.available || quotePending}
+                      disabled={!slot.available}
                       onClick={() => toggleSlot(slot)}
                       className={cn(
                         'min-h-14 rounded-md border px-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                         selected && 'border-primary bg-primary/10 text-primary',
                         !slot.available && 'cursor-not-allowed bg-muted opacity-60',
-                        quotePending && 'cursor-wait',
                       )}
                     >
                       <span className="flex items-center justify-center gap-1 font-medium">
@@ -629,13 +641,13 @@ export function RoomBookingDialog({
               event.preventDefault();
               dialogTitleRef.current?.focus();
             }}
-            className="flex max-h-[min(90dvh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-146"
+            className="flex h-[min(90dvh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-146"
           >
             <DialogHeader className="shrink-0 border-b p-5 pr-16">
               <DialogTitle ref={dialogTitleRef} tabIndex={-1} className="outline-none">
                 {t('group.chooseSchedule')}
               </DialogTitle>
-              <DialogDescription>{option.child.title}</DialogDescription>
+              <DialogDescription>{listing.title}</DialogDescription>
             </DialogHeader>
             <DialogClose asChild>
               <Button
@@ -659,7 +671,7 @@ export function RoomBookingDialog({
           <DrawerContent className="h-[92dvh] max-h-[92dvh]! overflow-hidden">
             <DrawerHeader className="shrink-0 border-b px-5 pt-5 pb-4 pr-16 text-left">
               <DrawerTitle>{t('group.chooseSchedule')}</DrawerTitle>
-              <DrawerDescription>{option.child.title}</DrawerDescription>
+              <DrawerDescription>{listing.title}</DrawerDescription>
             </DrawerHeader>
             <DrawerClose asChild>
               <Button
@@ -678,6 +690,24 @@ export function RoomBookingDialog({
         </Drawer>
       </div>
     </>
+  );
+}
+
+export function RoomBookingDialog({
+  option,
+  groupSlug,
+  preferredMode,
+}: {
+  option: RoomOption;
+  groupSlug: string;
+  preferredMode: BookingMode;
+}) {
+  return (
+    <ListingBookingDialog
+      listing={option.detail}
+      groupSlug={groupSlug}
+      preferredMode={preferredMode === 'daily' ? 'daily' : 'hourly'}
+    />
   );
 }
 

@@ -3,6 +3,7 @@ import { MapPin } from 'lucide-react';
 import { Suspense, useRef, useState } from 'react';
 import { Await, useOutletContext, useSearchParams } from 'react-router';
 import { ListingRatingSummary } from '../../components/listing-rating-summary';
+import { PublicReviewsSection } from '../../components/public-reviews-section';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { formatListingLocation, formatVnd } from '../../lib/ui';
@@ -17,7 +18,6 @@ import { PackageAlbums } from './package-albums';
 import { PackageBookingDialog } from './package-booking-dialog';
 import { listingPackages, minimumPackagePrice } from './package-data';
 import { PackageTable } from './package-table';
-import { PackageReviews } from './package-reviews';
 import { RelatedListings } from './related-listings';
 
 const STALE_SELECTION_PARAMS = [
@@ -38,7 +38,7 @@ export function PackageListingPage({
 }: {
   loaderData: Route.ComponentProps['loaderData'];
 }) {
-  const { listing, locations, auxiliaryData, rating } = loaderData;
+  const { listing, locations, auxiliaryData } = loaderData;
   const { listingTypes, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Listing);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -122,7 +122,11 @@ export function PackageListingPage({
               </h2>
               <ExpandableDescription description={listing.description} />
             </SectionCard>
-            <PackageAlbums packages={packages} fallbackPhotos={listing.photos} title={listing.title} />
+            <PackageAlbums
+              packages={packages}
+              fallbackPhotos={listing.photos}
+              title={listing.title}
+            />
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
@@ -153,13 +157,14 @@ export function PackageListingPage({
 
         <Suspense fallback={null}>
           <Await resolve={auxiliaryData}>
-            {({ reviews, reviewSummary, relatedListings }) => (
+            {({ reviews, reviewSummary, reviewRating, reviewLimit, relatedListings }) => (
               <>
-                <PackageReviews
+                <PublicReviewsSection
                   reviews={reviews}
                   summary={reviewSummary}
                   locale={locale}
-                  selectedRating={rating}
+                  selectedRating={reviewRating}
+                  visibleLimit={reviewLimit}
                 />
                 <RelatedListings listings={relatedListings} />
               </>

@@ -18,6 +18,7 @@ import { ProviderCard } from '../listing-group/components/provider-card';
 import { StudioGallery } from '../listing-group/components/studio-gallery';
 import { attributeIcon, roomAttributes, roomCapacity } from '../listing-group/room-attributes';
 import { DeferredSearchBar } from '../search/deferred-search-bar';
+import { StudioBookingCard } from './components/studio-booking-card';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const { listing, mode, availability, quote, locations, selectionStart, selectionEnd } =
@@ -35,6 +36,10 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   }
 
   const location = formatListingLocation(listing, 'full');
+  const usesStudioBookingDialog =
+    listing.listingTypeSlug === 'studio' &&
+    listing.bookingModes.some((item) => item === 'hourly' || item === 'daily');
+  const preferredStudioMode = mode === 'daily' ? 'daily' : 'hourly';
 
   return (
     <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
@@ -45,7 +50,11 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
       />
       <div className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-4 xl:px-0">
         <SectionCard>
-          <ListingHeader listing={listing} location={location} mapsHref={googleMapsHref(location)} />
+          <ListingHeader
+            listing={listing}
+            location={location}
+            mapsHref={googleMapsHref(location)}
+          />
           <StudioGallery photos={listing.photos} title={listing.title} />
         </SectionCard>
 
@@ -61,22 +70,38 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
             <ListingDetails attributes={listing.attributes} />
             <Suspense fallback={null}>
               <Await resolve={loaderData.auxiliaryData}>
-                {({ reviews }) => <PublicReviewsSection reviews={reviews} locale={locale} />}
+                {({ reviews, reviewSummary, reviewRating, reviewLimit }) => (
+                  <PublicReviewsSection
+                    reviews={reviews}
+                    summary={reviewSummary}
+                    locale={locale}
+                    selectedRating={reviewRating}
+                    visibleLimit={reviewLimit}
+                  />
+                )}
               </Await>
             </Suspense>
           </div>
 
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
-            <ProviderCard trust={listing.trust} />
-
-            <BookingPanel
-              listing={listing}
-              mode={mode}
-              availability={availability}
-              quote={quote}
-              initialStart={selectionStart}
-              initialEnd={selectionEnd}
-            />
+            {usesStudioBookingDialog ? (
+              <>
+                <StudioBookingCard listing={listing} preferredMode={preferredStudioMode} />
+                <ProviderCard trust={listing.trust} />
+              </>
+            ) : (
+              <>
+                <ProviderCard trust={listing.trust} />
+                <BookingPanel
+                  listing={listing}
+                  mode={mode}
+                  availability={availability}
+                  quote={quote}
+                  initialStart={selectionStart}
+                  initialEnd={selectionEnd}
+                />
+              </>
+            )}
           </aside>
         </div>
       </div>
