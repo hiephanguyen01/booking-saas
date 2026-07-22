@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components
 import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { ArrowUpRight, CircleAlert } from 'lucide-react';
+import { ArrowUpRight, CircleAlert, Wallet } from 'lucide-react';
 import { Form, Link, useNavigation } from 'react-router';
 import { dashboardPaths } from '~/constants/paths';
 import { formatDateTime, formatVnd } from '~/lib/format';
@@ -16,6 +16,18 @@ const STATUS_LABEL: Record<RefundHistoryItem['status'], string> = {
   succeeded: 'Đã hoàn',
   failed: 'Thất bại',
 };
+
+/** A gateway refund id means the provider (MoMo) pushed the money back automatically. */
+function isAuto(refund: RefundHistoryItem): boolean {
+  return !!refund.gatewayRefundId;
+}
+
+function sumSucceeded(refunds: RefundHistoryItem[]): string {
+  return refunds
+    .filter((r) => r.status === 'succeeded')
+    .reduce((acc, r) => acc + BigInt(r.amount), 0n)
+    .toString();
+}
 
 export function RefundsPanel({
   refunds,
@@ -29,14 +41,27 @@ export function RefundsPanel({
   const navigation = useNavigation();
   if (!error && refunds.length === 0) return null;
 
+  const inProgress = refunds.filter(
+    (r) => r.status === 'pending' || r.status === 'manual_required',
+  ).length;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Hoàn tiền khách hàng</CardTitle>
         <p className="text-sm text-muted-foreground">
-          SePay không tự chuyển hoàn. Chỉ xác nhận sau khi Tenant đã chuyển khoản và lưu mã tham
-          chiếu ngân hàng.
+          MoMo hoàn tự động về ví khách khi huỷ đơn. SePay không tự chuyển hoàn — Tenant chuyển khoản
+          rồi xác nhận mã tham chiếu ngân hàng.
         </p>
+        {refunds.length > 0 ? (
+          <p className="mt-1 text-sm">
+            <span className="text-muted-foreground">Đã hoàn:</span>{' '}
+            <span className="font-semibold">{formatVnd(sumSucceeded(refunds))}</span>
+            {inProgress > 0 ? (
+              <span className="text-muted-foreground"> · Đang xử lý: {inProgress}</span>
+            ) : null}
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {error ? (
@@ -47,6 +72,9 @@ export function RefundsPanel({
         {refunds.map((refund) => {
           const submitting =
             navigation.state === 'submitting' && navigation.formData?.get('refundId') === refund.id;
+          const auto = isAuto(refund);
+          const statusLabel =
+            refund.status === 'succeeded' && auto ? 'Đã hoàn về ví MoMo' : STATUS_LABEL[refund.status];
           return (
             <div key={refund.id} className="rounded-md border p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -57,8 +85,13 @@ export function RefundsPanel({
                   >
                     {refund.bookingCode} <ArrowUpRight className="size-3.5" />
                   </Link>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {refund.reason ?? 'Hoàn tiền'} · {formatDateTime(refund.createdAt)}
+                  <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-medium text-foreground/80">
+                      {auto ? <Wallet className="size-3" /> : null}
+                      {auto ? 'Tự động (MoMo)' : 'Thủ công (SePay)'}
+                    </span>
+                    <span>· {refund.reason ?? 'Hoàn tiền'}</span>
+                    <span>· {formatDateTime(refund.createdAt)}</span>
                   </p>
                   {!refund.affectsBookingStatus ? (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -68,8 +101,16 @@ export function RefundsPanel({
                 </div>
                 <div className="text-right">
                   <p className="font-semibold">{formatVnd(refund.amount)}</p>
-                  <Badge variant={refund.status === 'failed' ? 'destructive' : 'secondary'}>
-                    {STATUS_LABEL[refund.status]}
+                  <Badge
+                    variant={
+                      refund.status === 'failed'
+                        ? 'destructive'
+                        : refund.status === 'succeeded'
+                          ? 'default'
+                          : 'secondary'
+                    }
+                  >
+                    {statusLabel}
                   </Badge>
                 </div>
               </div>
@@ -111,6 +152,11 @@ export function RefundsPanel({
                     </Button>
                   </div>
                 </Form>
+              ) : refund.status === 'succeeded' && auto ? (
+                <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
+                  Mã giao dịch hoàn MoMo:{' '}
+                  <span className="font-mono text-foreground">{refund.gatewayRefundId}</span>
+                </p>
               ) : refund.reference ? (
                 <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
                   Mã tham chiếu:{' '}

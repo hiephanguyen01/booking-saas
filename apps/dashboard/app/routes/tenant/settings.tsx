@@ -28,7 +28,7 @@ import { PartnerPromotionsCard } from '~/features/tenant/components/settings/par
 import { TenantDefaultCancellationPolicyCard } from '~/features/tenant/components/settings/tenant-default-cancellation-policy-card';
 import { TenantDomainsCard } from '~/features/tenant/components/settings/tenant-domains-card';
 import { ThemeSettingsCard } from '~/features/tenant/components/settings/theme-settings-card';
-import { SepayGatewayCard } from '~/features/tenant/components/settings/sepay-gateway-card';
+import { PaymentGatewayCard } from '~/features/tenant/components/settings/payment-gateway-card';
 import { PayoutPolicyCard } from '~/features/tenant/components/settings/payout-policy-card';
 
 const SETTINGS_TAB_BY_FORM: Record<string, string> = {
@@ -38,6 +38,8 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
   flags: 'operations',
   'cancellation-default': 'operations',
   sepay: 'payments',
+  momo: 'payments',
+  'gateway-off': 'payments',
   'payout-policy': 'payments',
 };
 
@@ -250,12 +252,16 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
           {canDomains || payoutPolicy ? (
             <TabsContent value="payments" className="min-w-0 w-full space-y-5 lg:max-w-5xl">
               {canDomains ? (
-                <SepayGatewayCard
+                <PaymentGatewayCard
                   config={gatewayConfig}
                   readOnly={readOnly}
-                  saved={okFor('sepay')}
-                  error={errFor('sepay')}
-                  fieldErrors={fieldErrorsFor('sepay')}
+                  sepaySaved={okFor('sepay')}
+                  sepayError={errFor('sepay')}
+                  sepayFieldErrors={fieldErrorsFor('sepay')}
+                  momoSaved={okFor('momo')}
+                  momoError={errFor('momo')}
+                  momoFieldErrors={fieldErrorsFor('momo')}
+                  offError={errFor('gateway-off')}
                 />
               ) : null}
               {payoutPolicy ? (

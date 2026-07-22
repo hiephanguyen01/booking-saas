@@ -1,6 +1,7 @@
 import { data as routeData } from 'react-router';
 import {
   addDomainInputSchema,
+  momoGatewaySettingsFormSchema,
   sepayGatewaySettingsFormSchema,
   themeConfigSchema,
   type DomainResponse,
@@ -25,9 +26,51 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
     if (body && typeof body === 'object' && 'gateway' in body) {
       const raw = body as {
+        gateway?: unknown;
         environment?: unknown;
-        credentials?: { merchantId?: unknown; secretKey?: unknown };
+        credentials?: {
+          merchantId?: unknown;
+          secretKey?: unknown;
+          partnerCode?: unknown;
+          accessKey?: unknown;
+        };
       };
+
+      if (raw.gateway === 'momo') {
+        const parsed = momoGatewaySettingsFormSchema.safeParse({
+          environment: raw.environment,
+          partnerCode: raw.credentials?.partnerCode,
+          accessKey: raw.credentials?.accessKey,
+          secretKey: raw.credentials?.secretKey,
+        });
+        if (!parsed.success) {
+          return routeData(
+            { form: 'momo', fieldErrors: parsed.error.flatten().fieldErrors },
+            { status: 400 },
+          );
+        }
+        const res = await apiPut(
+          '/tenant/gateway-config',
+          {
+            gateway: 'momo',
+            environment: parsed.data.environment,
+            credentials: {
+              partnerCode: parsed.data.partnerCode,
+              accessKey: parsed.data.accessKey,
+              secretKey: parsed.data.secretKey,
+            },
+          },
+          auth,
+        );
+        if (!res.ok) {
+          return routeData(
+            { form: 'momo', error: res.error ?? 'Không lưu được cấu hình MoMo.' },
+            { status: res.status >= 400 && res.status <= 599 ? res.status : 400 },
+          );
+        }
+        return { form: 'momo', ok: true };
+      }
+
       const parsed = sepayGatewaySettingsFormSchema.safeParse({
         environment: raw.environment,
         merchantId: raw.credentials?.merchantId,
@@ -99,6 +142,16 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
   const formData = await request.formData();
   const intent = String(formData.get('intent'));
+
+  if (intent === 'disable-gateway') {
+    const res = await apiDelete('/tenant/gateway-config', auth);
+    if (!res.ok)
+      return routeData(
+        { form: 'gateway-off', error: res.error ?? 'Không tắt được cổng thanh toán.' },
+        { status: 400 },
+      );
+    return { form: 'gateway-off', ok: true };
+  }
 
   if (intent === 'toggle-partner-promos') {
     const enabled = formData.get('partnerPromotionsEnabled') === 'true';
