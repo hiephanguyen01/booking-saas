@@ -58,17 +58,29 @@ async function main(): Promise<void> {
       label: 'logo',
       key: 'defaults/booking-studio/logo.png',
       path: resolve(__dirname, '../../storefront/public/booking-studio/logo.png'),
+      contentType: 'image/png',
     },
     {
       label: 'app icon',
       key: 'defaults/booking-studio/app-icon.png',
       path: resolve(__dirname, '../../storefront/public/booking-studio/app-icon.png'),
+      contentType: 'image/png',
     },
     {
       label: 'background',
       key: 'defaults/booking-studio/background.png',
       path: resolve(__dirname, '../../storefront/public/booking-studio/hero.png'),
+      contentType: 'image/png',
     },
+    ...[1, 2, 3, 4].map((index) => ({
+      label: `carousel image ${index}`,
+      key: `defaults/booking-studio/carousel/${String(index).padStart(2, '0')}.jpg`,
+      path: resolve(
+        __dirname,
+        `../../storefront/public/booking-studio/carousel/${String(index).padStart(2, '0')}.jpg`,
+      ),
+      contentType: 'image/jpeg',
+    })),
   ] as const;
 
   for (const asset of defaultAssets) {
@@ -77,7 +89,7 @@ async function main(): Promise<void> {
         Bucket: cfg.bucket,
         Key: asset.key,
         Body: readFileSync(asset.path),
-        ContentType: 'image/png',
+        ContentType: asset.contentType,
         CacheControl: 'public, max-age=3600',
       }),
     );
