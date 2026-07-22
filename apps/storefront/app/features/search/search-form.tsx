@@ -27,7 +27,6 @@ import {
   Check,
   ChevronDown,
   ChevronsUpDown,
-  Clock3,
   Info,
   MapPin,
   Search,
@@ -101,8 +100,6 @@ export function SearchForm({
   const seed = selectedDates(state);
   const [date, setDate] = useState(seed.date);
   const [range, setRange] = useState<DateRange>(() => toRange(seed));
-  const [startTime, setStartTime] = useState(state.startTime);
-  const [endTime, setEndTime] = useState(state.endTime);
   const types = [...listingTypes].sort((left, right) => {
     if (left.slug.toLowerCase() === 'studio') return -1;
     if (right.slug.toLowerCase() === 'studio') return 1;
@@ -124,9 +121,7 @@ export function SearchForm({
   const rangeFrom = range.from ? localToDateOnly(range.from) : undefined;
   const rangeTo = range.to ? localToDateOnly(range.to) : undefined;
   const dailyRange = validDailyRange(rangeFrom, rangeTo);
-  const canSubmit =
-    canSubmitSearch(mode, rangeFrom, rangeTo) &&
-    (mode !== 'hourly' || fixedPackages || !date || startTime < endTime);
+  const canSubmit = canSubmitSearch(mode, rangeFrom, rangeTo);
 
   function changeType(nextType: string): void {
     const schedule =
@@ -227,16 +222,6 @@ export function SearchForm({
             />
           ) : null}
 
-          {mode === 'hourly' && !fixedPackages ? (
-            <TimeRangeField
-              startTime={startTime}
-              endTime={endTime}
-              onStartTimeChange={setStartTime}
-              onEndTimeChange={setEndTime}
-              disabled={!date}
-            />
-          ) : null}
-
           {selectedConfig?.showGuests ? (
             <SearchField icon={Users} label={t('home.guests')}>
               <NativeSelect
@@ -296,52 +281,6 @@ export function SearchForm({
         ) : null}
       </div>
     </Form>
-  );
-}
-
-function TimeRangeField({
-  startTime,
-  endTime,
-  onStartTimeChange,
-  onEndTimeChange,
-  disabled,
-}: {
-  startTime: string;
-  endTime: string;
-  onStartTimeChange: (value: string) => void;
-  onEndTimeChange: (value: string) => void;
-  disabled: boolean;
-}) {
-  const { t } = useTranslation(NsI18n.Common);
-  return (
-    <div className="flex h-11 min-w-0 items-center gap-1.5 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
-      <Clock3 className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <div className="flex shrink-0 items-center gap-1.5">
-        <input
-          name="startTime"
-          type="time"
-          step={300}
-          value={startTime}
-          onChange={(event) => onStartTimeChange(event.target.value)}
-          disabled={disabled}
-          aria-label={t('home.startTime')}
-          className="w-[5ch] min-w-[5ch] appearance-none bg-transparent text-sm tabular-nums outline-none [&::-webkit-calendar-picker-indicator]:hidden disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <span className="text-muted-foreground" aria-hidden="true">
-          –
-        </span>
-        <input
-          name="endTime"
-          type="time"
-          step={300}
-          value={endTime}
-          onChange={(event) => onEndTimeChange(event.target.value)}
-          disabled={disabled}
-          aria-label={t('home.endTime')}
-          className="w-[5ch] min-w-[5ch] appearance-none bg-transparent text-sm tabular-nums outline-none [&::-webkit-calendar-picker-indicator]:hidden disabled:cursor-not-allowed disabled:opacity-50"
-        />
-      </div>
-    </div>
   );
 }
 
