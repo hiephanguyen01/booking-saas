@@ -48,6 +48,7 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
   async findActiveBase(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord | null> {
     const c = await tx.tenantGatewayConfig.findFirst({
       where: { tenantId, isActive: true, gateway: { notIn: [...WALLET_GATEWAYS] } },
+      orderBy: { createdAt: 'asc' },
     });
     return c ? this.toRecord(c) : null;
   }
@@ -70,15 +71,20 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
     data: UpsertGatewayConfigData,
   ): Promise<GatewayConfigRecord> {
     const credentials = { enc: this.crypto.encrypt(JSON.stringify(data.credentials)) };
-    // BASE gateways (sepay/payos/mock) stay max-1-active; deactivate any other active
-    // BASE gateway before activating this one. Wallets (momo/zalopay) run in parallel —
-    // saving one never deactivates another.
-    if (!isWalletGateway(data.gateway)) {
-      await tx.tenantGatewayConfig.updateMany({
-        where: { tenantId, isActive: true, gateway: { notIn: [...WALLET_GATEWAYS] } },
-        data: { isActive: false },
-      });
-    }
+    // BASE gateways stay max-1-active as a group; wallets run in parallel but each
+    // wallet must itself be single-active (one environment at a time) — otherwise a
+    // sandbox row and a production row can both stay live and webhook verification
+    // may pick the wrong credentials.
+    await tx.tenantGatewayConfig.updateMany({
+      where: {
+        tenantId,
+        isActive: true,
+        ...(isWalletGateway(data.gateway)
+          ? { gateway: data.gateway }
+          : { gateway: { notIn: [...WALLET_GATEWAYS] } }),
+      },
+      data: { isActive: false },
+    });
     const c = await tx.tenantGatewayConfig.upsert({
       where: {
         tenantId_gateway_environment: {

@@ -1,11 +1,12 @@
 import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import {
+  customerPaymentMethodSchema,
   DEFAULT_GATEWAY_PAYMENT_SETTINGS,
-  GATEWAY_SUPPORTED_METHODS,
   type PublicPaymentOptions,
 } from '@booking/contracts';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { pickConfigForMethod } from '../../domain/method-routing';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
@@ -35,13 +36,9 @@ export class GetPublicPaymentOptionsUseCase {
         message: 'This storefront is not accepting online payments',
       });
     }
-    const methods = [
-      ...new Set(
-        configs.flatMap((c) =>
-          c.settings.enabledMethods.filter((m) => GATEWAY_SUPPORTED_METHODS[c.gateway].includes(m)),
-        ),
-      ),
-    ];
+    const methods = customerPaymentMethodSchema.options.filter(
+      (m) => pickConfigForMethod(configs, m) !== null,
+    );
     if (methods.length === 0) {
       throw new ServiceUnavailableException({
         statusCode: 503,

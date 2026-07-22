@@ -225,8 +225,15 @@ export class ZalopayGatewayAdapter implements PaymentGatewayPort {
       amount?: number;
       zp_trans_id?: number;
     };
+    // 1 = success, 2 = order failed/cancelled/expired, 3 = processing. Anything else
+    // (auth/config/transient errors) must NOT expire the payment — leave it pending
+    // so a late IPN or the next poll can still settle it.
     const status: PaymentStatusResult['status'] =
-      json.return_code === 1 ? 'succeeded' : json.return_code === 3 ? 'pending' : 'expired';
+      json.return_code === 1
+        ? 'succeeded'
+        : json.return_code === 2
+          ? 'expired'
+          : 'pending';
     return {
       status,
       amountVnd: BigInt(json.amount ?? 0),
