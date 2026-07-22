@@ -21,6 +21,7 @@ import {
   GATEWAY_REGISTRY,
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
+import { MOMO_MAX_PAYMENT_VND } from '../../domain/gateway-limits';
 
 /**
  * The tenant's OWN storefront origin — each tenant serves on its own dynamic
@@ -116,6 +117,15 @@ export class CheckoutUseCase {
           statusCode: 400,
           code: 'NO_ACTIVE_GATEWAY',
           message: 'Cửa hàng chưa bật cổng thanh toán',
+        });
+      }
+      // MoMo caps a single payment/refund at 50M VND. Reject over-limit orders up
+      // front so every MoMo booking stays fully auto-refundable (refund ≤ amount).
+      if (gateway.key === 'momo' && amount > MOMO_MAX_PAYMENT_VND) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'AMOUNT_EXCEEDS_GATEWAY_LIMIT',
+          message: 'Đơn hàng vượt hạn mức thanh toán MoMo (tối đa 50.000.000đ)',
         });
       }
       const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;

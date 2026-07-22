@@ -22,7 +22,7 @@ MoMo là **gateway "thật" đầu tiên có `refund().supported === true`** —
 - Multi-gateway đồng thời + khách chọn phương thức lúc checkout (giữ single-active).
 - Hiển thị QR nhúng trên storefront (dùng redirect sang trang MoMo; MoMo tự lo QR + deeplink app).
 - Nút "Thử lại" refund thủ công cho refund `failed` (xem §9 — dựa vào reconciliation worker tự re-drive).
-- Tách lệnh refund cho booking > 50.000.000đ (giới hạn 1 lệnh MoMo; xem §8).
+- Tách lệnh refund cho booking > 50.000.000đ — **không cần**: checkout chặn đơn MoMo quá hạn mức (xem §8).
 - Hoàn tiền cho các cổng khác (VNPay… — DB enum có `vnpay` nhưng không đụng).
 
 ### Tuân thủ hard rules dự án
@@ -267,7 +267,7 @@ Yêu cầu "hoặc Tắt tuỳ user" → cần deactivate (hiện chỉ có upse
 
 - `payment-status` route: đã có `GET /public/bookings/:code/payment-status`. Xử lý query `?payment=success|error|cancel` từ MoMo redirect + poll trạng thái tới khi `succeeded/expired`.
 - Booking detail (customer): khi refund `succeeded` với gateway momo → hiển thị "Đã hoàn {amount}đ về ví MoMo · {thời gian}".
-- **Giới hạn** (note): MoMo refund 1 lệnh **1.000đ – 50.000.000đ**. Booking có `refundAmount > 50tr` chưa hỗ trợ tách lệnh → adapter log + throw; xử lý tách là follow-up.
+- **Giới hạn (đã enforce)**: MoMo 1 lệnh **1.000đ – 50.000.000đ**. `CheckoutUseCase` **chặn** đơn MoMo có `amount > 50.000.000đ` (`AMOUNT_EXCEEDS_GATEWAY_LIMIT`) → mọi đơn MoMo luôn hoàn tự động được (refund ≤ amount ≤ hạn mức), không cần tách lệnh. Hằng số dùng chung ở `domain/gateway-limits.ts`.
 
 ---
 
@@ -283,7 +283,7 @@ Yêu cầu "hoặc Tắt tuỳ user" → cần deactivate (hiện chỉ có upse
 | Không có active gateway (prod, mock off) | `CheckoutUseCase` throw `NO_ACTIVE_GATEWAY`. |
 
 **Hạn chế đã biết (follow-up, ngoài phạm vi):**
-1. Refund MoMo **hỏng vĩnh viễn** (vd transId sai, > 50tr) sẽ bị worker retry lặp lại mỗi 30s và **không** hiện trong RefundsPanel (không có row). Follow-up: sau N lần persist row `failed` + cho tenant chuyển sang hoàn thủ công (tái dùng `ConfirmManualRefundUseCase`).
+1. Refund MoMo **hỏng vĩnh viễn** (vd transId sai) sẽ bị worker retry lặp lại mỗi 30s và **không** hiện trong RefundsPanel (không có row). Follow-up: sau N lần persist row `failed` + cho tenant chuyển sang hoàn thủ công (tái dùng `ConfirmManualRefundUseCase`). *(Trường hợp > 50tr đã loại bỏ ở checkout — xem §8.)*
 2. Reuse pending checkout có thể trả `payUrl` MoMo đã hết hạn (~15’). Khách chờ payment `expired` rồi checkout lại (giống PayOS hiện tại).
 
 ---

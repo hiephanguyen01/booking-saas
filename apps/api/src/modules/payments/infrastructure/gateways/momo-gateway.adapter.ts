@@ -9,6 +9,7 @@ import type {
   RefundResult,
   WebhookVerification,
 } from '../../domain/ports/payment-gateway.port';
+import { MOMO_MAX_PAYMENT_VND, MOMO_MIN_REFUND_VND } from '../../domain/gateway-limits';
 
 export interface MomoCredentials {
   partnerCode: string;
@@ -16,10 +17,6 @@ export interface MomoCredentials {
   secretKey: string;
   environment: 'sandbox' | 'production';
 }
-
-/** MoMo refund limits for a single request (VND). */
-const MOMO_MIN_REFUND = 1_000n;
-const MOMO_MAX_REFUND = 50_000_000n;
 
 /** MoMo `requestId`/`orderId` are capped at 50 chars — keep our derived ids well under. */
 function momoRefundId(idempotencyKey: string): string {
@@ -132,10 +129,10 @@ export class MomoGatewayAdapter implements PaymentGatewayPort {
   }
 
   async refund(input: RefundInput): Promise<RefundResult> {
-    if (input.amountVnd < MOMO_MIN_REFUND || input.amountVnd > MOMO_MAX_REFUND) {
-      // MoMo caps a single refund at 50M VND; splitting is not supported yet.
+    if (input.amountVnd < MOMO_MIN_REFUND_VND || input.amountVnd > MOMO_MAX_PAYMENT_VND) {
+      // Checkout caps the payment to the refund limit, so this is a defensive guard.
       throw new Error(
-        `MoMo refund amount ${input.amountVnd} outside [${MOMO_MIN_REFUND}, ${MOMO_MAX_REFUND}]`,
+        `MoMo refund amount ${input.amountVnd} outside [${MOMO_MIN_REFUND_VND}, ${MOMO_MAX_PAYMENT_VND}]`,
       );
     }
     const { partnerCode, accessKey } = this.creds;
