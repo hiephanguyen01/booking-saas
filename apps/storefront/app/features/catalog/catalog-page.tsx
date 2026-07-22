@@ -16,7 +16,14 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { Skeleton } from '@booking/ui/components/ui/skeleton';
 import { SlidersHorizontal } from 'lucide-react';
-import { Link, useNavigation, useOutletContext, useSearchParams } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Link,
+  useLocation,
+  useNavigation,
+  useOutletContext,
+  useSearchParams,
+} from 'react-router';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontContext } from '../../root';
 import type { Route } from '../../routes/+types/catalog';
@@ -39,12 +46,42 @@ const SORT_OPTIONS = [
   { value: 'price-asc', labelKey: 'sort.priceAsc' },
 ] as const satisfies readonly { value: SearchSort; labelKey: string }[];
 
+const MINIMUM_SKELETON_MS = 250;
+
+function useStableCatalogLoading(minimumMs: number): boolean {
+  const location = useLocation();
+  const navigation = useNavigation();
+  const navigationIsLoading =
+    navigation.state === 'loading' && navigation.location?.pathname === location.pathname;
+  const [minimumVisible, setMinimumVisible] = useState(false);
+  const visibleSince = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (navigationIsLoading) {
+      if (visibleSince.current === null) visibleSince.current = Date.now();
+      setMinimumVisible(true);
+      return;
+    }
+
+    if (!minimumVisible || visibleSince.current === null) return;
+
+    const remaining = Math.max(minimumMs - (Date.now() - visibleSince.current), 0);
+    const timeout = window.setTimeout(() => {
+      visibleSince.current = null;
+      setMinimumVisible(false);
+    }, remaining);
+
+    return () => window.clearTimeout(timeout);
+  }, [minimumMs, minimumVisible, navigationIsLoading]);
+
+  return navigationIsLoading || minimumVisible;
+}
+
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, search, state } = loaderData;
   const { listingTypes } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Catalog);
-  const navigation = useNavigation();
-  const pending = navigation.state === 'loading';
+  const pending = useStableCatalogLoading(MINIMUM_SKELETON_MS);
   const booleanFacetKeys = type.attributeSchema
     .filter((field) => field.type === 'boolean')
     .map((field) => `attr.${field.key}`);
@@ -66,7 +103,11 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
           <FilterPanel state={state} facets={search.facets} booleanFacetKeys={booleanFacetKeys} />
         </aside>
 
-        <section aria-labelledby="search-results-title" className="min-w-0">
+        <section
+          aria-labelledby="search-results-title"
+          aria-busy={pending}
+          className="min-w-0"
+        >
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <h1 id="search-results-title" className="text-2xl font-semibold text-foreground">
@@ -135,7 +176,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
             </div>
           )}
 
-          {search.totalPages > 1 ? (
+          {!pending && search.totalPages > 1 ? (
             <CatalogPagination currentPage={search.page} totalPages={search.totalPages} />
           ) : null}
         </section>
