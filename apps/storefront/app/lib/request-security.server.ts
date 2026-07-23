@@ -106,7 +106,9 @@ function appendVary(headers: Headers, value: string): void {
   headers.set('Vary', current ? `${current}, ${value}` : value);
 }
 
-function publicCacheControl(pathname: string): string | null {
+function publicCacheControl(url: URL): string | null {
+  if (url.search) return null;
+  const { pathname } = url;
   if (pathname === '/sitemap.xml' || pathname === '/robots.txt') {
     return PUBLIC_METADATA_CACHE_CONTROL;
   }
@@ -126,8 +128,7 @@ function applyCachePolicy(headers: Headers, request: Request, responseStatus: nu
   appendVary(headers, 'Cookie');
 
   const method = request.method.toUpperCase();
-  const pathname = new URL(request.url).pathname;
-  const publicPolicy = publicCacheControl(pathname);
+  const publicPolicy = publicCacheControl(new URL(request.url));
   const existing = headers.get('Cache-Control')?.toLowerCase() ?? '';
   const mustStayPrivate =
     !['GET', 'HEAD'].includes(method) ||
