@@ -17,6 +17,7 @@ export default [
     route('favorites/toggle', 'routes/favorites-toggle.tsx'),
     route('checkout', 'routes/checkout.tsx'),
     route('bookings', 'routes/bookings.tsx'),
+    route('bookings/:code/payment-status', 'routes/booking-payment-status.ts'),
     route('bookings/:code', 'routes/booking-detail.tsx'),
     route('community', 'routes/community.tsx'),
     route('account', 'routes/account/layout.tsx', [
