@@ -1,15 +1,10 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { CreateReviewInput } from '@booking/contracts';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { STORAGE_PORT, type StoragePort } from '../../../../shared/storage/storage.port';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { Review } from '../../domain/entities/review.entity';
+import { ReviewBookingNotEligible, ReviewTenantNotFound } from '../../domain/errors/review-errors';
 import {
   REVIEW_REPOSITORY,
   type IReviewRepository,
@@ -37,12 +32,7 @@ export class CreateReviewUseCase {
 
   async execute(host: string, customerId: string, input: CreateReviewInput): Promise<ReviewRecord> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId)
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
+    if (!tenantId) throw new ReviewTenantNotFound();
     const prefix = reviewMediaPrefix(tenantId, customerId, input.bookingId);
     const uniqueKeys = new Set(input.media.map((item) => item.key));
     if (uniqueKeys.size !== input.media.length) {
@@ -55,38 +45,22 @@ export class CreateReviewUseCase {
       }
       return { kind, key, url: this.storage.publicUrlForKey(key) };
     });
-    try {
-      return await this.tenantDb.forTenant(tenantId, async (tx) => {
-        const review = await this.reviews.create(tx, tenantId, customerId, {
-          bookingId: input.bookingId,
-          rating: input.rating,
-          content: input.content,
-          media,
-        });
-        if (!review) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'REVIEW_BOOKING_NOT_ELIGIBLE',
-            message: 'Only an owned completed booking without a review can be reviewed',
-          });
-        }
-        await this.outbox.emit(tx, {
-          tenantId,
-          eventType: 'review.created',
-          payload: { reviewId: review.id, listingId: review.listingId, groupId: review.groupId },
-        });
-        return review;
+    return this.tenantDb.forTenant(tenantId, async (tx) => {
+      const booking = await this.reviews.findEligibleBooking(tx, customerId, input.bookingId);
+      if (!booking) throw new ReviewBookingNotEligible();
+      const review = await this.reviews.insert(
+        tx,
+        tenantId,
+        Review.open({ booking, customerId, rating: input.rating, content: input.content }),
+        media,
+      );
+      await this.outbox.emit(tx, {
+        tenantId,
+        eventType: 'review.created',
+        payload: { reviewId: review.id, listingId: review.listingId, groupId: review.groupId },
       });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'REVIEW_ALREADY_EXISTS',
-          message: 'This booking already has a review',
-        });
-      }
-      throw error;
-    }
+      return review;
+    });
   }
 }
 
