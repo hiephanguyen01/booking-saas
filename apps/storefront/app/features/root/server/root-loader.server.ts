@@ -13,7 +13,6 @@ import { getOptionalAuth } from '../../../lib/auth.server';
 import { fetchListingTypes } from '../../../lib/catalog.server';
 import { resolveLocale } from '../../../lib/i18n.server';
 import { getCurrentStorefrontTenant } from '../../../lib/request-context.server';
-import { getCurrentStorefrontCspNonce } from '../../../lib/security-context.server';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from '../../../lib/seo';
 import type { StorefrontTenant } from '../../../lib/tenant.server';
 
@@ -28,9 +27,8 @@ export interface RootLoaderPayload {
   accountMenuSummary: AccountMenuSummary | null;
 }
 
-export async function loadStorefrontRoot(request: Request, routeUrl: URL) {
+export async function loadStorefrontRoot(request: Request, routeUrl: URL, cspNonce: string) {
   const tenant = getCurrentStorefrontTenant();
-  const cspNonce = getCurrentStorefrontCspNonce();
   const locale = resolveLocale(request, tenant.defaultLocale);
   const publicUrl = requestPublicUrl(request, routeUrl);
   const canonical = canonicalUrl(publicUrl);

@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
+import type { RouterContextProvider } from 'react-router';
 import { storefrontAuthMiddleware } from './auth-middleware.server';
 import { storefrontEnv } from './env.server';
-import { runWithStorefrontSecurityContext } from './security-context.server';
+import { storefrontCspNonceContext } from './security-context.server';
 import { resolveTenant } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -185,22 +186,21 @@ function withSecurityHeaders(response: Response, request: Request, cspNonce: str
 }
 
 export async function storefrontRequestMiddleware(
-  args: { request: Request },
+  args: { request: Request; context: Readonly<RouterContextProvider> },
   next: () => Promise<Response>,
 ): Promise<Response> {
-  const { request } = args;
+  const { request, context } = args;
   const cspNonce = createCspNonce();
+  context.set(storefrontCspNonceContext, cspNonce);
 
-  return runWithStorefrontSecurityContext({ cspNonce }, async () => {
-    const pathname = new URL(request.url).pathname;
-    if (OPERATIONAL_PATHS.has(pathname)) {
-      return withSecurityHeaders(await next(), request, cspNonce);
-    }
+  const pathname = new URL(request.url).pathname;
+  if (OPERATIONAL_PATHS.has(pathname)) {
+    return withSecurityHeaders(await next(), request, cspNonce);
+  }
 
-    const rejected = csrfFailure(request);
-    if (rejected) return withSecurityHeaders(rejected, request, cspNonce);
-    const tenant = await resolveTenant(request);
-    const response = await storefrontAuthMiddleware({ request }, next, tenant);
-    return withSecurityHeaders(response, request, cspNonce);
-  });
+  const rejected = csrfFailure(request);
+  if (rejected) return withSecurityHeaders(rejected, request, cspNonce);
+  const tenant = await resolveTenant(request);
+  const response = await storefrontAuthMiddleware({ request }, next, tenant);
+  return withSecurityHeaders(response, request, cspNonce);
 }

@@ -204,7 +204,8 @@ async function seedDemo(): Promise<void> {
   for (const [hostname, isPrimary] of [
     ['studiohub.bookify.vn', true],
     ['studiohub.vn', false],
-    // Local dev hosts so the storefront resolves on localhost/127.0.0.1.
+    // Local dev hosts so the storefront resolves on localhost and subdomains.
+    ['studiohub.localhost', false],
     ['localhost', false],
     ['127.0.0.1', false],
   ] as const) {

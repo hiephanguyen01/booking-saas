@@ -4,7 +4,7 @@ import { isbot } from 'isbot';
 import type { RenderToPipeableStreamOptions } from 'react-dom/server';
 import { renderToPipeableStream } from 'react-dom/server';
 import { ServerRouter, type EntryContext, type RouterContextProvider } from 'react-router';
-import { getCurrentStorefrontCspNonce } from './lib/security-context.server';
+import { storefrontCspNonceContext } from './lib/security-context.server';
 
 export const streamTimeout = 5_000;
 
@@ -13,7 +13,7 @@ export default function handleRequest(
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
-  _loadContext: RouterContextProvider,
+  loadContext: RouterContextProvider,
 ): Promise<Response> | Response {
   if (request.method.toUpperCase() === 'HEAD') {
     return new Response(null, {
@@ -22,7 +22,7 @@ export default function handleRequest(
     });
   }
 
-  const cspNonce = getCurrentStorefrontCspNonce();
+  const cspNonce = loadContext.get(storefrontCspNonceContext);
 
   return new Promise((resolve, reject) => {
     let shellRendered = false;
