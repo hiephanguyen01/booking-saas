@@ -250,7 +250,7 @@ function isSelectionAvailable(
 }
 
 export default function ListingRoute(props: Route.ComponentProps) {
-  const { tenant, locale, canonical } = useOutletContext<StorefrontContext>();
+  const { tenant, locale, canonical, cspNonce } = useOutletContext<StorefrontContext>();
   const listing = props.loaderData.listing;
   const Page = listing.bookingSelection === 'fixed_packages' ? PackageListingPage : ListingPage;
   const structuredData = {
@@ -307,6 +307,7 @@ export default function ListingRoute(props: Route.ComponentProps) {
   return (
     <>
       <script
+        nonce={cspNonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
       />
