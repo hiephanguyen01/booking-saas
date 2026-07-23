@@ -17,15 +17,15 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   data,
   Form,
   Link,
   redirect,
+  useFetcher,
   useNavigation,
   useOutletContext,
-  useRevalidator,
   useSearchParams,
 } from 'react-router';
 import {
@@ -50,6 +50,7 @@ import { formatVnd } from '../lib/ui';
 import { useLocale } from '../lib/use-locale';
 import type { StorefrontContext } from '../root';
 import { PaymentHandoff } from '../features/checkout/components/payment-handoff';
+import type { loader as paymentStatusLoader } from './booking-payment-status';
 import type { Route } from './+types/booking-detail';
 
 export function meta() {
@@ -58,6 +59,7 @@ export function meta() {
 
 const PENDING = new Set<BookingStatus>(['pending_payment', 'pending_approval', 'draft']);
 const SUCCESS = new Set<BookingStatus>(['confirmed', 'completed']);
+const PAYMENT_POLL_INTERVAL_MS = 3_000;
 
 /** `PaymentStatusResponse.bookingStatus` is wire-typed as a plain string (§11.2). */
 function normalizeBookingStatus(value: string): BookingStatus | null {
@@ -77,6 +79,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const payload = {
     code: params.code,
+    loadedAt: Date.now(),
     status,
     mockEnabled: mockPaymentsEnabled(),
     canRetry: Boolean(flow && status.bookingStatus !== 'expired'),
@@ -181,15 +184,29 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function BookingDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { code, status, mockEnabled, canRetry, listingSlug } = loaderData;
+  const { code, mockEnabled } = loaderData;
   const { t } = useTranslation([NsI18n.Booking, NsI18n.Error]);
   const { currentUser } = useOutletContext<StorefrontContext>();
   const locale = useLocale();
   const [sp] = useSearchParams();
-  const revalidator = useRevalidator();
+  const paymentFetcher = useFetcher<typeof paymentStatusLoader>();
+  const paymentLoadRef = useRef(paymentFetcher.load);
+  paymentLoadRef.current = paymentFetcher.load;
+  const paymentStateRef = useRef(paymentFetcher.state);
+  paymentStateRef.current = paymentFetcher.state;
   const navigation = useNavigation();
   const submitting = navigation.state === 'submitting';
 
+  // A full route revalidation after a mutation may be newer than a completed
+  // polling response. Compare server timestamps so stale fetcher data cannot
+  // overwrite the newer booking snapshot.
+  const polled =
+    paymentFetcher.data?.ok && paymentFetcher.data.loadedAt > loaderData.loadedAt
+      ? paymentFetcher.data
+      : null;
+  const status = polled?.status ?? loaderData.status;
+  const canRetry = polled?.canRetry ?? loaderData.canRetry;
+  const listingSlug = polled?.listingSlug ?? loaderData.listingSlug;
   const bookingStatus = normalizeBookingStatus(status.bookingStatus);
   const paymentOutcome = sp.get('payment');
   const paymentFailed =
@@ -208,14 +225,27 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
   const isPending =
     !paymentFailed && !isSuccess && bookingStatus !== null && PENDING.has(bookingStatus);
 
-  // Poll while pending (the webhook — not the return URL — confirms payment, §11.2).
+  // Poll only the lightweight resource loader. Pause in background tabs and
+  // trigger one immediate refresh when the page becomes visible again.
   useEffect(() => {
     if (!isPending) return;
-    const id = setInterval(() => {
-      if (revalidator.state === 'idle') revalidator.revalidate();
-    }, 3000);
-    return () => clearInterval(id);
-  }, [isPending, revalidator]);
+
+    const href = `/${locale}/bookings/${encodeURIComponent(code)}/payment-status`;
+    const poll = () => {
+      if (document.visibilityState !== 'visible' || paymentStateRef.current !== 'idle') return;
+      void paymentLoadRef.current(href);
+    };
+    const interval = window.setInterval(poll, PAYMENT_POLL_INTERVAL_MS);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [code, isPending, locale]);
 
   if (actionData && 'handoff' in actionData && actionData.handoff) {
     return <PaymentHandoff destination={actionData.handoff} />;
