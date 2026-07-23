@@ -1,10 +1,16 @@
+import { randomBytes } from 'node:crypto';
 import { storefrontAuthMiddleware } from './auth-middleware.server';
 import { storefrontEnv } from './env.server';
+import { runWithStorefrontSecurityContext } from './security-context.server';
 import { resolveTenant } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
-const CONTENT_SECURITY_POLICY = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'";
+const PUBLIC_PAGE_KINDS = new Set(['t', 'l', 'g', 'p']);
+const PRIVATE_CACHE_CONTROL = 'private, no-store';
+const PUBLIC_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=60, stale-while-revalidate=300';
+const PUBLIC_METADATA_CACHE_CONTROL =
+  'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400';
 
 function requestOrigin(request: Request): string | null {
   const host = request.headers.get('host')?.split(',')[0]?.trim();
@@ -46,32 +52,124 @@ function csrfFailure(request: Request): Response | null {
 function forbidden(): Response {
   return Response.json(
     { code: 'CROSS_ORIGIN_MUTATION', message: 'Cross-origin mutation rejected.' },
-    { status: 403, headers: { 'Cache-Control': 'no-store' } },
+    { status: 403, headers: { 'Cache-Control': PRIVATE_CACHE_CONTROL } },
   );
 }
 
-function applySecurityHeaders(headers: Headers, request: Request): void {
-  headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+function createCspNonce(): string {
+  return randomBytes(16).toString('base64');
+}
+
+function contentSecurityPolicy(nonce: string): string {
+  const scriptSources = ["'self'", `'nonce-${nonce}'`];
+  const connectSources = ["'self'"];
+  const externalSources = ['https:'];
+
+  if (!storefrontEnv.production) {
+    scriptSources.push("'unsafe-eval'");
+    connectSources.push('ws:', 'wss:');
+    externalSources.push('http:');
+  }
+
+  const directives = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'self'",
+    `script-src ${scriptSources.join(' ')}`,
+    "script-src-attr 'none'",
+    `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+    "style-src-attr 'unsafe-inline'",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    `img-src 'self' data: blob: ${externalSources.join(' ')}`,
+    `media-src 'self' blob: ${externalSources.join(' ')}`,
+    `connect-src ${connectSources.join(' ')} ${externalSources.join(' ')}`,
+    `form-action 'self' ${externalSources.join(' ')}`,
+    `frame-src 'self' ${externalSources.join(' ')}`,
+    "manifest-src 'self'",
+    "worker-src 'self' blob:",
+  ];
+
+  if (storefrontEnv.production) directives.push('upgrade-insecure-requests');
+  return directives.join('; ');
+}
+
+function appendVary(headers: Headers, value: string): void {
+  const current = headers.get('Vary');
+  const values = current
+    ? current
+        .split(',')
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+  if (values.includes(value.toLowerCase())) return;
+  headers.set('Vary', current ? `${current}, ${value}` : value);
+}
+
+function publicCacheControl(url: URL): string | null {
+  if (url.search) return null;
+  const { pathname } = url;
+  if (pathname === '/sitemap.xml' || pathname === '/robots.txt') {
+    return PUBLIC_METADATA_CACHE_CONTROL;
+  }
+
+  const segments = pathname.split('/').filter(Boolean);
+  const locale = segments[0];
+  if (locale !== 'vi' && locale !== 'en') return null;
+  if (segments.length === 1) return PUBLIC_PAGE_CACHE_CONTROL;
+  if (segments.length === 2 && segments[1] === 'community') return PUBLIC_PAGE_CACHE_CONTROL;
+  if (segments.length === 3 && PUBLIC_PAGE_KINDS.has(segments[1]!)) {
+    return PUBLIC_PAGE_CACHE_CONTROL;
+  }
+  return null;
+}
+
+function applyCachePolicy(headers: Headers, request: Request, responseStatus: number): void {
+  appendVary(headers, 'Cookie');
+
+  const method = request.method.toUpperCase();
+  const publicPolicy = publicCacheControl(new URL(request.url));
+  const existing = headers.get('Cache-Control')?.toLowerCase() ?? '';
+  const mustStayPrivate =
+    !['GET', 'HEAD'].includes(method) ||
+    responseStatus !== 200 ||
+    Boolean(request.headers.get('cookie')) ||
+    headers.has('set-cookie') ||
+    existing.includes('no-store') ||
+    existing.includes('private') ||
+    !publicPolicy;
+
+  headers.set('Cache-Control', mustStayPrivate ? PRIVATE_CACHE_CONTROL : publicPolicy);
+}
+
+function applySecurityHeaders(
+  headers: Headers,
+  request: Request,
+  responseStatus: number,
+  cspNonce: string,
+): void {
+  headers.set('Content-Security-Policy', contentSecurityPolicy(cspNonce));
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('X-Frame-Options', 'SAMEORIGIN');
+  applyCachePolicy(headers, request, responseStatus);
 
   if (storefrontEnv.production && requestOrigin(request)?.startsWith('https://')) {
     headers.set('Strict-Transport-Security', 'max-age=31536000');
   }
 }
 
-function withSecurityHeaders(response: Response, request: Request): Response {
+function withSecurityHeaders(response: Response, request: Request, cspNonce: string): Response {
   try {
     // Most application responses have mutable headers. Updating them in place
     // preserves separate Set-Cookie values without rebuilding a streaming body.
-    applySecurityHeaders(response.headers, request);
+    applySecurityHeaders(response.headers, request, response.status, cspNonce);
     return response;
   } catch {
     // Redirect responses may expose an immutable header guard. Clone only those.
     const headers = new Headers(response.headers);
-    applySecurityHeaders(headers, request);
+    applySecurityHeaders(headers, request, response.status, cspNonce);
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -85,13 +183,18 @@ export async function storefrontRequestMiddleware(
   next: () => Promise<Response>,
 ): Promise<Response> {
   const { request } = args;
-  const pathname = new URL(request.url).pathname;
-  if (OPERATIONAL_PATHS.has(pathname)) {
-    return withSecurityHeaders(await next(), request);
-  }
+  const cspNonce = createCspNonce();
 
-  const rejected = csrfFailure(request);
-  if (rejected) return withSecurityHeaders(rejected, request);
-  const tenant = await resolveTenant(request);
-  return withSecurityHeaders(await storefrontAuthMiddleware({ request }, next, tenant), request);
+  return runWithStorefrontSecurityContext({ cspNonce }, async () => {
+    const pathname = new URL(request.url).pathname;
+    if (OPERATIONAL_PATHS.has(pathname)) {
+      return withSecurityHeaders(await next(), request, cspNonce);
+    }
+
+    const rejected = csrfFailure(request);
+    if (rejected) return withSecurityHeaders(rejected, request, cspNonce);
+    const tenant = await resolveTenant(request);
+    const response = await storefrontAuthMiddleware({ request }, next, tenant);
+    return withSecurityHeaders(response, request, cspNonce);
+  });
 }
