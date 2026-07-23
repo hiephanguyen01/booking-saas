@@ -1,7 +1,7 @@
 type ListingGroupMetaSource = {
   title: string;
   description?: string | null;
-  photos: string[];
+  photos: readonly string[];
 };
 
 export function buildListingGroupMeta(group: ListingGroupMetaSource | undefined) {
