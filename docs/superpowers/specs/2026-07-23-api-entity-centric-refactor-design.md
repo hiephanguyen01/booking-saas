@@ -115,7 +115,10 @@ Quy tắc entity:
 
 ### Style-gate đã chốt (2026-07-23, sau PR #1 pilot — áp dụng từ PR #2, pilot đã retrofit)
 
-1. **Port**: tách write/read khi port fat, hợp nhất khi gọn (đã ghi vào Layout ở trên).
+1. **Port**: tách write/read khi port fat, hợp nhất khi gọn (đã ghi vào Layout ở trên). Khi MỘT
+   class Prisma implement cả write port lẫn reader port, bind bằng bộ ba `useExisting` (class là
+   provider thường + 2 token alias) để có đúng một singleton — không dùng 2 `useClass` (double
+   instantiation). Tiền lệ: `content-reports.module.ts` (PR #2).
 2. **Domain events**: use-case build payload, không `pullDomainEvents()` (đã ghi ở trên).
 3. **Wire error dùng chung → shared kernel**: mã lỗi nhiều module cùng emit (vd `TENANT_NOT_FOUND`)
    định nghĩa MỘT lần ở `src/shared/domain/errors/` (vd `TenantNotFound`), module import — không
@@ -235,6 +238,16 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 - `refunds (booking_id, reason)` unique (advisory-lock idempotency hiện không có DB backstop)
 - Single-dispute-per-settlement backstop
 - One-primary-domain partial unique (tenancy)
+
+### 8b-bis. Read-side follow-ups (ghi nhận trong refactor, sửa sau — có thể đổi wire)
+
+- content-reports: response đang leak key `targetType` thừa cạnh `target` (repo `toRecord` spread
+  row + mapper spread record) — bỏ nó là wire change, cần duyệt riêng.
+- content-reports reader port: `reason: CreateContentReportInput['reason']` → nên dùng thẳng
+  `ContentReportReason` (cleanup type-only, không đổi wire) — đừng copy indirection này sang các
+  reader port module sau.
+- Clock: content-reports `handledAt` dùng app-clock `new Date()` (giữ nguyên trong refactor) — mục
+  đổi sang DB clock nằm trong danh sách clock follow-up chung (§3 Đồng hồ).
 
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 
