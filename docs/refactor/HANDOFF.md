@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, sau PR #7.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #8.
 
 ## 0. Vì sao cần file này
 
@@ -29,10 +29,11 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 5b | promotions — redemption + usage claim | ✅ merge (PR #21) — **promotions xong cả module** |
 | 6 | affiliate | ✅ merge (GitHub PR #22) |
 | 7 | identity-access | ✅ merge (GitHub PR #23) |
-| 8 | partner | ⏭️ **tiếp theo** |
+| 8 | partner | 🔍 review (GitHub PR #24) |
 | 9→16 | catalog → tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Việc kế tiếp:** **PR #8 — module partner** (không còn PR module nào đang mở).
+**Đang mở:** **PR #8 — module partner** ([GitHub PR #24](https://github.com/vnkduy/booking-saas/pull/24)).
+Không bắt đầu PR #9 trước khi PR này được review và merge vào `refactor/entity-centric`.
 
 Gợi ý riêng cho partner (từ khảo sát): một aggregate `Partner` với hai lifecycle độc lập
 (`status` + `verificationStatus`); `AgreementAcceptance` vẫn là append-only record. Giữ nguyên
