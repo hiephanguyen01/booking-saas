@@ -83,7 +83,7 @@ function contentSecurityPolicy(nonce: string): string {
     "font-src 'self' data: https://fonts.gstatic.com",
     `img-src 'self' data: blob: ${externalSources.join(' ')}`,
     `media-src 'self' blob: ${externalSources.join(' ')}`,
-    `connect-src ${connectSources.join(' ')}`,
+    `connect-src ${connectSources.join(' ')} ${externalSources.join(' ')}`,
     `form-action 'self' ${externalSources.join(' ')}`,
     `frame-src 'self' ${externalSources.join(' ')}`,
     "manifest-src 'self'",
