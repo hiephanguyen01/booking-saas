@@ -1,3 +1,4 @@
+import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import {
   cancelBooking,
@@ -16,8 +17,6 @@ import {
   allowedPaymentRedirect,
   isMockPaymentRedirect,
 } from '../../../lib/payment-redirect.server';
-
-export type BookingLocale = 'en' | 'vi';
 
 export async function loadBookingDetail(request: Request, code: string) {
   const [status, flow] = await Promise.all([
@@ -49,7 +48,7 @@ export async function loadBookingDetail(request: Request, code: string) {
 export async function handleBookingDetailAction(
   request: Request,
   code: string,
-  locale: BookingLocale,
+  locale: Locale,
 ) {
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
@@ -80,12 +79,7 @@ export async function handleBookingDetailAction(
   return data({ ok: false, error: 'UNKNOWN_INTENT' }, { status: 400 });
 }
 
-async function verifyAccess(
-  request: Request,
-  code: string,
-  locale: BookingLocale,
-  form: FormData,
-) {
+async function verifyAccess(request: Request, code: string, locale: Locale, form: FormData) {
   const otp = String(form.get('otp') ?? '').trim();
   if (!otp) return data({ ok: false, error: 'OTP_REQUIRED' }, { status: 400 });
   const booking = await fetchBookingByCode(request, code, otp).catch(() => null);
@@ -103,12 +97,7 @@ async function verifyAccess(
   });
 }
 
-async function retryPayment(
-  request: Request,
-  code: string,
-  locale: BookingLocale,
-  form: FormData,
-) {
+async function retryPayment(request: Request, code: string, locale: Locale, form: FormData) {
   const flow = await getCheckoutFlowService().readForCode(request, code);
   let bookingId = flow?.record.bookingId ?? null;
   if (!bookingId) {
