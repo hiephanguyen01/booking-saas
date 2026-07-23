@@ -24,7 +24,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@booking/storefront security
-      - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard
+      - name: Storefront lint
+        run: pnpm --filter=@booking/storefront lint
+      - name: Storefront typecheck
+        run: pnpm --filter=@booking/storefront typecheck
+      - name: Storefront build
+        run: pnpm --filter=@booking/storefront build
+      - name: Dashboard lint
+        run: pnpm --filter=@booking/dashboard lint
+      - name: Dashboard typecheck
+        run: pnpm --filter=@booking/dashboard typecheck
+      - name: Dashboard build
+        run: pnpm --filter=@booking/dashboard build
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
 
