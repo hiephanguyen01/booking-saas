@@ -14,6 +14,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const payload = {
     ok: true as const,
+    loadedAt: Date.now(),
     status,
     canRetry: Boolean(flow && status.bookingStatus !== 'expired'),
     listingSlug: flow?.record.listingSlug ?? null,
