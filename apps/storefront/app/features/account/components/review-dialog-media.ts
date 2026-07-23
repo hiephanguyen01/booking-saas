@@ -37,7 +37,13 @@ export function useReviewMedia(open: boolean) {
     setFileError(null);
   }, []);
 
-  useEffect(() => () => resetMedia(), [resetMedia]);
+  useEffect(
+    () => () => {
+      for (const item of mediaRef.current) URL.revokeObjectURL(item.previewUrl);
+      mediaRef.current = [];
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!open) resetMedia();
