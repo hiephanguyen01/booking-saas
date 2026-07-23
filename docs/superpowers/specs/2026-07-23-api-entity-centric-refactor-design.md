@@ -290,12 +290,29 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
    - quyết định về khối chuyển kiểu `vnd()`/`new Date()` đang trùng giữa `update-promotion` và
      `update-partner-promotion` (tách helper `toPromotionUpdateInput` hay chấp nhận trùng) — **chốt
      thành convention**, vì các module update-heavy sau (booking, payments) sẽ copy hình dạng này;
+   - **Convention đã chốt:** module update-heavy tách MỘT converter wire→domain dùng chung trong
+     `application/` (`toXxxUpdateInput(input): XxxUpdateInput`), giữ tri-state theo từng key
+     (`undefined` = giữ, `null` = xoá, và `null` không đi qua `vnd()`/`new Date()`). Tiền lệ:
+     `promotions/application/to-promotion-update-input.ts` (PR #5b).
    - chạy lại regression "đặt booking có promo code" sau khi #5b đổi seam `claimUsage`/`reserve`.
 7. **`rejectionException` (promotions) chưa hợp nhất vào `DomainError`** — vì
    `confirm-booking.use-case.ts` bắt `err instanceof ConflictException` để nuốt
    `PROMO_LIMIT_REACHED` trên đường late-webhook; đổi một phía sẽ làm tx confirm rollback.
    Hợp nhất ở **PR #14 (booking)** khi sửa được cả hai phía cùng lúc. Giữ đặc điểm
    `message === code`.
+8. **Outbox relay không có dead-letter/max-attempts park** (phát hiện ở final review PR #5b, khi soi
+   lại vì sao `forTenant('')` cũ lại nguy hiểm): một row lỗi vĩnh viễn chiếm 1 slot claim (batch 20,
+   poll ~2s) mãi mãi — không tự trôi ra khỏi hàng đợi. Đáng một PR infra nhỏ, độc lập với các wave
+   refactor này.
+9. **Pattern `event.tenantId ?? ''` còn ở các module chưa đụng** (affiliate, booking, finance,
+   listing, payments, scheduling) — sẽ tự biến mất khi PR refactor của từng module đó đụng file đăng
+   ký outbox (§4 đã bắt buộc normalize thành validate-and-skip-with-log mỗi khi file đó bị đụng), nên
+   KHÔNG cần một sweep riêng. Mục 8 (relay dead-letter) ở trên vẫn nên làm độc lập, không chờ các PR
+   này xong.
+10. **`requireTenantId` copy per module là quyết định có chủ đích, không phải trôi dạt** — không
+    hoist vào `shared/outbox` vì message log + eventType khác nhau mỗi module, và hoist sớm sẽ đóng
+    băng shape trước khi thấy đủ số lần lặp để biết đâu là phần chung thật sự. Giữ copy per module
+    cho tới khi vượt ~13 bản; nếu vượt, revisit việc hoist.
 
 ### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
 
