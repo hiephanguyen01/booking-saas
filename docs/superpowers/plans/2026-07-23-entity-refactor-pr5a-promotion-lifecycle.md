@@ -320,6 +320,12 @@ export interface ResolvedScope {
   fundingPartnerId: string | null;
 }
 
+/** The funding fields a re-point writes — `partnerOptInAt` present only when the gate re-arms. */
+export type FundingChange = Pick<
+  PromotionPatch,
+  'fundedBy' | 'fundingPartnerId' | 'partnerOptInAt'
+>;
+
 /** The raw (contract-shaped) update payload — every field optional, `null` means clear. */
 export interface PromotionUpdateInput {
   name?: string;
@@ -461,10 +467,13 @@ export class Promotion {
    * The tri-state merge: a key is written only when the caller actually supplied it
    * (`undefined` = keep the stored value), `null` clears an optional condition, and an
    * empty `timeWindows` array clears too ("no windows" and "always applicable" are the
-   * same state). `scope`, when supplied, re-points the promotion and — for a tenant
-   * promotion whose funding partner changes — re-arms the opt-in gate.
+   * same state).
+   *
+   * Scope/funding fields are NOT handled here — the caller writes them, because which
+   * of `appliesTo`/`appliesToId` gets written depends on which keys the client sent.
+   * The funding-consent rule lives in {@link Promotion.resolveFundingChange}.
    */
-  applyUpdate(input: PromotionUpdateInput, scope?: ResolvedScope): PromotionPatch {
+  applyUpdate(input: PromotionUpdateInput): PromotionPatch {
     const patch: PromotionPatch = {};
     if (input.name !== undefined) patch.name = input.name;
     if (input.discountType !== undefined) patch.discountType = input.discountType;
@@ -483,12 +492,31 @@ export class Promotion {
     if (input.startsAt !== undefined) patch.startsAt = input.startsAt;
     if (input.endsAt !== undefined) patch.endsAt = input.endsAt;
     if (input.status !== undefined) patch.status = input.status;
-    if (scope) {
-      patch.appliesTo = scope.appliesTo;
-      patch.appliesToId = scope.appliesToId;
-      patch.fundingPartnerId = scope.fundingPartnerId;
-    }
     return patch;
+  }
+
+  /**
+   * §12.2 — the funding-consent rule for a re-pointed promotion. `partnerOptInAt` IS
+   * the funding partner's consent, so it must never survive a change of who pays:
+   *   - a partner-funded promo keeps its gate only while the funding partner is
+   *     unchanged; a different partner has to opt in again before it applies to them;
+   *   - moving back to tenant funding drops the gate entirely.
+   * Returns only the funding fields to merge into the patch (the caller owns the
+   * scope fields — see {@link Promotion.applyUpdate}).
+   */
+  resolveFundingChange(next: {
+    fundedBy: PromoFundedBy;
+    fundingPartnerId: string | null;
+  }): FundingChange {
+    if (next.fundedBy !== 'partner') {
+      return { fundedBy: 'tenant', fundingPartnerId: null, partnerOptInAt: null };
+    }
+    const gateSurvives = next.fundingPartnerId === this.state.fundingPartnerId;
+    return {
+      fundedBy: 'partner',
+      fundingPartnerId: next.fundingPartnerId,
+      ...(gateSurvives ? {} : { partnerOptInAt: null }),
+    };
   }
 }
 ```
@@ -601,18 +629,27 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
   - khối tri-state 11 field (L58-76) → `const data = promotion.applyUpdate(updateInput)` với
     `updateInput` là các giá trị đã chuyển kiểu **y hệt cách cũ** (`vnd(...)` cho tiền,
     `new Date(...)` cho ngày, `null` giữ nguyên là `null`)
-  - khối scope/funding (L78-99): giữ nguyên toàn bộ logic resolve (assertScopeTargetValid →
-    resolveFundingPartnerId hoặc clear), nhưng gán kết quả qua tham số `scope` của `applyUpdate`,
-    **và giữ nguyên quy tắc reset opt-in gate**: khi funding partner đổi (hoặc chuyển sang
-    tenant-funded) thì `data.partnerOptInAt = null` + `data.fundedBy` như cũ — nếu quy tắc này không
-    biểu diễn được qua `applyUpdate`, gán trực tiếp vào `data` sau đó và ghi chú lý do.
+  - khối scope/funding (L78-99): **giữ nguyên y hệt** cách tính `scopeTouched`, `appliesTo`,
+    `appliesToId` và 2 lệnh ghi có điều kiện `data.appliesTo` / `data.appliesToId` (chúng phụ thuộc
+    client gửi key nào — entity không quyết định được); giữ nguyên lời gọi `assertScopeTargetValid`
+    và `resolveFundingPartnerId`. **Chỉ thay 8 dòng gán funding** (nhánh if/else `fundedBy`) bằng:
+
+    ```ts
+        const fundingPartnerId =
+          fundedBy === 'partner' ? await resolveFundingPartnerId(tx, appliesTo, appliesToId) : null;
+        Object.assign(data, promotion.resolveFundingChange({ fundedBy, fundingPartnerId }));
+    ```
+    Kết quả phải khớp từng nhánh với bản cũ: partner + funding đổi → ghi `partnerOptInAt: null`;
+    partner + funding **không** đổi → **không** ghi `partnerOptInAt`; tenant → ghi cả 3 field.
   - khối code (L101-114): giữ nguyên, chỉ đổi throw sang `PromotionCodeTaken(code)`.
 
 - [ ] **Step 6: `update-partner-promotion.use-case.ts`** — thay:
   - `findById` null → `PromotionNotFound`; ownership → `promotion.assertCreatedBy(partnerId)`;
     ended → `promotion.assertEditable()` (giữ đúng **thứ tự** 404 → 403 → 409 như cũ)
   - khối tri-state (L41-57) → `promotion.applyUpdate(updateInput)` — **đây là bản copy thứ 2 bị xoá**
-  - khối scope (L59-70): giữ nguyên `assertPartnerOwnsScope`, vẫn set `fundingPartnerId: partnerId`
+  - khối scope (L59-70): **giữ nguyên hoàn toàn** (`assertPartnerOwnsScope`, ghi `appliesTo`,
+    `appliesToId`, `fundingPartnerId: partnerId`). Path partner **không** gọi `resolveFundingChange`
+    và **không bao giờ** đụng `fundedBy`/`partnerOptInAt` — đúng như bản cũ.
   - code → `PromotionCodeTaken(code)`.
 
 - [ ] **Step 7: `end-promotion.use-case.ts`** — `findById` null → `PromotionNotFound`; giữ nguyên
