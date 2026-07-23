@@ -103,11 +103,20 @@ export async function storefrontAuthMiddleware(
     throw new Response('Authentication service temporarily unavailable', { status: 503 });
   }
   if (result.kind === 'invalid') {
-    const response = await runWithStorefrontRequestContext(
-      { tenant, auth: null, suppressSessionCommit: false },
-      next,
-    );
-    response.headers.append('Set-Cookie', await service.destroy(request));
+    // Keep this state object by reference: login/onboarding actions may mark it
+    // while they replace the stale session cookie with a newly-created session.
+    const state: StorefrontRequestContextState = {
+      tenant,
+      auth: null,
+      suppressSessionCommit: false,
+    };
+    const response = await runWithStorefrontRequestContext(state, next);
+
+    // Do not append a stale-session deletion after an action has emitted a new
+    // session cookie. Cookie order is significant and the deletion could win.
+    if (!state.suppressSessionCommit) {
+      response.headers.append('Set-Cookie', await service.destroy(request));
+    }
     return response;
   }
   const state: StorefrontRequestContextState = {

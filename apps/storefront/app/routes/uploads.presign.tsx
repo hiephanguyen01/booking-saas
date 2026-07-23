@@ -17,14 +17,20 @@ const PRESIGN_TIMEOUT_MS = 10_000;
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+    },
   });
 }
 
 export async function action({ request }: Route.ActionArgs): Promise<Response> {
   const parsed = presignUploadInputSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success || parsed.data.target !== 'partners') {
-    return json({ message: 'Yêu cầu tải lên không hợp lệ.' }, 400);
+    return json(
+      { code: 'INVALID_UPLOAD_REQUEST', message: 'Yêu cầu tải lên không hợp lệ.' },
+      400,
+    );
   }
 
   const timeoutSignal = AbortSignal.timeout(PRESIGN_TIMEOUT_MS);
@@ -40,23 +46,37 @@ export async function action({ request }: Route.ActionArgs): Promise<Response> {
   } catch (error) {
     if (request.signal.aborted) throw error;
     if (timeoutSignal.aborted) {
-      return json({ message: 'Dịch vụ tải lên phản hồi quá thời gian cho phép.' }, 504);
+      return json(
+        { code: 'UPLOAD_SERVICE_TIMEOUT', message: 'Dịch vụ tải lên phản hồi quá thời gian cho phép.' },
+        504,
+      );
     }
-    return json({ message: 'Dịch vụ tải lên hiện không khả dụng.' }, 503);
+    return json(
+      { code: 'UPLOAD_SERVICE_UNAVAILABLE', message: 'Dịch vụ tải lên hiện không khả dụng.' },
+      503,
+    );
   }
 
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    const message =
-      body && typeof body === 'object' && 'message' in body && typeof body.message === 'string'
-        ? body.message
-        : 'Không thể tạo liên kết tải lên.';
-    return json({ message }, response.status);
+    // Never expose free-form upstream messages from a public unauthenticated
+    // proxy. They may contain storage implementation or validation details.
+    const status = response.status >= 400 && response.status <= 599 ? response.status : 502;
+    return json(
+      { code: 'UPLOAD_PRESIGN_FAILED', message: 'Không thể tạo liên kết tải lên.' },
+      status,
+    );
   }
 
   const grant = presignUploadResponseSchema.safeParse(body);
   if (!grant.success) {
-    return json({ message: 'Dịch vụ tải lên trả về dữ liệu không hợp lệ.' }, 502);
+    return json(
+      {
+        code: 'INVALID_UPLOAD_SERVICE_RESPONSE',
+        message: 'Dịch vụ tải lên trả về dữ liệu không hợp lệ.',
+      },
+      502,
+    );
   }
 
   const payload: PresignUploadResponse = grant.data;
