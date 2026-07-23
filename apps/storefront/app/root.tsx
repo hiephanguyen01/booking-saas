@@ -13,7 +13,6 @@ import {
   useMatches,
   useRouteLoaderData,
 } from 'react-router';
-import type { ShouldRevalidateFunctionArgs } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
 import type { AccountMenuSummary } from './features/account/account-menu';
@@ -95,22 +94,6 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   headers.append('Set-Cookie', await refAttributionCookie(tenant.id, ref));
   if (visitor.setCookie) headers.append('Set-Cookie', visitor.setCookie);
   return data(payload, { headers });
-}
-
-export function shouldRevalidate({
-  currentUrl,
-  nextUrl,
-  formMethod,
-  defaultShouldRevalidate,
-}: ShouldRevalidateFunctionArgs): boolean {
-  const isMutation = Boolean(formMethod && formMethod.toUpperCase() !== 'GET');
-
-  // Payment status polling manually revalidates the current booking route. The
-  // tenant shell, menu and account summary are unrelated and must not fan out
-  // extra backend calls every polling interval. Mutations and real navigations
-  // retain React Router's default revalidation behavior.
-  if (!isMutation && currentUrl.href === nextUrl.href) return false;
-  return defaultShouldRevalidate;
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
