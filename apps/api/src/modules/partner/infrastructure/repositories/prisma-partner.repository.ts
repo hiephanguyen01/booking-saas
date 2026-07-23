@@ -19,10 +19,7 @@ import type {
   ListPartnersFilter,
   PartnerRecord,
 } from '../../domain/ports/partner-reader.port';
-import type {
-  IPartnerRepository,
-  UpdatePartnerData,
-} from '../../domain/ports/partner-repository.port';
+import type { IPartnerRepository } from '../../domain/ports/partner-repository.port';
 
 /**
  * The owning user is the EARLIEST `PartnerMember` — `applyAsPartner` creates the
@@ -174,25 +171,6 @@ export class PrismaPartnerRepository implements IPartnerRepository, IPartnerRead
       tx.partner.groupBy({ by: ['status'], where: baseWhere, _count: true }),
     ]);
     return { items: items.map(toRecord), total, counts: toStatusCounts(countRows) };
-  }
-
-  async update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord> {
-    return toRecord(
-      await tx.partner.update({
-        where: { id },
-        data: {
-          status: data.status,
-          verificationStatus: data.verificationStatus,
-          verifiedAt: data.verifiedAt,
-          dateOfBirth: data.dateOfBirth,
-          payoutInfo: data.payoutInfo as Prisma.InputJsonValue | undefined,
-          identityInfo: data.identityInfo as Prisma.InputJsonValue | undefined,
-          businessInfo: data.businessInfo as Prisma.InputJsonValue | undefined,
-          defaultCancellationPolicyId: data.defaultCancellationPolicyId,
-        },
-        include: partnerInclude,
-      }),
-    );
   }
 
   async updateStatus(

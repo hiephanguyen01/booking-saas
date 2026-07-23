@@ -1,5 +1,3 @@
-import type { PartnerStatus, PartnerVerificationStatus } from '@booking/contracts';
-
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   PartnerBusinessInfoIntent,
@@ -18,19 +16,6 @@ export type { ListPartnersFilter, PartnerOwnerRecord, PartnerRecord } from './pa
 
 export const PARTNER_REPOSITORY = Symbol('PARTNER_REPOSITORY');
 
-export interface UpdatePartnerData {
-  status?: PartnerStatus;
-  verificationStatus?: PartnerVerificationStatus;
-  verifiedAt?: Date | null;
-  dateOfBirth?: Date | null;
-  payoutInfo?: Record<string, unknown>;
-  identityInfo?: Record<string, unknown>;
-  /** Logo + license/business documents live here (§7.3 — partners have no image column). */
-  businessInfo?: Record<string, unknown>;
-  /** null clears the partner default; a value must reference a policy the partner may use. */
-  defaultCancellationPolicyId?: string | null;
-}
-
 export interface IPartnerRepository {
   create(tx: PrismaTx, partner: NewPartner): Promise<PartnerRecord>;
 
@@ -43,11 +28,6 @@ export interface IPartnerRepository {
   findStateById(tx: PrismaTx, id: string): Promise<PartnerState | null>;
   findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerState | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<PartnerState | null>;
-
-  /**
-   * Temporary compatibility seam for writer use-cases migrated in Tasks 3–4.
-   */
-  update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord>;
 
   updateStatus(tx: PrismaTx, id: string, intent: PartnerStatusIntent): Promise<PartnerRecord>;
 
@@ -88,9 +68,4 @@ export interface IPartnerRepository {
     params: { tenantId: string; partnerId: string; userId: string; roleId: string },
   ): Promise<void>;
   countActiveBookings(tx: PrismaTx, partnerId: string): Promise<number>;
-
-  /**
-   * Temporary compatibility seam for four writer use-cases through Task 4.
-   */
-  tenantIdOfPartner(partnerId: string): Promise<string | null>;
 }

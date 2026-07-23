@@ -32,7 +32,8 @@ keep their business invariants on framework-free aggregates in `domain/entities/
 (`static rehydrate(state)` + `static create/open(...)`, narrow write-state, VOs in
 `domain/value-objects/`, typed `DomainError`s in `domain/errors/`); use-cases orchestrate load →
 method → save → emit. Refactored so far:
-**reviews, content-reports, notification, favorites, promotions, affiliate**.
+**reviews, content-reports, notification, favorites, promotions, affiliate, identity-access,
+partner**.
 
 ## Multi-tenancy — `forTenant()` + RLS (the most important rule)
 
