@@ -13,6 +13,7 @@ import {
   useMatches,
   useRouteLoaderData,
 } from 'react-router';
+import type { ShouldRevalidateFunctionArgs } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
 import type { AccountMenuSummary } from './features/account/account-menu';
@@ -101,7 +102,7 @@ export function shouldRevalidate({
   nextUrl,
   formMethod,
   defaultShouldRevalidate,
-}: Route.ShouldRevalidateFunctionArgs): boolean {
+}: ShouldRevalidateFunctionArgs): boolean {
   const isMutation = Boolean(formMethod && formMethod.toUpperCase() !== 'GET');
 
   // Payment status polling manually revalidates the current booking route. The
