@@ -7,10 +7,10 @@ type ListingGroupStructuredDataInput = {
   group: {
     title: string;
     description?: string | null;
-    photos: string[];
+    photos: readonly string[];
     reviewCount: number;
     ratingAvg: number | null;
-    listings: Array<{ title: string; slug: string }>;
+    listings: ReadonlyArray<{ title: string; slug: string }>;
   };
 };
 
