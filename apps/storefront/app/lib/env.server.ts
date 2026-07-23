@@ -12,6 +12,7 @@ const rawEnvironmentSchema = z
     SESSION_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
     ALLOW_MOCK_PAYMENTS: z.enum(['true', 'false']).optional(),
     PAYMENT_REDIRECT_ORIGINS: z.string().optional(),
+    STORAGE_UPLOAD_ORIGINS: z.string().optional(),
   })
   .passthrough();
 
@@ -41,6 +42,34 @@ function requiredUrl(
     invalidEnvironment(`${name} cannot target a loopback host in production`);
   }
   return url;
+}
+
+function parseOrigins(
+  name: 'PAYMENT_REDIRECT_ORIGINS' | 'STORAGE_UPLOAD_ORIGINS',
+  value: string | undefined,
+): Set<string> {
+  const origins = new Set<string>();
+  for (const item of value?.split(',') ?? []) {
+    const candidate = item.trim();
+    if (!candidate) continue;
+    let url: URL;
+    try {
+      url = new URL(candidate);
+    } catch {
+      invalidEnvironment(`${name} contains an invalid URL`);
+    }
+    if (url.origin !== candidate || url.username || url.password) {
+      invalidEnvironment(`${name} entries must be bare origins`);
+    }
+    if (production && url.protocol !== 'https:') {
+      invalidEnvironment(`${name} must use https in production`);
+    }
+    origins.add(url.origin);
+  }
+  if (production && origins.size === 0) {
+    invalidEnvironment(`${name} must contain at least one origin in production`);
+  }
+  return origins;
 }
 
 const backendUrl = requiredUrl('BACKEND_URL', raw.BACKEND_URL, 'http://localhost:3000');
@@ -73,27 +102,16 @@ if (production && !secureCookies) {
   invalidEnvironment('SESSION_COOKIE_SECURE cannot be false in production');
 }
 
-const paymentRedirectOrigins = new Set<string>();
-for (const item of raw.PAYMENT_REDIRECT_ORIGINS?.split(',') ?? []) {
-  const candidate = item.trim();
-  if (!candidate) continue;
-  let url: URL;
-  try {
-    url = new URL(candidate);
-  } catch {
-    invalidEnvironment('PAYMENT_REDIRECT_ORIGINS contains an invalid URL');
-  }
-  if (url.origin !== candidate || url.username || url.password) {
-    invalidEnvironment('PAYMENT_REDIRECT_ORIGINS entries must be bare origins');
-  }
-  if (production && url.protocol !== 'https:') {
-    invalidEnvironment('PAYMENT_REDIRECT_ORIGINS must use https in production');
-  }
-  paymentRedirectOrigins.add(url.origin);
-}
-if (production && paymentRedirectOrigins.size === 0) {
-  invalidEnvironment('PAYMENT_REDIRECT_ORIGINS must contain at least one origin in production');
-}
+const paymentRedirectOrigins = parseOrigins(
+  'PAYMENT_REDIRECT_ORIGINS',
+  raw.PAYMENT_REDIRECT_ORIGINS,
+);
+const storageUploadOrigins = parseOrigins(
+  'STORAGE_UPLOAD_ORIGINS',
+  raw.STORAGE_UPLOAD_ORIGINS ??
+    (!production ? 'http://localhost:9000,http://127.0.0.1:9000' : undefined),
+);
+
 if (production && raw.ALLOW_MOCK_PAYMENTS === 'true') {
   invalidEnvironment('ALLOW_MOCK_PAYMENTS cannot be true in production');
 }
@@ -110,4 +128,5 @@ export const storefrontEnv = Object.freeze({
   secureCookies,
   allowMockPayments: raw.ALLOW_MOCK_PAYMENTS === 'true',
   paymentRedirectOrigins,
+  storageUploadOrigins,
 });

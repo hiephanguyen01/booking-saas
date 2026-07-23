@@ -62,13 +62,14 @@ function createCspNonce(): string {
 
 function contentSecurityPolicy(nonce: string): string {
   const scriptSources = ["'self'", `'nonce-${nonce}'`];
-  const connectSources = ["'self'"];
-  const externalSources = ['https:'];
+  const connectSources = ["'self'", ...storefrontEnv.storageUploadOrigins];
+  const paymentSources = [...storefrontEnv.paymentRedirectOrigins];
+  const mediaSources = ['https:'];
 
   if (!storefrontEnv.production) {
     scriptSources.push("'unsafe-eval'");
     connectSources.push('ws:', 'wss:');
-    externalSources.push('http:');
+    mediaSources.push('http:');
   }
 
   const directives = [
@@ -81,11 +82,11 @@ function contentSecurityPolicy(nonce: string): string {
     `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
     "style-src-attr 'unsafe-inline'",
     "font-src 'self' data: https://fonts.gstatic.com",
-    `img-src 'self' data: blob: ${externalSources.join(' ')}`,
-    `media-src 'self' blob: ${externalSources.join(' ')}`,
-    `connect-src ${connectSources.join(' ')} ${externalSources.join(' ')}`,
-    `form-action 'self' ${externalSources.join(' ')}`,
-    `frame-src 'self' ${externalSources.join(' ')}`,
+    `img-src 'self' data: blob: ${mediaSources.join(' ')}`,
+    `media-src 'self' blob: ${mediaSources.join(' ')}`,
+    `connect-src ${connectSources.join(' ')}`,
+    `form-action 'self' ${paymentSources.join(' ')}`,
+    `frame-src 'self' ${paymentSources.join(' ')}`,
     "manifest-src 'self'",
     "worker-src 'self' blob:",
   ];

@@ -10,6 +10,7 @@ import {
 } from '@booking/contracts';
 import type { Route } from './+types/uploads.presign';
 import { storefrontEnv } from '../lib/env.server';
+import { allowedStorageUploadUrl } from '../lib/upload-origin.server';
 
 const backendUrl = (): string => storefrontEnv.backendUrl;
 const PRESIGN_TIMEOUT_MS = 10_000;
@@ -79,6 +80,17 @@ export async function action({ request }: Route.ActionArgs): Promise<Response> {
     );
   }
 
-  const payload: PresignUploadResponse = grant.data;
+  const uploadUrl = allowedStorageUploadUrl(grant.data.uploadUrl);
+  if (!uploadUrl) {
+    return json(
+      {
+        code: 'UNAPPROVED_UPLOAD_ORIGIN',
+        message: 'Dịch vụ tải lên trả về máy chủ lưu trữ chưa được cho phép.',
+      },
+      502,
+    );
+  }
+
+  const payload: PresignUploadResponse = { ...grant.data, uploadUrl };
   return json(payload, 200);
 }
