@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdatePartnerPromotionInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { vnd } from '../../../../shared/money/money';
@@ -6,8 +6,9 @@ import {
   PROMOTION_REPOSITORY,
   type IPromotionRepository,
   type PromotionRecord,
-  type UpdatePromotionData,
 } from '../../domain/ports/promotion-repository.port';
+import { Promotion, type PromotionUpdateInput } from '../../domain/entities/promotion.entity';
+import { PromotionCodeTaken, PromotionNotFound } from '../../domain/errors/promotion-errors';
 import { normalizeCode } from '../../domain/promotion-application';
 import { assertPartnerOwnsScope } from '../assert-partner-owns-scope';
 
@@ -28,33 +29,36 @@ export class UpdatePartnerPromotionUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.promotions.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({ statusCode: 404, code: 'PROMO_NOT_FOUND', message: 'Promotion not found' });
+        throw new PromotionNotFound();
       }
-      if (existing.createdByPartnerId !== partnerId) {
-        throw new ForbiddenException({ statusCode: 403, code: 'PROMO_NOT_OWNED', message: 'Not your promotion' });
-      }
-      if (existing.status === 'ended') {
-        throw new ConflictException({ statusCode: 409, code: 'PROMO_ENDED', message: 'An ended promotion cannot be edited' });
-      }
+      const promotion = Promotion.rehydrate(existing);
+      promotion.assertCreatedBy(partnerId);
+      promotion.assertEditable();
 
-      const data: UpdatePromotionData = {};
-      if (input.name !== undefined) data.name = input.name;
-      if (input.discountType !== undefined) data.discountType = input.discountType;
-      if (input.discountValue !== undefined) data.discountValue = vnd(input.discountValue);
-      // `null` → clear the condition; absent → leave the stored value untouched.
-      if (input.maxDiscount !== undefined) data.maxDiscount = input.maxDiscount === null ? null : vnd(input.maxDiscount);
-      if (input.minOrderAmount !== undefined) {
-        data.minOrderAmount = input.minOrderAmount === null ? null : vnd(input.minOrderAmount);
-      }
-      if (input.firstBookingOnly !== undefined) data.firstBookingOnly = input.firstBookingOnly;
-      if (input.usageLimitTotal !== undefined) data.usageLimitTotal = input.usageLimitTotal;
-      if (input.usageLimitPerCustomer !== undefined) data.usageLimitPerCustomer = input.usageLimitPerCustomer;
-      if (input.timeWindows !== undefined) {
-        data.timeWindows = input.timeWindows === null || input.timeWindows.length === 0 ? null : input.timeWindows;
-      }
-      if (input.startsAt !== undefined) data.startsAt = input.startsAt === null ? null : new Date(input.startsAt);
-      if (input.endsAt !== undefined) data.endsAt = input.endsAt === null ? null : new Date(input.endsAt);
-      if (input.status !== undefined) data.status = input.status;
+      // `null` → clear the condition; absent → leave the stored value untouched. An empty
+      // `timeWindows` array is a clear too — the tri-state merge lives in `applyUpdate`.
+      const updateInput: PromotionUpdateInput = {
+        name: input.name,
+        discountType: input.discountType,
+        discountValue: input.discountValue !== undefined ? vnd(input.discountValue) : undefined,
+        maxDiscount:
+          input.maxDiscount !== undefined ? (input.maxDiscount === null ? null : vnd(input.maxDiscount)) : undefined,
+        minOrderAmount:
+          input.minOrderAmount !== undefined
+            ? input.minOrderAmount === null
+              ? null
+              : vnd(input.minOrderAmount)
+            : undefined,
+        firstBookingOnly: input.firstBookingOnly,
+        usageLimitTotal: input.usageLimitTotal,
+        usageLimitPerCustomer: input.usageLimitPerCustomer,
+        timeWindows: input.timeWindows,
+        startsAt:
+          input.startsAt !== undefined ? (input.startsAt === null ? null : new Date(input.startsAt)) : undefined,
+        endsAt: input.endsAt !== undefined ? (input.endsAt === null ? null : new Date(input.endsAt)) : undefined,
+        status: input.status,
+      };
+      const data = promotion.applyUpdate(updateInput);
 
       if (input.appliesTo !== undefined || input.appliesToId !== undefined) {
         const appliesTo = input.appliesTo ?? existing.appliesTo;
@@ -77,7 +81,7 @@ export class UpdatePartnerPromotionUseCase {
           if (code !== existing.code) {
             const clash = await this.promotions.findByCode(tx, code);
             if (clash && clash.id !== id) {
-              throw new ConflictException({ statusCode: 409, code: 'PROMO_CODE_TAKEN', message: `Code "${code}" is already in use` });
+              throw new PromotionCodeTaken(code);
             }
           }
           data.code = code;

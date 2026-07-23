@@ -1,5 +1,6 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { PromoAppliesTo, PromoFundedBy, PromoTimeWindow, PromotionSpec } from '../promotion-discount';
+import type { PromotionSpec } from '../promotion-discount';
+import type { NewPromotion, PromotionPatch } from '../entities/promotion.entity';
 
 export const PROMOTION_REPOSITORY = Symbol('PROMOTION_REPOSITORY');
 
@@ -11,33 +12,6 @@ export interface PromotionRecord extends PromotionSpec {
   fundingPartnerId: string | null;
   createdAt: Date;
 }
-
-export interface CreatePromotionData {
-  name: string;
-  /** null = an auto-applied campaign (no code). */
-  code: string | null;
-  discountType: 'percent' | 'fixed';
-  discountValue: bigint;
-  maxDiscount: bigint | null;
-  fundedBy: PromoFundedBy;
-  appliesTo: PromoAppliesTo;
-  appliesToId: string | null;
-  minOrderAmount: bigint | null;
-  firstBookingOnly: boolean;
-  usageLimitTotal: number | null;
-  usageLimitPerCustomer: number | null;
-  timeWindows: PromoTimeWindow[] | null;
-  startsAt: Date | null;
-  endsAt: Date | null;
-  status: 'draft' | 'active' | 'paused';
-  createdByPartnerId: string | null;
-  /** The partner bearing the cost for a `funded_by = partner` promo (resolved from scope). */
-  fundingPartnerId: string | null;
-  /** Opt-in timestamp — non-null for partner-created codes (auto-opted-in), null while pending. */
-  partnerOptInAt: Date | null;
-}
-
-export type UpdatePromotionData = Partial<CreatePromotionData>;
 
 /** Filters for the paginated promotion lists (tenant + partner). */
 export interface PromotionListFilter {
@@ -52,8 +26,8 @@ export interface PromotionListFilter {
 }
 
 export interface IPromotionRepository {
-  create(tx: PrismaTx, tenantId: string, data: CreatePromotionData): Promise<PromotionRecord>;
-  update(tx: PrismaTx, id: string, data: UpdatePromotionData): Promise<PromotionRecord>;
+  create(tx: PrismaTx, tenantId: string, data: NewPromotion): Promise<PromotionRecord>;
+  update(tx: PrismaTx, id: string, patch: PromotionPatch): Promise<PromotionRecord>;
   findById(tx: PrismaTx, id: string): Promise<PromotionRecord | null>;
   findByCode(tx: PrismaTx, code: string): Promise<PromotionRecord | null>;
   list(tx: PrismaTx, params: PromotionListFilter): Promise<{ items: PromotionRecord[]; total: number }>;
