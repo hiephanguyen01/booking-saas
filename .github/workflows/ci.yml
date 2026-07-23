@@ -27,7 +27,19 @@ jobs:
       - name: Storefront lint
         run: pnpm --filter=@booking/storefront lint
       - name: Storefront typecheck
-        run: pnpm --filter=@booking/storefront typecheck
+        id: storefront_typecheck
+        continue-on-error: true
+        run: pnpm --filter=@booking/storefront typecheck > storefront-typecheck.log 2>&1
+      - name: Upload storefront typecheck log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storefront-typecheck-log
+          path: storefront-typecheck.log
+          retention-days: 1
+      - name: Fail on storefront typecheck error
+        if: steps.storefront_typecheck.outcome == 'failure'
+        run: exit 1
       - name: Storefront build
         run: pnpm --filter=@booking/storefront build
       - name: Dashboard lint
