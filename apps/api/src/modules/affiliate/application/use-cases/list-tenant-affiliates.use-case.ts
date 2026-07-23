@@ -13,9 +13,9 @@ import {
   type IAffiliateCommissionRepository,
 } from '../../domain/ports/affiliate-commission-repository.port';
 import {
-  REFERRAL_LINK_REPOSITORY,
-  type IReferralLinkRepository,
-} from '../../domain/ports/referral-link-repository.port';
+  REFERRAL_LINK_READER,
+  type IReferralLinkReader,
+} from '../../domain/ports/referral-link-reader.port';
 import {
   COMMISSION_RULE_READER,
   type ICommissionRuleReader,
@@ -42,7 +42,7 @@ export interface TenantAffiliateRow {
 export class ListTenantAffiliatesUseCase {
   constructor(
     @Inject(AFFILIATE_READER) private readonly affiliates: IAffiliateReader,
-    @Inject(REFERRAL_LINK_REPOSITORY) private readonly links: IReferralLinkRepository,
+    @Inject(REFERRAL_LINK_READER) private readonly links: IReferralLinkReader,
     @Inject(AFFILIATE_COMMISSION_REPOSITORY) private readonly commissions: IAffiliateCommissionRepository,
     @Inject(COMMISSION_RULE_READER) private readonly rules: ICommissionRuleReader,
     private readonly tenantDb: TenantDbService,

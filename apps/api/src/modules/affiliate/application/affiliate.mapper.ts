@@ -16,7 +16,7 @@ import type {
   AffiliateRecord,
   AffiliateWithUser,
 } from '../domain/ports/affiliate-reader.port';
-import type { ReferralLinkRecord } from '../domain/ports/referral-link-repository.port';
+import type { ReferralLinkRecord } from '../domain/ports/referral-link-reader.port';
 import type {
   AffiliateCommissionTotals,
   AffiliateCommissionWithBooking,

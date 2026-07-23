@@ -3,12 +3,15 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
+import { AFFILIATE_ATTRIBUTION_READER } from '../../domain/ports/affiliate-attribution-reader.port';
 import { AFFILIATE_READER } from '../../domain/ports/affiliate-reader.port';
 import { AFFILIATE_REPOSITORY } from '../../domain/ports/affiliate-repository.port';
+import { REFERRAL_LINK_READER } from '../../domain/ports/referral-link-reader.port';
 import { REFERRAL_LINK_REPOSITORY } from '../../domain/ports/referral-link-repository.port';
 import { AFFILIATE_COMMISSION_REPOSITORY } from '../../domain/ports/affiliate-commission-repository.port';
 import { COMMISSION_RULE_READER } from '../../domain/ports/commission-rule-reader.port';
 import { PrismaAffiliateRepository } from '../repositories/prisma-affiliate.repository';
+import { PrismaAffiliateAttributionReader } from '../repositories/prisma-affiliate-attribution.reader';
 import { PrismaReferralLinkRepository } from '../repositories/prisma-referral-link.repository';
 import { PrismaAffiliateCommissionRepository } from '../repositories/prisma-affiliate-commission.repository';
 import { PrismaCommissionRuleReader } from '../repositories/prisma-commission-rule.reader';
@@ -45,7 +48,13 @@ import { TenantAffiliateController } from './tenant-affiliate.controller';
     PrismaAffiliateRepository,
     { provide: AFFILIATE_REPOSITORY, useExisting: PrismaAffiliateRepository },
     { provide: AFFILIATE_READER, useExisting: PrismaAffiliateRepository },
-    { provide: REFERRAL_LINK_REPOSITORY, useClass: PrismaReferralLinkRepository },
+    PrismaReferralLinkRepository,
+    { provide: REFERRAL_LINK_REPOSITORY, useExisting: PrismaReferralLinkRepository },
+    { provide: REFERRAL_LINK_READER, useExisting: PrismaReferralLinkRepository },
+    {
+      provide: AFFILIATE_ATTRIBUTION_READER,
+      useClass: PrismaAffiliateAttributionReader,
+    },
     { provide: AFFILIATE_COMMISSION_REPOSITORY, useClass: PrismaAffiliateCommissionRepository },
     { provide: COMMISSION_RULE_READER, useClass: PrismaCommissionRuleReader },
     ResolveAttributionUseCase,
