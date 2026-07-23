@@ -20,13 +20,21 @@ export interface RedisJsonStore {
 type StorefrontRedisClient = ReturnType<typeof createClient>;
 let clientPromise: Promise<StorefrontRedisClient> | undefined;
 
-async function client() {
+async function client(): Promise<StorefrontRedisClient> {
   if (!clientPromise) {
     const instance = createClient({ url: storefrontEnv.redisUrl });
     instance.on('error', (error: Error) =>
       console.error('Storefront Redis connection error', error),
     );
-    clientPromise = instance.connect().then(() => instance) as Promise<StorefrontRedisClient>;
+    clientPromise = instance
+      .connect()
+      .then(() => instance)
+      .catch((error: unknown) => {
+        // A rejected promise must not remain cached for the lifetime of the
+        // process. Let readiness probes and later requests attempt reconnecting.
+        clientPromise = undefined;
+        throw error;
+      });
   }
   return clientPromise;
 }
