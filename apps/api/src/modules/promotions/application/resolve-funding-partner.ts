@@ -1,5 +1,5 @@
-import { BadRequestException } from '@nestjs/common';
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
+import { PromoFundingPartnerUnresolved } from '../domain/errors/promotion-errors';
 import type { PromoAppliesTo } from '../domain/promotion-discount';
 
 /**
@@ -15,11 +15,7 @@ export async function resolveFundingPartnerId(
   appliesToId: string | null,
 ): Promise<string> {
   const fail = (): never => {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'PROMO_FUNDING_PARTNER_UNRESOLVED',
-      message: 'A partner-funded promotion must target a partner, listing, or listing group',
-    });
+    throw new PromoFundingPartnerUnresolved();
   };
   if (!appliesToId) return fail();
   switch (appliesTo) {
