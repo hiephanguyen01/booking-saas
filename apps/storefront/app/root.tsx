@@ -55,12 +55,14 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   const publicUrl = requestPublicUrl(request, url);
   const canonical = canonicalUrl(publicUrl);
   const alternates = localizedAlternates(publicUrl);
-  const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
   const storefrontAuth = getOptionalAuth();
   const currentUser = storefrontAuth?.info.user ?? null;
-  const accountMenuSummary = storefrontAuth
-    ? await getAccountMenuSummary(request, storefrontAuth.session.accessToken)
-    : null;
+  const [listingTypes, accountMenuSummary] = await Promise.all([
+    tenant.live ? fetchListingTypes(request) : Promise.resolve([]),
+    storefrontAuth
+      ? getAccountMenuSummary(request, storefrontAuth.session.accessToken)
+      : Promise.resolve(null),
+  ]);
   const payload = {
     tenant,
     listingTypes,
@@ -75,10 +77,10 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   // the last-click cookie. Only track when the code differs from what's already
   // attributed, so repeat page views don't re-hit the backend.
   const ref = url.searchParams.get('ref')?.trim().toUpperCase();
+  if (!ref || ref.length > 50) return payload;
+
   const attributedRef = await readRefCode(request, tenant.id);
-  if (!ref || ref.length > 50 || attributedRef === ref) {
-    return payload;
-  }
+  if (attributedRef === ref) return payload;
 
   const visitor = await resolveVisitorId(request);
   const valid = await trackReferral(request, ref, visitor.id);
@@ -92,6 +94,22 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   headers.append('Set-Cookie', await refAttributionCookie(tenant.id, ref));
   if (visitor.setCookie) headers.append('Set-Cookie', visitor.setCookie);
   return data(payload, { headers });
+}
+
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  defaultShouldRevalidate,
+}: Route.ShouldRevalidateFunctionArgs): boolean {
+  const isMutation = Boolean(formMethod && formMethod.toUpperCase() !== 'GET');
+
+  // Payment status polling manually revalidates the current booking route. The
+  // tenant shell, menu and account summary are unrelated and must not fan out
+  // extra backend calls every polling interval. Mutations and real navigations
+  // retain React Router's default revalidation behavior.
+  if (!isMutation && currentUrl.href === nextUrl.href) return false;
+  return defaultShouldRevalidate;
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
