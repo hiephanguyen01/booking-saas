@@ -1,5 +1,5 @@
 import type { ContentReportResponse } from '@booking/contracts';
-import type { ContentReportRecord } from '../domain/ports/content-report-repository.port';
+import type { ContentReportRecord } from '../domain/ports/content-report-reader.port';
 
 export function toContentReportResponse(record: ContentReportRecord): ContentReportResponse {
   return {
