@@ -1,13 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import type { Partner as PrismaPartnerRow, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import { toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
-  CreatePartnerData,
-  IPartnerRepository,
+  PartnerBusinessInfoIntent,
+  PartnerDefaultCancellationPolicyIntent,
+  PartnerIdentityRejectionIntent,
+  PartnerIdentitySubmissionIntent,
+  PartnerIdentityVerifiedIntent,
+  PartnerPayoutIntent,
+  PartnerState,
+  PartnerStatusIntent,
+} from '../../domain/entities/partner.entity';
+import type {
+  IPartnerReader,
   ListPartnersFilter,
   PartnerRecord,
+} from '../../domain/ports/partner-reader.port';
+import type {
+  CreatePartnerData,
+  IPartnerRepository,
   UpdatePartnerData,
 } from '../../domain/ports/partner-repository.port';
 
@@ -53,13 +66,34 @@ function toRecord(p: PrismaPartner): PartnerRecord {
   };
 }
 
+function toState(p: PrismaPartnerRow): PartnerState {
+  return {
+    id: p.id,
+    tenantId: p.tenantId,
+    name: p.name,
+    slug: p.slug,
+    description: p.description,
+    partnerType: p.partnerType,
+    isHouse: p.isHouse,
+    status: p.status,
+    verificationStatus: p.verificationStatus,
+    verifiedAt: p.verifiedAt,
+    dateOfBirth: p.dateOfBirth,
+    payoutInfo: (p.payoutInfo ?? {}) as Record<string, unknown>,
+    businessInfo: (p.businessInfo ?? {}) as Record<string, unknown>,
+    contactInfo: (p.contactInfo ?? {}) as Record<string, unknown>,
+    identityInfo: (p.identityInfo ?? {}) as Record<string, unknown>,
+    defaultCancellationPolicyId: p.defaultCancellationPolicyId,
+  };
+}
+
 /**
  * Partner data is tenant-scoped (RLS): tx methods run inside `forTenant`, so the
  * `app.tenant_id` GUC filters rows and satisfies the tenant_isolation WITH CHECK
  * on insert. Only `tenantIdOfPartner` runs on the admin pool (no tenant context).
  */
 @Injectable()
-export class PrismaPartnerRepository implements IPartnerRepository {
+export class PrismaPartnerRepository implements IPartnerRepository, IPartnerReader {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(tx: PrismaTx, tenantId: string, data: CreatePartnerData): Promise<PartnerRecord> {
@@ -87,7 +121,12 @@ export class PrismaPartnerRepository implements IPartnerRepository {
     return p ? toRecord(p) : null;
   }
 
-  async findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerRecord | null> {
+  async findStateById(tx: PrismaTx, id: string): Promise<PartnerState | null> {
+    const p = await tx.partner.findUnique({ where: { id } });
+    return p ? toState(p) : null;
+  }
+
+  async findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerState | null> {
     // Lock the row first (RLS scopes it to the current tenant), then read via
     // Prisma. A concurrent reviewer blocks here until this tx commits, then sees
     // the already-transitioned status and fails the pending gate.
@@ -95,13 +134,13 @@ export class PrismaPartnerRepository implements IPartnerRepository {
       SELECT id FROM partners WHERE id = ${id}::uuid FOR UPDATE
     `;
     if (locked.length === 0) return null;
-    return this.findById(tx, id);
+    return this.findStateById(tx, id);
   }
 
-  async findBySlug(tx: PrismaTx, slug: string): Promise<PartnerRecord | null> {
+  async findBySlug(tx: PrismaTx, slug: string): Promise<PartnerState | null> {
     // RLS scopes this to the current tenant; slug is unique per tenant.
-    const p = await tx.partner.findFirst({ where: { slug }, include: partnerInclude });
-    return p ? toRecord(p) : null;
+    const p = await tx.partner.findFirst({ where: { slug } });
+    return p ? toState(p) : null;
   }
 
   async list(
@@ -154,6 +193,110 @@ export class PrismaPartnerRepository implements IPartnerRepository {
         include: partnerInclude,
       }),
     );
+  }
+
+  async updateStatus(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerStatusIntent,
+  ): Promise<PartnerRecord> {
+    return toRecord(
+      await tx.partner.update({
+        where: { id },
+        data: { status: intent.status },
+        include: partnerInclude,
+      }),
+    );
+  }
+
+  async updateIdentitySubmission(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerIdentitySubmissionIntent,
+  ): Promise<PartnerRecord> {
+    return toRecord(
+      await tx.partner.update({
+        where: { id },
+        data: {
+          verificationStatus: intent.verificationStatus,
+          dateOfBirth: intent.dateOfBirth,
+          identityInfo: intent.identityInfo as Prisma.InputJsonValue,
+        },
+        include: partnerInclude,
+      }),
+    );
+  }
+
+  async updateIdentityReview(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerIdentityRejectionIntent | PartnerIdentityVerifiedIntent,
+  ): Promise<PartnerRecord> {
+    return toRecord(
+      await tx.partner.update({
+        where: { id },
+        data: {
+          verificationStatus: intent.verificationStatus,
+          identityInfo: intent.identityInfo as Prisma.InputJsonValue,
+          ...('verifiedAt' in intent ? { verifiedAt: intent.verifiedAt } : {}),
+        },
+        include: partnerInclude,
+      }),
+    );
+  }
+
+  async updatePayoutInfo(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerPayoutIntent,
+  ): Promise<PartnerRecord> {
+    return toRecord(
+      await tx.partner.update({
+        where: { id },
+        data: { payoutInfo: intent.payoutInfo as Prisma.InputJsonValue },
+        include: partnerInclude,
+      }),
+    );
+  }
+
+  async updateBusinessInfo(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerBusinessInfoIntent,
+  ): Promise<PartnerRecord> {
+    return toRecord(
+      await tx.partner.update({
+        where: { id },
+        data: { businessInfo: intent.businessInfo as Prisma.InputJsonValue },
+        include: partnerInclude,
+      }),
+    );
+  }
+
+  async updateDefaultCancellationPolicy(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerDefaultCancellationPolicyIntent,
+  ): Promise<PartnerRecord> {
+    return toRecord(
+      await tx.partner.update({
+        where: { id },
+        data: { defaultCancellationPolicyId: intent.defaultCancellationPolicyId },
+        include: partnerInclude,
+      }),
+    );
+  }
+
+  async isCancellationPolicyVisible(
+    tx: PrismaTx,
+    partnerId: string,
+    policyId: string,
+  ): Promise<boolean> {
+    const policy = await tx.cancellationPolicy.findFirst({
+      where: { id: policyId, OR: [{ partnerId: null }, { partnerId }] },
+      select: { id: true },
+    });
+    return policy !== null;
   }
 
   async addMember(

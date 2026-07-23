@@ -1,10 +1,10 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
-  PARTNER_REPOSITORY,
-  type IPartnerRepository,
+  PARTNER_READER,
+  type IPartnerReader,
   type PartnerRecord,
-} from '../../domain/ports/partner-repository.port';
+} from '../../domain/ports/partner-reader.port';
 
 /**
  * A partner reads its OWN record (§7.3) — status, rejection reason, payout bank
@@ -20,7 +20,7 @@ import {
 @Injectable()
 export class GetPartnerProfileUseCase {
   constructor(
-    @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
+    @Inject(PARTNER_READER) private readonly partners: IPartnerReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 

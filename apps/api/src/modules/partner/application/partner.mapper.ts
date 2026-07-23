@@ -9,7 +9,7 @@ import {
   type PartnerIdentityInfoResponse,
   type PartnerResponse,
 } from '@booking/contracts';
-import type { PartnerRecord } from '../domain/ports/partner-repository.port';
+import type { PartnerRecord } from '../domain/ports/partner-reader.port';
 import type { ZodSchema } from 'zod';
 
 /**

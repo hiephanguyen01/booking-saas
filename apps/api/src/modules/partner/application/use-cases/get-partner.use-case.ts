@@ -1,15 +1,15 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
-  PARTNER_REPOSITORY,
-  type IPartnerRepository,
+  PARTNER_READER,
+  type IPartnerReader,
   type PartnerRecord,
-} from '../../domain/ports/partner-repository.port';
+} from '../../domain/ports/partner-reader.port';
 
 @Injectable()
 export class GetPartnerUseCase {
   constructor(
-    @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
+    @Inject(PARTNER_READER) private readonly partners: IPartnerReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 
