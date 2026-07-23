@@ -109,7 +109,7 @@ export function planForPayout(payload: { payeeType: string }): NotificationPlanI
 }
 
 /** The T−24h reminder addresses the booking's customer (was hardcoded in the use-case). */
-export const REMINDER_PLAN_ITEM: NotificationPlanItem = {
+export const REMINDER_PLAN_ITEM: Readonly<NotificationPlanItem> = Object.freeze({
   audience: 'customer',
   templateId: 'booking_reminder_customer',
-};
+});

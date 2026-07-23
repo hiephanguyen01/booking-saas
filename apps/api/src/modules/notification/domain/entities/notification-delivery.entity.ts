@@ -26,20 +26,20 @@ export type DeliveryStatus = 'pending' | 'sent' | 'failed';
 /** How this kind of delivery behaves on redelivery and on send failure. */
 export interface DeliveryPolicy {
   /** Skip the send when a `sent` row already exists for the key. */
-  dedupe: boolean;
+  readonly dedupe: boolean;
   /** `rethrow` lets the outbox relay / reminder sweep retry; `swallow` is best-effort. */
-  onFailure: 'rethrow' | 'swallow';
+  readonly onFailure: 'rethrow' | 'swallow';
 }
 
 /** Outbox- and reminder-driven emails: deduped, and a failure retries via the relay. */
-export const OUTBOX_DELIVERY_POLICY: DeliveryPolicy = { dedupe: true, onFailure: 'rethrow' };
+export const OUTBOX_DELIVERY_POLICY: Readonly<DeliveryPolicy> = Object.freeze({ dedupe: true, onFailure: 'rethrow' });
 
 /**
  * Guest-lookup OTP: never deduped (a resend of the same code must still reach the
  * guest) and never throws (it runs inside the guest's HTTP request; the code stays
  * valid in Redis so the guest can retry).
  */
-export const OTP_DELIVERY_POLICY: DeliveryPolicy = { dedupe: false, onFailure: 'swallow' };
+export const OTP_DELIVERY_POLICY: Readonly<DeliveryPolicy> = Object.freeze({ dedupe: false, onFailure: 'swallow' });
 
 /** Everything needed to attempt one delivery. */
 export interface DeliveryAttempt {
