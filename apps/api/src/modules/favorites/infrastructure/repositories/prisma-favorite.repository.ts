@@ -7,14 +7,19 @@ import type {
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
+  FavoritableTarget,
+  NewFavorite,
+} from '../../domain/entities/favorite.entity';
+import type { IFavoriteRepository } from '../../domain/ports/favorite-repository.port';
+import type {
   CustomerFavoritePage,
   FavoriteCardRecord,
   FavoriteEntryRecord,
   FavoriteListPage,
   FavoriteSummaryRecord,
   FavoriteSummaryTargetRecord,
-  IFavoriteRepository,
-} from '../../domain/ports/favorite-repository.port';
+  IFavoriteReader,
+} from '../../domain/ports/favorite-reader.port';
 
 /** VND đồng from a mode_config price value — accepts digit string OR seeded integer. */
 function toVnd(raw: unknown): bigint | null {
@@ -141,8 +146,11 @@ function toCard(row: CardRow): FavoriteCardRecord | null {
 }
 
 @Injectable()
-export class PrismaFavoriteRepository implements IFavoriteRepository {
-  async resolveTargetPartnerId(tx: PrismaTx, target: FavoriteTarget): Promise<string | null> {
+export class PrismaFavoriteRepository implements IFavoriteRepository, IFavoriteReader {
+  async findFavoritableTarget(
+    tx: PrismaTx,
+    target: FavoriteTarget,
+  ): Promise<FavoritableTarget | null> {
     // Only published targets can be favorited — matches what the storefront
     // surfaces, and blocks crafting a heart on a same-tenant draft/archived item.
     if (target.target === 'listing') {
@@ -150,30 +158,24 @@ export class PrismaFavoriteRepository implements IFavoriteRepository {
         where: { id: target.targetId, status: 'published' },
         select: { partnerId: true },
       });
-      return listing?.partnerId ?? null;
+      return listing ? { target: 'listing', targetId: target.targetId, partnerId: listing.partnerId } : null;
     }
     const group = await tx.listingGroup.findFirst({
       where: { id: target.targetId, status: 'published' },
       select: { partnerId: true },
     });
-    return group?.partnerId ?? null;
+    return group ? { target: 'group', targetId: target.targetId, partnerId: group.partnerId } : null;
   }
 
-  async add(
-    tx: PrismaTx,
-    tenantId: string,
-    customerId: string,
-    partnerId: string,
-    target: FavoriteTarget,
-  ): Promise<void> {
+  async add(tx: PrismaTx, favorite: NewFavorite): Promise<void> {
     try {
       await tx.favorite.create({
         data: {
-          tenantId,
-          customerId,
-          partnerId,
-          listingId: target.target === 'listing' ? target.targetId : null,
-          groupId: target.target === 'group' ? target.targetId : null,
+          tenantId: favorite.tenantId,
+          customerId: favorite.customerId,
+          partnerId: favorite.partnerId,
+          listingId: favorite.listingId,
+          groupId: favorite.groupId,
         },
       });
     } catch (error) {
@@ -185,14 +187,6 @@ export class PrismaFavoriteRepository implements IFavoriteRepository {
 
   async remove(tx: PrismaTx, customerId: string, target: FavoriteTarget): Promise<void> {
     await tx.favorite.deleteMany({ where: { customerId, ...targetWhere(target) } });
-  }
-
-  async isFavorited(tx: PrismaTx, customerId: string, target: FavoriteTarget): Promise<boolean> {
-    const found = await tx.favorite.findFirst({
-      where: { customerId, ...targetWhere(target) },
-      select: { id: true },
-    });
-    return found !== null;
   }
 
   async listRefs(
