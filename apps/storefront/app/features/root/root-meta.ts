@@ -1,0 +1,34 @@
+import type { RootLoaderPayload } from './server/root-loader.server';
+
+export function buildRootMeta(loaderData: RootLoaderPayload | undefined) {
+  const tenant = loaderData?.tenant;
+  if (!tenant) return [{ title: 'Booking' }];
+
+  const title = tenant.themeConfig.seo?.title || tenant.name;
+  const description = tenant.themeConfig.seo?.description || undefined;
+  const tags: Array<Record<string, string>> = [
+    { title },
+    { property: 'og:title', content: title },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:site_name', content: tenant.name },
+    { property: 'og:url', content: loaderData.canonical },
+    { tagName: 'link', rel: 'canonical', href: loaderData.canonical },
+    { tagName: 'link', rel: 'alternate', hrefLang: 'vi', href: loaderData.alternates.vi },
+    { tagName: 'link', rel: 'alternate', hrefLang: 'en', href: loaderData.alternates.en },
+    {
+      tagName: 'link',
+      rel: 'alternate',
+      hrefLang: 'x-default',
+      href: loaderData.alternates.default,
+    },
+  ];
+
+  if (description) {
+    tags.push({ name: 'description', content: description });
+    tags.push({ property: 'og:description', content: description });
+  }
+  if (tenant.themeConfig.hero?.imageUrl) {
+    tags.push({ property: 'og:image', content: tenant.themeConfig.hero.imageUrl });
+  }
+  return tags;
+}
