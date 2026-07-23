@@ -1,5 +1,5 @@
 import { favoriteRefsResponseSchema, type FavoriteRefsResponse } from '@booking/contracts';
-import { Outlet, useOutletContext } from 'react-router';
+import { Outlet, useOutletContext, type ShouldRevalidateFunctionArgs } from 'react-router';
 import { FavoritesProvider } from '../features/favorites/favorites-context';
 import { apiGet } from '../lib/api.server';
 import { getOptionalAuth } from '../lib/auth.server';
@@ -33,7 +33,7 @@ export function shouldRevalidate({
   nextUrl,
   formMethod,
   defaultShouldRevalidate,
-}: Route.ShouldRevalidateFunctionArgs): boolean {
+}: ShouldRevalidateFunctionArgs): boolean {
   const isMutation = Boolean(formMethod && formMethod.toUpperCase() !== 'GET');
 
   // Manual same-URL polling only needs the booking child loader. Favorite refs
