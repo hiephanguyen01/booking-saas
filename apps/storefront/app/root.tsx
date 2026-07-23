@@ -2,6 +2,7 @@ import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts'
 import { BookingI18nProvider, type Locale } from '@booking/i18n';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { Button } from '@booking/ui/components/ui/button';
+import { useState } from 'react';
 import {
   data,
   Link,
@@ -33,6 +34,7 @@ import { resolveLocale } from './lib/i18n.server';
 import { storefrontPaths } from './lib/locale-paths';
 import { getCurrentStorefrontTenant } from './lib/request-context.server';
 import { storefrontRequestMiddleware } from './lib/request-security.server';
+import { getCurrentStorefrontCspNonce } from './lib/security-context.server';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from './lib/seo';
 import type { StorefrontTenant } from './lib/tenant.server';
 import { themeCss } from './theme/theme';
@@ -45,12 +47,14 @@ export interface StorefrontContext {
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
   canonical: string;
+  cspNonce: string;
   currentUser: CurrentUser | null;
   accountMenuSummary: AccountMenuSummary | null;
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const tenant = getCurrentStorefrontTenant();
+  const cspNonce = getCurrentStorefrontCspNonce();
   const locale = resolveLocale(request, tenant.defaultLocale);
   const publicUrl = requestPublicUrl(request, url);
   const canonical = canonicalUrl(publicUrl);
@@ -69,6 +73,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     locale,
     canonical,
     alternates,
+    cspNonce,
     currentUser,
     accountMenuSummary,
   };
@@ -150,13 +155,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 /** Per-tenant brand tokens, injected once at SSR so every UI component re-tints. */
-function ThemeStyle({ theme }: { theme: StorefrontTenant['themeConfig'] }) {
-  return <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
+function ThemeStyle({
+  theme,
+  nonce,
+}: {
+  theme: StorefrontTenant['themeConfig'];
+  nonce: string;
+}) {
+  return <style nonce={nonce} dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />;
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-  const { tenant, listingTypes, locale, canonical, currentUser, accountMenuSummary } = loaderData;
-
+  const {
+    tenant,
+    listingTypes,
+    locale,
+    canonical,
+    cspNonce,
+    currentUser,
+    accountMenuSummary,
+  } = loaderData;
+  // A document keeps the nonce it was rendered with even if the root loader
+  // later revalidates and receives a nonce generated for a data request.
+  const [documentNonce] = useState(cspNonce);
   const matches = useMatches();
 
   const isStandalone = matches.some(
@@ -168,6 +189,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
     listingTypes,
     locale,
     canonical,
+    cspNonce: documentNonce,
     currentUser,
     accountMenuSummary,
   };
@@ -175,7 +197,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <BookingI18nProvider locale={locale}>
       <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
-        <ThemeStyle theme={tenant.themeConfig} />
+        <ThemeStyle theme={tenant.themeConfig} nonce={documentNonce} />
         {!tenant.live ? (
           <SuspendedNotice name={tenant.name} />
         ) : isStandalone ? (
@@ -229,7 +251,7 @@ function RootErrorNotice({ error, locale }: { error: unknown; locale: Locale }) 
       <div className="flex min-h-dvh flex-col bg-[#f9fafb] font-studio text-[#344054]">
         {rootData?.tenant ? (
           <>
-            <ThemeStyle theme={rootData.tenant.themeConfig} />
+            <ThemeStyle theme={rootData.tenant.themeConfig} nonce={rootData.cspNonce} />
             <header className="h-18 shrink-0">
               <div className="mx-auto flex h-full w-full max-w-292.5 items-center px-4 sm:px-6 xl:px-0">
                 <Link
