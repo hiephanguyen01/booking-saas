@@ -25,7 +25,7 @@ rủi ro rất khác nhau):
 
 - **KHÔNG test** (ADR 0005); verify = `typecheck` + `lint` + `build` + chạy app.
 - **ADR 0006**: không service class; 1 use-case = 1 file, 1 `execute()`.
-- **Wire byte-identical** — 12 triple dưới đây phải giữ **từng ký tự** (đây là danh sách đóng băng):
+- **Wire byte-identical** — 13 dòng dưới đây (12 mã; `PROMO_SCOPE_TARGET_INVALID` có 2 message) phải giữ **từng ký tự** (đây là danh sách đóng băng):
 
   | code | status | message |
   |---|---|---|

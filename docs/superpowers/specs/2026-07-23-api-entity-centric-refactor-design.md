@@ -283,6 +283,13 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
 5. **promotions import chéo module partner** (`AGREEMENT_REPOSITORY` + `PrismaAgreementRepository`
    trong `opt-in-promotion` và module wiring) — vi phạm ADR 0003 có sẵn từ trước, PR #5a giữ
    nguyên. Sửa bằng cách đưa việc ghi agreement qua outbox hoặc một port riêng, ở PR độc lập.
+6. **Hoãn sang PR #5b** (nó đụng lại module promotions nên gộp vào cho gọn), từ final review PR #5a:
+   - xoá 2 hằng số chết `PROMO_SCOPE_TARGET_INVALID_CODE` (`assert-scope-target.ts`) và
+     `PROMO_TENANT_SHARE_NEGATIVE_CODE` (`assert-tenant-share-risk.ts`) — 0 consumer toàn repo;
+   - quyết định về khối chuyển kiểu `vnd()`/`new Date()` đang trùng giữa `update-promotion` và
+     `update-partner-promotion` (tách helper `toPromotionUpdateInput` hay chấp nhận trùng) — **chốt
+     thành convention**, vì các module update-heavy sau (booking, payments) sẽ copy hình dạng này;
+   - chạy lại regression "đặt booking có promo code" sau khi #5b đổi seam `claimUsage`/`reserve`.
 
 ### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
 
