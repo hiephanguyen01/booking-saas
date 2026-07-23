@@ -137,5 +137,6 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 ## 8. Nếu bạn là AI tiếp quản
 
 Nói với người dùng bạn đã đọc file này, xác nhận lại §1 (trạng thái) bằng
-`git log --oneline -5 refactor/entity-centric` + `gh pr list`, rồi bắt đầu từ §3 bước 1 cho module kế
-tiếp. Đừng khảo sát lại toàn bộ API — `entity-centric-survey.md` đã có sẵn.
+`git log --oneline -5 refactor/entity-centric` + `gh pr list`. Nếu có PR module đang mở, tiếp tục
+review/sửa/merge PR đó; chỉ bắt đầu từ §3 bước 1 cho module kế tiếp khi không còn PR module mở. Đừng
+khảo sát lại toàn bộ API — `entity-centric-survey.md` đã có sẵn.
