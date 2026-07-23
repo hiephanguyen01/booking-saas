@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { ZodDtoValidationPipe } from './shared/validation/zod-dto-validation.pipe';
+import { DomainExceptionFilter } from './shared/domain/domain-exception.filter';
 import { HealthModule } from './shared/health/health.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
 import { RedisModule } from './shared/redis/redis.module';
@@ -89,6 +90,9 @@ const prettyLogs =
     // Validates @Body()/@Query() params typed with a createZodDto class; no-ops on
     // everything else. Coexists with the inline ZodValidationPipe on scalar @Params.
     { provide: APP_PIPE, useClass: ZodDtoValidationPipe },
+    // Translates framework-free DomainError (thrown by entities/VOs) into the
+    // standard error envelope; all other exceptions keep Nest's default handling.
+    { provide: APP_FILTER, useClass: DomainExceptionFilter },
   ],
 })
 export class AppModule {}
