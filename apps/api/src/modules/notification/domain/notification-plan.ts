@@ -97,3 +97,19 @@ export function planForEvent(
       return [];
   }
 }
+
+/**
+ * payout.paid routing. Only partner payouts have a Phase-1 template — an affiliate
+ * payout produces no notification (this filter used to sit in the use-case).
+ */
+export function planForPayout(payload: { payeeType: string }): NotificationPlanItem[] {
+  return payload.payeeType === 'partner'
+    ? [{ audience: 'partner', templateId: 'payout_paid_partner' }]
+    : [];
+}
+
+/** The T−24h reminder addresses the booking's customer (was hardcoded in the use-case). */
+export const REMINDER_PLAN_ITEM: NotificationPlanItem = {
+  audience: 'customer',
+  templateId: 'booking_reminder_customer',
+};
