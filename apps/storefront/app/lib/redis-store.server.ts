@@ -17,16 +17,18 @@ export interface RedisJsonStore {
   ping(): Promise<void>;
 }
 
-type StorefrontRedisClient = ReturnType<typeof createClient>;
+const createStorefrontRedisClient = () => createClient({ url: storefrontEnv.redisUrl });
+type StorefrontRedisClient = ReturnType<typeof createStorefrontRedisClient>;
 let clientPromise: Promise<StorefrontRedisClient> | undefined;
 
 async function client(): Promise<StorefrontRedisClient> {
-  if (!clientPromise) {
-    const instance = createClient({ url: storefrontEnv.redisUrl });
+  let pending = clientPromise;
+  if (!pending) {
+    const instance = createStorefrontRedisClient();
     instance.on('error', (error: Error) =>
       console.error('Storefront Redis connection error', error),
     );
-    clientPromise = instance
+    pending = instance
       .connect()
       .then(() => instance)
       .catch((error: unknown) => {
@@ -35,8 +37,9 @@ async function client(): Promise<StorefrontRedisClient> {
         clientPromise = undefined;
         throw error;
       });
+    clientPromise = pending;
   }
-  return clientPromise;
+  return pending;
 }
 
 export const storefrontRedisStore: RedisJsonStore = {
