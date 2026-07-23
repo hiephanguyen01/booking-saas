@@ -6,6 +6,8 @@ import { storefrontEnv } from './env.server';
  * remains untouched after validation.
  */
 export function allowedStorageUploadUrl(value: string): string | null {
+  if (value !== value.trim()) return null;
+
   let url: URL;
   try {
     url = new URL(value);
@@ -15,5 +17,5 @@ export function allowedStorageUploadUrl(value: string): string | null {
 
   if (url.username || url.password) return null;
   if (!storefrontEnv.storageUploadOrigins.has(url.origin)) return null;
-  return url.toString();
+  return value;
 }
