@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import type {
-  INotificationLogRepository,
-  NotificationLogRecord,
-} from '../../domain/ports/notification-log-repository.port';
+import type { NotificationLogEntry } from '../../domain/entities/notification-delivery.entity';
+import type { INotificationLogRepository } from '../../domain/ports/notification-log-repository.port';
 
 /**
  * `notification_logs` via the BYPASSRLS admin pool (writes carry a possibly-null
@@ -23,7 +21,7 @@ export class PrismaNotificationLogRepository implements INotificationLogReposito
     return (rows[0]?.n ?? 0n) > 0n;
   }
 
-  async record(entry: NotificationLogRecord): Promise<void> {
+  async record(entry: NotificationLogEntry): Promise<void> {
     await this.prisma.admin.notificationLog.create({
       data: {
         tenantId: entry.tenantId,
@@ -32,9 +30,9 @@ export class PrismaNotificationLogRepository implements INotificationLogReposito
         eventType: entry.eventType,
         recipient: entry.recipient,
         status: entry.status,
-        error: entry.error ?? null,
-        sentAt: entry.status === 'sent' ? new Date() : null,
-        payload: { ...(entry.payload ?? {}), dedupeKey: entry.dedupeKey } as Prisma.InputJsonValue,
+        error: entry.error,
+        sentAt: entry.sentAt,
+        payload: { ...entry.payload, dedupeKey: entry.dedupeKey } as Prisma.InputJsonValue,
       },
     });
   }

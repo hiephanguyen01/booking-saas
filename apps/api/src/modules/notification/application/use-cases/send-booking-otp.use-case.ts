@@ -1,6 +1,10 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { renderEmail, type TemplateData } from '../../domain/email-template';
+import { type TemplateData } from '../../domain/email-template';
+import {
+  NotificationDelivery,
+  OTP_DELIVERY_POLICY,
+} from '../../domain/entities/notification-delivery.entity';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
 import {
   NOTIFICATION_LOG_REPOSITORY,
@@ -10,18 +14,18 @@ import {
   NOTIFICATION_READER,
   type INotificationReader,
 } from '../../domain/ports/notification-reader.port';
+import { DedupeKey } from '../../domain/value-objects/dedupe-key';
+import { deliverNotification } from '../deliver-notification';
 
 /**
- * Sends a guest-lookup OTP synchronously (§8.6). The plaintext code exists only
- * at issue time and is never persisted, so it cannot ride the async outbox — the
- * booking use-case calls this directly. No dedupe (each request resends a fresh
- * code); best-effort — a send failure is logged, not thrown (the code stays valid
- * in Redis, so the guest can retry).
+ * Sends a guest-lookup OTP synchronously (§8.6). The plaintext code exists only at
+ * issue time and is never persisted, so it cannot ride the async outbox — the booking
+ * use-case calls this directly. Its {@link OTP_DELIVERY_POLICY} says it all: never
+ * deduped (each request must reach the guest, even for a resent code) and never throws
+ * (the code stays valid in Redis, so the guest can retry).
  */
 @Injectable()
 export class SendBookingOtpUseCase {
-  private readonly logger = new Logger(SendBookingOtpUseCase.name);
-
   constructor(
     @Inject(NOTIFICATION_READER) private readonly reader: INotificationReader,
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
@@ -47,39 +51,19 @@ export class SendBookingOtpUseCase {
       otp,
       expiresInMin: Math.max(1, Math.round(expiresInSec / 60)),
     };
-    const content = renderEmail('booking_otp_customer', recipient.locale, data);
-    const dedupeKey = `booking.otp:${bookingId}:${recipient.userId}:${otp}`;
-    try {
-      await this.email.send({
-        to: recipient.email,
-        subject: content.subject,
-        text: content.text,
-        html: content.html,
-      });
-      await this.logs.record({
-        tenantId,
-        userId: recipient.userId,
-        channel: 'email',
-        eventType: 'booking.otp',
-        recipient: recipient.email,
-        status: 'sent',
-        dedupeKey,
-        payload: { templateId: 'booking_otp_customer', bookingId, subject: content.subject },
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`OTP email → ${recipient.email} failed: ${message}`);
-      await this.logs.record({
-        tenantId,
-        userId: recipient.userId,
-        channel: 'email',
-        eventType: 'booking.otp',
-        recipient: recipient.email,
-        status: 'failed',
-        dedupeKey,
-        error: message,
-        payload: { templateId: 'booking_otp_customer', bookingId },
-      });
-    }
+    const delivery = NotificationDelivery.start({
+      tenantId,
+      userId: recipient.userId,
+      recipientEmail: recipient.email,
+      eventType: 'booking.otp',
+      templateId: 'booking_otp_customer',
+      dedupeKey: DedupeKey.forOtp(bookingId, recipient.userId, otp),
+      bookingId,
+      policy: OTP_DELIVERY_POLICY,
+    });
+    await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+      locale: recipient.locale,
+      data,
+    });
   }
 }

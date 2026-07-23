@@ -1,9 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { renderEmail, type TemplateData } from '../domain/email-template';
-import type { NotificationPlanItem } from '../domain/notification-plan';
+import type { NotificationDelivery } from '../domain/entities/notification-delivery.entity';
 import type { IEmailSender } from '../domain/ports/email-sender.port';
 import type { INotificationLogRepository } from '../domain/ports/notification-log-repository.port';
-import type { NotificationRecipient } from '../domain/ports/notification-reader.port';
 
 const logger = new Logger('NotificationDelivery');
 
@@ -13,60 +12,38 @@ export interface DeliveryPorts {
   logs: INotificationLogRepository;
 }
 
-export interface NotificationDelivery {
-  tenantId: string;
-  eventType: string;
-  recipient: NotificationRecipient;
-  item: NotificationPlanItem;
-  data: TemplateData;
-  dedupeKey: string;
-  bookingId: string | null;
-}
-
 /**
  * Renders + sends one email and records the outcome in `notification_logs` (§17).
- * Idempotent by design: a `sent` row keyed by the deterministic dedupe key skips
- * the send, so an at-least-once outbox redelivery never sends a second email.
- * A send failure is recorded then rethrown so the relay retries.
+ * The single delivery path for BOTH the outbox dispatchers and the synchronous OTP —
+ * their differences live in the aggregate's {@link DeliveryPolicy}, not in duplicated
+ * code: outbox deliveries skip an already-sent key and rethrow on failure so the relay
+ * retries; the OTP always sends and swallows failures.
+ *
+ * Log writes are deliberately outside any business transaction — an email send is not
+ * transactional, and a rolled-back `sent` row would mean a duplicate email on retry.
  */
 export async function deliverNotification(
   ports: DeliveryPorts,
   delivery: NotificationDelivery,
+  render: { locale: string; data: TemplateData },
 ): Promise<void> {
-  const { tenantId, eventType, recipient, item, data, dedupeKey, bookingId } = delivery;
-  if (await ports.logs.alreadySent(dedupeKey)) return;
-  const content = renderEmail(item.templateId, recipient.locale, data);
+  const { dedupe, onFailure } = delivery.policy;
+  if (dedupe && (await ports.logs.alreadySent(delivery.dedupeKey))) return;
+  const content = renderEmail(delivery.templateId, render.locale, render.data);
   try {
     await ports.email.send({
-      to: recipient.email,
+      to: delivery.recipientEmail,
       subject: content.subject,
       text: content.text,
       html: content.html,
     });
-    await ports.logs.record({
-      tenantId,
-      userId: recipient.userId,
-      channel: 'email',
-      eventType,
-      recipient: recipient.email,
-      status: 'sent',
-      dedupeKey,
-      payload: { templateId: item.templateId, bookingId, subject: content.subject },
-    });
+    delivery.markSent(content.subject, new Date());
+    await ports.logs.record(delivery.logEntry());
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.warn(`email ${item.templateId} → ${recipient.email} failed: ${message}`);
-    await ports.logs.record({
-      tenantId,
-      userId: recipient.userId,
-      channel: 'email',
-      eventType,
-      recipient: recipient.email,
-      status: 'failed',
-      dedupeKey,
-      error: message,
-      payload: { templateId: item.templateId, bookingId },
-    });
-    throw error; // let the outbox relay retry
+    logger.warn(`email ${delivery.templateId} → ${delivery.recipientEmail} failed: ${message}`);
+    delivery.markFailed(message);
+    await ports.logs.record(delivery.logEntry());
+    if (onFailure === 'rethrow') throw error; // let the outbox relay retry
   }
 }

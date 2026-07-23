@@ -1,8 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { formatVnd } from '../../../../shared/money/money';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { type TemplateData } from '../../domain/email-template';
-import { type NotificationPlanItem } from '../../domain/notification-plan';
+import {
+  NotificationDelivery,
+  OUTBOX_DELIVERY_POLICY,
+} from '../../domain/entities/notification-delivery.entity';
+import { planForPayout } from '../../domain/notification-plan';
+import { payoutTemplateData } from '../../domain/payout-notification-data';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
 import {
   NOTIFICATION_LOG_REPOSITORY,
@@ -12,12 +15,13 @@ import {
   NOTIFICATION_READER,
   type INotificationReader,
 } from '../../domain/ports/notification-reader.port';
+import { DedupeKey } from '../../domain/value-objects/dedupe-key';
 import { deliverNotification } from '../deliver-notification';
 
 /**
  * payout.paid → the partner's members (§17; affiliate payouts have no Phase-1
- * template). Idempotent via the `notification_logs` dedupe key; a failure rethrows
- * so the outbox relay retries.
+ * template — see `planForPayout`). Idempotent via the delivery dedupe key; a failure
+ * rethrows so the outbox relay retries.
  */
 @Injectable()
 export class DispatchPayoutEventUseCase {
@@ -32,25 +36,34 @@ export class DispatchPayoutEventUseCase {
     tenantId: string,
     payload: { payoutId: string; payeeType: string; payeeId: string; amount: string },
   ): Promise<void> {
-    if (payload.payeeType !== 'partner') return;
+    const plan = planForPayout(payload);
+    if (plan.length === 0) return;
     const ctx = await this.tenantDb.forTenant(tenantId, (tx) =>
       this.reader.loadPartnerContext(tx, payload.payeeId),
     );
     if (!ctx) return;
-    const item: NotificationPlanItem = { audience: 'partner', templateId: 'payout_paid_partner' };
-    for (const recipient of ctx.recipients) {
-      const locale = recipient.locale === 'en' ? 'en' : 'vi';
-      const data: TemplateData = {
-        tenantName: ctx.tenantName,
-        recipientName: recipient.name,
-        partnerName: ctx.partnerName,
-        amount: formatVnd(BigInt(payload.amount), locale),
-      };
-      const dedupeKey = `payout.paid:${payload.payoutId}:${item.templateId}:${recipient.userId}`;
-      await deliverNotification(
-        { email: this.email, logs: this.logs },
-        { tenantId, eventType: 'payout.paid', recipient, item, data, dedupeKey, bookingId: null },
-      );
+    for (const item of plan) {
+      for (const recipient of ctx.recipients) {
+        const delivery = NotificationDelivery.start({
+          tenantId,
+          userId: recipient.userId,
+          recipientEmail: recipient.email,
+          eventType: 'payout.paid',
+          templateId: item.templateId,
+          dedupeKey: DedupeKey.forEvent(
+            'payout.paid',
+            payload.payoutId,
+            item.templateId,
+            recipient.userId,
+          ),
+          bookingId: null,
+          policy: OUTBOX_DELIVERY_POLICY,
+        });
+        await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+          locale: recipient.locale,
+          data: payoutTemplateData(ctx, recipient, payload),
+        });
+      }
     }
   }
 }
