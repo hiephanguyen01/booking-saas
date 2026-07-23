@@ -1,6 +1,8 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { Partner } from '../../domain/entities/partner.entity';
+import { PartnerNotFound } from '../../domain/errors/partner-errors';
 import {
   PARTNER_REPOSITORY,
   type IPartnerRepository,
@@ -23,22 +25,11 @@ export class SuspendPartnerUseCase {
   async execute(tenantId: string, partnerId: string): Promise<PartnerRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const partner = await this.partners.findById(tx, partnerId);
-      if (!partner) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'PARTNER_NOT_FOUND',
-          message: 'Partner not found',
-        });
-      }
-      const active = await this.partners.countActiveBookings(tx, partnerId);
-      if (active > 0) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'PARTNER_HAS_ACTIVE_BOOKINGS',
-          message: 'Cannot suspend a partner with active bookings',
-        });
-      }
-      const updated = await this.partners.update(tx, partnerId, { status: 'suspended' });
+      if (!partner) throw new PartnerNotFound();
+
+      const futureConfirmedBookingCount = await this.partners.countActiveBookings(tx, partnerId);
+      const statusIntent = Partner.rehydrate(partner).suspend(futureConfirmedBookingCount);
+      const updated = await this.partners.updateStatus(tx, partnerId, statusIntent);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'partner.suspended',
