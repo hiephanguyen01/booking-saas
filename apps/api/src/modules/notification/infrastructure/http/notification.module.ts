@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
@@ -48,6 +48,8 @@ import { SendBookingOtpUseCase } from '../../application/use-cases/send-booking-
   exports: [SendBookingOtpUseCase, EMAIL_SENDER],
 })
 export class NotificationModule implements OnModuleInit {
+  private readonly logger = new Logger(NotificationModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly dispatchBookingEvent: DispatchBookingEventUseCase,
@@ -58,25 +60,45 @@ export class NotificationModule implements OnModuleInit {
 
   onModuleInit(): void {
     for (const eventType of BOOKING_NOTIFICATION_EVENTS) {
-      this.registry.register(eventType, (event) =>
-        this.dispatchBookingEvent.execute(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
-      );
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchBookingEvent.execute(tenantId, event.eventType, payloadOf(event.payload));
+      });
     }
     for (const eventType of LISTING_NOTIFICATION_EVENTS) {
-      this.registry.register(eventType, (event) =>
-        this.dispatchListingEvent.execute(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
-      );
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchListingEvent.execute(tenantId, event.eventType, payloadOf(event.payload));
+      });
     }
     for (const eventType of PARTNER_NOTIFICATION_EVENTS) {
-      this.registry.register(eventType, (event) =>
-        this.dispatchPartnerEvent.execute(event.tenantId ?? '', event.eventType, payloadOf(event.payload)),
-      );
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchPartnerEvent.execute(tenantId, event.eventType, payloadOf(event.payload));
+      });
     }
     for (const eventType of PAYOUT_NOTIFICATION_EVENTS) {
-      this.registry.register(eventType, (event) =>
-        this.dispatchPayoutEvent.execute(event.tenantId ?? '', payoutPayloadOf(event.payload)),
-      );
+      this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
+        return this.dispatchPayoutEvent.execute(tenantId, payoutPayloadOf(event.payload));
+      });
     }
+  }
+
+  /**
+   * A tenant-scoped notification event without a tenant id cannot be routed: skip it
+   * (and say so) instead of running `forTenant('')`, which silently resolved to an
+   * empty RLS scope and no-op'd. Skipping — not throwing — keeps the at-least-once
+   * relay from parking the event in permanent retry (there is no dead-letter queue).
+   */
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }
 
