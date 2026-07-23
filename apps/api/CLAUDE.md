@@ -31,7 +31,8 @@ Modules refactored to the entity style (see
 keep their business invariants on framework-free aggregates in `domain/entities/`
 (`static rehydrate(state)` + `static create/open(...)`, narrow write-state, VOs in
 `domain/value-objects/`, typed `DomainError`s in `domain/errors/`); use-cases orchestrate load →
-method → save → emit. Refactored so far: **reviews, content-reports, notification, favorites, promotions**.
+method → save → emit. Refactored so far:
+**reviews, content-reports, notification, favorites, promotions, affiliate**.
 
 ## Multi-tenancy — `forTenant()` + RLS (the most important rule)
 
