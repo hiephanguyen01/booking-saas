@@ -1,56 +1,31 @@
 import type { HourlySlot, PublicListingDetailResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { Calendar } from '@booking/ui/components/ui/calendar';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@booking/ui/components/ui/dialog';
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from '@booking/ui/components/ui/drawer';
-import { Spinner } from '@booking/ui/components/ui/spinner';
-import { cn } from '@booking/ui/lib/utils';
-import { AlertCircle, CalendarDays, Check, Clock3, RotateCw, X } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { CalendarDays } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { BookingDialogFooter } from '../../../components/booking-dialog-footer';
-import { AvailabilitySkeleton } from '../../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import {
-  DEFAULT_TZ,
-  addDays,
-  dateLabelInTz,
-  dateOnlyToLocal,
-  localToDateOnly,
-  todayInTz,
-} from '../../../lib/time';
-import { formatVnd } from '../../../lib/ui';
-import { useLocale } from '../../../lib/use-locale';
 import { packagesForMode } from '../../../lib/package-options';
+import { DEFAULT_TZ, addDays, dateLabelInTz, localToDateOnly, todayInTz } from '../../../lib/time';
+import { useLocale } from '../../../lib/use-locale';
 import type { loader as bookingDataLoader } from '../../../routes/listing-group-booking-data';
 import type { BookingMode, RoomOption } from '../listing-group-types';
-import { RoomPhotoStrip } from './room-photo-strip';
 import {
   atomicHourlySlots,
   checkoutHref,
   slotInterval,
   toggleContiguousSlot,
 } from '../listing-group-utils';
+import { RoomBookingDialogShell } from './room-booking-dialog-shell';
+import {
+  RoomBookingDialogSteps,
+  type ListingBookingMode,
+  type RoomBookingDateRange,
+} from './room-booking-dialog-steps';
 
-export type ListingBookingMode = 'hourly' | 'daily';
+export type { ListingBookingMode } from './room-booking-dialog-steps';
+
 type BookingRequestKind = 'availability' | 'quote';
-type DateRange = { from: Date | undefined; to?: Date | undefined };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -76,7 +51,6 @@ export function ListingBookingDialog({
   const packageOptions = (selectedMode: ListingBookingMode) =>
     packagesForMode(listing.modeConfig, selectedMode);
   const today = todayInTz(DEFAULT_TZ);
-  const todayDate = dateOnlyToLocal(today);
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mode, setMode] = useState<ListingBookingMode>(initialMode);
@@ -90,7 +64,6 @@ export function ListingBookingDialog({
   const [selectedSlots, setSelectedSlots] = useState<HourlySlot[]>([]);
   const [selectionError, setSelectionError] = useState('');
   const [requestKind, setRequestKind] = useState<BookingRequestKind>('availability');
-  const dialogTitleRef = useRef<HTMLHeadingElement>(null);
   const encodedListingSlug = encodeURIComponent(listing.slug);
   const basePath = groupSlug
     ? `/${locale}/g/${encodeURIComponent(groupSlug)}/rooms/${encodedListingSlug}/booking-data`
@@ -167,6 +140,17 @@ export function ListingBookingDialog({
       load({ mode: next, from: today, packageId: nextPackageId }, 'availability');
   }
 
+  function selectPackage(nextPackageId: string): void {
+    setPackageId(nextPackageId);
+    setDate(null);
+    setFrom(null);
+    setTo(null);
+    setSelectedSlots([]);
+    if (mode === 'daily') {
+      load({ mode, from: today, packageId: nextPackageId }, 'availability');
+    }
+  }
+
   const response = fetcher.data;
   const currentData =
     response?.ok &&
@@ -194,31 +178,12 @@ export function ListingBookingDialog({
         : [],
     [availability, fixedPackages],
   );
-  const openDates = useMemo(
-    () =>
-      new Set(
-        availability?.mode === 'daily'
-          ? availability.days.filter((day) => day.status === 'available').map((day) => day.date)
-          : [],
-      ),
-    [availability],
-  );
-  const dailyEndDate = useMemo(() => {
-    if (availability?.mode !== 'daily' || availability.days.length === 0) return undefined;
-    let latest = availability.days[0].date;
-    for (const day of availability.days) {
-      if (day.date > latest) latest = day.date;
-    }
-    return dateOnlyToLocal(latest);
-  }, [availability]);
-  const dailySoldOut = availability?.mode === 'daily' && openDates.size === 0;
   const interval = slotInterval(selectedSlots);
   const selectionMatches = Boolean(
     currentData?.selectionStart &&
     currentData.selectionEnd &&
     (mode === 'daily' ||
-      (interval?.start === currentData.selectionStart &&
-        interval.end === currentData.selectionEnd)),
+      (interval?.start === currentData.selectionStart && interval.end === currentData.selectionEnd)),
   );
   const hasCompleteSelection = mode === 'hourly' ? Boolean(interval) : Boolean(from && to);
   const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';
@@ -291,12 +256,12 @@ export function ListingBookingDialog({
     }
   }
 
-  function selectRange(next: DateRange | undefined): void {
+  function selectRange(next: RoomBookingDateRange | undefined): void {
     const nextFrom = next?.from ? localToDateOnly(next.from) : null;
-    const selectedPackage = packageOptions('daily').find((item) => item.id === packageId);
+    const dailyPackage = packageOptions('daily').find((item) => item.id === packageId);
     const nextTo =
-      fixedPackages && nextFrom && selectedPackage
-        ? addDays(nextFrom, selectedPackage.duration)
+      fixedPackages && nextFrom && dailyPackage
+        ? addDays(nextFrom, dailyPackage.duration)
         : next?.to
           ? localToDateOnly(next.to)
           : null;
@@ -308,33 +273,6 @@ export function ListingBookingDialog({
     }
   }
 
-  const calendarA11y = useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
-    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
-    const fullDate = new Intl.DateTimeFormat(tag, {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-    return {
-      formatters: {
-        formatCaption: (month: Date) => caption.format(month),
-        formatWeekdayName: (day: Date) =>
-          locale === 'en'
-            ? new Intl.DateTimeFormat(tag, { weekday: 'narrow' }).format(day)
-            : ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][day.getDay()],
-      },
-      labels: {
-        labelDayButton: (day: Date) => fullDate.format(day),
-        labelGrid: (month?: Date) =>
-          t('group.calendarLabel', { month: month ? caption.format(month) : '' }),
-        labelNav: () => t('group.calendarNavigation'),
-        labelPrevious: () => t('group.previousMonth'),
-        labelNext: () => t('group.nextMonth'),
-      },
-    };
-  }, [locale, t]);
   const timeFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
@@ -367,250 +305,38 @@ export function ListingBookingDialog({
     </Button>
   );
   const body = (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-      {supportedModes.length > 1 ? (
-        <div
-          role="group"
-          aria-label={t('mode')}
-          className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-muted/70 p-1"
-        >
-          {supportedModes.map((item) => (
-            <button
-              key={item}
-              type="button"
-              aria-pressed={item === mode}
-              onClick={() => switchMode(item)}
-              className={cn(
-                'min-h-11 rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                item === mode ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {item === 'hourly' ? t('modeHourly') : t('modeDaily')}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {fixedPackages ? (
-        <div className="mb-5 space-y-2">
-          <h3 className="text-sm font-semibold">Chọn gói dịch vụ</h3>
-          <div className="grid gap-2">
-            {packageOptions(mode).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setPackageId(item.id);
-                  setDate(null);
-                  setFrom(null);
-                  setTo(null);
-                  setSelectedSlots([]);
-                  if (mode === 'daily')
-                    load({ mode, from: today, packageId: item.id }, 'availability');
-                }}
-                className={cn(
-                  'rounded-lg border p-3 text-left',
-                  packageId === item.id && 'border-primary bg-primary/5',
-                )}
-              >
-                <span className="flex items-center gap-3">
-                  {(item.photos[0] ?? listing.photos[0]) ? (
-                    <img
-                      src={item.photos[0] ?? listing.photos[0]}
-                      alt=""
-                      className="size-12 rounded-md object-cover"
-                    />
-                  ) : null}
-                  <span className="min-w-0 flex-1">
-                    <span className="flex justify-between gap-3 text-sm font-medium">
-                      <span>{item.name}</span>
-                      <span>{formatVnd(item.price)}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {item.duration} {item.durationLabel}
-                    </span>
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-          {selectedPackage ? (
-            <RoomPhotoStrip
-              photos={selectedPackage.photos.length ? selectedPackage.photos : listing.photos}
-              title={`${listing.title} — ${selectedPackage.name}`}
-            />
-          ) : null}
-        </div>
-      ) : null}
-
-      {mode === 'hourly' ? (
-        date ? (
-          <section aria-labelledby="room-hourly-step-title" className="space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 id="room-hourly-step-title" className="font-semibold">
-                  {t('pickSlot')}
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {dateLabelInTz(date, DEFAULT_TZ, locale)} · {t('group.hourlyInstruction')}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11"
-                onClick={changeDate}
-              >
-                <CalendarDays aria-hidden="true" /> {t('group.changeDay')}
-              </Button>
-            </div>
-
-            {availabilityPending && !availability ? (
-              <AvailabilitySkeleton label={t('common:loading')} />
-            ) : requestError ? (
-              <ErrorMessage onRetry={() => load({ mode, date }, 'availability')} />
-            ) : slots.length ? (
-              <div className="grid grid-cols-2 gap-2">
-                {slots.map((slot) => {
-                  const selected = selectedSlots.some((item) => item.startUtc === slot.startUtc);
-                  const startLabel = timeFormatter.format(new Date(slot.startUtc));
-                  const endLabel = timeFormatter.format(new Date(slot.endUtc));
-                  return (
-                    <button
-                      key={`${slot.startUtc}:${slot.endUtc}`}
-                      type="button"
-                      aria-pressed={selected}
-                      disabled={!slot.available}
-                      onClick={() => toggleSlot(slot)}
-                      className={cn(
-                        'min-h-14 rounded-md border px-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        selected && 'border-primary bg-primary/10 text-primary',
-                        !slot.available && 'cursor-not-allowed bg-muted opacity-60',
-                      )}
-                    >
-                      <span className="flex items-center justify-center gap-1 font-medium">
-                        {selected ? (
-                          <Check className="size-3.5" aria-hidden="true" />
-                        ) : (
-                          <Clock3 className="size-3.5" aria-hidden="true" />
-                        )}
-                        {startLabel}–{endLabel}
-                      </span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        {slot.available ? formatVnd(slot.price) : t('group.unavailableSlot')}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyAvailability message={t('group.noOpenSlots')} />
-            )}
-          </section>
-        ) : (
-          <section aria-labelledby="room-day-step-title">
-            <h3 id="room-day-step-title" className="font-semibold">
-              {t('pickDay')}
-            </h3>
-            <p className="mt-1 text-sm text-muted-foreground">{t('group.pickDayInstruction')}</p>
-            <Calendar
-              fullWidth
-              mode="single"
-              selected={undefined}
-              onSelect={(day) => {
-                if (day) selectDate(localToDateOnly(day));
-              }}
-              disabled={{ before: todayDate }}
-              startMonth={todayDate}
-              defaultMonth={todayDate}
-              showOutsideDays={false}
-              fixedWeeks
-              formatters={calendarA11y.formatters}
-              labels={calendarA11y.labels}
-              className="sf-calendar mx-auto mt-3 [--cell-size:2.75rem]"
-            />
-          </section>
-        )
-      ) : (
-        <section aria-labelledby="room-range-step-title" aria-busy={availabilityPending}>
-          <h3 id="room-range-step-title" className="font-semibold">
-            {t('selectRange')}
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">{t('group.dailyInstruction')}</p>
-          {requestError ? (
-            <div className="mt-4">
-              <ErrorMessage
-                onRetry={() =>
-                  load({ mode, from: from ?? today, to }, from && to ? 'quote' : 'availability')
-                }
-              />
-            </div>
-          ) : dailySoldOut ? (
-            <div className="mt-4">
-              <EmptyAvailability message={t('group.soldOut')} />
-            </div>
-          ) : (
-            <div className="relative mt-3">
-              <Calendar
-                fullWidth
-                connectedRange
-                mode="range"
-                numberOfMonths={1}
-                selected={
-                  from
-                    ? {
-                        from: dateOnlyToLocal(from),
-                        to: to ? dateOnlyToLocal(to) : undefined,
-                      }
-                    : undefined
-                }
-                onSelect={selectRange}
-                disabled={(day) =>
-                  day < todayDate ||
-                  availabilityPending ||
-                  (availability?.mode === 'daily' && !openDates.has(localToDateOnly(day)))
-                }
-                startMonth={todayDate}
-                endMonth={dailyEndDate}
-                excludeDisabled
-                resetOnSelect
-                showOutsideDays={false}
-                fixedWeeks
-                defaultMonth={dateOnlyToLocal(from ?? today)}
-                formatters={calendarA11y.formatters}
-                labels={calendarA11y.labels}
-                className="sf-calendar mx-auto [--cell-size:2.75rem]"
-              />
-              {availabilityPending ? (
-                <div
-                  className="absolute inset-0 grid place-items-center rounded-lg bg-background/75"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Spinner aria-hidden="true" /> {t('group.loadingAvailability')}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          )}
-        </section>
-      )}
-
-      {selectionError ? (
-        <p role="alert" className="mt-4 flex items-start gap-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {selectionError}
-        </p>
-      ) : null}
-      {selectionUnavailable ? (
-        <p role="alert" className="mt-4 flex items-start gap-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {mode === 'hourly' ? t('selectedSlotUnavailable') : t('unavailableRange')}
-        </p>
-      ) : null}
-    </div>
+    <RoomBookingDialogSteps
+      mode={mode}
+      supportedModes={supportedModes}
+      fixedPackages={fixedPackages}
+      packageOptions={packageOptions(mode)}
+      packageId={packageId}
+      selectedPackage={selectedPackage}
+      listingTitle={listing.title}
+      listingPhotos={listing.photos}
+      date={date}
+      from={from}
+      to={to}
+      availability={availability}
+      availabilityPending={availabilityPending}
+      requestError={Boolean(requestError)}
+      slots={slots}
+      selectedSlots={selectedSlots}
+      selectionError={selectionError}
+      selectionUnavailable={selectionUnavailable}
+      onSwitchMode={switchMode}
+      onSelectPackage={selectPackage}
+      onSelectDate={selectDate}
+      onChangeDate={changeDate}
+      onToggleSlot={toggleSlot}
+      onSelectRange={selectRange}
+      onRetryHourly={() => {
+        if (date) load({ mode, date }, 'availability');
+      }}
+      onRetryDaily={() =>
+        load({ mode, from: from ?? today, to }, from && to ? 'quote' : 'availability')
+      }
+    />
   );
   const footer = (
     <BookingDialogFooter
@@ -631,65 +357,17 @@ export function ListingBookingDialog({
   );
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <Dialog open={desktopOpen} onOpenChange={(next) => handleOpen(next, 'desktop')}>
-          <DialogTrigger asChild>{trigger}</DialogTrigger>
-          <DialogContent
-            showCloseButton={false}
-            onOpenAutoFocus={(event) => {
-              event.preventDefault();
-              dialogTitleRef.current?.focus();
-            }}
-            className="flex h-[min(90dvh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-146"
-          >
-            <DialogHeader className="shrink-0 border-b p-5 pr-16">
-              <DialogTitle ref={dialogTitleRef} tabIndex={-1} className="outline-none">
-                {t('group.chooseSchedule')}
-              </DialogTitle>
-              <DialogDescription>{listing.title}</DialogDescription>
-            </DialogHeader>
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-3 right-3 size-11"
-                aria-label={t('group.closeSchedule')}
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </DialogClose>
-            {body}
-            {footer}
-          </DialogContent>
-        </Dialog>
-      </div>
-      <div className="lg:hidden">
-        <Drawer open={mobileOpen} onOpenChange={(next) => handleOpen(next, 'mobile')}>
-          <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-          <DrawerContent className="h-[92dvh] max-h-[92dvh]! overflow-hidden">
-            <DrawerHeader className="shrink-0 border-b px-5 pt-5 pb-4 pr-16 text-left">
-              <DrawerTitle>{t('group.chooseSchedule')}</DrawerTitle>
-              <DrawerDescription>{listing.title}</DrawerDescription>
-            </DrawerHeader>
-            <DrawerClose asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-3 right-3 size-11"
-                aria-label={t('group.closeSchedule')}
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </DrawerClose>
-            {body}
-            {footer}
-          </DrawerContent>
-        </Drawer>
-      </div>
-    </>
+    <RoomBookingDialogShell
+      desktopOpen={desktopOpen}
+      mobileOpen={mobileOpen}
+      onDesktopOpenChange={(next) => handleOpen(next, 'desktop')}
+      onMobileOpenChange={(next) => handleOpen(next, 'mobile')}
+      title={t('group.chooseSchedule')}
+      description={listing.title}
+      trigger={trigger}
+      body={body}
+      footer={footer}
+    />
   );
 }
 
@@ -708,28 +386,5 @@ export function RoomBookingDialog({
       groupSlug={groupSlug}
       preferredMode={preferredMode === 'daily' ? 'daily' : 'hourly'}
     />
-  );
-}
-
-function EmptyAvailability({ message }: { message: string }) {
-  return (
-    <p className="rounded-md border border-dashed px-5 py-10 text-center text-sm text-muted-foreground">
-      {message}
-    </p>
-  );
-}
-
-function ErrorMessage({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation(NsI18n.Listing);
-  return (
-    <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
-      <p className="flex items-start gap-2 text-sm text-destructive">
-        <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        {t('group.availabilityError')}
-      </p>
-      <Button type="button" variant="outline" size="sm" className="mt-3 min-h-11" onClick={onRetry}>
-        <RotateCw aria-hidden="true" /> {t('group.retry')}
-      </Button>
-    </div>
   );
 }
