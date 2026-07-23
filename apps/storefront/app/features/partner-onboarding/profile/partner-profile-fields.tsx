@@ -2,11 +2,7 @@ import type { PartnerOnboardingProfileInput } from '@booking/contracts';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Path } from 'react-hook-form';
-import {
-  NsI18n,
-  type ScopedI18n,
-  type ScopedTranslationKey,
-} from '../../../lib/i18n';
+import type { NsI18n, ScopedI18n, ScopedTranslationKey } from '../../../lib/i18n';
 
 export const PARTNER_PROFILE_BANKS = [
   'Vietcombank',
