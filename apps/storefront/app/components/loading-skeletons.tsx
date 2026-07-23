@@ -70,14 +70,18 @@ export function SearchBarSkeleton({ label }: { label: string }) {
             />
           ))}
         </div>
-        <div className="grid gap-3 lg:grid-cols-4 xl:grid-cols-6">
-          {Array.from({ length: 5 }, (_, index) => (
-            <div key={index} className="h-16 rounded-md bg-background/10 px-4 py-3">
-              <StorefrontSkeleton className="h-3 w-16 bg-background/20" />
-              <StorefrontSkeleton className="mt-2 h-4 w-4/5 bg-background/25" />
-            </div>
-          ))}
-          <StorefrontSkeleton className="h-16 bg-primary/60" />
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
+            {Array.from({ length: 5 }, (_, index) => (
+              <div key={index} className="h-16 rounded-md bg-background/10 px-4 py-3">
+                <StorefrontSkeleton className="h-3 w-16 bg-background/20" />
+                <StorefrontSkeleton className="mt-2 h-4 w-4/5 bg-background/25" />
+              </div>
+            ))}
+          </div>
+          <div className="flex h-16 items-center justify-center rounded-md bg-primary/60 px-7">
+            <StorefrontSkeleton className="h-4 w-16 bg-primary-foreground/30" />
+          </div>
         </div>
       </div>
     </LoadingRegion>

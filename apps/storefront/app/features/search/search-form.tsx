@@ -191,66 +191,74 @@ export function SearchForm({
           </>
         ) : null}
 
-        <div
-          className={cn(
-            'grid gap-3',
-            isHero ? 'sm:grid-cols-2 lg:grid-cols-5' : 'lg:grid-cols-4 xl:grid-cols-6',
-          )}
-        >
-          <SearchField icon={Search} label={t('home.searchPlaceholder')}>
-            <Input
-              name="q"
-              defaultValue={state.q}
-              placeholder={t('home.searchPlaceholder')}
-              className="h-auto border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
-            />
-          </SearchField>
-
-          <LocationCombobox key={state.location} initialValue={state.location} options={options} />
-
-          {mode !== 'none' ? (
-            <SearchDatePicker
-              mode={mode}
-              onModeChange={changeMode}
-              date={date}
-              setDate={setDate}
-              range={range}
-              setRange={setRange}
-              showModeTabs={!isHero}
-              availableModes={availableModes}
-              singleDate={fixedPackages}
-            />
-          ) : null}
-
-          {selectedConfig?.showGuests ? (
-            <SearchField icon={Users} label={t('home.guests')}>
-              <NativeSelect
-                name="guests"
-                defaultValue={String(state.guests)}
-                aria-label={t('home.guests')}
-                className="h-auto border-0 bg-transparent p-0 pr-7 shadow-none focus-visible:ring-0"
-              >
-                {GUEST_OPTIONS.map((count) => (
-                  <NativeSelectOption key={count} value={count}>
-                    {count === 1 ? t('home.guestsPlaceholder') : t('home.guestsCount', { count })}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </SearchField>
-          ) : null}
-
-          {mode === 'inventory' ? (
-            <SearchField icon={Info} label={t('home.quantity')}>
+        <div className={cn('grid gap-3', !isHero && 'lg:grid-cols-[minmax(0,1fr)_auto]')}>
+          <div
+            className={cn(
+              'grid min-w-0 gap-3',
+              isHero
+                ? 'sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(0,1fr))]'
+                : 'lg:grid-cols-[repeat(auto-fit,minmax(0,1fr))]',
+            )}
+          >
+            <SearchField icon={Search} label={t('home.searchPlaceholder')}>
               <Input
-                name="quantity"
-                type="number"
-                min={1}
-                max={100}
-                defaultValue={state.quantity}
+                name="q"
+                defaultValue={state.q}
+                placeholder={t('home.searchPlaceholder')}
                 className="h-auto border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
               />
             </SearchField>
-          ) : null}
+
+            <LocationCombobox
+              key={state.location}
+              initialValue={state.location}
+              options={options}
+            />
+
+            {mode !== 'none' ? (
+              <SearchDatePicker
+                mode={mode}
+                onModeChange={changeMode}
+                date={date}
+                setDate={setDate}
+                range={range}
+                setRange={setRange}
+                showModeTabs={!isHero}
+                availableModes={availableModes}
+                singleDate={fixedPackages}
+              />
+            ) : null}
+
+            {selectedConfig?.showGuests ? (
+              <SearchField icon={Users} label={t('home.guests')}>
+                <NativeSelect
+                  name="guests"
+                  defaultValue={String(state.guests)}
+                  aria-label={t('home.guests')}
+                  className="h-auto border-0 bg-transparent p-0 pr-7 shadow-none focus-visible:ring-0"
+                >
+                  {GUEST_OPTIONS.map((count) => (
+                    <NativeSelectOption key={count} value={count}>
+                      {count === 1 ? t('home.guestsPlaceholder') : t('home.guestsCount', { count })}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </SearchField>
+            ) : null}
+
+            {mode === 'inventory' ? (
+              <SearchField icon={Info} label={t('home.quantity')}>
+                <Input
+                  name="quantity"
+                  type="number"
+                  min={1}
+                  max={100}
+                  defaultValue={state.quantity}
+                  className="h-auto border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+                />
+              </SearchField>
+            ) : null}
+          </div>
 
           {/* `has-[>svg]:px-7` is load-bearing: `size="control"` sets
               `has-[>svg]:px-4`, and a :has() selector outranks a bare `px-7`,
@@ -259,7 +267,7 @@ export function SearchForm({
             <Button
               type="submit"
               size="control"
-              className="px-7 has-[>svg]:px-7"
+              className="w-full px-7 has-[>svg]:px-7 lg:w-auto"
               disabled={!canSubmit}
             >
               <Search data-icon="inline-start" /> {t('home.search')}
@@ -494,7 +502,7 @@ function SearchField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+    <label className="flex h-11 w-full min-w-0 items-center gap-2 rounded-md border border-border bg-background px-4 text-foreground shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
       <span className="sr-only">{label}</span>
       <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 [&_[data-slot=native-select-wrapper]]:w-full">
