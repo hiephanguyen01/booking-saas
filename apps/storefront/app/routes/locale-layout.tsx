@@ -28,6 +28,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return { locale, favorites: { isAuthenticated: Boolean(auth), refs } };
 }
 
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formMethod,
+  defaultShouldRevalidate,
+}: Route.ShouldRevalidateFunctionArgs): boolean {
+  const isMutation = Boolean(formMethod && formMethod.toUpperCase() !== 'GET');
+
+  // Manual same-URL polling only needs the booking child loader. Favorite refs
+  // still revalidate after add/remove mutations and ordinary navigations.
+  if (!isMutation && currentUrl.href === nextUrl.href) return false;
+  return defaultShouldRevalidate;
+}
+
 export default function LocaleLayout({ loaderData }: Route.ComponentProps) {
   const context = useOutletContext<StorefrontContext>();
   return (
