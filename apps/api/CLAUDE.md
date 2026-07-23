@@ -27,11 +27,11 @@ Module shape (copy `modules/partner/` or `modules/booking/`):
 Controllers are split by audience: `public-` / `tenant-` / `partner-` / `admin-`.
 
 Modules refactored to the entity style (see
-`docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md`) keep their business
-invariants on framework-free aggregates in `domain/entities/` (`static rehydrate(state)` +
-`static create/open(...)`, narrow write-state, VOs in `domain/value-objects/`, typed
-`DomainError`s in `domain/errors/`); use-cases orchestrate load → method → save → emit. Refactored
-so far: **reviews**.
+[`../../docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md`](../../docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md))
+keep their business invariants on framework-free aggregates in `domain/entities/`
+(`static rehydrate(state)` + `static create/open(...)`, narrow write-state, VOs in
+`domain/value-objects/`, typed `DomainError`s in `domain/errors/`); use-cases orchestrate load →
+method → save → emit. Refactored so far: **reviews**.
 
 ## Multi-tenancy — `forTenant()` + RLS (the most important rule)
 
@@ -89,10 +89,10 @@ currently unpopulated.
 `PORT` (default 3000). **There is no `enableCors`.** There is ONE global exception filter:
 `DomainExceptionFilter` (`src/shared/domain/domain-exception.filter.ts`, wired via `APP_FILTER`) —
 it only catches framework-free `DomainError`s thrown by entities/VOs and emits the standard envelope
-`{ statusCode, code, message, details? }`; everything else keeps Nest's default handling. Application
-code may still throw NestJS `HttpException`s directly. Never leak Prisma errors. Env vars are read via `process.env`; API bootstrap, Prisma CLI, seed,
-and storage scripts all load the single workspace-root `.env` (see `.env.example`). Never add an
-app-local env file.
+`{ statusCode, code, message, details? }`; everything else keeps Nest's default handling.
+Application code may still throw NestJS `HttpException`s directly. Never leak Prisma errors. Env
+vars are read via `process.env`; API bootstrap, Prisma CLI, seed, and storage scripts all load the
+single workspace-root `.env` (see `.env.example`). Never add an app-local env file.
 
 ## Scripts (verified)
 

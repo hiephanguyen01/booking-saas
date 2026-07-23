@@ -255,7 +255,6 @@ export class PrismaReviewRepository implements IReviewRepository {
       where: { id: reviewId },
       select: {
         id: true,
-        tenantId: true,
         bookingId: true,
         partnerId: true,
         reply: { select: { partnerId: true } },

@@ -42,7 +42,6 @@ export interface PendingReply {
 /** The persisted write-state of a review needed to enforce the reply invariant. */
 export interface ReviewState {
   id: string;
-  tenantId: string;
   bookingId: string;
   partnerId: string;
   /** Presence (non-null) means a reply already exists. */
