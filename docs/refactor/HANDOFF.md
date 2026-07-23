@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, sau PR #5b.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, sau PR #6.
 
 ## 0. Vì sao cần file này
 
@@ -27,18 +27,19 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | — | lint guard biên hexagonal | ✅ merge (PR #19) |
 | 5a | promotions — vòng đời chương trình | ✅ merge (PR #20) |
 | 5b | promotions — redemption + usage claim | ✅ merge (PR #21) — **promotions xong cả module** |
-| 6 | affiliate | ⏭️ **tiếp theo** |
-| 7→16 | identity-access → partner → catalog → tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
+| 6 | affiliate | ✅ merge (GitHub PR #22) |
+| 7 | identity-access | ⏭️ **tiếp theo** |
+| 8→16 | partner → catalog → tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Việc kế tiếp:** **PR #6 — module affiliate** (không còn PR nào đang mở).
+**Việc kế tiếp:** **PR #7 — module identity-access** (không còn PR nào đang mở).
 
-Gợi ý riêng cho affiliate (từ khảo sát): 3 aggregate — `Affiliate` (membership + customRate +
-payoutInfo), `ReferralLink`, `AffiliateCommission` (máy trạng thái 5 trạng thái
-`pending→confirmed→paid|reversed|clawed_back` **do outbox điều khiển** ⇒ transition phải trả boolean
-no-throw, idempotent). Số tiền commission phải là **bản replay đúng** `computeCommissionSplit` của
-finance để khớp ledger. `markConfirmedPaid` giữ set-based, không biến thành N lần load aggregate.
-Có bản compiled của `AffiliateCommission` từ một phiên cũ trong `apps/api/dist/modules/affiliate/domain/entities/`
-— tham chiếu được, nhưng **phải đối chiếu lại với code hiện tại** trước khi tin.
+Gợi ý riêng cho identity-access (từ khảo sát): 3 aggregate — `UserAccount` (identity + guest/password
+account + lockout), `Session` (hash-only opaque token lifecycle), `AuthChallenge` (OTP lifecycle).
+Đây là đảo global dùng `prisma.admin`: **không** thêm `forTenant`, tx parameter hay outbox. Giữ
+`SessionPrincipal` là projection nóng của global guard; plaintext token/OTP chỉ sống tạm trong
+adapter. Anti-enumeration password-reset, Redis JSON/key shape, cookie/throttle, và các race hiện hữu
+(đặc biệt lockout/session rotation) đều đóng băng. Plan:
+`docs/superpowers/plans/2026-07-23-entity-refactor-pr7-identity-access.md`.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 
@@ -122,7 +123,7 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 
 - **Relay outbox thiếu dead-letter/max-attempts** — một row hỏng vĩnh viễn chiếm claim slot mãi mãi.
   Nên làm PR hạ tầng riêng, độc lập với các đợt refactor.
-- `event.tenantId ?? ''` còn ở **affiliate, booking, finance, listing, payments, scheduling** — sẽ tự
+- `event.tenantId ?? ''` còn ở **booking, finance, listing, payments, scheduling** — sẽ tự
   hết khi từng module refactor (spec §4), không cần quét riêng.
 - Wave migration sau refactor: unique index còn thiếu (dedupe_key của notification, refunds,
   dispute, one-primary-domain).
