@@ -1,5 +1,5 @@
 import { favoriteRefsResponseSchema, type FavoriteRefsResponse } from '@booking/contracts';
-import { Outlet, useOutletContext, type ShouldRevalidateFunctionArgs } from 'react-router';
+import { Outlet, useOutletContext } from 'react-router';
 import { FavoritesProvider } from '../features/favorites/favorites-context';
 import { apiGet } from '../lib/api.server';
 import { getOptionalAuth } from '../lib/auth.server';
@@ -26,20 +26,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   return { locale, favorites: { isAuthenticated: Boolean(auth), refs } };
-}
-
-export function shouldRevalidate({
-  currentUrl,
-  nextUrl,
-  formMethod,
-  defaultShouldRevalidate,
-}: ShouldRevalidateFunctionArgs): boolean {
-  const isMutation = Boolean(formMethod && formMethod.toUpperCase() !== 'GET');
-
-  // Manual same-URL polling only needs the booking child loader. Favorite refs
-  // still revalidate after add/remove mutations and ordinary navigations.
-  if (!isMutation && currentUrl.href === nextUrl.href) return false;
-  return defaultShouldRevalidate;
 }
 
 export default function LocaleLayout({ loaderData }: Route.ComponentProps) {
