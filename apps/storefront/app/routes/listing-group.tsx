@@ -333,7 +333,7 @@ function publicPackages(
 
 export default function ListingGroupRoute({ loaderData, params }: Route.ComponentProps) {
   const { group } = loaderData;
-  const { tenant, canonical } = useOutletContext<StorefrontContext>();
+  const { tenant, canonical, cspNonce } = useOutletContext<StorefrontContext>();
   const locale = params.locale === 'en' ? 'en' : 'vi';
   const structuredData = {
     '@context': 'https://schema.org',
@@ -392,6 +392,7 @@ export default function ListingGroupRoute({ loaderData, params }: Route.Componen
   return (
     <>
       <script
+        nonce={cspNonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
       />
