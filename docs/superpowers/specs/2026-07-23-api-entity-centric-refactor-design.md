@@ -118,7 +118,8 @@ Quy tắc entity:
 1. **Port**: tách write/read khi port fat, hợp nhất khi gọn (đã ghi vào Layout ở trên). Khi MỘT
    class Prisma implement cả write port lẫn reader port, bind bằng bộ ba `useExisting` (class là
    provider thường + 2 token alias) để có đúng một singleton — không dùng 2 `useClass` (double
-   instantiation). Tiền lệ: `content-reports.module.ts` (PR #2).
+   instantiation). Tiền lệ: `content-reports.module.ts` (PR #2). Và không bao giờ inject class cụ
+   thể — chỉ qua port; lint chặn application/domain import infrastructure (eslint.config.mjs).
 2. **Domain events**: use-case build payload, không `pullDomainEvents()` (đã ghi ở trên).
 3. **Wire error dùng chung → shared kernel**: mã lỗi nhiều module cùng emit (vd `TENANT_NOT_FOUND`)
    định nghĩa MỘT lần ở `src/shared/domain/errors/` (vd `TenantNotFound`), module import — không
@@ -262,7 +263,7 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 
 Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module copy:
 
-1. **Lint chặn bypass port (làm TRƯỚC PR #5).** Pattern `useExisting` bắt buộc đăng ký class Prisma
+1. **[ĐÃ LÀM]** **Lint chặn bypass port (làm TRƯỚC PR #5).** Pattern `useExisting` bắt buộc đăng ký class Prisma
    dưới token của chính nó, nên một use-case tương lai có thể inject thẳng class infrastructure mà
    vẫn typecheck xanh (hiện chưa có chỗ nào làm vậy, và `eslint.config.mjs` không có rule chặn).
    Thêm override `no-restricted-imports` cho `apps/api/src/modules/**/{application,domain}/**` cấm
