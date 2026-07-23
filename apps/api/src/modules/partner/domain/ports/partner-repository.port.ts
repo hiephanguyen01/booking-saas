@@ -1,4 +1,4 @@
-import type { PartnerStatus, PartnerType, PartnerVerificationStatus } from '@booking/contracts';
+import type { PartnerStatus, PartnerVerificationStatus } from '@booking/contracts';
 
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
@@ -7,6 +7,7 @@ import type {
   PartnerIdentityRejectionIntent,
   PartnerIdentitySubmissionIntent,
   PartnerIdentityVerifiedIntent,
+  NewPartner,
   PartnerPayoutIntent,
   PartnerState,
   PartnerStatusIntent,
@@ -16,18 +17,6 @@ import type { PartnerRecord } from './partner-reader.port';
 export type { ListPartnersFilter, PartnerOwnerRecord, PartnerRecord } from './partner-reader.port';
 
 export const PARTNER_REPOSITORY = Symbol('PARTNER_REPOSITORY');
-
-export interface CreatePartnerData {
-  name: string;
-  slug: string;
-  description?: string | null;
-  partnerType: PartnerType;
-  isHouse?: boolean;
-  status?: PartnerStatus;
-  businessInfo?: Record<string, unknown>;
-  contactInfo?: Record<string, unknown>;
-  payoutInfo?: Record<string, unknown>;
-}
 
 export interface UpdatePartnerData {
   status?: PartnerStatus;
@@ -43,7 +32,7 @@ export interface UpdatePartnerData {
 }
 
 export interface IPartnerRepository {
-  create(tx: PrismaTx, tenantId: string, data: CreatePartnerData): Promise<PartnerRecord>;
+  create(tx: PrismaTx, partner: NewPartner): Promise<PartnerRecord>;
 
   /**
    * Cross-module compatibility seam for Listing. Keep the enriched projection

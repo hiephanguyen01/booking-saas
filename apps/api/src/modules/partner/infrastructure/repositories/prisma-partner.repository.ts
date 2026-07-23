@@ -9,6 +9,7 @@ import type {
   PartnerIdentityRejectionIntent,
   PartnerIdentitySubmissionIntent,
   PartnerIdentityVerifiedIntent,
+  NewPartner,
   PartnerPayoutIntent,
   PartnerState,
   PartnerStatusIntent,
@@ -19,7 +20,6 @@ import type {
   PartnerRecord,
 } from '../../domain/ports/partner-reader.port';
 import type {
-  CreatePartnerData,
   IPartnerRepository,
   UpdatePartnerData,
 } from '../../domain/ports/partner-repository.port';
@@ -96,20 +96,20 @@ function toState(p: PrismaPartnerRow): PartnerState {
 export class PrismaPartnerRepository implements IPartnerRepository, IPartnerReader {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(tx: PrismaTx, tenantId: string, data: CreatePartnerData): Promise<PartnerRecord> {
+  async create(tx: PrismaTx, partner: NewPartner): Promise<PartnerRecord> {
     return toRecord(
       await tx.partner.create({
         data: {
-          tenantId,
-          name: data.name,
-          slug: data.slug,
-          description: data.description ?? null,
-          partnerType: data.partnerType,
-          isHouse: data.isHouse ?? false,
-          status: data.status ?? 'pending',
-          businessInfo: (data.businessInfo ?? {}) as Prisma.InputJsonValue,
-          contactInfo: (data.contactInfo ?? {}) as Prisma.InputJsonValue,
-          payoutInfo: (data.payoutInfo ?? {}) as Prisma.InputJsonValue,
+          tenantId: partner.tenantId,
+          name: partner.name,
+          slug: partner.slug,
+          description: partner.description,
+          partnerType: partner.partnerType,
+          isHouse: partner.isHouse,
+          status: partner.status,
+          businessInfo: partner.businessInfo as Prisma.InputJsonValue,
+          contactInfo: partner.contactInfo as Prisma.InputJsonValue,
+          payoutInfo: partner.payoutInfo as Prisma.InputJsonValue,
         },
         include: partnerInclude,
       }),
