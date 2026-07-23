@@ -26,6 +26,11 @@ and [ADR 0006](./decisions/0006-hexagonal-no-services.md). Tenant data flows thr
 `TenantDbService.forTenant`; modules talk via the outbox; authz is `@RequirePermissions`
 deny-by-default. See [`architecture.md`](./architecture.md).
 
+Modules being migrated to the entity-centric style additionally keep write-path invariants on
+framework-free aggregates in `domain/entities/` with typed `DomainError`s (translated to the wire
+envelope by the global `DomainExceptionFilter`) — rules, aggregate map and per-module order in
+[the refactor spec](./superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md).
+
 ## Frontend (React Router 8 framework mode)
 
 - Each route exports `loader` (server data), `action` (server mutation), and a default component
