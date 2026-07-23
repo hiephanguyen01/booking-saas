@@ -280,6 +280,9 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
    config lint/tsconfig gốc trong `inputs`, nên sau khi đổi rule lint mà chạy `pnpm turbo lint` có thể
    trúng cache cũ và báo xanh giả — CI cũng vậy (phải `--force` mới thấy thật). Thêm chúng vào
    `inputs`/`globalDependencies` trong một PR tooling riêng.
+5. **promotions import chéo module partner** (`AGREEMENT_REPOSITORY` + `PrismaAgreementRepository`
+   trong `opt-in-promotion` và module wiring) — vi phạm ADR 0003 có sẵn từ trước, PR #5a giữ
+   nguyên. Sửa bằng cách đưa việc ghi agreement qua outbox hoặc một port riêng, ở PR độc lập.
 
 ### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
 

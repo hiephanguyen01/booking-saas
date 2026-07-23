@@ -36,6 +36,7 @@ export class CreatePartnerPromotionUseCase {
       }
       const appliesToId = await assertPartnerOwnsScope(tx, partnerId, input.appliesTo, input.appliesToId ?? null);
 
+      // → partnerOptInAt: the partner created it, so it is already opted in
       const data = Promotion.openForPartner({
         fields: {
           name: input.name,
@@ -55,7 +56,7 @@ export class CreatePartnerPromotionUseCase {
         partnerId,
         appliesTo: input.appliesTo,
         appliesToId,
-        now: utcNow(), // the partner created it → already opted in
+        now: utcNow(),
       });
       return this.promotions.create(tx, tenantId, data);
     });
