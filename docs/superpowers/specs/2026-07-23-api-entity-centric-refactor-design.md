@@ -35,6 +35,18 @@ lỏng (ghi sổ, siết sau).
    trigger đã enforce balance — vùng no-touch SQL giữ nguyên tuyệt đối).
 6. **Tuần tự nghiêm**: 16 PR làm lần lượt đúng thứ tự §6, không song song.
 7. **ADR 0005 (no tests) + ADR 0006 (no services) giữ nguyên.** Xác minh mỗi PR theo §9.
+8. **3 module "không aggregate-shaped" vẫn convert đầy đủ.** Phiên 2026-07-20 từng thử và kết luận
+   promotions / payments (Payment, Refund) / scheduling không đáng convert (pure-domain sạch +
+   atomic WHERE-guarded SQL — bọc entity kiểu load-check-save sẽ regress atomicity). Owner
+   2026-07-23 quyết định convert đầy đủ cả 3, với điều kiện tiên quyết là luật **CAS ở lại repo**
+   (§3) — entity chỉ đứng trước guarded SQL, không bao giờ thay thế nó. Reviewer của 3 PR này phải
+   soi đúng điểm đó.
+9. **Domain error → HTTP qua global exception filter** (chốt từ 2026-07-20, đã chạy thật): shared
+   kernel `src/shared/domain/domain-error.ts` (abstract `DomainError`: `code` + `httpStatus` +
+   `details`) + `domain-exception.filter.ts` (`@Catch(DomainError)` → đúng envelope
+   `{ statusCode, code, message, details? }` hiện tại), wire `APP_FILTER` trong `app.module.ts` ở
+   PR pilot. Use-case không try/catch dịch lỗi; entity throw typed error là đủ.
+   `apps/api/CLAUDE.md` đang ghi "không có global exception filter" — cập nhật trong PR pilot.
 
 ## 3. Style chuẩn cho aggregate (áp dụng mọi module)
 
@@ -65,8 +77,8 @@ Quy tắc entity:
   mọi thứ DB đang chứa (jsonb legacy, snapshot nullable, giá number từ seed) — row lịch sử không
   bao giờ làm crash.
 - **Hai kiểu transition**, khớp ngữ nghĩa từng path hiện tại:
-  - *HTTP-driven*: được throw typed domain error; use-case/controller dịch ra **đúng mã lỗi + status
-    + envelope hiện có, byte-compatible**.
+  - *HTTP-driven*: được throw typed domain error (extend `DomainError`, §2.9); global filter dịch ra
+    **đúng mã lỗi + status + envelope hiện có, byte-compatible** — use-case không try/catch dịch lỗi.
   - *Outbox/worker-driven*: method trả boolean/result, **no-throw, no-op idempotent** khi redelivery
     (relay at-least-once, KHÔNG có dead-letter — một throw mới sẽ kẹt event vĩnh viễn). Handler nào
     hôm nay *cố ý* throw-để-retry (finance ordering-recovery, tenancy DNS TXT check) **giữ nguyên
@@ -142,7 +154,13 @@ Quy tắc entity:
 Nguyên tắc: học pattern trên module nhỏ trước → provider trước consumer → tiền bạc sau cùng.
 
 1. **reviews** (S) — pilot: chứng minh trọn style end-to-end (factory, snapshot port hẹp, P2002
-   backstop, in-tx emit) trên 1 aggregate, blast radius nhỏ nhất.
+   backstop, in-tx emit) trên 1 aggregate, blast radius nhỏ nhất. Kèm Wave 0 shared kernel
+   (`DomainError` + filter, §2.9). **Nguồn khôi phục:** bản pilot 2026-07-20 đã từng viết + verify
+   xanh + chạy thật nhưng mất source — còn nguyên bản compiled trong `apps/api/dist/` (
+   `shared/domain/domain-error.js`, `modules/reviews/domain/{entities/review.entity,
+   value-objects/{rating,review-content}, errors/review-errors}.js` + `.d.ts`) — tái tạo TS từ đó
+   thay vì viết lại từ đầu. Tương tự cho AffiliateCommission ở PR #6
+   (`modules/affiliate/domain/entities/affiliate-commission.entity.js`).
 2. **content-reports** (S) — máy trạng thái đầu tiên; chốt pattern audit pre-image giá rẻ.
 3. **notification** (S) — invariant scatter tệ nhất trên mỗi dòng code; 0 endpoint HTTP nên không
    thể vỡ gì user-facing; sinh DedupeKey VO + failure policy tường minh.
@@ -203,12 +221,20 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 - `payments`: `canSucceed` (mâu thuẫn SQL guard thật — cái bẫy), `findActivePendingByBooking`
 - `catalog`: `ListPublicListingsUseCase` không có route
 
+### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
+
+Không thuộc refactor này nhưng ghi lại để không thất lạc lần nữa: ~65 endpoint loose-typed;
+`payments` credentials `Record<string,string>` → discriminated union per-gateway (đổi wire + đụng FE
++ security); `gatewayPayload`/Evidence typed; khử `unknown`/jsonb tự do ở boundary.
+
 ## 9. Xác minh mỗi PR (ADR 0005 — không có test)
 
 1. `pnpm turbo lint typecheck build` xanh.
 2. Chạy app seed (`docker compose up -d` → `prisma:deploy` → `seed` → `pnpm dev`) và bấm tay **mọi
    write-flow của module** vừa refactor; module tiền bạc phải đi trọn vòng
    checkout → confirm → cancel/refund trên storefront + dashboard.
+   *Gotcha môi trường:* port 5432 có thể bị container `kaigo-postgres-dev` (project khác) chiếm —
+   nhờ user tự stop/start nó, không tự ý đụng; Node phải là 22.22.0 (`nvm use`).
 3. PR description liệt kê: use-case đã chuyển đổi, surface đã freeze (và bằng chứng không đổi),
    hành vi throw/no-op từng outbox handler trước/sau, dead code đã xóa.
 4. `check:rls` xanh (không đổi vì schema-frozen, chạy để chắc).
