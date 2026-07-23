@@ -1,17 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { paymentPollDelay } from '../../lib/payment-polling';
 
-const FAST_POLL_DELAY_MS = 3_000;
-const MEDIUM_POLL_DELAY_MS = 5_000;
-const SLOW_POLL_DELAY_MS = 10_000;
-const MAX_POLL_DELAY_MS = 30_000;
 const BUSY_RETRY_DELAY_MS = 1_000;
-
-function delayForAttempt(attempt: number): number {
-  if (attempt < 5) return FAST_POLL_DELAY_MS;
-  if (attempt < 11) return MEDIUM_POLL_DELAY_MS;
-  if (attempt < 17) return SLOW_POLL_DELAY_MS;
-  return MAX_POLL_DELAY_MS;
-}
 
 interface AdaptivePaymentPollingOptions {
   enabled: boolean;
@@ -64,7 +54,7 @@ export function useAdaptivePaymentPolling({
 
       void loadRef.current(href);
       attempt += 1;
-      schedule(delayForAttempt(attempt));
+      schedule(paymentPollDelay(attempt));
     }
 
     const handleVisibilityChange = () => {
@@ -79,7 +69,7 @@ export function useAdaptivePaymentPolling({
       poll();
     };
 
-    schedule(delayForAttempt(attempt));
+    schedule(paymentPollDelay(attempt));
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       cancelled = true;
