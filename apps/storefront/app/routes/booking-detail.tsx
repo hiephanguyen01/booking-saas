@@ -17,7 +17,6 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
 import {
   data,
   Form,
@@ -49,6 +48,7 @@ import {
 import { formatVnd } from '../lib/ui';
 import { useLocale } from '../lib/use-locale';
 import type { StorefrontContext } from '../root';
+import { useAdaptivePaymentPolling } from '../features/booking/use-adaptive-payment-polling';
 import { PaymentHandoff } from '../features/checkout/components/payment-handoff';
 import type { loader as paymentStatusLoader } from './booking-payment-status';
 import type { Route } from './+types/booking-detail';
@@ -59,7 +59,6 @@ export function meta() {
 
 const PENDING = new Set<BookingStatus>(['pending_payment', 'pending_approval', 'draft']);
 const SUCCESS = new Set<BookingStatus>(['confirmed', 'completed']);
-const PAYMENT_POLL_INTERVAL_MS = 3_000;
 
 /** `PaymentStatusResponse.bookingStatus` is wire-typed as a plain string (§11.2). */
 function normalizeBookingStatus(value: string): BookingStatus | null {
@@ -190,10 +189,6 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
   const locale = useLocale();
   const [sp] = useSearchParams();
   const paymentFetcher = useFetcher<typeof paymentStatusLoader>();
-  const paymentLoadRef = useRef(paymentFetcher.load);
-  paymentLoadRef.current = paymentFetcher.load;
-  const paymentStateRef = useRef(paymentFetcher.state);
-  paymentStateRef.current = paymentFetcher.state;
   const navigation = useNavigation();
   const submitting = navigation.state === 'submitting';
 
@@ -225,27 +220,12 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
   const isPending =
     !paymentFailed && !isSuccess && bookingStatus !== null && PENDING.has(bookingStatus);
 
-  // Poll only the lightweight resource loader. Pause in background tabs and
-  // trigger one immediate refresh when the page becomes visible again.
-  useEffect(() => {
-    if (!isPending) return;
-
-    const href = `/${locale}/bookings/${encodeURIComponent(code)}/payment-status`;
-    const poll = () => {
-      if (document.visibilityState !== 'visible' || paymentStateRef.current !== 'idle') return;
-      void paymentLoadRef.current(href);
-    };
-    const interval = window.setInterval(poll, PAYMENT_POLL_INTERVAL_MS);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') poll();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [code, isPending, locale]);
+  useAdaptivePaymentPolling({
+    enabled: isPending,
+    href: `/${locale}/bookings/${encodeURIComponent(code)}/payment-status`,
+    load: paymentFetcher.load,
+    state: paymentFetcher.state,
+  });
 
   if (actionData && 'handoff' in actionData && actionData.handoff) {
     return <PaymentHandoff destination={actionData.handoff} />;
