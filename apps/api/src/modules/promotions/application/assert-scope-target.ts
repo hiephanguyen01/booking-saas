@@ -3,8 +3,6 @@ import type { PromoAppliesTo } from '../domain/promotion-discount';
 import { PromoScopeTargetInvalid, PromoScopeTargetMissing } from '../domain/errors/promotion-errors';
 import type { IPromoContextLookup } from '../domain/ports/promo-context-lookup.port';
 
-export const PROMO_SCOPE_TARGET_INVALID_CODE = 'PROMO_SCOPE_TARGET_INVALID';
-
 /**
  * Server-side guard that `appliesToId` really identifies an entity of the declared
  * `appliesTo` type (§12.2).

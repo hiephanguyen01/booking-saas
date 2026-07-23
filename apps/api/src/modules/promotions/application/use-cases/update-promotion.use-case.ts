@@ -1,19 +1,19 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { UpdatePromotionInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { vnd } from '../../../../shared/money/money';
 import {
   PROMOTION_REPOSITORY,
   type IPromotionRepository,
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
 import { PROMO_CONTEXT_LOOKUP, type IPromoContextLookup } from '../../domain/ports/promo-context-lookup.port';
-import { Promotion, type PromotionUpdateInput } from '../../domain/entities/promotion.entity';
+import { Promotion } from '../../domain/entities/promotion.entity';
 import { PromotionCodeTaken, PromotionNotFound } from '../../domain/errors/promotion-errors';
 import { normalizeCode } from '../../domain/promotion-application';
 import { assertScopeTargetValid } from '../assert-scope-target';
 import { assertTenantShareRisk } from '../assert-tenant-share-risk';
 import { resolveFundingPartnerId } from '../resolve-funding-partner';
+import { toPromotionUpdateInput } from '../to-promotion-update-input';
 
 /**
  * Edit a promotion (§12.2). Historic bookings keep their immutable snapshot.
@@ -57,27 +57,7 @@ export class UpdatePromotionUseCase {
 
       // `null` → clear the condition; absent → leave the stored value untouched. An empty
       // `timeWindows` array is a clear too — the tri-state merge lives in `applyUpdate`.
-      const updateInput: PromotionUpdateInput = {
-        name: input.name,
-        discountType: input.discountType,
-        discountValue: input.discountValue !== undefined ? vnd(input.discountValue) : undefined,
-        maxDiscount:
-          input.maxDiscount !== undefined ? (input.maxDiscount === null ? null : vnd(input.maxDiscount)) : undefined,
-        minOrderAmount:
-          input.minOrderAmount !== undefined
-            ? input.minOrderAmount === null
-              ? null
-              : vnd(input.minOrderAmount)
-            : undefined,
-        firstBookingOnly: input.firstBookingOnly,
-        usageLimitTotal: input.usageLimitTotal,
-        usageLimitPerCustomer: input.usageLimitPerCustomer,
-        timeWindows: input.timeWindows,
-        startsAt:
-          input.startsAt !== undefined ? (input.startsAt === null ? null : new Date(input.startsAt)) : undefined,
-        endsAt: input.endsAt !== undefined ? (input.endsAt === null ? null : new Date(input.endsAt)) : undefined,
-        status: input.status,
-      };
+      const updateInput = toPromotionUpdateInput(input);
       const data = promotion.applyUpdate(updateInput);
 
       // Scope / funding changes re-resolve the funding partner and may reset the opt-in gate (§12.2).

@@ -4,8 +4,6 @@ import { PromoTenantShareNegative } from '../domain/errors/promotion-errors';
 import { evaluateTenantShareRisk } from '../domain/tenant-share-risk';
 import { resolveTenantCommissionRates } from './resolve-tenant-commission-rates';
 
-export const PROMO_TENANT_SHARE_NEGATIVE_CODE = 'PROMO_TENANT_SHARE_NEGATIVE';
-
 export interface TenantShareGuardParams {
   fundedBy: 'tenant' | 'partner';
   discountType: 'percent' | 'fixed';

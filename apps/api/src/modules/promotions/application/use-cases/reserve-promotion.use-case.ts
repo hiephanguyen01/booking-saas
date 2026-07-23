@@ -8,7 +8,10 @@ import {
   PROMO_REDEMPTION_REPOSITORY,
   type IPromoRedemptionRepository,
 } from '../../domain/ports/promo-redemption-repository.port';
-import { PromoRedemption, exceedsPerCustomerLimit } from '../../domain/entities/promo-redemption.entity';
+import {
+  PromoRedemption,
+  exceedsPerCustomerLimit,
+} from '../../domain/entities/promo-redemption.entity';
 import { rejectionException } from '../promo-rejection';
 
 /**
@@ -39,8 +42,13 @@ export class ReservePromotionUseCase {
     // Per-customer cap: serialise by (promotion, customer) so two tabs can't both slip past (§12.3).
     if (data.usageLimitPerCustomer !== null) {
       await this.redemptions.lockPerCustomer(tx, data.promotionId, data.customerId);
-      const used = await this.redemptions.countActiveByCustomer(tx, data.promotionId, data.customerId);
-      if (exceedsPerCustomerLimit(used, data.usageLimitPerCustomer)) throw rejectionException('PROMO_LIMIT_REACHED');
+      const used = await this.redemptions.countActiveByCustomer(
+        tx,
+        data.promotionId,
+        data.customerId,
+      );
+      if (exceedsPerCustomerLimit(used, data.usageLimitPerCustomer))
+        throw rejectionException('PROMO_LIMIT_REACHED');
     }
     const claimed = await this.promotions.claimUsage(tx, data.promotionId);
     if (!claimed) throw rejectionException('PROMO_LIMIT_REACHED');
