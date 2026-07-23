@@ -1,10 +1,11 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { AGREEMENT_REPOSITORY } from '../../../partner/domain/ports/agreement-repository.port';
 import { PrismaAgreementRepository } from '../../../partner/infrastructure/repositories/prisma-agreement.repository';
+import { releasesUsageOnCancel } from '../../domain/entities/promo-redemption.entity';
 import { PROMOTION_REPOSITORY } from '../../domain/ports/promotion-repository.port';
 import { PROMO_REDEMPTION_REPOSITORY } from '../../domain/ports/promo-redemption-repository.port';
 import { PROMO_CONTEXT_LOOKUP } from '../../domain/ports/promo-context-lookup.port';
@@ -71,6 +72,8 @@ import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabl
   exports: [PreparePromotionUseCase, ReservePromotionUseCase, MarkPromotionAppliedUseCase, ReleasePromotionUseCase],
 })
 export class PromotionsModule implements OnModuleInit {
+  private readonly logger = new Logger(PromotionsModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly markPromotionApplied: MarkPromotionAppliedUseCase,
@@ -83,21 +86,41 @@ export class PromotionsModule implements OnModuleInit {
    *   confirmed → `applied`; expired/rejected/100%-refund-cancel → `released`.
    */
   onModuleInit(): void {
-    this.registry.register('booking.confirmed', (event) =>
-      this.markPromotionApplied.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
-    this.registry.register('booking.expired', (event) =>
-      this.releasePromotion.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
-    this.registry.register('booking.rejected', (event) =>
-      this.releasePromotion.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
-    this.registry.register('booking.cancelled', (event) => {
-      const p = event.payload as { bookingId: string; refundPercent?: number };
-      // Only a full refund returns the usage; a partial refund keeps it `applied` (§12.5).
-      if (p.refundPercent === 100) return this.releasePromotion.execute(event.tenantId ?? '', p.bookingId);
-      return Promise.resolve();
+    this.registry.register('booking.confirmed', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.markPromotionApplied.execute(tenantId, bookingIdOf(event.payload));
     });
+    this.registry.register('booking.expired', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.releasePromotion.execute(tenantId, bookingIdOf(event.payload));
+    });
+    this.registry.register('booking.rejected', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.releasePromotion.execute(tenantId, bookingIdOf(event.payload));
+    });
+    this.registry.register('booking.cancelled', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      const p = event.payload as { bookingId: string; refundPercent?: number };
+      // §12.5: only a full refund returns the usage; a partial refund keeps it `applied`.
+      if (!releasesUsageOnCancel(p.refundPercent)) return Promise.resolve();
+      return this.releasePromotion.execute(tenantId, p.bookingId);
+    });
+  }
+
+  /**
+   * A tenant-scoped promo event without a tenant id cannot be routed: skip it (and
+   * say so) instead of running `forTenant('')`, which silently resolved to an empty
+   * RLS scope and no-op'd. Skipping — not throwing — keeps the at-least-once relay
+   * from parking the event in permanent retry (there is no dead-letter queue).
+   */
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }
 
