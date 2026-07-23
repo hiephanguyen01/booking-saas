@@ -1,5 +1,6 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { RegisterInput } from '@booking/contracts';
+import { UserAccount } from '../../domain/entities/user-account.entity';
 import { PASSWORD_HASHER, type IPasswordHasher } from '../../domain/ports/password-hasher.port';
 import {
   SESSION_STORE,
@@ -25,20 +26,17 @@ export class RegisterUseCase {
     meta: { ip?: string; userAgent?: string },
   ): Promise<{ user: UserRecord; tokens: SessionTokens }> {
     const existing = await this.users.findByEmail(input.email);
-    if (existing) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'EMAIL_TAKEN',
-        message: 'Email is already registered',
-      });
-    }
-    const user = await this.users.create({
+    UserAccount.assertEmailAvailable(existing);
+    const passwordHash = await this.hasher.hash(input.password);
+    const newUser = UserAccount.register({
       email: input.email,
-      passwordHash: await this.hasher.hash(input.password),
+      passwordHash,
       fullName: input.fullName,
       phone: input.phone,
       locale: input.locale,
+      emailVerifiedAt: null,
     });
+    const user = await this.users.create(newUser);
     const tokens = await this.sessions.create(user.id, meta);
     return { user, tokens };
   }
