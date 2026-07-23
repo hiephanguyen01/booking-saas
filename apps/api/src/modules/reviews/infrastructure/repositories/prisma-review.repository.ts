@@ -21,11 +21,7 @@ import type {
   Review,
   ReviewState,
 } from '../../domain/entities/review.entity';
-import {
-  ReviewAlreadyExists,
-  ReviewReplyAlreadyExists,
-  ReviewReplyNotAccepted,
-} from '../../domain/errors/review-errors';
+import { ReviewAlreadyExists, ReviewReplyAlreadyExists } from '../../domain/errors/review-errors';
 
 export const REVIEW_INCLUDE = Prisma.validator<Prisma.ReviewInclude>()({
   booking: { select: { code: true, settlement: { select: { completedAt: true } } } },
@@ -263,9 +259,9 @@ export class PrismaReviewRepository implements IReviewRepository {
   }
 
   async saveReply(tx: PrismaTx, tenantId: string, review: Review): Promise<ReviewRecord> {
-    const pending = review.reply();
+    const pending = review.pendingReply();
     // Defensive: the use-case always calls addReply() first; a null here is a programming error.
-    if (!pending) throw new ReviewReplyNotAccepted();
+    if (!pending) throw new Error('saveReply called without a pending reply — addReply must run first');
     try {
       await tx.reviewReply.create({
         data: {
@@ -284,7 +280,7 @@ export class PrismaReviewRepository implements IReviewRepository {
     }
     const row = await tx.review.findUnique({ where: { id: review.id }, include: REVIEW_INCLUDE });
     // Unreachable: the review row exists in this tx (we just appended its reply).
-    if (!row) throw new ReviewReplyNotAccepted();
+    if (!row) throw new Error('review row missing right after its reply was inserted');
     return toReviewRecord(row);
   }
 

@@ -1,4 +1,4 @@
-import { Catch, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
+import { Catch, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import { DomainError } from './domain-error';
 
@@ -14,7 +14,13 @@ import { DomainError } from './domain-error';
  */
 @Catch(DomainError)
 export class DomainExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(DomainExceptionFilter.name);
+
   catch(error: DomainError, host: ArgumentsHost): void {
+    if (error.httpStatus >= 500) {
+      // DomainError is a 4xx-only convention — a 5xx here means a defect, not a client error.
+      this.logger.error(error.message, error.stack);
+    }
     const res = host.switchToHttp().getResponse<Response>();
     res.status(error.httpStatus).json({
       statusCode: error.httpStatus,

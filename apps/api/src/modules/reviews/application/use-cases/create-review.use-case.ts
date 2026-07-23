@@ -4,7 +4,8 @@ import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { STORAGE_PORT, type StoragePort } from '../../../../shared/storage/storage.port';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { Review } from '../../domain/entities/review.entity';
-import { ReviewBookingNotEligible, ReviewTenantNotFound } from '../../domain/errors/review-errors';
+import { ReviewBookingNotEligible } from '../../domain/errors/review-errors';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import {
   REVIEW_REPOSITORY,
   type IReviewRepository,
@@ -32,7 +33,7 @@ export class CreateReviewUseCase {
 
   async execute(host: string, customerId: string, input: CreateReviewInput): Promise<ReviewRecord> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId) throw new ReviewTenantNotFound();
+    if (!tenantId) throw new TenantNotFound();
     const prefix = reviewMediaPrefix(tenantId, customerId, input.bookingId);
     const uniqueKeys = new Set(input.media.map((item) => item.key));
     if (uniqueKeys.size !== input.media.length) {

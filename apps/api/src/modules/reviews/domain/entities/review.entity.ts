@@ -49,13 +49,13 @@ export interface ReviewState {
 }
 
 export class Review {
-  private pendingReply: PendingReply | null;
+  private _pendingReply: PendingReply | null;
 
   private constructor(
     private readonly state: ReviewState,
     pendingReply: PendingReply | null,
   ) {
-    this.pendingReply = pendingReply;
+    this._pendingReply = pendingReply;
   }
 
   /** Rehydrate an existing review from persistence (the reply path). */
@@ -100,17 +100,17 @@ export class Review {
    * collapse to {@link ReviewReplyNotAccepted} to preserve the existing wire code.
    */
   addReply(partnerId: string, authorUserId: string, content: ReviewContent): void {
-    if (this.state.reply !== null || this.pendingReply !== null) {
+    if (this.state.reply !== null || this._pendingReply !== null) {
       throw new ReviewReplyNotAccepted();
     }
     if (partnerId !== this.state.partnerId) {
       throw new ReviewReplyNotAccepted();
     }
-    this.pendingReply = { partnerId, authorUserId, content: content.value };
+    this._pendingReply = { partnerId, authorUserId, content: content.value };
   }
 
   /** The reply queued by {@link addReply}, for the repository to persist (null if none). */
-  reply(): PendingReply | null {
-    return this.pendingReply;
+  pendingReply(): PendingReply | null {
+    return this._pendingReply;
   }
 }

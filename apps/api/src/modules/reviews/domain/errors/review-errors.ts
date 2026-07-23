@@ -49,10 +49,3 @@ export class ReviewReplyAlreadyExists extends DomainError {
     super('REVIEW_REPLY_ALREADY_EXISTS', 409, 'This review already has a reply');
   }
 }
-
-/** The storefront Host did not resolve to a live tenant. */
-export class ReviewTenantNotFound extends DomainError {
-  constructor() {
-    super('TENANT_NOT_FOUND', 404, 'Tenant not found');
-  }
-}
