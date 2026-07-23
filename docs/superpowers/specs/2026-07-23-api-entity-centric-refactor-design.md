@@ -56,7 +56,8 @@ Layout mỗi module sau refactor:
 domain/
   entities/<aggregate>.ts      # class framework-free (không Nest/Prisma/zod import)
   value-objects/…              # khi có VO đáng tách
-  ports/…                      # tách write-port hẹp / read-port giữ fat record hiện tại
+  errors/…                     # typed DomainError của module (mã dùng chung → shared/domain/errors/)
+  ports/…                      # tách write/read port KHI port fat; port gọn giữ hợp nhất (§3 gate)
 application/
   use-cases/…                  # orchestration thuần, 1 file 1 use-case (ADR 0006)
   <module>.mapper.ts           # serialize (bigint→string ở đây, không ở entity)
@@ -68,8 +69,8 @@ infrastructure/
 Quy tắc entity:
 
 - **Class framework-free**: private constructor; `static rehydrate(state)` cho row có sẵn;
-  `static create/open(...)` cho record mới (validate creation invariant, trả entity hoặc typed
-  rejection); method mang invariant; `pullDomainEvents()` gom event phát sinh khi mutate.
+  `static create/open(...)` cho record mới (validate creation invariant; được phép trả `New<X>` DTO
+  thay vì entity khi id do DB cấp lúc insert — ratified 2026-07-23); method mang invariant.
 - **Write-state hẹp**: `<Aggregate>State` chỉ chứa cột entity sở hữu (status, snapshot đông cứng,
   tiền `bigint`, field legacy giữ nullable). Fat read record (join, display field, rollup) **không
   bao giờ** vào entity — ở lại read-port + mapper.
@@ -95,9 +96,10 @@ Quy tắc entity:
 - **Tiền & rate**: entity giữ `bigint` VND + integer percent; chuỗi số chỉ xuất hiện ở mapper và
   outbox payload. `JSON.stringify` không bao giờ thấy entity. Parser dual-shape khoan dung
   (`string|number` trong modeConfig) giữ nguyên.
-- **Domain events**: entity gom event trong mutation; use-case drain vào `OutboxService.emit(tx,…)`
-  **trong cùng forTenant tx**. eventType, payload shape (bigint là `.toString()`), thứ tự emit đóng
-  băng byte-for-byte. Chỗ hiện tại emit mà không transition (booking late-webhook auto-refund emit
+- **Domain events**: use-case build payload và emit qua `OutboxService.emit(tx,…)` **trong cùng
+  forTenant tx** — KHÔNG có `pullDomainEvents()` trên entity (ratified 2026-07-23: payload vốn đóng
+  băng theo surface freeze, và create cần id DB cấp sau insert nên entity không gom event nhất quán
+  được). eventType, payload shape (bigint là `.toString()`), thứ tự emit đóng băng byte-for-byte. Chỗ hiện tại emit mà không transition (booking late-webhook auto-refund emit
   `booking.cancelled` không đổi status) giữ nguyên khả năng đó — emission không bị trói vào
   transition thành công.
 - **Pure function cross-module giữ nguyên import path**: `priceQuote`, `computeCommissionSplit`,
@@ -109,6 +111,23 @@ Quy tắc entity:
 - **RLS/pool không đổi**: 1 forTenant tx / business operation, repo nhận `tx`, không nest; các ngoại
   lệ hiện tại (identity-access + tenancy + notification-log trên admin pool; administrative-division
   tx-less) **vẫn là ngoại lệ**, không nhân rộng, không thu hẹp.
+
+### Style-gate đã chốt (2026-07-23, sau PR #1 pilot — áp dụng từ PR #2, pilot đã retrofit)
+
+1. **Port**: tách write/read khi port fat, hợp nhất khi gọn (đã ghi vào Layout ở trên).
+2. **Domain events**: use-case build payload, không `pullDomainEvents()` (đã ghi ở trên).
+3. **Wire error dùng chung → shared kernel**: mã lỗi nhiều module cùng emit (vd `TENANT_NOT_FOUND`)
+   định nghĩa MỘT lần ở `src/shared/domain/errors/` (vd `TenantNotFound`), module import — không
+   mint per-module.
+4. **Template refinements**:
+   - Nhánh defensive/unreachable trong repo throw `Error` thường (→ 500 của Nest), KHÔNG tái dùng
+     `DomainError` 4xx — bug server không được đội lốt lỗi client.
+   - `DomainExceptionFilter` log error trước khi respond nếu `httpStatus ≥ 500` (quy ước:
+     `DomainError` là 4xx-only; ≥500 là dấu hiệu dùng sai).
+   - Accessor trả pending child trên aggregate đặt tên `pendingXxx()` (vd `pendingReply()`), không
+     trùng tên field state đã persist.
+   - VO validation-error mirror của zod chỉ là defensive-depth (zod pipe là boundary thật) — ghi rõ
+     trong doc comment, không cần khớp từng byte envelope của pipe.
 
 ## 4. Luật cross-cutting cho mọi PR
 
