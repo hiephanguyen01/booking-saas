@@ -16,11 +16,10 @@ import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { formatVnd } from '../../../lib/ui';
-import type { BookingLocale } from '../server/booking-detail.server';
 
 interface BookingPaymentViewProps {
   code: string;
-  locale: BookingLocale;
+  locale: 'en' | 'vi';
   status: PaymentStatusResponse;
   bookingStatus: BookingStatus | null;
   paymentFailed: boolean;
