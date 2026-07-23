@@ -276,6 +276,10 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
 3. **Type-only bookkeeping:** reader port của favorites lặp literal `'listing' | 'group'` 5 chỗ thay
    vì dùng `FavoriteTargetKind` (giữ nguyên ở PR #4 vì read side đóng băng) — đừng copy kiểu này
    sang reader port của các module sau.
+4. **turbo không hash `eslint.config.mjs` gốc** (phát hiện khi làm mục 1): `turbo.json` không liệt kê
+   config lint/tsconfig gốc trong `inputs`, nên sau khi đổi rule lint mà chạy `pnpm turbo lint` có thể
+   trúng cache cũ và báo xanh giả — CI cũng vậy (phải `--force` mới thấy thật). Thêm chúng vào
+   `inputs`/`globalDependencies` trong một PR tooling riêng.
 
 ### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
 
