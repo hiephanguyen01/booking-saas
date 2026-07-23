@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, sau PR #6.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, sau PR #7.
 
 ## 0. Vì sao cần file này
 
@@ -28,18 +28,19 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 5a | promotions — vòng đời chương trình | ✅ merge (PR #20) |
 | 5b | promotions — redemption + usage claim | ✅ merge (PR #21) — **promotions xong cả module** |
 | 6 | affiliate | ✅ merge (GitHub PR #22) |
-| 7 | identity-access | ⏭️ **tiếp theo** |
-| 8→16 | partner → catalog → tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
+| 7 | identity-access | ✅ merge (GitHub PR #23) |
+| 8 | partner | ⏭️ **tiếp theo** |
+| 9→16 | catalog → tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Việc kế tiếp:** **PR #7 — module identity-access** (không còn PR nào đang mở).
+**Việc kế tiếp:** **PR #8 — module partner** (không còn PR module nào đang mở).
 
-Gợi ý riêng cho identity-access (từ khảo sát): 3 aggregate — `UserAccount` (identity + guest/password
-account + lockout), `Session` (hash-only opaque token lifecycle), `AuthChallenge` (OTP lifecycle).
-Đây là đảo global dùng `prisma.admin`: **không** thêm `forTenant`, tx parameter hay outbox. Giữ
-`SessionPrincipal` là projection nóng của global guard; plaintext token/OTP chỉ sống tạm trong
-adapter. Anti-enumeration password-reset, Redis JSON/key shape, cookie/throttle, và các race hiện hữu
-(đặc biệt lockout/session rotation) đều đóng băng. Plan:
-`docs/superpowers/plans/2026-07-23-entity-refactor-pr7-identity-access.md`.
+Gợi ý riêng cho partner (từ khảo sát): một aggregate `Partner` với hai lifecycle độc lập
+(`status` + `verificationStatus`); `AgreementAcceptance` vẫn là append-only record. Giữ nguyên
+commit-then-throw khi reject identity, `SELECT … FOR UPDATE`, SQL future confirmed booking dùng DB
+`now()`, write JSONB theo từng cột, cache invalidation sau commit, và đường import
+`assertCanServeListingType`/`PARTNER_REPOSITORY` mà listing đang dùng. Promotions vẫn import chéo
+agreement port + concrete repository — nợ ADR có sẵn, không sửa trong refactor. Plan:
+`docs/superpowers/plans/2026-07-23-entity-refactor-pr8-partner.md`.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 
@@ -50,7 +51,7 @@ adapter. Anti-enumeration password-reset, Redis JSON/key shape, cookie/throttle,
 | `docs/superpowers/plans/2026-07-2*-entity-refactor-pr*.md` | Plan từng PR đã làm — dùng làm khuôn mẫu |
 | [`AGENTS.md`](../../AGENTS.md), [`apps/api/CLAUDE.md`](../../apps/api/CLAUDE.md) | Luật nền của repo |
 
-## 3. Quy trình mỗi module (đã chạy 6 lần, giữ nguyên)
+## 3. Quy trình mỗi module (đã chạy qua PR #7, giữ nguyên)
 
 1. **Khảo sát chính xác bề mặt ghi** — đọc mục module trong `entity-centric-survey.md`, rồi cho một
    agent đọc code thật và trả về: danh sách **từng mã lỗi + status + message nguyên văn**, chữ ký
