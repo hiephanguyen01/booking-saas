@@ -1,3 +1,4 @@
+import { addMinutes } from '../../../../shared/time/time';
 import {
   AccountLocked,
   AccountSuspended,
@@ -11,7 +12,7 @@ import {
 export type UserAccountStatus = 'active' | 'suspended';
 
 export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
-export const LOGIN_LOCKOUT_MS = 15 * 60_000;
+export const LOGIN_LOCKOUT_MINUTES = 15;
 
 /** Narrow persisted state owned by UserAccount. */
 export interface UserAccountState {
@@ -92,11 +93,7 @@ export class UserAccount {
   }
 
   /** Build the exact defaults for a passwordless guest-checkout identity. */
-  static createGuest(input: {
-    email: string;
-    fullName: string;
-    phone: string;
-  }): NewUserAccount {
+  static createGuest(input: { email: string; fullName: string; phone: string }): NewUserAccount {
     return {
       email: input.email,
       passwordHash: null,
@@ -184,10 +181,7 @@ export class UserAccount {
    * then passwordless guest. Expiry is strict: lockedUntil === now is allowed.
    */
   assertCanPasswordLogin(now: Date): void {
-    if (
-      this.state.lockedUntil !== null &&
-      this.state.lockedUntil > now
-    ) {
+    if (this.state.lockedUntil !== null && this.state.lockedUntil > now) {
       throw new AccountLocked();
     }
     if (this.state.status !== 'active') throw new AccountSuspended();
@@ -205,7 +199,7 @@ export class UserAccount {
         ? {
             failedLoginCount: 0,
             // Deterministically derived from the injected app clock.
-            lockedUntil: new Date(now.getTime() + LOGIN_LOCKOUT_MS),
+            lockedUntil: addMinutes(now, LOGIN_LOCKOUT_MINUTES),
           }
         : { failedLoginCount, lockedUntil: null };
     this.state = { ...this.state, ...intent };

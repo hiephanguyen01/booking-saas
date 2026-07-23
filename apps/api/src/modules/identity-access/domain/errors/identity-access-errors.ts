@@ -17,22 +17,14 @@ export class EmailTaken extends DomainError {
 /** Guest checkout must not attach a booking to an existing password account. */
 export class EmailRegisteredForGuestBooking extends DomainError {
   constructor() {
-    super(
-      'EMAIL_REGISTERED',
-      409,
-      'This email has an account — please sign in to book',
-    );
+    super('EMAIL_REGISTERED', 409, 'This email has an account — please sign in to book');
   }
 }
 
 /** Guest upgrade must not overwrite an existing password account. */
 export class EmailRegisteredForGuestUpgrade extends DomainError {
   constructor() {
-    super(
-      'EMAIL_REGISTERED',
-      409,
-      'This email already has an account — please sign in',
-    );
+    super('EMAIL_REGISTERED', 409, 'This email already has an account — please sign in');
   }
 }
 
@@ -54,11 +46,7 @@ export class InvalidCredentials extends DomainError {
 
 export class AccountLocked extends DomainError {
   constructor() {
-    super(
-      'ACCOUNT_LOCKED',
-      403,
-      'Account temporarily locked after too many failed attempts',
-    );
+    super('ACCOUNT_LOCKED', 403, 'Account temporarily locked after too many failed attempts');
   }
 }
 
