@@ -12,28 +12,6 @@ import {
   PromotionNotOwned,
 } from '../errors/promotion-errors';
 
-/**
- * Promotion aggregate root (§12) — one promotion program: identity (code or auto
- * campaign), discount config, scope, funding + partner opt-in gate, limits, schedule
- * and lifecycle draft→active→paused→ended.
- *
- * Owns the write rules that used to be scattered across seven use-cases:
- *   - creation assembly, including the tenant-created vs partner-created defaults
- *     ({@link Promotion.open} / {@link Promotion.openForPartner});
- *   - the tri-state update merge (`undefined` = keep, `null` = clear, empty
- *     `timeWindows` array = clear) that was copy-pasted byte-for-byte into both the
- *     tenant and the partner update use-case — {@link Promotion.applyUpdate};
- *   - the edit/ownership/opt-in guards;
- *   - the rule that changing the funding partner re-arms the opt-in gate.
- *
- * NOT owned here (deliberately): anything needing I/O. Scope-target validity, the
- * funding partner behind a scope, the tenant-share risk verdict and code uniqueness
- * are resolved by the use-case through ports (RLS-scoped, inside the tx) and handed
- * in as facts. Usage claim/release and redemptions belong to PR #5b and are untouched.
- *
- * Framework-free: no Nest, no Prisma.
- */
-
 /** The persisted write-state the lifecycle paths need. */
 export interface PromotionState {
   id: string;
@@ -75,6 +53,12 @@ export interface NewPromotion {
 /** The diff to persist — only the keys actually being changed (tri-state preserved). */
 export type PromotionPatch = Partial<NewPromotion>;
 
+/** The funding fields a re-point writes — `partnerOptInAt` present only when the gate re-arms. */
+export type FundingChange = Pick<
+  PromotionPatch,
+  'fundedBy' | 'fundingPartnerId' | 'partnerOptInAt'
+>;
+
 /** A scope the use-case already validated (target exists, is of the declared type). */
 export interface ResolvedScope {
   appliesTo: PromoAppliesTo;
@@ -100,6 +84,28 @@ export interface PromotionUpdateInput {
   status?: 'draft' | 'active' | 'paused';
 }
 
+/**
+ * Promotion aggregate root (§12) — one promotion program: identity (code or auto
+ * campaign), discount config, scope, funding + partner opt-in gate, limits, schedule
+ * and lifecycle draft→active→paused→ended.
+ *
+ * Owns the write rules that used to be scattered across seven use-cases:
+ *   - creation assembly, including the tenant-created vs partner-created defaults
+ *     ({@link Promotion.open} / {@link Promotion.openForPartner});
+ *   - the tri-state update merge (`undefined` = keep, `null` = clear, empty
+ *     `timeWindows` array = clear) that was copy-pasted byte-for-byte into both the
+ *     tenant and the partner update use-case — {@link Promotion.applyUpdate};
+ *   - the edit/ownership/opt-in guards;
+ *   - the rule that changing the funding partner re-arms the opt-in gate
+ *     ({@link Promotion.resolveFundingChange}).
+ *
+ * NOT owned here (deliberately): anything needing I/O. Scope-target validity, the
+ * funding partner behind a scope, the tenant-share risk verdict and code uniqueness
+ * are resolved by the use-case through ports (RLS-scoped, inside the tx) and handed
+ * in as facts. Usage claim/release and redemptions belong to PR #5b and are untouched.
+ *
+ * Framework-free: no Nest, no Prisma.
+ */
 export class Promotion {
   private constructor(private readonly state: PromotionState) {}
 
@@ -137,7 +143,12 @@ export class Promotion {
   static openForPartner(input: {
     fields: Omit<
       NewPromotion,
-      'appliesTo' | 'appliesToId' | 'createdByPartnerId' | 'fundingPartnerId' | 'partnerOptInAt' | 'fundedBy'
+      | 'appliesTo'
+      | 'appliesToId'
+      | 'createdByPartnerId'
+      | 'fundingPartnerId'
+      | 'partnerOptInAt'
+      | 'fundedBy'
     >;
     partnerId: string;
     appliesTo: PromoAppliesTo;
@@ -225,10 +236,13 @@ export class Promotion {
    * The tri-state merge: a key is written only when the caller actually supplied it
    * (`undefined` = keep the stored value), `null` clears an optional condition, and an
    * empty `timeWindows` array clears too ("no windows" and "always applicable" are the
-   * same state). `scope`, when supplied, re-points the promotion and — for a tenant
-   * promotion whose funding partner changes — re-arms the opt-in gate.
+   * same state).
+   *
+   * Scope/funding fields are NOT handled here — the caller writes them, because which
+   * of `appliesTo`/`appliesToId` gets written depends on which keys the client sent.
+   * The funding-consent rule lives in {@link Promotion.resolveFundingChange}.
    */
-  applyUpdate(input: PromotionUpdateInput, scope?: ResolvedScope): PromotionPatch {
+  applyUpdate(input: PromotionUpdateInput): PromotionPatch {
     const patch: PromotionPatch = {};
     if (input.name !== undefined) patch.name = input.name;
     if (input.discountType !== undefined) patch.discountType = input.discountType;
@@ -247,11 +261,30 @@ export class Promotion {
     if (input.startsAt !== undefined) patch.startsAt = input.startsAt;
     if (input.endsAt !== undefined) patch.endsAt = input.endsAt;
     if (input.status !== undefined) patch.status = input.status;
-    if (scope) {
-      patch.appliesTo = scope.appliesTo;
-      patch.appliesToId = scope.appliesToId;
-      patch.fundingPartnerId = scope.fundingPartnerId;
-    }
     return patch;
+  }
+
+  /**
+   * §12.2 — the funding-consent rule for a re-pointed promotion. `partnerOptInAt` IS
+   * the funding partner's consent, so it must never survive a change of who pays:
+   *   - a partner-funded promo keeps its gate only while the funding partner is
+   *     unchanged; a different partner has to opt in again before it applies to them;
+   *   - moving back to tenant funding drops the gate entirely.
+   * Returns only the funding fields to merge into the patch (the caller owns the
+   * scope fields — see {@link Promotion.applyUpdate}).
+   */
+  resolveFundingChange(next: {
+    fundedBy: PromoFundedBy;
+    fundingPartnerId: string | null;
+  }): FundingChange {
+    if (next.fundedBy !== 'partner') {
+      return { fundedBy: 'tenant', fundingPartnerId: null, partnerOptInAt: null };
+    }
+    const gateSurvives = next.fundingPartnerId === this.state.fundingPartnerId;
+    return {
+      fundedBy: 'partner',
+      fundingPartnerId: next.fundingPartnerId,
+      ...(gateSurvives ? {} : { partnerOptInAt: null }),
+    };
   }
 }
