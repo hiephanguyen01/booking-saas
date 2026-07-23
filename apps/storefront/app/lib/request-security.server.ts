@@ -62,12 +62,17 @@ function createCspNonce(): string {
 
 function contentSecurityPolicy(nonce: string): string {
   const scriptSources = ["'self'", `'nonce-${nonce}'`];
+  const styleSources = ["'self'", 'https://fonts.googleapis.com'];
   const connectSources = ["'self'", ...storefrontEnv.storageUploadOrigins];
   const paymentSources = [...storefrontEnv.paymentRedirectOrigins];
   const mediaSources = ['https:'];
 
-  if (!storefrontEnv.production) {
+  if (storefrontEnv.production) {
+    styleSources.push(`'nonce-${nonce}'`);
+  } else {
     scriptSources.push("'unsafe-eval'");
+    // Vite injects CSS through nonce-less <style> tags during hydration and HMR.
+    styleSources.push("'unsafe-inline'");
     connectSources.push('ws:', 'wss:');
     mediaSources.push('http:');
   }
@@ -79,7 +84,7 @@ function contentSecurityPolicy(nonce: string): string {
     "frame-ancestors 'self'",
     `script-src ${scriptSources.join(' ')}`,
     "script-src-attr 'none'",
-    `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+    `style-src ${styleSources.join(' ')}`,
     "style-src-attr 'unsafe-inline'",
     "font-src 'self' data: https://fonts.gstatic.com",
     `img-src 'self' data: blob: ${mediaSources.join(' ')}`,
