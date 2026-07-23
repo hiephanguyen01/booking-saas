@@ -102,7 +102,7 @@ git checkout -b refactor/entity-promotion-lifecycle
 
 ```ts
 import { DomainError } from '../../../../shared/domain/domain-error';
-import type { PromoAppliesTo } from '@booking/contracts';
+import type { PromoAppliesTo } from '../promotion-discount';
 
 /**
  * Domain errors for the Promotion aggregate. Every code + status + message is
@@ -240,8 +240,13 @@ import type {
   PromoFundedBy,
   PromoStatus,
   PromoTimeWindow,
-} from '@booking/contracts';
-import { PromotionAlreadyOptedIn, PromotionEnded, PromotionNotFundedByPartner, PromotionNotOwned } from '../errors/promotion-errors';
+} from '../promotion-discount';
+import {
+  PromotionAlreadyOptedIn,
+  PromotionEnded,
+  PromotionNotFundedByPartner,
+  PromotionNotOwned,
+} from '../errors/promotion-errors';
 
 /**
  * Promotion aggregate root (§12) — one promotion program: identity (code or auto
