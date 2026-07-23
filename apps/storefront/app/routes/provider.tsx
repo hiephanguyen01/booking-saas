@@ -45,7 +45,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
 }
 
 export default function ProviderRoute({ loaderData }: Route.ComponentProps) {
-  const { canonical } = useOutletContext<StorefrontContext>();
+  const { canonical, cspNonce } = useOutletContext<StorefrontContext>();
   const { profile } = loaderData;
   const structuredData = {
     '@context': 'https://schema.org',
@@ -67,6 +67,7 @@ export default function ProviderRoute({ loaderData }: Route.ComponentProps) {
     <>
       <ProviderProfilePage loaderData={loaderData} />
       <script
+        nonce={cspNonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
       />
