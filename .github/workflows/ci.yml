@@ -24,30 +24,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@booking/storefront security
-      - name: Storefront lint
-        run: pnpm turbo run lint --filter=@booking/storefront
-      - name: Storefront typecheck
-        id: storefront_typecheck
-        continue-on-error: true
-        run: pnpm turbo run typecheck --filter=@booking/storefront > storefront-typecheck.log 2>&1
-      - name: Upload storefront typecheck log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: storefront-typecheck-log
-          path: storefront-typecheck.log
-          retention-days: 1
-      - name: Fail on storefront typecheck error
-        if: steps.storefront_typecheck.outcome == 'failure'
-        run: exit 1
-      - name: Storefront build
-        run: pnpm turbo run build --filter=@booking/storefront
-      - name: Dashboard lint
-        run: pnpm turbo run lint --filter=@booking/dashboard
-      - name: Dashboard typecheck
-        run: pnpm turbo run typecheck --filter=@booking/dashboard
-      - name: Dashboard build
-        run: pnpm turbo run build --filter=@booking/dashboard
+      - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
 
