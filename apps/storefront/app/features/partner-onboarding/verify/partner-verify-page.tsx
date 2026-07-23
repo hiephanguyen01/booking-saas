@@ -10,6 +10,7 @@ import { Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Form, useOutletContext, useSubmit } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import type { PartnerOnboardingActionData } from '../../../lib/partner-onboarding.server';
 import type { StorefrontContext } from '../../../root';
 import type { Route } from '../../../routes/partner-onboarding/+types/verify';
 import {
@@ -20,12 +21,13 @@ import {
 } from '../../../routes/partner-onboarding/shared';
 
 export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentProps) {
+  const verifyActionData = actionData as PartnerOnboardingActionData | undefined;
   const { tenant } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Auth);
   const submit = useSubmit();
   const [code, setCode] = useState('');
   const [seconds, setSeconds] = useState(
-    actionData?.resendAfterSec ?? loaderData.resendAfterSec,
+    verifyActionData?.resendAfterSec ?? loaderData.resendAfterSec,
   );
 
   useEffect(() => {
@@ -41,11 +43,15 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
   // same cooldown every time, so depending on the value skipped this effect from
   // the second resend onward and the countdown never restarted.
   useEffect(() => {
-    if (actionData?.resendAfterSec != null) setSeconds(actionData.resendAfterSec);
-  }, [actionData]);
+    if (verifyActionData?.resendAfterSec != null) {
+      setSeconds(verifyActionData.resendAfterSec);
+    }
+  }, [actionData, verifyActionData?.resendAfterSec]);
 
-  const message = actionData?.error
-    ? t(actionData.error === 'OTP_INVALID' ? 'errors.invalidOtp' : 'errors.expired')
+  const message = verifyActionData?.error
+    ? t(
+        verifyActionData.error === 'OTP_INVALID' ? 'errors.invalidOtp' : 'errors.expired',
+      )
     : undefined;
 
   return (
@@ -95,7 +101,9 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
               ))}
             </InputOTPGroup>
           </InputOTP>
-          <FieldError className="mt-2">{actionData?.fieldErrors?.code?.[0]}</FieldError>
+          <FieldError className="mt-2">
+            {verifyActionData?.fieldErrors?.code?.[0]}
+          </FieldError>
         </div>
         <PrimaryButton>{t('verify.submit')}</PrimaryButton>
       </Form>
