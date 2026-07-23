@@ -83,8 +83,20 @@ export function createBooking(
 export function checkoutBooking(
   request: Request,
   bookingId: string,
-  paymentMethod: CustomerPaymentMethod,
+  paymentMethod: CustomerPaymentMethod | undefined,
 ): Promise<ApiResult<CheckoutResponse>> {
+  // Retry flows may load tenant payment options dynamically. Never send an
+  // invalid `{ paymentMethod: undefined }` request when no option is configured.
+  if (!paymentMethod) {
+    return Promise.resolve({
+      ok: false,
+      status: 409,
+      data: null,
+      code: 'PAYMENT_METHOD_UNAVAILABLE',
+      error: 'PAYMENT_METHOD_UNAVAILABLE',
+    });
+  }
+
   return optionalAuthPost(
     request,
     `/public/bookings/${encodeURIComponent(bookingId)}/checkout`,
