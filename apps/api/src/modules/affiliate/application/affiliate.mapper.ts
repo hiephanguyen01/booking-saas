@@ -12,7 +12,10 @@ import {
   type ReferralLinkResponse,
 } from '@booking/contracts';
 import type { EffectiveAffiliateRate } from '../domain/affiliate-rate';
-import type { AffiliateRecord, AffiliateWithUser } from '../domain/ports/affiliate-repository.port';
+import type {
+  AffiliateRecord,
+  AffiliateWithUser,
+} from '../domain/ports/affiliate-reader.port';
 import type { ReferralLinkRecord } from '../domain/ports/referral-link-repository.port';
 import type {
   AffiliateCommissionTotals,

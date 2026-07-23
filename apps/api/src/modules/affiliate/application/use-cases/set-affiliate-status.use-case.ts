@@ -1,9 +1,13 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
+  Affiliate,
+  type AffiliateState,
+} from '../../domain/entities/affiliate.entity';
+import { AffiliateNotFound } from '../../domain/errors/affiliate-errors';
+import {
   AFFILIATE_REPOSITORY,
-  type AffiliateRecord,
   type IAffiliateRepository,
 } from '../../domain/ports/affiliate-repository.port';
 
@@ -20,16 +24,19 @@ export class SetAffiliateStatusUseCase {
     tenantId: string,
     affiliateId: string,
     status: 'approved' | 'suspended',
-  ): Promise<AffiliateRecord> {
+  ): Promise<AffiliateState> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const existing = await this.affiliates.findById(tx, affiliateId);
-      if (!existing) {
-        throw new NotFoundException({ statusCode: 404, code: 'AFFILIATE_NOT_FOUND', message: 'Affiliate not found' });
-      }
-      const updated = await this.affiliates.setStatus(tx, affiliateId, status);
+      const existing = await this.affiliates.loadById(tx, affiliateId);
+      if (!existing) throw new AffiliateNotFound();
+      const intent = Affiliate.rehydrate(existing).setStatus(status);
+      const updated = await this.affiliates.setStatus(
+        tx,
+        affiliateId,
+        intent,
+      );
       await this.outbox.emit(tx, {
         tenantId,
-        eventType: status === 'approved' ? 'affiliate.approved' : 'affiliate.suspended',
+        eventType: intent.eventType,
         payload: { affiliateId, userId: existing.userId },
       });
       return updated;

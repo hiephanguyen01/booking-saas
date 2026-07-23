@@ -3,10 +3,10 @@ import type { ListAffiliatesQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveEffectiveAffiliateRate, type EffectiveAffiliateRate } from '../../domain/affiliate-rate';
 import {
-  AFFILIATE_REPOSITORY,
+  AFFILIATE_READER,
   type AffiliateWithUser,
-  type IAffiliateRepository,
-} from '../../domain/ports/affiliate-repository.port';
+  type IAffiliateReader,
+} from '../../domain/ports/affiliate-reader.port';
 import {
   AFFILIATE_COMMISSION_REPOSITORY,
   type AffiliateCommissionTotals,
@@ -41,7 +41,7 @@ export interface TenantAffiliateRow {
 @Injectable()
 export class ListTenantAffiliatesUseCase {
   constructor(
-    @Inject(AFFILIATE_REPOSITORY) private readonly affiliates: IAffiliateRepository,
+    @Inject(AFFILIATE_READER) private readonly affiliates: IAffiliateReader,
     @Inject(REFERRAL_LINK_REPOSITORY) private readonly links: IReferralLinkRepository,
     @Inject(AFFILIATE_COMMISSION_REPOSITORY) private readonly commissions: IAffiliateCommissionRepository,
     @Inject(COMMISSION_RULE_READER) private readonly rules: ICommissionRuleReader,

@@ -1,9 +1,9 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import type { AffiliateContext } from '../../domain/affiliate-context';
 import {
-  AFFILIATE_REPOSITORY,
-  type IAffiliateRepository,
-} from '../../domain/ports/affiliate-repository.port';
+  AFFILIATE_READER,
+  type IAffiliateReader,
+} from '../../domain/ports/affiliate-reader.port';
 
 /**
  * The approved membership to act in: the one matching `requestedTenantId`, or —
@@ -13,7 +13,10 @@ import {
  */
 @Injectable()
 export class RequireApprovedAffiliateUseCase {
-  constructor(@Inject(AFFILIATE_REPOSITORY) private readonly affiliates: IAffiliateRepository) {}
+  constructor(
+    @Inject(AFFILIATE_READER)
+    private readonly affiliates: IAffiliateReader,
+  ) {}
 
   async execute(userId: string, requestedTenantId?: string): Promise<AffiliateContext> {
     const memberships = await this.affiliates.adminFindMembershipsByUser(userId);

@@ -3,6 +3,7 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
+import { AFFILIATE_READER } from '../../domain/ports/affiliate-reader.port';
 import { AFFILIATE_REPOSITORY } from '../../domain/ports/affiliate-repository.port';
 import { REFERRAL_LINK_REPOSITORY } from '../../domain/ports/referral-link-repository.port';
 import { AFFILIATE_COMMISSION_REPOSITORY } from '../../domain/ports/affiliate-commission-repository.port';
@@ -41,7 +42,9 @@ import { TenantAffiliateController } from './tenant-affiliate.controller';
   imports: [PrismaModule, TenantContextModule, TenancyModule],
   controllers: [PublicReferralController, AffiliateController, TenantAffiliateController],
   providers: [
-    { provide: AFFILIATE_REPOSITORY, useClass: PrismaAffiliateRepository },
+    PrismaAffiliateRepository,
+    { provide: AFFILIATE_REPOSITORY, useExisting: PrismaAffiliateRepository },
+    { provide: AFFILIATE_READER, useExisting: PrismaAffiliateRepository },
     { provide: REFERRAL_LINK_REPOSITORY, useClass: PrismaReferralLinkRepository },
     { provide: AFFILIATE_COMMISSION_REPOSITORY, useClass: PrismaAffiliateCommissionRepository },
     { provide: COMMISSION_RULE_READER, useClass: PrismaCommissionRuleReader },
