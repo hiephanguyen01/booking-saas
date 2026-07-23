@@ -258,6 +258,24 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 - `catalog`: `ListPublicListingsUseCase` không có route
 - `favorites`: `isFavorited` (port + repo, 0 caller) — **đã xoá ở PR #4**
 
+### 8c-bis. Tooling & fixture follow-ups (PR nhỏ riêng, KHÔNG nhét vào PR module)
+
+Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module copy:
+
+1. **Lint chặn bypass port (làm TRƯỚC PR #5).** Pattern `useExisting` bắt buộc đăng ký class Prisma
+   dưới token của chính nó, nên một use-case tương lai có thể inject thẳng class infrastructure mà
+   vẫn typecheck xanh (hiện chưa có chỗ nào làm vậy, và `eslint.config.mjs` không có rule chặn).
+   Thêm override `no-restricted-imports` cho `apps/api/src/modules/**/{application,domain}/**` cấm
+   import `**/infrastructure/**`, kèm 1 câu vào §3 style-gate mục 1 ("không bao giờ inject class cụ
+   thể — chỉ qua port").
+2. **Seed fixture chưa-published (làm TRƯỚC PR #9 catalog / #11 listing).** Tenant StudioHub hiện có
+   0 listing/group `status <> 'published'`, nên smoke của rule "chỉ target published" phải thay bằng
+   id không tồn tại (cùng nhánh code, nhưng không phải cùng dữ liệu). Thêm 1 listing + 1 group
+   `draft` vào seed.
+3. **Type-only bookkeeping:** reader port của favorites lặp literal `'listing' | 'group'` 5 chỗ thay
+   vì dùng `FavoriteTargetKind` (giữ nguyên ở PR #4 vì read side đóng băng) — đừng copy kiểu này
+   sang reader port của các module sau.
+
 ### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
 
 Không thuộc refactor này nhưng ghi lại để không thất lạc lần nữa: ~65 endpoint loose-typed;
