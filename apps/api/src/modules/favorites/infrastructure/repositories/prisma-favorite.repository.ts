@@ -6,10 +6,7 @@ import type {
   TenantFavoritesQuery,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type {
-  FavoritableTarget,
-  NewFavorite,
-} from '../../domain/entities/favorite.entity';
+import type { FavoritableTarget, NewFavorite } from '../../domain/entities/favorite.entity';
 import type { IFavoriteRepository } from '../../domain/ports/favorite-repository.port';
 import type {
   CustomerFavoritePage,
@@ -50,7 +47,9 @@ function toStrings(value: unknown): unknown[] {
 }
 
 function targetWhere(target: FavoriteTarget): Prisma.FavoriteWhereInput {
-  return target.target === 'listing' ? { listingId: target.targetId } : { groupId: target.targetId };
+  return target.target === 'listing'
+    ? { listingId: target.targetId }
+    : { groupId: target.targetId };
 }
 
 const CARD_INCLUDE = Prisma.validator<Prisma.FavoriteInclude>()({
@@ -158,13 +157,17 @@ export class PrismaFavoriteRepository implements IFavoriteRepository, IFavoriteR
         where: { id: target.targetId, status: 'published' },
         select: { partnerId: true },
       });
-      return listing ? { target: 'listing', targetId: target.targetId, partnerId: listing.partnerId } : null;
+      return listing
+        ? { target: 'listing', targetId: target.targetId, partnerId: listing.partnerId }
+        : null;
     }
     const group = await tx.listingGroup.findFirst({
       where: { id: target.targetId, status: 'published' },
       select: { partnerId: true },
     });
-    return group ? { target: 'group', targetId: target.targetId, partnerId: group.partnerId } : null;
+    return group
+      ? { target: 'group', targetId: target.targetId, partnerId: group.partnerId }
+      : null;
   }
 
   async add(tx: PrismaTx, favorite: NewFavorite): Promise<void> {

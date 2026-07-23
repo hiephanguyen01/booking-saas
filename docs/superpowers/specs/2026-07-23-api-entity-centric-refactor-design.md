@@ -248,11 +248,15 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   reader port module sau.
 - Clock: content-reports `handledAt` dùng app-clock `new Date()` (giữ nguyên trong refactor) — mục
   đổi sang DB clock nằm trong danh sách clock follow-up chung (§3 Đồng hồ).
+- favorites: `toVnd` + `priceFromModeConfig` trong `prisma-favorite.repository.ts` là bản sao gần
+  như y hệt của `catalog.mapper.ts` — nên hợp nhất về một nơi dùng chung (giữ `priceFrom` là chuỗi
+  chữ số VND ở boundary), nhưng là read-side + xuyên module nên tách khỏi refactor này.
 
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 
 - `payments`: `canSucceed` (mâu thuẫn SQL guard thật — cái bẫy), `findActivePendingByBooking`
 - `catalog`: `ListPublicListingsUseCase` không có route
+- `favorites`: `isFavorited` (port + repo, 0 caller) — **đã xoá ở PR #4**
 
 ### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
 
