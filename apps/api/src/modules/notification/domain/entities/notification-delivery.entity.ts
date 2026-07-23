@@ -110,12 +110,14 @@ export class NotificationDelivery {
   /**
    * The send (or the `sent` log write) failed. Last-write-wins on purpose: if the
    * `sent` row fails to persist, the caller re-marks the attempt failed and records
-   * that instead — the pre-refactor behaviour.
+   * that instead — the pre-refactor behaviour. A failed row never carries the subject,
+   * even when the send itself had succeeded.
    */
   markFailed(error: string): void {
     this._status = 'failed';
     this._error = error;
     this._sentAt = null;
+    this._subject = null;
   }
 
   /** The row to persist. Payload carries `subject` only on the success path. */
