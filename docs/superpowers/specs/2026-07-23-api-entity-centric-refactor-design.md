@@ -96,12 +96,13 @@ Quy tắc entity:
 - **Tiền & rate**: entity giữ `bigint` VND + integer percent; chuỗi số chỉ xuất hiện ở mapper và
   outbox payload. `JSON.stringify` không bao giờ thấy entity. Parser dual-shape khoan dung
   (`string|number` trong modeConfig) giữ nguyên.
-- **Domain events**: use-case build payload và emit qua `OutboxService.emit(tx,…)` **trong cùng
-  forTenant tx** — KHÔNG có `pullDomainEvents()` trên entity (ratified 2026-07-23: payload vốn đóng
-  băng theo surface freeze, và create cần id DB cấp sau insert nên entity không gom event nhất quán
-  được). eventType, payload shape (bigint là `.toString()`), thứ tự emit đóng băng byte-for-byte. Chỗ hiện tại emit mà không transition (booking late-webhook auto-refund emit
-  `booking.cancelled` không đổi status) giữ nguyên khả năng đó — emission không bị trói vào
-  transition thành công.
+- **Domain events**: use-case build payload và emit qua `OutboxService.emit(tx,…)` **trong
+  cùng forTenant tx** — KHÔNG có `pullDomainEvents()` trên entity (ratified 2026-07-23:
+  payload vốn đóng băng theo surface freeze, và create cần id DB cấp sau insert nên entity
+  không gom event nhất quán được). eventType, payload shape (bigint là `.toString()`),
+  thứ tự emit đóng băng byte-for-byte. Chỗ hiện tại emit mà không transition (booking
+  late-webhook auto-refund emit `booking.cancelled` không đổi status) giữ nguyên khả năng
+  đó — emission không bị trói vào transition thành công.
 - **Pure function cross-module giữ nguyên import path**: `priceQuote`, `computeCommissionSplit`,
   `applyCustomRate`, `assertValidAttributes`, `assertCanServeListingType`, `findActivePackage`… có
   thể thành wrapper mỏng gọi entity/VO, nhưng **không đổi chỗ, không đổi signature** trong refactor.
