@@ -1,6 +1,6 @@
-import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { LoginInput } from '@booking/contracts';
-import { isLocked, recordFailure, recordSuccess } from '../../domain/login-lockout';
+import { InvalidCredentials } from '../../domain/errors/identity-access-errors';
 import { PASSWORD_HASHER, type IPasswordHasher } from '../../domain/ports/password-hasher.port';
 import {
   SESSION_STORE,
@@ -12,12 +12,7 @@ import {
   type IUserRepository,
   type UserRecord,
 } from '../../domain/ports/user-repository.port';
-
-const INVALID_CREDENTIALS = {
-  statusCode: 401,
-  code: 'INVALID_CREDENTIALS',
-  message: 'Invalid email or password',
-};
+import { toUserRecord } from '../user-account.mapper';
 
 @Injectable()
 export class LoginUseCase {
@@ -32,35 +27,19 @@ export class LoginUseCase {
     meta: { ip?: string; userAgent?: string },
   ): Promise<{ user: UserRecord; tokens: SessionTokens }> {
     const user = await this.users.findByEmail(input.email);
-    if (!user) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS);
-    }
+    if (!user) throw new InvalidCredentials();
     const now = new Date();
-    if (isLocked(user, now)) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'ACCOUNT_LOCKED',
-        message: 'Account temporarily locked after too many failed attempts',
-      });
-    }
-    if (user.status !== 'active') {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'ACCOUNT_SUSPENDED',
-        message: 'Account is suspended',
-      });
-    }
-    // Guest-checkout users have no password (§8.6) — they can never password-log-in.
-    if (user.passwordHash === null) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS);
-    }
-    const valid = await this.hasher.verify(user.passwordHash, input.password);
+    const passwordHash = user.assertCanPasswordLogin(now);
+    const valid = await this.hasher.verify(passwordHash, input.password);
     if (!valid) {
-      await this.users.updateLockout(user.id, recordFailure(user, now));
-      throw new UnauthorizedException(INVALID_CREDENTIALS);
+      const lockoutIntent = user.recordLoginFailure(now);
+      await this.users.updateLockout(user.id, lockoutIntent);
+      throw new InvalidCredentials();
     }
-    await this.users.updateLockout(user.id, recordSuccess());
+    const userRecord = toUserRecord(user);
+    const lockoutIntent = user.recordLoginSuccess();
+    await this.users.updateLockout(user.id, lockoutIntent);
     const tokens = await this.sessions.create(user.id, meta);
-    return { user, tokens };
+    return { user: userRecord, tokens };
   }
 }

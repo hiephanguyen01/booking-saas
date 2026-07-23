@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import { UserAccount, type NewUserAccount } from '../../domain/entities/user-account.entity';
-import type { LockoutState } from '../../domain/login-lockout';
+import {
+  UserAccount,
+  type LoginLockoutIntent,
+  type NewUserAccount,
+} from '../../domain/entities/user-account.entity';
 import type { IUserRepository, UserRecord } from '../../domain/ports/user-repository.port';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 
@@ -58,10 +61,13 @@ export class PrismaUserRepository implements IUserRepository {
     );
   }
 
-  async updateLockout(userId: string, state: LockoutState): Promise<void> {
+  async updateLockout(userId: string, intent: LoginLockoutIntent): Promise<void> {
     await this.prisma.admin.user.update({
       where: { id: userId },
-      data: { failedLoginCount: state.failedLoginCount, lockedUntil: state.lockedUntil },
+      data: {
+        failedLoginCount: intent.failedLoginCount,
+        lockedUntil: intent.lockedUntil,
+      },
     });
   }
 }

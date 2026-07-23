@@ -107,6 +107,11 @@ export class UserAccount {
     };
   }
 
+  /** Prepare password-reset persistence without loading account state. */
+  static resetPasswordHash(nextPasswordHash: string): PasswordHashIntent {
+    return { passwordHash: nextPasswordHash };
+  }
+
   /** Domain-side availability pre-check; the citext unique index remains final. */
   static assertEmailAvailable(existing: UserAccount | null): void {
     if (existing) throw new EmailTaken();
@@ -180,12 +185,13 @@ export class UserAccount {
    * Password-login gates in frozen order: active lockout, suspended status,
    * then passwordless guest. Expiry is strict: lockedUntil === now is allowed.
    */
-  assertCanPasswordLogin(now: Date): void {
+  assertCanPasswordLogin(now: Date): string {
     if (this.state.lockedUntil !== null && this.state.lockedUntil > now) {
       throw new AccountLocked();
     }
     if (this.state.status !== 'active') throw new AccountSuspended();
     if (this.state.passwordHash === null) throw new InvalidCredentials();
+    return this.state.passwordHash;
   }
 
   /**
@@ -217,8 +223,8 @@ export class UserAccount {
   }
 
   /**
-   * Prepare a column-only password change for guest upgrade or password reset.
-   * The caller supplies an already-generated hash; plaintext is never modeled.
+   * Prepare a column-only password change for guest upgrade. The caller supplies
+   * an already-generated hash; plaintext is never modeled.
    */
   changePasswordHash(nextPasswordHash: string): PasswordHashIntent {
     this.state = { ...this.state, passwordHash: nextPasswordHash };

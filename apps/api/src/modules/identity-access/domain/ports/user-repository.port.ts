@@ -1,5 +1,8 @@
-import type { NewUserAccount, UserAccount } from '../entities/user-account.entity';
-import type { LockoutState } from '../login-lockout';
+import type {
+  LoginLockoutIntent,
+  NewUserAccount,
+  UserAccount,
+} from '../entities/user-account.entity';
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
 
@@ -22,5 +25,5 @@ export interface IUserRepository {
   create(data: NewUserAccount): Promise<UserRecord>;
   /** Set a guest's password hash — the upgrade-to-account step (§8.6). */
   setPassword(userId: string, passwordHash: string): Promise<UserRecord>;
-  updateLockout(userId: string, state: LockoutState): Promise<void>;
+  updateLockout(userId: string, intent: LoginLockoutIntent): Promise<void>;
 }
