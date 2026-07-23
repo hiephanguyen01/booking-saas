@@ -8,6 +8,7 @@ import { AFFILIATE_READER } from '../../domain/ports/affiliate-reader.port';
 import { AFFILIATE_REPOSITORY } from '../../domain/ports/affiliate-repository.port';
 import { REFERRAL_LINK_READER } from '../../domain/ports/referral-link-reader.port';
 import { REFERRAL_LINK_REPOSITORY } from '../../domain/ports/referral-link-repository.port';
+import { AFFILIATE_COMMISSION_READER } from '../../domain/ports/affiliate-commission-reader.port';
 import { AFFILIATE_COMMISSION_REPOSITORY } from '../../domain/ports/affiliate-commission-repository.port';
 import { COMMISSION_RULE_READER } from '../../domain/ports/commission-rule-reader.port';
 import { PrismaAffiliateRepository } from '../repositories/prisma-affiliate.repository';
@@ -55,7 +56,15 @@ import { TenantAffiliateController } from './tenant-affiliate.controller';
       provide: AFFILIATE_ATTRIBUTION_READER,
       useClass: PrismaAffiliateAttributionReader,
     },
-    { provide: AFFILIATE_COMMISSION_REPOSITORY, useClass: PrismaAffiliateCommissionRepository },
+    PrismaAffiliateCommissionRepository,
+    {
+      provide: AFFILIATE_COMMISSION_REPOSITORY,
+      useExisting: PrismaAffiliateCommissionRepository,
+    },
+    {
+      provide: AFFILIATE_COMMISSION_READER,
+      useExisting: PrismaAffiliateCommissionRepository,
+    },
     { provide: COMMISSION_RULE_READER, useClass: PrismaCommissionRuleReader },
     ResolveAttributionUseCase,
     RecordPendingCommissionUseCase,

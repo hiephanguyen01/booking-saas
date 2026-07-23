@@ -20,7 +20,7 @@ import type { ReferralLinkRecord } from '../domain/ports/referral-link-reader.po
 import type {
   AffiliateCommissionTotals,
   AffiliateCommissionWithBooking,
-} from '../domain/ports/affiliate-commission-repository.port';
+} from '../domain/ports/affiliate-commission-reader.port';
 import type { AffiliateMembership } from './use-cases/list-affiliate-memberships.use-case';
 import type { TenantAffiliateDetail } from './use-cases/get-tenant-affiliate.use-case';
 import type { TenantAffiliateRow } from './use-cases/list-tenant-affiliates.use-case';

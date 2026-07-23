@@ -8,10 +8,10 @@ import {
   type IAffiliateReader,
 } from '../../domain/ports/affiliate-reader.port';
 import {
-  AFFILIATE_COMMISSION_REPOSITORY,
+  AFFILIATE_COMMISSION_READER,
   type AffiliateCommissionTotals,
-  type IAffiliateCommissionRepository,
-} from '../../domain/ports/affiliate-commission-repository.port';
+  type IAffiliateCommissionReader,
+} from '../../domain/ports/affiliate-commission-reader.port';
 import {
   REFERRAL_LINK_READER,
   type IReferralLinkReader,
@@ -43,7 +43,8 @@ export class ListTenantAffiliatesUseCase {
   constructor(
     @Inject(AFFILIATE_READER) private readonly affiliates: IAffiliateReader,
     @Inject(REFERRAL_LINK_READER) private readonly links: IReferralLinkReader,
-    @Inject(AFFILIATE_COMMISSION_REPOSITORY) private readonly commissions: IAffiliateCommissionRepository,
+    @Inject(AFFILIATE_COMMISSION_READER)
+    private readonly commissions: IAffiliateCommissionReader,
     @Inject(COMMISSION_RULE_READER) private readonly rules: ICommissionRuleReader,
     private readonly tenantDb: TenantDbService,
   ) {}
