@@ -1,12 +1,6 @@
-import { publicPartnerProfileResponseSchema } from '@booking/contracts';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
-import { useOutletContext } from 'react-router';
-import type { StorefrontContext } from '../root';
-import { ProviderProfilePage } from '../features/provider/provider-profile-page';
-import { publicGetData } from '../lib/api.server';
-import { fetchListings } from '../lib/catalog.server';
-import { jsonLd } from '../lib/seo';
-import { loadPublicReviews } from '../lib/public-reviews.server';
+import { ProviderRoutePage } from '../features/provider/provider-route-page';
+import { loadProviderRoute } from '../features/provider/server/provider-route.server';
 import type { Route } from './+types/provider';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
@@ -21,58 +15,12 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   ];
 }
 
-export async function loader({ request, params, url }: Route.LoaderArgs) {
-  const profile = await publicGetData(
-    request,
-    `/public/partners/${encodeURIComponent(params.partnerSlug)}`,
-    { schema: publicPartnerProfileResponseSchema, allowNotFound: true },
-  );
-  if (!profile) throw new Response('Provider not found', { status: 404 });
-  const activeType = profile.listingTypes.some((type) => type.slug === url.searchParams.get('type'))
-    ? url.searchParams.get('type')!
-    : profile.listingTypes[0]?.slug;
-  const search = new URLSearchParams({
-    type: activeType ?? '',
-    partner: profile.slug,
-    pageSize: '48',
-    sort: 'bookings-desc',
-  });
-  const [listings, reviewData] = await Promise.all([
-    activeType ? fetchListings(request, search) : Promise.resolve([]),
-    loadPublicReviews(request, url.searchParams, 'partner', profile.slug),
-  ]);
-  return { profile, listings, activeType, ...reviewData };
+export function loader({ request, params, url }: Route.LoaderArgs) {
+  return loadProviderRoute(request, params.partnerSlug, url);
 }
 
-export default function ProviderRoute({ loaderData }: Route.ComponentProps) {
-  const { canonical, cspNonce } = useOutletContext<StorefrontContext>();
-  const { profile } = loaderData;
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': profile.partnerType === 'company' ? 'Organization' : 'Person',
-    name: profile.name,
-    url: canonical,
-    description: profile.description,
-    image: profile.logoUrl,
-    aggregateRating:
-      profile.stats.reviewCount && profile.stats.ratingAvg
-        ? {
-            '@type': 'AggregateRating',
-            ratingValue: profile.stats.ratingAvg,
-            reviewCount: profile.stats.reviewCount,
-          }
-        : undefined,
-  };
-  return (
-    <>
-      <ProviderProfilePage loaderData={loaderData} />
-      <script
-        nonce={cspNonce}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }}
-      />
-    </>
-  );
+export default function ProviderRoute(props: Route.ComponentProps) {
+  return <ProviderRoutePage {...props} />;
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
