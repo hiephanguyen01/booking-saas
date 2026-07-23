@@ -2,6 +2,13 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto
 import { Inject, Injectable } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { REDIS } from '../../../../shared/redis/redis.module';
+import {
+  AuthChallenge,
+  COMPLETION_TTL_SEC,
+  OTP_TTL_SEC,
+  RESEND_AFTER_SEC,
+  type AuthChallengeState,
+} from '../../domain/entities/auth-challenge.entity';
 import type {
   AuthChallengePayload,
   AuthChallengePurpose,
@@ -10,17 +17,6 @@ import type {
   ResendChallengeResult,
   VerifyChallengeResult,
 } from '../../domain/ports/auth-challenge-store.port';
-
-const OTP_TTL_SEC = 10 * 60;
-const RESEND_AFTER_SEC = 60;
-const COMPLETION_TTL_SEC = 30 * 60;
-const MAX_ATTEMPTS = 5;
-
-interface StoredChallenge extends AuthChallengePayload {
-  otpHash: string;
-  attempts: number;
-  resendAt: number;
-}
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const opaqueToken = () => randomBytes(32).toString('base64url');
@@ -37,39 +33,40 @@ export class RedisAuthChallengeStore implements IAuthChallengeStore {
     return `identity:auth-completion:${sha256(token)}`;
   }
 
-  private async persist(
+  private async issueWithId(
     challengeId: string,
     payload: AuthChallengePayload,
   ): Promise<IssuedAuthChallenge> {
     const otp = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    const record: StoredChallenge = {
-      ...payload,
-      otpHash: sha256(otp),
-      attempts: 0,
-      resendAt: Date.now() + RESEND_AFTER_SEC * 1_000,
-    };
+    const otpHash = sha256(otp);
+    const record = AuthChallenge.issue(payload, otpHash, Date.now());
     await this.redis.set(this.challengeKey(challengeId), JSON.stringify(record), 'EX', OTP_TTL_SEC);
-    return {
-      challengeId,
-      otp,
-      expiresInSec: OTP_TTL_SEC,
-      resendAfterSec: RESEND_AFTER_SEC,
-    };
+    return this.issued(challengeId, otp);
   }
 
   issue(payload: AuthChallengePayload): Promise<IssuedAuthChallenge> {
-    return this.persist(opaqueToken(), payload);
+    return this.issueWithId(opaqueToken(), payload);
   }
 
   async resend(challengeId: string, purpose: AuthChallengePurpose): Promise<ResendChallengeResult> {
     const value = await this.redis.get(this.challengeKey(challengeId));
     if (!value) return { status: 'expired' };
-    const record = JSON.parse(value) as StoredChallenge;
-    if (record.purpose !== purpose) return { status: 'expired' };
-    const retryAfterSec = Math.ceil((record.resendAt - Date.now()) / 1_000);
-    if (retryAfterSec > 0) return { status: 'cooldown', retryAfterSec };
-    const payload = this.payloadOf(record);
-    return { status: 'issued', challenge: await this.persist(challengeId, payload), payload };
+    const challenge = AuthChallenge.rehydrate(JSON.parse(value) as AuthChallengeState);
+    if (challenge.purpose !== purpose) return { status: 'expired' };
+    const decision = challenge.resendDecision(Date.now());
+    if (decision.status === 'cooldown') return decision;
+
+    const payload = challenge.payload();
+    const otp = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const otpHash = sha256(otp);
+    const replacement = challenge.resend(otpHash, Date.now());
+    await this.redis.set(
+      this.challengeKey(challengeId),
+      JSON.stringify(replacement),
+      'EX',
+      OTP_TTL_SEC,
+    );
+    return { status: 'issued', challenge: this.issued(challengeId, otp), payload };
   }
 
   async verify(
@@ -80,19 +77,21 @@ export class RedisAuthChallengeStore implements IAuthChallengeStore {
     const key = this.challengeKey(challengeId);
     const value = await this.redis.get(key);
     if (!value) return { status: 'expired' };
-    const record = JSON.parse(value) as StoredChallenge;
-    if (record.purpose !== purpose) return { status: 'expired' };
+    const challenge = AuthChallenge.rehydrate(JSON.parse(value) as AuthChallengeState);
+    if (challenge.purpose !== purpose) return { status: 'expired' };
 
-    const expected = Buffer.from(record.otpHash, 'hex');
+    const expected = Buffer.from(challenge.otpHash, 'hex');
     const actual = Buffer.from(sha256(otp), 'hex');
-    if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
+    const otpMatches = expected.length === actual.length && timingSafeEqual(expected, actual);
+    const transition = challenge.verify(otpMatches);
+    if (transition.status === 'verified') {
       const completionToken = opaqueToken();
       await this.redis
         .multi()
         .del(key)
         .set(
           this.completionKey(completionToken),
-          JSON.stringify(this.payloadOf(record)),
+          JSON.stringify(challenge.payload()),
           'EX',
           COMPLETION_TTL_SEC,
         )
@@ -100,16 +99,14 @@ export class RedisAuthChallengeStore implements IAuthChallengeStore {
       return { status: 'verified', completionToken, expiresInSec: COMPLETION_TTL_SEC };
     }
 
-    record.attempts += 1;
-    const attemptsRemaining = Math.max(0, MAX_ATTEMPTS - record.attempts);
-    if (attemptsRemaining === 0) {
+    if (transition.status === 'locked') {
       await this.redis.del(key);
       return { status: 'locked' };
     }
     const ttl = await this.redis.ttl(key);
     if (ttl <= 0) return { status: 'expired' };
-    await this.redis.set(key, JSON.stringify(record), 'EX', ttl);
-    return { status: 'invalid', attemptsRemaining };
+    await this.redis.set(key, JSON.stringify(transition.state), 'EX', ttl);
+    return { status: 'invalid', attemptsRemaining: transition.attemptsRemaining };
   }
 
   async consumeCompletion(
@@ -122,13 +119,12 @@ export class RedisAuthChallengeStore implements IAuthChallengeStore {
     return payload.purpose === purpose ? payload : null;
   }
 
-  private payloadOf(record: StoredChallenge): AuthChallengePayload {
+  private issued(challengeId: string, otp: string): IssuedAuthChallenge {
     return {
-      purpose: record.purpose,
-      email: record.email,
-      locale: record.locale,
-      ...(record.fullName ? { fullName: record.fullName } : {}),
-      ...(record.userId ? { userId: record.userId } : {}),
+      challengeId,
+      otp,
+      expiresInSec: OTP_TTL_SEC,
+      resendAfterSec: RESEND_AFTER_SEC,
     };
   }
 }
