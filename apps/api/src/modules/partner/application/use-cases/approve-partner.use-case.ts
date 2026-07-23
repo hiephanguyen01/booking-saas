@@ -40,11 +40,15 @@ export class ApprovePartnerUseCase {
     ctx: ApproveContext,
   ): Promise<PartnerRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const partner = await this.partners.findById(tx, partnerId);
-      if (!partner) throw new PartnerNotFound();
+      const state = await this.partners.findStateById(tx, partnerId);
+      if (!state) throw new PartnerNotFound();
 
-      const outcome = Partner.rehydrate(partner).approve(input.agreementVersion);
-      if (outcome.kind === 'noop') return partner;
+      const outcome = Partner.rehydrate(state).approve(input.agreementVersion);
+      if (outcome.kind === 'noop') {
+        const unchanged = await this.partners.findById(tx, partnerId);
+        if (!unchanged) throw new PartnerNotFound();
+        return unchanged;
+      }
 
       const updated = await this.partners.updateStatus(tx, partnerId, outcome.statusIntent);
       for (const agreement of outcome.agreements) {

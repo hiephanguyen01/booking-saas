@@ -24,11 +24,11 @@ export class SuspendPartnerUseCase {
 
   async execute(tenantId: string, partnerId: string): Promise<PartnerRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const partner = await this.partners.findById(tx, partnerId);
-      if (!partner) throw new PartnerNotFound();
+      const state = await this.partners.findStateById(tx, partnerId);
+      if (!state) throw new PartnerNotFound();
 
       const futureConfirmedBookingCount = await this.partners.countActiveBookings(tx, partnerId);
-      const statusIntent = Partner.rehydrate(partner).suspend(futureConfirmedBookingCount);
+      const statusIntent = Partner.rehydrate(state).suspend(futureConfirmedBookingCount);
       const updated = await this.partners.updateStatus(tx, partnerId, statusIntent);
       await this.outbox.emit(tx, {
         tenantId,
