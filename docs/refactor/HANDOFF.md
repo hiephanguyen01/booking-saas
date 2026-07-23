@@ -26,11 +26,19 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 4 | favorites | ✅ merge (PR #18) |
 | — | lint guard biên hexagonal | ✅ merge (PR #19) |
 | 5a | promotions — vòng đời chương trình | ✅ merge (PR #20) |
-| 5b | promotions — redemption + usage claim | 🔄 **PR #21 đang mở, đã review xong (Ready to merge)** |
+| 5b | promotions — redemption + usage claim | ✅ merge (PR #21) — **promotions xong cả module** |
 | 6 | affiliate | ⏭️ **tiếp theo** |
 | 7→16 | identity-access → partner → catalog → tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Việc kế tiếp:** merge PR #21 → làm **PR #6 affiliate**.
+**Việc kế tiếp:** **PR #6 — module affiliate** (không còn PR nào đang mở).
+
+Gợi ý riêng cho affiliate (từ khảo sát): 3 aggregate — `Affiliate` (membership + customRate +
+payoutInfo), `ReferralLink`, `AffiliateCommission` (máy trạng thái 5 trạng thái
+`pending→confirmed→paid|reversed|clawed_back` **do outbox điều khiển** ⇒ transition phải trả boolean
+no-throw, idempotent). Số tiền commission phải là **bản replay đúng** `computeCommissionSplit` của
+finance để khớp ledger. `markConfirmedPaid` giữ set-based, không biến thành N lần load aggregate.
+Có bản compiled của `AffiliateCommission` từ một phiên cũ trong `apps/api/dist/modules/affiliate/domain/entities/`
+— tham chiếu được, nhưng **phải đối chiếu lại với code hiện tại** trước khi tin.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 
