@@ -90,12 +90,12 @@ export function SiteHeader({
                 {t('lookup')}
               </Link>
             </Button>
-            <Button asChild variant="outline" className={`${NAV_BUTTON} border-foreground`}>
+            {/* <Button asChild variant="outline" className={`${NAV_BUTTON} border-foreground`}>
               <Link to={storefrontPaths.community(locale)} prefetch="intent">
                 <Globe2 aria-hidden="true" className="size-4" />
                 {t('community')}
               </Link>
-            </Button>
+            </Button> */}
             <Button
               asChild
               variant="outline"
