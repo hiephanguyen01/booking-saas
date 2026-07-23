@@ -34,27 +34,33 @@ const keyOf = (kind: FavoriteTargetKind, id: string) => `${kind}:${id}`;
 const DEBOUNCE_MS = 350;
 const ERROR_TOAST_MS = 4000;
 
-interface PendingWrite {
+interface FavoriteWrite {
   kind: FavoriteTargetKind;
   id: string;
   desired: boolean;
-  timer: ReturnType<typeof setTimeout>;
+  mutationId: string;
+}
+
+interface PendingWrite extends FavoriteWrite {
+  timer: ReturnType<typeof setTimeout> | null;
+}
+
+interface FavoriteActionResult {
+  ok?: boolean;
+  clientMutationId?: string | null;
 }
 
 /**
  * Owns favorite state, optimism, debounce, and the write for the whole tenant
  * subtree. Because the provider is mounted at the locale layout (stable across
  * page navigation), a debounced write is NOT lost when the card that triggered
- * it unmounts — the timer and the write both live here, not in the card. When
- * the provider itself unmounts (a locale switch changes the `:locale` param),
- * any still-pending write is flushed rather than dropped. A write the server
- * rejects rolls the optimistic heart back and surfaces an error.
+ * it unmounts — the timer and the write both live here, not in the card.
  *
- * Writes go through a fetcher submission (never a browser `fetch`) so they hit
- * the `favorites/toggle` action, which owns the authenticated server-to-server
- * call. Each submission is keyed by target so we can reconcile its result via
- * `useFetchers()`, and a successful submission revalidates loaders so the server
- * refs catch up and the optimistic override is dropped.
+ * Writes for the same target are serialized. A rapid second toggle is kept as
+ * the latest queued intent until the active request completes, preventing
+ * add/remove requests from reaching the server out of order. Every action also
+ * echoes a client mutation id so persisted fetcher data from an older request
+ * cannot be mistaken for the completion of a newer one.
  */
 export function FavoritesProvider({
   isAuthenticated,
@@ -74,9 +80,8 @@ export function FavoritesProvider({
   const submit = useSubmit();
   const fetchers = useFetchers();
   const pending = useRef(new Map<string, PendingWrite>());
-  // key → the desired state of the in-flight submission, so a rejected write
-  // can be rolled back to the correct value.
-  const inFlight = useRef(new Map<string, boolean>());
+  const inFlight = useRef(new Map<string, FavoriteWrite>());
+  const mutationSequence = useRef(0);
 
   const serverSet = useMemo(() => {
     const set = new Set<string>();
@@ -101,7 +106,7 @@ export function FavoritesProvider({
     });
   }, [serverSet]);
 
-  // Latest reads for the stable callbacks (avoids stale closures + re-creation).
+  // Latest reads for stable callbacks (avoids stale closures + re-creation).
   const overridesRef = useRef(overrides);
   overridesRef.current = overrides;
   const serverSetRef = useRef(serverSet);
@@ -111,40 +116,68 @@ export function FavoritesProvider({
   const submitRef = useRef(submit);
   submitRef.current = submit;
 
-  // Fire the persisted write via a keyed fetcher submission. Stable so the
-  // unmount flush can reuse it; navigate:false revalidates loaders on success.
-  const sendToggle = useCallback((kind: FavoriteTargetKind, id: string, desired: boolean) => {
+  const sendToggle = useCallback((write: FavoriteWrite) => {
+    const key = keyOf(write.kind, write.id);
+    inFlight.current.set(key, write);
     submitRef.current(
-      { intent: desired ? 'add' : 'remove', target: kind, targetId: id },
+      {
+        intent: write.desired ? 'add' : 'remove',
+        target: write.kind,
+        targetId: write.id,
+        clientMutationId: write.mutationId,
+      },
       {
         method: 'post',
         action: storefrontPaths.favoritesToggle(localeRef.current),
         navigate: false,
-        fetcherKey: keyOf(kind, id),
+        fetcherKey: key,
       },
     );
   }, []);
 
-  // Reconcile completed submissions: a server rejection rolls the optimistic
-  // override back (unless a newer toggle superseded it) and warns the user.
+  const flushPending = useCallback(
+    (key: string): void => {
+      if (inFlight.current.has(key)) return;
+      const write = pending.current.get(key);
+      if (!write) return;
+
+      if (write.timer) clearTimeout(write.timer);
+      pending.current.delete(key);
+      sendToggle(write);
+    },
+    [sendToggle],
+  );
+
+  // Reconcile only the response correlated to the active mutation. When a newer
+  // desired state is queued, start it after the active request settles instead
+  // of allowing same-target mutations to race at the backend.
   useEffect(() => {
     for (const fetcher of fetchers) {
       if (fetcher.state !== 'idle' || fetcher.data == null) continue;
       const key = fetcher.key;
-      if (!inFlight.current.has(key)) continue;
-      const desired = inFlight.current.get(key) as boolean;
+      const active = inFlight.current.get(key);
+      if (!active) continue;
+
+      const result = fetcher.data as FavoriteActionResult;
+      if (result.clientMutationId !== active.mutationId) continue;
+
       inFlight.current.delete(key);
-      const rejected = (fetcher.data as { ok?: boolean }).ok === false;
-      if (!rejected) continue;
-      setOverrides((prev) => {
-        if (prev.get(key) !== desired) return prev;
-        const next = new Map(prev);
-        next.delete(key);
-        return next;
-      });
-      setWriteError(true);
+      const queued = pending.current.get(key);
+      const rejected = result.ok === false;
+
+      if (rejected && !queued) {
+        setOverrides((prev) => {
+          if (prev.get(key) !== active.desired) return prev;
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+        setWriteError(true);
+      }
+
+      flushPending(key);
     }
-  }, [fetchers]);
+  }, [fetchers, flushPending]);
 
   const has = useCallback(
     (kind: FavoriteTargetKind, id: string) => {
@@ -160,34 +193,46 @@ export function FavoritesProvider({
         setLoginOpen(true);
         return;
       }
+
       const key = keyOf(kind, id);
       const current = overridesRef.current.has(key)
         ? (overridesRef.current.get(key) as boolean)
         : serverSetRef.current.has(key);
       const desired = !current;
+      const mutationId = `${Date.now().toString(36)}-${(++mutationSequence.current).toString(36)}`;
       setOverrides((prev) => new Map(prev).set(key, desired));
 
       const existing = pending.current.get(key);
-      if (existing) clearTimeout(existing.timer);
-      const timer = setTimeout(() => {
-        pending.current.delete(key);
-        inFlight.current.set(key, desired);
-        sendToggle(kind, id, desired);
+      if (existing?.timer) clearTimeout(existing.timer);
+
+      const write: PendingWrite = {
+        kind,
+        id,
+        desired,
+        mutationId,
+        timer: null,
+      };
+      write.timer = setTimeout(() => {
+        const latest = pending.current.get(key);
+        if (!latest || latest.mutationId !== mutationId) return;
+        latest.timer = null;
+        flushPending(key);
       }, DEBOUNCE_MS);
-      pending.current.set(key, { kind, id, desired, timer });
+      pending.current.set(key, write);
     },
-    [isAuthenticated, sendToggle],
+    [flushPending, isAuthenticated],
   );
 
-  // Flush queued writes if the provider unmounts (locale teardown) so a debounced
-  // heart is persisted rather than silently dropped. The submission lives on the
-  // (app-global) router, so it completes even though this subtree is gone.
+  // Flush a debounced write on teardown only when that target has no active
+  // request. Starting a second same-target request here would reintroduce the
+  // server ordering race this queue is designed to prevent.
   useEffect(() => {
     const pendingWrites = pending.current;
+    const activeWrites = inFlight.current;
     return () => {
-      for (const write of pendingWrites.values()) {
-        clearTimeout(write.timer);
-        sendToggle(write.kind, write.id, write.desired);
+      for (const [key, write] of pendingWrites) {
+        if (write.timer) clearTimeout(write.timer);
+        if (!activeWrites.has(key)) sendToggle(write);
       }
       pendingWrites.clear();
     };
