@@ -9,9 +9,10 @@ import { DomainError } from '../../../../shared/domain/domain-error';
 
 /** The availability-rule write-path's answer when the calling partner doesn't
  *  own the listing — a distinct shape from listing's own not-owned errors
- *  (`ListingNotOwned`, `ListingNotOwnedForDelete`, `ListingNotOwnedForModeration`):
- *  same code family (`NOT_OWNED`) as {@link ListingNotOwnedForModeration} but a
- *  message without the leading "This"; NOT interchangeable with any of the
+ *  (`ListingNotOwned`, `ListingNotOwnedForDelete`, `ListingNotOwnedForModeration`).
+ *  Most confusable pair: `ListingNotOwnedForDelete` carries the IDENTICAL
+ *  message (`Listing belongs to another partner`) but code `LISTING_NOT_OWNED`,
+ *  while this one is code `NOT_OWNED`. NOT interchangeable with any of the
  *  three listing shapes. */
 export class ListingNotOwnedForAvailability extends DomainError {
   constructor() {
@@ -48,7 +49,7 @@ export class InvalidAvailabilityRule extends DomainError {
 
 /** Defensive depth — the zod contracts (`availability.ts`) are the real
  *  boundary; this is unreachable via HTTP, only guarding the aggregate
- *  against an exception shape (date / time range) that violates its own
+ *  against an exception shape (time range) that violates its own
  *  invariants if constructed directly in-process. */
 export class InvalidAvailabilityException extends DomainError {
   constructor(reason: string) {
