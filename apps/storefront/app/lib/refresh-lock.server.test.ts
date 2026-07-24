@@ -143,5 +143,5 @@ test('performs a final observation before reporting lock timeout', async () => {
     SessionRefreshLockTimeoutError,
   );
 
-  assert.equal(observations, 6);
+  assert.equal(observations, 7);
 });
