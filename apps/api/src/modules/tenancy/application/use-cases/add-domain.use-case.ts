@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AddDomainInput } from '@booking/contracts';
 import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
+import { DomainTaken } from '../../domain/errors/tenancy-errors';
+import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
 import { normalizeHostname } from '../../domain/hostname';
 import {
   TENANT_REPOSITORY,
@@ -35,18 +37,15 @@ export class AddDomainUseCase {
 
     const hostname = normalizeHostname(input.hostname);
     if (await this.domains.findByHostname(hostname)) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'DOMAIN_TAKEN',
-        message: `Hostname "${hostname}" is already mapped`,
-      });
+      throw new DomainTaken(hostname);
     }
-    return this.domains.create({
-      tenantId,
-      hostname,
-      isPrimary: input.isPrimary,
-      verificationToken: `bookify-verify=${randomBytes(16).toString('hex')}`,
-      verifiedAt: null,
-    });
+    return this.domains.create(
+      TenantDomain.requestCustomDomain({
+        tenantId,
+        hostname,
+        isPrimary: input.isPrimary,
+        randomHex: randomBytes(16).toString('hex'),
+      }),
+    );
   }
 }

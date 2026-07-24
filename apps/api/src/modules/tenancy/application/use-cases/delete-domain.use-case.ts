@@ -1,8 +1,13 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   TENANT_DOMAIN_REPOSITORY,
   type ITenantDomainRepository,
 } from '../../domain/ports/tenant-domain-repository.port';
+import { DomainNotFound } from '../../domain/errors/tenancy-errors';
+import {
+  TenantDomain,
+  assertDeletableFromPortfolio,
+} from '../../domain/entities/tenant-domain.entity';
 
 /**
  * Removes a tenant's custom-domain mapping (§6.1). Ownership is enforced by
@@ -19,23 +24,18 @@ export class DeleteDomainUseCase {
   async execute(tenantId: string, id: string): Promise<void> {
     const domain = await this.domains.findById(id);
     if (!domain || domain.tenantId !== tenantId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'DOMAIN_NOT_FOUND',
-        message: 'Domain not found',
-      });
+      throw new DomainNotFound();
     }
-    if (domain.isPrimary && domain.verifiedAt) {
-      const others = (await this.domains.listByTenant(tenantId)).filter(
-        (d) => d.id !== id && d.verifiedAt,
+    const target = TenantDomain.rehydrate(domain);
+    if (target.isPrimary && target.isVerified) {
+      const siblings = (await this.domains.listByTenant(tenantId)).map((d) => ({
+        id: d.id,
+        isVerified: d.verifiedAt !== null,
+      }));
+      assertDeletableFromPortfolio(
+        { id: target.id, isPrimary: target.isPrimary, isVerified: target.isVerified },
+        siblings,
       );
-      if (others.length === 0) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'DOMAIN_PRIMARY_REQUIRED',
-          message: 'Cannot remove the only verified primary domain',
-        });
-      }
     }
     await this.domains.delete(id);
   }
