@@ -26,16 +26,16 @@ export function useReviewMedia(open: boolean) {
   const [fileError, setFileError] = useState<string | null>(null);
   const mediaRef = useRef<SelectedReviewMedia[]>([]);
 
-  useEffect(() => {
-    mediaRef.current = media;
-  }, [media]);
+  const commitMedia = useCallback((next: SelectedReviewMedia[]) => {
+    mediaRef.current = next;
+    setMedia(next);
+  }, []);
 
   const resetMedia = useCallback(() => {
     for (const item of mediaRef.current) URL.revokeObjectURL(item.previewUrl);
-    mediaRef.current = [];
-    setMedia([]);
+    commitMedia([]);
     setFileError(null);
-  }, []);
+  }, [commitMedia]);
 
   useEffect(
     () => () => {
@@ -52,59 +52,64 @@ export function useReviewMedia(open: boolean) {
   const addFiles = useCallback(
     (files: File[]) => {
       setFileError(null);
-      setMedia((current) => {
-        if (current.length + files.length > REVIEW_MEDIA_MAX_FILES) {
-          setFileError(t('reviews.dialog.tooManyFiles'));
-          return current;
+      const current = mediaRef.current;
+      if (current.length + files.length > REVIEW_MEDIA_MAX_FILES) {
+        setFileError(t('reviews.dialog.tooManyFiles'));
+        return;
+      }
+
+      const next: SelectedReviewMedia[] = [];
+      for (const file of files) {
+        const parsedType = reviewMediaContentTypeSchema.safeParse(file.type);
+        if (!parsedType.success) {
+          setFileError(t('reviews.dialog.unsupportedFile'));
+          continue;
         }
 
-        const next: SelectedReviewMedia[] = [];
-        for (const file of files) {
-          const parsedType = reviewMediaContentTypeSchema.safeParse(file.type);
-          if (!parsedType.success) {
-            setFileError(t('reviews.dialog.unsupportedFile'));
-            continue;
-          }
-
-          const kind = parsedType.data.startsWith('image/') ? 'image' : 'video';
-          if (kind === 'image' && file.size > REVIEW_IMAGE_MAX_BYTES) {
-            setFileError(t('reviews.dialog.imageTooLarge'));
-            continue;
-          }
-          if (kind === 'video' && file.size > REVIEW_VIDEO_MAX_BYTES) {
-            setFileError(t('reviews.dialog.videoTooLarge'));
-            continue;
-          }
-
-          next.push({
-            id: crypto.randomUUID(),
-            file,
-            kind,
-            previewUrl: URL.createObjectURL(file),
-            state: 'ready',
-          });
+        const kind = parsedType.data.startsWith('image/') ? 'image' : 'video';
+        if (kind === 'image' && file.size > REVIEW_IMAGE_MAX_BYTES) {
+          setFileError(t('reviews.dialog.imageTooLarge'));
+          continue;
+        }
+        if (kind === 'video' && file.size > REVIEW_VIDEO_MAX_BYTES) {
+          setFileError(t('reviews.dialog.videoTooLarge'));
+          continue;
         }
 
-        return next.length ? [...current, ...next] : current;
-      });
+        next.push({
+          id: crypto.randomUUID(),
+          file,
+          kind,
+          previewUrl: URL.createObjectURL(file),
+          state: 'ready',
+        });
+      }
+
+      if (next.length) {
+        commitMedia([...current, ...next]);
+      }
     },
-    [t],
+    [commitMedia, t],
   );
 
-  const removeFile = useCallback((id: string) => {
-    setMedia((current) => {
+  const removeFile = useCallback(
+    (id: string) => {
+      const current = mediaRef.current;
       const removed = current.find((item) => item.id === id);
-      if (removed) URL.revokeObjectURL(removed.previewUrl);
-      return current.filter((item) => item.id !== id);
-    });
-  }, []);
+      if (!removed) return;
+
+      URL.revokeObjectURL(removed.previewUrl);
+      commitMedia(current.filter((item) => item.id !== id));
+    },
+    [commitMedia],
+  );
 
   const uploadAll = useCallback(
     async (bookingId: string): Promise<ReviewMediaInput[] | null> => {
       setFileError(null);
       const snapshot = mediaRef.current;
-      setMedia((current) =>
-        current.map((item) => (item.uploaded ? item : { ...item, state: 'uploading' })),
+      commitMedia(
+        snapshot.map((item) => (item.uploaded ? item : { ...item, state: 'uploading' as const })),
       );
 
       const uploaded: ReviewMediaInput[] = [];
@@ -118,18 +123,18 @@ export function useReviewMedia(open: boolean) {
         try {
           const result = await presignAndPutReviewMedia(item.file, bookingId);
           uploaded.push(result);
-          setMedia((current) =>
-            current.map((candidate) =>
+          commitMedia(
+            mediaRef.current.map((candidate) =>
               candidate.id === item.id
-                ? { ...candidate, state: 'uploaded', uploaded: result }
+                ? { ...candidate, state: 'uploaded' as const, uploaded: result }
                 : candidate,
             ),
           );
         } catch {
           failed = true;
-          setMedia((current) =>
-            current.map((candidate) =>
-              candidate.id === item.id ? { ...candidate, state: 'error' } : candidate,
+          commitMedia(
+            mediaRef.current.map((candidate) =>
+              candidate.id === item.id ? { ...candidate, state: 'error' as const } : candidate,
             ),
           );
         }
@@ -141,7 +146,7 @@ export function useReviewMedia(open: boolean) {
       }
       return uploaded;
     },
-    [t],
+    [commitMedia, t],
   );
 
   return {
