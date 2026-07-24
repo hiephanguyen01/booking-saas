@@ -1,4 +1,4 @@
-import { useSubmit } from 'react-router';
+import { useNavigation, useSubmit } from 'react-router';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import {
   Card,
@@ -9,9 +9,9 @@ import {
 } from '@booking/ui/components/ui/card';
 import { Switch } from '@booking/ui/components/ui/switch';
 import { CircleAlert, Megaphone } from 'lucide-react';
-import { useBusy } from '~/hooks/use-busy';
 import type { PartnerPromotionsState } from '~/features/tenant/lib/flags';
 import { SuccessBanner } from '~/components/action-feedback';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 /**
  * Marketplace flag card: lets partners create their own promo codes (§12.2).
@@ -29,10 +29,11 @@ export function PartnerPromotionsCard({
   saved: boolean;
 }) {
   const submit = useSubmit();
-  const busy = useBusy();
+  const navigation = useNavigation();
+  const { busy, run } = useSubmissionGuard(navigation.state);
 
   return (
-    <Card className="shadow-none">
+    <Card className="shadow-none" aria-busy={busy}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Megaphone className="size-4 text-primary" aria-hidden="true" /> Khuyến mãi của đối tác
@@ -63,10 +64,10 @@ export function PartnerPromotionsCard({
               checked={state.enabled}
               disabled={readOnly || busy}
               onCheckedChange={(checked) => {
-                const fd = new FormData();
-                fd.set('intent', 'toggle-partner-promos');
-                fd.set('partnerPromotionsEnabled', checked ? 'true' : 'false');
-                void submit(fd, { method: 'post' });
+                const formData = new FormData();
+                formData.set('intent', 'toggle-partner-promos');
+                formData.set('partnerPromotionsEnabled', checked ? 'true' : 'false');
+                run(() => submit(formData, { method: 'post' }));
               }}
             />
           </label>
