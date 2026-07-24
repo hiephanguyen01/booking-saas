@@ -10,7 +10,7 @@ import {
   GATEWAY_REGISTRY,
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
-import { amountMatches } from '../../domain/payment-status';
+import { Payment } from '../../domain/entities/payment.entity';
 
 /**
  * The webhook — the single source of truth for payment (§11.2). Resolves the
@@ -55,29 +55,20 @@ export class HandleWebhookUseCase {
           message: 'Webhook signature invalid',
         });
 
-      // A SePay TRANSACTION_VOID confirms an already-recorded automatic refund;
-      // it must never downgrade the original successful payment.
-      if (v.event === 'refunded') return false;
-
-      if (v.event !== 'succeeded') {
-        // One-way machine (§11.2): a late/out-of-order failed/expired only applies
-        // while still pending. The write is atomic (UPDATE ... WHERE status =
-        // 'pending'), so a concurrent succeeded delivery is never clobbered — the
-        // pre-tx snapshot can't be trusted under concurrent webhooks.
-        await this.payments.markTerminalIfPending(
-          tx,
-          payment.id,
-          v.event === 'expired' ? 'expired' : 'failed',
-        );
+      // A SePay TRANSACTION_VOID confirms an already-recorded automatic refund; it
+      // must never downgrade the original successful payment. A late/out-of-order
+      // failed/expired only applies while still pending — the write is atomic
+      // (UPDATE ... WHERE status = 'pending'), so a concurrent succeeded delivery is
+      // never clobbered; the pre-tx snapshot can't be trusted under concurrent
+      // webhooks (one-way machine, §11.2). The entity only picks which transition to
+      // attempt; the guarded UPDATE decides whether it actually applies.
+      const transition = Payment.decideWebhookTransition(v.event);
+      if (transition.action === 'ignore') return false;
+      if (transition.action === 'terminal') {
+        await this.payments.markTerminalIfPending(tx, payment.id, transition.to);
         return false;
       }
-      if (!amountMatches(payment.amount, v.amountVnd)) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'AMOUNT_MISMATCH',
-          message: 'Paid amount is less than expected',
-        });
-      }
+      Payment.assertAmountCovers(payment.amount, v.amountVnd);
       const succeeded = await this.payments.markSucceeded(
         tx,
         payment.id,

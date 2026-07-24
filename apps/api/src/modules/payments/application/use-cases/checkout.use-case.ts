@@ -1,14 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import {
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import type { CheckoutResponse } from '@booking/contracts';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
 import { pickConfigForMethod } from '../../domain/method-routing';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import {
@@ -23,7 +18,8 @@ import {
   GATEWAY_REGISTRY,
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
-import { MOMO_MAX_PAYMENT_VND } from '../../domain/gateway-limits';
+import { Payment } from '../../domain/entities/payment.entity';
+import { PaymentMethodUnavailable } from '../../domain/errors/payment-errors';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
@@ -94,28 +90,13 @@ export class CheckoutUseCase {
     }
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
-      if (!booking)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'BOOKING_NOT_FOUND',
-          message: 'Booking not found',
-        });
-      if (booking.status !== 'pending_payment') {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'BOOKING_NOT_PAYABLE',
-          message: `Booking is ${booking.status}, not awaiting payment`,
-        });
-      }
+      if (!booking) throw new BookingNotFound();
+      Payment.assertPayable(booking);
 
       const configs = await this.configs.findActiveAll(tx, tenant.id);
       const routed = pickConfigForMethod(configs, paymentMethod);
       if (!routed && configs.length > 0) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'PAYMENT_METHOD_UNAVAILABLE',
-          message: 'The selected payment method is not enabled for this storefront',
-        });
+        throw new PaymentMethodUnavailable();
       }
       // configs rỗng → resolveForTenant trả mock (dev); guard NO_ACTIVE_GATEWAY prod giữ nguyên phía dưới
       const gateway = await this.registry.resolveForTenant(tx, tenant.id, routed?.gateway);
@@ -132,31 +113,14 @@ export class CheckoutUseCase {
       );
       if (existing) return { paymentId: existing.id, destination: existing.destination };
 
-      const amount = booking.depositAmount + booking.securityDeposit;
-      const kind = booking.depositAmount >= booking.finalAmount ? 'full' : 'deposit';
+      const { amount, kind } = Payment.plan(booking);
       const origin = storefrontOrigin(host); // the tenant's own domain (from the Host the customer used)
-      // No active gateway → registry falls back to mock. That is only acceptable in
-      // dev/test; in production, refuse rather than silently take fake payments.
-      if (
-        gateway.key === 'mock' &&
-        process.env.NODE_ENV === 'production' &&
-        process.env.ALLOW_MOCK_PAYMENTS !== 'true'
-      ) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'NO_ACTIVE_GATEWAY',
-          message: 'Cửa hàng chưa bật cổng thanh toán',
-        });
-      }
-      // MoMo caps a single payment/refund at 50M VND. Reject over-limit orders up
-      // front so every MoMo booking stays fully auto-refundable (refund ≤ amount).
-      if (gateway.key === 'momo' && amount > MOMO_MAX_PAYMENT_VND) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'AMOUNT_EXCEEDS_GATEWAY_LIMIT',
-          message: 'Đơn hàng vượt hạn mức thanh toán MoMo (tối đa 50.000.000đ)',
-        });
-      }
+      Payment.assertGatewayAccepts({
+        gatewayKey: gateway.key,
+        amount,
+        isProductionEnv: process.env.NODE_ENV === 'production',
+        allowMockPayments: process.env.ALLOW_MOCK_PAYMENTS === 'true',
+      });
       const orderRef = `BKF-${randomUUID().replaceAll('-', '').toUpperCase()}`;
       const bookingReturnUrl = `${origin}/bookings/${booking.code}`;
       const created = await gateway.createPayment({
