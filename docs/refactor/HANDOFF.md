@@ -10,12 +10,13 @@ Hai thứ **không** đi theo git, nên phải chép lại ở đây:
 - **memory của trợ lý AI** (`~/.claude/projects/<project>/memory/`) — máy khác không có.
 - **sổ tiến độ** `.superpowers/sdd/progress.md` — thư mục này bị `.gitignore`.
 
-Mọi thứ còn lại (spec, khảo sát, plan từng PR) **đều đã ở trong repo** — xem §2.
+Spec, khảo sát và kết quả cuối **đều đã ở trong repo** — xem §2. Execution plan trung gian đã được
+prune sau khi merge.
 
 ## 1. Đang ở đâu
 
-Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đây, **không** vào `main`;
-`main` sync vào định kỳ, merge ra `main` một lần khi xong hoặc theo mốc owner quyết).
+Refactor đã merge vào **`main`** tại merge commit `0f31cf5` ngày 2026-07-25. Nhánh lịch sử
+`refactor/entity-centric` được giữ làm mốc đối chiếu.
 
 | # | Module | Trạng thái |
 |---|---|---|
@@ -58,9 +59,8 @@ hash config, promotions sở hữu port ghi agreement, moderation nằm trên ag
 pickup/return có CAS, content-report dùng DB clock, và mutation domain tenancy invalidate host cache.
 Vòng quyết định cuối đã xoá `SetPlatformRate` unreachable, formalize alias `targetType`, hợp nhất
 current subscription, harden gateway/JSON boundary và siết moderation CAS/state transition. Các hàng
-chưa đóng trong spec §8a là backlog product được giữ có chủ đích, không phải việc refactor còn dang dở.
-Việc kế tiếp là **đưa `refactor/entity-centric` về `main` theo quyết định owner**. PR #25
-`refactor/entity-centric` → `main` là PR đưa cả nhánh tích hợp về main — không phải PR module.
+chưa đóng trong spec §8a là backlog product được giữ có chủ đích, không phải việc refactor còn dang
+dở. Toàn bộ nhánh đã merge vào `main` tại `0f31cf5`.
 
 Seed StudioHub hiện có fixture bền `seed-draft-studio` và `seed-draft-studio-group`, bên cạnh 120
 listing + 5 group published; seed chạy lặp không tạo bản ghi trùng.
@@ -71,18 +71,19 @@ listing + 5 group published; seed chạy lặp không tạo bản ghi trùng.
 |---|---|
 | [`docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md`](../superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md) | **Spec gốc.** §3 style aggregate + style-gate đã ratify, §4 luật cross-cutting, §6 thứ tự 16 PR, §8 các sổ đăng ký (known gap, follow-up, dead code) |
 | [`docs/refactor/entity-centric-survey.md`](./entity-centric-survey.md) | **Khảo sát 16 module**: invariant, chỗ đang enforce, rủi ro. Đọc mục của module trước khi viết plan — khỏi khảo sát lại |
-| `docs/superpowers/plans/2026-07-2*-entity-refactor-pr*.md` | Plan từng PR đã làm — dùng làm khuôn mẫu |
 | [`AGENTS.md`](../../AGENTS.md), [`apps/api/CLAUDE.md`](../../apps/api/CLAUDE.md) | Luật nền của repo |
 
-## 3. Quy trình mỗi module (đã chạy qua PR #7, giữ nguyên)
+Các execution plan đã hoàn tất trong `docs/superpowers/plans/` được xoá sau khi merge vào `main`;
+quyết định và bằng chứng cuối cùng đã được tổng hợp trong file này.
+
+## 3. Quy trình mỗi module (lịch sử)
 
 1. **Khảo sát chính xác bề mặt ghi** — đọc mục module trong `entity-centric-survey.md`, rồi cho một
    agent đọc code thật và trả về: danh sách **từng mã lỗi + status + message nguyên văn**, chữ ký
    port, luồng từng use-case, chỗ nào trong/ngoài `forTenant`, mọi guard SQL/advisory lock, và
    **consumer xuyên module** (bề mặt đóng băng).
-2. **Viết plan** vào `docs/superpowers/plans/YYYY-MM-DD-entity-refactor-prN-<module>.md` — có
-   Global Constraints (bảng mã lỗi đóng băng + các bẫy), chia 4–5 task, mỗi task có code đầy đủ hoặc
-   hướng dẫn phẫu thuật chính xác. Commit plan lên nhánh tích hợp.
+2. **Viết execution plan** có Global Constraints (bảng mã lỗi đóng băng + các bẫy), chia 4–5 task,
+   mỗi task có code đầy đủ hoặc hướng dẫn phẫu thuật chính xác.
 3. **Thực thi theo task**: 1 agent implement → tạo review package → 1 agent review (spec + quality)
    → sửa nếu có finding → sang task sau. Ghi sổ sau mỗi task.
 4. **Final review toàn nhánh** bằng model mạnh nhất, kèm bằng chứng verify và các minor đã carry.
@@ -165,8 +166,7 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 - Seeded owner/partner permissions đã được xác minh qua HTTP; các ghi chú `MISSING_PERMISSION` cũ là
   trạng thái DB/cache smoke đã stale, không phải thiếu catalog permission.
 
-Vòng quyết định cuối **đã đóng 2026-07-24** theo plan
-[`2026-07-24-entity-centric-final-gap-hardening.md`](../superpowers/plans/2026-07-24-entity-centric-final-gap-hardening.md):
+Vòng quyết định cuối **đã đóng 2026-07-24**:
 
 - Xoá `SetPlatformRateUseCase` cùng port/repository/request contract không reachable (`59a6e79`);
   không mở thêm route platform chưa có product flow.
@@ -235,9 +235,6 @@ Audit AST + transitive local-import graph trên đúng 257 file trong `apps/api/
 - Final gate hậu audit: `pnpm turbo lint typecheck build --force` **28/28 task xanh**, cache 0;
   `check:rls` **46/46** tenant-scoped table.
 
-Plan và registry chi tiết:
-[`2026-07-24-entity-centric-use-case-audit-hardening.md`](../superpowers/plans/2026-07-24-entity-centric-use-case-audit-hardening.md).
-
 ## 10. Deduplicate application error literals — 2026-07-24
 
 Audit AST toàn bộ `modules/*/application/**/*.ts`:
@@ -259,9 +256,6 @@ Audit AST toàn bộ `modules/*/application/**/*.ts`:
 - Final gate tại mốc audit: `pnpm turbo lint typecheck build --force` **28/28 task xanh**, cache 0;
   `check:rls` **46/46**; 257 use-case vẫn đủ, không thêm test. Inventory hiện là 256 sau khi xoá
   `SetPlatformRateUseCase` unreachable theo quyết định ở §7.
-
-Plan:
-[`2026-07-24-application-error-deduplication.md`](../superpowers/plans/2026-07-24-application-error-deduplication.md).
 
 ## 11. Final-gap review sau rebase — 2026-07-24
 
@@ -290,14 +284,13 @@ Plan:
   contract→DTO/mapper→BFF→FE nằm trong `docs/conventions.md` và `packages/contracts/CLAUDE.md`.
 
 Không còn action kỹ thuật nào trong scope final-gap này. Các hàng chưa đóng trong spec §8a vẫn là
-backlog behavior/product độc lập; bước tiếp theo là final integration/PR vào `main`.
+backlog behavior/product độc lập.
 
 ## 12. Nếu bạn là AI tiếp quản
 
-Nói với người dùng bạn đã đọc file này, xác nhận lại §1 (trạng thái) bằng
-`git log --oneline -5 refactor/entity-centric` + `gh pr list`. Nếu có PR module đang mở, tiếp tục
-review/sửa/merge PR đó; chỉ bắt đầu từ §3 bước 1 cho module kế tiếp khi không còn PR module mở. Đừng
-khảo sát lại toàn bộ API — `entity-centric-survey.md` đã có sẵn.
+Đây là hồ sơ lịch sử sau merge, không còn hàng đợi module để tiếp tục. Dùng spec + survey + các audit
+bên dưới khi cần điều tra regression hoặc mở track kiến trúc mới; đừng khảo sát lại toàn bộ API nếu
+inventory hiện có đã trả lời được câu hỏi.
 
 ## 13. Final consistency audit xuyên module — 2026-07-25
 

@@ -419,8 +419,8 @@ Audit AST/import graph trên 257 `modules/**/*.use-case.ts` không dùng tên fi
 - Kết quả sau sửa: 220/257 đi tới domain policy, 184 đi tới entity/VO; 37 entity-free còn lại đều là
   orchestration có chủ đích. Application use-case không còn direct Prisma model/raw SQL.
 
-Xem plan có frozen-wire matrix và inventory:
-[`2026-07-24-entity-centric-use-case-audit-hardening.md`](../plans/2026-07-24-entity-centric-use-case-audit-hardening.md).
+Frozen-wire matrix, inventory và kết quả cuối được tổng hợp trong
+[`docs/refactor/HANDOFF.md` §9](../../refactor/HANDOFF.md).
 
 ### 8f. Typed application errors (đã làm hậu refactor 2026-07-24)
 
@@ -435,8 +435,8 @@ Hai helper khác trả về custom exception, nên baseline có 79 inline custom
 - Không đổi status/code/message/details; các legacy body thiếu `statusCode` và OTP top-level retry
   field được giữ nguyên.
 
-Xem inventory, allowlist và frozen-wire matrix:
-[`2026-07-24-application-error-deduplication.md`](../plans/2026-07-24-application-error-deduplication.md).
+Inventory, allowlist và frozen-wire matrix cuối được tổng hợp trong
+[`docs/refactor/HANDOFF.md` §10](../../refactor/HANDOFF.md).
 
 ## 9. Xác minh mỗi PR (ADR 0005 — không có test)
 
