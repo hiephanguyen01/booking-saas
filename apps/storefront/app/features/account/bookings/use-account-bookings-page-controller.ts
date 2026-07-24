@@ -10,10 +10,11 @@ import {
 } from '../lib/booking-history';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
+type AccountBookingsPageControllerArgs = Pick<Route.ComponentProps, 'loaderData'>;
 
-export function useAccountBookingsPageController(
-  loaderData: Route.ComponentProps['loaderData'],
-) {
+export function useAccountBookingsPageController({
+  loaderData,
+}: AccountBookingsPageControllerArgs) {
   const locale = loaderData.locale === 'en' ? 'en' : 'vi';
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
   const [activeCancellation, setActiveCancellation] = useState<AccountBookingViewModel | null>(
