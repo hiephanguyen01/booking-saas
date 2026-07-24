@@ -54,6 +54,29 @@ The completed refactor's rationale and historical module map remain in
 [the design spec](./superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md); new code
 follows the convention above without reopening that migration plan.
 
+### Concurrency and typed boundaries
+
+- Every load-check-write state transition has two authorities: the entity/pure domain policy rejects
+  an illegal requested edge, and the repository guards persistence with the loaded pre-image
+  (`WHERE status = expected`, version, `updated_at`, unique/GiST constraint, advisory lock, etc.).
+  Replacing the second half with an unconditional save reopens TOCTOU/lost-update races.
+- A guarded repository method returns an explicit CAS outcome (`record | null`, boolean or a named
+  result). The use-case translates a miss to a named 409 and writes audit/outbox only after a
+  successful mutation. Never re-read and report success after a guard matched zero rows unless that
+  idempotent quirk is an explicitly documented contract.
+- Request bodies/queries use a Zod contract at the HTTP edge. Provider-specific input uses a
+  discriminated union (for example payment `gateway → credentials`), not
+  `Record<string, string>` plus downstream key guessing. Preserve a legacy validation envelope with
+  a named boundary pipe when the standard pipe would change its code/message.
+- Encrypted/decrypted JSON and persisted provider payloads cross a trust boundary: parse and validate
+  them before constructing an adapter or returning a domain/read record. Missing credentials must
+  fail closed; never coerce them to empty strings.
+- `unknown`/open JSON is allowed only where the product is genuinely dynamic or the input is
+  untrusted and immediately narrowed: tenant theme/settings, listing attributes/mode config,
+  historical snapshots and incoming outbox/provider payloads. Document such fields; do not let
+  accidental `unknown` spread through ports. Response mappers enumerate contract keys explicitly so
+  persistence column names cannot leak through object spread.
+
 ### Backend error placement
 
 Never repeat a custom error envelope inline in a use-case

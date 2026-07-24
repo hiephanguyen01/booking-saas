@@ -91,6 +91,18 @@ resolve `tenant_id` from the payload before calling `forTenant`. Reconciliation 
 refund and missing-refund projections from durable database facts; operational queries are in
 [`runbooks/finance-reconciliation.md`](./runbooks/finance-reconciliation.md).
 
+Stateful writes use domain transition graphs plus repository compare-and-swap. Listing/group
+moderation guards status, listing content edits guard `updated_at`, and content-report moderation
+guards the loaded status; a concurrent loser receives 409 before audit/outbox. The append-only
+tenancy subscription stream has one current-subscription read adapter: newest `starts_at`, then
+`created_at`, with PostgreSQL `now()` returned by the same statement for liveness, limits, subscriber
+counts and platform health.
+
+Payment gateway configuration is a provider-discriminated contract. Credentials are encrypted at
+rest, validated again after decryption, and never returned; invalid/tampered stored data fails closed.
+Dynamic tenant/listing JSON remains open by design, while provider handoffs, refund evidence and
+HTTP queries are typed/validated at their boundary.
+
 ## Frontend internals
 
 React Router 8 framework mode: each route exports `loader` (server data), `action` (server mutation),
@@ -103,18 +115,17 @@ per-tenant theme CSS at SSR; the dashboard resolves scope from the login session
 (raw TSX, Tailwind v4 CSS-first); the FE↔BE contract is `@booking/contracts` (zod). See the per-app
 `CLAUDE.md` and [`conventions.md`](./conventions.md).
 
-## Build, tests & CI
+## Build, verification & CI
 
-Turborepo tasks: `build` (`^build`, outputs `dist`/`build`/`.react-router`), `dev`, `lint`, `test`, and
-`typecheck` (`^build`). Targeted tests follow [ADR 0005](./decisions/0005-no-tests-policy.md).
-Storefront server-side unit tests use Node's built-in runner and cover security/concurrency helpers
-without starting Redis or React Router.
+There are **no tests** by owner decision; do not add test files, runners, scripts or CI test steps
+([ADR 0005](./decisions/0005-no-tests-policy.md)). Verification is
+`pnpm turbo lint typecheck build`, `pnpm --filter=@booking/api check:rls`, and runtime smoke against
+local infrastructure.
 
-CI (`.github/workflows/ci.yml`, "Frontend CI") runs the Storefront static security gate and Storefront
-unit tests, then `pnpm turbo run lint typecheck build` for the **two frontends** and
-`pnpm --filter=@booking/api check:rls`, followed by Docker builds for both frontend images (`push:
-false`). The API is **not** compiled or linted directly in CI — run `pnpm typecheck`/`build` locally
-after backend changes.
+CI (`.github/workflows/ci.yml`, "Frontend CI") lints/typechecks/builds the two frontends, runs the
+Storefront static security gate and API RLS coverage check, then builds both frontend images with
+`push: false`. The API is not compiled/linted directly in CI, so backend changes require the full
+local suite.
 
 ## Deployment status
 

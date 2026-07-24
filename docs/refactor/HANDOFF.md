@@ -163,13 +163,23 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 - Seeded owner/partner permissions đã được xác minh qua HTTP; các ghi chú `MISSING_PERMISSION` cũ là
   trạng thái DB/cache smoke đã stale, không phải thiếu catalog permission.
 
-Các mục **còn mở vì cần quyết định wire/behavior/product**, không phải implementation bị bỏ quên:
+Vòng quyết định cuối **đã đóng 2026-07-24** theo plan
+[`2026-07-24-entity-centric-final-gap-hardening.md`](../superpowers/plans/2026-07-24-entity-centric-final-gap-hardening.md):
 
-- Finance `SetPlatformRateUseCase`: expose route mới hay xoá code không reachable.
-- Content-report: có bỏ key response thừa `targetType` hay giữ tương thích.
-- Hợp nhất bốn định nghĩa “current subscription” về status/liveness/tiebreak/clock duy nhất.
-- Các known gap ở spec §8a và Track B I/O hardening (gateway typing, loose boundary,
-  moderation/listing CAS, state-transition tightening) phải được duyệt như behavior/wire change.
+- Xoá `SetPlatformRateUseCase` cùng port/repository/request contract không reachable (`59a6e79`);
+  không mở thêm route platform chưa có product flow.
+- Giữ `targetType` như compatibility alias deprecated, khai báo chính thức trong contract và mapper
+  explicit; không còn leak persistence key qua spread (`59a6e79`).
+- Một `ICurrentSubscriptionReader` sở hữu tiebreak `starts_at DESC, created_at DESC`, resolve plan và
+  DB clock; guard/limits/count/health dùng chung semantics (`29431bb`).
+- Gateway credential thành discriminated union, dữ liệu giải mã/payload/evidence được validate,
+  query catalog raw cuối cùng được đóng type; dynamic tenant/listing JSON và incoming outbox
+  `unknown` là allowlist có chủ đích (`3c38a24`).
+- Content-report + listing/group có transition graph và repository CAS; content edit guard
+  `updated_at`, moderation guard status, loser trả typed 409 trước audit/outbox (`5c36ba3`).
+
+Các hàng khác còn ghi “giữ nguyên” trong spec §8a vẫn là backlog product riêng; vòng này không tự
+phát minh policy cho affiliate/tenant/partner/scheduling/pricing-rule.
 
 ## 8. Final review toàn nhánh — 2026-07-24
 

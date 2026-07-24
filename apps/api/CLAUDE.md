@@ -41,6 +41,15 @@ Controllers are split by audience: `public-` / `tenant-` / `partner-` / `admin-`
 - Same code with different frozen messages stays as separate named classes. Auth retry fields,
   legacy HTTP bodies, webhook/provider shapes and 5xx use named Nest exceptions in
   `application/*-http-errors.ts`; `DomainError` is 4xx-only.
+- Domain transitions and repository CAS are both required: pass the loaded status/version/timestamp
+  into the write, return an explicit miss, throw a named 409 before audit/outbox, and never replace a
+  guarded update with unconditional load-check-save.
+- HTTP/provider JSON is typed and validated at the edge. Use discriminated unions for
+  provider-specific credentials, validate decrypted stored JSON before adapter construction, and
+  fail closed rather than filling absent secrets with `''`. Open `unknown` JSON is limited to
+  documented dynamic config/snapshots or untrusted payloads that are immediately narrowed.
+- Response mappers list contract fields explicitly; do not spread Prisma/read records into HTTP
+  responses because persistence-only keys become accidental wire contracts.
 
 The full decision rules and wire-freeze requirements are in
 [`docs/conventions.md`](../../docs/conventions.md#entityuse-case-decision) and

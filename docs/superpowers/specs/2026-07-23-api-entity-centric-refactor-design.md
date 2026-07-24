@@ -232,25 +232,25 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | Gap | Module | Hiện trạng |
 |---|---|---|
 | Affiliate status không có transition graph (any→any; approve đè suspended âm thầm) | affiliate | Use-case set thẳng status |
-| ContentReport moderation status any→any | content-reports | Không có máy trạng thái |
+| **[ĐÃ ĐÓNG 2026-07-24]** ContentReport moderation status any→any | content-reports | `open → reviewing → resolved|dismissed`; terminal immutable; repository CAS theo status, loser `409 CONTENT_REPORT_STATE_CHANGED` |
 | Tenant/tenancy status writes any→any | tenancy | Không có transition guard |
 | Partner re-submit identity reset cả partner đã verified; đổi tên payout holder không re-trigger name-match | partner | Không guard theo verification state |
 | Scheduling: cho phép 2 window cùng weekday chồng nhau; row "closed" vẫn mang hours | scheduling | Không validate shape |
 | Promotions: end-partner-promotion thiếu guard "đã ended" | promotions | Idempotent-by-accident |
 | P2002 leak thành 500 (partner slug, plan-name create) | partner, tenancy | Thiếu translation — fix là behavior change của error envelope → ghi sổ |
-| Finance: `SetPlatformRate` use-case tồn tại nhưng không có route | finance | Cần owner quyết: nối route hay xóa |
+| **[ĐÃ ĐÓNG 2026-07-24]** Finance: `SetPlatformRate` use-case tồn tại nhưng không có route | finance | Owner chọn xoá use-case + provider + port/repo method + request contract; không mở surface mới |
 | P2002 leak thành 500 (listing-type slug) + FK violation khi delete không dịch | catalog | Giữ nguyên ở PR #9 — fix là behavior change của error envelope |
 | `add-domain` cho phép tạo primary thứ hai (nhận thẳng `isPrimary` từ request, không tự clear primary cũ; không có DB constraint chặn 2 hàng `is_primary=true` cùng tenant) | tenancy | Giữ nguyên ở PR #10a; **đã đóng hậu refactor** bằng atomic primary swap + partial unique index |
 | `delete-domain` (`assertDeletableFromPortfolio`) thực chất bảo vệ "còn ít nhất 1 domain **verified**", không phải "còn primary" — xoá domain primary trong khi còn domain verified khác (không primary) vẫn thành công và để tenant không còn domain nào là primary | tenancy | Bất đối xứng kế thừa từ code cũ, giữ nguyên ở PR #10a |
-| **Bốn** bản "current subscription" bất đồng (final review PR #10b bổ sung bản thứ tư): `findCurrentByTenant` (TypeScript, `PrismaSubscriptionRepository`) order `startsAt DESC` **không tiebreak `created_at`** — đây là đường chạy guard + plan-limit; `PrismaPlanRepository.liveSubscriberCounts` và platform-health (raw SQL) order `starts_at DESC, created_at DESC` + lọc billable/hết-hạn; và `ISubscriptionRepository.listByTenant` order `starts_at DESC, created_at DESC` **CÓ** tiebreak (comment của nó tự nhận "hàng đầu = current" nhưng khác `findCurrentByTenant` đúng ở tiebreak). Khi trùng `startsAt` các đường chọn khác hàng làm "current" | tenancy | Giữ nguyên ở PR #10b — PR hợp nhất riêng phải quét đủ **cả 4** (→ §8b-bis) |
-| `GetPlanLimitsUseCase` cấp limit theo subscription mới nhất (từ `findCurrentByTenant`) **bất kể status hay đã hết hạn** — liveness chỉ được enforce riêng, bởi `RequireActiveSubscriptionGuard`, và chỉ cho ghi dashboard, không cho lookup limit | tenancy | Giữ nguyên ở PR #10b — hành vi kế thừa từ code cũ |
+| **[ĐÃ ĐÓNG 2026-07-24]** Bốn bản "current subscription" bất đồng | tenancy | Một `ICurrentSubscriptionReader`/Prisma adapter chọn `starts_at DESC, created_at DESC`, resolve plan và trả PostgreSQL `now()` trong cùng statement; guard, host, count, limits và health dùng adapter này |
+| **[ĐÃ ĐÓNG 2026-07-24]** `GetPlanLimitsUseCase` cấp limit cho subscription đã chết | tenancy | Limits chỉ trả khi `evaluateSubscription(current, evaluatedAt).phase === 'active'`, cùng DB clock với selection |
 | `create-plan` không pre-check tên trùng trước khi insert ⇒ tên trùng leak thẳng Prisma `P2002` thay vì 409 dịch nghĩa (đường `update-plan` đã có pre-check tên) | tenancy | Giữ nguyên ở PR #10b, cùng loại với hàng "P2002 leak thành 500" phía trên |
 | Pricing-rule overlap check (`date_time_range` chồng window + replace `date_range`/`fixed` cùng params) **chỉ** chạy ở partner path (`create-partner-pricing-rule`); tenant path (`create-pricing-rule`) không kiểm overlap, không replace — tenant tạo được rule chồng window | listing | Giữ nguyên ở PR #11a (bất đối xứng kế thừa từ code cũ) |
 | `create-resource` nhận `partnerId` từ request và không kiểm partner đó có thuộc tenant hiện tại không (không guard partnerId-belongs-to-tenant); RLS chặn cross-tenant ghi nhưng partnerId sai-trong-tenant không bị bắt | listing | Giữ nguyên ở PR #11a |
 | Hai payload `pricing_rule.deleted` khác nhau: tenant `delete-pricing-rule` emit `{pricingRuleId}` (KHÔNG listingId), partner `delete-partner-pricing-rule` emit `{pricingRuleId, listingId}` (CÓ listingId) — consumer phải chịu cả hai shape | listing | Giữ nguyên ở PR #11a (bất đối xứng kế thừa; hợp nhất là wire change) |
 | Replace-match của pricing-rule (`sameWindowKey`) so `JSON.stringify(params)` của candidate với row đã lưu, nhưng Postgres `jsonb` **sắp xếp lại thứ tự key** khi round-trip (vd `{from,to}` → `{to,from}`) còn candidate giữ nguyên thứ tự client gửi ⇒ replace **chỉ fire khi FE tình cờ serialize đúng thứ tự canonical của jsonb**; thứ tự khác → không match → tạo row thứ hai thay vì thay thế (smoke #11a case 7 phát hiện). Hành vi copy nguyên văn từ code cũ (Task 4 review opus xác nhận predicate byte-identical) — **không phải regression** | listing | Giữ nguyên ở PR #11a; fix đúng là so field-wise theo giá trị (không JSON.stringify cả object) — behavior change nhỏ, tách sau |
-| **moderate()/update() KHÔNG CAS** — `WHERE id=…` thuần, không `WHERE status=expectedFrom`, không version/row-lock. Máy trạng thái moderation chỉ enforce ở application layer trong 1 tx (đọc rồi ghi vô điều kiện). 2 request moderation đồng thời cùng một listing đều thắng (lost-update/TOCTOU); kẻ thua đáng lẽ nhận `LISTING_NOT_IN_REVIEW`/`LISTING_ALREADY_PUBLISHED` nhưng lại 200 | listing | Giữ nguyên ở PR #11b (frozen-surface: CAS ở repo, không thêm) |
-| `transitionHide` **không guard status** — hợp lệ từ mọi status (draft/pending_review/published/archived), không bao giờ throw. Any→archived thật sự | listing | Giữ nguyên ở PR #11b |
+| **[ĐÃ ĐÓNG 2026-07-24]** `moderate()/update()` không CAS | listing | Repository moderation guard `status=expectedStatus`; content update guard `updated_at=expectedUpdatedAt`; loser `409 LISTING_STATE_CHANGED`, audit/outbox chỉ sau success |
+| **[ĐÃ ĐÓNG 2026-07-24]** `transitionHide` any→archived | listing | Chỉ `pending_review|published → archived`; draft/archived nhận `LISTING_NOT_HIDEABLE` |
 | **3 shape "not owned" cho listing**: `LISTING_NOT_OWNED`/403/`This listing belongs to another partner` (update), `LISTING_NOT_OWNED`/403/`Listing belongs to another partner` (delete, KHÔNG "This"), `NOT_OWNED`/403/`This resource belongs to another partner` (submit/hide/republish qua `assertOwnership`) — 3 class riêng, giữ cả 3 | listing | Giữ nguyên ở PR #11b |
 | `GROUP_MANAGED_LISTING` 1 code / 4 message (submit/publish/republish/hide); `LISTING_GROUP_READ_ONLY` 1 code / 2 message (changing vs deleting its items); `INVALID_ADMINISTRATIVE_DIVISION` 1 code / 2 message (ward-province mismatch vs "both codes required") | listing | Giữ nguyên ở PR #11b |
 | **delete group-read-only guard chỉ chạy khi `requirePartnerId`** (partner path) — tenant-scoped delete bỏ qua "hide the group first" mà update + partner-delete đều enforce ⇒ tenant admin xoá được listing thuộc group non-draft | listing | Bất đối xứng kế thừa, giữ nguyên ở PR #11b |
@@ -304,8 +304,9 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 
 ### 8b-bis. Read-side follow-ups (ghi nhận trong refactor, sửa sau — có thể đổi wire)
 
-- content-reports: response đang leak key `targetType` thừa cạnh `target` (repo `toRecord` spread
-  row + mapper spread record) — bỏ nó là wire change, cần duyệt riêng.
+- **[ĐÃ CHỐT 2026-07-24]** content-reports giữ `targetType` như compatibility alias deprecated cạnh
+  `target`. Contract khai báo cả hai và mapper enumerate field explicit; không còn persistence-key
+  leak qua object spread. Xoá alias cần deprecation/removal wave riêng.
 - **[ĐÃ LÀM hậu refactor]** content-reports reader port dùng thẳng `ContentReportReason`.
 - **[ĐÃ LÀM hậu refactor]** content-reports `handledAt` dùng DB clock lấy trong cùng tenant tx.
 - favorites: `toVnd` + `priceFromModeConfig` trong `prisma-favorite.repository.ts` là bản sao gần
@@ -320,16 +321,9 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   `set-primary-domain`, `delete-domain`) trước đây không gọi `cache.invalidateHost`, khiến
   positive/negative cache stale tối đa 60s. Hardening hiện invalidate host liên quan sau commit;
   add-domain primary cũng swap primary atomically trong cùng RLS transaction.
-- tenancy: **hai đồng hồ trả lời cùng một câu hỏi** ("subscription này còn sống không?"). Bốn call
-  site của `evaluateSubscription` (`resolve-tenant-by-host`, `get-subscription-status`,
-  `get-platform-health`, `RequireActiveSubscriptionGuard`) đều nhận `now` là app clock
-  (`new Date()`, tham số theo §3), trong khi `PrismaPlanRepository.liveSubscriberCounts` lọc
-  `expires_at > now()` bằng **DB clock**. Hai đồng hồ có thể lệch vài chục/vài trăm mili-giây, đủ
-  để một request ngay sát ranh giới hết hạn thấy kết quả khác nhau giữa "tenant này còn active
-  không" (app clock) và "tenant này có tính vào subscriber count của plan không" (DB clock). Giữ
-  nguyên ở PR #10b — cùng nhóm với known-gap "ba bản current subscription" (§8a): việc hợp nhất
-  định nghĩa "current subscription" về một chỗ (một nguồn dữ liệu, một đồng hồ, một tiebreak) đáng
-  một PR riêng, không nhét vào PR module tiếp theo.
+- **[ĐÃ LÀM 2026-07-24]** tenancy không còn hai clock cho subscription. Current reader trả
+  PostgreSQL `now()` cùng selection; mọi `evaluateSubscription`, limits, live counts và health dùng
+  timestamp đó.
 - **[ĐÃ LÀM hậu refactor] listing:** PR #11b/#11c chủ đích giữ bộ máy moderation dùng chung dưới
   dạng pure function + application shim để không phá đường group khi hai phần chưa cùng hoàn tất.
   Hardening sau đó đã promote `ModerationError` thành `DomainError`, fold transition vào
@@ -399,11 +393,17 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
     băng shape trước khi thấy đủ số lần lặp để biết đâu là phần chung thật sự. Giữ copy per module
     cho tới khi vượt ~13 bản; nếu vượt, revisit việc hoist.
 
-### 8d. Track B — I/O hardening (dự án riêng sau refactor, đã khảo sát 2026-07-20)
+### 8d. Track B — I/O hardening (đã duyệt/đóng scope 2026-07-24)
 
-Không thuộc refactor này nhưng ghi lại để không thất lạc lần nữa: ~65 endpoint loose-typed;
-`payments` credentials `Record<string,string>` → discriminated union per-gateway (đổi wire + đụng FE
-+ security); `gatewayPayload`/Evidence typed; khử `unknown`/jsonb tự do ở boundary.
+- Controller audit còn đúng một raw `Record<string, unknown>` ở catalog query; đã thay bằng typed
+  contract + named pipe, giữ nguyên `INVALID_CATALOG_SEARCH` envelope.
+- Payment credentials là discriminated union per gateway (SePay/PayOS/MoMo/ZaloPay/mock). HTTP input
+  và JSON sau giải mã đều validate; adapter không còn nhận secret thiếu dưới dạng chuỗi rỗng.
+- Checkout `gatewayPayload`, payment-completion payload và refund evidence có type/schema; legacy
+  `{paymentUrl}` checkout row vẫn đọc được.
+- `unknown` còn lại được allowlist: incoming outbox/provider data phải narrow ngay; tenant
+  theme/settings, listing attributes/mode config và historical snapshots là JSON động theo product.
+  Không đóng giả schema cho các field động này.
 
 ### 8e. Audit coverage toàn bộ use-case (đã làm hậu refactor 2026-07-24)
 
