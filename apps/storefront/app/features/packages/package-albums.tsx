@@ -6,10 +6,10 @@ import {
   DialogTitle,
 } from '@booking/ui/components/ui/dialog';
 import { ImageIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { PublicPackageOption } from '../../lib/package-options';
+import { usePackageAlbumsController } from './use-package-albums-controller';
 
 export function PackageAlbums({
   packages,
@@ -21,15 +21,8 @@ export function PackageAlbums({
   title: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const albums = packages
-    .filter((item) => item.photos.length)
-    .map((item) => ({ id: item.id, name: item.name, photos: item.photos }));
-  if (!albums.length && fallbackPhotos.length) {
-    albums.push({ id: 'listing', name: title, photos: fallbackPhotos });
-  }
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const active = albums.find((album) => album.id === activeId) ?? null;
+  const { active, albums, handleOpenChange, openAlbum, restoreTriggerFocus } =
+    usePackageAlbumsController({ packages, fallbackPhotos, title });
 
   if (!albums.length) return null;
 
@@ -44,10 +37,7 @@ export function PackageAlbums({
             <button
               key={album.id}
               type="button"
-              onClick={(event) => {
-                triggerRef.current = event.currentTarget;
-                setActiveId(album.id);
-              }}
+              onClick={(event) => openAlbum(album.id, event.currentTarget)}
               className="group relative h-20 w-28 shrink-0 overflow-hidden rounded-md bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={t('packages.viewAlbum', { name: album.name })}
             >
@@ -65,13 +55,10 @@ export function PackageAlbums({
         </div>
       </SectionCard>
 
-      <Dialog open={Boolean(active)} onOpenChange={(open) => !open && setActiveId(null)}>
+      <Dialog open={Boolean(active)} onOpenChange={handleOpenChange}>
         <DialogContent
           className="max-h-[90vh] overflow-y-auto sm:max-w-4xl"
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            triggerRef.current?.focus();
-          }}
+          onCloseAutoFocus={restoreTriggerFocus}
         >
           <DialogHeader>
             <DialogTitle>{active?.name ?? title}</DialogTitle>
