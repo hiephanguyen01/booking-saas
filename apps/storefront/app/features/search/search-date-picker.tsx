@@ -9,26 +9,13 @@ import {
 } from '@booking/ui/components/ui/drawer';
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { CalendarDays, ChevronDown, Info } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { NsI18n, useTranslation, type Locale } from '../../lib/i18n';
-import { dateLabelInTz, dateOnlyToLocal, DEFAULT_TZ, localToDateOnly } from '../../lib/time';
+import type { ReactNode } from 'react';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 import { useLocale } from '../../lib/use-locale';
 import { ModeToggle, modeHint } from './search-form-controls';
 import type { DateRange } from './search-form-types';
 import type { SearchMode } from './search-state';
-
-/** Locale-aware month caption + weekday names; `Intl` keeps SSR and client in step. */
-function useCalendarFormatters(locale: Locale) {
-  return useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
-    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
-    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
-    return {
-      formatCaption: (month: Date) => caption.format(month),
-      formatWeekdayName: (day: Date) => weekday.format(day),
-    };
-  }, [locale]);
-}
+import { useSearchDatePickerController } from './use-search-date-picker-controller';
 
 export function SearchDatePicker({
   mode,
@@ -53,28 +40,29 @@ export function SearchDatePicker({
 }) {
   const { t } = useTranslation(NsI18n.Common);
   const locale = useLocale();
-  const formatters = useCalendarFormatters(locale);
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [calendarToday, setCalendarToday] = useState<Date>();
-  useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    setCalendarToday(today);
-  }, []);
-  const day = (value: Date): string => dateLabelInTz(localToDateOnly(value), DEFAULT_TZ, locale);
-  const isSingleDayRange =
-    Boolean(range.from && range.to) && localToDateOnly(range.from!) === localToDateOnly(range.to!);
-  const label =
-    mode === 'hourly' || singleDate
-      ? date
-        ? dateLabelInTz(date, DEFAULT_TZ, locale)
-        : t('home.pickDate')
-      : range.from
-        ? isSingleDayRange
-          ? day(range.from)
-          : `${day(range.from)} - ${range.to ? day(range.to) : t('home.endDate')}`
-        : t('home.pickDate');
+  const {
+    calendarToday,
+    drawerOpen,
+    formatters,
+    label,
+    popoverOpen,
+    selectDateRange,
+    selectSingleDate,
+    selectedDate,
+    setDrawerOpen,
+    setPopoverOpen,
+    singleMode,
+  } = useSearchDatePickerController({
+    mode,
+    date,
+    setDate,
+    range,
+    setRange,
+    singleDate,
+    locale,
+    pickDateLabel: t('home.pickDate'),
+    endDateLabel: t('home.endDate'),
+  });
   const description = modeHint(mode, t);
   const trigger = (
     <button
@@ -89,37 +77,28 @@ export function SearchDatePicker({
   );
 
   function calendar(months: 1 | 2, close: () => void): ReactNode {
-    const picker =
-      mode === 'hourly' || singleDate ? (
-        <Calendar
-          mode="single"
-          selected={date ? dateOnlyToLocal(date) : undefined}
-          onSelect={(next) => {
-            if (!next) return;
-            setDate(localToDateOnly(next));
-            close();
-          }}
-          disabled={calendarToday ? { before: calendarToday } : undefined}
-          numberOfMonths={months}
-          formatters={formatters}
-          className="sf-calendar w-full [--cell-size:2.25rem]"
-        />
-      ) : (
-        <Calendar
-          mode="range"
-          selected={range}
-          onSelect={(next) => {
-            const selected = next ?? { from: undefined };
-            setRange(selected);
-            if (selected.from && selected.to) close();
-          }}
-          disabled={calendarToday ? { before: calendarToday } : undefined}
-          numberOfMonths={months}
-          resetOnSelect
-          formatters={formatters}
-          className="sf-calendar w-full [--cell-size:2.25rem]"
-        />
-      );
+    const picker = singleMode ? (
+      <Calendar
+        mode="single"
+        selected={selectedDate}
+        onSelect={(next) => selectSingleDate(next, close)}
+        disabled={calendarToday ? { before: calendarToday } : undefined}
+        numberOfMonths={months}
+        formatters={formatters}
+        className="sf-calendar w-full [--cell-size:2.25rem]"
+      />
+    ) : (
+      <Calendar
+        mode="range"
+        selected={range}
+        onSelect={(next) => selectDateRange(next, close)}
+        disabled={calendarToday ? { before: calendarToday } : undefined}
+        numberOfMonths={months}
+        resetOnSelect
+        formatters={formatters}
+        className="sf-calendar w-full [--cell-size:2.25rem]"
+      />
+    );
 
     return (
       <div className="flex flex-col">
