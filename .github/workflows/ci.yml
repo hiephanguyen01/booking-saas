@@ -30,7 +30,12 @@ jobs:
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
           app/lib/tenant-availability.test.ts app/lib/refresh-lock.server.test.ts
           app/lib/checkout-idempotency.server.test.ts app/lib/json-request.server.test.ts
+          app/lib/featured-catalog.test.ts
           app/features/partner-onboarding/server/partner-onboarding-domain.test.ts
+      - name: API featured catalog tests
+        run: >-
+          pnpm --filter=@booking/api exec node --experimental-strip-types --test
+          src/modules/catalog/application/featured-listings.test.ts
       - name: Storefront booking input contract tests
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
@@ -43,12 +48,18 @@ jobs:
         run: pnpm --filter=@booking/ui test
       - name: Frontend lint
         run: pnpm turbo run lint --filter=@booking/storefront --filter=@booking/dashboard
+      - name: API lint
+        run: pnpm --filter=@booking/api lint
       - name: Storefront typecheck
         run: pnpm turbo run typecheck --filter=@booking/storefront
       - name: Dashboard typecheck
         run: pnpm turbo run typecheck --filter=@booking/dashboard
+      - name: API typecheck
+        run: pnpm --filter=@booking/api typecheck
       - name: Frontend production builds
         run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
+      - name: API production build
+        run: pnpm --filter=@booking/api build
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
 
