@@ -7,7 +7,9 @@ import { CatalogModule } from '../../../catalog/infrastructure/http/catalog.modu
 import { PartnerModule } from '../../../partner/infrastructure/http/partner.module';
 import { AdministrativeDivisionModule } from '../../../administrative-division/infrastructure/http/administrative-division.module';
 import { COMMISSION_COVERAGE_READER } from '../../domain/ports/commission-coverage-reader.port';
+import { REVIEW_AGGREGATE_PROJECTOR } from '../../domain/ports/review-aggregate-projector.port';
 import { PrismaCommissionCoverageReader } from '../repositories/prisma-commission-coverage.reader';
+import { PrismaReviewAggregateProjector } from '../repositories/prisma-review-aggregate.projector';
 import { AssertListingDepositCoverageUseCase } from '../../application/use-cases/assert-listing-deposit-coverage.use-case';
 import { LISTING_GROUP_REPOSITORY } from '../../domain/ports/listing-group-repository.port';
 import { LISTING_REPOSITORY } from '../../domain/ports/listing-repository.port';
@@ -110,6 +112,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     { provide: PRICING_RULE_REPOSITORY, useClass: PrismaPricingRuleRepository },
     { provide: CANCELLATION_POLICY_REPOSITORY, useClass: PrismaCancellationPolicyRepository },
     { provide: COMMISSION_COVERAGE_READER, useClass: PrismaCommissionCoverageReader },
+    { provide: REVIEW_AGGREGATE_PROJECTOR, useClass: PrismaReviewAggregateProjector },
     CreateListingGroupUseCase,
     ListListingGroupsUseCase,
     GetListingGroupUseCase,

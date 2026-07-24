@@ -13,8 +13,10 @@ import { BOOKING_REPOSITORY } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE } from '../../domain/ports/hold-store.port';
 import { OTP_STORE } from '../../domain/ports/otp-store.port';
 import { BOOKING_AVAILABILITY_READER } from '../../domain/ports/booking-availability-reader.port';
+import { BOOKING_PARTNER_READER } from '../../domain/ports/booking-partner-reader.port';
 import { PrismaBookingRepository } from '../repositories/prisma-booking.repository';
 import { PrismaBookingAvailabilityReader } from '../repositories/prisma-booking-availability-reader';
+import { PrismaBookingPartnerReader } from '../repositories/prisma-booking-partner.reader';
 import { RedisHoldStore } from '../redis-hold.store';
 import { RedisOtpStore } from '../redis-otp.store';
 import { BookingSchedulerWorker } from '../booking-scheduler.worker';
@@ -60,6 +62,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     { provide: HOLD_STORE, useClass: RedisHoldStore },
     { provide: OTP_STORE, useClass: RedisOtpStore },
     { provide: BOOKING_AVAILABILITY_READER, useClass: PrismaBookingAvailabilityReader },
+    { provide: BOOKING_PARTNER_READER, useClass: PrismaBookingPartnerReader },
     CreateBookingUseCase,
     ConfirmBookingUseCase,
     CancelBookingUseCase,

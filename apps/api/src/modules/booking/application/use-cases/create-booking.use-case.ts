@@ -46,6 +46,10 @@ import {
   BOOKING_AVAILABILITY_READER,
   type IBookingAvailabilityReader,
 } from '../../domain/ports/booking-availability-reader.port';
+import {
+  BOOKING_PARTNER_READER,
+  type IBookingPartnerReader,
+} from '../../domain/ports/booking-partner-reader.port';
 import { validateSlotPolicy } from '../../domain/slot-policy';
 import { Booking } from '../../domain/entities/booking.entity';
 import { BookingPeriod } from '../../domain/value-objects/booking-period.value-object';
@@ -79,6 +83,7 @@ export class CreateBookingUseCase {
     @Inject(BOOKING_REPOSITORY) private readonly bookings: IBookingRepository,
     @Inject(HOLD_STORE) private readonly holds: IHoldStore,
     @Inject(BOOKING_AVAILABILITY_READER) private readonly availability: IBookingAvailabilityReader,
+    @Inject(BOOKING_PARTNER_READER) private readonly partners: IBookingPartnerReader,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly guests: FindOrCreateGuestUseCase,
     private readonly preparePromotion: PreparePromotionUseCase, // Task 1.11 — in-tx promo reservation
@@ -293,15 +298,12 @@ export class CreateBookingUseCase {
     // Freeze the applicable commission rule onto the booking so a later rule
     // change never touches this booking (§13.1). The ledger journal at completion
     // replays this snapshot, never the live rule.
-    const partner = await tx.partner.findUnique({
-      where: { id: args.listing.partnerId },
-      select: { isHouse: true },
-    });
+    const isHouse = await this.partners.isHouse(tx, args.listing.partnerId);
     let commissionSnapshot = await this.commissions.execute(tx, {
       partnerId: args.listing.partnerId,
       listingTypeId: args.listing.listingTypeId,
       categoryId: args.listing.categoryId,
-      isHouse: partner?.isHouse ?? false,
+      isHouse,
     });
 
     // ── Task 2.1 (Affiliate attribution) ──────────────────────────────────────
