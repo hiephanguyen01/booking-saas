@@ -15,51 +15,29 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { SlidersHorizontal } from 'lucide-react';
-import {
-  Link,
-  useLocation,
-  useNavigation,
-  useOutletContext,
-  useSearchParams,
-} from 'react-router';
+import { Link } from 'react-router';
 import { CatalogResultSkeleton } from '../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { isReadNavigationMethod, useMinimumPending } from '../../lib/use-minimum-pending';
-import type { StorefrontContext } from '../../root';
 import type { Route } from '../../routes/+types/catalog';
-import type { SearchSort, StorefrontSearchState } from '../search/search-state';
+import { FavoriteSearchResultCard } from '../favorites/components/favorite-cards';
 import { SearchForm } from '../search/search-form';
 import { CatalogPagination } from './components/catalog-pagination';
 import { FilterPanel } from './components/filter-panel';
-import { FavoriteSearchResultCard } from '../favorites/components/favorite-cards';
-
-/**
- * Only the orders `composeSearchResults()` actually applies.
- *
- * "Đặt nhiều nhất" and "Đánh giá nhiều nhất" chips used to sit here too: they
- * rewrote the URL and rendered active, but nothing sorted on them — and there is
- * no booking-count or rating data behind either.
- */
-const SORT_OPTIONS = [
-  { value: 'relevance', labelKey: 'sort.relevance' },
-  { value: 'bookings-desc', labelKey: 'sort.bookings' },
-  { value: 'price-asc', labelKey: 'sort.priceAsc' },
-] as const satisfies readonly { value: SearchSort; labelKey: string }[];
+import {
+  type CatalogSortItem,
+  useCatalogPageController,
+} from './use-catalog-page-controller';
 
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, search, state } = loaderData;
-  const { listingTypes } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation([NsI18n.Catalog, NsI18n.Common]);
-  const location = useLocation();
-  const navigation = useNavigation();
-  const pending = useMinimumPending(
-    navigation.state === 'loading' &&
-      navigation.location?.pathname === location.pathname &&
-      isReadNavigationMethod(navigation.formMethod),
-  );
-  const booleanFacetKeys = type.attributeSchema
-    .filter((field) => field.type === 'boolean')
-    .map((field) => `attr.${field.key}`);
+  const { listingTypes, pending, booleanFacetKeys, searchFormKey, sortItems } =
+    useCatalogPageController({
+      typeSlug: params.typeSlug,
+      attributeSchema: type.attributeSchema,
+      activeSort: state.sort,
+      availableSorts: search.sortOptions,
+    });
 
   return (
     // A plain <div>: root.tsx already wraps the outlet in the page's one <main>.
@@ -67,7 +45,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
       <SearchForm
         // SearchForm owns uncontrolled inputs. Remount from the complete URL so
         // browser history and query-only navigations cannot leave stale values.
-        key={`${params.typeSlug}:${location.search}`}
+        key={searchFormKey}
         listingTypes={listingTypes}
         currentType={params.typeSlug}
         initialState={state}
@@ -116,7 +94,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
             </Drawer>
           </div>
 
-          <SortBar state={state} options={search.sortOptions} />
+          <SortBar items={sortItems} />
 
           {pending ? (
             <div
@@ -164,8 +142,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   );
 }
 
-function SortBar({ state, options }: { state: StorefrontSearchState; options: SearchSort[] }) {
-  const [searchParams] = useSearchParams();
+function SortBar({ items }: { items: readonly CatalogSortItem[] }) {
   const { t } = useTranslation(NsI18n.Catalog);
   return (
     <div
@@ -174,13 +151,12 @@ function SortBar({ state, options }: { state: StorefrontSearchState; options: Se
     >
       <span className="shrink-0 text-sm font-medium text-foreground">{t('sort.label')}</span>
       <div className="flex gap-3">
-        {SORT_OPTIONS.filter((option) => options.includes(option.value)).map((option) => (
+        {items.map((item) => (
           <SortChip
-            key={option.value}
-            label={t(option.labelKey)}
-            value={option.value}
-            active={state.sort === option.value}
-            params={searchParams}
+            key={item.value}
+            label={t(item.labelKey)}
+            href={item.href}
+            active={item.active}
           />
         ))}
       </div>
@@ -188,21 +164,7 @@ function SortBar({ state, options }: { state: StorefrontSearchState; options: Se
   );
 }
 
-function SortChip({
-  label,
-  value,
-  active,
-  params,
-}: {
-  label: string;
-  value: SearchSort;
-  active: boolean;
-  params: URLSearchParams;
-}) {
-  const next = new URLSearchParams(params);
-  if (value === 'relevance') next.delete('sort');
-  else next.set('sort', value);
-  next.delete('page');
+function SortChip({ label, href, active }: { label: string; href: string; active: boolean }) {
   return (
     <Button
       asChild
@@ -213,7 +175,7 @@ function SortChip({
           : 'rounded-full hover:bg-transparent hover:text-primary'
       }
     >
-      <Link to={`?${next.toString()}`} aria-current={active ? 'true' : undefined}>
+      <Link to={href} aria-current={active ? 'true' : undefined}>
         {label}
       </Link>
     </Button>
