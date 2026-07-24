@@ -34,22 +34,21 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 10a | tenancy — Tenant + domains | ✅ merge (GitHub PR #27) |
 | 10b | tenancy — plan + subscription | ✅ merge (GitHub PR #28) — **tenancy xong cả module** |
 | 11a | listing — cancellation-policy + pricing-rule + resource | ✅ merge (GitHub PR #29) |
-| 11b | listing — Listing content + moderation | 🔍 review (GitHub PR #NN) |
-| 11c | listing — ListingGroup + cascade | chưa làm (dùng lại `listing-group-errors.ts` + shared moderation machine từ #11b) |
+| 11b | listing — Listing content + moderation | ✅ merge (GitHub PR #30) |
+| 11c | listing — ListingGroup + cascade | 🔍 review (GitHub PR #NN) — **listing xong cả module** |
 | 12→16 | scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**listing đang tách 3 PR con** (module lớn nhất còn lại: 45 use-case, 56 endpoint — như promotions
-5a/5b và tenancy 10a/10b). **PR #11a** (3 aggregate phụ) ✅ merged (PR #29). **PR #11b** (Listing
-content + moderation qua `Listing` aggregate) đang review. Kế tiếp: **PR #11c** — ListingGroup +
-cascade.
+**listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint). **#11a** (3 aggregate phụ) ✅
+merged (PR #29). **#11b** (Listing content + moderation) ✅ merged (PR #30). **#11c** (ListingGroup +
+cascade) đang review → **hoàn tất module listing 3/3**. **12/16 module xong** (còn scheduling,
+payments, booking, finance, administrative-division).
 
-Gợi ý cho **#11c**: dùng lại `domain/errors/listing-group-errors.ts` (đã tạo ở #11b) +
-`listing-errors.ts`. **Bộ máy moderation (`listing-moderation.ts` + `moderation-support.ts`) dùng
-chung listing↔group — #11b CỐ Ý không đụng nó** (xem spec §8b-bis); #11c cũng nên giữ shared, chỉ
-nuốt content/cascade invariant của ListingGroup vào aggregate, transition giữ nguyên qua
-`runModeration`/`transition*`. Cascade (publish/hide group → các listing con) là điểm mới của #11c —
-khảo sát kỹ `run-group-moderation.ts`. (PR #25 `refactor/entity-centric` → `main` đang mở là PR đưa
-cả nhánh tích hợp về main — không phải PR module; đừng nhầm.)
+Việc kế tiếp: **PR #12 — module scheduling** (§6 thứ tự). Đọc mục scheduling trong
+`entity-centric-survey.md` trước khi plan. **Bộ máy moderation (`listing-moderation.ts` +
+`moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
+sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
++ đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25
+`refactor/entity-centric` → `main` đang mở là PR đưa cả nhánh tích hợp về main — không phải PR module.)
 
 Ghi chú fixture seed: smoke #11a **tự tạo** listing/pricing draft trong tx thay vì thêm fixture seed
 (quyết định owner 2026-07-24). Việc thêm fixture `status='draft'` vào seed (spec §8c-bis mục 2) vẫn
