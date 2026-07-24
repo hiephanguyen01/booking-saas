@@ -1,7 +1,7 @@
 # Design: Entity-centric refactor toàn bộ `apps/api` (Rich DDD aggregate)
 
 **Ngày:** 2026-07-23 · **Trạng thái:** Đã triển khai 16/16 module; final review toàn nhánh đạt 2026-07-24
-**Phụ lục khảo sát chi tiết (bắt buộc đọc khi plan từng module):** [`docs/refactor/entity-centric-survey.md`](../../refactor/entity-centric-survey.md)
+**Kết quả triển khai và verification:** [`docs/refactor/entity-centric-final-report.md`](../../refactor/entity-centric-final-report.md)
 
 ## 1. Bối cảnh & mục tiêu
 
@@ -262,7 +262,7 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | create-listing auto-provision resource gọi thẳng `resources.create` — cùng gap #11a (partnerId không check thuộc tenant); create/update/delete-listing **không ghi audit** (chỉ 5 moderation ghi); `listing.created`/`.deleted`/`.submitted` hiện **0 consumer** | listing | Giữ nguyên ở PR #11b |
 | `LISTING_GROUP_NOT_OWNED` 1-code/2-message: bind child listing vào group người khác = `The listing group belongs to another partner` (#11b `ListingGroupNotOwned`); group tự update/delete = `Listing group belongs to another partner` KHÔNG "The" (#11c `ListingGroupNotOwnedForManage`) — 2 class riêng | listing | Giữ nguyên ở PR #11c |
 | `LISTING_GROUP_READ_ONLY` 1-code/3-message: `changing its items` / `deleting its items` (#11b bind gate) + `Hide the listing group before editing it` (#11c group tự edit) — 3 class riêng | listing | Giữ nguyên ở PR #11c |
-| **Group moderation cascade: đúng 1 audit row + 1 outbox `{groupId}` cho GROUP**, KHÔNG per-child audit, KHÔNG per-child outbox (`run-group-moderation.ts`). Child status đổi qua loop `transition*` từng row (publish child hardcode actor `'admin'`; hide/republish child dùng `actorFromOutcome` = hiddenBy/publishedBy của group). (Sửa `entity-centric-survey.md:987` nói nhầm "N audit row") | listing | Giữ nguyên ở PR #11c |
+| **Group moderation cascade: đúng 1 audit row + 1 outbox `{groupId}` cho GROUP**, KHÔNG per-child audit, KHÔNG per-child outbox (`run-group-moderation.ts`). Child status đổi qua loop `transition*` từng row (publish child hardcode actor `'admin'`; hide/republish child dùng `actorFromOutcome` = hiddenBy/publishedBy của group). | listing | Giữ nguyên ở PR #11c |
 | **Group-cascade publish/hide KHÔNG fan-out `listing.published`/`listing.hidden`** cho child ⇒ child group-managed không gửi email (notification) / không trigger scheduling. Pre-existing | listing | Giữ nguyên ở PR #11c |
 | **Reopen cascade** (`update-listing-group`, partner + status='archived'): ghi thẳng `{status:draft, publishedBy:null, hiddenBy:null}` cho group + mọi child (Promise.all), emit `listing_group.reopened` payload **`{listingGroupId}`** (khác key `{groupId}` của moderation event); **KHÔNG audit**; **bypass transition machine** (kể cả admin-lock của group) | listing | Giữ nguyên ở PR #11c |
 | Group **delete không status-gate** (any-status + 0-child là xoá được, kể cả published-rỗng); tenant-scoped update **được reassign `partnerId`/`listingTypeId`** (partner-scoped force undefined) | listing | Giữ nguyên ở PR #11c |
@@ -315,7 +315,7 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 - tenancy: `resolve-tenant-by-host` (`ResolveTenantByHostUseCase`) còn giữ rule nghiệp vụ inline
   ngay trong use-case thay vì trên aggregate — "chỉ domain **verified** mới resolve host" và
   `isLive = tenant.status === 'active' && evaluation.storefrontLive`. Đây là read path với **14
-  consumer xuyên module** (bề mặt đóng băng, xem HANDOFF gợi ý tenancy) nên để nguyên, tách refactor
+  consumer xuyên module** (bề mặt đóng băng) nên để nguyên, tách refactor
   riêng sau khi khảo sát hết 14 consumer.
 - **[ĐÃ LÀM hậu refactor]** tenancy: bốn mutation domain (`add-domain`, `verify-domain`,
   `set-primary-domain`, `delete-domain`) trước đây không gọi `cache.invalidateHost`, khiến
@@ -420,7 +420,7 @@ Audit AST/import graph trên 257 `modules/**/*.use-case.ts` không dùng tên fi
   orchestration có chủ đích. Application use-case không còn direct Prisma model/raw SQL.
 
 Frozen-wire matrix, inventory và kết quả cuối được tổng hợp trong
-[`docs/refactor/HANDOFF.md` §9](../../refactor/HANDOFF.md).
+[`docs/refactor/entity-centric-final-report.md`](../../refactor/entity-centric-final-report.md).
 
 ### 8f. Typed application errors (đã làm hậu refactor 2026-07-24)
 
@@ -436,7 +436,7 @@ Hai helper khác trả về custom exception, nên baseline có 79 inline custom
   field được giữ nguyên.
 
 Inventory, allowlist và frozen-wire matrix cuối được tổng hợp trong
-[`docs/refactor/HANDOFF.md` §10](../../refactor/HANDOFF.md).
+[`docs/refactor/entity-centric-final-report.md`](../../refactor/entity-centric-final-report.md).
 
 ## 9. Xác minh mỗi PR (ADR 0005 — không có test)
 
