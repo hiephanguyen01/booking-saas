@@ -8,6 +8,7 @@ import {
   TenantDomain,
   assertDeletableFromPortfolio,
 } from '../../domain/entities/tenant-domain.entity';
+import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache.port';
 
 /**
  * Removes a tenant's custom-domain mapping (§6.1). Ownership is enforced by
@@ -19,6 +20,7 @@ import {
 export class DeleteDomainUseCase {
   constructor(
     @Inject(TENANT_DOMAIN_REPOSITORY) private readonly domains: ITenantDomainRepository,
+    @Inject(TENANT_CACHE) private readonly cache: ITenantCache,
   ) {}
 
   async execute(tenantId: string, id: string): Promise<void> {
@@ -41,5 +43,6 @@ export class DeleteDomainUseCase {
       );
     }
     await this.domains.delete(id);
+    await this.cache.invalidateHost(domain.hostname);
   }
 }

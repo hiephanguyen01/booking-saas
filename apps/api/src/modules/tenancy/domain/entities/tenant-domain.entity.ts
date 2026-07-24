@@ -73,9 +73,10 @@ export class TenantDomain {
 
   /**
    * A customer-owned hostname: unverified until the TXT record shows up.
-   * NOTE: `isPrimary` is taken from the caller as-is — today the API lets a request
-   * set it without clearing an existing primary, which is a recorded known gap; this
-   * factory preserves that behaviour rather than silently tightening it.
+   * `isPrimary` records the caller's requested portfolio outcome. Persistence
+   * inserts a requested primary as non-primary first, then performs the
+   * repository's clear-old/set-new swap in one transaction so the DB's
+   * one-primary partial unique index is never violated.
    */
   static requestCustomDomain(input: {
     tenantId: string;

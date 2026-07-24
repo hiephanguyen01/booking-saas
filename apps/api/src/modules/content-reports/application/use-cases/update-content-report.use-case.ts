@@ -28,13 +28,12 @@ export class UpdateContentReportUseCase {
       const state = await this.reports.loadForModeration(tx, id);
       if (!state) throw new ContentReportNotFound();
       const report = ContentReport.rehydrate(state);
+      const now = await this.tenantDb.databaseNow(tx);
       report.moderate({
         status: input.status,
         resolutionNote: input.resolutionNote || null,
         handledByUserId: actorUserId,
-        // Same clock source as before the refactor (repo used app-clock `new Date()`);
-        // switching to the DB clock is a recorded follow-up, not done here.
-        now: new Date(),
+        now,
       });
       const updated = await this.reports.saveModeration(tx, report);
       await this.audit.write(tx, {

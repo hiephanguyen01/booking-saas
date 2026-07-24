@@ -10,6 +10,7 @@ import {
   DOMAIN_VERIFICATION_QUEUE,
   type IDomainVerificationQueue,
 } from '../../domain/ports/domain-verification-queue.port';
+import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache.port';
 
 export interface VerifyDomainResult {
   status: 'verified' | 'checking';
@@ -28,6 +29,7 @@ export class VerifyDomainUseCase {
   constructor(
     @Inject(TENANT_DOMAIN_REPOSITORY) private readonly domains: ITenantDomainRepository,
     @Inject(DOMAIN_VERIFICATION_QUEUE) private readonly queue: IDomainVerificationQueue,
+    @Inject(TENANT_CACHE) private readonly cache: ITenantCache,
   ) {}
 
   async execute(tenantId: string, domainId: string): Promise<VerifyDomainResult> {
@@ -40,6 +42,7 @@ export class VerifyDomainUseCase {
     d.assertVerifiable();
 
     await this.queue.enqueue(tenantId, domainId);
+    await this.cache.invalidateHost(domain.hostname);
     return { status: 'checking', domain };
   }
 }
