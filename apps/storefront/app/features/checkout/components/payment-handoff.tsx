@@ -11,10 +11,17 @@ type FormPostDestination = Extract<CheckoutDestination, { type: 'form_post' }>;
  * to the gateway. No merchant credential is present in this payload. */
 export function PaymentHandoff({ destination }: { destination: FormPostDestination }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const hasAutoSubmittedRef = useRef(false);
   const { t } = useTranslation(NsI18n.Checkout);
 
   useEffect(() => {
-    formRef.current?.submit();
+    const form = formRef.current;
+    if (!form || hasAutoSubmittedRef.current) {
+      return;
+    }
+
+    hasAutoSubmittedRef.current = true;
+    form.requestSubmit();
   }, []);
 
   return (
