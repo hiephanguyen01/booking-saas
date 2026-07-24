@@ -1,3 +1,4 @@
+import type { FormEvent } from 'react';
 import type { PayoutPolicyDto } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -11,8 +12,9 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import { HandCoins } from 'lucide-react';
-import { Form, useNavigation } from 'react-router';
+import { Form, useNavigation, useSubmit } from 'react-router';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { formatVnd } from '~/lib/format';
 
 export function PayoutPolicyCard({
@@ -26,12 +28,18 @@ export function PayoutPolicyCard({
   saved: boolean;
   error: string | null;
 }) {
+  const submit = useSubmit();
   const navigation = useNavigation();
-  const isSubmitting =
-    navigation.state === 'submitting' && navigation.formData?.get('intent') === 'payout-policy';
+  const { busy: isSubmitting, run } = useSubmissionGuard(navigation.state);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
 
   return (
-    <Card className="shadow-none">
+    <Card className="shadow-none" aria-busy={isSubmitting}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <HandCoins className="size-4 text-primary" aria-hidden="true" /> Giữ tiền và chi trả đối
@@ -53,7 +61,7 @@ export function PayoutPolicyCard({
           nhất <strong>{formatVnd(policy.minAmount)}</strong>.
         </div>
 
-        <Form method="post" className="space-y-5">
+        <Form method="post" className="space-y-5" onSubmit={handleSubmit}>
           <input type="hidden" name="intent" value="payout-policy" />
           <fieldset
             disabled={readOnly || isSubmitting}

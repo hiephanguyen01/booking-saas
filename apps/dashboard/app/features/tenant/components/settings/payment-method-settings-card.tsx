@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
   GATEWAY_SUPPORTED_METHODS,
   type CustomerPaymentMethod,
@@ -18,8 +18,9 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { CreditCard, RotateCcw } from 'lucide-react';
-import { Form, useNavigation } from 'react-router';
+import { Form, useNavigation, useSubmit } from 'react-router';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 const METHODS = [
   ['bank_transfer', 'Chuyển khoản ngân hàng', 'VietQR và chuyển khoản theo thông tin đơn hàng.'],
@@ -45,12 +46,18 @@ export function PaymentMethodSettingsCard({
   const supported = GATEWAY_SUPPORTED_METHODS[gateway];
   const visibleMethods = METHODS.filter(([value]) => supported.includes(value));
   const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy: isSubmitting, run } = useSubmissionGuard(navigation.state);
   const [refundStrategy, setRefundStrategy] = useState(settings.refundStrategy);
-  const isSubmitting =
-    navigation.state === 'submitting' && navigation.formData?.get('intent') === 'payment-settings';
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
 
   return (
-    <Card className="shadow-none">
+    <Card className="shadow-none" aria-busy={isSubmitting}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CreditCard className="size-4 text-primary" aria-hidden="true" /> Phương thức thanh toán
@@ -60,7 +67,7 @@ export function PaymentMethodSettingsCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form method="post" className="space-y-6">
+        <Form method="post" className="space-y-6" onSubmit={handleSubmit}>
           <input type="hidden" name="intent" value="payment-settings" />
           <input type="hidden" name="gateway" value={gateway} />
           <ErrorBanner error={error} />
