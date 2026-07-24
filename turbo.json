@@ -18,7 +18,6 @@
       "passThroughEnv": ["HOST", "PORT", "DASHBOARD_PORT", "STOREFRONT_PORT"]
     },
     "lint": {},
-    "test": {},
     "typecheck": {
       "dependsOn": ["^build"]
     }

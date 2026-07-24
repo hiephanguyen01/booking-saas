@@ -221,11 +221,7 @@ bookings GiST exclusion constraint. See [ADR 0004](./decisions/0004-hand-written
 
 ## Testing & verification ([ADR 0005](./decisions/0005-no-tests-policy.md))
 
-Add deterministic tests for high-risk security, tenancy, auth/session, concurrency, money, idempotency,
-time, parser, and pure-domain behavior. Keep them close to the code and avoid brittle implementation
-assertions or broad snapshots. The Storefront uses Node's built-in `node:test` runner for server-side
-unit tests.
-
-`pnpm test` and `pnpm turbo lint typecheck build` must pass, then run the app and exercise changed
-user-facing or integration-heavy flows (`pnpm dev`, or `/run` + `/verify`). Requires **Node ≥ 22.22.0** —
-React Router 8 refuses to run below it.
+Automated tests are prohibited by owner decision: no test files, test runners/config, `test` scripts
+or CI test steps. Verify with `pnpm turbo lint typecheck build`, static architecture/RLS checks, then
+run the app and exercise changed flows manually. Requires **Node ≥ 22.22.0** — React Router 8 refuses
+to run below it.
