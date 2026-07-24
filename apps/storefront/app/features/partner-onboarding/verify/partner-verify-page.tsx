@@ -24,10 +24,11 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
   const verifyActionData = actionData as PartnerOnboardingActionData | undefined;
   const { tenant } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Auth);
-  const { code, handleSubmit, resendCode, seconds, setCode } = useOtpFormController({
-    initialSeconds: loaderData.resendAfterSec,
-    actionData: verifyActionData,
-  });
+  const { code, handleSubmit, resendCode, resending, seconds, setCode, verifying } =
+    useOtpFormController({
+      initialSeconds: loaderData.resendAfterSec,
+      actionData: verifyActionData,
+    });
   const message = verifyActionData?.error
     ? t(verifyActionData.error === 'OTP_INVALID' ? 'errors.invalidOtp' : 'errors.expired')
     : undefined;
@@ -57,6 +58,7 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
             value={code}
             onChange={setCode}
             autoFocus
+            disabled={verifying}
             inputMode="numeric"
             aria-label={t('partner.otpLabel')}
           >
@@ -79,7 +81,7 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
       <Button
         type="button"
         variant="ghost"
-        disabled={seconds > 0}
+        disabled={seconds > 0 || resending || verifying}
         onClick={resendCode}
         className="mx-auto mt-5 flex text-primary hover:text-primary"
       >
