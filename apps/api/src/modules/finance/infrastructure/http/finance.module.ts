@@ -24,7 +24,6 @@ import { ListCommissionRulesUseCase } from '../../application/use-cases/list-com
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
 import { UpdateCommissionRuleUseCase } from '../../application/use-cases/update-commission-rule.use-case';
 import { DeleteCommissionRuleUseCase } from '../../application/use-cases/delete-commission-rule.use-case';
-import { SetPlatformRateUseCase } from '../../application/use-cases/set-platform-rate.use-case';
 import { ListPayoutsUseCase } from '../../application/use-cases/list-payouts.use-case';
 import { CreatePayoutUseCase } from '../../application/use-cases/create-payout.use-case';
 import { MarkPayoutPaidUseCase } from '../../application/use-cases/mark-payout-paid.use-case';
@@ -89,7 +88,6 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     CreateCommissionRuleUseCase,
     UpdateCommissionRuleUseCase,
     DeleteCommissionRuleUseCase,
-    SetPlatformRateUseCase,
     ListPayoutsUseCase,
     CreatePayoutUseCase,
     MarkPayoutPaidUseCase,

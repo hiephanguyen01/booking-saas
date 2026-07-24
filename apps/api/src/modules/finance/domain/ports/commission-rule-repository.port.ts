@@ -45,7 +45,5 @@ export interface ICommissionRuleRepository {
     data: CreateCommissionRuleData,
   ): Promise<CommissionRuleRecord>;
   update(tx: PrismaTx, id: string, data: UpdateCommissionRuleData): Promise<CommissionRuleRecord>;
-  /** Platform-admin-only path — only the platform fee % changes. */
-  setPlatformRate(tx: PrismaTx, id: string, platformRate: number): Promise<CommissionRuleRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;
 }

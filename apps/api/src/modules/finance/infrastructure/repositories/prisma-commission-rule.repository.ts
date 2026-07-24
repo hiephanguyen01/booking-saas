@@ -179,14 +179,6 @@ export class PrismaCommissionRuleRepository implements ICommissionRuleRepository
     );
   }
 
-  async setPlatformRate(
-    tx: PrismaTx,
-    id: string,
-    platformRate: number,
-  ): Promise<CommissionRuleRecord> {
-    return toRecord(await tx.commissionRule.update({ where: { id }, data: { platformRate } }));
-  }
-
   async delete(tx: PrismaTx, id: string): Promise<void> {
     await tx.commissionRule.delete({ where: { id } });
   }

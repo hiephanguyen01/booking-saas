@@ -43,7 +43,25 @@ const select = {
 type Row = Prisma.ContentReportGetPayload<{ select: typeof select }>;
 
 function toRecord(row: Row): ContentReportRecord {
-  return { ...row, target: row.targetType };
+  return {
+    id: row.id,
+    target: row.targetType,
+    targetId: row.targetId,
+    targetTitle: row.targetTitle,
+    targetSlug: row.targetSlug,
+    partnerId: row.partnerId,
+    partnerName: row.partnerName,
+    reporterUserId: row.reporterUserId,
+    reporterName: row.reporterName,
+    reason: row.reason,
+    details: row.details,
+    status: row.status,
+    handledByUserId: row.handledByUserId,
+    resolutionNote: row.resolutionNote,
+    handledAt: row.handledAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
 }
 
 @Injectable()
