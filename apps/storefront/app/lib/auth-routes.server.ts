@@ -11,17 +11,16 @@ import {
   type AuthFlowCompleteResponse,
   type AuthOtpVerifiedResponse,
 } from '@booking/contracts';
-import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
 import { backendLogin, backendLogout, publicPost } from './api.server';
 import { getOptionalAuth } from './auth.server';
+import { requireLocale } from './i18n.server';
 import { suppressStorefrontSessionCommit } from './request-context.server';
 import { safeRedirectPath } from './safe-redirect';
 import { createUserSession, destroyUserSession } from './session.server';
 import type { AuthActionData } from './auth-types';
 
-const localeOf = (value: string | undefined): Locale => (value === 'en' ? 'en' : 'vi');
 const fields = (form: FormData) => Object.fromEntries(form.entries());
 const invalid = (fieldErrors: Record<string, string[] | undefined>) =>
   data<AuthActionData>(
@@ -41,7 +40,7 @@ const failed = (result: { status: number; code?: string; error?: string }) =>
   );
 
 export async function startRegistrationAction(request: Request, localeParam?: string) {
-  const locale = localeOf(localeParam);
+  const locale = requireLocale(localeParam);
   const parsed = registrationStartInputSchema.safeParse({
     ...fields(await request.formData()),
     locale,
@@ -66,7 +65,7 @@ export async function startRegistrationAction(request: Request, localeParam?: st
 }
 
 export async function startResetAction(request: Request, localeParam?: string) {
-  const locale = localeOf(localeParam);
+  const locale = requireLocale(localeParam);
   const parsed = passwordResetStartInputSchema.safeParse({
     ...fields(await request.formData()),
     locale,
@@ -133,7 +132,7 @@ export async function verifyAction(
   localeParam: string | undefined,
   purpose: 'registration' | 'password_reset',
 ) {
-  const locale = localeOf(localeParam);
+  const locale = requireLocale(localeParam);
   const expected: AuthFlowPhase =
     purpose === 'registration' ? 'registration_verify' : 'reset_verify';
   const start =
@@ -184,7 +183,7 @@ export async function completePasswordAction(
   localeParam: string | undefined,
   purpose: 'registration' | 'password_reset',
 ) {
-  const locale = localeOf(localeParam);
+  const locale = requireLocale(localeParam);
   const expected: AuthFlowPhase =
     purpose === 'registration' ? 'registration_password' : 'reset_password';
   const start =
@@ -217,7 +216,7 @@ export async function completePasswordAction(
 }
 
 export async function loginAction(request: Request, localeParam?: string) {
-  const locale = localeOf(localeParam);
+  const locale = requireLocale(localeParam);
   const form = await request.formData();
   const parsed = loginInputSchema.safeParse(fields(form));
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
@@ -230,7 +229,7 @@ export async function loginAction(request: Request, localeParam?: string) {
 }
 
 export async function logoutAction(request: Request, localeParam?: string) {
-  const locale = localeOf(localeParam);
+  const locale = requireLocale(localeParam);
   const auth = getOptionalAuth();
   if (auth) await backendLogout(request, auth.session.accessToken);
   suppressStorefrontSessionCommit();
