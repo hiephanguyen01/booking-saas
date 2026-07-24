@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   momoGatewayConfigInputSchema,
   sepayGatewayConfigInputSchema,
@@ -12,6 +12,7 @@ import {
   type GatewayConfigRecord,
   type IGatewayConfigRepository,
 } from '../../domain/ports/gateway-config-repository.port';
+import { InvalidGatewayConfig } from '../payment-http-errors';
 
 /** Tenant admin stores gateway credentials (encrypted at rest, §11.1). */
 @Injectable()
@@ -32,12 +33,7 @@ export class UpsertGatewayConfigUseCase {
             ? zalopayGatewayConfigInputSchema.safeParse(input)
             : { success: true as const, data: input };
     if (!validated.success) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_GATEWAY_CONFIG',
-        message: 'Cấu hình cổng thanh toán không hợp lệ',
-        details: validated.error.flatten(),
-      });
+      throw new InvalidGatewayConfig(validated.error.flatten());
     }
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return this.tenantDb.forTenant(tenantId, (tx) =>

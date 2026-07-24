@@ -1,5 +1,6 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AffiliateContext } from '../../domain/affiliate-context';
+import { AffiliateMembershipRequired } from '../../domain/errors/affiliate-errors';
 import {
   AFFILIATE_READER,
   type IAffiliateReader,
@@ -27,11 +28,7 @@ export class RequireAffiliateMembershipUseCase {
       ? memberships.find((m) => m.tenantId === requestedTenantId)
       : (memberships.find((m) => m.status === 'approved') ?? memberships[0]);
     if (!chosen) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'NOT_AN_AFFILIATE',
-        message: 'No affiliate account for this user',
-      });
+      throw new AffiliateMembershipRequired();
     }
     return { affiliateId: chosen.id, tenantId: chosen.tenantId };
   }

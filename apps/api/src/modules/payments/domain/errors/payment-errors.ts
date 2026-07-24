@@ -43,3 +43,15 @@ export class AmountMismatch extends DomainError {
     super('AMOUNT_MISMATCH', 400, 'Paid amount is less than expected');
   }
 }
+
+export class PaymentStorefrontSuspended extends DomainError {
+  constructor() {
+    super('STOREFRONT_SUSPENDED', 403, 'This storefront is not accepting payments');
+  }
+}
+
+export class InvalidStorefrontHost extends DomainError {
+  constructor() {
+    super('INVALID_STOREFRONT_HOST', 400, 'The storefront Host header is invalid');
+  }
+}

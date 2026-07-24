@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PublicListingGroupDetailResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
@@ -16,6 +16,7 @@ import {
   type ListingRecord,
 } from '../../domain/ports/listing-repository.port';
 import { basePrices } from '../../domain/group-stats';
+import { ListingGroupNotFound } from '../../domain/errors/listing-group-errors';
 
 function listingPriceFrom(listing: ListingRecord): string | null {
   const prices = basePrices(listing);
@@ -88,12 +89,7 @@ export class GetPublicListingGroupUseCase {
           })),
       } satisfies PublicListingGroupDetailResponse;
     });
-    if (!result)
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'LISTING_GROUP_NOT_FOUND',
-        message: 'Listing group not found',
-      });
+    if (!result) throw new ListingGroupNotFound();
     return result;
   }
 }

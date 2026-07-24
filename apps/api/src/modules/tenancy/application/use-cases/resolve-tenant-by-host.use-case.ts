@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PublicTenantResponse } from '@booking/contracts';
 import { normalizeHostname } from '../../domain/hostname';
 import { evaluateSubscription } from '../../domain/subscription-status';
@@ -16,6 +16,7 @@ import {
 } from '../../domain/ports/subscription-repository.port';
 import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache.port';
 import { toPublicTenantResponse } from '../tenancy.mapper';
+import { UnknownTenantHost } from '../../domain/errors/tenancy-errors';
 
 /**
  * Resolves a storefront Host header to its tenant (§6.1). Runs on the admin
@@ -44,22 +45,14 @@ export class ResolveTenantByHostUseCase {
       await this.cache.setHost(hostname, tenantId);
     }
     if (tenantId === null) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'UNKNOWN_HOST',
-        message: `No tenant mapped to host "${hostname}"`,
-      });
+      throw new UnknownTenantHost(hostname);
     }
 
     const tenant = await this.tenants.findById(tenantId);
     if (!tenant) {
       // Stale cache entry pointing at a deleted tenant — evict and 404.
       await this.cache.invalidateHost(hostname);
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'UNKNOWN_HOST',
-        message: `No tenant mapped to host "${hostname}"`,
-      });
+      throw new UnknownTenantHost(hostname);
     }
 
     const sub = await this.subscriptions.findCurrentByTenant(tenantId);

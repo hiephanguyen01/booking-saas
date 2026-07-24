@@ -17,7 +17,7 @@ export abstract class DomainError extends Error {
     readonly httpStatus: number,
     message: string,
     /** Optional structured detail, surfaced as `details` in the envelope. */
-    readonly details?: Record<string, unknown>,
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = new.target.name;

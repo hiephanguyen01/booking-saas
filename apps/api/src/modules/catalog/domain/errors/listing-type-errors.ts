@@ -83,3 +83,14 @@ export class InvalidSearchBuckets extends DomainError {
     );
   }
 }
+
+export class InvalidAttributes extends DomainError {
+  constructor(errors: unknown[]) {
+    super(
+      'INVALID_ATTRIBUTES',
+      400,
+      'Attribute values do not match the listing type schema',
+      errors,
+    );
+  }
+}

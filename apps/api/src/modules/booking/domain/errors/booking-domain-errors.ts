@@ -1,5 +1,9 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
 
+export { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
+export { ListingNotFound as BookingListingNotFound } from '../../../../shared/domain/errors/listing-not-found';
+export { ModeNotEnabled as BookingModeNotEnabled } from '../../../../shared/domain/errors/mode-not-enabled';
+
 export class StorefrontSuspended extends DomainError {
   constructor() {
     super('STOREFRONT_SUSPENDED', 403, 'This storefront is not accepting bookings');
@@ -15,18 +19,6 @@ export class InvalidBookingRange extends DomainError {
 export class BookingSlotInPast extends DomainError {
   constructor() {
     super('SLOT_IN_PAST', 400, 'Cannot book a past slot');
-  }
-}
-
-export class BookingListingNotFound extends DomainError {
-  constructor() {
-    super('LISTING_NOT_FOUND', 404, 'Listing not found');
-  }
-}
-
-export class BookingModeNotEnabled extends DomainError {
-  constructor(mode: string) {
-    super('MODE_NOT_ENABLED', 400, `Listing does not enable "${mode}"`);
   }
 }
 
@@ -88,15 +80,15 @@ export class BookingSlotTaken extends DomainError {
   }
 }
 
-export class BookingNotFound extends DomainError {
-  constructor() {
-    super('BOOKING_NOT_FOUND', 404, 'Booking not found');
-  }
-}
-
 export class BookingNotOwned extends DomainError {
   constructor() {
     super('NOT_OWNED', 403, 'Booking belongs to another partner');
+  }
+}
+
+export class BookingAccessDenied extends DomainError {
+  constructor() {
+    super('BOOKING_ACCESS_DENIED', 401, 'A valid OTP or session is required');
   }
 }
 

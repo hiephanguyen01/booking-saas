@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveEffectiveAffiliateRate, type EffectiveAffiliateRate } from '../../domain/affiliate-rate';
 import {
@@ -21,6 +21,7 @@ import {
   COMMISSION_RULE_READER,
   type ICommissionRuleReader,
 } from '../../domain/ports/commission-rule-reader.port';
+import { AffiliateNotFound } from '../../domain/errors/affiliate-errors';
 
 export interface TenantAffiliateDetail {
   affiliate: AffiliateWithUser;
@@ -47,7 +48,7 @@ export class GetTenantAffiliateUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const affiliate = await this.affiliates.findByUserWithTenant(tx, affiliateId);
       if (!affiliate) {
-        throw new NotFoundException({ statusCode: 404, code: 'AFFILIATE_NOT_FOUND', message: 'Affiliate not found' });
+        throw new AffiliateNotFound();
       }
       const [links, commissions, totals, clicks, rule] = await Promise.all([
         this.links.listByAffiliate(tx, affiliateId),

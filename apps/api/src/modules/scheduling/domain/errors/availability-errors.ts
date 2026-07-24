@@ -56,3 +56,9 @@ export class InvalidAvailabilityException extends DomainError {
     super('INVALID_AVAILABILITY_EXCEPTION', 400, `Invalid availability exception: ${reason}`);
   }
 }
+
+export class DailyModeConfigMissing extends DomainError {
+  constructor() {
+    super('MODE_CONFIG_MISSING', 400, 'No daily config on this listing');
+  }
+}

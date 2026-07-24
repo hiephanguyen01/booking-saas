@@ -1,17 +1,13 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
 
+export { ListingNotFound } from '../../../../shared/domain/errors/listing-not-found';
+
 /**
  * Domain errors for the Listing aggregate. Shared across the listing module's
  * sub-PRs (#11a/#11b/#11c) — named generically so cancellation-policy and
  * pricing-rule call-sites can reuse them. Codes + statuses + messages are
  * byte-identical to the pre-refactor use-case behaviour.
  */
-
-export class ListingNotFound extends DomainError {
-  constructor() {
-    super('LISTING_NOT_FOUND', 404, 'Listing not found');
-  }
-}
 
 export class ListingNotOwned extends DomainError {
   constructor() {
@@ -105,6 +101,29 @@ export class DepositBelowTenantCommission extends DomainError {
         minimumDepositPercent: Number(minimumDepositPercent),
         commissionRuleId,
       },
+    );
+  }
+}
+
+export class InvalidListingAdministrativeDivision extends DomainError {
+  constructor() {
+    super(
+      'INVALID_ADMINISTRATIVE_DIVISION',
+      400,
+      'Both provinceCode and wardCode are required when changing the address',
+    );
+  }
+}
+
+export class ListingHasContactInfo extends DomainError {
+  constructor(target: 'listing' | 'group', details: unknown) {
+    super(
+      'LISTING_HAS_CONTACT_INFO',
+      400,
+      target === 'listing'
+        ? 'Remove contact information from the listing before publishing'
+        : 'Remove contact information from the post and its items before publishing',
+      details,
     );
   }
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CheckoutResponse } from '@booking/contracts';
 import type { CustomerPaymentMethod } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
@@ -19,7 +19,11 @@ import {
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
 import { Payment } from '../../domain/entities/payment.entity';
-import { PaymentMethodUnavailable } from '../../domain/errors/payment-errors';
+import {
+  InvalidStorefrontHost,
+  PaymentMethodUnavailable,
+  PaymentStorefrontSuspended,
+} from '../../domain/errors/payment-errors';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
@@ -51,12 +55,8 @@ function storefrontOrigin(host: string): string {
   return url.origin;
 }
 
-function invalidStorefrontHost(): BadRequestException {
-  return new BadRequestException({
-    statusCode: 400,
-    code: 'INVALID_STOREFRONT_HOST',
-    message: 'The storefront Host header is invalid',
-  });
+function invalidStorefrontHost(): InvalidStorefrontHost {
+  return new InvalidStorefrontHost();
 }
 
 /**
@@ -82,11 +82,7 @@ export class CheckoutUseCase {
   ): Promise<CheckoutResponse> {
     const tenant = await this.resolveTenant.execute(host);
     if (!tenant.live) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'STOREFRONT_SUSPENDED',
-        message: 'This storefront is not accepting payments',
-      });
+      throw new PaymentStorefrontSuspended();
     }
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);

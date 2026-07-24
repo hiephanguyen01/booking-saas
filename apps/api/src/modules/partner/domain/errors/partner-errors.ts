@@ -1,5 +1,8 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
 
+export { CancellationPolicyNotFound } from '../../../../shared/domain/errors/cancellation-policy-not-found';
+export { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
+
 /** Partner-owned 4xx errors with the pre-refactor wire bytes preserved exactly. */
 export class TenantInactive extends DomainError {
   constructor() {
@@ -10,12 +13,6 @@ export class TenantInactive extends DomainError {
 export class PartnerSlugTaken extends DomainError {
   constructor(slug: string) {
     super('PARTNER_SLUG_TAKEN', 409, `Slug "${slug}" is already in use`);
-  }
-}
-
-export class PartnerNotFound extends DomainError {
-  constructor() {
-    super('PARTNER_NOT_FOUND', 404, 'Partner not found');
   }
 }
 
@@ -55,12 +52,6 @@ export class NameMismatch extends DomainError {
   }
 }
 
-export class CancellationPolicyNotFound extends DomainError {
-  constructor() {
-    super('CANCELLATION_POLICY_NOT_FOUND', 404, 'Cancellation policy not found');
-  }
-}
-
 export class PartnerNotVerified extends DomainError {
   constructor() {
     super(
@@ -68,5 +59,11 @@ export class PartnerNotVerified extends DomainError {
       403,
       'Partner must complete identity verification to serve this listing type',
     );
+  }
+}
+
+export class PublicPartnerNotFound extends DomainError {
+  constructor() {
+    super('PUBLIC_PARTNER_NOT_FOUND', 404, 'Public partner profile not found');
   }
 }

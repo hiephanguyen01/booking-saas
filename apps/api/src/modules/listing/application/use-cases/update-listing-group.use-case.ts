@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdateListingGroupInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -13,7 +13,11 @@ import {
 } from '../../domain/ports/listing-repository.port';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 import { ListingGroup } from '../../domain/entities/listing-group.entity';
-import { ListingGroupSlugTaken } from '../../domain/errors/listing-group-errors';
+import {
+  ListingGroupNotFound,
+  ListingGroupSlugTaken,
+} from '../../domain/errors/listing-group-errors';
+import { InvalidListingAdministrativeDivision } from '../../domain/errors/listing-errors';
 
 @Injectable()
 export class UpdateListingGroupUseCase {
@@ -33,11 +37,7 @@ export class UpdateListingGroupUseCase {
   ): Promise<ListingGroupRecord> {
     const hasLocationCodes = input.provinceCode !== undefined || input.wardCode !== undefined;
     if (hasLocationCodes && (!input.provinceCode || !input.wardCode)) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_ADMINISTRATIVE_DIVISION',
-        message: 'Both provinceCode and wardCode are required when changing the address',
-      });
+      throw new InvalidListingAdministrativeDivision();
     }
     const location =
       input.provinceCode && input.wardCode
@@ -46,11 +46,7 @@ export class UpdateListingGroupUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.repo.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_GROUP_NOT_FOUND',
-          message: 'Listing group not found',
-        });
+        throw new ListingGroupNotFound();
       }
       const group = ListingGroup.rehydrate(existing);
       group.assertOwnedForManage(options.requirePartnerId);

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -10,7 +10,7 @@ import {
   type IListingGroupRepository,
 } from '../../domain/ports/listing-group-repository.port';
 import { Listing } from '../../domain/entities/listing.entity';
-import { ListingHasBookings } from '../../domain/errors/listing-errors';
+import { ListingHasBookings, ListingNotFound } from '../../domain/errors/listing-errors';
 import { ListingGroupReadOnlyForDelete } from '../../domain/errors/listing-group-errors';
 
 /** Delete a listing; blocked while it has bookings (§7.3 — no orphaned bookings). */
@@ -31,11 +31,7 @@ export class DeleteListingUseCase {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.listings.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_NOT_FOUND',
-          message: 'Listing not found',
-        });
+        throw new ListingNotFound();
       }
       const listing = Listing.rehydrate(existing);
       listing.assertOwnedForDelete(options.requirePartnerId);

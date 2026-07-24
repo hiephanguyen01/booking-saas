@@ -63,3 +63,9 @@ export class DomainPrimaryRequired extends DomainError {
     super('DOMAIN_PRIMARY_REQUIRED', 409, 'Cannot remove the only verified primary domain');
   }
 }
+
+export class UnknownTenantHost extends DomainError {
+  constructor(hostname: string) {
+    super('UNKNOWN_HOST', 404, `No tenant mapped to host "${hostname}"`);
+  }
+}

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ListingGroupDetailResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
@@ -14,6 +14,7 @@ import {
   type IListingRepository,
 } from '../../domain/ports/listing-repository.port';
 import { toListingGroupResponse, toListingResponse } from '../listing.mapper';
+import { ListingGroupNotFound } from '../../domain/errors/listing-group-errors';
 
 @Injectable()
 export class GetListingGroupDetailUseCase {
@@ -32,11 +33,7 @@ export class GetListingGroupDetailUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const group = await this.groups.findById(tx, id);
       if (!group || (requirePartnerId && group.partnerId !== requirePartnerId)) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_GROUP_NOT_FOUND',
-          message: 'Listing group not found',
-        });
+        throw new ListingGroupNotFound();
       }
       const [children, type] = await Promise.all([
         this.listings.list(tx, { groupId: group.id, partnerId: requirePartnerId }),

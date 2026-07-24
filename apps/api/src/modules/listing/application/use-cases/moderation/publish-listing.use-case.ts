@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../../shared/audit/audit-writer.port';
@@ -15,6 +15,7 @@ import {
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingHasContactInfo } from '../../../domain/errors/listing-errors';
 
 /**
  * A tenant reviewer publishes a listing (pending_review → published, actor
@@ -41,12 +42,7 @@ export class PublishListingUseCase {
       const review = buildListingReview(existing);
       const overrode = review.contactFlags.length > 0 || !review.checklistPassed;
       if (!force && review.contactFlags.length > 0) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'LISTING_HAS_CONTACT_INFO',
-          message: 'Remove contact information from the listing before publishing',
-          details: review.contactFlags,
-        });
+        throw new ListingHasContactInfo('listing', review.contactFlags);
       }
 
       const outcome = listing.publish('admin');

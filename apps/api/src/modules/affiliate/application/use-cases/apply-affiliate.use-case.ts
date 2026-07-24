@@ -1,8 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ApplyAffiliateInput } from '@booking/contracts';
 import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -29,6 +25,7 @@ import {
   COMMISSION_RULE_READER,
   type ICommissionRuleReader,
 } from '../../domain/ports/commission-rule-reader.port';
+import { AffiliateReadbackFailed } from '../affiliate-http-errors';
 
 export interface AppliedAffiliate {
   affiliate: AffiliateWithUser;
@@ -74,11 +71,7 @@ export class ApplyAffiliateUseCase {
         affiliateId,
       );
       if (!affiliate) {
-        throw new InternalServerErrorException({
-          statusCode: 500,
-          code: 'AFFILIATE_NOT_FOUND',
-          message: 'Affiliate could not be read back after creation',
-        });
+        throw new AffiliateReadbackFailed();
       }
       const rule = await this.rules.findTenantDefault(tx);
       return { affiliate, effectiveRate: resolveEffectiveAffiliateRate(affiliate.customRate, rule) };

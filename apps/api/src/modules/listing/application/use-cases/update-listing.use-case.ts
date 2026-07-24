@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdateListingInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -27,7 +27,14 @@ import {
   validateAndNormalizeModeConfig,
 } from '../../domain/pricing/package-config';
 import { Listing } from '../../domain/entities/listing.entity';
-import { ListingSlugTaken } from '../../domain/errors/listing-errors';
+import {
+  InvalidListingAdministrativeDivision,
+  ListingNotFound,
+  ListingSlugTaken,
+} from '../../domain/errors/listing-errors';
+import { ListingPricingRejected } from '../../domain/errors/pricing-rule-errors';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
+import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
 import {
   ListingGroupNotFound,
   ListingGroupNotOwned,
@@ -56,11 +63,7 @@ export class UpdateListingUseCase {
   ): Promise<ListingRecord> {
     const hasLocationCodes = input.provinceCode !== undefined || input.wardCode !== undefined;
     if (hasLocationCodes && (!input.provinceCode || !input.wardCode)) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_ADMINISTRATIVE_DIVISION',
-        message: 'Both provinceCode and wardCode are required when changing the address',
-      });
+      throw new InvalidListingAdministrativeDivision();
     }
     const location =
       input.provinceCode && input.wardCode
@@ -69,11 +72,7 @@ export class UpdateListingUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.listings.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_NOT_FOUND',
-          message: 'Listing not found',
-        });
+        throw new ListingNotFound();
       }
       // Partner-scoped callers may only edit their own listings (§7.3).
       const listing = Listing.rehydrate(existing);
@@ -81,11 +80,7 @@ export class UpdateListingUseCase {
       if (input.depositPercent !== undefined || input.categoryId !== undefined) {
         const partner = await this.partners.findById(tx, existing.partnerId);
         if (!partner) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'PARTNER_NOT_FOUND',
-            message: 'Partner not found',
-          });
+          throw new PartnerNotFound();
         }
         await this.assertDepositCoverage.execute(
           tx,
@@ -141,11 +136,7 @@ export class UpdateListingUseCase {
       ) {
         const type = await this.listingTypes.findById(tx, existing.listingTypeId);
         if (!type) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'LISTING_TYPE_NOT_FOUND',
-            message: 'Listing type not found',
-          });
+          throw new ListingTypeNotFound();
         }
         if (input.attributes !== undefined) {
           assertValidAttributes(type.attributeSchema, input.attributes);
@@ -162,11 +153,7 @@ export class UpdateListingUseCase {
           }) as Record<string, unknown>;
         } catch (error) {
           if (error instanceof ListingModeConfigError) {
-            throw new BadRequestException({
-              statusCode: 400,
-              code: error.code,
-              message: error.message,
-            });
+            throw new ListingPricingRejected(error.code, error.message);
           }
           throw error;
         }

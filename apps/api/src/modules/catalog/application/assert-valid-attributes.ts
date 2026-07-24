@@ -1,6 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
 import type { AttributeField } from '@booking/contracts';
 import { validateAttributes } from '../domain/attribute-schema';
+import { InvalidAttributes } from '../domain/errors/listing-type-errors';
 
 /**
  * Throws when a listing's attribute values don't match its type's schema (§7.3).
@@ -16,11 +16,6 @@ export function assertValidAttributes(
 ): void {
   const errors = validateAttributes(schema, values);
   if (errors.length > 0) {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'INVALID_ATTRIBUTES',
-      message: 'Attribute values do not match the listing type schema',
-      details: errors,
-    });
+    throw new InvalidAttributes(errors);
   }
 }

@@ -1,15 +1,11 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
 
+export { ModeNotEnabled } from '../../../../shared/domain/errors/mode-not-enabled';
+
 /**
  * Domain errors for the PricingRule aggregate. Codes + statuses + messages are
  * byte-identical to the pre-refactor use-case behaviour.
  */
-
-export class ModeNotEnabled extends DomainError {
-  constructor(mode: string) {
-    super('MODE_NOT_ENABLED', 400, `Listing does not enable "${mode}"`);
-  }
-}
 
 export class PackagePricingFixed extends DomainError {
   constructor() {
@@ -32,5 +28,12 @@ export class PricingRuleOverlap extends DomainError {
     // The dash below is an EN DASH (U+2013 "–"), not a hyphen — copied verbatim
     // from create-partner-pricing-rule.use-case.ts.
     super('PRICING_RULE_OVERLAP', 400, `Pricing window overlaps ${from}–${to}`);
+  }
+}
+
+/** Maps the framework-free pricing/config calculators' typed rejection. */
+export class ListingPricingRejected extends DomainError {
+  constructor(code: string, message: string) {
+    super(code, 400, message);
   }
 }

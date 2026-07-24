@@ -1,8 +1,9 @@
-import { NotFoundException } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import type { ModerationOutcome } from '../../domain/moderation/listing-moderation';
 import type { ModerationUpdate } from '../../domain/ports/listing-repository.port';
+import { ListingNotFound } from '../../domain/errors/listing-errors';
+import { ListingGroupNotFound } from '../../domain/errors/listing-group-errors';
 
 /** Who is acting + the audit metadata every moderation use case needs. */
 export interface ModerationContext {
@@ -14,19 +15,11 @@ export interface ModerationContext {
 }
 
 export function listingNotFound(): never {
-  throw new NotFoundException({
-    statusCode: 404,
-    code: 'LISTING_NOT_FOUND',
-    message: 'Listing not found',
-  });
+  throw new ListingNotFound();
 }
 
 export function groupNotFound(): never {
-  throw new NotFoundException({
-    statusCode: 404,
-    code: 'LISTING_GROUP_NOT_FOUND',
-    message: 'Listing group not found',
-  });
+  throw new ListingGroupNotFound();
 }
 
 /** The listing timestamps a moderation transition may stamp. */

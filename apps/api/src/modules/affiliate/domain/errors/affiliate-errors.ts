@@ -26,6 +26,18 @@ export class AffiliateNotFound extends DomainError {
   }
 }
 
+export class AffiliateMembershipRequired extends DomainError {
+  constructor() {
+    super('NOT_AN_AFFILIATE', 403, 'No affiliate account for this user');
+  }
+}
+
+export class ApprovedAffiliateRequired extends DomainError {
+  constructor() {
+    super('NOT_AN_AFFILIATE', 403, 'No approved affiliate account for this user');
+  }
+}
+
 export class AffiliateTenantShareFloorViolated extends DomainError {
   constructor() {
     super(

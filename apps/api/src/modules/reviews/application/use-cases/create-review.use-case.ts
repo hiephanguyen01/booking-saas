@@ -1,10 +1,13 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateReviewInput } from '@booking/contracts';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { STORAGE_PORT, type StoragePort } from '../../../../shared/storage/storage.port';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { Review } from '../../domain/entities/review.entity';
-import { ReviewBookingNotEligible } from '../../domain/errors/review-errors';
+import {
+  InvalidReviewMedia,
+  ReviewBookingNotEligible,
+} from '../../domain/errors/review-errors';
 import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import {
   REVIEW_REPOSITORY,
@@ -65,10 +68,6 @@ export class CreateReviewUseCase {
   }
 }
 
-function invalidReviewMedia(message: string): BadRequestException {
-  return new BadRequestException({
-    statusCode: 400,
-    code: 'INVALID_REVIEW_MEDIA',
-    message,
-  });
+function invalidReviewMedia(message: string): InvalidReviewMedia {
+  return new InvalidReviewMedia(message);
 }

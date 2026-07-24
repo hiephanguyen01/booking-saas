@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import type { GatewayKey } from '../../domain/ports/payment-gateway.port';
@@ -11,6 +11,10 @@ import {
   type GatewayRegistryPort,
 } from '../../domain/ports/gateway-registry.port';
 import { Payment } from '../../domain/entities/payment.entity';
+import {
+  BadWebhook,
+  InvalidWebhookSignature,
+} from '../payment-http-errors';
 
 /**
  * The webhook — the single source of truth for payment (§11.2). Resolves the
@@ -33,12 +37,7 @@ export class HandleWebhookUseCase {
     headers: Record<string, string>,
   ): Promise<void> {
     const ref = this.registry.statelessByKey(gatewayKey).peekReference(rawBody);
-    if (!ref)
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'BAD_WEBHOOK',
-        message: 'Unparseable webhook',
-      });
+    if (!ref) throw new BadWebhook();
 
     const payment = await this.payments.findByGatewayReference(gatewayKey, ref);
     if (!payment) return; // unknown txn — acknowledge and ignore
@@ -48,12 +47,7 @@ export class HandleWebhookUseCase {
     const flipped = await this.tenantDb.forTenant(payment.tenantId, async (tx) => {
       const gateway = await this.registry.resolveForTenant(tx, payment.tenantId, payment.gateway);
       const v = gateway.verifyWebhook(rawBody, headers);
-      if (!v.valid)
-        throw new UnauthorizedException({
-          statusCode: 401,
-          code: 'INVALID_SIGNATURE',
-          message: 'Webhook signature invalid',
-        });
+      if (!v.valid) throw new InvalidWebhookSignature();
 
       // A SePay TRANSACTION_VOID confirms an already-recorded automatic refund; it
       // must never downgrade the original successful payment. A late/out-of-order

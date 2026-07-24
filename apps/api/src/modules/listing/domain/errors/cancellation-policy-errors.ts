@@ -1,15 +1,11 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
 
+export { CancellationPolicyNotFound } from '../../../../shared/domain/errors/cancellation-policy-not-found';
+
 /**
  * Domain errors for the CancellationPolicy aggregate. Codes + statuses +
  * messages are byte-identical to the pre-refactor use-case behaviour.
  */
-
-export class CancellationPolicyNotFound extends DomainError {
-  constructor() {
-    super('CANCELLATION_POLICY_NOT_FOUND', 404, 'Cancellation policy not found');
-  }
-}
 
 /** The partner-path edit endpoint's answer when the policy isn't owned by the
  *  calling partner — same code as {@link CancellationPolicyNotOwnedForDelete}

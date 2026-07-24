@@ -1,4 +1,7 @@
 import { DomainError } from '../../../../shared/domain/domain-error';
+
+export { BookingNotFound as CustomerBookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
+export { TenantNotFound as FinanceTenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import type { IncompatibleDepositCoverage } from '../ports/commission-rule-repository.port';
 
 export class CommissionRuleNotFound extends DomainError {
@@ -128,18 +131,6 @@ export class SettlementJournalExists extends DomainError {
 export class SettlementNotReleasable extends DomainError {
   constructor() {
     super('SETTLEMENT_NOT_RELEASABLE', 409, 'Settlement is not due or was concurrently changed');
-  }
-}
-
-export class FinanceTenantNotFound extends DomainError {
-  constructor() {
-    super('TENANT_NOT_FOUND', 404, 'Tenant not found');
-  }
-}
-
-export class CustomerBookingNotFound extends DomainError {
-  constructor() {
-    super('BOOKING_NOT_FOUND', 404, 'Booking not found');
   }
 }
 

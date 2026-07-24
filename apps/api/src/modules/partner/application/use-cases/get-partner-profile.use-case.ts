@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
 import {
   PARTNER_READER,
   type IPartnerReader,
@@ -27,21 +28,13 @@ export class GetPartnerProfileUseCase {
   async execute(partnerId: string): Promise<PartnerRecord> {
     const tenantId = await this.partners.tenantIdOfPartner(partnerId);
     if (!tenantId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PARTNER_NOT_FOUND',
-        message: 'Partner not found',
-      });
+      throw new PartnerNotFound();
     }
     const partner = await this.tenantDb.forTenant(tenantId, (tx) =>
       this.partners.findById(tx, partnerId),
     );
     if (!partner) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PARTNER_NOT_FOUND',
-        message: 'Partner not found',
-      });
+      throw new PartnerNotFound();
     }
     return partner;
   }

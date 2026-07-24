@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
 import {
   PARTNER_READER,
   type IPartnerReader,
@@ -18,11 +19,7 @@ export class GetPartnerUseCase {
       this.partners.findById(tx, partnerId),
     );
     if (!partner) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PARTNER_NOT_FOUND',
-        message: 'Partner not found',
-      });
+      throw new PartnerNotFound();
     }
     return partner;
   }

@@ -49,3 +49,25 @@ export class ReviewReplyAlreadyExists extends DomainError {
     super('REVIEW_REPLY_ALREADY_EXISTS', 409, 'This review already has a reply');
   }
 }
+
+export class ReviewMediaBookingNotEligible extends DomainError {
+  constructor() {
+    super(
+      'REVIEW_BOOKING_NOT_ELIGIBLE',
+      409,
+      'Only an owned completed booking without a review can upload review media',
+    );
+  }
+}
+
+export class ReviewTargetNotFound extends DomainError {
+  constructor() {
+    super('REVIEW_TARGET_NOT_FOUND', 404, 'Published review target not found');
+  }
+}
+
+export class InvalidReviewMedia extends DomainError {
+  constructor(message: string) {
+    super('INVALID_REVIEW_MEDIA', 400, message);
+  }
+}

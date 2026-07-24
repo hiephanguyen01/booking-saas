@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PROMOTION_REPOSITORY,
@@ -6,6 +6,7 @@ import {
 } from '../../domain/ports/promotion-repository.port';
 import { PROMO_CONTEXT_LOOKUP, type IPromoContextLookup } from '../../domain/ports/promo-context-lookup.port';
 import { loadPromotionDetail, type PromotionDetail } from '../promotion-detail';
+import { PromotionNotFound } from '../../domain/errors/promotion-errors';
 
 /**
  * Read one promotion the partner may see (§12.2): one it created, or a tenant-created
@@ -30,7 +31,7 @@ export class GetPartnerPromotionUseCase {
         promotion !== null &&
         (promotion.createdByPartnerId === partnerId || promotion.fundingPartnerId === partnerId);
       if (!promotion || !visible) {
-        throw new NotFoundException({ statusCode: 404, code: 'PROMO_NOT_FOUND', message: 'Promotion not found' });
+        throw new PromotionNotFound();
       }
       return loadPromotionDetail(this.lookup, tx, promotion);
     });

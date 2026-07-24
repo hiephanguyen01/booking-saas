@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ModeConfig, QuoteQuery, QuoteResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
@@ -11,6 +11,8 @@ import {
   type IPricingRuleRepository,
 } from '../../domain/ports/pricing-rule-repository.port';
 import { priceQuote } from '../pricing';
+import { ListingNotFound } from '../../domain/errors/listing-errors';
+import { ModeNotEnabled } from '../../domain/errors/pricing-rule-errors';
 
 /** Storefront quote for a listing + mode + time range (read-only, host-resolved). */
 @Injectable()
@@ -27,18 +29,10 @@ export class GetPublicQuoteUseCase {
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const listing = await this.listings.findPublicBySlug(tx, slug);
       if (!listing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_NOT_FOUND',
-          message: 'Listing not found',
-        });
+        throw new ListingNotFound();
       }
       if (!listing.bookingModes.includes(query.mode)) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'MODE_NOT_ENABLED',
-          message: `Listing does not enable "${query.mode}"`,
-        });
+        throw new ModeNotEnabled(query.mode);
       }
       const pricingRules = await this.rules.listByListing(tx, listing.id);
       return priceQuote({

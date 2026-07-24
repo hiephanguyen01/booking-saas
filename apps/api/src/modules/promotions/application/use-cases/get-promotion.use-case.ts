@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PROMOTION_REPOSITORY,
@@ -6,6 +6,7 @@ import {
 } from '../../domain/ports/promotion-repository.port';
 import { PROMO_CONTEXT_LOOKUP, type IPromoContextLookup } from '../../domain/ports/promo-context-lookup.port';
 import { loadPromotionDetail, type PromotionDetail } from '../promotion-detail';
+import { PromotionNotFound } from '../../domain/errors/promotion-errors';
 
 /**
  * Read one promotion (§12.2). The tenant detail page used to fetch the whole list and
@@ -24,7 +25,7 @@ export class GetPromotionUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const promotion = await this.promotions.findById(tx, id);
       if (!promotion) {
-        throw new NotFoundException({ statusCode: 404, code: 'PROMO_NOT_FOUND', message: 'Promotion not found' });
+        throw new PromotionNotFound();
       }
       return loadPromotionDetail(this.lookup, tx, promotion);
     });

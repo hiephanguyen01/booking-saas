@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateListingInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveTenantTimezone } from '../../../../shared/tenant-context/tenant-timezone';
@@ -38,6 +38,9 @@ import {
   ResourceNotFound,
   ResourceNotOwned,
 } from '../../domain/errors/listing-errors';
+import { ListingPricingRejected } from '../../domain/errors/pricing-rule-errors';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
+import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
 import {
   ListingGroupNotFound,
   ListingGroupNotOwned,
@@ -77,11 +80,7 @@ export class CreateListingUseCase {
 
       const type = await this.listingTypes.findById(tx, input.listingTypeId);
       if (!type) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_TYPE_NOT_FOUND',
-          message: 'Listing type not found',
-        });
+        throw new ListingTypeNotFound();
       }
       Listing.assertBookingModesAllowed(input.bookingModes, type.allowedModes);
       assertValidAttributes(type.attributeSchema, input.attributes);
@@ -94,22 +93,14 @@ export class CreateListingUseCase {
         });
       } catch (error) {
         if (error instanceof ListingModeConfigError) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: error.code,
-            message: error.message,
-          });
+          throw new ListingPricingRejected(error.code, error.message);
         }
         throw error;
       }
 
       const partner = await this.partners.findById(tx, input.partnerId);
       if (!partner) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'PARTNER_NOT_FOUND',
-          message: 'Partner not found',
-        });
+        throw new PartnerNotFound();
       }
       assertCanServeListingType(
         { verificationStatus: partner.verificationStatus },
