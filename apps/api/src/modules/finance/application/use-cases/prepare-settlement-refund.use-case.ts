@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { SettlementKind } from '@prisma/client';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   SETTLEMENT_REPOSITORY,
   type ISettlementRepository,
+  type SettlementRecord,
 } from '../../domain/ports/settlement-repository.port';
 import { GetPayoutPolicyUseCase } from './get-payout-policy.use-case';
 import { Settlement } from '../../domain/entities/settlement.entity';
@@ -21,7 +21,7 @@ export class PrepareSettlementRefundUseCase {
     tenantId: string,
     bookingId: string,
     refundAmount: bigint,
-    kind?: SettlementKind,
+    kind?: SettlementRecord['kind'],
     incremental = false,
   ): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
