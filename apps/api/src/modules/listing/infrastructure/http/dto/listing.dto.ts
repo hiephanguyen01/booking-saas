@@ -1,5 +1,4 @@
 import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod';
 import {
   cancellationPolicyResponseSchema,
   createCancellationPolicyInputSchema,
@@ -18,10 +17,12 @@ import {
   pricingRuleInputSchema,
   pricingRuleResponseSchema,
   publicListingDetailResponseSchema,
+  publicListingGroupDetailResponseSchema,
   publishListingInputSchema,
   quoteQuerySchema,
   quoteResponseSchema,
   resourceResponseSchema,
+  submitListingResponseSchema,
   updateCancellationPolicyInputSchema,
   updateListingGroupInputSchema,
   updateListingInputSchema,
@@ -41,8 +42,12 @@ export class PublishListingDto extends createZodDto(publishListingInputSchema) {
 export class ListTenantListingsQueryDto extends createZodDto(listTenantListingsQuerySchema) {}
 export class ListPartnerListingsQueryDto extends createZodDto(listPartnerListingsQuerySchema) {}
 export class ListListingGroupsQueryDto extends createZodDto(listListingGroupsQuerySchema) {}
-export class CreateCancellationPolicyDto extends createZodDto(createCancellationPolicyInputSchema) {}
-export class UpdateCancellationPolicyDto extends createZodDto(updateCancellationPolicyInputSchema) {}
+export class CreateCancellationPolicyDto extends createZodDto(
+  createCancellationPolicyInputSchema,
+) {}
+export class UpdateCancellationPolicyDto extends createZodDto(
+  updateCancellationPolicyInputSchema,
+) {}
 
 // ── Responses ─────────────────────────────────────────────────────────────────
 export class ListingGroupResponseDto extends createZodDto(listingGroupResponseSchema) {}
@@ -53,16 +58,15 @@ export class PricingRuleResponseDto extends createZodDto(pricingRuleResponseSche
 export class PublicListingDetailResponseDto extends createZodDto(
   publicListingDetailResponseSchema,
 ) {}
+export class PublicListingGroupDetailResponseDto extends createZodDto(
+  publicListingGroupDetailResponseSchema,
+) {}
 export class QuoteResponseDto extends createZodDto(quoteResponseSchema) {}
 export class ListingReviewResponseDto extends createZodDto(listingReviewResponseSchema) {}
 export class ListingGroupReviewResponseDto extends createZodDto(listingGroupReviewResponseSchema) {}
 export class CancellationPolicyResponseDto extends createZodDto(cancellationPolicyResponseSchema) {}
-export class DepositRequirementResponseDto extends createZodDto(
-  depositRequirementResponseSchema,
-) {}
+export class DepositRequirementResponseDto extends createZodDto(depositRequirementResponseSchema) {}
 
 // ── Composed responses ────────────────────────────────────────────────────────
 /** Partner submit-for-review returns the listing plus its review checklist. */
-export class SubmitListingResponseDto extends createZodDto(
-  z.object({ listing: listingResponseSchema, review: listingReviewResponseSchema }),
-) {}
+export class SubmitListingResponseDto extends createZodDto(submitListingResponseSchema) {}

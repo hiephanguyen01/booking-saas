@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  AFFILIATE_REPOSITORY,
+  AFFILIATE_READER,
   type AffiliateWithUser,
-  type IAffiliateRepository,
-} from '../../domain/ports/affiliate-repository.port';
+  type IAffiliateReader,
+} from '../../domain/ports/affiliate-reader.port';
 
 /**
  * Every affiliate membership the user holds, across tenants (for a tenant
@@ -12,7 +12,10 @@ import {
  */
 @Injectable()
 export class GetAffiliateMembershipsUseCase {
-  constructor(@Inject(AFFILIATE_REPOSITORY) private readonly affiliates: IAffiliateRepository) {}
+  constructor(
+    @Inject(AFFILIATE_READER)
+    private readonly affiliates: IAffiliateReader,
+  ) {}
 
   async execute(userId: string): Promise<AffiliateWithUser[]> {
     return this.affiliates.adminFindMembershipsByUser(userId);

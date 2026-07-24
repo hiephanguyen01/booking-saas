@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { computeAffiliateCommission } from '../../domain/affiliate-commission-amount';
+import {
+  AffiliateCommission,
+  type AffiliateCommissionAmountFacts,
+  type NewAffiliateCommission,
+} from '../../domain/entities/affiliate-commission.entity';
 import {
   AFFILIATE_COMMISSION_REPOSITORY,
   type IAffiliateCommissionRepository,
@@ -27,22 +31,34 @@ export class RecordPendingCommissionUseCase {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const booking = await loadBookingFinanceView(tx, bookingId);
       if (!booking) return;
-      const existing = await this.commissions.findByBooking(tx, bookingId);
-      // Never resurrect a terminal commission (reversed/paid/clawed_back) on redelivery.
-      if (existing && existing.status !== 'pending') return;
-      const amount = computeAffiliateCommission({
+      const existing = await this.commissions.loadByBooking(tx, bookingId);
+      const amountFacts: AffiliateCommissionAmountFacts = {
         snapshot: booking.snapshot,
         totalAmount: booking.totalAmount,
         finalAmount: booking.finalAmount,
-        additionalCharges: 0n,
         fundedBy: booking.fundedBy,
-      });
-      await this.commissions.upsert(tx, tenantId, {
-        affiliateId: booking.affiliateId,
-        bookingId,
-        amount,
-        status: 'pending',
-      });
+      };
+
+      let commission: NewAffiliateCommission;
+      if (existing) {
+        const aggregate = AffiliateCommission.rehydrate(existing);
+        if (!aggregate.recordPending(amountFacts)) return;
+        commission = {
+          tenantId,
+          affiliateId: booking.affiliateId,
+          bookingId,
+          amount: aggregate.amount,
+          status: 'pending',
+        };
+      } else {
+        commission = AffiliateCommission.openPending({
+          tenantId,
+          affiliateId: booking.affiliateId,
+          bookingId,
+          ...amountFacts,
+        });
+      }
+      await this.commissions.upsert(tx, commission);
     });
   }
 }

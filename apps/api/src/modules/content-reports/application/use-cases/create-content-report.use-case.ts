@@ -1,7 +1,10 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateContentReportInput, CreateContentReportResponse } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { toContentReportResponse } from '../content-report.mapper';
+import { ContentReport } from '../../domain/entities/content-report.entity';
+import { ReporterNotFound, ReportTargetNotFound } from '../../domain/errors/content-report-errors';
 import {
   CONTENT_REPORT_REPOSITORY,
   type IContentReportRepository,
@@ -25,36 +28,24 @@ export class CreateContentReportUseCase {
     input: CreateContentReportInput,
   ): Promise<CreateContentReportResponse> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId)
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
+    if (!tenantId) throw new TenantNotFound();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const [target, reporterName] = await Promise.all([
         this.reports.findPublishedTarget(tx, input.target, input.targetId),
         this.reports.getReporterName(tx, reporterUserId),
       ]);
-      if (!target)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'REPORT_TARGET_NOT_FOUND',
-          message: 'Published listing or group not found',
-        });
-      if (!reporterName)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'REPORTER_NOT_FOUND',
-          message: 'Reporter not found',
-        });
+      if (!target) throw new ReportTargetNotFound();
+      if (!reporterName) throw new ReporterNotFound();
       const result = await this.reports.createOrFindActive(
         tx,
         tenantId,
-        reporterUserId,
-        reporterName,
-        target,
-        input,
+        ContentReport.open({
+          target,
+          reporterUserId,
+          reporterName,
+          reason: input.reason,
+          details: input.details || null,
+        }),
       );
       return { report: toContentReportResponse(result.report), duplicate: result.duplicate };
     });

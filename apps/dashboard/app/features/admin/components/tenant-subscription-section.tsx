@@ -1,5 +1,9 @@
 import { Form, Link } from 'react-router';
-import type { PlanResponse, SubscriptionHistoryItem } from '@booking/contracts';
+import type {
+  CurrentSubscriptionResponse,
+  PlanResponse,
+  SubscriptionHistoryItem,
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,
@@ -16,7 +20,6 @@ import { DataTable, type DataTableColumn } from '@booking/ui/components/data-tab
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
-import type { CurrentSubscription } from '~/features/admin/server/tenant-detail-actions.server';
 import { SUBSCRIPTION_STATUS_LABELS } from '~/constants/tenancy';
 import { dashboardPaths } from '~/constants/paths';
 import { ErrorBanner } from '~/components/action-feedback';
@@ -121,7 +124,7 @@ export function TenantSubscriptionSection({
   busy,
   serverError,
 }: {
-  subscription: CurrentSubscription | null;
+  subscription: CurrentSubscriptionResponse | null;
   history: SubscriptionHistoryItem[] | null;
   historyTotal: number;
   page: number;

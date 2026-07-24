@@ -20,10 +20,9 @@ Phases 2–3 are spec + tickets only. See [`docs/glossary.md`](./docs/glossary.m
 
 ## ⛔ Hard rules (override everything — specs, tickets, skills, older snippets)
 
-1. **Add targeted automated tests for high-risk behavior.** Security boundaries, tenant isolation,
-   authentication/session rotation, concurrency, money/ledger/idempotency, time calculations, parsers,
-   and pure domain invariants need deterministic regression coverage when changed. Keep tests focused;
-   avoid broad snapshots and brittle implementation-detail assertions. See
+1. **NO TESTS, ever.** Zero test files by owner decision. Never add `*.spec.*`/`*.test.*`/e2e, nor
+   vitest/jest/playwright config, `test` scripts, or CI test steps — even if a ticket says to.
+   Verification = `typecheck` + `lint` + `build` + running the app. See
    [ADR 0005](./docs/decisions/0005-no-tests-policy.md).
 2. **Backend flow is `controller → use-case → repository-port → repository`. No service classes** in
    the application layer. Sanctioned alternatives (pure domain function / use-case / port+adapter) in
@@ -80,8 +79,7 @@ partner, catalog, listing, scheduling, booking, payments, promotions, finance, a
 | Install | `pnpm install` (CI/Docker: `--frozen-lockfile`) |
 | Everything, dev | `pnpm dev` (turbo, all apps) |
 | One app, dev | `pnpm --filter=@booking/{api,storefront,dashboard} dev` |
-| **Full check suite** | `pnpm test && pnpm turbo lint typecheck build` |
-| Tests | `pnpm test` · storefront only: `pnpm --filter=@booking/storefront test` |
+| **Full check suite** | `pnpm turbo lint typecheck build` (there are no tests) |
 | Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
 | Format | `pnpm format` |
 | Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) |
@@ -92,8 +90,8 @@ partner, catalog, listing, scheduling, booking, payments, promotions, finance, a
 | RLS coverage check | `pnpm --filter=@booking/api check:rls` |
 
 > `--filter=api` also resolves (pnpm matches the directory). CI (`.github/workflows/ci.yml`, "Frontend
-> CI") runs Storefront security tests and the static security gate, then lints/typechecks/builds the
-> **two frontends** + `check:rls`. The API is not built in CI.
+> CI") runs the Storefront static security gate, then lints/typechecks/builds the **two frontends** +
+> `check:rls`. The API is not built in CI.
 
 ## Local run recipe
 
@@ -126,6 +124,6 @@ Seeded logins (override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`):
 - [`docs/data-model.md`](./docs/data-model.md) — models, RLS/GiST/ledger invariants, money & rate units
 - [`docs/conventions.md`](./docs/conventions.md) — backend & frontend conventions, errors, migrations, i18n
 - [`docs/glossary.md`](./docs/glossary.md) — domain terminology
-- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, targeted tests, no services)
+- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services)
 - [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
 - Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)

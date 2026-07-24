@@ -1,15 +1,16 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
 import {
-  PARTNER_REPOSITORY,
-  type IPartnerRepository,
+  PARTNER_READER,
+  type IPartnerReader,
   type PartnerRecord,
-} from '../../domain/ports/partner-repository.port';
+} from '../../domain/ports/partner-reader.port';
 
 @Injectable()
 export class GetPartnerUseCase {
   constructor(
-    @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
+    @Inject(PARTNER_READER) private readonly partners: IPartnerReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -18,11 +19,7 @@ export class GetPartnerUseCase {
       this.partners.findById(tx, partnerId),
     );
     if (!partner) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PARTNER_NOT_FOUND',
-        message: 'Partner not found',
-      });
+      throw new PartnerNotFound();
     }
     return partner;
   }

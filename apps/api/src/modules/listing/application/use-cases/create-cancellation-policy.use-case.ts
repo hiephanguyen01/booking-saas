@@ -6,6 +6,7 @@ import {
   CANCELLATION_POLICY_REPOSITORY,
   type ICancellationPolicyRepository,
 } from '../../domain/ports/cancellation-policy-repository.port';
+import { CancellationPolicy } from '../../domain/entities/cancellation-policy.entity';
 
 /** A partner defines a cancellation policy they own (§11.3); partnerId is forced by the caller. */
 @Injectable()
@@ -22,11 +23,11 @@ export class CreateCancellationPolicyUseCase {
     input: CreateCancellationPolicyInput,
   ): Promise<CancellationPolicyResponse> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const created = await this.policies.create(tx, tenantId, {
-        partnerId,
-        name: input.name,
-        rules: input.rules,
-      });
+      const created = await this.policies.create(
+        tx,
+        tenantId,
+        CancellationPolicy.open({ partnerId, name: input.name, rules: input.rules }),
+      );
       const defaultId = await this.policies.findPartnerDefaultId(tx, partnerId);
       return toCancellationPolicyResponse(created, defaultId);
     });

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PublicReviewsQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
@@ -10,6 +10,8 @@ import {
   REVIEW_TENANT_READER,
   type IReviewTenantReader,
 } from '../../domain/ports/review-tenant-reader.port';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
+import { ReviewTargetNotFound } from '../../domain/errors/review-errors';
 
 @Injectable()
 export class ListPublicReviewsUseCase {
@@ -21,21 +23,11 @@ export class ListPublicReviewsUseCase {
 
   async execute(host: string, query: PublicReviewsQuery): Promise<ReviewPage> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId)
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
+    if (!tenantId) throw new TenantNotFound();
     const page = await this.tenantDb.forTenant(tenantId, (tx) =>
       this.reviews.listPublic(tx, query),
     );
-    if (!page)
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'REVIEW_TARGET_NOT_FOUND',
-        message: 'Published review target not found',
-      });
+    if (!page) throw new ReviewTargetNotFound();
     return page;
   }
 }

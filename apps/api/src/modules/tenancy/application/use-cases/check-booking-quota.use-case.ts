@@ -7,8 +7,10 @@ import { checkBookingSoftLimit, type SoftLimitCheck } from '../../domain/plan-li
 import { GetPlanLimitsUseCase } from './get-plan-limits.use-case';
 
 /**
- * Soft monthly-bookings check (§6.5) — NEVER throws. The booking module calls
- * this to surface an upgrade warning; it must not block the customer.
+ * Soft monthly-bookings check (§6.5) — NEVER throws. Its only consumer is
+ * `GetSubscriptionStatusUseCase` (within this module), which surfaces the
+ * upgrade warning to the dashboard; nothing in `modules/booking` calls this
+ * directly, and it must not block the customer.
  */
 @Injectable()
 export class CheckBookingQuotaUseCase {

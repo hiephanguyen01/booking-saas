@@ -2,16 +2,17 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ListAffiliateCommissionsQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
-  AFFILIATE_COMMISSION_REPOSITORY,
+  AFFILIATE_COMMISSION_READER,
   type AffiliateCommissionWithBooking,
-  type IAffiliateCommissionRepository,
-} from '../../domain/ports/affiliate-commission-repository.port';
+  type IAffiliateCommissionReader,
+} from '../../domain/ports/affiliate-commission-reader.port';
 
 /** List an affiliate's commissions with booking codes (§15.3). */
 @Injectable()
 export class ListAffiliateCommissionsUseCase {
   constructor(
-    @Inject(AFFILIATE_COMMISSION_REPOSITORY) private readonly commissions: IAffiliateCommissionRepository,
+    @Inject(AFFILIATE_COMMISSION_READER)
+    private readonly commissions: IAffiliateCommissionReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 

@@ -1,14 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import { evaluateSubscription, type SubscriptionState } from '../../domain/subscription-status';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  BILLABLE_SUBSCRIPTION_STATUSES,
+  evaluateSubscription,
+} from '../../domain/subscription-status';
+import {
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
+import {
+  PLATFORM_HEALTH_READER,
+  type IPlatformHealthReader,
+} from '../../domain/ports/platform-health-reader.port';
 
 /**
  * Platform-admin health board (Task 1.12 / §13.3). A cross-tenant read that
  * aggregates GMV, catalog, activation, webhook and payout health per tenant plus
- * platform KPIs and the queue of subscriptions about to expire. Uses the
- * BYPASSRLS admin pool explicitly (like GetPlatformFinanceUseCase) since it spans
- * every tenant.
+ * platform KPIs and the queue of subscriptions about to expire. The read adapter
+ * owns the BYPASSRLS admin-pool queries because the projection spans every tenant.
  *
  * "GMV" = sum of `final_amount` for bookings that reached at least `confirmed`
  * (`confirmed`, `completed`, `no_show`) — realized gross merchandise value. GMV is
@@ -16,9 +24,6 @@ import { evaluateSubscription, type SubscriptionState } from '../../domain/subsc
  * the plan each tenant is currently subscribed to. The two are not comparable and
  * must not be added together.
  */
-
-/** Booking statuses that count toward realized GMV. */
-const GMV_STATUSES = Prisma.sql`('confirmed','completed','no_show')`;
 
 export interface TenantHealthRow {
   tenantId: string;
@@ -66,128 +71,33 @@ export interface PlatformHealth {
   expiring: ExpiringSubscriptionRow[];
 }
 
-interface TenantAggRow {
-  id: string;
-  name: string;
-  slug: string;
-  status: string;
-  vertical: string;
-  created_at: Date;
-  gmv: bigint;
-  gmv_30d: bigint;
-  bookings_30d: number;
-  first_booking_at: Date | null;
-  published_listings: number;
-}
-interface CountRow {
-  tenant_id: string;
-  count: number;
-}
-interface SubRow {
-  tenant_id: string;
-  status: string;
-  starts_at: Date;
-  expires_at: Date;
-  plan_name: string;
-  price_monthly: bigint;
-}
-interface TrendRow {
-  date: string;
-  gmv: bigint;
-}
-interface TotalRow {
-  total: number;
-}
-
 const MS_PER_HOUR = 1000 * 60 * 60;
 const MS_PER_DAY = MS_PER_HOUR * 24;
 
 @Injectable()
 export class GetPlatformHealthUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PLATFORM_HEALTH_READER)
+    private readonly healthReader: IPlatformHealthReader,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
+  ) {}
 
   async execute(): Promise<PlatformHealth> {
-    const db = this.prisma.admin;
+    const [facts, subscriptionSnapshot] = await Promise.all([
+      this.healthReader.read(),
+      this.currentSubscriptions.listCurrent(),
+    ]);
+    const webhookByTenant = new Map(facts.webhookFailures.map((r) => [r.tenantId, r.count]));
+    const payoutByTenant = new Map(facts.overduePayouts.map((r) => [r.tenantId, r.count]));
+    const subByTenant = new Map(
+      subscriptionSnapshot.items.map((item) => [item.subscription.tenantId, item]),
+    );
 
-    const [tenantRows, webhookRows, payoutRows, subRows, trendRows, webhookTotalRows] =
-      await Promise.all([
-        db.$queryRaw<TenantAggRow[]>(Prisma.sql`
-          SELECT
-            t.id, t.name, t.slug, t.status::text AS status, t.vertical, t.created_at,
-            COALESCE(b.gmv, 0)::bigint       AS gmv,
-            COALESCE(b.gmv_30d, 0)::bigint   AS gmv_30d,
-            COALESCE(b.bookings_30d, 0)::int AS bookings_30d,
-            b.first_booking_at,
-            COALESCE(l.published, 0)::int    AS published_listings
-          FROM tenants t
-          LEFT JOIN (
-            SELECT tenant_id,
-              SUM(final_amount) FILTER (WHERE status IN ${GMV_STATUSES}) AS gmv,
-              SUM(final_amount) FILTER (WHERE status IN ${GMV_STATUSES}
-                AND created_at >= now() - interval '30 days') AS gmv_30d,
-              COUNT(*) FILTER (WHERE created_at >= now() - interval '30 days') AS bookings_30d,
-              MIN(created_at) FILTER (WHERE status IN ${GMV_STATUSES}) AS first_booking_at
-            FROM bookings GROUP BY tenant_id
-          ) b ON b.tenant_id = t.id
-          LEFT JOIN (
-            SELECT tenant_id, COUNT(*) AS published
-            FROM listings WHERE status = 'published' GROUP BY tenant_id
-          ) l ON l.tenant_id = t.id
-          ORDER BY t.created_at ASC`),
-
-        db.$queryRaw<CountRow[]>(Prisma.sql`
-          SELECT tenant_id, COUNT(*)::int AS count
-          FROM outbox_events
-          WHERE processed_at IS NULL
-            AND (attempts > 0 OR last_error IS NOT NULL)
-            AND tenant_id IS NOT NULL
-          GROUP BY tenant_id`),
-
-        db.$queryRaw<CountRow[]>(Prisma.sql`
-          SELECT tenant_id, COUNT(*)::int AS count
-          FROM payouts
-          WHERE status IN ('pending','processing')
-            AND (
-              (period_to IS NOT NULL AND period_to < now())
-              OR (period_to IS NULL AND created_at < now() - interval '7 days')
-            )
-          GROUP BY tenant_id`),
-
-        // The current subscription per tenant. `starts_at DESC` (with created_at
-        // as a deterministic tiebreak) matches ISubscriptionRepository's
-        // `findCurrentByTenant`, so this board names the same plan the tenant is
-        // actually being served under — including back- or future-dated
-        // assignments, which a created_at ordering gets wrong.
-        db.$queryRaw<SubRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (s.tenant_id)
-            s.tenant_id, s.status::text AS status, s.starts_at, s.expires_at,
-            p.name AS plan_name, p.price_monthly
-          FROM tenant_subscriptions s
-          JOIN subscription_plans p ON p.id = s.plan_id
-          ORDER BY s.tenant_id, s.starts_at DESC, s.created_at DESC`),
-
-        db.$queryRaw<TrendRow[]>(Prisma.sql`
-          SELECT to_char(d.day, 'YYYY-MM-DD') AS date, COALESCE(SUM(b.final_amount), 0)::bigint AS gmv
-          FROM generate_series(now()::date - interval '13 days', now()::date, interval '1 day') d(day)
-          LEFT JOIN bookings b
-            ON b.created_at >= d.day AND b.created_at < d.day + interval '1 day'
-            AND b.status IN ${GMV_STATUSES}
-          GROUP BY d.day ORDER BY d.day`),
-
-        db.$queryRaw<TotalRow[]>(Prisma.sql`
-          SELECT COUNT(*)::int AS total
-          FROM outbox_events
-          WHERE processed_at IS NULL AND (attempts > 0 OR last_error IS NOT NULL)`),
-      ]);
-
-    const webhookByTenant = new Map(webhookRows.map((r) => [r.tenant_id, r.count]));
-    const payoutByTenant = new Map(payoutRows.map((r) => [r.tenant_id, r.count]));
-    const subByTenant = new Map(subRows.map((r) => [r.tenant_id, r]));
-
-    const tenants: TenantHealthRow[] = tenantRows.map((t) => {
+    const tenants: TenantHealthRow[] = facts.tenants.map((t) => {
       const sub = subByTenant.get(t.id);
-      const firstBookingHours = t.first_booking_at
-        ? Math.max(0, Math.round((t.first_booking_at.getTime() - t.created_at.getTime()) / MS_PER_HOUR))
+      const firstBookingHours = t.firstBookingAt
+        ? Math.max(0, Math.round((t.firstBookingAt.getTime() - t.createdAt.getTime()) / MS_PER_HOUR))
         : null;
       return {
         tenantId: t.id,
@@ -195,21 +105,25 @@ export class GetPlatformHealthUseCase {
         slug: t.slug,
         status: t.status,
         vertical: t.vertical,
-        createdAt: t.created_at,
+        createdAt: t.createdAt,
         gmv: t.gmv,
-        gmv30d: t.gmv_30d,
-        bookings30d: t.bookings_30d,
+        gmv30d: t.gmv30d,
+        bookings30d: t.bookings30d,
         firstBookingHours,
-        publishedListings: t.published_listings,
+        publishedListings: t.publishedListings,
         webhookFailures: webhookByTenant.get(t.id) ?? 0,
         overduePayouts: payoutByTenant.get(t.id) ?? 0,
         subscription: sub
-          ? { status: sub.status, expiresAt: sub.expires_at, planName: sub.plan_name }
+          ? {
+              status: sub.subscription.status,
+              expiresAt: sub.subscription.expiresAt,
+              planName: sub.plan.name,
+            }
           : null,
       };
     });
 
-    const nowDate = new Date();
+    const nowDate = subscriptionSnapshot.evaluatedAt;
     const now = nowDate.getTime();
 
     /**
@@ -218,23 +132,16 @@ export class GetPlatformHealthUseCase {
      * here, so this KPI cannot drift from the lifecycle the tenant actually
      * experiences. Summed as bigint — VND never goes through a float.
      */
-    const mrr = subRows.reduce((acc, r) => {
-      const { phase } = evaluateSubscription(
-        {
-          status: r.status as SubscriptionState,
-          startsAt: r.starts_at,
-          expiresAt: r.expires_at,
-        },
-        nowDate,
-      );
-      return phase === 'active' ? acc + r.price_monthly : acc;
+    const mrr = subscriptionSnapshot.items.reduce((acc, item) => {
+      const { phase } = evaluateSubscription(item.subscription, nowDate);
+      return phase === 'active' ? acc + item.plan.priceMonthly : acc;
     }, 0n);
 
     const expiring: ExpiringSubscriptionRow[] = tenants
       .filter(
         (t) =>
           t.subscription &&
-          ['trial', 'active', 'past_due'].includes(t.subscription.status) &&
+          (BILLABLE_SUBSCRIPTION_STATUSES as readonly string[]).includes(t.subscription.status) &&
           (t.subscription.expiresAt.getTime() - now) / MS_PER_DAY <= 14,
       )
       .map((t) => ({
@@ -256,10 +163,10 @@ export class GetPlatformHealthUseCase {
         mrr,
         publishedListings: tenants.reduce((acc, t) => acc + t.publishedListings, 0),
         bookings30d: tenants.reduce((acc, t) => acc + t.bookings30d, 0),
-        webhookFailures: webhookTotalRows[0]?.total ?? 0,
-        overduePayouts: payoutRows.reduce((acc, r) => acc + r.count, 0),
+        webhookFailures: facts.webhookFailureTotal,
+        overduePayouts: facts.overduePayouts.reduce((acc, r) => acc + r.count, 0),
       },
-      gmvTrend: trendRows.map((r) => ({ date: r.date, gmv: r.gmv })),
+      gmvTrend: facts.gmvTrend,
       tenants,
       expiring,
     };

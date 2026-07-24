@@ -1,5 +1,6 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import { ListingDepositPolicy } from '../../domain/value-objects/listing-deposit-policy.value-object';
 import {
   COMMISSION_COVERAGE_READER,
   type CommissionCoverageTarget,
@@ -19,18 +20,17 @@ export class AssertListingDepositCoverageUseCase {
     target: CommissionCoverageTarget & { isHouse: boolean },
     depositPercent: number,
   ): Promise<void> {
-    if (target.isHouse) return;
-    const rule = await this.commissions.findEffectiveRule(tx, target);
-    if (rule?.rateType !== 'percent' || BigInt(depositPercent) >= rule.rate) return;
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'DEPOSIT_BELOW_TENANT_COMMISSION',
-      message: `Deposit ${depositPercent}% must be at least the tenant commission ${rule.rate}%`,
-      details: {
+    if (target.isHouse) {
+      ListingDepositPolicy.fromRule(null).assertCovered({
+        isHouse: true,
         depositPercent,
-        minimumDepositPercent: Number(rule.rate),
-        commissionRuleId: rule.id,
-      },
+      });
+      return;
+    }
+    const rule = await this.commissions.findEffectiveRule(tx, target);
+    ListingDepositPolicy.fromRule(rule).assertCovered({
+      isHouse: target.isHouse,
+      depositPercent,
     });
   }
 }

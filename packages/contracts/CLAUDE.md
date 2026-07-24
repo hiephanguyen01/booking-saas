@@ -34,6 +34,12 @@ pnpm --filter=@booking/contracts build
 3. `pnpm --filter=@booking/contracts build`.
 4. Import in app/backend: `import { createBookingInputSchema, type BookingResponse } from '@booking/contracts'`.
 
+For a response change, update all four surfaces in the same commit: shared response schema/type,
+API DTO + explicit mapper, dashboard/storefront loader/action consumers, and runtime `schema` parsing
+on the BFF request where available. Never keep a hand-written frontend interface that duplicates a
+shared API response. Compatibility aliases remain explicit, documented fields until a coordinated
+API + frontend removal wave.
+
 Schemas with `.transform()`/`.default()` have differing input/output types — for a form on such a
 schema, build a dedicated `useForm<In, Ctx, Out>` instead of `GenericForm`
 (see [`../../docs/conventions.md`](../../docs/conventions.md) → Forms).

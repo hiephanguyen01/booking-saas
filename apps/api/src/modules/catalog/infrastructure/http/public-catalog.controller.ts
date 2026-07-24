@@ -1,10 +1,11 @@
-import { BadRequestException, Controller, Get, Headers, Query } from '@nestjs/common';
+import { Controller, Get, Headers, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import {
-  publicCatalogSearchQuerySchema,
-  type PublicCatalogSearchResponse,
-  type PublicListingTypeResponse,
+import type {
+  PublicCatalogSearchQuery,
+  PublicCatalogSearchResponse,
+  PublicListingTypeResponse,
 } from '@booking/contracts';
+import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
@@ -14,6 +15,7 @@ import {
   PublicListingResponseDto,
   PublicListingTypeResponseDto,
 } from './dto/catalog.dto';
+import { CatalogSearchValidationPipe } from './catalog-search-validation.pipe';
 
 /** Storefront-facing catalog (§16, §17). Tenant resolved from Host (BFF proxy). */
 @ApiTags('public-catalog')
@@ -44,32 +46,19 @@ export class PublicCatalogController {
   @ApiQuery({ type: ListPublicListingsQueryDto })
   @ApiOkResponse({ type: PublicListingResponseDto })
   async listings(
-    @Query() query: Record<string, unknown>,
+    @Query(new CatalogSearchValidationPipe()) query: PublicCatalogSearchQuery,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
   ): Promise<PublicCatalogSearchResponse> {
     const resolvedHost = resolveHost(forwardedHost, host);
-    const parsed = publicCatalogSearchQuerySchema.safeParse(query);
-    if (!parsed.success) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_CATALOG_SEARCH',
-        message: 'Invalid catalog search query',
-        issues: parsed.error.issues,
-      });
-    }
-    return this.searchCatalog.execute(resolvedHost, parsed.data);
+    return this.searchCatalog.execute(resolvedHost, query);
   }
 }
 
 function resolveHost(forwardedHost?: string, host?: string): string {
   const resolved = forwardedHost?.split(',')[0]?.trim() || host;
   if (!resolved) {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'MISSING_HOST',
-      message: 'Host header is required to resolve a tenant',
-    });
+    throw new MissingTenantHost();
   }
   return resolved;
 }

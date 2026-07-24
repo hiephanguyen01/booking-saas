@@ -1,11 +1,17 @@
 import { type AutoCampaignResponse, type ValidatePromoResponse } from '@booking/contracts';
-import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { MissingHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';
 import { ResolveAutoCampaignUseCase } from '../../application/use-cases/resolve-auto-campaign.use-case';
-import { AutoCampaignDto, AutoCampaignResponseDto, ValidatePromoDto, ValidatePromoResponseDto } from './dto/promotions.dto';
+import {
+  AutoCampaignDto,
+  AutoCampaignResponseDto,
+  ValidatePromoDto,
+  ValidatePromoResponseDto,
+} from './dto/promotions.dto';
 
 /** Storefront promo validation (§12.3) + auto-campaign resolution (§12.1). Tenant from Host (BFF). */
 @ApiTags('public-checkout')
@@ -46,11 +52,6 @@ function hostOf(req: Request): string {
   const raw =
     (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() ||
     req.headers.host;
-  if (!raw)
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'MISSING_HOST',
-      message: 'Host header is required',
-    });
+  if (!raw) throw new MissingHost();
   return raw;
 }

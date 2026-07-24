@@ -5,6 +5,7 @@ import { CreateContentReportUseCase } from '../../application/use-cases/create-c
 import { GetContentReportUseCase } from '../../application/use-cases/get-content-report.use-case';
 import { ListContentReportsUseCase } from '../../application/use-cases/list-content-reports.use-case';
 import { UpdateContentReportUseCase } from '../../application/use-cases/update-content-report.use-case';
+import { CONTENT_REPORT_READER } from '../../domain/ports/content-report-reader.port';
 import { CONTENT_REPORT_REPOSITORY } from '../../domain/ports/content-report-repository.port';
 import { CONTENT_REPORT_TENANT_READER } from '../../domain/ports/content-report-tenant-reader.port';
 import { PrismaContentReportRepository } from '../repositories/prisma-content-report.repository';
@@ -16,7 +17,9 @@ import { TenantContentReportController } from './tenant-content-report.controlle
   imports: [PrismaModule, TenantContextModule],
   controllers: [CustomerContentReportController, TenantContentReportController],
   providers: [
-    { provide: CONTENT_REPORT_REPOSITORY, useClass: PrismaContentReportRepository },
+    PrismaContentReportRepository,
+    { provide: CONTENT_REPORT_REPOSITORY, useExisting: PrismaContentReportRepository },
+    { provide: CONTENT_REPORT_READER, useExisting: PrismaContentReportRepository },
     { provide: CONTENT_REPORT_TENANT_READER, useClass: PrismaContentReportTenantReader },
     CreateContentReportUseCase,
     GetContentReportUseCase,

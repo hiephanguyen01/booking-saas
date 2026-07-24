@@ -1,5 +1,9 @@
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
 import { defaultCommissionSnapshot, type CommissionSnapshot } from '../../finance/domain/commission-snapshot';
+import {
+  normalizeAffiliateAdditionalCharges,
+  resolveAffiliateFundedBy,
+} from '../domain/affiliate-commission-amount';
 
 export interface BookingFinanceView {
   affiliateId: string;
@@ -41,28 +45,17 @@ export async function loadBookingFinanceView(
     const partner = await tx.partner.findUnique({ where: { id: b.partnerId }, select: { isHouse: true } });
     snapshot = defaultCommissionSnapshot(partner?.isHouse ?? false);
   }
-  const promo = b.promotionSnapshot as { fundedBy?: 'tenant' | 'partner' } | null;
-  const fundedBy = b.discountAmount > 0n ? (promo?.fundedBy ?? null) : null;
-
   return {
     affiliateId: b.affiliateId,
     totalAmount: b.totalAmount,
     finalAmount: b.finalAmount,
-    additionalCharges: sumCharges(b.additionalCharges),
+    additionalCharges: normalizeAffiliateAdditionalCharges(
+      b.additionalCharges,
+    ),
     snapshot,
-    fundedBy,
+    fundedBy: resolveAffiliateFundedBy(
+      b.discountAmount,
+      b.promotionSnapshot,
+    ),
   };
-}
-
-/** Sum the `amount` fields of the additional_charges json array (§8.3). */
-function sumCharges(raw: unknown): bigint {
-  if (!Array.isArray(raw)) return 0n;
-  let total = 0n;
-  for (const item of raw) {
-    const amount = (item as { amount?: unknown })?.amount;
-    if (typeof amount === 'number' && Number.isSafeInteger(amount)) total += BigInt(amount);
-    else if (typeof amount === 'string' && /^-?\d+$/.test(amount)) total += BigInt(amount);
-    else if (typeof amount === 'bigint') total += amount;
-  }
-  return total > 0n ? total : 0n;
 }

@@ -1,5 +1,8 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { Partner } from '../../domain/entities/partner.entity';
+import { PartnerNotFound } from '../../domain/errors/partner-errors';
+import { PARTNER_READER, type IPartnerReader } from '../../domain/ports/partner-reader.port';
 import {
   PARTNER_REPOSITORY,
   type IPartnerRepository,
@@ -15,34 +18,22 @@ import {
 @Injectable()
 export class SetPartnerDefaultCancellationPolicyUseCase {
   constructor(
+    @Inject(PARTNER_READER) private readonly partnerReader: IPartnerReader,
     @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
 
   async execute(partnerId: string, policyId: string | null): Promise<PartnerRecord> {
-    const tenantId = await this.partners.tenantIdOfPartner(partnerId);
-    if (!tenantId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PARTNER_NOT_FOUND',
-        message: 'Partner not found',
-      });
-    }
+    const tenantId = await this.partnerReader.tenantIdOfPartner(partnerId);
+    if (!tenantId) throw new PartnerNotFound();
+
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      if (policyId !== null) {
-        const policy = await tx.cancellationPolicy.findFirst({
-          where: { id: policyId, OR: [{ partnerId: null }, { partnerId }] },
-          select: { id: true },
-        });
-        if (!policy) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'CANCELLATION_POLICY_NOT_FOUND',
-            message: 'Cancellation policy not found',
-          });
-        }
-      }
-      return this.partners.update(tx, partnerId, { defaultCancellationPolicyId: policyId });
+      const isVisible =
+        policyId === null
+          ? true
+          : await this.partners.isCancellationPolicyVisible(tx, partnerId, policyId);
+      const intent = Partner.setDefaultCancellationPolicy(policyId, isVisible);
+      return this.partners.updateDefaultCancellationPolicy(tx, partnerId, intent);
     });
   }
 }

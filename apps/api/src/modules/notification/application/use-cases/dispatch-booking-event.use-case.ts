@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { audienceRecipients, bookingTemplateData } from '../../domain/booking-notification-data';
+import {
+  NotificationDelivery,
+  OUTBOX_DELIVERY_POLICY,
+} from '../../domain/entities/notification-delivery.entity';
 import { planForEvent } from '../../domain/notification-plan';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
 import {
@@ -11,6 +15,7 @@ import {
   NOTIFICATION_READER,
   type INotificationReader,
 } from '../../domain/ports/notification-reader.port';
+import { DedupeKey } from '../../domain/value-objects/dedupe-key';
 import { deliverNotification } from '../deliver-notification';
 
 export interface BookingEventPayload {
@@ -22,10 +27,9 @@ export interface BookingEventPayload {
 
 /**
  * booking.* events (created/approved/confirmed/cancelled/completed/no_show/rejected)
- * → emails (§17). Idempotent by design: before sending we check `notification_logs`
- * for a `sent` row keyed by a deterministic dedupe key, so an at-least-once outbox
- * redelivery never sends a second email. One delivery failure rethrows so the relay
- * retries — already-sent recipients are skipped.
+ * → emails (§17). Idempotent by design: the delivery's dedupe key skips a resend, so
+ * an at-least-once outbox redelivery never sends a second email. One delivery failure
+ * rethrows so the relay retries — already-sent recipients are skipped.
  */
 @Injectable()
 export class DispatchBookingEventUseCase {
@@ -45,21 +49,26 @@ export class DispatchBookingEventUseCase {
     if (!ctx) return;
 
     for (const item of plan) {
-      const recipients = audienceRecipients(item, ctx);
-      for (const recipient of recipients) {
-        const dedupeKey = `${eventType}:${ctx.bookingId}:${item.templateId}:${recipient.userId}`;
-        await deliverNotification(
-          { email: this.email, logs: this.logs },
-          {
-            tenantId,
+      for (const recipient of audienceRecipients(item, ctx)) {
+        const delivery = NotificationDelivery.start({
+          tenantId,
+          userId: recipient.userId,
+          recipientEmail: recipient.email,
+          eventType,
+          templateId: item.templateId,
+          dedupeKey: DedupeKey.forEvent(
             eventType,
-            recipient,
-            item,
-            data: bookingTemplateData(ctx, recipient, payload),
-            dedupeKey,
-            bookingId: ctx.bookingId,
-          },
-        );
+            ctx.bookingId,
+            item.templateId,
+            recipient.userId,
+          ),
+          bookingId: ctx.bookingId,
+          policy: OUTBOX_DELIVERY_POLICY,
+        });
+        await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+          locale: recipient.locale,
+          data: bookingTemplateData(ctx, recipient, payload),
+        });
       }
     }
   }

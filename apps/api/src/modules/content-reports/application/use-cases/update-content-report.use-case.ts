@@ -1,8 +1,13 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ContentReportResponse, UpdateContentReportInput } from '@booking/contracts';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { toContentReportResponse } from '../content-report.mapper';
+import { ContentReport } from '../../domain/entities/content-report.entity';
+import {
+  ContentReportNotFound,
+  ContentReportStateChanged,
+} from '../../domain/errors/content-report-errors';
 import {
   CONTENT_REPORT_REPOSITORY,
   type IContentReportRepository,
@@ -23,20 +28,18 @@ export class UpdateContentReportUseCase {
     input: UpdateContentReportInput,
   ): Promise<ContentReportResponse> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const current = await this.reports.findById(tx, id);
-      if (!current)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'CONTENT_REPORT_NOT_FOUND',
-          message: 'Content report not found',
-        });
-      const updated = await this.reports.updateStatus(
-        tx,
-        id,
-        input.status,
-        input.resolutionNote || null,
-        actorUserId,
-      );
+      const state = await this.reports.loadForModeration(tx, id);
+      if (!state) throw new ContentReportNotFound();
+      const report = ContentReport.rehydrate(state);
+      const now = await this.tenantDb.databaseNow(tx);
+      report.moderate({
+        status: input.status,
+        resolutionNote: input.resolutionNote || null,
+        handledByUserId: actorUserId,
+        now,
+      });
+      const updated = await this.reports.saveModeration(tx, report);
+      if (!updated) throw new ContentReportStateChanged();
       await this.audit.write(tx, {
         tenantId,
         actorUserId,
@@ -44,11 +47,11 @@ export class UpdateContentReportUseCase {
         entityType: 'content_report',
         entityId: id,
         data: {
-          fromStatus: current.status,
+          fromStatus: report.status,
           toStatus: input.status,
           resolutionNote: input.resolutionNote ?? null,
-          targetType: current.target,
-          targetId: current.targetId,
+          targetType: report.target,
+          targetId: report.targetId,
         },
       });
       return toContentReportResponse(updated);

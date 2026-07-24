@@ -1,5 +1,6 @@
 import type { AuthFlowCompleteResponse, AuthPasswordCompleteInput } from '@booking/contracts';
 import { Inject, Injectable } from '@nestjs/common';
+import { UserAccount } from '../../domain/entities/user-account.entity';
 import {
   AUTH_CHALLENGE_STORE,
   type IAuthChallengeStore,
@@ -25,7 +26,9 @@ export class CompletePasswordResetUseCase {
     );
     if (!payload) expired();
     if (!payload.userId) return { success: true };
-    await this.users.setPassword(payload.userId, await this.hasher.hash(input.password));
+    const passwordHash = await this.hasher.hash(input.password);
+    const passwordIntent = UserAccount.resetPasswordHash(passwordHash);
+    await this.users.setPassword(payload.userId, passwordIntent.passwordHash);
     await this.sessions.revokeAllForUser(payload.userId);
     return { success: true };
   }

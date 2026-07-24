@@ -93,10 +93,7 @@ export class TenantSettingsController {
   @ApiOperation({ summary: 'Tenant subscription status + soft booking quota' })
   @ApiOkResponse({ type: SubscriptionStatusResponseDto })
   async subscriptionStatus(): Promise<SubscriptionStatusResponse> {
-    const view = await this.getSubscriptionStatus.execute(
-      this.tenantContext.tenantIdOrThrow(),
-      new Date(),
-    );
+    const view = await this.getSubscriptionStatus.execute(this.tenantContext.tenantIdOrThrow());
     return toSubscriptionStatusResponse(view);
   }
 

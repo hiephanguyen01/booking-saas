@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router';
 import { CalendarClock, ExternalLink, ListChecks, Users } from 'lucide-react';
 import {
+  currentSubscriptionResponseSchema,
   updateTenantInputSchema,
   type DomainResponse,
   type Paginated,
@@ -25,7 +26,6 @@ import {
   handleTenantDetailJsonAction,
   type ActionResult,
   type ActionScope,
-  type CurrentSubscription,
 } from '~/features/admin/server/tenant-detail-actions.server';
 import { tenantEditFields } from '~/features/admin/tenant-form-fields';
 import { TenantConfigSection } from '~/features/admin/components/tenant-config-section';
@@ -60,7 +60,9 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
   });
   const [tenantRes, subRes, historyRes, domainsRes, plansRes] = await Promise.all([
     apiGet<TenantDetailResponse>(`/admin/tenants/${id}`, auth),
-    apiGet<CurrentSubscription | null>(`/admin/tenants/${id}/subscription`, auth),
+    apiGet(`/admin/tenants/${id}/subscription`, auth, {
+      schema: currentSubscriptionResponseSchema.nullable(),
+    }),
     apiGet<Paginated<SubscriptionHistoryItem>>(`/admin/tenants/${id}/subscriptions`, auth, {
       query: toApiQuery(),
     }),

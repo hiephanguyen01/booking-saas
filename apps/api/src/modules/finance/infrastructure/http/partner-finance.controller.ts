@@ -7,7 +7,7 @@ import type {
   PayoutResponse,
   SettlementSummaryResponse,
 } from '@booking/contracts';
-import { Body, Controller, Get, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -16,6 +16,7 @@ import { toPaginated } from '../../../../shared/pagination/pagination';
 import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { SettlementNotFound } from '../../domain/errors/finance-domain-errors';
 import {
   toPartnerBookingSettlementResponse,
   toLedgerEntryResponse,
@@ -145,11 +146,7 @@ export class PartnerFinanceController {
     const partnerId = this.tenantContext.partnerIdOrThrow();
     const settlement = await this.getSettlementUseCase.execute(tenantId, bookingId, partnerId);
     if (!settlement) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'SETTLEMENT_NOT_FOUND',
-        message: 'Settlement not found',
-      });
+      throw new SettlementNotFound();
     }
     return toPartnerBookingSettlementResponse(settlement);
   }

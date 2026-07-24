@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   TenantDbService,
   type PrismaTx,
@@ -9,9 +9,9 @@ import {
   type BookingRecord,
   type IBookingRepository,
 } from '../../domain/ports/booking-repository.port';
-import { isWithinNoShowWindow, NO_SHOW_WINDOW_HOURS } from '../../domain/no-show-window';
 import { applyPartnerTransition } from '../apply-partner-transition';
 import type { PartnerContext } from '../partner-owned-booking';
+import { Booking } from '../../domain/entities/booking.entity';
 
 /** Partner marks a confirmed booking as a no-show (§8.2/§8.5 confirmed → no_show). */
 @Injectable()
@@ -47,12 +47,6 @@ export class MarkNoShowUseCase {
    * Tenant intervention is required; the scheduler never guesses completion.
    */
   private async assertNoShowWindow(tx: PrismaTx, booking: BookingRecord): Promise<void> {
-    if (!isWithinNoShowWindow(booking.endUtc, await this.tenantDb.databaseNow(tx))) {
-      throw new UnprocessableEntityException({
-        statusCode: 422,
-        code: 'NO_SHOW_WINDOW_INVALID',
-        message: `A booking can only be marked no-show after it ends and within ${NO_SHOW_WINDOW_HOURS}h of the end time`,
-      });
-    }
+    Booking.rehydrate(booking).assertNoShowAllowed(await this.tenantDb.databaseNow(tx));
   }
 }

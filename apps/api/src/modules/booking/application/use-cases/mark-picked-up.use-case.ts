@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -7,6 +7,7 @@ import {
   type IBookingRepository,
 } from '../../domain/ports/booking-repository.port';
 import { loadOwnedBooking, type PartnerContext } from '../partner-owned-booking';
+import { Booking } from '../../domain/entities/booking.entity';
 
 /** Inventory pickup (§9.4). Partner-driven. */
 @Injectable()
@@ -20,16 +21,16 @@ export class MarkPickedUpUseCase {
   execute(ctx: PartnerContext, bookingId: string): Promise<BookingRecord> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       const booking = await loadOwnedBooking(this.bookings, tx, bookingId, ctx.partnerId);
-      if (booking.status !== 'confirmed') {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'NOT_CONFIRMED',
-          message: 'Only a confirmed rental can be picked up',
-        });
-      }
-      const updated = await this.bookings.patchFulfillment(tx, bookingId, {
-        pickedUpAt: await this.tenantDb.databaseNow(tx),
-      });
+      const aggregate = Booking.rehydrate(booking);
+      aggregate.assertPickupAllowed();
+      const updated = await this.bookings.patchFulfillment(
+        tx,
+        bookingId,
+        {
+          ...aggregate.fulfillment().planPickup(await this.tenantDb.databaseNow(tx)),
+        },
+        { expectedStatus: booking.status, unsetMarker: 'pickedUpAt' },
+      );
       await this.outbox.emit(tx, {
         tenantId: ctx.tenantId,
         eventType: 'booking.picked_up',

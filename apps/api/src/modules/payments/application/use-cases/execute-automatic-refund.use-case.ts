@@ -18,6 +18,7 @@ import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
 } from '../../domain/ports/gateway-config-repository.port';
+import { Refund } from '../../domain/entities/refund.entity';
 
 /** Executes the provider call after the refund intent is durably committed. */
 @Injectable()
@@ -34,10 +35,11 @@ export class ExecuteAutomaticRefundUseCase {
   async execute(tenantId: string, refundId: string): Promise<void> {
     const prepared = await this.tenantDb.forTenant(tenantId, async (tx) => {
       const refund = await this.refunds.findById(tx, refundId);
-      if (!refund || refund.status !== 'pending' || refund.executionMode !== 'automatic')
-        return null;
+      if (!refund) return null;
+      const entity = Refund.rehydrate(refund);
+      if (!entity.canExecuteAutomatically()) return null;
       const payment = await this.payments.findSucceededByBooking(tx, refund.bookingId);
-      if (!payment || payment.id !== refund.paymentId) return null;
+      if (!payment || !entity.isForPayment(payment)) return null;
       const gateway = await this.registry.resolveForTenant(tx, tenantId, payment.gateway);
       // Parallel gateways: settings must come from the PAYMENT's own gateway, not
       // the base config (which may not even be the gateway that took the payment).
@@ -74,7 +76,7 @@ export class ExecuteAutomaticRefundUseCase {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       await this.refunds.lockForBooking(tx, prepared.refund.bookingId);
       const current = await this.refunds.findById(tx, refundId);
-      if (!current || current.status !== 'pending' || current.executionMode !== 'automatic') return;
+      if (!current || !Refund.rehydrate(current).canExecuteAutomatically()) return;
 
       if (result.supported) {
         const updated = await this.refunds.completeAutomatic(tx, refundId, result.refundId ?? null);
@@ -94,7 +96,7 @@ export class ExecuteAutomaticRefundUseCase {
         return;
       }
 
-      const dueAt = new Date(Date.now() + prepared.manualRefundSlaHours * 60 * 60 * 1000);
+      const dueAt = Refund.manualDueAt(prepared.manualRefundSlaHours, new Date());
       const updated = await this.refunds.requireManual(tx, refundId, dueAt);
       if (!updated) return;
       await this.outbox.emit(tx, {

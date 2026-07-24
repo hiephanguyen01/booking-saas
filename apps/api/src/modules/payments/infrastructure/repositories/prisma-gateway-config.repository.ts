@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  DEFAULT_GATEWAY_PAYMENT_SETTINGS,
   defaultGatewayPaymentSettings,
+  gatewayKeySchema,
   gatewayPaymentSettingsSchema,
   isWalletGateway,
+  upsertGatewayConfigInputSchema,
   WALLET_GATEWAYS,
   type GatewayPaymentSettings,
 } from '@booking/contracts';
@@ -26,15 +27,26 @@ export class PrismaGatewayConfigRepository implements IGatewayConfigRepository {
 
   private toRecord(c: Row): GatewayConfigRecord {
     const enc = (c.credentials as { enc?: string } | null)?.enc;
-    const credentials = enc ? (JSON.parse(this.crypto.decrypt(enc)) as Record<string, string>) : {};
+    const credentials: unknown = enc ? JSON.parse(this.crypto.decrypt(enc)) : {};
+    const gateway = gatewayKeySchema.safeParse(c.gateway);
+    if (!gateway.success) {
+      throw new Error(`Unsupported stored payment gateway: ${c.gateway}`);
+    }
     const parsedSettings = gatewayPaymentSettingsSchema.safeParse(c.settings);
-    return {
-      id: c.id,
-      gateway: c.gateway as GatewayKey,
+    const parsed = upsertGatewayConfigInputSchema.safeParse({
+      gateway: gateway.data,
       environment: c.environment,
       credentials,
-      settings: parsedSettings.success ? parsedSettings.data : DEFAULT_GATEWAY_PAYMENT_SETTINGS,
-    };
+      settings: parsedSettings.success
+        ? parsedSettings.data
+        : defaultGatewayPaymentSettings(gateway.data),
+    });
+    if (!parsed.success) {
+      // Stored/decrypted secrets are a trust boundary. Never coerce missing
+      // fields to empty strings and send them to a provider.
+      throw new Error(`Invalid stored ${gateway.data} gateway credentials`);
+    }
+    return { id: c.id, ...parsed.data } as GatewayConfigRecord;
   }
 
   async findActiveAll(tx: PrismaTx, tenantId: string): Promise<GatewayConfigRecord[]> {

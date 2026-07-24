@@ -1,4 +1,6 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { DomainNotFoundForTenant } from '../../domain/errors/tenancy-errors';
+import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
 import {
   TENANT_DOMAIN_REPOSITORY,
   type ITenantDomainRepository,
@@ -8,6 +10,7 @@ import {
   DOMAIN_VERIFICATION_QUEUE,
   type IDomainVerificationQueue,
 } from '../../domain/ports/domain-verification-queue.port';
+import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache.port';
 
 export interface VerifyDomainResult {
   status: 'verified' | 'checking';
@@ -26,27 +29,20 @@ export class VerifyDomainUseCase {
   constructor(
     @Inject(TENANT_DOMAIN_REPOSITORY) private readonly domains: ITenantDomainRepository,
     @Inject(DOMAIN_VERIFICATION_QUEUE) private readonly queue: IDomainVerificationQueue,
+    @Inject(TENANT_CACHE) private readonly cache: ITenantCache,
   ) {}
 
   async execute(tenantId: string, domainId: string): Promise<VerifyDomainResult> {
     const domain = await this.domains.findById(domainId);
     if (!domain || domain.tenantId !== tenantId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'DOMAIN_NOT_FOUND',
-        message: `Domain ${domainId} not found for this tenant`,
-      });
+      throw new DomainNotFoundForTenant(domainId);
     }
-    if (domain.verifiedAt) return { status: 'verified', domain };
-    if (!domain.verificationToken) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'DOMAIN_NOT_VERIFIABLE',
-        message: 'Domain has no verification token',
-      });
-    }
+    const d = TenantDomain.rehydrate(domain);
+    if (d.isVerified) return { status: 'verified', domain };
+    d.assertVerifiable();
 
     await this.queue.enqueue(tenantId, domainId);
+    await this.cache.invalidateHost(domain.hostname);
     return { status: 'checking', domain };
   }
 }

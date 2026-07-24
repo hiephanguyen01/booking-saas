@@ -12,12 +12,15 @@ import {
   type ReferralLinkResponse,
 } from '@booking/contracts';
 import type { EffectiveAffiliateRate } from '../domain/affiliate-rate';
-import type { AffiliateRecord, AffiliateWithUser } from '../domain/ports/affiliate-repository.port';
-import type { ReferralLinkRecord } from '../domain/ports/referral-link-repository.port';
+import type {
+  AffiliateRecord,
+  AffiliateWithUser,
+} from '../domain/ports/affiliate-reader.port';
+import type { ReferralLinkRecord } from '../domain/ports/referral-link-reader.port';
 import type {
   AffiliateCommissionTotals,
   AffiliateCommissionWithBooking,
-} from '../domain/ports/affiliate-commission-repository.port';
+} from '../domain/ports/affiliate-commission-reader.port';
 import type { AffiliateMembership } from './use-cases/list-affiliate-memberships.use-case';
 import type { TenantAffiliateDetail } from './use-cases/get-tenant-affiliate.use-case';
 import type { TenantAffiliateRow } from './use-cases/list-tenant-affiliates.use-case';

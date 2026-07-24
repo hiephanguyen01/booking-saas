@@ -1,14 +1,15 @@
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { CreatePromotionInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { vnd } from '../../../../shared/money/money';
 import {
   PROMOTION_REPOSITORY,
-  type CreatePromotionData,
   type IPromotionRepository,
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
 import { PROMO_CONTEXT_LOOKUP, type IPromoContextLookup } from '../../domain/ports/promo-context-lookup.port';
+import { Promotion } from '../../domain/entities/promotion.entity';
+import { PromotionCodeTaken } from '../../domain/errors/promotion-errors';
 import { normalizeCode } from '../../domain/promotion-application';
 import { assertScopeTargetValid } from '../assert-scope-target';
 import { assertTenantShareRisk } from '../assert-tenant-share-risk';
@@ -36,7 +37,7 @@ export class CreatePromotionUseCase {
       if (code) {
         const existing = await this.promotions.findByCode(tx, code);
         if (existing) {
-          throw new ConflictException({ statusCode: 409, code: 'PROMO_CODE_TAKEN', message: `Code "${code}" is already in use` });
+          throw new PromotionCodeTaken(code);
         }
       }
 
@@ -56,27 +57,25 @@ export class CreatePromotionUseCase {
       const fundingPartnerId =
         input.fundedBy === 'partner' ? await resolveFundingPartnerId(tx, input.appliesTo, appliesToId) : null;
 
-      const data: CreatePromotionData = {
-        name: input.name,
-        code,
-        discountType: input.discountType,
-        discountValue: vnd(input.discountValue),
-        maxDiscount: input.maxDiscount != null ? vnd(input.maxDiscount) : null,
-        fundedBy: input.fundedBy,
-        appliesTo: input.appliesTo,
-        appliesToId,
-        minOrderAmount: input.minOrderAmount != null ? vnd(input.minOrderAmount) : null,
-        firstBookingOnly: input.firstBookingOnly,
-        usageLimitTotal: input.usageLimitTotal ?? null,
-        usageLimitPerCustomer: input.usageLimitPerCustomer ?? null,
-        timeWindows: input.timeWindows?.length ? input.timeWindows : null,
-        startsAt: input.startsAt ? new Date(input.startsAt) : null,
-        endsAt: input.endsAt ? new Date(input.endsAt) : null,
-        status: input.status,
-        createdByPartnerId: null,
-        fundingPartnerId,
-        partnerOptInAt: null,
-      };
+      const data = Promotion.open({
+        fields: {
+          name: input.name,
+          code,
+          discountType: input.discountType,
+          discountValue: vnd(input.discountValue),
+          maxDiscount: input.maxDiscount != null ? vnd(input.maxDiscount) : null,
+          fundedBy: input.fundedBy,
+          minOrderAmount: input.minOrderAmount != null ? vnd(input.minOrderAmount) : null,
+          firstBookingOnly: input.firstBookingOnly,
+          usageLimitTotal: input.usageLimitTotal ?? null,
+          usageLimitPerCustomer: input.usageLimitPerCustomer ?? null,
+          timeWindows: input.timeWindows?.length ? input.timeWindows : null,
+          startsAt: input.startsAt ? new Date(input.startsAt) : null,
+          endsAt: input.endsAt ? new Date(input.endsAt) : null,
+          status: input.status,
+        },
+        scope: { appliesTo: input.appliesTo, appliesToId, fundingPartnerId },
+      });
       return this.promotions.create(tx, tenantId, data);
     });
   }

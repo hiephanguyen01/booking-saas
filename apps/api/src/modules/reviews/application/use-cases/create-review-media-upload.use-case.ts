@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ReviewMediaPresignInput } from '@booking/contracts';
 import {
   STORAGE_PORT,
@@ -15,6 +15,8 @@ import {
   type IReviewTenantReader,
 } from '../../domain/ports/review-tenant-reader.port';
 import { reviewMediaPrefix } from '../../domain/review-media';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
+import { ReviewMediaBookingNotEligible } from '../../domain/errors/review-errors';
 
 @Injectable()
 export class CreateReviewMediaUploadUseCase {
@@ -32,21 +34,13 @@ export class CreateReviewMediaUploadUseCase {
   ): Promise<PresignedUpload> {
     const tenantId = await this.tenants.resolveTenantId(host);
     if (!tenantId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
+      throw new TenantNotFound();
     }
     const eligible = await this.tenantDb.forTenant(tenantId, (tx) =>
       this.reviews.isReviewableBooking(tx, customerId, input.bookingId),
     );
     if (!eligible) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'REVIEW_BOOKING_NOT_ELIGIBLE',
-        message: 'Only an owned completed booking without a review can upload review media',
-      });
+      throw new ReviewMediaBookingNotEligible();
     }
     return this.storage.createPresignedUpload({
       keyPrefix: reviewMediaPrefix(tenantId, customerId, input.bookingId),

@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { FavoriteTarget, FavoriteToggleResponse } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   FAVORITE_REPOSITORY,
@@ -24,12 +25,7 @@ export class RemoveFavoriteUseCase {
     target: FavoriteTarget,
   ): Promise<FavoriteToggleResponse> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId)
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
+    if (!tenantId) throw new TenantNotFound();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       await this.favorites.remove(tx, customerId, target);
       return { ...target, favorited: false };

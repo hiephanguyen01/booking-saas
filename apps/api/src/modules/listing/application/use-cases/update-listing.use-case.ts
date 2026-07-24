@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdateListingInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -33,6 +26,22 @@ import {
   ListingModeConfigError,
   validateAndNormalizeModeConfig,
 } from '../../domain/pricing/package-config';
+import { Listing } from '../../domain/entities/listing.entity';
+import {
+  InvalidListingAdministrativeDivision,
+  ListingNotFound,
+  ListingSlugTaken,
+  ListingStateChanged,
+} from '../../domain/errors/listing-errors';
+import { ListingPricingRejected } from '../../domain/errors/pricing-rule-errors';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
+import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
+import {
+  ListingGroupNotFound,
+  ListingGroupNotOwned,
+  ListingGroupReadOnlyForEdit,
+  ListingGroupTypeMismatch,
+} from '../../domain/errors/listing-group-errors';
 
 @Injectable()
 export class UpdateListingUseCase {
@@ -55,11 +64,7 @@ export class UpdateListingUseCase {
   ): Promise<ListingRecord> {
     const hasLocationCodes = input.provinceCode !== undefined || input.wardCode !== undefined;
     if (hasLocationCodes && (!input.provinceCode || !input.wardCode)) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_ADMINISTRATIVE_DIVISION',
-        message: 'Both provinceCode and wardCode are required when changing the address',
-      });
+      throw new InvalidListingAdministrativeDivision();
     }
     const location =
       input.provinceCode && input.wardCode
@@ -68,28 +73,15 @@ export class UpdateListingUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.listings.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_NOT_FOUND',
-          message: 'Listing not found',
-        });
+        throw new ListingNotFound();
       }
       // Partner-scoped callers may only edit their own listings (§7.3).
-      if (opts?.requirePartnerId && existing.partnerId !== opts.requirePartnerId) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'LISTING_NOT_OWNED',
-          message: 'This listing belongs to another partner',
-        });
-      }
+      const listing = Listing.rehydrate(existing);
+      listing.assertOwnedForEdit(opts?.requirePartnerId);
       if (input.depositPercent !== undefined || input.categoryId !== undefined) {
         const partner = await this.partners.findById(tx, existing.partnerId);
         if (!partner) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'PARTNER_NOT_FOUND',
-            message: 'Partner not found',
-          });
+          throw new PartnerNotFound();
         }
         await this.assertDepositCoverage.execute(
           tx,
@@ -109,27 +101,15 @@ export class UpdateListingUseCase {
         ? await this.groups.findById(tx, effectiveGroupId)
         : null;
       if (effectiveGroupId && !effectiveGroup) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_GROUP_NOT_FOUND',
-          message: 'Listing group not found',
-        });
+        throw new ListingGroupNotFound();
       }
       if (effectiveGroup && effectiveGroup.status !== 'draft') {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_GROUP_READ_ONLY',
-          message: 'Hide the listing group before changing its items',
-        });
+        throw new ListingGroupReadOnlyForEdit();
       }
       if (input.slug && input.slug !== existing.slug) {
         const other = await this.listings.findBySlug(tx, input.slug);
         if (other && other.id !== id) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'LISTING_SLUG_TAKEN',
-            message: `Slug "${input.slug}" is already in use`,
-          });
+          throw new ListingSlugTaken(input.slug);
         }
       }
 
@@ -138,25 +118,13 @@ export class UpdateListingUseCase {
       if (input.groupId !== undefined && input.groupId !== null) {
         const group = effectiveGroup;
         if (!group) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'LISTING_GROUP_NOT_FOUND',
-            message: 'Listing group not found',
-          });
+          throw new ListingGroupNotFound();
         }
         if (group.partnerId !== existing.partnerId) {
-          throw new ForbiddenException({
-            statusCode: 403,
-            code: 'LISTING_GROUP_NOT_OWNED',
-            message: 'The listing group belongs to another partner',
-          });
+          throw new ListingGroupNotOwned();
         }
         if (group.listingTypeId !== existing.listingTypeId) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: 'LISTING_GROUP_TYPE_MISMATCH',
-            message: 'The listing and its group must use the same listing type',
-          });
+          throw new ListingGroupTypeMismatch();
         }
       }
 
@@ -169,25 +137,14 @@ export class UpdateListingUseCase {
       ) {
         const type = await this.listingTypes.findById(tx, existing.listingTypeId);
         if (!type) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'LISTING_TYPE_NOT_FOUND',
-            message: 'Listing type not found',
-          });
+          throw new ListingTypeNotFound();
         }
         if (input.attributes !== undefined) {
           assertValidAttributes(type.attributeSchema, input.attributes);
         }
         const bookingModes = input.bookingModes ?? existing.bookingModes;
         if (input.bookingModes !== undefined) {
-          const invalid = bookingModes.filter((m) => !type.allowedModes.includes(m));
-          if (invalid.length > 0) {
-            throw new BadRequestException({
-              statusCode: 400,
-              code: 'INVALID_BOOKING_MODES',
-              message: `Modes not allowed by the listing type: ${invalid.join(', ')}`,
-            });
-          }
+          Listing.assertBookingModesAllowed(bookingModes, type.allowedModes);
         }
         try {
           normalizedModeConfig = validateAndNormalizeModeConfig({
@@ -197,40 +154,42 @@ export class UpdateListingUseCase {
           }) as Record<string, unknown>;
         } catch (error) {
           if (error instanceof ListingModeConfigError) {
-            throw new BadRequestException({
-              statusCode: 400,
-              code: error.code,
-              message: error.message,
-            });
+            throw new ListingPricingRejected(error.code, error.message);
           }
           throw error;
         }
       }
 
-      const updated = await this.listings.update(tx, id, {
-        groupId: input.groupId,
-        categoryId: input.categoryId,
-        title: input.title,
-        slug: input.slug,
-        description: input.description,
-        provinceCode: location?.province.code,
-        provinceName: location?.province.name,
-        wardCode: location?.ward.code,
-        wardName: location?.ward.name,
-        address: input.address,
-        photos: input.photos,
-        attributes: input.attributes,
-        bookingModes: input.bookingModes,
-        modeConfig: normalizedModeConfig,
-        stockQuantity: input.stockQuantity,
-        capacity: input.capacity,
-        bufferBefore: input.bufferBefore,
-        bufferAfter: input.bufferAfter,
-        approvalRequired: input.approvalRequired,
-        depositPercent: input.depositPercent,
-        balanceDue: input.balanceDue,
-        cancellationPolicyId: input.cancellationPolicyId,
-      });
+      const updated = await this.listings.update(
+        tx,
+        id,
+        existing.updatedAt,
+        listing.applyContentUpdate({
+          groupId: input.groupId,
+          categoryId: input.categoryId,
+          title: input.title,
+          slug: input.slug,
+          description: input.description,
+          provinceCode: location?.province.code,
+          provinceName: location?.province.name,
+          wardCode: location?.ward.code,
+          wardName: location?.ward.name,
+          address: input.address,
+          photos: input.photos,
+          attributes: input.attributes,
+          bookingModes: input.bookingModes,
+          modeConfig: normalizedModeConfig,
+          stockQuantity: input.stockQuantity,
+          capacity: input.capacity,
+          bufferBefore: input.bufferBefore,
+          bufferAfter: input.bufferAfter,
+          approvalRequired: input.approvalRequired,
+          depositPercent: input.depositPercent,
+          balanceDue: input.balanceDue,
+          cancellationPolicyId: input.cancellationPolicyId,
+        }),
+      );
+      if (!updated) throw new ListingStateChanged();
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing.updated',

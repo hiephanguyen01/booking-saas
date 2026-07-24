@@ -28,8 +28,6 @@ export interface SubscriptionHistoryRecord extends SubscriptionRecord {
 
 export interface ISubscriptionRepository {
   create(data: AssignSubscriptionData): Promise<SubscriptionRecord>;
-  /** The most recently started subscription for a tenant (the current one). */
-  findCurrentByTenant(tenantId: string): Promise<SubscriptionRecord | null>;
   /**
    * A page of the tenant's subscription history, newest first. Assignment is
    * append-only (§3.1), so this is the tenant's billing history.

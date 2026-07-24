@@ -1,4 +1,9 @@
-import { gatewayKeySchema, type GatewayConfigResponse, type GatewayKey } from '@booking/contracts';
+import {
+  gatewayKeySchema,
+  type GatewayConfigResponse,
+  type GatewayKey,
+  type UpsertGatewayConfigInput,
+} from '@booking/contracts';
 import { Body, Controller, Delete, Get, HttpCode, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -6,6 +11,7 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { GatewayConfigValidationPipe } from './gateway-config-validation.pipe';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
 import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway-config.use-case';
 import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
@@ -14,7 +20,6 @@ import { toGatewayConfigResponse } from '../../application/payments.mapper';
 import {
   GatewayConfigResponseDto,
   UpdateGatewayPaymentSettingsDto,
-  UpsertGatewayConfigDto,
 } from './dto/payments.dto';
 
 /** Tenant-side gateway credential management (§11.1). Scope via x-tenant-id. */
@@ -41,7 +46,10 @@ export class TenantGatewayController {
   @Put()
   @ApiOperation({ summary: 'Create or update the tenant payment gateway credentials' })
   @ApiOkResponse({ type: GatewayConfigResponseDto })
-  async put(@Body() input: UpsertGatewayConfigDto): Promise<GatewayConfigResponse> {
+  async put(
+    @Body(new GatewayConfigValidationPipe())
+    input: UpsertGatewayConfigInput,
+  ): Promise<GatewayConfigResponse> {
     return toGatewayConfigResponse(await this.upsert.execute(input));
   }
 

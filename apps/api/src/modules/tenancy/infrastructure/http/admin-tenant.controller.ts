@@ -1,9 +1,10 @@
 import {
   uuidSchema,
+  type CreatedTenantResponse,
+  type CurrentSubscriptionResponse,
   type DomainResponse,
   type DomainVerificationResult,
   type Paginated,
-  type PlanResponse,
   type SlugAvailabilityResponse,
   type SubscriptionHistoryItem,
   type SubscriptionResponse,
@@ -11,17 +12,7 @@ import {
   type TenantDetailResponse,
   type TenantResponse,
 } from '@booking/contracts';
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
   ApiConflictResponse,
@@ -100,9 +91,7 @@ export class AdminTenantController {
   @Post()
   @ApiOperation({ summary: 'Create a tenant and its primary domain' })
   @ApiCreatedResponse({ type: CreatedTenantDto })
-  async create(
-    @Body() input: CreateTenantDto,
-  ): Promise<TenantResponse & { primaryDomain: DomainResponse }> {
+  async create(@Body() input: CreateTenantDto): Promise<CreatedTenantResponse> {
     const { tenant, primaryDomain } = await this.createTenant.execute(input);
     return { ...toTenantResponse(tenant), primaryDomain: toDomainResponse(primaryDomain) };
   }
@@ -183,7 +172,7 @@ export class AdminTenantController {
   @ApiOkResponse({ type: CurrentSubscriptionDto })
   async subscription(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<{ subscription: SubscriptionResponse; plan: PlanResponse | null } | null> {
+  ): Promise<CurrentSubscriptionResponse | null> {
     const current = await this.getCurrentSubscription.execute(id);
     if (!current) return null;
     return {

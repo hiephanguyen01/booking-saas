@@ -1,4 +1,8 @@
-import type { LockoutState } from '../login-lockout';
+import type {
+  LoginLockoutIntent,
+  NewUserAccount,
+  UserAccount,
+} from '../entities/user-account.entity';
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
 
@@ -16,27 +20,10 @@ export interface UserRecord {
   emailVerifiedAt: Date | null;
 }
 
-export interface CreateUserData {
-  email: string;
-  passwordHash: string;
-  fullName: string;
-  phone?: string;
-  locale: string;
-  emailVerifiedAt?: Date;
-}
-
-export interface CreateGuestData {
-  email: string;
-  fullName: string;
-  phone: string;
-}
-
 export interface IUserRepository {
-  findByEmail(email: string): Promise<UserRecord | null>;
-  create(data: CreateUserData): Promise<UserRecord>;
-  /** Guest-checkout user (§8.6) — no password, cannot log in until upgraded. */
-  createGuest(data: CreateGuestData): Promise<UserRecord>;
+  findByEmail(email: string): Promise<UserAccount | null>;
+  create(data: NewUserAccount): Promise<UserRecord>;
   /** Set a guest's password hash — the upgrade-to-account step (§8.6). */
   setPassword(userId: string, passwordHash: string): Promise<UserRecord>;
-  updateLockout(userId: string, state: LockoutState): Promise<void>;
+  updateLockout(userId: string, intent: LoginLockoutIntent): Promise<void>;
 }

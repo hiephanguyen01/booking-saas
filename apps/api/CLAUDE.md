@@ -26,6 +26,35 @@ Module shape (copy `modules/partner/` or `modules/booking/`):
 `infrastructure/{repositories, http/{controllers split by audience, dto, <module>.module.ts}}`.
 Controllers are split by audience: `public-` / `tenant-` / `partner-` / `admin-`.
 
+## Entity and error policy
+
+- Write-path invariants/state transitions live on framework-free entities, VOs or pure domain
+  policies; use-cases orchestrate `load → rehydrate/create → domain method → save → emit`.
+- Do not invent entities for query/projection, adapter-backed state machines, CAS/set-based
+  transitions or provider-boundary validation. These paths still use ports; no direct Prisma model
+  access/raw SQL in application code.
+- Entities/VOs/errors import no Nest, Prisma, application or infrastructure code and perform no I/O
+  or clock reads. External facts are method arguments.
+- Never inline a custom Nest error envelope in a use-case. Standard 4xx errors are named
+  `DomainError`s in `domain/errors/`; exact cross-module tuples live once in
+  `shared/domain/errors/`.
+- Same code with different frozen messages stays as separate named classes. Auth retry fields,
+  legacy HTTP bodies, webhook/provider shapes and 5xx use named Nest exceptions in
+  `application/*-http-errors.ts`; `DomainError` is 4xx-only.
+- Domain transitions and repository CAS are both required: pass the loaded status/version/timestamp
+  into the write, return an explicit miss, throw a named 409 before audit/outbox, and never replace a
+  guarded update with unconditional load-check-save.
+- HTTP/provider JSON is typed and validated at the edge. Use discriminated unions for
+  provider-specific credentials, validate decrypted stored JSON before adapter construction, and
+  fail closed rather than filling absent secrets with `''`. Open `unknown` JSON is limited to
+  documented dynamic config/snapshots or untrusted payloads that are immediately narrowed.
+- Response mappers list contract fields explicitly; do not spread Prisma/read records into HTTP
+  responses because persistence-only keys become accidental wire contracts.
+
+The full decision rules and wire-freeze requirements are in
+[`docs/conventions.md`](../../docs/conventions.md#entityuse-case-decision) and
+[`Backend error placement`](../../docs/conventions.md#backend-error-placement).
+
 ## Multi-tenancy — `forTenant()` + RLS (the most important rule)
 
 ```ts
@@ -70,7 +99,9 @@ never created via UI. After any role-assignment change call `PermissionResolverS
 Producer: `OutboxService.emit(tx, { tenantId?, eventType, payload })` inside its `forTenant` tx.
 Consumer: `OutboxHandlerRegistry.register(eventType, handler)` (in the module's `onModuleInit`). The
 BullMQ relay (`src/shared/outbox/outbox-relay.worker.ts`) delivers each event with exponential backoff
-(poll 2s, batch 20, `FOR UPDATE SKIP LOCKED`, backoff capped 300s, **no dead-letter**). There is no
+(poll 2s, batch 20, `FOR UPDATE SKIP LOCKED`, backoff capped 300s). After 20 failed delivery
+attempts it parks the row by setting `dead_lettered_at`; parked rows are excluded from future claims.
+There is no
 `OutboxService.enqueue`/`.on` (older docs invented those). Time comparisons use the **DB clock**
 (`now()`), never `Date.now()`. The `outbox_events.aggregate_type`/`aggregate_id` columns exist but are
 currently unpopulated.
@@ -79,12 +110,14 @@ currently unpopulated.
 
 `src/main.ts` sets Helmet (CSP relaxed only when docs are enabled), `cookie-parser`, `rawBody: true`
 (gateway webhook signatures), shutdown hooks, Swagger (non-prod or `SWAGGER_ENABLED=true`), and
-`PORT` (default 3000). **There is no `enableCors` and no global exception filter** — domain use-cases
-throw NestJS `HttpException`s, and the error envelope is `{ statusCode, code, message, details? }`
-(e.g. `VALIDATION_ERROR` from the zod pipe, `NO_PERMISSION_DECLARED`/`MISSING_PERMISSION` from the
-guard). Never leak Prisma errors. Env vars are read via `process.env`; API bootstrap, Prisma CLI, seed,
-and storage scripts all load the single workspace-root `.env` (see `.env.example`). Never add an
-app-local env file.
+`PORT` (default 3000). **There is no `enableCors`.** There is ONE global exception filter:
+`DomainExceptionFilter` (`src/shared/domain/domain-exception.filter.ts`, wired via `APP_FILTER`) —
+it only catches framework-free `DomainError`s thrown by entities/VOs and emits the standard envelope
+`{ statusCode, code, message, details? }`; everything else keeps Nest's default handling.
+Application code uses NestJS `HttpException` only through named HTTP-boundary error classes described
+above; never restore inline payload literals. Never leak Prisma errors. Env vars are read via
+`process.env`; API bootstrap, Prisma CLI, seed, and storage scripts all load the single workspace-root
+`.env` (see `.env.example`). Never add an app-local env file.
 
 ## Scripts (verified)
 

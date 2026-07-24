@@ -1,10 +1,16 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdatePlanInput } from '@booking/contracts';
+import { SubscriptionPlan } from '../../domain/entities/subscription-plan.entity';
+import { PlanNameTaken, PlanNotFound } from '../../domain/errors/billing-errors';
 import {
   PLAN_REPOSITORY,
   type IPlanRepository,
   type PlanWithSubscribers,
 } from '../../domain/ports/plan-repository.port';
+import {
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
 
 /**
  * Edits a subscription plan (§19). Exists because `subscription_plans.name` is
@@ -30,55 +36,44 @@ import {
  */
 @Injectable()
 export class UpdatePlanUseCase {
-  constructor(@Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository) {}
+  constructor(
+    @Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
+  ) {}
 
   async execute(id: string, input: UpdatePlanInput): Promise<PlanWithSubscribers> {
     const plan = await this.plans.findById(id);
     if (!plan) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PLAN_NOT_FOUND',
-        message: `Plan ${id} not found`,
-      });
+      throw new PlanNotFound(id);
     }
 
     // Checked up-front so the UNIQUE violation never escapes as a Prisma error.
     if (input.name !== undefined && input.name !== plan.name) {
       const clash = await this.plans.findByName(input.name);
       if (clash) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'PLAN_NAME_TAKEN',
-          message: `Plan name "${input.name}" is already in use`,
-        });
+        throw new PlanNameTaken(input.name);
       }
     }
 
     // Money is parsed with BigInt, never Number — a VND price can exceed 2^53.
     const priceMonthly = input.priceMonthly === undefined ? undefined : BigInt(input.priceMonthly);
-    // Re-submitting the same price is not a re-price, so it needs no confirmation.
-    const repricing = priceMonthly !== undefined && priceMonthly !== plan.priceMonthly;
-    const subscriberCount = (await this.plans.liveSubscriberCounts()).get(id) ?? 0;
+    const subscriberCount = (await this.currentSubscriptions.liveSubscriberCounts()).get(id) ?? 0;
 
-    if (repricing && subscriberCount > 0 && input.repriceExistingSubscribers !== true) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'PLAN_HAS_SUBSCRIBERS',
-        message:
-          `Changing this plan's price re-prices ${subscriberCount} tenant(s) already subscribed ` +
-          `to it, because a subscription reads its price from the plan and stores no snapshot. ` +
-          `Resend with repriceExistingSubscribers: true to confirm, or create a new plan and ` +
-          `migrate tenants to it to leave existing billing untouched.`,
-        details: { subscribers: subscriberCount },
-      });
-    }
+    // The repricing gate (409 PLAN_HAS_SUBSCRIBERS unless confirmed) lives on the
+    // aggregate; it throws before this use-case touches the repository's update.
+    const patch = SubscriptionPlan.rehydrate(plan).applyUpdate(
+      {
+        name: input.name,
+        priceMonthly,
+        limits: input.limits,
+        isActive: input.isActive,
+        repriceExistingSubscribers: input.repriceExistingSubscribers,
+      },
+      subscriberCount,
+    );
 
-    const updated = await this.plans.update(id, {
-      name: input.name,
-      priceMonthly,
-      limits: input.limits,
-      isActive: input.isActive,
-    });
+    const updated = await this.plans.update(id, patch);
     // Editing a plan cannot add or drop subscribers, so the count still holds.
     return { plan: updated, subscriberCount };
   }

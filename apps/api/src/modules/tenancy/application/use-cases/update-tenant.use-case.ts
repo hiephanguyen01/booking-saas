@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdateTenantInput } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -25,11 +26,7 @@ export class UpdateTenantUseCase {
 
   async execute(id: string, input: UpdateTenantInput): Promise<TenantRecord> {
     if (!(await this.tenants.findById(id))) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: `Tenant ${id} not found`,
-      });
+      throw new TenantNotFound();
     }
     const tenant = await this.tenants.update(id, input);
     if (input.status !== undefined) {

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveEffectiveAffiliateRate, type EffectiveAffiliateRate } from '../../domain/affiliate-rate';
-import type { AffiliateWithUser } from '../../domain/ports/affiliate-repository.port';
+import type { AffiliateWithUser } from '../../domain/ports/affiliate-reader.port';
 import {
   COMMISSION_RULE_READER,
   type ICommissionRuleReader,

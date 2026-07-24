@@ -1,20 +1,17 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdateListingTypeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { ListingType } from '../../domain/entities/listing-type.entity';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
+import { ListingTypeSlugTaken } from '../../domain/errors/listing-type-errors';
 import {
   LISTING_TYPE_REPOSITORY,
   type IListingTypeRepository,
   type ListingTypeRecord,
 } from '../../domain/ports/listing-type-repository.port';
-import { assertValidListingTypeSearchConfig } from '../listing-type-search-config.validator';
 
+/** Tenant admin edits a listing type; the aggregate enforces the merged-state rules (§7.3). */
 @Injectable()
 export class UpdateListingTypeUseCase {
   constructor(
@@ -30,81 +27,14 @@ export class UpdateListingTypeUseCase {
   ): Promise<ListingTypeRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.repo.findById(tx, id);
-      if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_TYPE_NOT_FOUND',
-          message: 'Listing type not found',
-        });
-      }
+      if (!existing) throw new ListingTypeNotFound();
       if (input.slug && input.slug !== existing.slug) {
         const other = await this.repo.findBySlug(tx, input.slug);
-        if (other && other.id !== id) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'LISTING_TYPE_SLUG_TAKEN',
-            message: `Slug "${input.slug}" is already in use`,
-          });
-        }
+        if (other && other.id !== id) throw new ListingTypeSlugTaken(input.slug);
       }
-      // Re-check the subset rule against the merged state (a PATCH may change only
-      // one of allowedModes/defaultModes; the zod refine only fires when both are sent).
-      const allowed = input.allowedModes ?? existing.allowedModes;
-      const defaults = input.defaultModes ?? existing.defaultModes;
-      const bookingSelection = input.bookingSelection ?? existing.bookingSelection;
-      const invalid = defaults.filter((m) => !allowed.includes(m));
-      if (invalid.length > 0) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'INVALID_DEFAULT_MODES',
-          message: `defaultModes must be a subset of allowedModes; invalid: ${invalid.join(', ')}`,
-        });
-      }
-      if (
-        bookingSelection === 'fixed_packages' &&
-        allowed.some((mode) => mode !== 'hourly' && mode !== 'daily')
-      ) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'INVALID_FIXED_PACKAGE_MODES',
-          message: 'Fixed packages only support hourly and daily booking modes',
-        });
-      }
-      if (
-        input.bookingSelection !== undefined &&
-        input.bookingSelection !== existing.bookingSelection &&
-        existing.listingCount > 0
-      ) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'BOOKING_SELECTION_LOCKED',
-          message: 'Booking selection cannot change while listings use this type',
-        });
-      }
-      const searchConfig = input.searchConfig ?? existing.searchConfig;
-      const attributes = input.attributeSchema ?? existing.attributeSchema;
-      assertValidListingTypeSearchConfig({
-        allowedModes: allowed,
-        attributeSchema: attributes,
-        searchConfig,
-      });
-
-      const updated = await this.repo.update(tx, id, {
-        name: input.name,
-        slug: input.slug,
-        icon: input.icon,
-        allowedModes: input.allowedModes,
-        defaultModes: input.defaultModes,
-        bookingSelection: input.bookingSelection,
-        attributeSchema: input.attributeSchema,
-        searchConfig: input.searchConfig,
-        unitLabel: input.unitLabel,
-        sortOrder: input.sortOrder,
-        isActive: input.isActive,
-        requiresIdentityVerification: input.requiresIdentityVerification,
-        structure: input.structure,
-        itemLabel: input.itemLabel,
-      });
+      const listingType = ListingType.rehydrate(existing);
+      const patch = listingType.applyUpdate(input, existing.listingCount);
+      const updated = await this.repo.update(tx, id, patch);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing_type.updated',

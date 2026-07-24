@@ -1,10 +1,19 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { TenantDbService, type PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  TenantDbService,
+  type PrismaTx,
+} from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ReservePromotionUseCase } from '../../../promotions/application/use-cases/reserve-promotion.use-case';
-import { BOOKING_REPOSITORY, type BookingRecord, type IBookingRepository } from '../../domain/ports/booking-repository.port';
-import { assertTransition } from '../../domain/booking-state-machine';
+import { PromoRejectionError } from '../../../promotions/domain/errors/promo-rejection.error';
+import {
+  BOOKING_REPOSITORY,
+  type BookingRecord,
+  type IBookingRepository,
+} from '../../domain/ports/booking-repository.port';
 import { SlotTakenError } from '../../domain/booking-errors';
+import { Booking } from '../../domain/entities/booking.entity';
+import { BookingNotFound } from '../../domain/errors/booking-domain-errors';
 
 /**
  * Confirm a paid booking (§8.2 pending_payment → confirmed). Task 1.9's webhook
@@ -30,7 +39,9 @@ export class ConfirmBookingUseCase {
 
   async execute(tenantId: string, bookingId: string): Promise<BookingRecord> {
     try {
-      return await this.tenantDb.forTenant(tenantId, (tx) => this.confirmInTx(tx, tenantId, bookingId));
+      return await this.tenantDb.forTenant(tenantId, (tx) =>
+        this.confirmInTx(tx, tenantId, bookingId),
+      );
     } catch (err) {
       // §8.2 row 665: a late webhook found the slot already taken — the confirm tx
       // rolled back untouched. Don't 500: refund the paid amount + notify (below).
@@ -40,44 +51,37 @@ export class ConfirmBookingUseCase {
   }
 
   /** Confirm within the tenant transaction opened by {@link execute}. */
-  private async confirmInTx(tx: PrismaTx, tenantId: string, bookingId: string): Promise<BookingRecord> {
+  private async confirmInTx(
+    tx: PrismaTx,
+    tenantId: string,
+    bookingId: string,
+  ): Promise<BookingRecord> {
     const booking = await this.bookings.findById(tx, bookingId);
-    if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    if (!booking) throw new BookingNotFound();
+    const plan = Booking.rehydrate(booking).planConfirmation();
     // Outbox delivery is at-least-once. A later Finance handler may fail after
     // this handler already confirmed the booking, so retries must be harmless.
-    if (['confirmed', 'completed', 'no_show'].includes(booking.status)) return booking;
-    assertTransition(booking.status, 'confirmed', 'system');
-    const wasExpired = booking.status === 'expired';
+    if (plan.kind === 'already_confirmed') return booking;
 
     // Re-entering an active state re-checks the exclusion constraint — for an
     // expired→confirmed restore this throws SlotTakenError if the slot was taken.
-    const confirmed = await this.bookings.applyTransition(tx, {
-      id: bookingId,
-      from: booking.status,
-      to: 'confirmed',
-      actor: 'system',
-      expiresAt: null,
-      paidAmount: booking.depositAmount,
-    });
+    const confirmed = await this.bookings.applyTransition(tx, plan.intent);
 
     // §8.2 row 665: on a late-webhook restore the promo redemption was released
     // at expiry — re-reserve it (re-increment redeemed_count) so the discount the
     // customer received is accounted for again. Mirrors create-booking's in-tx
     // reserve. A now-exhausted promo (claim refused) is tolerated: the confirm
     // itself must not fail for a promo-bookkeeping edge (§8.2 accepts overshoot).
-    if (wasExpired && booking.promotionId) {
+    if (plan.wasExpired && plan.promoReservation) {
       try {
         await this.reservePromotion.execute(tx, tenantId, {
-          promotionId: booking.promotionId,
-          bookingId: booking.id,
-          customerId: booking.customerId,
-          discountAmount: booking.discountAmount,
+          ...plan.promoReservation,
           // The discount was already granted at booking time — a late-webhook restore
           // must not re-block on the per-customer cap (§8.2 accepts a temporary overshoot).
           usageLimitPerCustomer: null,
         });
       } catch (err) {
-        if (err instanceof ConflictException) {
+        if (err instanceof PromoRejectionError && err.code === 'PROMO_LIMIT_REACHED') {
           this.logger.warn(`promo re-reserve skipped for booking ${bookingId}: ${err.message}`);
         } else {
           throw err;
@@ -85,7 +89,11 @@ export class ConfirmBookingUseCase {
       }
     }
 
-    await this.outbox.emit(tx, { tenantId, eventType: 'booking.confirmed', payload: { bookingId, code: confirmed.code } });
+    await this.outbox.emit(tx, {
+      tenantId,
+      eventType: 'booking.confirmed',
+      payload: { bookingId, code: confirmed.code },
+    });
     return confirmed;
   }
 
@@ -98,7 +106,8 @@ export class ConfirmBookingUseCase {
   private async autoRefundSlotTaken(tenantId: string, bookingId: string): Promise<BookingRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
-      if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+      if (!booking) throw new BookingNotFound();
+      const aggregate = Booking.rehydrate(booking);
       this.logger.warn(
         `late webhook for booking ${bookingId}: slot taken — auto-refunding the service and security deposits`,
       );
@@ -111,7 +120,7 @@ export class ConfirmBookingUseCase {
           // Checkout charged both amounts in one gateway transaction. Omitting
           // the security deposit here would leave customer money stranded after
           // a late webhook loses the slot.
-          refundAmount: (booking.depositAmount + booking.securityDeposit).toString(),
+          refundAmount: aggregate.lateSlotRefundAmount().toString(),
           refundPercent: 100,
         },
       });

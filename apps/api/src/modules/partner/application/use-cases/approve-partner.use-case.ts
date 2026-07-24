@@ -1,7 +1,9 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ApprovePartnerInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { Partner, type PartnerState } from '../../domain/entities/partner.entity';
+import { PartnerNotFound } from '../../domain/errors/partner-errors';
 import {
   PARTNER_REPOSITORY,
   type IPartnerRepository,
@@ -11,14 +13,31 @@ import {
   AGREEMENT_REPOSITORY,
   type IAgreementRepository,
 } from '../../domain/ports/agreement-repository.port';
-import {
-  CURRENT_COMMISSION_SCHEDULE_VERSION,
-  CURRENT_PARTNER_TERMS_VERSION,
-} from '../../domain/agreement-versions';
 
 export interface ApproveContext {
   userId: string;
   ip?: string | null;
+}
+
+function toPartnerState(partner: PartnerRecord): PartnerState {
+  return {
+    id: partner.id,
+    tenantId: partner.tenantId,
+    name: partner.name,
+    slug: partner.slug,
+    description: partner.description,
+    partnerType: partner.partnerType,
+    isHouse: partner.isHouse,
+    status: partner.status,
+    verificationStatus: partner.verificationStatus,
+    verifiedAt: partner.verifiedAt,
+    dateOfBirth: partner.dateOfBirth,
+    payoutInfo: partner.payoutInfo,
+    businessInfo: partner.businessInfo,
+    contactInfo: partner.contactInfo,
+    identityInfo: partner.identityInfo,
+    defaultCancellationPolicyId: partner.defaultCancellationPolicyId,
+  };
 }
 
 /**
@@ -43,40 +62,22 @@ export class ApprovePartnerUseCase {
   ): Promise<PartnerRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const partner = await this.partners.findById(tx, partnerId);
-      if (!partner) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'PARTNER_NOT_FOUND',
-          message: 'Partner not found',
-        });
-      }
-      if (partner.status === 'approved') return partner; // idempotent
-      if (partner.status !== 'pending') {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'INVALID_PARTNER_STATE',
-          message: `Cannot approve a partner in "${partner.status}" state`,
-        });
-      }
+      if (!partner) throw new PartnerNotFound();
 
-      const updated = await this.partners.update(tx, partnerId, { status: 'approved' });
-      const version = input.agreementVersion;
-      await this.agreements.record(tx, {
-        tenantId,
-        partnerId,
-        userId: ctx.userId,
-        agreementType: 'partner_terms',
-        version: version ?? CURRENT_PARTNER_TERMS_VERSION,
-        ip: ctx.ip,
-      });
-      await this.agreements.record(tx, {
-        tenantId,
-        partnerId,
-        userId: ctx.userId,
-        agreementType: 'commission_schedule',
-        version: version ?? CURRENT_COMMISSION_SCHEDULE_VERSION,
-        ip: ctx.ip,
-      });
+      const outcome = Partner.rehydrate(toPartnerState(partner)).approve(input.agreementVersion);
+      if (outcome.kind === 'noop') return partner;
+
+      const updated = await this.partners.updateStatus(tx, partnerId, outcome.statusIntent);
+      for (const agreement of outcome.agreements) {
+        await this.agreements.record(tx, {
+          tenantId,
+          partnerId,
+          userId: ctx.userId,
+          agreementType: agreement.agreementType,
+          version: agreement.version,
+          ip: ctx.ip,
+        });
+      }
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'partner.approved',

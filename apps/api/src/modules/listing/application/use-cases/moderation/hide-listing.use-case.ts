@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ModerationActor } from '@booking/contracts';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
@@ -8,14 +8,13 @@ import {
   type IListingRepository,
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionHide } from '../../../domain/moderation/listing-moderation';
+import { Listing } from '../../../domain/entities/listing.entity';
 import {
-  assertOwnership,
   listingNotFound,
-  runModeration,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * Hide a post (→ archived), recording who hid it (`published_by`/`hidden_by`,
@@ -37,24 +36,20 @@ export class HideListingUseCase {
     reason?: string,
   ): Promise<ListingRecord> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
-      const listing = await this.listings.findById(tx, listingId);
-      if (!listing) listingNotFound();
-      assertOwnership(listing, ctx.partnerId);
-      if (listing.groupId) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'GROUP_MANAGED_LISTING',
-          message: 'Hide the parent listing group instead',
-        });
-      }
+      const existing = await this.listings.findById(tx, listingId);
+      if (!existing) listingNotFound();
+      const listing = Listing.rehydrate(existing);
+      listing.assertOwnedForModeration(ctx.partnerId);
+      listing.assertNotGroupManaged('hide');
 
-      const outcome = runModeration(() => transitionHide(listing, actor));
-      const updated = await this.listings.moderate(tx, listingId, outcome);
+      const outcome = listing.hide(actor);
+      const updated = await this.listings.moderate(tx, listingId, existing.status, outcome);
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.hidden',
         entityType: 'listing',
-        entityId: listing.id,
-        fromStatus: listing.status,
+        entityId: existing.id,
+        fromStatus: existing.status,
         toStatus: outcome.status,
         reason,
       });

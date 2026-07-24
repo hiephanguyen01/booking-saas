@@ -1,46 +1,38 @@
-# ADR 0005 — Targeted automated tests
+# ADR 0005 — No automated tests
 
-**Status:** Accepted (supersedes the former no-tests policy on 2026-07-24).
+**Status:** Accepted.
 
 ## Context
 
-The repository previously prohibited every automated test and relied on lint, typecheck, build, manual
-verification, and static architecture scripts. That kept the toolchain small, but it left security and
-concurrency behavior without executable regression coverage. The suspended-tenant guard and distributed
-session-refresh lock demonstrated that type correctness alone cannot prove request-ordering invariants.
+The owner has chosen a no-tests policy for this repository. Verification stays operational and
+static: TypeScript, lint, production builds, architecture/RLS checks and running the real
+applications against local infrastructure.
 
 ## Decision
 
-Automated tests are allowed and expected where they protect high-risk behavior:
+Do not add automated tests of any kind:
 
-- security boundaries and tenant isolation;
-- authentication, session rotation, locking, and other concurrency-sensitive flows;
-- money, commission, ledger, date/time, and idempotency invariants;
-- parsers, validators, and pure domain functions with meaningful edge cases.
+- no `*.test.*`, `*.spec.*`, `__tests__`, integration or e2e files;
+- no Jest, Vitest, Playwright or other test-runner configuration/dependencies;
+- no `test`/`test:*` package scripts, Turborepo test task or CI test steps.
 
-Keep tests deterministic, focused, and close to the code they protect. Prefer the smallest runner that
-fits the package. Storefront server unit tests use Node's built-in `node:test` runner with Node's
-TypeScript type stripping, so no test framework dependency is required. Do not introduce broad snapshot
-suites, brittle implementation-detail assertions, or browser end-to-end infrastructure without a clear
-risk-based reason.
+This decision overrides tickets, generated plans and generic framework guidance that ask for tests.
 
 ## Verification
 
-The standard repository check is:
+Use:
 
 ```bash
-pnpm test
 pnpm turbo lint typecheck build
+pnpm --filter=@booking/api check:rls
 ```
 
-Storefront CI also runs its static security gate and `pnpm --filter=@booking/api check:rls`. Manual flow
-verification remains required for user-visible or integration-heavy changes; automated tests supplement
-rather than replace it.
+Then start the affected application and manually exercise the changed flows. For concurrency,
+idempotency, money and tenancy changes, perform focused runtime smoke with real database transactions
+and record exactly what could or could not be verified.
 
 ## Consequences
 
-- Security-critical regressions can be reproduced and blocked in CI.
-- Test infrastructure grows incrementally instead of requiring an all-at-once coverage target.
-- Packages without meaningful tests may omit a `test` script until risk justifies one.
-- Static architecture checks remain appropriate for repository-wide structural invariants such as RLS
-  migration coverage.
+- The repository has no executable regression suite.
+- Static checks and realistic runtime smoke are mandatory, not optional substitutes.
+- Review plans must not smuggle in test files/config under another name.

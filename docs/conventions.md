@@ -26,6 +26,96 @@ and [ADR 0006](./decisions/0006-hexagonal-no-services.md). Tenant data flows thr
 `TenantDbService.forTenant`; modules talk via the outbox; authz is `@RequirePermissions`
 deny-by-default. See [`architecture.md`](./architecture.md).
 
+### Entity/use-case decision
+
+Entity-centric is the permanent backend convention, not a requirement that every use-case instantiate
+an entity:
+
+- A **write-path business invariant or state transition** belongs on a framework-free aggregate in
+  `domain/entities/`, a value object in `domain/value-objects/`, or a pure named domain policy. The
+  use-case orchestrates `load → rehydrate/create → domain method → save → emit`; it does not repeat
+  the rule with inline `if` statements.
+- Use `static rehydrate(state)` for persisted state and `static create/open(...)` for new state.
+  Rehydrate only the fields the aggregate needs. Domain methods receive external facts such as DB
+  time, ownership or related-record existence as arguments; entities/VOs never read the clock,
+  database, network, Nest container or environment themselves.
+- A **query/read projection**, adapter-backed state machine, guarded CAS/set-based transition,
+  provider-boundary validation or outbox projection does not need a fake entity when it owns no
+  invariant/state. It still goes through a local repository port; application code must not contain
+  direct Prisma model calls or raw SQL.
+- Persistence races and set-based atomicity remain in repository adapters/DB constraints. An entity
+  may reject an invalid requested transition, but it must not pretend to replace the CAS, unique,
+  GiST, ledger or RLS authority.
+- Entity/VO/error code is framework-free: no imports from Nest, Prisma, `application/` or
+  `infrastructure/`. Do not add getters/methods without a real consumer, and do not create an anemic
+  wrapper merely to make a use-case count as “using an entity”.
+
+The completed refactor's rationale and historical module map remain in
+[the design spec](./superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md); new code
+follows the convention above without reopening that migration plan.
+
+### Concurrency and typed boundaries
+
+- Every load-check-write state transition has two authorities: the entity/pure domain policy rejects
+  an illegal requested edge, and the repository guards persistence with the loaded pre-image
+  (`WHERE status = expected`, version, `updated_at`, unique/GiST constraint, advisory lock, etc.).
+  Replacing the second half with an unconditional save reopens TOCTOU/lost-update races.
+- A guarded repository method returns an explicit CAS outcome (`record | null`, boolean or a named
+  result). The use-case translates a miss to a named 409 and writes audit/outbox only after a
+  successful mutation. Never re-read and report success after a guard matched zero rows unless that
+  idempotent quirk is an explicitly documented contract.
+- Request bodies/queries use a Zod contract at the HTTP edge. Provider-specific input uses a
+  discriminated union (for example payment `gateway → credentials`), not
+  `Record<string, string>` plus downstream key guessing. Preserve a legacy validation envelope with
+  a named boundary pipe when the standard pipe would change its code/message.
+- Encrypted/decrypted JSON and persisted provider payloads cross a trust boundary: parse and validate
+  them before constructing an adapter or returning a domain/read record. Missing credentials must
+  fail closed; never coerce them to empty strings.
+- `unknown`/open JSON is allowed only where the product is genuinely dynamic or the input is
+  untrusted and immediately narrowed: tenant theme/settings, listing attributes/mode config,
+  historical snapshots and incoming outbox/provider payloads. Document such fields; do not let
+  accidental `unknown` spread through ports. Response mappers enumerate contract keys explicitly so
+  persistence column names cannot leak through object spread.
+
+### Shared API response contracts
+
+- Any HTTP response shape change starts in the matching Zod response schema and inferred type in
+  `@booking/contracts`; do not leave an inline controller type or a frontend-only duplicate.
+- In the same change, update the API response DTO and explicit mapper, then every dashboard/storefront
+  loader/action consumer. Prefer passing the shared response schema to `apiGet`/`apiPost`/`apiPut`/
+  `apiPatch` so the BFF narrows the runtime payload as well as its compile-time type.
+- A compatibility field must be declared and documented in the shared schema (including deprecation),
+  emitted explicitly by the mapper and removed only in a coordinated API + frontend removal wave.
+- Rebuild `@booking/contracts` before targeted API/frontend typechecks; its consumers resolve the
+  built package, not `src/`.
+
+### Backend error placement
+
+Never repeat a custom error envelope inline at a call-site
+(`throw new NotFoundException({ statusCode, code, message, ... })`) — this applies to controllers,
+guards and pipes as well as use-cases. Choose its home by semantics:
+
+1. **Standard 4xx business/read/access error** → a named, framework-free `DomainError` in the owning
+   module's `domain/errors/`; throw only the named class at call-sites. `DomainExceptionFilter`
+   produces `{ statusCode, code, message, details? }`.
+2. **The exact status + code + message tuple is emitted by more than one module** → define it once in
+   `apps/api/src/shared/domain/errors/`. A module may re-export an alias to keep an existing import
+   seam, but must not mint a duplicate class.
+3. **Same code but intentionally different message/details** → keep distinct, explicitly named
+   classes. Do not deduplicate semantically different wire contracts by code alone.
+4. **Auth retry metadata, legacy non-standard body, webhook/provider boundary or other HTTP-only
+   shape** → a named Nest exception in `application/*-http-errors.ts`. Preserve special top-level
+   fields such as `retryAfterSec`/`attemptsRemaining`; do not force these through `DomainError`.
+   Reusable transport-only failures shared by public controllers belong in
+   `shared/http/request-boundary-errors.ts`.
+5. **Defensive/unreachable failure or 5xx** → ordinary `Error` or a named Nest 5xx exception at the
+   application/infrastructure boundary. `DomainError` is a 4xx-only convention. A bare Nest
+   exception is allowed only when the default Nest body is the intentional frozen contract.
+
+For every refactor, freeze HTTP status, code, message, details and legacy envelope shape before
+moving the error. `details` may be an object or array. Never leak Prisma errors, stack traces,
+credentials or internal implementation details.
+
 ## Frontend (React Router 8 framework mode)
 
 - Each route exports `loader` (server data), `action` (server mutation), and a default component
@@ -111,7 +201,8 @@ app-level `code`: `{ statusCode, code, message, details? }`. Known codes:
 `VALIDATION_ERROR` (+ `details: zodError.flatten()`, from `shared/validation/zod-dto-validation.pipe.ts`),
 `NO_PERMISSION_DECLARED` / `MISSING_PERMISSION` (guard), and auth codes from the session guard.
 `@booking/api-client` parses `{ message, error, code, details.fieldErrors }`. Never leak Prisma errors,
-stack traces, or internal IDs.
+stack traces, or internal IDs. Backend placement and deduplication rules are in
+[Backend error placement](#backend-error-placement).
 
 ## Migrations
 
@@ -145,11 +236,7 @@ bookings GiST exclusion constraint. See [ADR 0004](./decisions/0004-hand-written
 
 ## Testing & verification ([ADR 0005](./decisions/0005-no-tests-policy.md))
 
-Add deterministic tests for high-risk security, tenancy, auth/session, concurrency, money, idempotency,
-time, parser, and pure-domain behavior. Keep them close to the code and avoid brittle implementation
-assertions or broad snapshots. The Storefront uses Node's built-in `node:test` runner for server-side
-unit tests.
-
-`pnpm test` and `pnpm turbo lint typecheck build` must pass, then run the app and exercise changed
-user-facing or integration-heavy flows (`pnpm dev`, or `/run` + `/verify`). Requires **Node ≥ 22.22.0** —
-React Router 8 refuses to run below it.
+Automated tests are prohibited by owner decision: no test files, test runners/config, `test` scripts
+or CI test steps. Verify with `pnpm turbo lint typecheck build`, static architecture/RLS checks, then
+run the app and exercise changed flows manually. Requires **Node ≥ 22.22.0** — React Router 8 refuses
+to run below it.

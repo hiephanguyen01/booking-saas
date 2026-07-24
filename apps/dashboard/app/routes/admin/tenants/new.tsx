@@ -1,5 +1,9 @@
 import { data, redirect } from 'react-router';
-import { createTenantInputSchema, type TenantResponse } from '@booking/contracts';
+import {
+  createTenantInputSchema,
+  createdTenantResponseSchema,
+  type CreatedTenantResponse,
+} from '@booking/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { Route } from './+types/new';
@@ -25,7 +29,9 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const res = await apiPost<TenantResponse>('/admin/tenants', parsed.data, auth);
+  const res = await apiPost<CreatedTenantResponse>('/admin/tenants', parsed.data, auth, {
+    schema: createdTenantResponseSchema,
+  });
   if (!res.ok || !res.data) {
     return data(
       { error: res.error ?? 'Không tạo được tenant.', fieldErrors: res.errors },

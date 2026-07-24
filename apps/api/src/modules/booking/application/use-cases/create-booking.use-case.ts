@@ -1,18 +1,11 @@
 import { randomInt } from 'node:crypto';
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateBookingInput, ModeConfig, QuoteResponse } from '@booking/contracts';
 import {
   TenantDbService,
   type PrismaTx,
 } from '../../../../shared/tenant-context/tenant-db.service';
-import { utcNow, addMinutes, DEFAULT_TIMEZONE } from '../../../../shared/time/time';
+import { utcNow, DEFAULT_TIMEZONE } from '../../../../shared/time/time';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { FindOrCreateGuestUseCase } from '../../../identity-access/application/use-cases/find-or-create-guest.use-case';
@@ -44,8 +37,6 @@ import {
 } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE, type IHoldStore } from '../../domain/ports/hold-store.port';
 import { generateBookingCode } from '../../domain/booking-code';
-import { blockedPeriod } from '../../domain/blocked-period';
-import { hasCapacity } from '../../domain/inventory-stock';
 import {
   IdempotencyConflictError,
   SlotTakenError,
@@ -55,7 +46,21 @@ import {
   BOOKING_AVAILABILITY_READER,
   type IBookingAvailabilityReader,
 } from '../../domain/ports/booking-availability-reader.port';
+import {
+  BOOKING_PARTNER_READER,
+  type IBookingPartnerReader,
+} from '../../domain/ports/booking-partner-reader.port';
 import { validateSlotPolicy } from '../../domain/slot-policy';
+import { Booking } from '../../domain/entities/booking.entity';
+import { BookingPeriod } from '../../domain/value-objects/booking-period.value-object';
+import { BookingMoney } from '../../domain/value-objects/booking-money.value-object';
+import {
+  BookingSlotHeld,
+  BookingSlotPolicyRejected,
+  BookingSlotTaken,
+  GuestInfoRequired,
+  StorefrontSuspended,
+} from '../../domain/errors/booking-domain-errors';
 
 export interface CreateBookingContext {
   /** Logged-in customer's user id, if any (else `input.guest` is required). */
@@ -78,6 +83,7 @@ export class CreateBookingUseCase {
     @Inject(BOOKING_REPOSITORY) private readonly bookings: IBookingRepository,
     @Inject(HOLD_STORE) private readonly holds: IHoldStore,
     @Inject(BOOKING_AVAILABILITY_READER) private readonly availability: IBookingAvailabilityReader,
+    @Inject(BOOKING_PARTNER_READER) private readonly partners: IBookingPartnerReader,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly guests: FindOrCreateGuestUseCase,
     private readonly preparePromotion: PreparePromotionUseCase, // Task 1.11 — in-tx promo reservation
@@ -94,30 +100,11 @@ export class CreateBookingUseCase {
     ctx: CreateBookingContext,
   ): Promise<BookingRecord> {
     const tenant = await this.resolveTenant.execute(host);
-    if (!tenant.live) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'STOREFRONT_SUSPENDED',
-        message: 'This storefront is not accepting bookings',
-      });
-    }
+    if (!tenant.live) throw new StorefrontSuspended();
     const customerId = await this.resolveCustomer(input, ctx);
     const startUtc = new Date(input.from);
     const endUtc = new Date(input.to);
-    if (!(startUtc < endUtc)) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_RANGE',
-        message: 'from must be before to',
-      });
-    }
-    if (startUtc < utcNow()) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'SLOT_IN_PAST',
-        message: 'Cannot book a past slot',
-      });
-    }
+    const requestedPeriod = BookingPeriod.create(startUtc, endUtc, utcNow());
 
     // Idempotent retry → return the existing booking.
     const existing = await this.tenantDb.forTenant(tenant.id, (tx) =>
@@ -130,20 +117,7 @@ export class CreateBookingUseCase {
       tenant.id,
       async (tx) => {
         const listing = await this.listings.findById(tx, input.listingId);
-        if (!listing || listing.status !== 'published') {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'LISTING_NOT_FOUND',
-            message: 'Listing not found',
-          });
-        }
-        if (!listing.bookingModes.includes(input.mode)) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: 'MODE_NOT_ENABLED',
-            message: `Listing does not enable "${input.mode}"`,
-          });
-        }
+        Booking.assertListingBookable(listing, input.mode);
         const resource = await this.resources.findById(tx, listing.resourceId);
         const schedule = await this.availability.read(tx, listing.id, listing.resourceId);
         const slotError = validateSlotPolicy({
@@ -156,13 +130,7 @@ export class CreateBookingUseCase {
           now: utcNow(),
           schedule,
         });
-        if (slotError) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: slotError,
-            message: 'The requested slot is outside the listing availability policy',
-          });
-        }
+        if (slotError) throw new BookingSlotPolicyRejected(slotError);
         const pricingRules = (await this.pricingRules.listByListing(tx, listing.id)).map((r) => ({
           id: r.id,
           bookingMode: r.bookingMode,
@@ -184,14 +152,7 @@ export class CreateBookingUseCase {
           bookingSelection: listing.bookingSelection,
           packageId: input.packageId,
         });
-        if (input.expectedSubtotal && quote.subtotal !== input.expectedSubtotal) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'PRICE_CHANGED',
-            message: 'The price changed after this checkout was opened',
-            details: { expectedSubtotal: input.expectedSubtotal, currentSubtotal: quote.subtotal },
-          });
-        }
+        Booking.assertExpectedSubtotal(input.expectedSubtotal, quote.subtotal);
         // §11.3 fallback (listing → partner default → tenant default) is already resolved
         // onto the listing record; snapshot the RESOLVED policy id + its rules so the
         // persisted id and the frozen tiers stay consistent.
@@ -203,8 +164,9 @@ export class CreateBookingUseCase {
         };
       },
     );
-    const timeslot = { start: startUtc, end: endUtc };
-    const blocked = blockedPeriod(timeslot, listing.bufferBefore, listing.bufferAfter);
+    const period = requestedPeriod.withBuffers(listing.bufferBefore, listing.bufferAfter);
+    const timeslot = period.timeslot;
+    const blocked = period.blockedPeriod;
     const common = {
       listing,
       quote,
@@ -231,13 +193,7 @@ export class CreateBookingUseCase {
             blocked.start,
             blocked.end,
           );
-          if (!hasCapacity(stock, used, input.quantity)) {
-            throw new ConflictException({
-              statusCode: 409,
-              code: 'OUT_OF_STOCK',
-              message: `Only ${Math.max(0, stock - used)} unit(s) available for this period`,
-            });
-          }
+          Booking.assertInventoryCapacity(stock, used, input.quantity);
           return this.insertAndActivate(tx, tenant.id, {
             ...common,
             quantity: input.quantity,
@@ -336,22 +292,18 @@ export class CreateBookingUseCase {
       customerEmail: args.input.guest?.email ?? null,
       customerPhone: args.input.guest?.phone ?? null,
     });
-    const discountAmount = promo?.discountAmount ?? 0n;
-    const finalAmount = promo ? promo.finalAmount : subtotal;
+    const { discountAmount, finalAmount } = BookingMoney.discounted(subtotal, promo);
 
     // ── Task 1.10 (Finance) ───────────────────────────────────────────────────
     // Freeze the applicable commission rule onto the booking so a later rule
     // change never touches this booking (§13.1). The ledger journal at completion
     // replays this snapshot, never the live rule.
-    const partner = await tx.partner.findUnique({
-      where: { id: args.listing.partnerId },
-      select: { isHouse: true },
-    });
+    const isHouse = await this.partners.isHouse(tx, args.listing.partnerId);
     let commissionSnapshot = await this.commissions.execute(tx, {
       partnerId: args.listing.partnerId,
       listingTypeId: args.listing.listingTypeId,
       categoryId: args.listing.categoryId,
-      isHouse: partner?.isHouse ?? false,
+      isHouse,
     });
 
     // ── Task 2.1 (Affiliate attribution) ──────────────────────────────────────
@@ -385,18 +337,12 @@ export class CreateBookingUseCase {
       ? 0n
       : partnerBasis - split.partnerShare;
     const depositAmount = BigInt(args.quote.depositAmount);
-    if (!commissionSnapshot.isHouse && depositAmount < tenantCommissionGross) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'DEPOSIT_BELOW_TENANT_COMMISSION',
-        message: 'The customer deposit must cover the tenant commission for this booking',
-        details: {
-          depositAmount: depositAmount.toString(),
-          minimumDepositAmount: tenantCommissionGross.toString(),
-          commissionRuleId: commissionSnapshot.ruleId,
-        },
-      });
-    }
+    BookingMoney.assertDepositCoversTenantCommission({
+      isHouse: commissionSnapshot.isHouse,
+      depositAmount,
+      tenantCommissionGross,
+      commissionRuleId: commissionSnapshot.ruleId,
+    });
 
     const draft = await this.bookings.insertDraft(tx, tenantId, {
       listingId: args.listing.id,
@@ -435,10 +381,10 @@ export class CreateBookingUseCase {
         usageLimitPerCustomer: promo.usageLimitPerCustomer,
       });
     }
-    const toStatus = args.listing.approvalRequired ? 'pending_approval' : 'pending_payment';
-    const expiresAt = args.listing.approvalRequired
-      ? addMinutes(utcNow(), 24 * 60)
-      : addMinutes(utcNow(), 15);
+    const { to: toStatus, expiresAt } = Booking.activationPlan(
+      args.listing.approvalRequired,
+      utcNow(),
+    );
     const booking = await this.bookings.applyTransition(tx, {
       id: draft.id,
       from: 'draft',
@@ -464,26 +410,14 @@ export class CreateBookingUseCase {
       const user = await this.guests.execute(input.guest);
       return user.id;
     }
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'GUEST_INFO_REQUIRED',
-      message: 'Provide guest details or sign in to book',
-    });
+    throw new GuestInfoRequired();
   }
 
-  private slotHeld(): ConflictException {
-    return new ConflictException({
-      statusCode: 409,
-      code: 'SLOT_HELD',
-      message: new SlotHeldError().message,
-    });
+  private slotHeld(): BookingSlotHeld {
+    return new BookingSlotHeld(new SlotHeldError().message);
   }
 
-  private slotTaken(): ConflictException {
-    return new ConflictException({
-      statusCode: 409,
-      code: 'SLOT_TAKEN',
-      message: new SlotTakenError().message,
-    });
+  private slotTaken(): BookingSlotTaken {
+    return new BookingSlotTaken(new SlotTakenError().message);
   }
 }

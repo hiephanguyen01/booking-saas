@@ -15,6 +15,13 @@ import type {
   ReviewRecord,
   ReviewSummaryRecord,
 } from '../../domain/ports/review-repository.port';
+import type {
+  EligibleBooking,
+  NewReview,
+  Review,
+  ReviewState,
+} from '../../domain/entities/review.entity';
+import { ReviewAlreadyExists, ReviewReplyAlreadyExists } from '../../domain/errors/review-errors';
 
 export const REVIEW_INCLUDE = Prisma.validator<Prisma.ReviewInclude>()({
   booking: { select: { code: true, settlement: { select: { completedAt: true } } } },
@@ -186,19 +193,13 @@ export class PrismaReviewRepository implements IReviewRepository {
     return Boolean(booking);
   }
 
-  async create(
+  async findEligibleBooking(
     tx: PrismaTx,
-    tenantId: string,
     customerId: string,
-    data: {
-      bookingId: string;
-      rating: number;
-      content: string;
-      media: ReviewRecord['media'];
-    },
-  ): Promise<ReviewRecord | null> {
+    bookingId: string,
+  ): Promise<EligibleBooking | null> {
     const booking = await tx.booking.findFirst({
-      where: { id: data.bookingId, customerId, status: 'completed', review: null },
+      where: { id: bookingId, customerId, status: 'completed', review: null },
       select: {
         id: true,
         listingId: true,
@@ -207,38 +208,80 @@ export class PrismaReviewRepository implements IReviewRepository {
       },
     });
     if (!booking) return null;
-    const row = await tx.review.create({
-      data: {
-        tenantId,
-        bookingId: booking.id,
-        listingId: booking.listingId,
-        groupId: booking.listing.groupId,
-        partnerId: booking.partnerId,
-        customerId,
-        rating: data.rating,
-        content: data.content,
-        media: data.media as unknown as Prisma.InputJsonValue,
-      },
-      include: REVIEW_INCLUDE,
-    });
-    return toReviewRecord(row);
+    return {
+      id: booking.id,
+      listingId: booking.listingId,
+      groupId: booking.listing.groupId,
+      partnerId: booking.partnerId,
+    };
   }
 
-  async reply(
+  async insert(
     tx: PrismaTx,
     tenantId: string,
-    reviewId: string,
-    partnerId: string,
-    authorUserId: string,
-    content: string,
-  ): Promise<ReviewRecord | null> {
-    const review = await tx.review.findFirst({ where: { id: reviewId, partnerId, reply: null } });
-    if (!review) return null;
-    await tx.reviewReply.create({
-      data: { tenantId, reviewId, partnerId, authorUserId, content },
+    review: NewReview,
+    media: ReviewRecord['media'],
+  ): Promise<ReviewRecord> {
+    try {
+      const row = await tx.review.create({
+        data: {
+          tenantId,
+          bookingId: review.bookingId,
+          listingId: review.listingId,
+          groupId: review.groupId,
+          partnerId: review.partnerId,
+          customerId: review.customerId,
+          rating: review.rating,
+          content: review.content,
+          media: media as unknown as Prisma.InputJsonValue,
+        },
+        include: REVIEW_INCLUDE,
+      });
+      return toReviewRecord(row);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ReviewAlreadyExists();
+      }
+      throw error;
+    }
+  }
+
+  async loadForReply(tx: PrismaTx, reviewId: string): Promise<ReviewState | null> {
+    return tx.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true,
+        bookingId: true,
+        partnerId: true,
+        reply: { select: { partnerId: true } },
+      },
     });
-    const row = await tx.review.findUnique({ where: { id: reviewId }, include: REVIEW_INCLUDE });
-    return row ? toReviewRecord(row) : null;
+  }
+
+  async saveReply(tx: PrismaTx, tenantId: string, review: Review): Promise<ReviewRecord> {
+    const pending = review.pendingReply();
+    // Defensive: the use-case always calls addReply() first; a null here is a programming error.
+    if (!pending) throw new Error('saveReply called without a pending reply — addReply must run first');
+    try {
+      await tx.reviewReply.create({
+        data: {
+          tenantId,
+          reviewId: review.id,
+          partnerId: pending.partnerId,
+          authorUserId: pending.authorUserId,
+          content: pending.content,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ReviewReplyAlreadyExists();
+      }
+      throw error;
+    }
+    const row = await tx.review.findUnique({ where: { id: review.id }, include: REVIEW_INCLUDE });
+    // Unreachable: the review row exists in this tx (we just appended its reply).
+    if (!row) throw new Error('review row missing right after its reply was inserted');
+    return toReviewRecord(row);
   }
 
   async listCustomer(

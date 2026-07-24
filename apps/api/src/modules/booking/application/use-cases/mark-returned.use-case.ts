@@ -1,7 +1,6 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ModeConfig } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { vnd } from '../../../../shared/money/money';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   LISTING_REPOSITORY,
@@ -12,9 +11,7 @@ import {
   type BookingRecord,
   type IBookingRepository,
 } from '../../domain/ports/booking-repository.port';
-import { assertTransition } from '../../domain/booking-state-machine';
-import { lateFee, overduePeriods } from '../../domain/late-fee';
-import { settleDeposit } from '../../domain/deposit-settlement';
+import { Booking } from '../../domain/entities/booking.entity';
 import { loadOwnedBooking, type PartnerContext } from '../partner-owned-booking';
 
 export interface ReturnResult {
@@ -37,42 +34,26 @@ export class MarkReturnedUseCase {
   execute(ctx: PartnerContext, bookingId: string, damageAmount: bigint): Promise<ReturnResult> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       const booking = await loadOwnedBooking(this.bookings, tx, bookingId, ctx.partnerId);
-      if (booking.bookingMode !== 'inventory') {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'NOT_INVENTORY',
-          message: 'Return applies to inventory rentals only',
-        });
-      }
-      assertTransition(booking.status, 'completed', 'partner');
+      const aggregate = Booking.rehydrate(booking);
+      aggregate.assertReturnable(ctx.actorId);
 
       const returnedAt = await this.tenantDb.databaseNow(tx);
       const inventory = (
         (await this.listings.findById(tx, booking.listingId))?.modeConfig as ModeConfig | undefined
       )?.inventory;
-      const unit = inventory?.unit ?? 'day';
-      const ratePerUnit = vnd(inventory?.lateFeePerUnit ?? inventory?.basePrice ?? '0');
-      const fee = lateFee(
-        overduePeriods(returnedAt, booking.endUtc, unit),
-        ratePerUnit,
-        booking.quantity,
-      );
-      const { refund, shortfall } = settleDeposit(booking.securityDeposit, damageAmount, fee);
+      const {
+        patch,
+        completion,
+        lateFee: fee,
+        depositRefund: refund,
+        depositShortfall: shortfall,
+      } = aggregate.planReturn(returnedAt, damageAmount, inventory, ctx.actorId);
 
-      const additionalCharges = fee > 0n ? [{ type: 'late_fee', amount: fee.toString() }] : [];
-      const patched = await this.bookings.patchFulfillment(tx, bookingId, {
-        returnedAt,
-        damageAmount,
-        ...(additionalCharges.length > 0 ? { additionalCharges } : {}),
+      await this.bookings.patchFulfillment(tx, bookingId, patch, {
+        expectedStatus: booking.status,
+        unsetMarker: 'returnedAt',
       });
-      const completed = await this.bookings.applyTransition(tx, {
-        id: bookingId,
-        from: patched.status,
-        to: 'completed',
-        actor: 'partner',
-        actorId: ctx.actorId,
-        reason: 'inventory returned',
-      });
+      const completed = await this.bookings.applyTransition(tx, completion);
       await this.outbox.emit(tx, {
         tenantId: ctx.tenantId,
         eventType: 'booking.returned',

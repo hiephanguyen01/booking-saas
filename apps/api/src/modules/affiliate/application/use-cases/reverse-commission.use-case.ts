@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { AffiliateCommission } from '../../domain/entities/affiliate-commission.entity';
 import {
   AFFILIATE_COMMISSION_REPOSITORY,
   type IAffiliateCommissionRepository,
@@ -19,11 +20,12 @@ export class ReverseCommissionUseCase {
 
   async execute(tenantId: string, bookingId: string): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
-      const existing = await this.commissions.findByBooking(tx, bookingId);
+      const existing = await this.commissions.loadByBooking(tx, bookingId);
       if (!existing) return;
-      if (existing.status === 'pending' || existing.status === 'confirmed') {
-        await this.commissions.updateForBooking(tx, bookingId, { status: 'reversed' });
-      }
+      if (!AffiliateCommission.rehydrate(existing).reverse()) return;
+      await this.commissions.updateForBooking(tx, bookingId, {
+        status: 'reversed',
+      });
     });
   }
 }

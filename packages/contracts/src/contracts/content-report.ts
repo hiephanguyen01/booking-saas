@@ -57,6 +57,11 @@ export type UpdateContentReportInput = z.infer<typeof updateContentReportInputSc
 export const contentReportResponseSchema = z.object({
   id: uuidSchema,
   target: contentReportTargetSchema,
+  /**
+   * Deprecated compatibility alias. Older API responses exposed the persistence
+   * name beside `target`; keep it explicit until clients complete a removal wave.
+   */
+  targetType: contentReportTargetSchema,
   targetId: uuidSchema,
   targetTitle: z.string(),
   targetSlug: z.string(),

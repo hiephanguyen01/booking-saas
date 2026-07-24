@@ -1,9 +1,7 @@
-import { BadRequestException } from '@nestjs/common';
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
 import type { PromoAppliesTo } from '../domain/promotion-discount';
+import { PromoScopeTargetInvalid, PromoScopeTargetMissing } from '../domain/errors/promotion-errors';
 import type { IPromoContextLookup } from '../domain/ports/promo-context-lookup.port';
-
-export const PROMO_SCOPE_TARGET_INVALID_CODE = 'PROMO_SCOPE_TARGET_INVALID';
 
 /**
  * Server-side guard that `appliesToId` really identifies an entity of the declared
@@ -28,19 +26,11 @@ export async function assertScopeTargetValid(
 ): Promise<string | null> {
   if (appliesTo === 'all') return null;
   if (!appliesToId) {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: PROMO_SCOPE_TARGET_INVALID_CODE,
-      message: 'A scoped promotion requires a target id',
-    });
+    throw new PromoScopeTargetMissing();
   }
   const label = await lookup.resolveScopeTargetLabel(tx, appliesTo, appliesToId);
   if (label === null) {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: PROMO_SCOPE_TARGET_INVALID_CODE,
-      message: `The target "${appliesToId}" is not a ${appliesTo} in this tenant`,
-    });
+    throw new PromoScopeTargetInvalid(appliesTo, appliesToId);
   }
   return label;
 }

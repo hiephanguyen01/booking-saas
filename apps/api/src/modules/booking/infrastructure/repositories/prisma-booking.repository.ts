@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -7,6 +7,7 @@ import { pageOffset } from '../../../../shared/pagination/pagination';
 import type {
   BookingRecord,
   BookingStatusHistoryRecord,
+  FulfillmentGuard,
   FulfillmentPatch,
   IBookingRepository,
   InsertBookingData,
@@ -17,6 +18,7 @@ import type {
   TransitionParams,
 } from '../../domain/ports/booking-repository.port';
 import { IdempotencyConflictError, SlotTakenError } from '../../domain/booking-errors';
+import { BookingStateChanged } from '../../domain/errors/booking-domain-errors';
 
 interface Row {
   id: string;
@@ -211,11 +213,7 @@ export class PrismaBookingRepository implements IBookingRepository {
       throw err;
     }
     if (affected === 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'BOOKING_STATE_CHANGED',
-        message: 'The booking is no longer in the expected state',
-      });
+      throw new BookingStateChanged();
     }
 
     await tx.$executeRaw(Prisma.sql`
@@ -482,6 +480,7 @@ export class PrismaBookingRepository implements IBookingRepository {
     tx: PrismaTx,
     id: string,
     patch: FulfillmentPatch,
+    guard: FulfillmentGuard,
   ): Promise<BookingRecord> {
     const sets = [Prisma.sql`updated_at = now()`];
     if (patch.pickedUpAt !== undefined) sets.push(Prisma.sql`picked_up_at = ${patch.pickedUpAt}`);
@@ -491,9 +490,17 @@ export class PrismaBookingRepository implements IBookingRepository {
     if (patch.additionalCharges !== undefined) {
       sets.push(Prisma.sql`additional_charges = ${JSON.stringify(patch.additionalCharges)}::jsonb`);
     }
-    await tx.$executeRaw(
-      Prisma.sql`UPDATE bookings SET ${Prisma.join(sets)} WHERE id = ${id}::uuid`,
-    );
+    const unsetMarker =
+      guard.unsetMarker === 'pickedUpAt'
+        ? Prisma.sql`picked_up_at IS NULL`
+        : Prisma.sql`returned_at IS NULL`;
+    const affected = await tx.$executeRaw(Prisma.sql`
+      UPDATE bookings
+      SET ${Prisma.join(sets)}
+      WHERE id = ${id}::uuid
+        AND status = ${guard.expectedStatus}::booking_status
+        AND ${unsetMarker}`);
+    if (affected === 0) throw new BookingStateChanged();
     return this.byId(tx, id);
   }
 

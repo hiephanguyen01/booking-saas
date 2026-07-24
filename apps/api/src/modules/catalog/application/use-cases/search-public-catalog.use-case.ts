@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   modeConfigSchema,
   type AttributeField,
@@ -34,6 +34,13 @@ import {
   type IListingTypeRepository,
   type ListingTypeRecord,
 } from '../../domain/ports/listing-type-repository.port';
+import {
+  CatalogAttributeFilterInvalid,
+  CatalogDateFilterDisabled,
+  CatalogListingTypeNotFound,
+  CatalogModeNotAllowed,
+  CatalogScheduleQueryInvalid,
+} from '../catalog-search-http-errors';
 
 const DAY_MS = 86_400_000;
 
@@ -67,11 +74,7 @@ export class SearchPublicCatalogUseCase {
     const tenant = await this.resolveTenant.execute(host);
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const type = await this.listingTypes.findBySlug(tx, query.type);
-      if (!type?.isActive)
-        throw new NotFoundException({
-          code: 'LISTING_TYPE_NOT_FOUND',
-          message: 'Listing type not found',
-        });
+      if (!type?.isActive) throw new CatalogListingTypeNotFound();
 
       const mode = this.resolveMode(type, query);
       this.validateAttributeFilters(type, query);
@@ -170,10 +173,7 @@ export class SearchPublicCatalogUseCase {
     const schedule = type.searchConfig.schedule;
     const mode = query.mode ?? (schedule === 'none' ? undefined : schedule);
     if (mode && !type.allowedModes.includes(mode as BookingMode)) {
-      throw new BadRequestException({
-        code: 'MODE_NOT_ALLOWED',
-        message: `Listing type does not support mode "${mode}"`,
-      });
+      throw new CatalogModeNotAllowed(mode);
     }
     return mode;
   }
@@ -186,16 +186,12 @@ export class SearchPublicCatalogUseCase {
     const hasHourly = Boolean(query.date || query.startTime || query.endTime);
     const hasRange = Boolean(query.from || query.to);
     if (!mode && (hasHourly || hasRange)) {
-      throw new BadRequestException({
-        code: 'DATE_FILTER_DISABLED',
-        message: 'This listing type does not use a date filter',
-      });
+      throw new CatalogDateFilterDisabled();
     }
     if (mode === 'hourly' && hasRange)
-      throw new BadRequestException({
-        code: 'INVALID_SCHEDULE_QUERY',
-        message: 'Hourly search uses date, startTime and endTime',
-      });
+      throw new CatalogScheduleQueryInvalid(
+        'Hourly search uses date, startTime and endTime',
+      );
     if (
       (mode === 'daily' || mode === 'inventory') &&
       hasHourly &&
@@ -207,10 +203,9 @@ export class SearchPublicCatalogUseCase {
         !query.endTime
       )
     ) {
-      throw new BadRequestException({
-        code: 'INVALID_SCHEDULE_QUERY',
-        message: 'Daily and inventory search use from and to',
-      });
+      throw new CatalogScheduleQueryInvalid(
+        'Daily and inventory search use from and to',
+      );
     }
   }
 
@@ -220,10 +215,7 @@ export class SearchPublicCatalogUseCase {
     );
     for (const key of [...Object.keys(query.attributes), ...Object.keys(query.attributeRanges)]) {
       if (!allowed.has(key))
-        throw new BadRequestException({
-          code: 'INVALID_ATTRIBUTE_FILTER',
-          message: `Attribute "${key}" is not filterable`,
-        });
+        throw new CatalogAttributeFilterInvalid(key);
     }
   }
 

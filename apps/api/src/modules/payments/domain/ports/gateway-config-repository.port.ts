@@ -1,25 +1,28 @@
-import type { GatewayPaymentSettings } from '@booking/contracts';
+import type {
+  GatewayCredentialsFor,
+  GatewayKey,
+  GatewayPaymentSettings,
+  UpsertGatewayConfigInput,
+} from '@booking/contracts';
 import type { GatewayEnvironment } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { GatewayKey } from './payment-gateway.port';
 
 export const GATEWAY_CONFIG_REPOSITORY = Symbol('GATEWAY_CONFIG_REPOSITORY');
 
-export interface GatewayConfigRecord {
+interface GatewayConfigRecordBase<K extends GatewayKey> {
   id: string;
-  gateway: GatewayKey;
+  gateway: K;
   environment: GatewayEnvironment;
   /** Decrypted credentials — the repository decrypts on read. */
-  credentials: Record<string, string>;
+  credentials: GatewayCredentialsFor<K>;
   settings: GatewayPaymentSettings;
 }
 
-export interface UpsertGatewayConfigData {
-  gateway: GatewayKey;
-  environment: GatewayEnvironment;
-  credentials: Record<string, string>;
-  settings?: GatewayPaymentSettings;
-}
+export type GatewayConfigRecord = {
+  [K in GatewayKey]: GatewayConfigRecordBase<K>;
+}[GatewayKey];
+
+export type UpsertGatewayConfigData = UpsertGatewayConfigInput;
 
 export interface IGatewayConfigRepository {
   /** Every active gateway config (decrypted) for the tenant — base + wallets. */

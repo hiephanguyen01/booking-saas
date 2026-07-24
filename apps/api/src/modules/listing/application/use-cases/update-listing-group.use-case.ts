@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpdateListingGroupInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -19,6 +12,13 @@ import {
   type IListingRepository,
 } from '../../domain/ports/listing-repository.port';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
+import { ListingGroup } from '../../domain/entities/listing-group.entity';
+import {
+  ListingGroupNotFound,
+  ListingGroupSlugTaken,
+} from '../../domain/errors/listing-group-errors';
+import { ListingStateChanged } from '../../domain/errors/listing-errors';
+import { InvalidListingAdministrativeDivision } from '../../domain/errors/listing-errors';
 
 @Injectable()
 export class UpdateListingGroupUseCase {
@@ -38,11 +38,7 @@ export class UpdateListingGroupUseCase {
   ): Promise<ListingGroupRecord> {
     const hasLocationCodes = input.provinceCode !== undefined || input.wardCode !== undefined;
     if (hasLocationCodes && (!input.provinceCode || !input.wardCode)) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_ADMINISTRATIVE_DIVISION',
-        message: 'Both provinceCode and wardCode are required when changing the address',
-      });
+      throw new InvalidListingAdministrativeDivision();
     }
     const location =
       input.provinceCode && input.wardCode
@@ -51,36 +47,27 @@ export class UpdateListingGroupUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.repo.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_GROUP_NOT_FOUND',
-          message: 'Listing group not found',
-        });
+        throw new ListingGroupNotFound();
       }
-      if (options.requirePartnerId && existing.partnerId !== options.requirePartnerId) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'LISTING_GROUP_NOT_OWNED',
-          message: 'Listing group belongs to another partner',
-        });
-      }
-      if (options.requirePartnerId && !['draft', 'archived'].includes(existing.status)) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_GROUP_READ_ONLY',
-          message: 'Hide the listing group before editing it',
-        });
+      const group = ListingGroup.rehydrate(existing);
+      let expectedUpdatedAt = existing.updatedAt;
+      group.assertOwnedForManage(options.requirePartnerId);
+      if (options.requirePartnerId) {
+        group.assertEditableStatus();
       }
       if (options.requirePartnerId && existing.status === 'archived') {
         const draftState = { status: 'draft' as const, publishedBy: null, hiddenBy: null };
-        await this.repo.moderate(tx, id, draftState);
+        const reopened = await this.repo.moderate(tx, id, existing.status, draftState);
+        if (!reopened) throw new ListingStateChanged();
+        expectedUpdatedAt = reopened.updatedAt;
         const children = await this.listings.list(tx, {
           groupId: id,
           partnerId: existing.partnerId,
         });
-        await Promise.all(
-          children.map((child) => this.listings.moderate(tx, child.id, draftState)),
+        const reopenedChildren = await Promise.all(
+          children.map((child) => this.listings.moderate(tx, child.id, child.status, draftState)),
         );
+        if (reopenedChildren.some((child) => child === null)) throw new ListingStateChanged();
         await this.outbox.emit(tx, {
           tenantId,
           eventType: 'listing_group.reopened',
@@ -90,28 +77,30 @@ export class UpdateListingGroupUseCase {
       if (input.slug && input.slug !== existing.slug) {
         const other = await this.repo.findBySlug(tx, input.slug);
         if (other && other.id !== id) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'LISTING_GROUP_SLUG_TAKEN',
-            message: `Slug "${input.slug}" is already in use`,
-          });
+          throw new ListingGroupSlugTaken(input.slug);
         }
       }
-      const updated = await this.repo.update(tx, id, {
-        partnerId: options.requirePartnerId ? undefined : input.partnerId,
-        listingTypeId: options.requirePartnerId ? undefined : input.listingTypeId,
-        title: input.title,
-        slug: input.slug,
-        description: input.description,
-        provinceCode: location?.province.code,
-        provinceName: location?.province.name,
-        wardCode: location?.ward.code,
-        wardName: location?.ward.name,
-        address: input.address,
-        workingArea: input.workingArea,
-        amenities: input.amenities,
-        photos: input.photos,
-      });
+      const updated = await this.repo.update(
+        tx,
+        id,
+        expectedUpdatedAt,
+        group.applyContentUpdate({
+          partnerId: options.requirePartnerId ? undefined : input.partnerId,
+          listingTypeId: options.requirePartnerId ? undefined : input.listingTypeId,
+          title: input.title,
+          slug: input.slug,
+          description: input.description,
+          provinceCode: location?.province.code,
+          provinceName: location?.province.name,
+          wardCode: location?.ward.code,
+          wardName: location?.ward.name,
+          address: input.address,
+          workingArea: input.workingArea,
+          amenities: input.amenities,
+          photos: input.photos,
+        }),
+      );
+      if (!updated) throw new ListingStateChanged();
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing_group.updated',

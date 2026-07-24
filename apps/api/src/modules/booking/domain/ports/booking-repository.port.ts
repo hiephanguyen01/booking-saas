@@ -161,6 +161,11 @@ export interface FulfillmentPatch {
   additionalCharges?: unknown;
 }
 
+export interface FulfillmentGuard {
+  expectedStatus: BookingStatus;
+  unsetMarker: 'pickedUpAt' | 'returnedAt';
+}
+
 /** Filters for the tenant-side booking overview (Task 1.13). */
 export interface TenantBookingFilters {
   status?: BookingStatus;
@@ -256,6 +261,15 @@ export interface IBookingRepository {
   lockAndCountInventory(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number>;
   /** Read-only committed quantity for availability (no advisory lock). */
   countInventoryUsage(tx: PrismaTx, listingId: string, from: Date, to: Date): Promise<number>;
-  /** Update inventory fulfillment columns (pickup/return/damage). */
-  patchFulfillment(tx: PrismaTx, id: string, patch: FulfillmentPatch): Promise<BookingRecord>;
+  /**
+   * CAS update for inventory fulfillment. The status + unset marker are checked
+   * by the same SQL statement that writes the patch; a stale caller receives
+   * BOOKING_STATE_CHANGED instead of overwriting a newer fulfillment result.
+   */
+  patchFulfillment(
+    tx: PrismaTx,
+    id: string,
+    patch: FulfillmentPatch,
+    guard: FulfillmentGuard,
+  ): Promise<BookingRecord>;
 }

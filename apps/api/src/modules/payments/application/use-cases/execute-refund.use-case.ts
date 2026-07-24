@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DEFAULT_GATEWAY_PAYMENT_SETTINGS } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -14,6 +14,7 @@ import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
 } from '../../domain/ports/gateway-config-repository.port';
+import { Refund } from '../../domain/entities/refund.entity';
 
 /**
  * Execute a refund (§11.3). Triggered by `booking.cancelled` / `booking.returned`
@@ -48,47 +49,30 @@ export class ExecuteRefundUseCase {
       const payment = await this.payments.findSucceededByBooking(tx, bookingId);
       if (!payment) return; // nothing was paid to refund
 
-      if (amount > payment.amount) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'REFUND_AMOUNT_EXCEEDS_PAYMENT',
-          message: 'Refund amount exceeds the captured payment',
-        });
-      }
-
       // With parallel gateways the base config's settings don't reflect a wallet
       // payment's own refund strategy — always read the config for the PAYMENT's
       // own gateway.
       const config = await this.configs.findByGateway(tx, tenantId, payment.gateway);
       const settings = config?.settings ?? DEFAULT_GATEWAY_PAYMENT_SETTINGS;
-      // SePay only auto-voids a full card charge (no partial refunds).
-      const isSepayCardFull =
-        payment.gateway === 'sepay' && payment.paymentMethod === 'CARD' && amount === payment.amount;
-      // MoMo/ZaloPay can auto-refund any (incl. partial) order amount to the wallet.
-      const isWalletAuto = payment.gateway === 'momo' || payment.gateway === 'zalopay';
-      // The security deposit is never auto-refunded (manual path for both gateways).
-      const automatic =
-        settings.refundStrategy === 'automatic_preferred' &&
-        reason !== 'security_deposit' &&
-        (isSepayCardFull || isWalletAuto);
-
-      const dueAt = automatic
-        ? null
-        : new Date(Date.now() + settings.manualRefundSlaHours * 60 * 60 * 1000);
-      const refund = await this.refunds.create(tx, tenantId, {
-        paymentId: payment.id,
+      const planned = Refund.plan({
+        payment: {
+          id: payment.id,
+          amount: payment.amount,
+          gateway: payment.gateway,
+          paymentMethod: payment.paymentMethod,
+        },
         bookingId,
         amount,
-        status: automatic ? 'pending' : 'manual_required',
-        affectsBookingStatus,
         reason,
-        gatewayRefundId: null,
-        executionMode: automatic ? 'automatic' : 'manual',
-        dueAt,
+        affectsBookingStatus,
+        settings,
+        now: new Date(),
       });
+      const refund = await this.refunds.create(tx, tenantId, planned);
       await this.outbox.emit(tx, {
         tenantId,
-        eventType: automatic ? 'refund.execution_requested' : 'refund.requested',
+        eventType:
+          planned.executionMode === 'automatic' ? 'refund.execution_requested' : 'refund.requested',
         payload: {
           refundId: refund.id,
           paymentId: payment.id,

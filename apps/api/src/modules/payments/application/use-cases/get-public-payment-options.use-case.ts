@@ -1,4 +1,4 @@
-import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   customerPaymentMethodSchema,
   DEFAULT_GATEWAY_PAYMENT_SETTINGS,
@@ -11,6 +11,7 @@ import {
   GATEWAY_CONFIG_REPOSITORY,
   type IGatewayConfigRepository,
 } from '../../domain/ports/gateway-config-repository.port';
+import { PaymentNotConfigured } from '../payment-http-errors';
 
 /** Public provider-neutral method list for the tenant resolved from Host. */
 @Injectable()
@@ -30,21 +31,13 @@ export class GetPublicPaymentOptionsUseCase {
       if (process.env.ALLOW_MOCK_PAYMENTS === 'true' && process.env.NODE_ENV !== 'production') {
         return { methods: DEFAULT_GATEWAY_PAYMENT_SETTINGS.enabledMethods };
       }
-      throw new ServiceUnavailableException({
-        statusCode: 503,
-        code: 'PAYMENT_NOT_CONFIGURED',
-        message: 'This storefront is not accepting online payments',
-      });
+      throw new PaymentNotConfigured();
     }
     const methods = customerPaymentMethodSchema.options.filter(
       (m) => pickConfigForMethod(configs, m) !== null,
     );
     if (methods.length === 0) {
-      throw new ServiceUnavailableException({
-        statusCode: 503,
-        code: 'PAYMENT_NOT_CONFIGURED',
-        message: 'This storefront is not accepting online payments',
-      });
+      throw new PaymentNotConfigured();
     }
     return { methods };
   }

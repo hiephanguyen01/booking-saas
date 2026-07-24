@@ -1,11 +1,12 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantContextService } from '../../../../../shared/tenant-context/tenant-context.service';
 import { evaluateSubscription } from '../../../domain/subscription-status';
+import { SubscriptionExpired } from '../../../domain/errors/billing-errors';
 import {
-  SUBSCRIPTION_REPOSITORY,
-  type ISubscriptionRepository,
-} from '../../../domain/ports/subscription-repository.port';
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../../domain/ports/current-subscription-reader.port';
 
 /**
  * Makes the dashboard read-only once a subscription lapses (§6.5). Apply to
@@ -15,19 +16,21 @@ import {
 @Injectable()
 export class RequireActiveSubscriptionGuard implements CanActivate {
   constructor(
-    @Inject(SUBSCRIPTION_REPOSITORY) private readonly subscriptions: ISubscriptionRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
     private readonly tenantContext: TenantContextService,
   ) {}
 
   async canActivate(_context: ExecutionContext): Promise<boolean> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
-    const sub = await this.subscriptions.findCurrentByTenant(tenantId);
-    if (!evaluateSubscription(sub, new Date()).dashboardWritable) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'SUBSCRIPTION_EXPIRED',
-        message: 'Subscription has expired — the dashboard is read-only',
-      });
+    const selection = await this.currentSubscriptions.findByTenant(tenantId);
+    if (
+      !evaluateSubscription(
+        selection.current?.subscription ?? null,
+        selection.evaluatedAt,
+      ).dashboardWritable
+    ) {
+      throw new SubscriptionExpired();
     }
     return true;
   }

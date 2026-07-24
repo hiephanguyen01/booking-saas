@@ -1,95 +1,64 @@
-import type { PartnerStatus, PartnerType, PartnerVerificationStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type {
+  PartnerBusinessInfoIntent,
+  PartnerDefaultCancellationPolicyIntent,
+  PartnerIdentityRejectionIntent,
+  PartnerIdentitySubmissionIntent,
+  PartnerIdentityVerifiedIntent,
+  NewPartner,
+  PartnerPayoutIntent,
+  PartnerState,
+  PartnerStatusIntent,
+} from '../entities/partner.entity';
+import type { PartnerRecord } from './partner-reader.port';
+
+export type { ListPartnersFilter, PartnerOwnerRecord, PartnerRecord } from './partner-reader.port';
 
 export const PARTNER_REPOSITORY = Symbol('PARTNER_REPOSITORY');
 
-/**
- * The partner's owning user — the applicant, who `applyAsPartner` makes the first
- * `PartnerMember` and grants the Partner Owner role. Null for a house partner
- * (created by a tenant admin, no member).
- */
-export interface PartnerOwnerRecord {
-  email: string;
-  phone: string | null;
-}
-
-export interface PartnerRecord {
-  id: string;
-  tenantId: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  partnerType: PartnerType;
-  isHouse: boolean;
-  status: PartnerStatus;
-  verificationStatus: PartnerVerificationStatus;
-  verifiedAt: Date | null;
-  dateOfBirth: Date | null;
-  payoutInfo: Record<string, unknown>;
-  businessInfo: Record<string, unknown>;
-  contactInfo: Record<string, unknown>;
-  identityInfo: Record<string, unknown>;
-  /** Partner-level fallback cancellation policy (§11.3); null = fall back to the tenant default. */
-  defaultCancellationPolicyId: string | null;
-  owner: PartnerOwnerRecord | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreatePartnerData {
-  name: string;
-  slug: string;
-  description?: string | null;
-  partnerType: PartnerType;
-  isHouse?: boolean;
-  status?: PartnerStatus;
-  businessInfo?: Record<string, unknown>;
-  contactInfo?: Record<string, unknown>;
-  payoutInfo?: Record<string, unknown>;
-}
-
-export interface UpdatePartnerData {
-  status?: PartnerStatus;
-  verificationStatus?: PartnerVerificationStatus;
-  verifiedAt?: Date | null;
-  dateOfBirth?: Date | null;
-  payoutInfo?: Record<string, unknown>;
-  identityInfo?: Record<string, unknown>;
-  /** Logo + license/business documents live here (§7.3 — partners have no image column). */
-  businessInfo?: Record<string, unknown>;
-  /** null clears the partner default; a value must reference a policy the partner may use. */
-  defaultCancellationPolicyId?: string | null;
-}
-
-export interface ListPartnersFilter {
-  status?: PartnerStatus;
-  /** Case-insensitive search over partner name/slug. Applied to items + counts. */
-  q?: string;
-  page: number;
-  pageSize: number;
-}
-
-/**
- * Partner data is tenant-scoped (RLS): every method takes the `forTenant` tx so
- * the `app.tenant_id` GUC applies. `tenantIdOfPartner` is the one exception — a
- * partner-scoped route has a partnerId but no tenant context, so it resolves the
- * tenant on the admin pool before opening the tenant transaction.
- */
 export interface IPartnerRepository {
-  create(tx: PrismaTx, tenantId: string, data: CreatePartnerData): Promise<PartnerRecord>;
-  findById(tx: PrismaTx, id: string): Promise<PartnerRecord | null>;
+  create(tx: PrismaTx, partner: NewPartner): Promise<PartnerRecord>;
+
   /**
-   * Like {@link findById} but takes a `SELECT … FOR UPDATE` row lock so a
-   * check-then-transition (e.g. identity review) is serialized — two concurrent
-   * reviewers can't both read `pending` and both write a decision.
+   * Cross-module compatibility seam for Listing. Keep the enriched projection
+   * and exact signature until Listing owns a narrower reader port.
    */
-  findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerRecord | null>;
-  findBySlug(tx: PrismaTx, slug: string): Promise<PartnerRecord | null>;
-  list(
+  findById(tx: PrismaTx, id: string): Promise<PartnerRecord | null>;
+
+  findStateById(tx: PrismaTx, id: string): Promise<PartnerState | null>;
+  findByIdForUpdate(tx: PrismaTx, id: string): Promise<PartnerState | null>;
+  findBySlug(tx: PrismaTx, slug: string): Promise<PartnerState | null>;
+
+  updateStatus(tx: PrismaTx, id: string, intent: PartnerStatusIntent): Promise<PartnerRecord>;
+
+  updateIdentitySubmission(
     tx: PrismaTx,
-    filter: ListPartnersFilter,
-  ): Promise<{ items: PartnerRecord[]; total: number; counts: Record<string, number> }>;
-  update(tx: PrismaTx, id: string, data: UpdatePartnerData): Promise<PartnerRecord>;
+    id: string,
+    intent: PartnerIdentitySubmissionIntent,
+  ): Promise<PartnerRecord>;
+
+  updateIdentityReview(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerIdentityRejectionIntent | PartnerIdentityVerifiedIntent,
+  ): Promise<PartnerRecord>;
+
+  updatePayoutInfo(tx: PrismaTx, id: string, intent: PartnerPayoutIntent): Promise<PartnerRecord>;
+
+  updateBusinessInfo(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerBusinessInfoIntent,
+  ): Promise<PartnerRecord>;
+
+  updateDefaultCancellationPolicy(
+    tx: PrismaTx,
+    id: string,
+    intent: PartnerDefaultCancellationPolicyIntent,
+  ): Promise<PartnerRecord>;
+
+  isCancellationPolicyVisible(tx: PrismaTx, partnerId: string, policyId: string): Promise<boolean>;
+
   addMember(
     tx: PrismaTx,
     params: { tenantId: string; partnerId: string; userId: string },
@@ -99,5 +68,4 @@ export interface IPartnerRepository {
     params: { tenantId: string; partnerId: string; userId: string; roleId: string },
   ): Promise<void>;
   countActiveBookings(tx: PrismaTx, partnerId: string): Promise<number>;
-  tenantIdOfPartner(partnerId: string): Promise<string | null>;
 }

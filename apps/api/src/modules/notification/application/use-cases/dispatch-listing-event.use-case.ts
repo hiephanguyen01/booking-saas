@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { type TemplateData } from '../../domain/email-template';
+import {
+  NotificationDelivery,
+  OUTBOX_DELIVERY_POLICY,
+} from '../../domain/entities/notification-delivery.entity';
 import { planForEvent } from '../../domain/notification-plan';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
 import {
@@ -11,12 +15,12 @@ import {
   NOTIFICATION_READER,
   type INotificationReader,
 } from '../../domain/ports/notification-reader.port';
+import { DedupeKey } from '../../domain/value-objects/dedupe-key';
 import { deliverNotification } from '../deliver-notification';
 
 /**
  * listing.published / listing.hidden → the owning partner's members (§17).
- * Idempotent via the `notification_logs` dedupe key; a failure rethrows so the
- * outbox relay retries.
+ * Idempotent via the delivery dedupe key; a failure rethrows so the outbox relay retries.
  */
 @Injectable()
 export class DispatchListingEventUseCase {
@@ -40,17 +44,31 @@ export class DispatchListingEventUseCase {
     if (!ctx) return;
     for (const item of plan) {
       for (const recipient of ctx.partnerRecipients) {
-        const dedupeKey = `${eventType}:${payload.listingId}:${item.templateId}:${recipient.userId}`;
         const data: TemplateData = {
           tenantName: ctx.tenantName,
           recipientName: recipient.name,
           listingTitle: ctx.listingTitle,
           reason: payload.reason,
         };
-        await deliverNotification(
-          { email: this.email, logs: this.logs },
-          { tenantId, eventType, recipient, item, data, dedupeKey, bookingId: null },
-        );
+        const delivery = NotificationDelivery.start({
+          tenantId,
+          userId: recipient.userId,
+          recipientEmail: recipient.email,
+          eventType,
+          templateId: item.templateId,
+          dedupeKey: DedupeKey.forEvent(
+            eventType,
+            payload.listingId,
+            item.templateId,
+            recipient.userId,
+          ),
+          bookingId: null,
+          policy: OUTBOX_DELIVERY_POLICY,
+        });
+        await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+          locale: recipient.locale,
+          data,
+        });
       }
     }
   }

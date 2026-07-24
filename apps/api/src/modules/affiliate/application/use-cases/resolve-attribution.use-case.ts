@@ -1,6 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { evaluateAttribution } from '../../domain/affiliate-attribution';
+import {
+  AFFILIATE_ATTRIBUTION_READER,
+  type IAffiliateAttributionReader,
+} from '../../domain/ports/affiliate-attribution-reader.port';
 import { normalizeReferralCode } from '../../domain/referral-code';
 
 export interface AttributionRequest {
@@ -29,40 +33,46 @@ export interface Attribution {
 export class ResolveAttributionUseCase {
   private readonly logger = new Logger(ResolveAttributionUseCase.name);
 
+  constructor(
+    @Inject(AFFILIATE_ATTRIBUTION_READER)
+    private readonly attributionReader: IAffiliateAttributionReader,
+  ) {}
+
   async execute(tx: PrismaTx, req: AttributionRequest): Promise<Attribution | null> {
     const code = normalizeReferralCode(req.code);
     if (!code) return null;
 
-    const link = await tx.referralLink.findFirst({
-      where: { code },
-      select: { code: true, affiliate: { select: { id: true, userId: true, status: true, customRate: true } } },
-    });
-    if (!link || link.affiliate.status !== 'approved') return null;
+    const candidate = await this.attributionReader.findApprovedCandidate(tx, code);
+    if (!candidate) return null;
 
-    const affiliate = link.affiliate;
-    const [affiliateUser, customerUser, partnerMember] = await Promise.all([
-      tx.user.findUnique({ where: { id: affiliate.userId }, select: { email: true, phone: true } }),
-      tx.user.findUnique({ where: { id: req.customerId }, select: { email: true, phone: true } }),
-      tx.partnerMember.findFirst({
-        where: { partnerId: req.listingPartnerId, userId: affiliate.userId },
-        select: { id: true },
-      }),
+    const [affiliateUser, customerUser, affiliateIsPartnerMember] = await Promise.all([
+      this.attributionReader.findUserContact(tx, candidate.affiliateUserId),
+      this.attributionReader.findUserContact(tx, req.customerId),
+      this.attributionReader.isPartnerMember(
+        tx,
+        req.listingPartnerId,
+        candidate.affiliateUserId,
+      ),
     ]);
 
     const decision = evaluateAttribution({
-      affiliateUserId: affiliate.userId,
+      affiliateUserId: candidate.affiliateUserId,
       affiliateEmail: affiliateUser?.email ?? null,
       affiliatePhone: affiliateUser?.phone ?? null,
       customerUserId: req.customerId,
       customerEmail: customerUser?.email ?? null,
       customerPhone: customerUser?.phone ?? null,
-      affiliateIsPartnerMember: partnerMember !== null,
+      affiliateIsPartnerMember,
     });
     if (!decision.ok) {
       this.logger.debug(`referral ${code} dropped: ${decision.rejection}`);
       return null;
     }
 
-    return { affiliateId: affiliate.id, referralCode: link.code, customRate: affiliate.customRate };
+    return {
+      affiliateId: candidate.affiliateId,
+      referralCode: candidate.referralCode,
+      customRate: candidate.customRate,
+    };
   }
 }

@@ -12,8 +12,8 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionRepublish } from '../../../domain/moderation/listing-moderation';
-import { runModeration, type ModerationContext } from '../../moderation/moderation-support';
+import { ListingGroup } from '../../../domain/entities/listing-group.entity';
+import type { ModerationContext } from '../../moderation/moderation-support';
 import {
   runGroupModeration,
   type GroupModerationDeps,
@@ -36,7 +36,7 @@ export class RepublishListingGroupUseCase {
 
   execute(ctx: ModerationContext, id: string, actor: ModerationActor): Promise<ListingGroupRecord> {
     return runGroupModeration(this.deps(), ctx, id, 'republished', 'listing_group.published', (g) =>
-      runModeration(() => transitionRepublish(g, actor)),
+      ListingGroup.rehydrate(g).republish(actor),
     );
   }
 

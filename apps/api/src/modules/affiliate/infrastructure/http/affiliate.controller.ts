@@ -1,5 +1,22 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   uuidSchema,
   type AffiliateCommissionResponse,
@@ -96,7 +113,9 @@ export class AffiliateController {
     // `requireMembership`, not `requireApproved`: a pending applicant must be able
     // to fix the account number it is to be paid into (see the use case).
     const ctx = await this.requireMembership.execute(principal.userId, tenantHeader);
-    return toAffiliateResponse(await this.updatePayoutInfo.execute(ctx.tenantId, ctx.affiliateId, input));
+    return toAffiliateResponse(
+      await this.updatePayoutInfo.execute(ctx.tenantId, ctx.affiliateId, input),
+    );
   }
 
   @AuthenticatedOnly()
@@ -123,7 +142,9 @@ export class AffiliateController {
     @Headers('x-affiliate-tenant') tenantHeader?: string,
   ): Promise<ReferralLinkResponse> {
     const ctx = await this.requireApproved.execute(principal.userId, tenantHeader);
-    return toReferralLinkResponse(await this.createLink.execute(ctx.tenantId, ctx.affiliateId, input));
+    return toReferralLinkResponse(
+      await this.createLink.execute(ctx.tenantId, ctx.affiliateId, input),
+    );
   }
 
   @AuthenticatedOnly()
@@ -131,6 +152,7 @@ export class AffiliateController {
   @UuidParam()
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a referral link' })
+  @ApiNoContentResponse()
   async removeReferralLink(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,

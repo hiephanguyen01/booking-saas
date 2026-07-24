@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../../shared/audit/audit-writer.port';
@@ -11,13 +11,14 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionPublish } from '../../../domain/moderation/listing-moderation';
+import { ListingGroup } from '../../../domain/entities/listing-group.entity';
 import { groupContactFlags } from '../../moderation/build-listing-group-review';
-import { runModeration, type ModerationContext } from '../../moderation/moderation-support';
+import type { ModerationContext } from '../../moderation/moderation-support';
 import {
   runGroupModeration,
   type GroupModerationDeps,
 } from '../../moderation/run-group-moderation';
+import { ListingHasContactInfo } from '../../../domain/errors/listing-errors';
 
 /**
  * A tenant reviewer publishes a post (listing_group) — the group-level mirror of
@@ -47,14 +48,9 @@ export class PublishListingGroupUseCase {
       (g, children) => {
         const flags = groupContactFlags(g, children);
         if (!force && flags.length > 0) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: 'LISTING_HAS_CONTACT_INFO',
-            message: 'Remove contact information from the post and its items before publishing',
-            details: flags,
-          });
+          throw new ListingHasContactInfo('group', flags);
         }
-        return runModeration(() => transitionPublish(g, 'admin'));
+        return ListingGroup.rehydrate(g).publish('admin');
       },
       force ? 'force-published: contact-info gate bypassed' : undefined,
     );

@@ -1,11 +1,6 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PartnerApplyInput } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -20,6 +15,7 @@ import {
   type PartnerRecord,
 } from '../../domain/ports/partner-repository.port';
 import { PARTNER_ROLES, type IPartnerRoles } from '../../domain/ports/partner-roles.port';
+import { Partner } from '../../domain/entities/partner.entity';
 
 /**
  * A logged-in user applies to become a partner under a tenant (self-signup,
@@ -42,20 +38,8 @@ export class ApplyAsPartnerUseCase {
 
   async execute(userId: string, input: PartnerApplyInput): Promise<PartnerRecord> {
     const tenant = await this.tenants.findById(input.tenantId);
-    if (!tenant) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
-    }
-    if (tenant.status !== 'active') {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'TENANT_INACTIVE',
-        message: 'Tenant is not accepting partner applications',
-      });
-    }
+    if (!tenant) throw new TenantNotFound();
+    Partner.assertTenantAcceptingApplications(tenant.status);
 
     const location = await this.resolveAdministrativeAddress.execute(
       input.contactInfo.provinceCode,
@@ -69,19 +53,15 @@ export class ApplyAsPartnerUseCase {
     const ownerRoleId = await this.roles.partnerOwnerRoleId();
 
     const partner = await this.tenantDb.forTenant(input.tenantId, async (tx) => {
-      if (await this.partners.findBySlug(tx, input.slug)) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'PARTNER_SLUG_TAKEN',
-          message: `Slug "${input.slug}" is already in use`,
-        });
-      }
-      const created = await this.partners.create(tx, input.tenantId, {
+      const slugTaken = Boolean(await this.partners.findBySlug(tx, input.slug));
+      Partner.assertSlugAvailable(input.slug, slugTaken);
+
+      const newPartner = Partner.apply({
+        tenantId: input.tenantId,
         name: input.name,
         slug: input.slug,
         description: input.description ?? null,
         partnerType: input.partnerType,
-        status: 'pending',
         businessInfo: input.businessInfo,
         contactInfo: {
           phone: input.contactInfo.phone,
@@ -95,6 +75,7 @@ export class ApplyAsPartnerUseCase {
         },
         payoutInfo: input.payoutInfo,
       });
+      const created = await this.partners.create(tx, newPartner);
       await this.partners.addMember(tx, {
         tenantId: input.tenantId,
         partnerId: created.id,

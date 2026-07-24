@@ -1,5 +1,5 @@
 import type { RefundExecutionMode, RefundStatus } from '@prisma/client';
-import type { RefundHistoryQuery } from '@booking/contracts';
+import type { ConfirmManualRefundInput, RefundEvidence, RefundHistoryQuery } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const REFUND_REPOSITORY = Symbol('REFUND_REPOSITORY');
@@ -14,7 +14,7 @@ export interface RefundRecord {
   gatewayRefundId: string | null;
   reason: string | null;
   affectsBookingStatus: boolean;
-  evidence: { reference?: string; evidenceKey?: string; note?: string } | null;
+  evidence: RefundEvidence | null;
   executionMode: RefundExecutionMode;
   dueAt: Date | null;
   completedAt: Date | null;
@@ -69,7 +69,7 @@ export interface IRefundRepository {
   markSucceeded(
     tx: PrismaTx,
     id: string,
-    evidence: { reference: string; evidenceKey?: string; note?: string },
+    evidence: ConfirmManualRefundInput,
   ): Promise<RefundRecord | null>;
   /** Take the per-booking advisory xact lock that serialises concurrent refund handlers. */
   lockForBooking(tx: PrismaTx, bookingId: string): Promise<void>;

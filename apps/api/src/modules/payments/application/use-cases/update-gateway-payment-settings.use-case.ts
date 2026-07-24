@@ -1,11 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  GATEWAY_SUPPORTED_METHODS,
-  type UpdateGatewayPaymentSettingsInput,
-} from '@booking/contracts';
+import { Inject, Injectable } from '@nestjs/common';
+import type { UpdateGatewayPaymentSettingsInput } from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
+import { TenantGatewayConfigs } from '../../domain/entities/tenant-gateway-configs.entity';
+import { GatewayConfigNotFound } from '../../domain/errors/gateway-config-errors';
 import {
   GATEWAY_CONFIG_REPOSITORY,
   type GatewayConfigRecord,
@@ -28,26 +27,14 @@ export class UpdateGatewayPaymentSettingsUseCase {
   ): Promise<GatewayConfigRecord> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const supported = GATEWAY_SUPPORTED_METHODS[input.gateway];
-      const invalid = input.enabledMethods.filter((m) => !supported.includes(m));
-      if (invalid.length > 0) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'UNSUPPORTED_PAYMENT_METHOD',
-          message: `Cổng ${input.gateway} không hỗ trợ phương thức: ${invalid.join(', ')}`,
-        });
-      }
+      TenantGatewayConfigs.assertMethodsSupported(input.gateway, input.enabledMethods);
       const updated = await this.configs.updateSettings(tx, tenantId, input.gateway, {
         enabledMethods: input.enabledMethods,
         refundStrategy: input.refundStrategy,
         manualRefundSlaHours: input.manualRefundSlaHours,
       });
       if (!updated) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'GATEWAY_CONFIG_NOT_FOUND',
-          message: 'Configure payment credentials before enabling payment methods',
-        });
+        throw new GatewayConfigNotFound();
       }
       await this.audit.write(tx, {
         tenantId,

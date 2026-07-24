@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { OpenSettlementDisputeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -15,6 +15,12 @@ import {
   SETTLEMENT_REPOSITORY,
   type ISettlementRepository,
 } from '../../domain/ports/settlement-repository.port';
+import { SettlementDispute } from '../../domain/entities/settlement-dispute.entity';
+import {
+  CustomerBookingNotFound,
+  FinanceTenantNotFound,
+  SettlementNotFound,
+} from '../../domain/errors/finance-domain-errors';
 
 /** Customer opens a claim only for their booking and before the DB deadline. */
 @Injectable()
@@ -34,45 +40,17 @@ export class OpenSettlementDisputeUseCase {
     input: OpenSettlementDisputeInput,
   ): Promise<SettlementDisputeRecord> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
-    }
+    if (!tenantId) throw new FinanceTenantNotFound();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       if (!(await this.disputes.customerOwnsBooking(tx, input.bookingId, customerId))) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'BOOKING_NOT_FOUND',
-          message: 'Booking not found',
-        });
+        throw new CustomerBookingNotFound();
       }
       const settlement = await this.settlements.findByBooking(tx, input.bookingId);
-      if (!settlement) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'SETTLEMENT_NOT_FOUND',
-          message: 'Settlement not found',
-        });
-      }
+      if (!settlement) throw new SettlementNotFound();
       const existing = await this.disputes.findLatestBySettlement(tx, settlement.id);
-      if (existing?.status === 'open') return existing;
-      if (existing) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'DISPUTE_ALREADY_RESOLVED',
-          message: 'This settlement has already used its dispute review',
-        });
-      }
-      if (!(await this.settlements.markDisputed(tx, settlement.id))) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'DISPUTE_WINDOW_CLOSED',
-          message: 'The settlement is not inside an open dispute window',
-        });
-      }
+      const classified = SettlementDispute.classifyExisting(existing);
+      if (classified) return classified;
+      SettlementDispute.assertWindowOpened(await this.settlements.markDisputed(tx, settlement.id));
       const dispute = await this.disputes.create(tx, tenantId, {
         settlementId: settlement.id,
         bookingId: input.bookingId,

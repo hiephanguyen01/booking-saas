@@ -8,6 +8,7 @@ import { OutboxHandlerRegistry } from './outbox-handler.registry';
 export const OUTBOX_QUEUE = 'outbox-relay';
 const POLL_EVERY_MS = 2_000;
 const BATCH_SIZE = 20;
+const MAX_ATTEMPTS = 20;
 /** exponential backoff in seconds, capped at 5 minutes */
 const backoffSeconds = (attempts: number) => Math.min(2 ** attempts, 300);
 
@@ -15,8 +16,9 @@ const backoffSeconds = (attempts: number) => Math.min(2 ** attempts, 300);
  * Polls due outbox_events (cross-tenant → admin pool), claims a batch with
  * FOR UPDATE SKIP LOCKED so multiple relay instances never double-process,
  * and dispatches each event to its handlers inside the event's tenant context.
- * Failures reschedule the row with exponential backoff — an event is only
- * marked processed after every handler succeeded, so nothing is ever lost.
+ * Failures reschedule the row with exponential backoff. After MAX_ATTEMPTS the
+ * row is parked as a dead letter: it remains queryable for operators but no
+ * longer occupies a live claim slot.
  */
 @Injectable()
 export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
@@ -68,7 +70,9 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
       >`
         SELECT id, tenant_id, event_type, payload, attempts
         FROM outbox_events
-        WHERE processed_at IS NULL AND available_at <= now()
+        WHERE processed_at IS NULL
+          AND dead_lettered_at IS NULL
+          AND available_at <= now()
         ORDER BY created_at
         LIMIT ${BATCH_SIZE}
         FOR UPDATE SKIP LOCKED
@@ -113,8 +117,21 @@ export class OutboxRelayWorker implements OnModuleInit, OnApplicationShutdown {
       });
     } catch (error) {
       const attempts = event.attempts + 1;
-      this.logger.warn(`outbox event ${event.id} (${event.eventType}) failed attempt ${attempts}`);
       const lastError = error instanceof Error ? error.message : String(error);
+      if (attempts >= MAX_ATTEMPTS) {
+        this.logger.error(
+          `outbox event ${event.id} (${event.eventType}) dead-lettered after ${attempts} attempts`,
+        );
+        await this.prisma.admin.$executeRaw`
+          UPDATE outbox_events
+          SET attempts = ${attempts},
+              last_error = ${lastError},
+              dead_lettered_at = now()
+          WHERE id = ${event.id}::uuid
+        `;
+        return;
+      }
+      this.logger.warn(`outbox event ${event.id} (${event.eventType}) failed attempt ${attempts}`);
       await this.prisma.admin.$executeRaw`
         UPDATE outbox_events
         SET attempts = ${attempts},

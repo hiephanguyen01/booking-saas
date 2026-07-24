@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
 import {
   BOOKING_REPOSITORY,
   type BookingStatusHistoryRecord,
@@ -32,11 +33,7 @@ export class GetBookingHistoryUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
       if (!booking || (opts.partnerId && booking.partnerId !== opts.partnerId)) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'BOOKING_NOT_FOUND',
-          message: 'Booking not found',
-        });
+        throw new BookingNotFound();
       }
       return this.bookings.listStatusHistory(tx, bookingId);
     });

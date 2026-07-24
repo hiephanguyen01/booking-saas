@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PlanLimits } from '@booking/contracts';
 import {
-  SUBSCRIPTION_REPOSITORY,
-  type ISubscriptionRepository,
-} from '../../domain/ports/subscription-repository.port';
-import { PLAN_REPOSITORY, type IPlanRepository } from '../../domain/ports/plan-repository.port';
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
+import { evaluateSubscription } from '../../domain/subscription-status';
 
 /**
  * Looks up the active plan's limits (subscription_plans.limits, §6.5) for a
@@ -14,15 +14,19 @@ import { PLAN_REPOSITORY, type IPlanRepository } from '../../domain/ports/plan-r
 @Injectable()
 export class GetPlanLimitsUseCase {
   constructor(
-    @Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository,
-    @Inject(SUBSCRIPTION_REPOSITORY) private readonly subscriptions: ISubscriptionRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
   ) {}
 
   /** The active plan's limits, or null when the tenant has no assigned plan. */
   async execute(tenantId: string): Promise<PlanLimits | null> {
-    const sub = await this.subscriptions.findCurrentByTenant(tenantId);
-    if (!sub) return null;
-    const plan = await this.plans.findById(sub.planId);
-    return plan?.limits ?? null;
+    const selection = await this.currentSubscriptions.findByTenant(tenantId);
+    if (
+      !selection.current ||
+      evaluateSubscription(selection.current.subscription, selection.evaluatedAt).phase !== 'active'
+    ) {
+      return null;
+    }
+    return selection.current.plan.limits;
   }
 }

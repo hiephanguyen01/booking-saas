@@ -2,16 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ListPartnersQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
-  PARTNER_REPOSITORY,
-  type IPartnerRepository,
+  PARTNER_READER,
+  type IPartnerReader,
   type PartnerRecord,
-} from '../../domain/ports/partner-repository.port';
+} from '../../domain/ports/partner-reader.port';
 
 /** The tenant's partner list / approval queue (filter by status) — §7.3. */
 @Injectable()
 export class ListPartnersUseCase {
   constructor(
-    @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
+    @Inject(PARTNER_READER) private readonly partners: IPartnerReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 

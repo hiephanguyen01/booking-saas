@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
 import {
   BOOKING_REPOSITORY,
   type IBookingRepository,
@@ -22,11 +23,7 @@ export class GetBookingUseCase {
   async execute(tenantId: string, id: string, opts: { partnerId?: string } = {}): Promise<BookingRecord> {
     const booking = await this.tenantDb.forTenant(tenantId, (tx) => this.bookings.findById(tx, id));
     if (!booking || (opts.partnerId && booking.partnerId !== opts.partnerId)) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'BOOKING_NOT_FOUND',
-        message: 'Booking not found',
-      });
+      throw new BookingNotFound();
     }
     return booking;
   }

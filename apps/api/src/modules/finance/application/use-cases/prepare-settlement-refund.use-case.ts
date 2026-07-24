@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { SettlementKind } from '@prisma/client';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   SETTLEMENT_REPOSITORY,
   type ISettlementRepository,
-  type ReleaseAmounts,
+  type SettlementRecord,
 } from '../../domain/ports/settlement-repository.port';
 import { GetPayoutPolicyUseCase } from './get-payout-policy.use-case';
+import { Settlement } from '../../domain/entities/settlement.entity';
 
 /** Freeze a cancelled/disputed settlement while its provider/manual refund is unresolved. */
 @Injectable()
@@ -21,52 +21,28 @@ export class PrepareSettlementRefundUseCase {
     tenantId: string,
     bookingId: string,
     refundAmount: bigint,
-    kind?: SettlementKind,
+    kind?: SettlementRecord['kind'],
     incremental = false,
   ): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const settlement = await this.settlements.ensureHeldForBooking(tx, tenantId, bookingId);
-      if (!settlement || ['released', 'refunded'].includes(settlement.status)) return;
-      // Cancellation refunds include the separately-held security deposit in the
-      // gateway transfer. Custody settlement only tracks the service-money part.
-      const serviceRefundAmount =
-        kind === 'cancellation_fee'
-          ? max0(refundAmount - settlement.securityDepositHeld)
-          : refundAmount;
-      if (serviceRefundAmount > 0n) {
-        // A dispute refund is a delta on top of any cancellation refund already
-        // completed. `refund_pending` means the initiating transaction already
-        // stored the cumulative target, so a later manual-refund event is a no-op.
-        if (incremental && settlement.status === 'refund_pending') return;
-        const targetRefundedAmount = incremental
-          ? settlement.refundedAmount + serviceRefundAmount
-          : serviceRefundAmount;
-        await this.settlements.prepareRefund(tx, bookingId, targetRefundedAmount, kind);
+      if (!settlement) return;
+      const plan = Settlement.rehydrate(settlement).planRefund(refundAmount, kind, incremental);
+      if (plan.action === 'none') return;
+      if (plan.action === 'prepare') {
+        await this.settlements.prepareRefund(tx, bookingId, plan.refundedAmount, plan.kind);
         return;
       }
 
       const payoutPolicy = await this.policy.execute(tx, tenantId);
-      const retained = settlement.onlineHeldAmount;
-      const amounts: ReleaseAmounts = {
-        tenantCommissionGross: retained,
-        tenantNetEarning: retained,
-        partnerGrossEarning: 0n,
-        partnerPayable: 0n,
-        platformFee: 0n,
-        affiliateCommission: 0n,
-      };
       await this.settlements.startDisputeWindow(
         tx,
         bookingId,
-        0n,
+        plan.onsiteCollectedAmount,
         payoutPolicy.holdingDays,
-        amounts,
-        'cancellation_fee',
+        plan.amounts,
+        plan.kind,
       );
     });
   }
-}
-
-function max0(value: bigint): bigint {
-  return value > 0n ? value : 0n;
 }

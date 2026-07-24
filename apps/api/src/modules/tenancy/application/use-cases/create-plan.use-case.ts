@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { CreatePlanInput } from '@booking/contracts';
+import { SubscriptionPlan } from '../../domain/entities/subscription-plan.entity';
 import {
   PLAN_REPOSITORY,
   type IPlanRepository,
@@ -11,11 +12,12 @@ export class CreatePlanUseCase {
   constructor(@Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository) {}
 
   async execute(input: CreatePlanInput): Promise<PlanRecord> {
-    return this.plans.create({
+    const plan = SubscriptionPlan.open({
       name: input.name,
       priceMonthly: BigInt(input.priceMonthly),
       limits: input.limits,
       isActive: input.isActive,
     });
+    return this.plans.create(plan);
   }
 }

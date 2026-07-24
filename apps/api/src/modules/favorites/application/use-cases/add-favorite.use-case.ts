@@ -1,6 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { FavoriteTarget, FavoriteToggleResponse } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { Favorite } from '../../domain/entities/favorite.entity';
+import { FavoriteTargetNotFound } from '../../domain/errors/favorite-errors';
 import {
   FAVORITE_REPOSITORY,
   type IFavoriteRepository,
@@ -24,21 +27,11 @@ export class AddFavoriteUseCase {
     target: FavoriteTarget,
   ): Promise<FavoriteToggleResponse> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId)
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: 'Tenant not found',
-      });
+    if (!tenantId) throw new TenantNotFound();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const partnerId = await this.favorites.resolveTargetPartnerId(tx, target);
-      if (!partnerId)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'FAVORITE_TARGET_NOT_FOUND',
-          message: 'Listing or group not found',
-        });
-      await this.favorites.add(tx, tenantId, customerId, partnerId, target);
+      const favoritable = await this.favorites.findFavoritableTarget(tx, target);
+      if (!favoritable) throw new FavoriteTargetNotFound();
+      await this.favorites.add(tx, Favorite.open({ tenantId, customerId, target: favoritable }));
       return { ...target, favorited: true };
     });
   }

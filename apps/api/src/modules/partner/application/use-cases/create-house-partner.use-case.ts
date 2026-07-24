@@ -1,7 +1,8 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateHousePartnerInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { Partner } from '../../domain/entities/partner.entity';
 import {
   PARTNER_REPOSITORY,
   type IPartnerRepository,
@@ -23,21 +24,16 @@ export class CreateHousePartnerUseCase {
 
   async execute(tenantId: string, input: CreateHousePartnerInput): Promise<PartnerRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      if (await this.partners.findBySlug(tx, input.slug)) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'PARTNER_SLUG_TAKEN',
-          message: `Slug "${input.slug}" is already in use`,
-        });
-      }
-      const created = await this.partners.create(tx, tenantId, {
+      const slugTaken = Boolean(await this.partners.findBySlug(tx, input.slug));
+      Partner.assertSlugAvailable(input.slug, slugTaken);
+
+      const newPartner = Partner.createHouse({
+        tenantId,
         name: input.name,
         slug: input.slug,
         description: input.description ?? null,
-        partnerType: 'company',
-        isHouse: true,
-        status: 'approved',
       });
+      const created = await this.partners.create(tx, newPartner);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'partner.created',

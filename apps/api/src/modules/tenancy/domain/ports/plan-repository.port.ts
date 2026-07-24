@@ -48,20 +48,6 @@ export interface IPlanRepository {
   update(id: string, data: UpdatePlanData): Promise<PlanRecord>;
   delete(id: string): Promise<void>;
   /**
-   * Live subscribers per plan id, keyed by plan id; absent = zero.
-   *
-   * "Live" mirrors the §6.5 rule in {@link evaluateSubscription}: the tenant's
-   * *current* subscription (latest by `startsAt`) is `trial`/`active`/`past_due`
-   * **and** has not passed its paid-through date. Deduped per tenant, because
-   * assigning a plan appends a `tenant_subscriptions` row and never retires the
-   * previous one — so a tenant renewing twelve times has twelve rows, and a raw
-   * row count would report twelve subscribers and twelve times the real MRR.
-   *
-   * One aggregate for every plan: the caller indexes it rather than issuing a
-   * query per plan.
-   */
-  liveSubscriberCounts(): Promise<Map<string, number>>;
-  /**
    * Total `tenant_subscriptions` rows referencing the plan, in *any* status.
    * The FK is RESTRICT, so a plan with history cannot be hard-deleted at all —
    * this lets the use case answer with a clean 409 instead of a Prisma P2003.

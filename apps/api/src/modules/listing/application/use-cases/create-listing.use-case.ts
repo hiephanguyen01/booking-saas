@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateListingInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { resolveTenantTimezone } from '../../../../shared/tenant-context/tenant-timezone';
@@ -39,6 +32,21 @@ import {
   ListingModeConfigError,
   validateAndNormalizeModeConfig,
 } from '../../domain/pricing/package-config';
+import { Listing } from '../../domain/entities/listing.entity';
+import {
+  ListingSlugTaken,
+  ResourceNotFound,
+  ResourceNotOwned,
+} from '../../domain/errors/listing-errors';
+import { ListingPricingRejected } from '../../domain/errors/pricing-rule-errors';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
+import { PartnerNotFound } from '../../../../shared/domain/errors/partner-not-found';
+import {
+  ListingGroupNotFound,
+  ListingGroupNotOwned,
+  ListingGroupReadOnlyForEdit,
+  ListingGroupTypeMismatch,
+} from '../../domain/errors/listing-group-errors';
 
 /**
  * Create a listing. Inside one tenant transaction it validates the attributes
@@ -67,29 +75,14 @@ export class CreateListingUseCase {
     );
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       if (await this.listings.findBySlug(tx, input.slug)) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_SLUG_TAKEN',
-          message: `Slug "${input.slug}" is already in use`,
-        });
+        throw new ListingSlugTaken(input.slug);
       }
 
       const type = await this.listingTypes.findById(tx, input.listingTypeId);
       if (!type) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_TYPE_NOT_FOUND',
-          message: 'Listing type not found',
-        });
+        throw new ListingTypeNotFound();
       }
-      const invalidModes = input.bookingModes.filter((m) => !type.allowedModes.includes(m));
-      if (invalidModes.length > 0) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'INVALID_BOOKING_MODES',
-          message: `Modes not allowed by the listing type: ${invalidModes.join(', ')}`,
-        });
-      }
+      Listing.assertBookingModesAllowed(input.bookingModes, type.allowedModes);
       assertValidAttributes(type.attributeSchema, input.attributes);
       let modeConfig: ReturnType<typeof validateAndNormalizeModeConfig>;
       try {
@@ -100,22 +93,14 @@ export class CreateListingUseCase {
         });
       } catch (error) {
         if (error instanceof ListingModeConfigError) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: error.code,
-            message: error.message,
-          });
+          throw new ListingPricingRejected(error.code, error.message);
         }
         throw error;
       }
 
       const partner = await this.partners.findById(tx, input.partnerId);
       if (!partner) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'PARTNER_NOT_FOUND',
-          message: 'Partner not found',
-        });
+        throw new PartnerNotFound();
       }
       assertCanServeListingType(
         { verificationStatus: partner.verificationStatus },
@@ -137,32 +122,16 @@ export class CreateListingUseCase {
       if (input.groupId) {
         const group = await this.groups.findById(tx, input.groupId);
         if (!group) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'LISTING_GROUP_NOT_FOUND',
-            message: 'Listing group not found',
-          });
+          throw new ListingGroupNotFound();
         }
         if (group.partnerId !== input.partnerId) {
-          throw new ForbiddenException({
-            statusCode: 403,
-            code: 'LISTING_GROUP_NOT_OWNED',
-            message: 'The listing group belongs to another partner',
-          });
+          throw new ListingGroupNotOwned();
         }
         if (group.listingTypeId !== input.listingTypeId) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: 'LISTING_GROUP_TYPE_MISMATCH',
-            message: 'The listing and its group must use the same listing type',
-          });
+          throw new ListingGroupTypeMismatch();
         }
         if (group.status !== 'draft') {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'LISTING_GROUP_READ_ONLY',
-            message: 'Hide the listing group before changing its items',
-          });
+          throw new ListingGroupReadOnlyForEdit();
         }
       }
 
@@ -171,20 +140,12 @@ export class CreateListingUseCase {
       if (resourceId) {
         const resource = await this.resources.findById(tx, resourceId);
         if (!resource) {
-          throw new NotFoundException({
-            statusCode: 404,
-            code: 'RESOURCE_NOT_FOUND',
-            message: 'Resource not found',
-          });
+          throw new ResourceNotFound();
         }
         // A shared calendar resource belongs to a partner (§7.3) — partner A must
         // not attach partner B's resource and thereby read/block B's calendar.
         if (resource.partnerId !== input.partnerId) {
-          throw new ForbiddenException({
-            statusCode: 403,
-            code: 'RESOURCE_NOT_OWNED',
-            message: 'The resource belongs to another partner',
-          });
+          throw new ResourceNotOwned();
         }
       } else {
         const resource = await this.resources.create(tx, tenantId, {
@@ -195,33 +156,37 @@ export class CreateListingUseCase {
         resourceId = resource.id;
       }
 
-      const created = await this.listings.create(tx, tenantId, {
-        partnerId: input.partnerId,
-        listingTypeId: input.listingTypeId,
-        resourceId,
-        groupId: input.groupId ?? null,
-        categoryId: input.categoryId ?? null,
-        title: input.title,
-        slug: input.slug,
-        description: input.description ?? null,
-        provinceCode: location.province.code,
-        provinceName: location.province.name,
-        wardCode: location.ward.code,
-        wardName: location.ward.name,
-        address: input.address,
-        photos: input.photos,
-        attributes: input.attributes,
-        bookingModes: input.bookingModes,
-        modeConfig: modeConfig as Record<string, unknown>,
-        stockQuantity: input.stockQuantity ?? null,
-        capacity: input.capacity ?? null,
-        bufferBefore: input.bufferBefore,
-        bufferAfter: input.bufferAfter,
-        approvalRequired: input.approvalRequired,
-        depositPercent: input.depositPercent,
-        balanceDue: input.balanceDue,
-        cancellationPolicyId: input.cancellationPolicyId ?? null,
-      });
+      const created = await this.listings.create(
+        tx,
+        tenantId,
+        Listing.open({
+          partnerId: input.partnerId,
+          listingTypeId: input.listingTypeId,
+          resourceId,
+          groupId: input.groupId ?? null,
+          categoryId: input.categoryId ?? null,
+          title: input.title,
+          slug: input.slug,
+          description: input.description ?? null,
+          provinceCode: location.province.code,
+          provinceName: location.province.name,
+          wardCode: location.ward.code,
+          wardName: location.ward.name,
+          address: input.address,
+          photos: input.photos,
+          attributes: input.attributes,
+          bookingModes: input.bookingModes,
+          modeConfig: modeConfig as Record<string, unknown>,
+          stockQuantity: input.stockQuantity ?? null,
+          capacity: input.capacity ?? null,
+          bufferBefore: input.bufferBefore,
+          bufferAfter: input.bufferAfter,
+          approvalRequired: input.approvalRequired,
+          depositPercent: input.depositPercent,
+          balanceDue: input.balanceDue,
+          cancellationPolicyId: input.cancellationPolicyId ?? null,
+        }),
+      );
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing.created',

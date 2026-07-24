@@ -4,13 +4,19 @@ import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import { pageOffset, toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
+  AffiliateCustomRateIntent,
+  AffiliatePayoutInfoIntent,
+  AffiliateState,
+  AffiliateStatusIntent,
+  NewAffiliate,
+} from '../../domain/entities/affiliate.entity';
+import type {
   AffiliateRecord,
-  AffiliateStatus,
   AffiliateWithUser,
-  CreateAffiliateData,
-  IAffiliateRepository,
+  IAffiliateReader,
   ListAffiliatesFilter,
-} from '../../domain/ports/affiliate-repository.port';
+} from '../../domain/ports/affiliate-reader.port';
+import type { IAffiliateRepository } from '../../domain/ports/affiliate-repository.port';
 
 type Row = Prisma.AffiliateGetPayload<Record<string, never>>;
 type RowWithRelations = Prisma.AffiliateGetPayload<{ include: typeof WITH_RELATIONS }>;
@@ -52,28 +58,40 @@ function toWithUser(a: RowWithRelations): AffiliateWithUser {
 }
 
 @Injectable()
-export class PrismaAffiliateRepository implements IAffiliateRepository {
+export class PrismaAffiliateRepository
+  implements IAffiliateRepository, IAffiliateReader
+{
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(tx: PrismaTx, tenantId: string, data: CreateAffiliateData): Promise<AffiliateRecord> {
+  async create(
+    tx: PrismaTx,
+    affiliate: NewAffiliate,
+  ): Promise<AffiliateRecord> {
     return toRecord(
       await tx.affiliate.create({
         data: {
-          tenantId,
-          userId: data.userId,
-          status: 'pending',
-          payoutInfo: (data.payoutInfo ?? {}) as Prisma.InputJsonValue,
+          tenantId: affiliate.tenantId,
+          userId: affiliate.userId,
+          status: affiliate.status,
+          customRate: affiliate.customRate,
+          payoutInfo: (affiliate.payoutInfo ?? {}) as Prisma.InputJsonValue,
         },
       }),
     );
   }
 
-  async findById(tx: PrismaTx, id: string): Promise<AffiliateRecord | null> {
+  async loadById(
+    tx: PrismaTx,
+    id: string,
+  ): Promise<AffiliateState | null> {
     const a = await tx.affiliate.findUnique({ where: { id } });
     return a ? toRecord(a) : null;
   }
 
-  async findByUser(tx: PrismaTx, userId: string): Promise<AffiliateRecord | null> {
+  async loadByUser(
+    tx: PrismaTx,
+    userId: string,
+  ): Promise<AffiliateState | null> {
     // `(tenant_id, user_id)` is unique; RLS scopes the lookup to the current tenant.
     const a = await tx.affiliate.findFirst({ where: { userId } });
     return a ? toRecord(a) : null;
@@ -102,25 +120,43 @@ export class PrismaAffiliateRepository implements IAffiliateRepository {
     return { items: rows.map(toWithUser), total, counts: toStatusCounts(grouped) };
   }
 
-  async setStatus(tx: PrismaTx, id: string, status: AffiliateStatus): Promise<AffiliateRecord> {
-    return toRecord(await tx.affiliate.update({ where: { id }, data: { status } }));
-  }
-
-  async setCustomRate(tx: PrismaTx, id: string, customRate: bigint | null): Promise<AffiliateRecord> {
-    return toRecord(await tx.affiliate.update({ where: { id }, data: { customRate } }));
-  }
-
-  async setPayoutInfo(
+  async setStatus(
     tx: PrismaTx,
     id: string,
-    payoutInfo: Record<string, unknown>,
+    intent: AffiliateStatusIntent,
+  ): Promise<AffiliateRecord> {
+    return toRecord(
+      await tx.affiliate.update({
+        where: { id },
+        data: { status: intent.status },
+      }),
+    );
+  }
+
+  async setCustomRate(
+    tx: PrismaTx,
+    id: string,
+    intent: AffiliateCustomRateIntent,
+  ): Promise<AffiliateRecord> {
+    return toRecord(
+      await tx.affiliate.update({
+        where: { id },
+        data: { customRate: intent.customRate },
+      }),
+    );
+  }
+
+  async replacePayoutInfo(
+    tx: PrismaTx,
+    id: string,
+    intent: AffiliatePayoutInfoIntent,
   ): Promise<AffiliateWithUser> {
     // Whole-object replace (not a merge): the contract body is the complete payout
     // record, so an omitted field is a cleared field.
     return toWithUser(
       await tx.affiliate.update({
         where: { id },
-        data: { payoutInfo: payoutInfo as Prisma.InputJsonValue },
+        data: { payoutInfo: intent.payoutInfo as Prisma.InputJsonValue },
         include: WITH_RELATIONS,
       }),
     );

@@ -4,6 +4,10 @@ import {
   type IPlanRepository,
   type PlanWithSubscribers,
 } from '../../domain/ports/plan-repository.port';
+import {
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
 
 /**
  * The admin plan list, each plan carrying the live subscriber count its MRR is
@@ -12,12 +16,16 @@ import {
  */
 @Injectable()
 export class ListPlansUseCase {
-  constructor(@Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository) {}
+  constructor(
+    @Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
+  ) {}
 
   async execute(): Promise<PlanWithSubscribers[]> {
     const [plans, counts] = await Promise.all([
       this.plans.list(),
-      this.plans.liveSubscriberCounts(),
+      this.currentSubscriptions.liveSubscriberCounts(),
     ]);
     return plans.map((plan) => ({ plan, subscriberCount: counts.get(plan.id) ?? 0 }));
   }

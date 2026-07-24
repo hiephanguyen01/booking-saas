@@ -1,5 +1,7 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { ReferralLink } from '../../domain/entities/referral-link.entity';
+import { ReferralLinkNotFound } from '../../domain/errors/affiliate-errors';
 import {
   REFERRAL_LINK_REPOSITORY,
   type IReferralLinkRepository,
@@ -15,12 +17,9 @@ export class DeleteReferralLinkUseCase {
 
   async execute(tenantId: string, affiliateId: string, linkId: string): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
-      const link = await this.links.findById(tx, linkId);
-      if (!link) throw new NotFoundException({ statusCode: 404, code: 'LINK_NOT_FOUND', message: 'Referral link not found' });
-      // RLS already scopes to the tenant; this bars deleting another affiliate's link.
-      if (link.affiliateId !== affiliateId) {
-        throw new ForbiddenException({ statusCode: 403, code: 'NOT_LINK_OWNER', message: 'Not your referral link' });
-      }
+      const state = await this.links.loadById(tx, linkId);
+      if (!state) throw new ReferralLinkNotFound();
+      ReferralLink.rehydrate(state).assertOwnedBy(affiliateId);
       await this.links.delete(tx, linkId);
     });
   }

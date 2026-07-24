@@ -39,15 +39,3 @@ export interface VerificationView {
 export interface ListingTypeGate {
   requiresIdentityVerification: boolean;
 }
-
-/**
- * Whether a partner may serve a listing type. People-booking types (models,
- * makeup) require a `verified` identity; every other type is open (§7.3).
- */
-export function canServeListingType(
-  partner: VerificationView,
-  listingType: ListingTypeGate,
-): boolean {
-  if (!listingType.requiresIdentityVerification) return true;
-  return partner.verificationStatus === 'verified';
-}

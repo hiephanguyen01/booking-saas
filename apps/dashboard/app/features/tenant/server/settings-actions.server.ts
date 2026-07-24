@@ -5,11 +5,15 @@ import {
   sepayGatewaySettingsFormSchema,
   zalopayGatewaySettingsFormSchema,
   themeConfigSchema,
+  tenantThemeResponseSchema,
   type DomainResponse,
   type TenantThemeResponse,
   payoutPolicySchema,
   updateGatewayPaymentSettingsInputSchema,
   createCancellationPolicyInputSchema,
+  gatewayConfigResponseSchema,
+  type GatewayConfigResponse,
+  type UpsertGatewayConfigInput,
 } from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost, apiPut, type ApiAuth } from '~/lib/api.server';
 import { TENANT_FLAGS_PATH, type TenantFlags } from '~/features/tenant/lib/flags';
@@ -96,19 +100,18 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
             { status: 400 },
           );
         }
-        const res = await apiPut(
-          '/tenant/gateway-config',
-          {
-            gateway: 'zalopay',
-            environment: parsed.data.environment,
-            credentials: {
-              appId: parsed.data.appId,
-              key1: parsed.data.key1,
-              key2: parsed.data.key2,
-            },
+        const payload: UpsertGatewayConfigInput = {
+          gateway: 'zalopay',
+          environment: parsed.data.environment,
+          credentials: {
+            appId: parsed.data.appId,
+            key1: parsed.data.key1,
+            key2: parsed.data.key2,
           },
-          auth,
-        );
+        };
+        const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+          schema: gatewayConfigResponseSchema,
+        });
         if (!res.ok) {
           return routeData(
             { form: 'zalopay', error: res.error ?? 'Không lưu được cấu hình ZaloPay.' },
@@ -131,19 +134,18 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
             { status: 400 },
           );
         }
-        const res = await apiPut(
-          '/tenant/gateway-config',
-          {
-            gateway: 'momo',
-            environment: parsed.data.environment,
-            credentials: {
-              partnerCode: parsed.data.partnerCode,
-              accessKey: parsed.data.accessKey,
-              secretKey: parsed.data.secretKey,
-            },
+        const payload: UpsertGatewayConfigInput = {
+          gateway: 'momo',
+          environment: parsed.data.environment,
+          credentials: {
+            partnerCode: parsed.data.partnerCode,
+            accessKey: parsed.data.accessKey,
+            secretKey: parsed.data.secretKey,
           },
-          auth,
-        );
+        };
+        const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+          schema: gatewayConfigResponseSchema,
+        });
         if (!res.ok) {
           return routeData(
             { form: 'momo', error: res.error ?? 'Không lưu được cấu hình MoMo.' },
@@ -164,18 +166,17 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
           { status: 400 },
         );
       }
-      const res = await apiPut(
-        '/tenant/gateway-config',
-        {
-          gateway: 'sepay',
-          environment: parsed.data.environment,
-          credentials: {
-            merchantId: parsed.data.merchantId,
-            secretKey: parsed.data.secretKey,
-          },
+      const payload: UpsertGatewayConfigInput = {
+        gateway: 'sepay',
+        environment: parsed.data.environment,
+        credentials: {
+          merchantId: parsed.data.merchantId,
+          secretKey: parsed.data.secretKey,
         },
-        auth,
-      );
+      };
+      const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+        schema: gatewayConfigResponseSchema,
+      });
       if (!res.ok) {
         return routeData(
           { form: 'sepay', error: res.error ?? 'Không lưu được cấu hình SePay.' },
@@ -213,6 +214,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
       '/tenant/theme',
       { themeConfig: parsed.data },
       auth,
+      { schema: tenantThemeResponseSchema },
     );
     if (!res.ok)
       return routeData(

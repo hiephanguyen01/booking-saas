@@ -1,14 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  SUBSCRIPTION_REPOSITORY,
-  type ISubscriptionRepository,
   type SubscriptionRecord,
 } from '../../domain/ports/subscription-repository.port';
 import {
-  PLAN_REPOSITORY,
-  type IPlanRepository,
   type PlanWithSubscribers,
 } from '../../domain/ports/plan-repository.port';
+import {
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
+
+export interface CurrentSubscriptionView {
+  subscription: SubscriptionRecord;
+  plan: PlanWithSubscribers;
+  evaluatedAt: Date;
+}
 
 /**
  * Platform admin reads a tenant's current subscription (the latest by startsAt)
@@ -18,22 +24,23 @@ import {
 @Injectable()
 export class GetCurrentSubscriptionUseCase {
   constructor(
-    @Inject(SUBSCRIPTION_REPOSITORY) private readonly subscriptions: ISubscriptionRepository,
-    @Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
   ) {}
 
-  async execute(
-    tenantId: string,
-  ): Promise<{ subscription: SubscriptionRecord; plan: PlanWithSubscribers | null } | null> {
-    const subscription = await this.subscriptions.findCurrentByTenant(tenantId);
-    if (!subscription) return null;
-    const [plan, counts] = await Promise.all([
-      this.plans.findById(subscription.planId),
-      this.plans.liveSubscriberCounts(),
+  async execute(tenantId: string): Promise<CurrentSubscriptionView | null> {
+    const [selection, counts] = await Promise.all([
+      this.currentSubscriptions.findByTenant(tenantId),
+      this.currentSubscriptions.liveSubscriberCounts(),
     ]);
+    if (!selection.current) return null;
     return {
-      subscription,
-      plan: plan ? { plan, subscriberCount: counts.get(plan.id) ?? 0 } : null,
+      subscription: selection.current.subscription,
+      plan: {
+        plan: selection.current.plan,
+        subscriberCount: counts.get(selection.current.plan.id) ?? 0,
+      },
+      evaluatedAt: selection.evaluatedAt,
     };
   }
 }
