@@ -143,8 +143,13 @@ bookings GiST exclusion constraint. See [ADR 0004](./decisions/0004-hand-written
 - **API messages** are mixed (some Vietnamese transport/guard messages, some English). Match the
   surrounding module; user-facing customer messages lean Vietnamese.
 
-## Verification (there are no tests — [ADR 0005](./decisions/0005-no-tests-policy.md))
+## Testing & verification ([ADR 0005](./decisions/0005-no-tests-policy.md))
 
-`pnpm turbo lint typecheck build` must pass, then run the app and exercise the changed flow
-(`pnpm dev`, or `/run` + `/verify`). Requires **Node ≥ 22.22.0** — React Router 8 refuses to run below
-it. Never add a test file, test config, `test` script, or CI test step.
+Add deterministic tests for high-risk security, tenancy, auth/session, concurrency, money, idempotency,
+time, parser, and pure-domain behavior. Keep them close to the code and avoid brittle implementation
+assertions or broad snapshots. The Storefront uses Node's built-in `node:test` runner for server-side
+unit tests.
+
+`pnpm test` and `pnpm turbo lint typecheck build` must pass, then run the app and exercise changed
+user-facing or integration-heavy flows (`pnpm dev`, or `/run` + `/verify`). Requires **Node ≥ 22.22.0** —
+React Router 8 refuses to run below it.
