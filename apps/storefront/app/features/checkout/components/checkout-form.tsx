@@ -58,6 +58,7 @@ export function CheckoutForm({
   const {
     contactFields,
     defaultPaymentMethod,
+    handleSubmit,
     packageRetryHref,
     paymentMethodOptions,
     serverErrorMessage,
@@ -71,7 +72,8 @@ export function CheckoutForm({
   });
 
   return (
-    <Form method="post" className="flex flex-col gap-4">
+    <Form method="post" className="flex flex-col gap-4" onSubmit={handleSubmit} aria-busy={submitting}>
+      <input type="hidden" name="intent" value="checkout" />
       <input type="hidden" name="checkoutAttemptId" value={checkoutAttemptId} />
       <input type="hidden" name="listingId" value={listingId} />
       <input type="hidden" name="listingSlug" value={listingSlug} />
@@ -104,7 +106,7 @@ export function CheckoutForm({
         ) : null}
         <FieldGroup className="mt-4 gap-4">
           {contactFields.map((field) => (
-            <ContactField key={field.name} {...field} />
+            <ContactField key={field.name} {...field} disabled={submitting} />
           ))}
         </FieldGroup>
       </SectionCard>
@@ -122,7 +124,11 @@ export function CheckoutForm({
             {formatVnd(dueNow)}
           </strong>
         </div>
-        <PaymentMethods options={paymentMethodOptions} defaultValue={defaultPaymentMethod} />
+        <PaymentMethods
+          options={paymentMethodOptions}
+          defaultValue={defaultPaymentMethod}
+          disabled={submitting}
+        />
       </SectionCard>
 
       <Button
@@ -141,13 +147,15 @@ export function CheckoutForm({
 function PaymentMethods({
   options,
   defaultValue,
+  disabled,
 }: {
   options: CheckoutPaymentMethodModel[];
   defaultValue?: CustomerPaymentMethod;
+  disabled: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   return (
-    <fieldset className="mt-4">
+    <fieldset className="mt-4" disabled={disabled}>
       <legend className="text-sm leading-5 font-medium text-foreground">
         {t('payment.method')}
       </legend>
@@ -156,6 +164,7 @@ function PaymentMethods({
         defaultValue={defaultValue}
         className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3"
         aria-label={t('payment.method')}
+        disabled={disabled}
       >
         {options.map((option) => (
           <PaymentMethod key={option.value} {...option} />
@@ -200,7 +209,8 @@ function ContactField({
   autoComplete,
   defaultValue,
   errorMessage,
-}: CheckoutContactFieldModel) {
+  disabled,
+}: CheckoutContactFieldModel & { disabled: boolean }) {
   const invalid = Boolean(errorMessage);
   return (
     <Field data-invalid={invalid}>
@@ -220,6 +230,7 @@ function ContactField({
           placeholder={label}
           aria-invalid={invalid || undefined}
           aria-describedby={invalid ? `${name}-error` : undefined}
+          disabled={disabled}
         />
         {invalid ? (
           <InputGroupAddon align="inline-end" className="text-destructive">

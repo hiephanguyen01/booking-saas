@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 import { Form, useNavigation } from 'react-router';
+import { createSubmissionLock } from '../../../lib/submission-lock';
 import { isBookingPaymentNavigation } from './booking-payment-navigation';
-import { createSubmissionLock } from './submission-lock';
 
 export function BookingPaymentForm({
   action,
