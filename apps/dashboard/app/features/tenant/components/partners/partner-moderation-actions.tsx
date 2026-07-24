@@ -41,10 +41,10 @@ export function PartnerModerationActions({
   };
 
   return (
-    <div aria-busy={busy}>
+    <>
       {/* Approve a pending application. */}
       {partner.status === 'pending' && canApprove ? (
-        <Card>
+        <Card aria-busy={busy}>
           <CardHeader>
             <CardTitle>Duyệt đối tác</CardTitle>
             <CardDescription>
@@ -64,7 +64,7 @@ export function PartnerModerationActions({
 
       {/* Manual identity review once the partner has submitted documents. */}
       {partner.verificationStatus === 'pending' && canApprove ? (
-        <Card>
+        <Card aria-busy={busy}>
           <CardHeader>
             <CardTitle>Xác minh danh tính</CardTitle>
             <CardDescription>
@@ -90,7 +90,7 @@ export function PartnerModerationActions({
 
       {/* Suspend an approved partner — behind a confirmation dialog. */}
       {partner.status === 'approved' && canManage ? (
-        <Card>
+        <Card aria-busy={busy}>
           <CardHeader>
             <CardTitle>Tạm ngưng đối tác</CardTitle>
             <CardDescription>
@@ -113,6 +113,6 @@ export function PartnerModerationActions({
           </CardContent>
         </Card>
       ) : null}
-    </div>
+    </>
   );
 }
