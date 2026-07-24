@@ -21,11 +21,12 @@ import {
   UserRound,
 } from 'lucide-react';
 import { type ComponentType, Fragment, type SVGProps } from 'react';
-import { Link, useFetcher, useLocation } from 'react-router';
+import { Link, useFetcher } from 'react-router';
 import type { AccountMenuSummary } from '../features/account/account-menu';
-import { accountNavItems, type AccountNavKey, userInitials } from '../features/account/account-nav';
+import { type AccountNavKey, userInitials } from '../features/account/account-nav';
 import { type Locale, NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
+import { useSiteHeaderAccountMenuController } from './use-site-header-account-menu-controller';
 
 type AccountMenuIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -53,13 +54,10 @@ export function SiteHeaderAccountMenu({
   accountMenuSummary: AccountMenuSummary | null;
 }) {
   const { t } = useTranslation([NsI18n.Navigation, NsI18n.Account]);
-  const fetcher = useFetcher();
-  const location = useLocation();
-  const items = accountNavItems(locale);
-  const badges: Partial<Record<AccountNavKey, string>> = {
-    messages: formatBadgeCount(accountMenuSummary?.unreadMessages),
-    reviews: formatBadgeCount(accountMenuSummary?.pendingReviews),
-  };
+  const { fetcher, items, logoutAction } = useSiteHeaderAccountMenuController({
+    locale,
+    accountMenuSummary,
+  });
 
   return (
     <DropdownMenu>
@@ -101,12 +99,7 @@ export function SiteHeaderAccountMenu({
           const Icon = ACCOUNT_MENU_ICONS[item.key];
           return (
             <Fragment key={item.key}>
-              <DropdownLink
-                to={item.to}
-                icon={Icon}
-                badge={badges[item.key]}
-                active={isAccountItemActive(location.pathname, item.key, item.to)}
-              >
+              <DropdownLink to={item.to} icon={Icon} badge={item.badge} active={item.active}>
                 {t(`account:nav.${item.key}`)}
               </DropdownLink>
               {ACCOUNT_MENU_DIVIDERS.has(item.key) ? (
@@ -115,7 +108,7 @@ export function SiteHeaderAccountMenu({
             </Fragment>
           );
         })}
-        <fetcher.Form method="post" action={storefrontPaths.logout(locale)}>
+        <fetcher.Form method="post" action={logoutAction}>
           <DropdownMenuItem asChild>
             <button
               type="submit"
@@ -207,16 +200,6 @@ function DropdownLink({
       </Link>
     </DropdownMenuItem>
   );
-}
-
-function formatBadgeCount(count: number | undefined): string | undefined {
-  if (!count || count < 1) return undefined;
-  return count > 99 ? '99+' : String(count);
-}
-
-function isAccountItemActive(pathname: string, key: AccountNavKey, to: string): boolean {
-  if (pathname === to) return true;
-  return key === 'bookings' && pathname.startsWith(`${to}/`);
 }
 
 function BookingMenuIcon(props: SVGProps<SVGSVGElement>) {
