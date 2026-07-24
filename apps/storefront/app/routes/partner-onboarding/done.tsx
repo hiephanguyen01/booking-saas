@@ -1,15 +1,16 @@
 import { CircleCheck } from 'lucide-react';
 import { useLoaderData } from 'react-router';
+import { loadPartnerDoneRoute } from '../../features/partner-onboarding/done/server/partner-done-route.server';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { loadPartnerDone } from '../../lib/partner-onboarding.server';
 import type { Route } from './+types/done';
 import { partnerMeta } from './shared';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
   return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'done');
 }
+
 export const loader = ({ request, params }: Route.LoaderArgs) =>
-  loadPartnerDone(request, params.locale);
+  loadPartnerDoneRoute(request, params.locale);
 
 export default function PartnerDone() {
   const { maskedEmail, dashboardUrl } = useLoaderData<typeof loader>();
