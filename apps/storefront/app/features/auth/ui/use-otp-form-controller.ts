@@ -17,13 +17,15 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
   const navigation = useNavigation();
   const resendLockRef = useRef(false);
   const resendWasBusyRef = useRef(false);
+  const verifyLockRef = useRef(false);
+  const verifyWasBusyRef = useRef(false);
   const [resending, setResending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [seconds, setSeconds] = useState(actionData?.resendAfterSec ?? initialSeconds);
   const [code, setCode] = useState('');
-  const navigationIsResend =
-    navigation.state !== 'idle' &&
-    navigation.formMethod != null &&
-    navigation.formData?.get('intent') === 'resend';
+  const formPending = navigation.state !== 'idle' && navigation.formMethod != null;
+  const navigationIsResend = formPending && navigation.formData?.get('intent') === 'resend';
+  const navigationIsVerify = formPending && !navigationIsResend;
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -42,22 +44,34 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
   }, [actionData]);
 
   useEffect(() => {
-    if (navigationIsResend) {
-      resendWasBusyRef.current = true;
-      return;
-    }
+    if (navigationIsResend) resendWasBusyRef.current = true;
+    if (navigationIsVerify) verifyWasBusyRef.current = true;
+    if (navigation.state !== 'idle') return;
 
-    if (navigation.state === 'idle' && resendWasBusyRef.current) {
+    if (resendWasBusyRef.current) {
       resendWasBusyRef.current = false;
       resendLockRef.current = false;
       setResending(false);
     }
-  }, [navigation.state, navigationIsResend]);
+    if (verifyWasBusyRef.current) {
+      verifyWasBusyRef.current = false;
+      verifyLockRef.current = false;
+      setVerifying(false);
+    }
+  }, [navigation.state, navigationIsResend, navigationIsVerify]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (code.length === 6) {
+    if (code.length !== 6 || verifyLockRef.current) return;
+
+    verifyLockRef.current = true;
+    setVerifying(true);
+    try {
       submit({ code }, { method: 'post' });
+    } catch (error) {
+      verifyLockRef.current = false;
+      setVerifying(false);
+      throw error;
     }
   }
 
@@ -82,5 +96,6 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
     resending,
     seconds,
     setCode,
+    verifying,
   };
 }
