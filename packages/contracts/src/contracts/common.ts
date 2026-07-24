@@ -5,6 +5,62 @@ export const uuidSchema = z.string().uuid();
 export const localeSchema = z.enum(['vi', 'en']);
 export type Locale = z.infer<typeof localeSchema>;
 
+/** Maximum user-selected booking duration accepted by Storefront and catalog filters. */
+export const MAX_BOOKING_RANGE_DAYS = 31;
+
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A real Gregorian calendar date encoded as YYYY-MM-DD. */
+export const dateOnlySchema = z
+  .string()
+  .regex(DATE_ONLY_RE, 'Must be an ISO date (YYYY-MM-DD)')
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  }, 'Must be a valid calendar date');
+
+/** A 24-hour wall-clock value encoded as HH:MM. */
+export const timeOfDaySchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM (24h)');
+
+/** VND đồng as a canonical non-negative integer string; money never travels as a JS float. */
+export const moneyStringSchema = z
+  .string()
+  .regex(/^(0|[1-9]\d*)$/, 'Must be an integer VND amount in đồng')
+  .max(20, 'VND amount is too large');
+
+/** Whole calendar days from `from` to `to`, or null for invalid date-only values. */
+export function dateOnlyDistanceDays(from: string, to: string): number | null {
+  if (!dateOnlySchema.safeParse(from).success || !dateOnlySchema.safeParse(to).success) return null;
+  const distance =
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
+  return Number.isInteger(distance) ? distance : null;
+}
+
+/** Exclusive-end booking range (`from` → `to`) bounded against untrusted URL input. */
+export const bookingDateRangeSchema = z
+  .object({ from: dateOnlySchema, to: dateOnlySchema })
+  .superRefine((range, ctx) => {
+    const days = dateOnlyDistanceDays(range.from, range.to);
+    if (days === null || days <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: 'to must be after from',
+      });
+      return;
+    }
+    if (days > MAX_BOOKING_RANGE_DAYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: `Range must be at most ${MAX_BOOKING_RANGE_DAYS} days`,
+      });
+    }
+  });
+export type BookingDateRange = z.infer<typeof bookingDateRangeSchema>;
+
 /** Default page size for every list endpoint / list screen — one source of truth. */
 export const DEFAULT_PAGE_SIZE = 20;
 /** Hard upper bound the API accepts for `pageSize` (guards against unbounded scans). */
