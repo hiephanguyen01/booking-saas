@@ -5,6 +5,7 @@ import { TENANT_REPOSITORY } from '../../domain/ports/tenant-repository.port';
 import { PLAN_REPOSITORY } from '../../domain/ports/plan-repository.port';
 import { SUBSCRIPTION_REPOSITORY } from '../../domain/ports/subscription-repository.port';
 import { CURRENT_SUBSCRIPTION_READER } from '../../domain/ports/current-subscription-reader.port';
+import { PLATFORM_HEALTH_READER } from '../../domain/ports/platform-health-reader.port';
 import { TENANT_DOMAIN_REPOSITORY } from '../../domain/ports/tenant-domain-repository.port';
 import { TENANT_CACHE } from '../../domain/ports/tenant-cache.port';
 import { DNS_VERIFIER } from '../../domain/ports/dns-verifier.port';
@@ -14,6 +15,7 @@ import { PrismaTenantRepository } from '../repositories/prisma-tenant.repository
 import { PrismaPlanRepository } from '../repositories/prisma-plan.repository';
 import { PrismaSubscriptionRepository } from '../repositories/prisma-subscription.repository';
 import { PrismaCurrentSubscriptionReader } from '../repositories/prisma-current-subscription.reader';
+import { PrismaPlatformHealthReader } from '../repositories/prisma-platform-health.reader';
 import { PrismaTenantDomainRepository } from '../repositories/prisma-tenant-domain.repository';
 import { RedisTenantCache } from '../services/redis-tenant-cache';
 import { NodeDnsVerifier } from '../services/node-dns-verifier';
@@ -69,6 +71,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     { provide: PLAN_REPOSITORY, useClass: PrismaPlanRepository },
     { provide: SUBSCRIPTION_REPOSITORY, useClass: PrismaSubscriptionRepository },
     { provide: CURRENT_SUBSCRIPTION_READER, useClass: PrismaCurrentSubscriptionReader },
+    { provide: PLATFORM_HEALTH_READER, useClass: PrismaPlatformHealthReader },
     { provide: TENANT_DOMAIN_REPOSITORY, useClass: PrismaTenantDomainRepository },
     { provide: TENANT_CACHE, useClass: RedisTenantCache },
     { provide: DNS_VERIFIER, useClass: NodeDnsVerifier },
