@@ -12,6 +12,7 @@ import {
 import { getCheckoutFlowService } from '../../../lib/checkout-flow.server';
 import { errorStatus } from '../../../lib/http-status';
 import { storefrontPaths } from '../../../lib/locale-paths';
+import { optionalData, rethrowCriticalDataError } from '../../../lib/optional-data.server';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
@@ -82,7 +83,7 @@ export async function handleBookingDetailAction(
 async function verifyAccess(request: Request, code: string, locale: Locale, form: FormData) {
   const otp = String(form.get('otp') ?? '').trim();
   if (!otp) return data({ ok: false, error: 'OTP_REQUIRED' }, { status: 400 });
-  const booking = await fetchBookingByCode(request, code, otp).catch(() => null);
+  const booking = await optionalData(fetchBookingByCode(request, code, otp), null);
   if (!booking) return data({ ok: false, error: 'INVALID_OTP' }, { status: 403 });
 
   const setCookie = await getCheckoutFlowService().create(request, {
@@ -108,7 +109,8 @@ async function retryPayment(request: Request, code: string, locale: Locale, form
         String(form.get('otp') ?? '') || undefined,
       );
       bookingId = owned?.id ?? null;
-    } catch {
+    } catch (error) {
+      rethrowCriticalDataError(error);
       bookingId = null;
     }
   }

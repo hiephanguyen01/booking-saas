@@ -1,7 +1,7 @@
 import { favoriteRefsResponseSchema, type FavoriteRefsResponse } from '@booking/contracts';
 import { Outlet, useOutletContext } from 'react-router';
 import { FavoritesProvider } from '../features/favorites/favorites-context';
-import { apiGet } from '../lib/api.server';
+import { apiGet, rethrowApiInfrastructureFailure } from '../lib/api.server';
 import { getOptionalAuth } from '../lib/auth.server';
 import type { Route } from './+types/locale-layout';
 import type { StorefrontContext } from '../root';
@@ -14,14 +14,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
   const locale: 'vi' | 'en' = params.locale;
 
-  // One refs fetch here lights up every heart on every child page (home / filter
-  // / detail / account) with no per-card round-trip. Degrade to empty on failure.
+  // Favorite refs are needed only on discovery surfaces that render heart
+  // controls. Auth, checkout, booking and most account pages skip this request.
   const auth = getOptionalAuth();
   let refs = EMPTY_REFS;
-  if (auth) {
+  if (auth && needsFavoriteRefs(new URL(request.url).pathname)) {
     const result = await apiGet(request, '/customer/favorites/refs', auth.session.accessToken, {
       schema: favoriteRefsResponseSchema,
     });
+    rethrowApiInfrastructureFailure(result);
     if (result.ok && result.data) refs = result.data;
   }
 
@@ -38,5 +39,16 @@ export default function LocaleLayout({ loaderData }: Route.ComponentProps) {
     >
       <Outlet context={context} />
     </FavoritesProvider>
+  );
+}
+
+function needsFavoriteRefs(pathname: string): boolean {
+  if (pathname.endsWith('/booking-data')) return false;
+  const relative = pathname.replace(/^\/(?:vi|en)(?=\/|$)/, '') || '/';
+  return (
+    relative === '/' ||
+    /^\/(?:t|l|g|p)(?:\/|$)/.test(relative) ||
+    relative === '/community' ||
+    relative === '/account/favorites'
   );
 }

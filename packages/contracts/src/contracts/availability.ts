@@ -1,9 +1,13 @@
 import { z } from 'zod';
-import { uuidSchema } from './common';
+import {
+  MAX_BOOKING_RANGE_DAYS,
+  dateOnlyDistanceDays,
+  dateOnlySchema,
+  moneyStringSchema,
+  timeOfDaySchema,
+  uuidSchema,
+} from './common';
 
-// Local primitives (mirror the ones in contracts/listing.ts).
-const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM (24h)');
-const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be an ISO date (YYYY-MM-DD)');
 const weekdaySchema = z.number().int().min(0).max(6); // 0=Sun … 6=Sat
 
 // ── Availability rules (weekly opening hours, per listing — §7.4) ─────────────
@@ -11,8 +15,8 @@ const weekdaySchema = z.number().int().min(0).max(6); // 0=Sun … 6=Sat
 export const availabilityRuleInputSchema = z
   .object({
     dayOfWeek: weekdaySchema,
-    openTime: timeStringSchema,
-    closeTime: timeStringSchema,
+    openTime: timeOfDaySchema,
+    closeTime: timeOfDaySchema,
   })
   .refine((r) => r.openTime < r.closeTime, {
     path: ['closeTime'],
@@ -33,10 +37,10 @@ export type AvailabilityExceptionType = z.infer<typeof availabilityExceptionType
 
 export const availabilityExceptionInputSchema = z
   .object({
-    date: dateStringSchema,
+    date: dateOnlySchema,
     type: availabilityExceptionTypeSchema,
-    openTime: timeStringSchema.optional(),
-    closeTime: timeStringSchema.optional(),
+    openTime: timeOfDaySchema.optional(),
+    closeTime: timeOfDaySchema.optional(),
     reason: z.string().max(200).optional(),
   })
   .superRefine((e, ctx) => {
@@ -81,20 +85,30 @@ export type AvailabilityMode = z.infer<typeof availabilityModeSchema>;
 export const availabilityQuerySchema = z
   .object({
     mode: availabilityModeSchema,
-    from: dateStringSchema,
-    to: dateStringSchema,
+    from: dateOnlySchema,
+    to: dateOnlySchema,
     packageId: uuidSchema.optional(),
   })
-  .refine((q) => q.from <= q.to, { path: ['to'], message: 'to must be on/after from' })
-  .refine((q) => spanDays(q.from, q.to) <= 31, {
-    path: ['to'],
-    message: 'Range must be at most 31 days',
+  .superRefine((query, ctx) => {
+    const distance = dateOnlyDistanceDays(query.from, query.to);
+    if (distance === null || distance < 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: 'to must be on/after from',
+      });
+      return;
+    }
+    // Availability ranges are inclusive, so distance 30 represents 31 days.
+    if (distance >= MAX_BOOKING_RANGE_DAYS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['to'],
+        message: `Range must be at most ${MAX_BOOKING_RANGE_DAYS} days`,
+      });
+    }
   });
 export type AvailabilityQuery = z.infer<typeof availabilityQuerySchema>;
-
-function spanDays(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
-}
 
 // ── Responses ────────────────────────────────────────────────────────────────
 
@@ -102,18 +116,18 @@ export const availabilityRuleResponseSchema = z.object({
   id: z.string(),
   listingId: z.string(),
   dayOfWeek: z.number(),
-  openTime: z.string(),
-  closeTime: z.string(),
+  openTime: timeOfDaySchema,
+  closeTime: timeOfDaySchema,
 });
 export type AvailabilityRuleResponse = z.infer<typeof availabilityRuleResponseSchema>;
 
 export const availabilityExceptionResponseSchema = z.object({
   id: z.string(),
   resourceId: z.string(),
-  date: z.string(),
+  date: dateOnlySchema,
   type: availabilityExceptionTypeSchema,
-  openTime: z.string().nullable(),
-  closeTime: z.string().nullable(),
+  openTime: timeOfDaySchema.nullable(),
+  closeTime: timeOfDaySchema.nullable(),
   reason: z.string().nullable(),
 });
 export type AvailabilityExceptionResponse = z.infer<typeof availabilityExceptionResponseSchema>;
@@ -123,7 +137,7 @@ export const hourlySlotSchema = z.object({
   startUtc: z.string(),
   endUtc: z.string(),
   available: z.boolean(),
-  price: z.string(),
+  price: moneyStringSchema,
 });
 export type HourlySlot = z.infer<typeof hourlySlotSchema>;
 
@@ -131,15 +145,15 @@ export const dayStatusSchema = z.enum(['available', 'booked', 'blocked', 'closed
 export type DayStatus = z.infer<typeof dayStatusSchema>;
 
 export const dayAvailabilitySchema = z.object({
-  date: z.string(),
+  date: dateOnlySchema,
   status: dayStatusSchema,
   /** Night price (VND đồng); null when closed/blocked. */
-  price: z.string().nullable(),
+  price: moneyStringSchema.nullable(),
 });
 export type DayAvailability = z.infer<typeof dayAvailabilitySchema>;
 
 export const hourlyDaySchema = z.object({
-  date: z.string(),
+  date: dateOnlySchema,
   slots: z.array(hourlySlotSchema),
 });
 export type HourlyDay = z.infer<typeof hourlyDaySchema>;

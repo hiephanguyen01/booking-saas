@@ -2,6 +2,7 @@ import type { CurrentUser } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { useLocation, useNavigation, useOutletContext } from 'react-router';
 import type { AccountContentSkeletonVariant } from '../../components/loading-skeletons';
+import type { AccountMenuSummary } from '../../features/account/account-menu';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { StorefrontTenant } from '../../lib/tenant.server';
 import { isReadNavigationMethod, useMinimumPending } from '../../lib/use-minimum-pending';
@@ -10,6 +11,7 @@ import type { StorefrontContext } from '../../root';
 export interface AccountLayoutLoaderData {
   user: CurrentUser;
   locale: Locale;
+  accountMenuSummary: AccountMenuSummary | null;
 }
 
 export interface AccountOutletContext extends AccountLayoutLoaderData {
@@ -37,7 +39,7 @@ export function useAccountLayoutController(loaderData: AccountLayoutLoaderData) 
   };
 
   return {
-    accountMenuSummary: rootContext.accountMenuSummary,
+    accountMenuSummary: loaderData.accountMenuSummary,
     context,
     loadingLabel: t('loading'),
     pending,

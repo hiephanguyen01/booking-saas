@@ -15,8 +15,17 @@ import {
 } from '@booking/contracts';
 import { z } from 'zod';
 import { publicGetData } from './api.server';
+import { mapWithConcurrency } from './concurrency.server';
+import { getCurrentStorefrontTenant } from './request-context.server';
 
 const listingTypesSchema = z.array(publicListingTypeResponseSchema);
+const LISTING_TYPES_CACHE_TTL_MS = 60_000;
+const LISTING_TYPE_FANOUT_CONCURRENCY = 4;
+const MAX_TENANT_CACHE_ENTRIES = 500;
+const listingTypesCache = new Map<
+  string,
+  { expiresAt: number; data: PublicListingTypeResponse[] }
+>();
 
 /**
  * Server-only catalog fetches (BFF). The storefront menu + filters are generated
@@ -24,8 +33,20 @@ const listingTypesSchema = z.array(publicListingTypeResponseSchema);
  * with no storefront code change (Task 1.3 DoD). Upstream failures remain
  * distinguishable from a legitimate empty catalog.
  */
-export function fetchListingTypes(request: Request): Promise<PublicListingTypeResponse[]> {
-  return publicGetData(request, '/public/listing-types', { schema: listingTypesSchema });
+export async function fetchListingTypes(request: Request): Promise<PublicListingTypeResponse[]> {
+  const tenantId = getCurrentStorefrontTenant().id;
+  const cached = listingTypesCache.get(tenantId);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) return cached.data;
+  if (cached) listingTypesCache.delete(tenantId);
+
+  const data = await publicGetData(request, '/public/listing-types', { schema: listingTypesSchema });
+  if (listingTypesCache.size >= MAX_TENANT_CACHE_ENTRIES) {
+    const oldest = listingTypesCache.keys().next().value as string | undefined;
+    if (oldest) listingTypesCache.delete(oldest);
+  }
+  listingTypesCache.set(tenantId, { expiresAt: now + LISTING_TYPES_CACHE_TTL_MS, data });
+  return data;
 }
 
 export function fetchListingGroup(
@@ -44,13 +65,15 @@ export async function fetchListings(
 ): Promise<PublicListingResponse[]> {
   if (!search.has('type')) {
     const types = await fetchListingTypes(request);
-    const batches = await Promise.all(
-      types.map((type) => {
+    const batches = await mapWithConcurrency(
+      types,
+      LISTING_TYPE_FANOUT_CONCURRENCY,
+      async (type) => {
         const scoped = new URLSearchParams(search);
         scoped.set('type', type.slug);
         scoped.set('pageSize', '48');
         return fetchListings(request, scoped);
-      }),
+      },
     );
     return batches.flat();
   }

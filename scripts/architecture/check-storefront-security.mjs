@@ -27,10 +27,7 @@ function walk(directory) {
 
 const storefrontRoot = join(root, 'apps/storefront/app');
 const storefrontFiles = walk(storefrontRoot).filter((file) => sourceExtensions.has(extname(file)));
-const directFetchAllowlist = new Set([
-  'apps/storefront/app/routes/readyz.ts',
-  'apps/storefront/app/routes/uploads.presign.tsx',
-]);
+const directFetchAllowlist = new Set(['apps/storefront/app/routes/readyz.ts']);
 let otpCompatibilityExceptions = 0;
 let tenantResolutionCallSites = 0;
 

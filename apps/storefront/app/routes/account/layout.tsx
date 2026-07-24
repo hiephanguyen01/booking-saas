@@ -2,6 +2,7 @@ import type { Locale } from '@booking/i18n';
 import { Outlet } from 'react-router';
 import { AccountContentSkeleton } from '../../components/loading-skeletons';
 import { AccountShell } from '../../features/account/components/account-shell';
+import { getAccountMenuSummary } from '../../features/account/server/account-menu.server';
 import { requireAuth } from '../../lib/auth.server';
 import { storefrontPaths } from '../../lib/locale-paths';
 import type { Route } from './+types/layout';
@@ -13,11 +14,12 @@ export function meta() {
   return [{ title: 'Account | Bookify' }, { name: 'robots', content: 'noindex' }];
 }
 
-export function loader({ request, params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = params.locale as Locale;
   const url = new URL(request.url);
   const auth = requireAuth(storefrontPaths.login(locale, `${url.pathname}${url.search}`));
-  return { user: auth.info.user, locale };
+  const accountMenuSummary = await getAccountMenuSummary(request, auth.session.accessToken);
+  return { user: auth.info.user, locale, accountMenuSummary };
 }
 
 export default function AccountLayout({ loaderData }: Route.ComponentProps) {

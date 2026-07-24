@@ -1,10 +1,17 @@
-import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
+import {
+  MAX_BOOKING_RANGE_DAYS,
+  availabilityQuerySchema,
+  timeOfDaySchema,
+  type AvailabilityMode,
+  type PublicListingDetailResponse,
+} from '@booking/contracts';
 import { submitContentReport } from '../../content-reports/content-report.server';
 import { loadAdministrativeProvinces } from '../../../lib/administrative-divisions.server';
 import { fetchAvailability } from '../../../lib/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '../../../lib/catalog.server';
 import { canOffsetDateOnly, isValidDateOnly } from '../../../lib/date-only';
-import { normalizeDailyRange } from '../../../lib/daily-range';
+import { datesInDailyRange, normalizeDailyRange } from '../../../lib/daily-range';
+import { optionalData } from '../../../lib/optional-data.server';
 import { loadPublicReviews } from '../../../lib/public-reviews.server';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../../../lib/time';
 
@@ -46,17 +53,23 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
       ...(packageId ? { packageId } : {}),
     });
   } else if (mode === 'daily') {
-    const anchor = validDateOr(searchParams.get('from'), today, 30);
+    const anchor = validDateOr(
+      searchParams.get('from'),
+      today,
+      MAX_BOOKING_RANGE_DAYS - 1,
+    );
     availabilityPromise = fetchAvailability(request, listingSlug, {
       mode,
       from: anchor,
-      to: addDays(anchor, 30),
+      to: addDays(anchor, MAX_BOOKING_RANGE_DAYS - 1),
       ...(packageId ? { packageId } : {}),
     });
   } else {
-    const from = validDateOr(searchParams.get('from'), today);
-    const to = validDateOr(searchParams.get('to'), from);
-    availabilityPromise = fetchAvailability(request, listingSlug, { mode, from, to });
+    const from = validDateOr(searchParams.get('from'), today, MAX_BOOKING_RANGE_DAYS - 1);
+    const candidateTo = validDateOr(searchParams.get('to'), from);
+    const parsed = availabilityQuerySchema.safeParse({ mode, from, to: candidateTo });
+    const range = parsed.success ? parsed.data : { mode, from, to: from };
+    availabilityPromise = fetchAvailability(request, listingSlug, range);
   }
 
   const relatedSearch = new URLSearchParams({
@@ -64,14 +77,15 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
     pageSize: '5',
     sort: 'bookings-desc',
   });
-  const locations = provincesPromise
-    .then((provinces) =>
+  const locations = optionalData(
+    provincesPromise.then((provinces) =>
       provinces.map((province) => ({ value: province.code, label: province.name })),
-    )
-    .catch(() => []);
+    ),
+    [],
+  );
   const relatedPromise =
     listing.bookingSelection === 'fixed_packages'
-      ? fetchListings(request, relatedSearch).catch(() => [])
+      ? optionalData(fetchListings(request, relatedSearch), [])
       : Promise.resolve([]);
   const auxiliaryData = Promise.all([reviewsPromise, relatedPromise]).then(
     ([reviewData, relatedCandidates]) => ({
@@ -90,18 +104,18 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
 
   if (mode === 'hourly' && (!selectionStart || !selectionEnd)) {
     const date = searchParams.get('date');
-    const startTime = searchParams.get('startTime');
-    const endTime = searchParams.get('endTime');
+    const startTime = timeOfDaySchema.safeParse(searchParams.get('startTime'));
+    const endTime = timeOfDaySchema.safeParse(searchParams.get('endTime'));
     if (
       availability &&
       date &&
       isValidDateOnly(date) &&
-      startTime &&
-      endTime &&
-      startTime < endTime
+      startTime.success &&
+      endTime.success &&
+      startTime.data < endTime.data
     ) {
-      selectionStart = zonedToUtcIso(date, startTime, availability.timezone);
-      selectionEnd = zonedToUtcIso(date, endTime, availability.timezone);
+      selectionStart = zonedToUtcIso(date, startTime.data, availability.timezone);
+      selectionEnd = zonedToUtcIso(date, endTime.data, availability.timezone);
     }
   }
 
@@ -204,8 +218,5 @@ function isSelectionAvailable(
   const openDates = new Set(
     availability.days.filter((day) => day.status === 'available').map((day) => day.date),
   );
-  for (let date = range.from; date < range.to; date = addDays(date, 1)) {
-    if (!openDates.has(date)) return false;
-  }
-  return true;
+  return datesInDailyRange(range).every((date) => openDates.has(date));
 }

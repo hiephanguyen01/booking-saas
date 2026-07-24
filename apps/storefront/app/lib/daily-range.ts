@@ -1,3 +1,4 @@
+import { bookingDateRangeSchema } from '@booking/contracts';
 import { canOffsetDateOnly, isValidDateOnly } from './date-only';
 import { addDays, nightsBetween } from './time';
 
@@ -19,6 +20,8 @@ export function normalizeDailyRange(
   if (to === from && !canOffsetDateOnly(from, 1)) return null;
 
   const effectiveTo = to === from ? addDays(from, 1) : to;
+  if (!bookingDateRangeSchema.safeParse({ from, to: effectiveTo }).success) return null;
+
   return {
     selectedFrom: from,
     selectedTo: to,
@@ -44,4 +47,9 @@ export function eligibleDailyRange(
 ): NormalizedDailyRange | null {
   const range = normalizeDailyRange(from, to);
   return range && isDailyRangeEligible(range, minNights, maxNights) ? range : null;
+}
+
+/** Enumerates a previously validated range without re-reading untrusted URL bounds. */
+export function datesInDailyRange(range: NormalizedDailyRange): string[] {
+  return Array.from({ length: range.nights }, (_, index) => addDays(range.from, index));
 }

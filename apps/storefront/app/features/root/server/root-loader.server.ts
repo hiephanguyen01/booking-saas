@@ -2,7 +2,6 @@ import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts'
 import type { Locale } from '@booking/i18n';
 import { data } from 'react-router';
 import type { AccountMenuSummary } from '../../account/account-menu';
-import { getAccountMenuSummary } from '../../account/server/account-menu.server';
 import {
   readRefCode,
   refAttributionCookie,
@@ -35,12 +34,7 @@ export async function loadStorefrontRoot(request: Request, routeUrl: URL, cspNon
   const alternates = localizedAlternates(publicUrl);
   const storefrontAuth = getOptionalAuth();
   const currentUser = storefrontAuth?.info.user ?? null;
-  const [listingTypes, accountMenuSummary] = await Promise.all([
-    tenant.live ? fetchListingTypes(request) : Promise.resolve([]),
-    storefrontAuth
-      ? getAccountMenuSummary(request, storefrontAuth.session.accessToken)
-      : Promise.resolve(null),
-  ]);
+  const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
   const payload: RootLoaderPayload = {
     tenant,
     listingTypes,
@@ -49,7 +43,9 @@ export async function loadStorefrontRoot(request: Request, routeUrl: URL, cspNon
     alternates,
     cspNonce,
     currentUser,
-    accountMenuSummary,
+    // Account-only counters are loaded by the account layout. Keeping the field
+    // nullable preserves the public shell contract without an API call on every page.
+    accountMenuSummary: null,
   };
 
   // Affiliate attribution (§15.1): capture `?ref=CODE` once per new code and set
