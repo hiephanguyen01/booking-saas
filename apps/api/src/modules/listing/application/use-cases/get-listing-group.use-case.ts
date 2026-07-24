@@ -1,10 +1,14 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   LISTING_GROUP_REPOSITORY,
   type IListingGroupRepository,
   type ListingGroupRecord,
 } from '../../domain/ports/listing-group-repository.port';
+import {
+  ListingGroupNotFound,
+  ListingGroupNotOwnedForManage,
+} from '../../domain/errors/listing-group-errors';
 
 @Injectable()
 export class GetListingGroupUseCase {
@@ -20,18 +24,10 @@ export class GetListingGroupUseCase {
   ): Promise<ListingGroupRecord> {
     const group = await this.tenantDb.forTenant(tenantId, (tx) => this.repo.findById(tx, id));
     if (!group) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'LISTING_GROUP_NOT_FOUND',
-        message: 'Listing group not found',
-      });
+      throw new ListingGroupNotFound();
     }
     if (options.requirePartnerId && group.partnerId !== options.requirePartnerId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'LISTING_GROUP_NOT_OWNED',
-        message: 'Listing group belongs to another partner',
-      });
+      throw new ListingGroupNotOwnedForManage();
     }
     return group;
   }

@@ -17,7 +17,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -41,6 +40,7 @@ import type { SessionPrincipal } from '../../../identity-access/domain/ports/ses
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
+import { SettlementNotFound } from '../../domain/errors/finance-domain-errors';
 import {
   toBookingSettlementResponse,
   toCommissionRuleResponse,
@@ -239,11 +239,7 @@ export class TenantFinanceController {
   ): Promise<BookingSettlementResponse> {
     const settlement = await this.getSettlementUseCase.execute(this.tenantId, bookingId);
     if (!settlement) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'SETTLEMENT_NOT_FOUND',
-        message: 'Settlement not found',
-      });
+      throw new SettlementNotFound();
     }
     return toBookingSettlementResponse(settlement);
   }

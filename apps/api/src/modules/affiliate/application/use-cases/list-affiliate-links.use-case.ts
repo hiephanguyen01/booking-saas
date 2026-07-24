@@ -2,16 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ListAffiliateLinksQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
-  REFERRAL_LINK_REPOSITORY,
-  type IReferralLinkRepository,
+  REFERRAL_LINK_READER,
+  type IReferralLinkReader,
   type ReferralLinkRecord,
-} from '../../domain/ports/referral-link-repository.port';
+} from '../../domain/ports/referral-link-reader.port';
 
 /** List an affiliate's referral links (§15.3). */
 @Injectable()
 export class ListAffiliateLinksUseCase {
   constructor(
-    @Inject(REFERRAL_LINK_REPOSITORY) private readonly links: IReferralLinkRepository,
+    @Inject(REFERRAL_LINK_READER) private readonly links: IReferralLinkReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 

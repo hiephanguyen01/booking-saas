@@ -25,6 +25,42 @@ export interface AffiliateAmountInput {
   fundedBy: 'tenant' | 'partner' | null;
 }
 
+/**
+ * Promo funding affects the ledger basis only when a discount was actually
+ * applied. Keep the stored json projection tolerant and preserve its current
+ * null fallback.
+ */
+export function resolveAffiliateFundedBy(
+  discountAmount: Vnd,
+  promotionSnapshot: unknown,
+): 'tenant' | 'partner' | null {
+  const promotion = promotionSnapshot as {
+    fundedBy?: 'tenant' | 'partner';
+  } | null;
+  return discountAmount > 0n ? (promotion?.fundedBy ?? null) : null;
+}
+
+/**
+ * Sum additional-charge amounts from legacy json. Safe integer numbers, signed
+ * digit strings, and bigint values are accepted; everything else is ignored.
+ * A non-positive final total is clamped to zero.
+ */
+export function normalizeAffiliateAdditionalCharges(raw: unknown): Vnd {
+  if (!Array.isArray(raw)) return 0n;
+  let total = 0n;
+  for (const item of raw) {
+    const amount = (item as { amount?: unknown })?.amount;
+    if (typeof amount === 'number' && Number.isSafeInteger(amount)) {
+      total += BigInt(amount);
+    } else if (typeof amount === 'string' && /^-?\d+$/.test(amount)) {
+      total += BigInt(amount);
+    } else if (typeof amount === 'bigint') {
+      total += amount;
+    }
+  }
+  return total > 0n ? total : 0n;
+}
+
 export function computeAffiliateCommission(input: AffiliateAmountInput): Vnd {
   const effectiveFinal = input.finalAmount + input.additionalCharges;
   const effectiveTotal = input.totalAmount + input.additionalCharges;

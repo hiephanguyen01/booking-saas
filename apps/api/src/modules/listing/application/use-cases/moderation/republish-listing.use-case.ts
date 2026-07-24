@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ModerationActor } from '@booking/contracts';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
@@ -8,15 +8,14 @@ import {
   type IListingRepository,
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionRepublish } from '../../../domain/moderation/listing-moderation';
+import { Listing } from '../../../domain/entities/listing.entity';
 import {
-  assertOwnership,
   listingNotFound,
-  runModeration,
   stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * Re-publish an archived post (→ published). Enforces the lockout: a partner
@@ -38,30 +37,27 @@ export class RepublishListingUseCase {
     actor: ModerationActor,
   ): Promise<ListingRecord> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
-      const listing = await this.listings.findById(tx, listingId);
-      if (!listing) listingNotFound();
-      assertOwnership(listing, ctx.partnerId);
-      if (listing.groupId) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'GROUP_MANAGED_LISTING',
-          message: 'Republish the parent listing group instead',
-        });
-      }
+      const existing = await this.listings.findById(tx, listingId);
+      if (!existing) listingNotFound();
+      const listing = Listing.rehydrate(existing);
+      listing.assertOwnedForModeration(ctx.partnerId);
+      listing.assertNotGroupManaged('republish');
 
-      const outcome = runModeration(() => transitionRepublish(listing, actor));
+      const outcome = listing.republish(actor);
       // A republish keeps the ORIGINAL publishedAt — stampModerationTimestamps
       // only sets it when the listing has never been published.
       const updated = await this.listings.moderate(
         tx,
         listingId,
-        stampModerationTimestamps(listing, outcome),
+        existing.status,
+        stampModerationTimestamps(existing, outcome),
       );
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.republished',
         entityType: 'listing',
-        entityId: listing.id,
-        fromStatus: listing.status,
+        entityId: existing.id,
+        fromStatus: existing.status,
         toStatus: outcome.status,
       });
       await this.outbox.emit(tx, {

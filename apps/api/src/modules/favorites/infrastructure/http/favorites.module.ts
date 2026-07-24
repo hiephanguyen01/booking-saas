@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
+import { FAVORITE_READER } from '../../domain/ports/favorite-reader.port';
 import { FAVORITE_REPOSITORY } from '../../domain/ports/favorite-repository.port';
 import { FAVORITE_TENANT_READER } from '../../domain/ports/favorite-tenant-reader.port';
 import { AddFavoriteUseCase } from '../../application/use-cases/add-favorite.use-case';
@@ -20,7 +21,9 @@ import { TenantFavoriteController } from './tenant-favorite.controller';
   imports: [PrismaModule, TenantContextModule],
   controllers: [CustomerFavoriteController, PartnerFavoriteController, TenantFavoriteController],
   providers: [
-    { provide: FAVORITE_REPOSITORY, useClass: PrismaFavoriteRepository },
+    PrismaFavoriteRepository,
+    { provide: FAVORITE_REPOSITORY, useExisting: PrismaFavoriteRepository },
+    { provide: FAVORITE_READER, useExisting: PrismaFavoriteRepository },
     { provide: FAVORITE_TENANT_READER, useClass: PrismaFavoriteTenantReader },
     AddFavoriteUseCase,
     RemoveFavoriteUseCase,

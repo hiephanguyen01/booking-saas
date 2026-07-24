@@ -1,22 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { NewPromoRedemption } from '../../domain/entities/promo-redemption.entity';
 import type {
-  CreateRedemptionData,
   IPromoRedemptionRepository,
   RedemptionUsageStats,
 } from '../../domain/ports/promo-redemption-repository.port';
 
 @Injectable()
 export class PrismaPromoRedemptionRepository implements IPromoRedemptionRepository {
-  async reserve(tx: PrismaTx, tenantId: string, data: CreateRedemptionData): Promise<void> {
+  async reserve(tx: PrismaTx, tenantId: string, redemption: NewPromoRedemption): Promise<void> {
     await tx.promoRedemption.create({
       data: {
         tenantId,
-        promotionId: data.promotionId,
-        bookingId: data.bookingId,
-        customerId: data.customerId,
-        discountAmount: data.discountAmount,
+        promotionId: redemption.promotionId,
+        bookingId: redemption.bookingId,
+        customerId: redemption.customerId,
+        discountAmount: redemption.discountAmount,
         status: 'reserved',
       },
     });
@@ -63,6 +63,12 @@ export class PrismaPromoRedemptionRepository implements IPromoRedemptionReposito
       releasedCount: Number(r?.released ?? 0n),
       totalDiscount: r?.total_discount ?? 0n,
     };
+  }
+
+  async lockPerCustomer(tx: PrismaTx, promotionId: string, customerId: string): Promise<void> {
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${promotionId}), hashtext(${customerId}))`,
+    );
   }
 
   async countActiveByCustomer(tx: PrismaTx, promotionId: string, customerId: string): Promise<number> {

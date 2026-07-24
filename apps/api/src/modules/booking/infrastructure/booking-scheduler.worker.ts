@@ -5,8 +5,11 @@ import type { BookingStatus } from '@booking/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { TenantDbService } from '../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../shared/outbox/outbox.service';
-import { BOOKING_REPOSITORY, type IBookingRepository } from '../domain/ports/booking-repository.port';
-import { assertTransition } from '../domain/booking-state-machine';
+import {
+  BOOKING_REPOSITORY,
+  type IBookingRepository,
+} from '../domain/ports/booking-repository.port';
+import { Booking } from '../domain/entities/booking.entity';
 
 export const BOOKING_SCHEDULER_QUEUE = 'booking-scheduler';
 const POLL_EVERY_MS = 5_000;
@@ -41,7 +44,11 @@ export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdo
   ) {}
 
   async onModuleInit(): Promise<void> {
-    if (process.env.BOOKING_SCHEDULER_DISABLED === 'true' || process.env.OUTBOX_RELAY_DISABLED === 'true') return;
+    if (
+      process.env.BOOKING_SCHEDULER_DISABLED === 'true' ||
+      process.env.OUTBOX_RELAY_DISABLED === 'true'
+    )
+      return;
     const connection = { url: process.env.REDIS_URL ?? 'redis://localhost:6379' };
     this.queue = new Queue(BOOKING_SCHEDULER_QUEUE, { connection });
     await this.queue.upsertJobScheduler('booking-poll', { every: POLL_EVERY_MS }, { name: 'poll' });
@@ -72,20 +79,22 @@ export class BookingSchedulerWorker implements OnModuleInit, OnApplicationShutdo
         await this.tenantDb.forTenant(row.tenantId, async (tx) => {
           const booking = await this.bookings.findById(tx, row.id);
           if (!booking) return;
-          assertTransition(booking.status, row.toStatus, 'system');
-          await this.bookings.applyTransition(tx, {
-            id: row.id,
-            from: booking.status,
-            to: row.toStatus,
-            actor: 'system',
+          const transition = Booking.rehydrate(booking).transitionTo(row.toStatus, 'system', {
             expiresAt: null,
           });
-          await this.outbox.emit(tx, { tenantId: row.tenantId, eventType: row.eventType, payload: { bookingId: row.id } });
+          await this.bookings.applyTransition(tx, transition);
+          await this.outbox.emit(tx, {
+            tenantId: row.tenantId,
+            eventType: row.eventType,
+            payload: { bookingId: row.id },
+          });
         });
         processed++;
       } catch (err) {
         // Already transitioned by a concurrent path / racing sweep — skip.
-        this.logger.debug(`skip booking ${row.id}: ${err instanceof Error ? err.message : String(err)}`);
+        this.logger.debug(
+          `skip booking ${row.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
     return processed;

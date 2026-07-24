@@ -1,6 +1,8 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateTenantInput } from '@booking/contracts';
 import { buildDefaultSubdomain } from '../../domain/hostname';
+import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
+import { DomainTaken, TenantSlugTaken } from '../../domain/errors/tenancy-errors';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -30,19 +32,11 @@ export class CreateTenantUseCase {
 
   async execute(input: CreateTenantInput): Promise<{ tenant: TenantRecord; primaryDomain: DomainRecord }> {
     if (await this.tenants.findBySlug(input.slug)) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'TENANT_SLUG_TAKEN',
-        message: `Slug "${input.slug}" is already in use`,
-      });
+      throw new TenantSlugTaken(input.slug);
     }
     const subdomain = buildDefaultSubdomain(input.slug, this.config.baseDomain);
     if (await this.domains.findByHostname(subdomain)) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'DOMAIN_TAKEN',
-        message: `Hostname "${subdomain}" is already mapped`,
-      });
+      throw new DomainTaken(subdomain);
     }
 
     // Tenant + its primary domain commit in ONE admin-pool transaction: a failure
@@ -60,13 +54,11 @@ export class CreateTenantUseCase {
       );
       // The default subdomain is trusted (we own the base domain) → verified now.
       const primaryDomain = await this.domains.create(
-        {
+        TenantDomain.provisionDefaultSubdomain({
           tenantId: tenant.id,
           hostname: subdomain,
-          isPrimary: true,
-          verificationToken: null,
-          verifiedAt: new Date(),
-        },
+          now: new Date(),
+        }),
         tx,
       );
       return { tenant, primaryDomain };

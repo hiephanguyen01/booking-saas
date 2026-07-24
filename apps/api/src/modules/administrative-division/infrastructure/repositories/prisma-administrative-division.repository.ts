@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import type { AdministrativeProvince, AdministrativeWard } from '@booking/contracts';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type {
+  AdministrativeAddressCandidates,
   IAdministrativeDivisionRepository,
-  ResolvedAdministrativeAddress,
 } from '../../domain/ports/administrative-division-repository.port';
 
 @Injectable()
@@ -25,29 +25,20 @@ export class PrismaAdministrativeDivisionRepository implements IAdministrativeDi
     });
   }
 
-  async findWardInProvince(
+  async findAddressCandidates(
     provinceCode: string,
     wardCode: string,
-  ): Promise<ResolvedAdministrativeAddress | null> {
-    const ward = await this.prisma.app.administrativeWard.findFirst({
-      where: { code: wardCode, provinceCode },
-      select: {
-        code: true,
-        provinceCode: true,
-        name: true,
-        type: true,
-        province: { select: { code: true, name: true, type: true } },
-      },
-    });
-    if (!ward) return null;
-    return {
-      province: ward.province,
-      ward: {
-        code: ward.code,
-        provinceCode: ward.provinceCode,
-        name: ward.name,
-        type: ward.type,
-      },
-    };
+  ): Promise<AdministrativeAddressCandidates> {
+    const [province, ward] = await Promise.all([
+      this.prisma.app.administrativeProvince.findUnique({
+        where: { code: provinceCode },
+        select: { code: true, name: true, type: true },
+      }),
+      this.prisma.app.administrativeWard.findUnique({
+        where: { code: wardCode },
+        select: { code: true, provinceCode: true, name: true, type: true },
+      }),
+    ]);
+    return { province, ward };
   }
 }

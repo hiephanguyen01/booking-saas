@@ -1,10 +1,12 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PROMOTION_REPOSITORY,
   type IPromotionRepository,
   type PromotionRecord,
 } from '../../domain/ports/promotion-repository.port';
+import { Promotion } from '../../domain/entities/promotion.entity';
+import { PromotionNotFound } from '../../domain/errors/promotion-errors';
 
 /**
  * End a promotion (§12.2). A program is never deleted — it transitions to
@@ -21,9 +23,10 @@ export class EndPromotionUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.promotions.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({ statusCode: 404, code: 'PROMO_NOT_FOUND', message: 'Promotion not found' });
+        throw new PromotionNotFound();
       }
-      if (existing.status === 'ended') return existing;
+      const promotion = Promotion.rehydrate(existing);
+      if (promotion.isEnded) return existing;
       return this.promotions.end(tx, id);
     });
   }

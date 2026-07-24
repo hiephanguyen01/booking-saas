@@ -1,15 +1,15 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { VerifyIdentityInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { isAdult, nameMatches } from '../../domain/partner-verification';
+import { Partner } from '../../domain/entities/partner.entity';
+import {
+  MissingDob,
+  NameMismatch,
+  NoPendingIdentity,
+  PartnerNotFound,
+  Under18,
+} from '../../domain/errors/partner-errors';
 import {
   PARTNER_REPOSITORY,
   type IPartnerRepository,
@@ -46,45 +46,33 @@ export class VerifyIdentityUseCase {
     // though we then fail the request, so we commit inside the tx and translate
     // the outcome into an HTTP error afterwards (throwing here would roll it back).
     const outcome = await this.tenantDb.forTenant(tenantId, async (tx) => {
-      const partner = await this.partners.findByIdForUpdate(tx, partnerId);
-      if (!partner) return { kind: 'not_found' as const };
-      if (partner.verificationStatus !== 'pending') return { kind: 'no_pending' as const };
-      if (!partner.dateOfBirth) return { kind: 'missing_dob' as const };
+      const state = await this.partners.findByIdForUpdate(tx, partnerId);
+      if (!state) return { kind: 'not_found' as const };
 
-      const idHolderName = (partner.identityInfo as { holderName?: string }).holderName ?? '';
-      const payoutHolderName = (partner.payoutInfo as { holderName?: string }).holderName ?? '';
-      const reason = !isAdult(partner.dateOfBirth, new Date())
-        ? 'UNDER_18'
-        : !nameMatches(idHolderName, payoutHolderName)
-          ? 'NAME_MISMATCH'
-          : null;
+      const partner = Partner.rehydrate(state);
+      const review = partner.reviewIdentity({
+        reviewedBy: ctx.userId,
+        note: input.note,
+        now: new Date(),
+      });
 
-      if (reason) {
-        await this.partners.update(tx, partnerId, {
-          verificationStatus: 'rejected',
-          identityInfo: {
-            ...partner.identityInfo,
-            reviewedBy: ctx.userId,
-            reviewNote: input.note ?? reason,
-          },
-        });
+      if (review.kind === 'rejected') {
+        await this.partners.updateIdentityReview(tx, partnerId, review.intent);
         await this.outbox.emit(tx, {
           tenantId,
           eventType: 'partner.verification_rejected',
-          payload: { partnerId, reason },
+          payload: { partnerId, reason: review.reason },
         });
-        return { kind: 'rejected' as const, reason };
+        return review;
       }
+      if (review.kind !== 'eligible') return review;
 
-      const updated = await this.partners.update(tx, partnerId, {
-        verificationStatus: 'verified',
+      const verifiedIntent = partner.verifyIdentity({
+        reviewedBy: ctx.userId,
+        note: input.note,
         verifiedAt: new Date(),
-        identityInfo: {
-          ...partner.identityInfo,
-          reviewedBy: ctx.userId,
-          reviewNote: input.note ?? null,
-        },
       });
+      const updated = await this.partners.updateIdentityReview(tx, partnerId, verifiedIntent);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'partner.verified',
@@ -95,32 +83,14 @@ export class VerifyIdentityUseCase {
 
     switch (outcome.kind) {
       case 'not_found':
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'PARTNER_NOT_FOUND',
-          message: 'Partner not found',
-        });
+        throw new PartnerNotFound();
       case 'no_pending':
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'NO_PENDING_IDENTITY',
-          message: 'There is no pending identity submission to review',
-        });
+        throw new NoPendingIdentity();
       case 'missing_dob':
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'MISSING_DOB',
-          message: 'Identity submission is missing a date of birth',
-        });
+        throw new MissingDob();
       case 'rejected':
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: outcome.reason,
-          message:
-            outcome.reason === 'UNDER_18'
-              ? 'Partner is under 18 — cannot verify for people-booking listing types'
-              : 'ID holder name does not match the payout account holder name',
-        });
+        if (outcome.reason === 'UNDER_18') throw new Under18();
+        throw new NameMismatch();
       case 'verified':
         return outcome.partner;
     }

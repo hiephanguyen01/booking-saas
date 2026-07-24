@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PaginationQuery } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -29,11 +30,7 @@ export class ListSubscriptionsUseCase {
   ): Promise<{ items: SubscriptionHistoryRecord[]; total: number }> {
     // Distinguish "tenant does not exist" (404) from "tenant never subscribed" (empty page).
     if (!(await this.tenants.findById(tenantId))) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: `Tenant ${tenantId} not found`,
-      });
+      throw new TenantNotFound();
     }
     return this.subscriptions.listByTenant(tenantId, query);
   }

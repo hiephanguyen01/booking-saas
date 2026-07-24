@@ -1,6 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { computeAffiliateCommission } from '../../domain/affiliate-commission-amount';
+import {
+  AffiliateCommission,
+  type ConfirmedAffiliateCommissionAmountFacts,
+  type NewAffiliateCommission,
+} from '../../domain/entities/affiliate-commission.entity';
 import {
   AFFILIATE_COMMISSION_REPOSITORY,
   type IAffiliateCommissionRepository,
@@ -25,21 +29,35 @@ export class RecordConfirmedCommissionUseCase {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const booking = await loadBookingFinanceView(tx, bookingId);
       if (!booking) return;
-      const existing = await this.commissions.findByBooking(tx, bookingId);
-      if (existing && existing.status !== 'pending' && existing.status !== 'confirmed') return;
-      const amount = computeAffiliateCommission({
+      const existing = await this.commissions.loadByBooking(tx, bookingId);
+      const amountFacts: ConfirmedAffiliateCommissionAmountFacts = {
         snapshot: booking.snapshot,
         totalAmount: booking.totalAmount,
         finalAmount: booking.finalAmount,
-        additionalCharges: booking.additionalCharges,
+        normalizedAdditionalCharges: booking.additionalCharges,
         fundedBy: booking.fundedBy,
-      });
-      await this.commissions.upsert(tx, tenantId, {
-        affiliateId: booking.affiliateId,
-        bookingId,
-        amount,
-        status: 'confirmed',
-      });
+      };
+
+      let commission: NewAffiliateCommission;
+      if (existing) {
+        const aggregate = AffiliateCommission.rehydrate(existing);
+        if (!aggregate.confirm(amountFacts)) return;
+        commission = {
+          tenantId,
+          affiliateId: booking.affiliateId,
+          bookingId,
+          amount: aggregate.amount,
+          status: 'confirmed',
+        };
+      } else {
+        commission = AffiliateCommission.openConfirmed({
+          tenantId,
+          affiliateId: booking.affiliateId,
+          bookingId,
+          ...amountFacts,
+        });
+      }
+      await this.commissions.upsert(tx, commission);
     });
   }
 }

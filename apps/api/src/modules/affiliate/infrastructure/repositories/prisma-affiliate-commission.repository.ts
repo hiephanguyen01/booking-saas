@@ -3,14 +3,22 @@ import { Prisma } from '@prisma/client';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
+  AffiliateCommissionState,
+  NewAffiliateCommission,
+} from '../../domain/entities/affiliate-commission.entity';
+import { AFFILIATE_COMMISSION_PAID_SOURCE_STATUS } from '../../domain/entities/affiliate-commission.entity';
+import type {
   AffiliateCommissionListFilter,
-  AffiliateCommissionRecord,
-  AffiliateCommissionStatus,
   AffiliateCommissionTotals,
   AffiliateCommissionWithBooking,
+  IAffiliateCommissionReader,
+} from '../../domain/ports/affiliate-commission-reader.port';
+import type {
+  AffiliateCommissionUpdate,
   IAffiliateCommissionRepository,
 } from '../../domain/ports/affiliate-commission-repository.port';
 
+type Row = Prisma.AffiliateCommissionGetPayload<Record<string, never>>;
 type RowWithBooking = Prisma.AffiliateCommissionGetPayload<{ include: typeof WITH_BOOKING }>;
 
 /**
@@ -49,7 +57,7 @@ const WITH_BOOKING = {
   },
 } as const;
 
-function toWithBooking(c: RowWithBooking): AffiliateCommissionWithBooking {
+function toState(c: Row): AffiliateCommissionState {
   return {
     id: c.id,
     tenantId: c.tenantId,
@@ -58,6 +66,12 @@ function toWithBooking(c: RowWithBooking): AffiliateCommissionWithBooking {
     amount: c.amount,
     status: c.status,
     createdAt: c.createdAt,
+  };
+}
+
+function toWithBooking(c: RowWithBooking): AffiliateCommissionWithBooking {
+  return {
+    ...toState(c),
     bookingCode: c.booking?.code ?? null,
     bookingStatus: c.booking?.status ?? null,
     bookingTotal: c.booking?.finalAmount ?? null,
@@ -70,43 +84,38 @@ function toWithBooking(c: RowWithBooking): AffiliateCommissionWithBooking {
 }
 
 @Injectable()
-export class PrismaAffiliateCommissionRepository implements IAffiliateCommissionRepository {
-  async findByBooking(tx: PrismaTx, bookingId: string): Promise<AffiliateCommissionRecord | null> {
+export class PrismaAffiliateCommissionRepository
+  implements IAffiliateCommissionRepository, IAffiliateCommissionReader
+{
+  async loadByBooking(
+    tx: PrismaTx,
+    bookingId: string,
+  ): Promise<AffiliateCommissionState | null> {
     const c = await tx.affiliateCommission.findUnique({ where: { bookingId } });
-    if (!c) return null;
-    return {
-      id: c.id,
-      tenantId: c.tenantId,
-      affiliateId: c.affiliateId,
-      bookingId: c.bookingId,
-      amount: c.amount,
-      status: c.status,
-      createdAt: c.createdAt,
-    };
+    return c ? toState(c) : null;
   }
 
   async upsert(
     tx: PrismaTx,
-    tenantId: string,
-    data: { affiliateId: string; bookingId: string; amount: bigint; status: AffiliateCommissionStatus },
+    commission: NewAffiliateCommission,
   ): Promise<void> {
     await tx.affiliateCommission.upsert({
-      where: { bookingId: data.bookingId },
+      where: { bookingId: commission.bookingId },
       create: {
-        tenantId,
-        affiliateId: data.affiliateId,
-        bookingId: data.bookingId,
-        amount: data.amount,
-        status: data.status,
+        tenantId: commission.tenantId,
+        affiliateId: commission.affiliateId,
+        bookingId: commission.bookingId,
+        amount: commission.amount,
+        status: commission.status,
       },
-      update: { amount: data.amount, status: data.status },
+      update: { amount: commission.amount, status: commission.status },
     });
   }
 
   async updateForBooking(
     tx: PrismaTx,
     bookingId: string,
-    data: { status: AffiliateCommissionStatus; amount?: bigint },
+    data: AffiliateCommissionUpdate,
   ): Promise<void> {
     await tx.affiliateCommission.update({
       where: { bookingId },
@@ -169,7 +178,10 @@ export class PrismaAffiliateCommissionRepository implements IAffiliateCommission
 
   async markConfirmedPaid(tx: PrismaTx, affiliateId: string): Promise<void> {
     await tx.affiliateCommission.updateMany({
-      where: { affiliateId, status: 'confirmed' },
+      where: {
+        affiliateId,
+        status: AFFILIATE_COMMISSION_PAID_SOURCE_STATUS,
+      },
       data: { status: 'paid' },
     });
   }

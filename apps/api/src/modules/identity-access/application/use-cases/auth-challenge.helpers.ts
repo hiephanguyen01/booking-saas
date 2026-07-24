@@ -1,6 +1,6 @@
 import type { AuthChallengeResponse } from '@booking/contracts';
-import { GoneException } from '@nestjs/common';
 import type { IssuedAuthChallenge } from '../../domain/ports/auth-challenge-store.port';
+import { ChallengeExpired } from '../../domain/errors/identity-access-errors';
 
 const maskedEmail = (email: string): string => {
   const [name = '', domain = ''] = email.split('@');
@@ -19,9 +19,5 @@ export const toResponse = (
 });
 
 export function expired(): never {
-  throw new GoneException({
-    statusCode: 410,
-    code: 'CHALLENGE_EXPIRED',
-    message: 'The verification request has expired',
-  });
+  throw new ChallengeExpired();
 }

@@ -45,14 +45,6 @@ export class PrismaSubscriptionRepository implements ISubscriptionRepository {
     );
   }
 
-  async findCurrentByTenant(tenantId: string): Promise<SubscriptionRecord | null> {
-    const s = await this.prisma.admin.tenantSubscription.findFirst({
-      where: { tenantId },
-      orderBy: { startsAt: 'desc' },
-    });
-    return s ? toRecord(s) : null;
-  }
-
   async listByTenant(
     tenantId: string,
     params: { page: number; pageSize: number },
@@ -64,8 +56,8 @@ export class PrismaSubscriptionRepository implements ISubscriptionRepository {
     const [rows, total] = await Promise.all([
       this.prisma.admin.tenantSubscription.findMany({
         where,
-        // Newest first, matching `findCurrentByTenant`'s notion of "current" —
-        // so the first row of the history IS the current subscription.
+        // History uses the same deterministic precedence as the dedicated
+        // current-subscription reader.
         orderBy: [{ startsAt: 'desc' }, { createdAt: 'desc' }],
         include: { plan: { select: { name: true } } },
         skip,

@@ -1,11 +1,11 @@
 import type { AuthChallengeInput, AuthChallengeResponse } from '@booking/contracts';
-import { HttpException } from '@nestjs/common';
 import type {
   AuthChallengePurpose,
   IAuthChallengeStore,
 } from '../../domain/ports/auth-challenge-store.port';
 import type { IAuthEmailSender } from '../../domain/ports/auth-email-sender.port';
 import { expired, toResponse } from './auth-challenge.helpers';
+import { OtpResendCooldown } from '../auth-challenge-http-errors';
 
 /** Shared resend-OTP flow — extended per purpose; never registered as a provider. */
 export abstract class ResendOtpUseCase {
@@ -19,15 +19,7 @@ export abstract class ResendOtpUseCase {
     const result = await this.challenges.resend(input.challengeId, this.purpose);
     if (result.status === 'expired') expired();
     if (result.status === 'cooldown') {
-      throw new HttpException(
-        {
-          statusCode: 429,
-          code: 'RESEND_COOLDOWN',
-          message: 'Please wait before requesting another code',
-          retryAfterSec: result.retryAfterSec,
-        },
-        429,
-      );
+      throw new OtpResendCooldown(result.retryAfterSec);
     }
     if (result.payload.purpose === 'registration' || result.payload.userId) {
       await this.email.sendOtp({

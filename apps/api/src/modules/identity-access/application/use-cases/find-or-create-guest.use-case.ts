@@ -1,9 +1,11 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { UserAccount } from '../../domain/entities/user-account.entity';
 import {
   USER_REPOSITORY,
   type IUserRepository,
   type UserRecord,
 } from '../../domain/ports/user-repository.port';
+import { toUserRecord } from '../user-account.mapper';
 
 /**
  * Guest checkout (§8.6): resolve a customer by email. A prior GUEST (passwordless)
@@ -18,16 +20,8 @@ export class FindOrCreateGuestUseCase {
 
   async execute(input: { email: string; fullName: string; phone: string }): Promise<UserRecord> {
     const existing = await this.users.findByEmail(input.email);
-    if (existing) {
-      if (existing.passwordHash !== null) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'EMAIL_REGISTERED',
-          message: 'This email has an account — please sign in to book',
-        });
-      }
-      return existing; // reuse the prior guest
-    }
-    return this.users.createGuest(input);
+    const reusableGuest = UserAccount.reuseGuest(existing);
+    if (reusableGuest) return toUserRecord(reusableGuest);
+    return this.users.create(UserAccount.createGuest(input));
   }
 }

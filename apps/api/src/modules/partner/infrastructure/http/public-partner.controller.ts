@@ -1,6 +1,7 @@
 import type { PublicPartnerProfileResponse } from '@booking/contracts';
-import { BadRequestException, Controller, Get, Headers, Param } from '@nestjs/common';
+import { Controller, Get, Headers, Param } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { GetPublicPartnerProfileUseCase } from '../../application/use-cases/get-public-partner-profile.use-case';
 import { PublicPartnerProfileResponseDto } from './dto/partner.dto';
@@ -20,12 +21,7 @@ export class PublicPartnerController {
     @Headers('host') host?: string,
   ): Promise<PublicPartnerProfileResponse> {
     const resolvedHost = forwardedHost?.split(',')[0]?.trim() || host;
-    if (!resolvedHost)
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'MISSING_HOST',
-        message: 'Host header is required to resolve a tenant',
-      });
+    if (!resolvedHost) throw new MissingTenantHost();
     return this.getProfile.execute(resolvedHost, slug);
   }
 }

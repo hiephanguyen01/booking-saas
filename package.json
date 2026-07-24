@@ -7,7 +7,6 @@
     "dev": "turbo run dev --ui=tui",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "check:storefront-security": "node scripts/architecture/check-storefront-security.mjs",
     "format": "prettier --write ."

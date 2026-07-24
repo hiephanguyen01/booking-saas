@@ -1,6 +1,6 @@
 import { formatVnd } from '../../../shared/money/money';
 import { formatInZone } from '../../../shared/time/time';
-import type { TemplateData } from './email-template';
+import { normalizeLocale, type TemplateData } from './email-template';
 import type { NotificationPlanItem } from './notification-plan';
 import type {
   BookingNotificationContext,
@@ -25,7 +25,7 @@ export function bookingTemplateData(
   recipient: NotificationRecipient,
   payload: { refundAmount?: string; reason?: string },
 ): TemplateData {
-  const locale = recipient.locale === 'en' ? 'en' : 'vi';
+  const locale = normalizeLocale(recipient.locale);
   return {
     tenantName: ctx.tenantName,
     recipientName: recipient.name,

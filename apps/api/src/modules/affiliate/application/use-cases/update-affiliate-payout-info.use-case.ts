@@ -3,9 +3,12 @@ import type { UpdateAffiliatePayoutInfoInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { resolveEffectiveAffiliateRate, type EffectiveAffiliateRate } from '../../domain/affiliate-rate';
+import { Affiliate } from '../../domain/entities/affiliate.entity';
+import {
+  type AffiliateWithUser,
+} from '../../domain/ports/affiliate-reader.port';
 import {
   AFFILIATE_REPOSITORY,
-  type AffiliateWithUser,
   type IAffiliateRepository,
 } from '../../domain/ports/affiliate-repository.port';
 import {
@@ -42,7 +45,12 @@ export class UpdateAffiliatePayoutInfoUseCase {
     input: UpdateAffiliatePayoutInfoInput,
   ): Promise<UpdatedAffiliatePayoutInfo> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const affiliate = await this.affiliates.setPayoutInfo(tx, affiliateId, { ...input });
+      const intent = Affiliate.replacePayoutInfo(input);
+      const affiliate = await this.affiliates.replacePayoutInfo(
+        tx,
+        affiliateId,
+        intent,
+      );
       // Payout details are money-routing data: a change is worth an auditable
       // event, and the event commits in the same tx as the write it describes.
       await this.outbox.emit(tx, {

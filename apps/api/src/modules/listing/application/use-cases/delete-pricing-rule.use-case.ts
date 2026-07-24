@@ -1,10 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
   PRICING_RULE_REPOSITORY,
   type IPricingRuleRepository,
 } from '../../domain/ports/pricing-rule-repository.port';
+import { PricingRuleNotFound } from '../../domain/errors/pricing-rule-errors';
 
 @Injectable()
 export class DeletePricingRuleUseCase {
@@ -18,11 +19,7 @@ export class DeletePricingRuleUseCase {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.rules.findById(tx, id);
       if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'PRICING_RULE_NOT_FOUND',
-          message: 'Pricing rule not found',
-        });
+        throw new PricingRuleNotFound();
       }
       await this.rules.delete(tx, id);
       await this.outbox.emit(tx, {

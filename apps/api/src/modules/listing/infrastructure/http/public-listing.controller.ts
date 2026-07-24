@@ -3,14 +3,20 @@ import {
   type PublicListingGroupDetailResponse,
   type QuoteResponse,
 } from '@booking/contracts';
-import { BadRequestException, Controller, Get, Headers, Param, Query } from '@nestjs/common';
+import { Controller, Get, Headers, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { toPublicListingDetailResponse } from '../../application/listing.mapper';
 import { GetPublicListingUseCase } from '../../application/use-cases/get-public-listing.use-case';
 import { GetPublicQuoteUseCase } from '../../application/use-cases/get-public-quote.use-case';
 import { GetPublicListingGroupUseCase } from '../../application/use-cases/get-public-listing-group.use-case';
-import { PublicListingDetailResponseDto, QuoteQueryDto, QuoteResponseDto } from './dto/listing.dto';
+import {
+  PublicListingDetailResponseDto,
+  PublicListingGroupDetailResponseDto,
+  QuoteQueryDto,
+  QuoteResponseDto,
+} from './dto/listing.dto';
 
 /** Storefront listing detail + quote (§16/§17). Tenant resolved from Host (BFF). */
 @ApiTags('public-listings')
@@ -24,6 +30,9 @@ export class PublicListingController {
 
   @Public()
   @Get('/groups/:slug')
+  @ApiOperation({ summary: 'Public storefront listing-group detail' })
+  @ApiParam({ name: 'slug', type: 'string' })
+  @ApiOkResponse({ type: PublicListingGroupDetailResponseDto })
   async groupDetail(
     @Param('slug') slug: string,
     @Headers('x-forwarded-host') forwardedHost?: string,
@@ -65,11 +74,7 @@ export class PublicListingController {
 function resolveHost(forwardedHost?: string, host?: string): string {
   const resolved = forwardedHost?.split(',')[0]?.trim() || host;
   if (!resolved) {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'MISSING_HOST',
-      message: 'Host header is required to resolve a tenant',
-    });
+    throw new MissingTenantHost();
   }
   return resolved;
 }

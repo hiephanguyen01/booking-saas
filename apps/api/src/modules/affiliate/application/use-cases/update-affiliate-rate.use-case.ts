@@ -1,23 +1,22 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import {
-  TENANT_SHARE_FLOOR_CODE,
-  violatesTenantShareFloor,
-} from '../../../finance/domain/commission-rate-guard';
 import { resolveEffectiveAffiliateRate, type EffectiveAffiliateRate } from '../../domain/affiliate-rate';
 import {
+  Affiliate,
+  type AffiliateState,
+} from '../../domain/entities/affiliate.entity';
+import { AffiliateNotFound } from '../../domain/errors/affiliate-errors';
+import {
   AFFILIATE_REPOSITORY,
-  type AffiliateRecord,
   type IAffiliateRepository,
 } from '../../domain/ports/affiliate-repository.port';
 import {
   COMMISSION_RULE_READER,
-  type CommissionRuleSnapshot,
   type ICommissionRuleReader,
 } from '../../domain/ports/commission-rule-reader.port';
 
 export interface UpdatedAffiliateRate {
-  affiliate: AffiliateRecord;
+  affiliate: AffiliateState;
   /** The rate now in force — the rule's rate when the override was cleared. */
   effectiveRate: EffectiveAffiliateRate;
 }
@@ -53,35 +52,20 @@ export class UpdateAffiliateRateUseCase {
     const customRate = customRateInput === null ? null : BigInt(customRateInput);
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const [existing, rule] = await Promise.all([
-        this.affiliates.findById(tx, affiliateId),
+        this.affiliates.loadById(tx, affiliateId),
         this.rules.findTenantDefault(tx),
       ]);
-      if (!existing) {
-        throw new NotFoundException({ statusCode: 404, code: 'AFFILIATE_NOT_FOUND', message: 'Affiliate not found' });
-      }
-      if (customRate !== null) this.assertWithinTenantShare(rule, customRate);
-      const affiliate = await this.affiliates.setCustomRate(tx, affiliateId, customRate);
+      if (!existing) throw new AffiliateNotFound();
+      const intent = Affiliate.rehydrate(existing).setCustomRate(
+        customRate,
+        rule,
+      );
+      const affiliate = await this.affiliates.setCustomRate(
+        tx,
+        affiliateId,
+        intent,
+      );
       return { affiliate, effectiveRate: resolveEffectiveAffiliateRate(customRate, rule) };
     });
-  }
-
-  /** Guard the custom rate against the tenant-default rule (percent rules only). */
-  private assertWithinTenantShare(rule: CommissionRuleSnapshot | null, customRate: bigint): void {
-    if (!rule) return; // no baseline rule → nothing to compare against
-    const violates = violatesTenantShareFloor({
-      tenantRateType: rule.tenantRateType,
-      tenantRate: rule.tenantRate,
-      platformRate: rule.platformRate,
-      affiliateRateType: 'percent',
-      affiliateRate: customRate,
-      isHouse: false,
-    });
-    if (violates) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: TENANT_SHARE_FLOOR_CODE,
-        message: 'platform% + affiliate% would exceed the tenant commission',
-      });
-    }
   }
 }

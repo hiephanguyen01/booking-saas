@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import type { ModerationActor } from '@booking/contracts';
 import type { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import type { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -8,16 +7,12 @@ import type {
   ListingGroupRecord,
 } from '../../domain/ports/listing-group-repository.port';
 import type { IListingRepository, ListingRecord } from '../../domain/ports/listing-repository.port';
+import { Listing } from '../../domain/entities/listing.entity';
+import { ListingGroup } from '../../domain/entities/listing-group.entity';
+import { ListingGroupEmpty } from '../../domain/errors/listing-group-errors';
+import { ListingStateChanged } from '../../domain/errors/listing-errors';
 import {
-  transitionHide,
-  transitionPublish,
-  transitionRepublish,
-  transitionSubmit,
-} from '../../domain/moderation/listing-moderation';
-import {
-  assertOwnership,
   groupNotFound,
-  runModeration,
   stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
@@ -59,30 +54,35 @@ export function runGroupModeration(
   return deps.tenantDb.forTenant(ctx.tenantId, async (tx) => {
     const group = await deps.groups.findById(tx, id);
     if (!group) groupNotFound();
-    assertOwnership(group, ctx.partnerId);
+    const groupAggregate = ListingGroup.rehydrate(group);
+    groupAggregate.assertOwnedForModeration(ctx.partnerId);
     const children = await deps.listings.list(tx, {
       groupId: group.id,
       partnerId: group.partnerId,
     });
     if (action === 'submitted' && children.length === 0) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'LISTING_GROUP_EMPTY',
-        message: 'Add at least one listing before submitting the group',
-      });
+      throw new ListingGroupEmpty();
     }
     const outcome = transition(group, children);
-    const updated = await deps.groups.moderate(tx, id, outcome);
+    const updated = await deps.groups.moderate(tx, id, group.status, outcome);
+    if (!updated) throw new ListingStateChanged();
     for (const child of children) {
+      const childAggregate = Listing.rehydrate(child);
       const childOutcome =
         action === 'submitted'
-          ? runModeration(() => transitionSubmit(child))
+          ? childAggregate.submit()
           : action === 'published'
-            ? runModeration(() => transitionPublish(child, 'admin'))
+            ? childAggregate.publish('admin')
             : action === 'hidden'
-              ? runModeration(() => transitionHide(child, actorFromOutcome(outcome)))
-              : runModeration(() => transitionRepublish(child, actorFromOutcome(outcome)));
-      await deps.listings.moderate(tx, child.id, stampModerationTimestamps(child, childOutcome));
+              ? childAggregate.hide(actorFromOutcome(outcome))
+              : childAggregate.republish(actorFromOutcome(outcome));
+      const updatedChild = await deps.listings.moderate(
+        tx,
+        child.id,
+        child.status,
+        stampModerationTimestamps(child, childOutcome),
+      );
+      if (!updatedChild) throw new ListingStateChanged();
     }
     await writeModerationAudit(deps.audit, tx, ctx, {
       action: `listing_group.${action}`,

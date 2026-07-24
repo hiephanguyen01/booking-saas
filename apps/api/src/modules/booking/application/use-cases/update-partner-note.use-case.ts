@@ -1,10 +1,12 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   BOOKING_REPOSITORY,
   type BookingRecord,
   type IBookingRepository,
 } from '../../domain/ports/booking-repository.port';
+import { Booking } from '../../domain/entities/booking.entity';
+import { BookingNotFound } from '../../domain/errors/booking-domain-errors';
 
 /**
  * Set or clear the partner's private operational note on one of their own
@@ -27,22 +29,10 @@ export class UpdatePartnerNoteUseCase {
   ): Promise<BookingRecord> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
-      if (!booking) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'BOOKING_NOT_FOUND',
-          message: 'Booking not found',
-        });
-      }
-      // Matches the 403 the other partner write paths return (loadOwnedBooking).
-      if (booking.partnerId !== ctx.partnerId) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'NOT_OWNED',
-          message: 'Booking belongs to another partner',
-        });
-      }
-      return this.bookings.updatePartnerNote(tx, bookingId, note);
+      if (!booking) throw new BookingNotFound();
+      const aggregate = Booking.rehydrate(booking);
+      aggregate.assertOwnedBy(ctx.partnerId);
+      return this.bookings.updatePartnerNote(tx, bookingId, aggregate.normalisePartnerNote(note));
     });
   }
 }

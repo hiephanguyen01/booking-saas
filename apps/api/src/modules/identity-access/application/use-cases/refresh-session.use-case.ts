@@ -1,4 +1,8 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  InvalidRefreshToken,
+  MissingRefreshToken,
+} from '../../domain/errors/identity-access-errors';
 import {
   SESSION_STORE,
   type ISessionStore,
@@ -11,19 +15,11 @@ export class RefreshSessionUseCase {
 
   async execute(refreshToken: string | undefined): Promise<SessionTokens> {
     if (!refreshToken) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        code: 'NO_REFRESH_TOKEN',
-        message: 'Missing refresh token',
-      });
+      throw new MissingRefreshToken();
     }
     const rotated = await this.sessions.rotate(refreshToken);
     if (!rotated) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        code: 'INVALID_REFRESH_TOKEN',
-        message: 'Refresh token is invalid or expired',
-      });
+      throw new InvalidRefreshToken();
     }
     return rotated;
   }

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { DepositRequirementResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { ListingDepositPolicy } from '../../domain/value-objects/listing-deposit-policy.value-object';
 import {
   COMMISSION_COVERAGE_READER,
   type ICommissionCoverageReader,
@@ -26,11 +27,7 @@ export class GetListingDepositRequirementUseCase {
         listingTypeId,
         categoryId,
       });
-      return {
-        minimumDepositPercent:
-          rule?.rateType === 'percent' ? Number(rule.rate) : null,
-        commissionRuleId: rule?.rateType === 'percent' ? rule.id : null,
-      };
+      return ListingDepositPolicy.fromRule(rule).requirement();
     });
   }
 }

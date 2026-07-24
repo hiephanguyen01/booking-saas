@@ -1,13 +1,8 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateListingGroupInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
 import {
   LISTING_GROUP_REPOSITORY,
   type IListingGroupRepository,
@@ -18,6 +13,8 @@ import {
   type IListingTypeRepository,
 } from '../../../catalog/domain/ports/listing-type-repository.port';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
+import { ListingGroup } from '../../domain/entities/listing-group.entity';
+import { ListingGroupSlugTaken } from '../../domain/errors/listing-group-errors';
 
 /** Two-tier post: a group (album/amenities/address) that holds room/package listings (§7.3). */
 @Injectable()
@@ -37,41 +34,30 @@ export class CreateListingGroupUseCase {
     );
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const listingType = await this.listingTypes.findById(tx, input.listingTypeId);
-      if (!listingType)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_TYPE_NOT_FOUND',
-          message: 'Listing type not found',
-        });
-      if (listingType.structure === 'standalone') {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'LISTING_TYPE_NOT_GROUPABLE',
-          message: 'This listing type only supports standalone listings',
-        });
-      }
+      if (!listingType) throw new ListingTypeNotFound();
+      ListingGroup.assertGroupableType(listingType.structure);
       if (await this.repo.findBySlug(tx, input.slug)) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_GROUP_SLUG_TAKEN',
-          message: `Slug "${input.slug}" is already in use`,
-        });
+        throw new ListingGroupSlugTaken(input.slug);
       }
-      const created = await this.repo.create(tx, tenantId, {
-        partnerId: input.partnerId,
-        listingTypeId: input.listingTypeId,
-        title: input.title,
-        slug: input.slug,
-        description: input.description ?? null,
-        provinceCode: location.province.code,
-        provinceName: location.province.name,
-        wardCode: location.ward.code,
-        wardName: location.ward.name,
-        address: input.address,
-        workingArea: input.workingArea ?? null,
-        amenities: input.amenities,
-        photos: input.photos,
-      });
+      const created = await this.repo.create(
+        tx,
+        tenantId,
+        ListingGroup.open({
+          partnerId: input.partnerId,
+          listingTypeId: input.listingTypeId,
+          title: input.title,
+          slug: input.slug,
+          description: input.description ?? null,
+          provinceCode: location.province.code,
+          provinceName: location.province.name,
+          wardCode: location.ward.code,
+          wardName: location.ward.name,
+          address: input.address,
+          workingArea: input.workingArea ?? null,
+          amenities: input.amenities,
+          photos: input.photos,
+        }),
+      );
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing_group.created',

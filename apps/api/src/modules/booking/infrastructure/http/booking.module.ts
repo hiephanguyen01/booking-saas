@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
@@ -13,8 +13,10 @@ import { BOOKING_REPOSITORY } from '../../domain/ports/booking-repository.port';
 import { HOLD_STORE } from '../../domain/ports/hold-store.port';
 import { OTP_STORE } from '../../domain/ports/otp-store.port';
 import { BOOKING_AVAILABILITY_READER } from '../../domain/ports/booking-availability-reader.port';
+import { BOOKING_PARTNER_READER } from '../../domain/ports/booking-partner-reader.port';
 import { PrismaBookingRepository } from '../repositories/prisma-booking.repository';
 import { PrismaBookingAvailabilityReader } from '../repositories/prisma-booking-availability-reader';
+import { PrismaBookingPartnerReader } from '../repositories/prisma-booking-partner.reader';
 import { RedisHoldStore } from '../redis-hold.store';
 import { RedisOtpStore } from '../redis-otp.store';
 import { BookingSchedulerWorker } from '../booking-scheduler.worker';
@@ -60,6 +62,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     { provide: HOLD_STORE, useClass: RedisHoldStore },
     { provide: OTP_STORE, useClass: RedisOtpStore },
     { provide: BOOKING_AVAILABILITY_READER, useClass: PrismaBookingAvailabilityReader },
+    { provide: BOOKING_PARTNER_READER, useClass: PrismaBookingPartnerReader },
     CreateBookingUseCase,
     ConfirmBookingUseCase,
     CancelBookingUseCase,
@@ -84,6 +87,8 @@ import { TenantBookingController } from './tenant-booking.controller';
   ],
 })
 export class BookingModule implements OnModuleInit {
+  private readonly logger = new Logger(BookingModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly confirmBooking: ConfirmBookingUseCase,
@@ -94,12 +99,22 @@ export class BookingModule implements OnModuleInit {
     this.registry.register('payment.succeeded', async (event) => {
       const payload = event.payload as { bookingId: string; skipBookingConfirmation?: boolean };
       if (payload.skipBookingConfirmation === true) return;
-      await this.confirmBooking.execute(event.tenantId ?? '', payload.bookingId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return;
+      await this.confirmBooking.execute(tenantId, payload.bookingId);
     });
     this.registry.register('refund.completed', async (event) => {
       const payload = event.payload as { bookingId: string; affectsBookingStatus?: boolean };
       if (payload.affectsBookingStatus === false) return;
-      await this.finalizeRefundedBooking.execute(event.tenantId ?? '', payload.bookingId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return;
+      await this.finalizeRefundedBooking.execute(tenantId, payload.bookingId);
     });
+  }
+
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.error(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }

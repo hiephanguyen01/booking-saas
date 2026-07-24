@@ -1,14 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
-  AFFILIATE_COMMISSION_REPOSITORY,
+  AFFILIATE_COMMISSION_READER,
   type AffiliateCommissionTotals,
-  type IAffiliateCommissionRepository,
-} from '../../domain/ports/affiliate-commission-repository.port';
+  type IAffiliateCommissionReader,
+} from '../../domain/ports/affiliate-commission-reader.port';
 import {
-  REFERRAL_LINK_REPOSITORY,
-  type IReferralLinkRepository,
-} from '../../domain/ports/referral-link-repository.port';
+  REFERRAL_LINK_READER,
+  type IReferralLinkReader,
+} from '../../domain/ports/referral-link-reader.port';
 
 export interface AffiliateStats {
   clicks: number;
@@ -19,8 +19,9 @@ export interface AffiliateStats {
 @Injectable()
 export class GetAffiliateStatsUseCase {
   constructor(
-    @Inject(AFFILIATE_COMMISSION_REPOSITORY) private readonly commissions: IAffiliateCommissionRepository,
-    @Inject(REFERRAL_LINK_REPOSITORY) private readonly links: IReferralLinkRepository,
+    @Inject(AFFILIATE_COMMISSION_READER)
+    private readonly commissions: IAffiliateCommissionReader,
+    @Inject(REFERRAL_LINK_READER) private readonly links: IReferralLinkReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 

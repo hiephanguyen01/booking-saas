@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PricingRuleInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -17,6 +11,13 @@ import {
   type IPricingRuleRepository,
   type PricingRuleRecord,
 } from '../../domain/ports/pricing-rule-repository.port';
+import {
+  PricingRule,
+  findOverlappingWindow,
+  sameWindowKey,
+} from '../../domain/entities/pricing-rule.entity';
+import { ListingNotFound, ListingNotOwned } from '../../domain/errors/listing-errors';
+import { PricingRuleOverlap } from '../../domain/errors/pricing-rule-errors';
 
 @Injectable()
 export class CreatePartnerPricingRuleUseCase {
@@ -35,63 +36,11 @@ export class CreatePartnerPricingRuleUseCase {
   ): Promise<PricingRuleRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const listing = await this.listings.findById(tx, listingId);
-      if (!listing)
-        throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
+      if (!listing) throw new ListingNotFound();
       if (listing.partnerId !== partnerId) {
-        throw new ForbiddenException({
-          code: 'LISTING_NOT_OWNED',
-          message: 'This listing belongs to another partner',
-        });
+        throw new ListingNotOwned();
       }
-      if (!listing.bookingModes.includes(input.bookingMode)) {
-        throw new BadRequestException({
-          code: 'MODE_NOT_ENABLED',
-          message: `Listing does not enable "${input.bookingMode}"`,
-        });
-      }
-      if (listing.bookingSelection === 'fixed_packages') {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'PACKAGE_PRICING_FIXED',
-          message: 'Fixed-package prices are managed in the listing package configuration',
-        });
-      }
-      // Calendar edits are save/replace operations. Remove the previous exact
-      // override for the same mode and scope so repeated saves stay deterministic.
-      if (input.ruleType === 'date_range' || input.ruleType === 'date_time_range') {
-        const existing = await this.rules.listByListing(tx, listingId);
-        const paramsKey = JSON.stringify(input.params);
-        if (input.ruleType === 'date_time_range') {
-          const date = String(input.params.date);
-          const from = String(input.params.from);
-          const to = String(input.params.to);
-          const overlap = existing.find(
-            (rule) =>
-              rule.bookingMode === input.bookingMode &&
-              rule.ruleType === 'date_time_range' &&
-              String(rule.params.date) === date &&
-              JSON.stringify(rule.params) !== paramsKey &&
-              from < String(rule.params.to) &&
-              to > String(rule.params.from),
-          );
-          if (overlap) {
-            throw new BadRequestException({
-              statusCode: 400,
-              code: 'PRICING_RULE_OVERLAP',
-              message: `Pricing window overlaps ${String(overlap.params.from)}–${String(overlap.params.to)}`,
-            });
-          }
-        }
-        for (const rule of existing) {
-          if (
-            rule.bookingMode === input.bookingMode &&
-            rule.ruleType === input.ruleType &&
-            JSON.stringify(rule.params) === paramsKey
-          )
-            await this.rules.delete(tx, rule.id);
-        }
-      }
-      const created = await this.rules.create(tx, tenantId, {
+      const candidate = PricingRule.open({
         listingId,
         bookingMode: input.bookingMode,
         ruleType: input.ruleType,
@@ -100,6 +49,25 @@ export class CreatePartnerPricingRuleUseCase {
         salePrice: input.salePrice ?? null,
         priority: input.priority,
       });
+      PricingRule.of(candidate).assertAllowedOn({
+        bookingModes: listing.bookingModes,
+        bookingSelection: listing.bookingSelection,
+      });
+      // Calendar edits are save/replace operations. Remove the previous exact
+      // override for the same mode and scope so repeated saves stay deterministic.
+      if (input.ruleType === 'date_range' || input.ruleType === 'date_time_range') {
+        const existing = await this.rules.listByListing(tx, listingId);
+        if (input.ruleType === 'date_time_range') {
+          const overlap = findOverlappingWindow(existing, candidate);
+          if (overlap) {
+            throw new PricingRuleOverlap(String(overlap.params.from), String(overlap.params.to));
+          }
+        }
+        for (const rule of existing) {
+          if (sameWindowKey(rule, candidate)) await this.rules.delete(tx, rule.id);
+        }
+      }
+      const created = await this.rules.create(tx, tenantId, candidate);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'pricing_rule.created',

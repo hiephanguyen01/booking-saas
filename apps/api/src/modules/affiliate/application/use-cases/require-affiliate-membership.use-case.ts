@@ -1,9 +1,10 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AffiliateContext } from '../../domain/affiliate-context';
+import { AffiliateMembershipRequired } from '../../domain/errors/affiliate-errors';
 import {
-  AFFILIATE_REPOSITORY,
-  type IAffiliateRepository,
-} from '../../domain/ports/affiliate-repository.port';
+  AFFILIATE_READER,
+  type IAffiliateReader,
+} from '../../domain/ports/affiliate-reader.port';
 
 /**
  * The membership to act in **regardless of status** — for the affiliate's own
@@ -16,7 +17,10 @@ import {
  */
 @Injectable()
 export class RequireAffiliateMembershipUseCase {
-  constructor(@Inject(AFFILIATE_REPOSITORY) private readonly affiliates: IAffiliateRepository) {}
+  constructor(
+    @Inject(AFFILIATE_READER)
+    private readonly affiliates: IAffiliateReader,
+  ) {}
 
   async execute(userId: string, requestedTenantId?: string): Promise<AffiliateContext> {
     const memberships = await this.affiliates.adminFindMembershipsByUser(userId);
@@ -24,11 +28,7 @@ export class RequireAffiliateMembershipUseCase {
       ? memberships.find((m) => m.tenantId === requestedTenantId)
       : (memberships.find((m) => m.status === 'approved') ?? memberships[0]);
     if (!chosen) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'NOT_AN_AFFILIATE',
-        message: 'No affiliate account for this user',
-      });
+      throw new AffiliateMembershipRequired();
     }
     return { affiliateId: chosen.id, tenantId: chosen.tenantId };
   }

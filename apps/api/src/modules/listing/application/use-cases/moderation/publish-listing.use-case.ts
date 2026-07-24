@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../../shared/audit/audit-writer.port';
@@ -7,15 +7,15 @@ import {
   type IListingRepository,
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionPublish } from '../../../domain/moderation/listing-moderation';
+import { Listing } from '../../../domain/entities/listing.entity';
 import { buildListingReview } from '../../moderation/build-listing-review';
 import {
   listingNotFound,
-  runModeration,
   stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingHasContactInfo, ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * A tenant reviewer publishes a listing (pending_review → published, actor
@@ -34,38 +34,30 @@ export class PublishListingUseCase {
 
   async execute(ctx: ModerationContext, listingId: string, force = false): Promise<ListingRecord> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
-      const listing = await this.listings.findById(tx, listingId);
-      if (!listing) listingNotFound();
-      if (listing.groupId) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'GROUP_MANAGED_LISTING',
-          message: 'Publish the parent listing group instead',
-        });
-      }
+      const existing = await this.listings.findById(tx, listingId);
+      if (!existing) listingNotFound();
+      const listing = Listing.rehydrate(existing);
+      listing.assertNotGroupManaged('publish');
 
-      const review = buildListingReview(listing);
+      const review = buildListingReview(existing);
       const overrode = review.contactFlags.length > 0 || !review.checklistPassed;
       if (!force && review.contactFlags.length > 0) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'LISTING_HAS_CONTACT_INFO',
-          message: 'Remove contact information from the listing before publishing',
-          details: review.contactFlags,
-        });
+        throw new ListingHasContactInfo('listing', review.contactFlags);
       }
 
-      const outcome = runModeration(() => transitionPublish(listing, 'admin'));
+      const outcome = listing.publish('admin');
       const updated = await this.listings.moderate(
         tx,
         listingId,
-        stampModerationTimestamps(listing, outcome),
+        existing.status,
+        stampModerationTimestamps(existing, outcome),
       );
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.published',
         entityType: 'listing',
-        entityId: listing.id,
-        fromStatus: listing.status,
+        entityId: existing.id,
+        fromStatus: existing.status,
         toStatus: outcome.status,
         reason: force && overrode ? 'force-published: review gate bypassed' : undefined,
       });

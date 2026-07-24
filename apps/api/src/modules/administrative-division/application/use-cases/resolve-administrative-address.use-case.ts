@@ -1,9 +1,10 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   ADMINISTRATIVE_DIVISION_REPOSITORY,
   type IAdministrativeDivisionRepository,
   type ResolvedAdministrativeAddress,
 } from '../../domain/ports/administrative-division-repository.port';
+import { AdministrativeAddress } from '../../domain/value-objects/administrative-address.value-object';
 
 @Injectable()
 export class ResolveAdministrativeAddressUseCase {
@@ -13,14 +14,7 @@ export class ResolveAdministrativeAddressUseCase {
   ) {}
 
   async execute(provinceCode: string, wardCode: string): Promise<ResolvedAdministrativeAddress> {
-    const resolved = await this.divisions.findWardInProvince(provinceCode, wardCode);
-    if (!resolved) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_ADMINISTRATIVE_DIVISION',
-        message: 'The selected ward does not belong to the selected province',
-      });
-    }
-    return resolved;
+    const candidates = await this.divisions.findAddressCandidates(provinceCode, wardCode);
+    return AdministrativeAddress.resolve(candidates.province, candidates.ward);
   }
 }

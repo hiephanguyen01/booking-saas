@@ -1,21 +1,9 @@
 import {
   type BookingOtpResponse,
   type BookingResponse,
-  type CancelBookingResponse
+  type CancelBookingResponse,
 } from '@booking/contracts';
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Headers,
-  HttpCode,
-  NotFoundException,
-  Param,
-  Post,
-  Query,
-  Req,
-} from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -25,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { randomUUID } from 'node:crypto';
+import { HiddenRouteNotFound, MissingHost } from '../../../../shared/http/request-boundary-errors';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
@@ -160,7 +149,7 @@ export class PublicBookingController {
   @ApiOkResponse({ type: BookingResponseDto })
   async mockPay(@Param('code') code: string, @Req() req: Request): Promise<BookingResponse> {
     if (!MOCK_PAY_ENABLED) {
-      throw new NotFoundException({ statusCode: 404, code: 'NOT_FOUND', message: 'Not found' });
+      throw new HiddenRouteNotFound();
     }
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const booking = await this.getBookingByCode.execute(tenant.id, code);
@@ -174,11 +163,7 @@ function hostOf(req: Request): string {
     (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() ||
     req.headers.host;
   if (!raw) {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'MISSING_HOST',
-      message: 'Host header is required',
-    });
+    throw new MissingHost();
   }
   return raw;
 }

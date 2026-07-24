@@ -1,9 +1,8 @@
-import { BadRequestException, type Logger } from '@nestjs/common';
+import type { Logger } from '@nestjs/common';
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
+import { PromoTenantShareNegative } from '../domain/errors/promotion-errors';
 import { evaluateTenantShareRisk } from '../domain/tenant-share-risk';
 import { resolveTenantCommissionRates } from './resolve-tenant-commission-rates';
-
-export const PROMO_TENANT_SHARE_NEGATIVE_CODE = 'PROMO_TENANT_SHARE_NEGATIVE';
 
 export interface TenantShareGuardParams {
   fundedBy: 'tenant' | 'partner';
@@ -35,7 +34,7 @@ export async function assertTenantShareRisk(tx: PrismaTx, params: TenantShareGua
   });
 
   if (verdict.decision === 'block') {
-    throw new BadRequestException({ statusCode: 400, code: PROMO_TENANT_SHARE_NEGATIVE_CODE, message: verdict.reason });
+    throw new PromoTenantShareNegative(verdict.reason);
   }
   if (verdict.decision === 'warn') {
     logger.warn(verdict.reason);

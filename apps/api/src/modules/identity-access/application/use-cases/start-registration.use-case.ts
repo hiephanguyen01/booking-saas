@@ -1,5 +1,6 @@
 import type { AuthChallengeResponse, RegistrationStartInput } from '@booking/contracts';
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { UserAccount } from '../../domain/entities/user-account.entity';
 import {
   AUTH_CHALLENGE_STORE,
   type IAuthChallengeStore,
@@ -20,13 +21,8 @@ export class StartRegistrationUseCase {
   ) {}
 
   async execute(input: RegistrationStartInput): Promise<AuthChallengeResponse> {
-    if (await this.users.findByEmail(input.email)) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'EMAIL_TAKEN',
-        message: 'Email is already registered',
-      });
-    }
+    const existing = await this.users.findByEmail(input.email);
+    UserAccount.assertEmailAvailable(existing);
     const challenge = await this.challenges.issue({
       purpose: 'registration',
       email: input.email,

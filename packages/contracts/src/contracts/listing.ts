@@ -673,6 +673,13 @@ export const listingReviewResponseSchema = z.object({
 });
 export type ListingReviewResponse = z.infer<typeof listingReviewResponseSchema>;
 
+/** `POST /partner/listings/:id/submit` — updated listing plus its review checklist. */
+export const submitListingResponseSchema = z.object({
+  listing: listingResponseSchema,
+  review: listingReviewResponseSchema,
+});
+export type SubmitListingResponse = z.infer<typeof submitListingResponseSchema>;
+
 /**
  * What a tenant reviewer sees for a **post** (listing_group) awaiting moderation
  * — the group-level mirror of `listingReviewResponseSchema`.

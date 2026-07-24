@@ -1,10 +1,11 @@
 import type { CanActivate } from '@nestjs/common';
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantContextService } from '../../../../../shared/tenant-context/tenant-context.service';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
 } from '../../../../tenancy/domain/ports/tenant-repository.port';
+import { PartnerPromotionsDisabled } from '../../../application/promotion-http-errors';
 
 /**
  * Gates the partner promotions surface behind a per-tenant toggle (§12.2 — the
@@ -23,11 +24,7 @@ export class PartnerPromotionsEnabledGuard implements CanActivate {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const tenant = await this.tenants.findById(tenantId);
     if (tenant?.settings?.partnerPromotionsEnabled !== true) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'PARTNER_PROMOTIONS_DISABLED',
-        message: 'This tenant has not enabled partner-created promotions',
-      });
+      throw new PartnerPromotionsDisabled();
     }
     return true;
   }

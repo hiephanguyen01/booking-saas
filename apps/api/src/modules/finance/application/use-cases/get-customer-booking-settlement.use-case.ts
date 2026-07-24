@@ -1,5 +1,7 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { Settlement } from '../../domain/entities/settlement.entity';
+import { SettlementNotFound } from '../../domain/errors/finance-domain-errors';
 import {
   FINANCE_TENANT_HOST_READER,
   type IFinanceTenantHostReader,
@@ -38,28 +40,19 @@ export class GetCustomerBookingSettlementUseCase {
     bookingId: string,
   ): Promise<CustomerBookingSettlementView> {
     const tenantId = await this.tenants.resolveTenantId(host);
-    if (!tenantId) throw this.notFound();
+    if (!tenantId) throw new SettlementNotFound();
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       if (!(await this.disputes.customerOwnsBooking(tx, bookingId, customerId))) {
-        throw this.notFound();
+        throw new SettlementNotFound();
       }
       const settlement = await this.settlements.findByBooking(tx, bookingId);
-      if (!settlement) throw this.notFound();
+      if (!settlement) throw new SettlementNotFound();
       const dispute = await this.disputes.findLatestBySettlement(tx, settlement.id);
-      const canOpenDispute =
-        dispute === null &&
-        settlement.status === 'dispute_window' &&
-        settlement.disputeUntil !== null &&
-        settlement.disputeUntil > (await this.tenantDb.databaseNow(tx));
+      const canOpenDispute = Settlement.rehydrate(settlement).canOpenDispute(
+        await this.tenantDb.databaseNow(tx),
+        dispute !== null,
+      );
       return { settlement, dispute, canOpenDispute };
-    });
-  }
-
-  private notFound(): NotFoundException {
-    return new NotFoundException({
-      statusCode: 404,
-      code: 'SETTLEMENT_NOT_FOUND',
-      message: 'Settlement not found',
     });
   }
 }

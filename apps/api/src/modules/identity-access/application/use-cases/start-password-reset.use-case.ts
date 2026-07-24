@@ -21,13 +21,14 @@ export class StartPasswordResetUseCase {
 
   async execute(input: PasswordResetStartInput): Promise<AuthChallengeResponse> {
     const user = await this.users.findByEmail(input.email);
+    const isPasswordAccount = Boolean(user?.passwordHash);
     const challenge = await this.challenges.issue({
       purpose: 'password_reset',
       email: input.email,
       locale: input.locale,
-      ...(user?.passwordHash ? { userId: user.id, fullName: user.fullName } : {}),
+      ...(isPasswordAccount && user ? { userId: user.id, fullName: user.fullName } : {}),
     });
-    if (user?.passwordHash) {
+    if (isPasswordAccount && user) {
       await this.email.sendOtp({
         purpose: 'password_reset',
         email: input.email,

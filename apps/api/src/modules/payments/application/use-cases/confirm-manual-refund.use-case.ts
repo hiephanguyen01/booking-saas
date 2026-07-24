@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { ConfirmManualRefundInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -8,6 +8,8 @@ import {
   type IRefundRepository,
   type RefundRecord,
 } from '../../domain/ports/refund-repository.port';
+import { Refund } from '../../domain/entities/refund.entity';
+import { RefundNotFound, RefundReferenceAlreadyUsed } from '../../domain/errors/refund-errors';
 
 /** Tenant confirms the external bank transfer required by SePay/manual gateways. */
 @Injectable()
@@ -27,29 +29,12 @@ export class ConfirmManualRefundUseCase {
   ): Promise<RefundRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       let found = await this.refunds.findById(tx, refundId);
-      if (!found) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'REFUND_NOT_FOUND',
-          message: 'Refund not found',
-        });
-      }
+      if (!found) throw new RefundNotFound();
       await this.refunds.lockForBooking(tx, found.bookingId);
       found = (await this.refunds.findById(tx, refundId)) ?? found;
-      if (found.status === 'succeeded') return found;
-      if (!['manual_required', 'pending'].includes(found.status)) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'REFUND_NOT_CONFIRMABLE',
-          message: `Refund is ${found.status}`,
-        });
-      }
+      if (Refund.rehydrate(found).classifyConfirmation() === 'already_succeeded') return found;
       if (await this.refunds.manualReferenceExists(tx, tenantId, input.reference)) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'REFUND_REFERENCE_ALREADY_USED',
-          message: 'Refund reference has already been used',
-        });
+        throw new RefundReferenceAlreadyUsed();
       }
       const updated = await this.refunds.markSucceeded(tx, refundId, input);
       if (!updated) throw new NotFoundException();

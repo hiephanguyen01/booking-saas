@@ -3,13 +3,23 @@ import { Prisma } from '@prisma/client';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
-  CreateReferralLinkData,
-  IReferralLinkRepository,
+  NewReferralLink,
+  ReferralLinkState,
+} from '../../domain/entities/referral-link.entity';
+import type {
+  IReferralLinkReader,
   ReferralLinkListFilter,
   ReferralLinkRecord,
+} from '../../domain/ports/referral-link-reader.port';
+import type {
+  IReferralLinkRepository,
+  ReferralClickData,
 } from '../../domain/ports/referral-link-repository.port';
 
-type Row = Prisma.ReferralLinkGetPayload<{ include: typeof WITH_LISTING }>;
+type Row = Prisma.ReferralLinkGetPayload<Record<string, never>>;
+type RowWithListing = Prisma.ReferralLinkGetPayload<{
+  include: typeof WITH_LISTING;
+}>;
 
 // A listing-targeted link is unreadable as a bare uuid — join the title so every
 // read of a link can name what it points at.
@@ -31,7 +41,7 @@ function listWhere(affiliateId: string, filter: ReferralLinkListFilter): Prisma.
   return where;
 }
 
-function toRecord(l: Row): ReferralLinkRecord {
+function toState(l: Row): ReferralLinkState {
   return {
     id: l.id,
     tenantId: l.tenantId,
@@ -39,23 +49,34 @@ function toRecord(l: Row): ReferralLinkRecord {
     code: l.code,
     target: l.target,
     listingId: l.listingId,
-    listingTitle: l.listing?.title ?? null,
     clicksCount: l.clicksCount,
     createdAt: l.createdAt,
   };
 }
 
+function toRecord(l: RowWithListing): ReferralLinkRecord {
+  return {
+    ...toState(l),
+    listingTitle: l.listing?.title ?? null,
+  };
+}
+
 @Injectable()
-export class PrismaReferralLinkRepository implements IReferralLinkRepository {
-  async create(tx: PrismaTx, tenantId: string, data: CreateReferralLinkData): Promise<ReferralLinkRecord> {
+export class PrismaReferralLinkRepository
+  implements IReferralLinkRepository, IReferralLinkReader
+{
+  async create(
+    tx: PrismaTx,
+    link: NewReferralLink,
+  ): Promise<ReferralLinkRecord> {
     return toRecord(
       await tx.referralLink.create({
         data: {
-          tenantId,
-          affiliateId: data.affiliateId,
-          code: data.code,
-          target: data.target,
-          listingId: data.listingId,
+          tenantId: link.tenantId,
+          affiliateId: link.affiliateId,
+          code: link.code,
+          target: link.target,
+          listingId: link.listingId,
         },
         include: WITH_LISTING,
       }),
@@ -91,9 +112,12 @@ export class PrismaReferralLinkRepository implements IReferralLinkRepository {
     return { items: rows.map(toRecord), total };
   }
 
-  async findById(tx: PrismaTx, id: string): Promise<ReferralLinkRecord | null> {
-    const l = await tx.referralLink.findUnique({ where: { id }, include: WITH_LISTING });
-    return l ? toRecord(l) : null;
+  async loadById(
+    tx: PrismaTx,
+    id: string,
+  ): Promise<ReferralLinkState | null> {
+    const link = await tx.referralLink.findUnique({ where: { id } });
+    return link ? toState(link) : null;
   }
 
   async delete(tx: PrismaTx, id: string): Promise<void> {
@@ -107,7 +131,7 @@ export class PrismaReferralLinkRepository implements IReferralLinkRepository {
   async recordClick(
     tx: PrismaTx,
     tenantId: string,
-    data: { referralLinkId: string; visitorId: string | null; ipHash: string | null; userAgent: string | null },
+    data: ReferralClickData,
   ): Promise<void> {
     await tx.referralClick.create({
       data: {

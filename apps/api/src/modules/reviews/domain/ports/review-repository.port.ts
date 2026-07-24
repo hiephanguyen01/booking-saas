@@ -6,6 +6,12 @@ import type {
   TenantReviewsQuery,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type {
+  EligibleBooking,
+  NewReview,
+  Review,
+  ReviewState,
+} from '../entities/review.entity';
 
 export const REVIEW_REPOSITORY = Symbol('REVIEW_REPOSITORY');
 
@@ -81,21 +87,24 @@ export interface CustomerReviewPage {
 }
 
 export interface IReviewRepository {
-  create(
-    tx: PrismaTx,
-    tenantId: string,
-    customerId: string,
-    data: { bookingId: string; rating: number; content: string; media: ReviewMediaRecord[] },
-  ): Promise<ReviewRecord | null>;
   isReviewableBooking(tx: PrismaTx, customerId: string, bookingId: string): Promise<boolean>;
-  reply(
+  /** §16 eligibility read: owned + completed + not-yet-reviewed booking (null = not eligible). */
+  findEligibleBooking(
+    tx: PrismaTx,
+    customerId: string,
+    bookingId: string,
+  ): Promise<EligibleBooking | null>;
+  /** Insert a validated new review; the `(booking_id)` unique race → `ReviewAlreadyExists`. */
+  insert(
     tx: PrismaTx,
     tenantId: string,
-    reviewId: string,
-    partnerId: string,
-    authorUserId: string,
-    content: string,
-  ): Promise<ReviewRecord | null>;
+    review: NewReview,
+    media: ReviewMediaRecord[],
+  ): Promise<ReviewRecord>;
+  /** Narrow write-state for the reply path (null = review not found). */
+  loadForReply(tx: PrismaTx, reviewId: string): Promise<ReviewState | null>;
+  /** Persist the reply queued on the aggregate; `(review_id)` unique race → `ReviewReplyAlreadyExists`. */
+  saveReply(tx: PrismaTx, tenantId: string, review: Review): Promise<ReviewRecord>;
   listCustomer(
     tx: PrismaTx,
     customerId: string,

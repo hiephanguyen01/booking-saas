@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PROMOTION_REPOSITORY,
@@ -10,6 +10,7 @@ import {
   type IPromoRedemptionRepository,
   type RedemptionUsageStats,
 } from '../../domain/ports/promo-redemption-repository.port';
+import { PromotionNotFound } from '../../domain/errors/promotion-errors';
 
 /** Per-program usage stats (§12.2): usage count + total amount discounted. */
 @Injectable()
@@ -24,7 +25,7 @@ export class PromoUsageStatsUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const promotion = await this.promotions.findById(tx, id);
       if (!promotion) {
-        throw new NotFoundException({ statusCode: 404, code: 'PROMO_NOT_FOUND', message: 'Promotion not found' });
+        throw new PromotionNotFound();
       }
       const stats = await this.redemptions.usageStats(tx, id);
       return { promotion, stats };

@@ -23,3 +23,12 @@ export function domainVerificationRecord(
 ): { name: string; value: string } {
   return { name: `_bookify-verify.${hostname}`, value: token };
 }
+
+/**
+ * The TXT value a custom domain must publish. The random half is supplied by the
+ * caller (the domain layer never generates randomness) — today
+ * `randomBytes(16).toString('hex')`, i.e. 32 hex chars.
+ */
+export function buildVerificationToken(randomHex: string): string {
+  return `bookify-verify=${randomHex}`;
+}

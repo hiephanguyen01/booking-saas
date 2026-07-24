@@ -8,11 +8,10 @@ import {
   type ListingStructure,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { ListingTypePatch, NewListingType } from '../../domain/entities/listing-type.entity';
 import type {
-  CreateListingTypeData,
   IListingTypeRepository,
   ListingTypeRecord,
-  UpdateListingTypeData,
 } from '../../domain/ports/listing-type-repository.port';
 
 /**
@@ -62,7 +61,7 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
   async create(
     tx: PrismaTx,
     tenantId: string,
-    data: CreateListingTypeData,
+    data: NewListingType,
   ): Promise<ListingTypeRecord> {
     return toRecord(
       await tx.listingType.create({
@@ -126,7 +125,7 @@ export class PrismaListingTypeRepository implements IListingTypeRepository {
   async update(
     tx: PrismaTx,
     id: string,
-    data: UpdateListingTypeData,
+    data: ListingTypePatch,
   ): Promise<ListingTypeRecord> {
     return toRecord(
       await tx.listingType.update({

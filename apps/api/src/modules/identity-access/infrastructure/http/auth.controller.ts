@@ -3,10 +3,11 @@ import type {
   AuthFlowCompleteResponse,
   AuthOtpVerifiedResponse,
   AuthSessionResponse,
+  RefreshResponse,
   SessionInfoResponse,
 } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Ip, Post, Req, Res } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { GetSessionInfoUseCase } from '../../application/use-cases/get-session-info.use-case';
@@ -149,9 +150,7 @@ export class AuthController {
   @Post('password-reset/complete')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthFlowCompleteResponseDto })
-  completePasswordReset(
-    @Body() input: AuthPasswordCompleteDto,
-  ): Promise<AuthFlowCompleteResponse> {
+  completePasswordReset(@Body() input: AuthPasswordCompleteDto): Promise<AuthFlowCompleteResponse> {
     return this.completePasswordResetUseCase.execute(input);
   }
 
@@ -226,7 +225,7 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ accessExpiresAt: string }> {
+  ): Promise<RefreshResponse> {
     const tokens = await this.refreshUseCase.execute(req.cookies?.[REFRESH_COOKIE]);
     setSessionCookies(res, tokens);
     return { accessExpiresAt: tokens.accessExpiresAt.toISOString() };
@@ -235,6 +234,8 @@ export class AuthController {
   @AuthenticatedOnly()
   @Post('logout')
   @HttpCode(204)
+  @ApiOperation({ summary: 'End the current session and clear session cookies' })
+  @ApiNoContentResponse()
   async logout(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Res({ passthrough: true }) res: Response,

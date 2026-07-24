@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   PROMOTION_REPOSITORY,
@@ -9,6 +8,10 @@ import {
   PROMO_REDEMPTION_REPOSITORY,
   type IPromoRedemptionRepository,
 } from '../../domain/ports/promo-redemption-repository.port';
+import {
+  PromoRedemption,
+  exceedsPerCustomerLimit,
+} from '../../domain/entities/promo-redemption.entity';
 import { rejectionException } from '../promo-rejection';
 
 /**
@@ -38,19 +41,26 @@ export class ReservePromotionUseCase {
   ): Promise<void> {
     // Per-customer cap: serialise by (promotion, customer) so two tabs can't both slip past (§12.3).
     if (data.usageLimitPerCustomer !== null) {
-      await tx.$executeRaw(
-        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${data.promotionId}), hashtext(${data.customerId}))`,
+      await this.redemptions.lockPerCustomer(tx, data.promotionId, data.customerId);
+      const used = await this.redemptions.countActiveByCustomer(
+        tx,
+        data.promotionId,
+        data.customerId,
       );
-      const used = await this.redemptions.countActiveByCustomer(tx, data.promotionId, data.customerId);
-      if (used >= data.usageLimitPerCustomer) throw rejectionException('PROMO_LIMIT_REACHED');
+      if (exceedsPerCustomerLimit(used, data.usageLimitPerCustomer))
+        throw rejectionException('PROMO_LIMIT_REACHED');
     }
     const claimed = await this.promotions.claimUsage(tx, data.promotionId);
     if (!claimed) throw rejectionException('PROMO_LIMIT_REACHED');
-    await this.redemptions.reserve(tx, tenantId, {
-      promotionId: data.promotionId,
-      bookingId: data.bookingId,
-      customerId: data.customerId,
-      discountAmount: data.discountAmount,
-    });
+    await this.redemptions.reserve(
+      tx,
+      tenantId,
+      PromoRedemption.open({
+        promotionId: data.promotionId,
+        bookingId: data.bookingId,
+        customerId: data.customerId,
+        discountAmount: data.discountAmount,
+      }),
+    );
   }
 }

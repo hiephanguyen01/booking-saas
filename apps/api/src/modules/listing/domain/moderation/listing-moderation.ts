@@ -1,11 +1,12 @@
 import type { ModerationActor, PublishStatus } from '@booking/contracts';
+import { DomainError } from '../../../../shared/domain/domain-error';
 
 /**
  * Post moderation state machine (TONG-QUAN.md §7.3). A post/standalone listing
  * flows `draft → pending_review → published`, and can be hidden to `archived`.
  * The load-bearing domain rule: a post **hidden by an admin cannot be
  * re-published by the partner** — only an admin can unlock it. Pure and
- * framework-free; the use case maps `ModerationError` onto HTTP status codes.
+ * framework-free; typed `DomainError`s are translated by the global filter.
  */
 
 export interface ModerationState {
@@ -20,13 +21,9 @@ export interface ModerationOutcome {
   hiddenBy: ModerationActor | null;
 }
 
-export class ModerationError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ModerationError';
+export class ModerationError extends DomainError {
+  constructor(code: string, message: string) {
+    super(code, code === 'LISTING_ADMIN_LOCKED' ? 403 : 400, message);
   }
 }
 
@@ -59,13 +56,17 @@ export function transitionPublish(
 /**
  * published/pending_review → archived (hidden). Records who hid it.
  *
- * An **admin** hide always escalates the lock to `admin`, even on a post the
- * partner already hid (or an already-archived one) — otherwise an admin hiding a
- * partner-hidden post would be a no-op and the partner could still republish it
- * (§7.3: an admin lock can only be lifted by an admin). Conversely a **partner**
- * hide must never downgrade an existing admin lock.
+ * Only visible/reviewable posts can be hidden. An admin hide records an admin
+ * lock; a partner hide records a partner lock. An archived post must use the
+ * republish/resubmit transitions instead of being hidden again.
  */
 export function transitionHide(state: ModerationState, actor: ModerationActor): ModerationOutcome {
+  if (state.status !== 'pending_review' && state.status !== 'published') {
+    throw new ModerationError(
+      'LISTING_NOT_HIDEABLE',
+      `A listing can only be hidden from pending_review or published (was ${state.status})`,
+    );
+  }
   const hiddenBy: ModerationActor =
     actor === 'admin' || state.hiddenBy === 'admin' ? 'admin' : actor;
   return { status: 'archived', publishedBy: state.publishedBy, hiddenBy };

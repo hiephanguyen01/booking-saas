@@ -4,6 +4,7 @@ import { TenantContextModule } from '../../../../shared/tenant-context/tenant-co
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
 import { AdministrativeDivisionModule } from '../../../administrative-division/infrastructure/http/administrative-division.module';
+import { PARTNER_READER } from '../../domain/ports/partner-reader.port';
 import { PARTNER_REPOSITORY } from '../../domain/ports/partner-repository.port';
 import { AGREEMENT_REPOSITORY } from '../../domain/ports/agreement-repository.port';
 import { PARTNER_ROLES } from '../../domain/ports/partner-roles.port';
@@ -45,7 +46,9 @@ import { PublicPartnerController } from './public-partner.controller';
     PublicPartnerController,
   ],
   providers: [
-    { provide: PARTNER_REPOSITORY, useClass: PrismaPartnerRepository },
+    PrismaPartnerRepository,
+    { provide: PARTNER_REPOSITORY, useExisting: PrismaPartnerRepository },
+    { provide: PARTNER_READER, useExisting: PrismaPartnerRepository },
     { provide: AGREEMENT_REPOSITORY, useClass: PrismaAgreementRepository },
     { provide: PARTNER_ROLES, useClass: PrismaPartnerRoles },
     { provide: PUBLIC_PARTNER_REPOSITORY, useClass: PrismaPublicPartnerRepository },

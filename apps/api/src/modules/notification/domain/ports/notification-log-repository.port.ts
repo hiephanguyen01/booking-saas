@@ -1,25 +1,15 @@
-export const NOTIFICATION_LOG_REPOSITORY = Symbol('NOTIFICATION_LOG_REPOSITORY');
+import type { NotificationLogEntry } from '../entities/notification-delivery.entity';
 
-export interface NotificationLogRecord {
-  tenantId: string | null;
-  userId: string | null;
-  channel: 'email' | 'zns' | 'in_app';
-  eventType: string;
-  recipient: string;
-  status: 'pending' | 'sent' | 'failed';
-  /** Deterministic key stored in `payload.dedupeKey` — the idempotency guard (§17 DoD). */
-  dedupeKey: string;
-  error?: string | null;
-  payload?: Record<string, unknown>;
-}
+export const NOTIFICATION_LOG_REPOSITORY = Symbol('NOTIFICATION_LOG_REPOSITORY');
 
 /**
  * `notification_logs` access. Writes go through the BYPASSRLS admin pool because
  * `tenant_id` can be null (platform-wide rows) and the RLS policy has no WITH CHECK
- * for the app_user role — same shape as outbox_events / audit_logs.
+ * for the app_user role — same shape as outbox_events / audit_logs. This port takes
+ * NO `PrismaTx` on purpose: a delivery log must not join a business transaction.
  */
 export interface INotificationLogRepository {
   /** True once a `sent` row exists for this dedupe key (guards outbox retries). */
   alreadySent(dedupeKey: string): Promise<boolean>;
-  record(entry: NotificationLogRecord): Promise<void>;
+  record(entry: NotificationLogEntry): Promise<void>;
 }

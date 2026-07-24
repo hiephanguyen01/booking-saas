@@ -1,11 +1,17 @@
 import { randomInt } from 'node:crypto';
-import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateReferralLinkInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { ReferralLink } from '../../domain/entities/referral-link.entity';
+import { ReferralCodeCollision } from '../../domain/errors/affiliate-errors';
+import {
+  REFERRAL_LINK_READER,
+  type IReferralLinkReader,
+  type ReferralLinkRecord,
+} from '../../domain/ports/referral-link-reader.port';
 import {
   REFERRAL_LINK_REPOSITORY,
   type IReferralLinkRepository,
-  type ReferralLinkRecord,
 } from '../../domain/ports/referral-link-repository.port';
 import { generateReferralCode } from '../../domain/referral-code';
 
@@ -14,6 +20,7 @@ import { generateReferralCode } from '../../domain/referral-code';
 export class CreateReferralLinkUseCase {
   constructor(
     @Inject(REFERRAL_LINK_REPOSITORY) private readonly links: IReferralLinkRepository,
+    @Inject(REFERRAL_LINK_READER) private readonly linkReader: IReferralLinkReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -22,22 +29,22 @@ export class CreateReferralLinkUseCase {
     affiliateId: string,
     input: CreateReferralLinkInput,
   ): Promise<ReferralLinkRecord> {
-    if (input.target === 'listing' && !input.listingId) {
-      throw new BadRequestException({ statusCode: 400, code: 'LISTING_REQUIRED', message: 'listingId is required' });
-    }
+    ReferralLink.prevalidateTarget(input);
 
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       for (let attempt = 0; attempt < 5; attempt++) {
         const code = generateReferralCode((max) => randomInt(max));
-        if (await this.links.findByCode(tx, code)) continue;
-        return this.links.create(tx, tenantId, {
+        if (await this.linkReader.findByCode(tx, code)) continue;
+        const link = ReferralLink.open({
+          tenantId,
           affiliateId,
           code,
           target: input.target,
-          listingId: input.target === 'listing' ? (input.listingId ?? null) : null,
+          listingId: input.listingId,
         });
+        return this.links.create(tx, link);
       }
-      throw new ConflictException({ statusCode: 409, code: 'CODE_COLLISION', message: 'Could not allocate a unique code' });
+      throw new ReferralCodeCollision();
     });
   }
 }

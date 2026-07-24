@@ -523,6 +523,46 @@ export async function seedDemoCatalog(input: {
     }
   }
 
+  const studioType = listingTypes.get('studio')!;
+  const studioCategory = categories.get('studio')!;
+  const draftGroupSlug = 'seed-draft-studio-group';
+  const draftListingSlug = 'seed-draft-studio';
+  desiredGroupSlugs.add(draftGroupSlug);
+  desiredListingSlugs.add(draftListingSlug);
+  await upsertStudioGroup(
+    prisma,
+    tenantId,
+    input.servicePartnerId,
+    studioType.id,
+    draftGroupSlug,
+    99,
+    LOCATIONS[0]!,
+    'draft',
+  );
+  await upsertListing(prisma, {
+    tenantId,
+    partnerId: input.servicePartnerId,
+    listingTypeId: studioType.id,
+    groupId: null,
+    categoryId: studioCategory.id,
+    cancellationPolicyId: input.cancellationPolicyId,
+    title: 'Studio bản nháp — dữ liệu kiểm thử thủ công',
+    slug: draftListingSlug,
+    description: 'Fixture bền cho các smoke flow yêu cầu một listing chưa được xuất bản.',
+    photos: photosFor('draft-studio', 1),
+    bookingModes: ['hourly'],
+    attributes: { area: 30, style: 'Tối giản', naturalLight: true, ceilingHeight: 3 },
+    modeConfig: {
+      hourly: { basePrice: '300000', minHours: 1, maxHours: 8, granularityMinutes: 60 },
+    },
+    capacity: 8,
+    bufferBefore: 30,
+    bufferAfter: 30,
+    depositPercent: 50,
+    location: LOCATIONS[0]!,
+    status: 'draft',
+  });
+
   await cleanupLegacyStudioHubCatalog(
     prisma,
     tenantId,
@@ -671,6 +711,7 @@ async function upsertStudioGroup(
   slug: string,
   index: number,
   location: LocationFixture,
+  status: 'published' | 'draft' = 'published',
 ) {
   const title = `Tổ hợp Studio ${location.shortName} ${String(index + 1).padStart(2, '0')}`;
   const data = {
@@ -693,8 +734,8 @@ async function upsertStudioGroup(
       'Khu makeup',
       'Wi-Fi tốc độ cao',
     ],
-    status: 'published' as const,
-    publishedBy: 'partner' as const,
+    status,
+    publishedBy: status === 'published' ? ('partner' as const) : null,
     // Review aggregates are projections of persisted reviews only.
     ratingAvg: null,
     reviewCount: 0,
@@ -729,6 +770,7 @@ async function upsertListing(
     bufferAfter: number;
     depositPercent: number;
     location: LocationFixture;
+    status?: 'published' | 'draft';
   },
 ) {
   const existing = await prisma.listing.findUnique({
@@ -761,9 +803,9 @@ async function upsertListing(
     rescheduleAllowed: true,
     rescheduleDeadlineHours: 24,
     rescheduleFee: 100_000n,
-    status: 'published' as const,
-    publishedBy: 'partner' as const,
-    publishedAt: new Date(),
+    status: input.status ?? ('published' as const),
+    publishedBy: input.status === 'draft' ? null : ('partner' as const),
+    publishedAt: input.status === 'draft' ? null : new Date(),
   };
 
   if (existing) {

@@ -1,10 +1,10 @@
-import { BadRequestException } from '@nestjs/common';
 import type { QuoteResponse } from '@booking/contracts';
 import {
   computeQuoteResponse,
   PricingError,
   type QuoteInput,
 } from '../domain/pricing/quote-calculator';
+import { ListingPricingRejected } from '../domain/errors/pricing-rule-errors';
 
 /**
  * Prices a quote via the pure {@link computeQuoteResponse} calculator, mapping
@@ -17,7 +17,7 @@ export function priceQuote(input: QuoteInput): QuoteResponse {
     return computeQuoteResponse(input);
   } catch (err) {
     if (err instanceof PricingError) {
-      throw new BadRequestException({ statusCode: 400, code: err.code, message: err.message });
+      throw new ListingPricingRejected(err.code, err.message);
     }
     throw err;
   }

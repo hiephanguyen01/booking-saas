@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import {
@@ -6,6 +6,7 @@ import {
   type IListingRepository,
   type PublicListingRecord,
 } from '../../domain/ports/listing-repository.port';
+import { ListingNotFound } from '../../domain/errors/listing-errors';
 
 /** Storefront listing detail, resolved from the Host. Published listings only. */
 @Injectable()
@@ -22,11 +23,7 @@ export class GetPublicListingUseCase {
       this.listings.findPublicBySlug(tx, slug),
     );
     if (!listing) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'LISTING_NOT_FOUND',
-        message: 'Listing not found',
-      });
+      throw new ListingNotFound();
     }
     return listing;
   }

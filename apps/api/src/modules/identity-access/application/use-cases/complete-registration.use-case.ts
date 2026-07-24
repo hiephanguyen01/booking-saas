@@ -1,5 +1,6 @@
 import type { AuthFlowCompleteResponse, AuthPasswordCompleteInput } from '@booking/contracts';
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { UserAccount } from '../../domain/entities/user-account.entity';
 import {
   AUTH_CHALLENGE_STORE,
   type IAuthChallengeStore,
@@ -19,20 +20,17 @@ export class CompleteRegistrationUseCase {
   async execute(input: AuthPasswordCompleteInput): Promise<AuthFlowCompleteResponse> {
     const payload = await this.challenges.consumeCompletion(input.completionToken, 'registration');
     if (!payload?.fullName) expired();
-    if (await this.users.findByEmail(payload.email)) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'EMAIL_TAKEN',
-        message: 'Email is already registered',
-      });
-    }
-    await this.users.create({
+    const existing = await this.users.findByEmail(payload.email);
+    UserAccount.assertEmailAvailable(existing);
+    const passwordHash = await this.hasher.hash(input.password);
+    const newUser = UserAccount.register({
       email: payload.email,
       fullName: payload.fullName,
       locale: payload.locale,
-      passwordHash: await this.hasher.hash(input.password),
+      passwordHash,
       emailVerifiedAt: new Date(),
     });
+    await this.users.create(newUser);
     return { success: true };
   }
 }

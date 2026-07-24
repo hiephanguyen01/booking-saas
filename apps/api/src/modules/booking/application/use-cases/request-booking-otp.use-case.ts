@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import { BookingNotFound } from '../../../../shared/domain/errors/booking-not-found';
 import { SendBookingOtpUseCase } from '../../../notification/application/use-cases/send-booking-otp.use-case';
 import { BOOKING_REPOSITORY, type IBookingRepository } from '../../domain/ports/booking-repository.port';
 import { OTP_STORE, type IOtpStore } from '../../domain/ports/otp-store.port';
@@ -18,7 +19,7 @@ export class RequestBookingOtpUseCase {
 
   async execute(tenantId: string, code: string): Promise<{ code: string; expiresInSec: number; devOtp?: string }> {
     const booking = await this.tenantDb.forTenant(tenantId, (tx) => this.bookings.findByCode(tx, code));
-    if (!booking) throw new NotFoundException({ statusCode: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    if (!booking) throw new BookingNotFound();
     const { otp, expiresInSec } = await this.otp.issue(code);
     // Synchronous send — the plaintext OTP is never persisted, so it can't ride the
     // outbox. `sendBookingOtp` swallows its own delivery errors (the code stays valid).

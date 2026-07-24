@@ -1,9 +1,9 @@
 import {
   uuidSchema,
   type ListingResponse,
-  type ListingReviewResponse,
   type PaginatedWithCounts,
   type DepositRequirementResponse,
+  type SubmitListingResponse,
 } from '@booking/contracts';
 import {
   Body,
@@ -18,7 +18,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -163,6 +169,8 @@ export class PartnerListingModerationController {
   @UseGuards(RequireActiveSubscriptionGuard)
   @Delete(':id')
   @HttpCode(204)
+  @ApiOperation({ summary: "Delete the partner's own draft listing" })
+  @ApiNoContentResponse()
   async remove(@Param('id', new ZodValidationPipe(uuidSchema)) id: string): Promise<void> {
     await this.deleteListing.execute(this.tenantContext.tenantIdOrThrow(), id, {
       requirePartnerId: this.tenantContext.partnerIdOrThrow(),
@@ -189,7 +197,7 @@ export class PartnerListingModerationController {
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @CurrentPrincipal() principal: SessionPrincipal,
     @Ip() ip: string,
-  ): Promise<{ listing: ListingResponse; review: ListingReviewResponse }> {
+  ): Promise<SubmitListingResponse> {
     const { listing, review } = await this.submitListing.execute(this.ctx(principal, ip), id);
     return { listing: toListingResponse(listing), review };
   }

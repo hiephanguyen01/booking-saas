@@ -1,5 +1,6 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { UpgradeGuestInput } from '@booking/contracts';
+import { UserAccount } from '../../domain/entities/user-account.entity';
 import { PASSWORD_HASHER, type IPasswordHasher } from '../../domain/ports/password-hasher.port';
 import {
   SESSION_STORE,
@@ -32,21 +33,10 @@ export class UpgradeGuestUseCase {
     meta: { ip?: string; userAgent?: string },
   ): Promise<{ user: UserRecord; tokens: SessionTokens }> {
     const existing = await this.users.findByEmail(input.email);
-    if (!existing) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'GUEST_NOT_FOUND',
-        message: 'No guest booking found for this email — book first, then upgrade',
-      });
-    }
-    if (existing.passwordHash !== null) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'EMAIL_REGISTERED',
-        message: 'This email already has an account — please sign in',
-      });
-    }
-    const user = await this.users.setPassword(existing.id, await this.hasher.hash(input.password));
+    const guest = UserAccount.requireGuestForUpgrade(existing);
+    const passwordHash = await this.hasher.hash(input.password);
+    const passwordIntent = guest.changePasswordHash(passwordHash);
+    const user = await this.users.setPassword(guest.id, passwordIntent.passwordHash);
     const tokens = await this.sessions.create(user.id, meta);
     return { user, tokens };
   }

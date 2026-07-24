@@ -29,7 +29,7 @@ export class GetSubscriptionStatusUseCase {
     private readonly checkBookingQuota: CheckBookingQuotaUseCase,
   ) {}
 
-  async execute(tenantId: string, now: Date): Promise<SubscriptionStatusView> {
+  async execute(tenantId: string): Promise<SubscriptionStatusView> {
     const current = await this.getCurrent.execute(tenantId);
     const snapshot = current
       ? {
@@ -38,10 +38,14 @@ export class GetSubscriptionStatusUseCase {
           expiresAt: current.subscription.expiresAt,
         }
       : null;
-    const evaluation = evaluateSubscription(snapshot, now);
+    // No subscription always evaluates expired, independent of the clock. A
+    // present subscription carries the DB clock captured with its selection.
+    const evaluation = evaluateSubscription(snapshot, current?.evaluatedAt ?? new Date(0));
 
-    const quota = await this.checkBookingQuota.execute(tenantId, now);
-    const bookingQuota = current
+    const quota = current
+      ? await this.checkBookingQuota.execute(tenantId, current.evaluatedAt)
+      : null;
+    const bookingQuota = quota
       ? { used: quota.current, limit: quota.limit, overLimit: quota.overLimit }
       : null;
 

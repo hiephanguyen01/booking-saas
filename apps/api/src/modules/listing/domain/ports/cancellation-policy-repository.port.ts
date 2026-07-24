@@ -1,5 +1,9 @@
 import type { CancellationTier } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type {
+  CancellationPolicyPatch,
+  NewCancellationPolicy,
+} from '../entities/cancellation-policy.entity';
 
 export const CANCELLATION_POLICY_REPOSITORY = Symbol('CANCELLATION_POLICY_REPOSITORY');
 
@@ -14,17 +18,6 @@ export interface CancellationPolicyRecord {
   updatedAt: Date;
 }
 
-export interface CreateCancellationPolicyData {
-  partnerId: string | null;
-  name: string;
-  rules: CancellationTier[];
-}
-
-export interface UpdateCancellationPolicyData {
-  name?: string;
-  rules?: CancellationTier[];
-}
-
 export interface ICancellationPolicyRepository {
   /** Policies a partner may pick from: their own + tenant-level (partner_id null), by name. */
   listForPartner(tx: PrismaTx, partnerId: string): Promise<CancellationPolicyRecord[]>;
@@ -34,12 +27,12 @@ export interface ICancellationPolicyRepository {
   create(
     tx: PrismaTx,
     tenantId: string,
-    data: CreateCancellationPolicyData,
+    data: NewCancellationPolicy,
   ): Promise<CancellationPolicyRecord>;
   update(
     tx: PrismaTx,
     id: string,
-    data: UpdateCancellationPolicyData,
+    patch: CancellationPolicyPatch,
   ): Promise<CancellationPolicyRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   /** Listings whose OWN cancellationPolicyId points at this policy (delete guard). */

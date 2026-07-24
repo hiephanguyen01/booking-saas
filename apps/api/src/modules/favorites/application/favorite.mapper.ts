@@ -11,7 +11,7 @@ import type {
   FavoriteEntryRecord,
   FavoriteListPage,
   FavoriteSummaryRecord,
-} from '../domain/ports/favorite-repository.port';
+} from '../domain/ports/favorite-reader.port';
 
 export function toFavoriteCard(record: FavoriteCardRecord): PublicListingResponse {
   return {

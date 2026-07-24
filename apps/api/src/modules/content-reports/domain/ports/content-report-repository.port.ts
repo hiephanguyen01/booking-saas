@@ -1,70 +1,38 @@
-import type {
-  ContentReportStatus,
-  ContentReportTarget,
-  CreateContentReportInput,
-  TenantContentReportsQuery,
-} from '@booking/contracts';
+import type { ContentReportTarget } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type {
+  ContentReport,
+  ContentReportState,
+  NewContentReport,
+  ReportableTarget,
+} from '../entities/content-report.entity';
+import type { ContentReportRecord } from './content-report-reader.port';
 
 export const CONTENT_REPORT_REPOSITORY = Symbol('CONTENT_REPORT_REPOSITORY');
 
-export interface ReportTargetRecord {
-  target: ContentReportTarget;
-  id: string;
-  title: string;
-  slug: string;
-  partnerId: string;
-  partnerName: string;
-}
-
-export interface ContentReportRecord {
-  id: string;
-  target: ContentReportTarget;
-  targetId: string;
-  targetTitle: string;
-  targetSlug: string;
-  partnerId: string | null;
-  partnerName: string;
-  reporterUserId: string | null;
-  reporterName: string;
-  reason: CreateContentReportInput['reason'];
-  details: string | null;
-  status: ContentReportStatus;
-  handledByUserId: string | null;
-  resolutionNote: string | null;
-  handledAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ContentReportPage {
-  items: ContentReportRecord[];
-  total: number;
-  counts: Record<string, number>;
-}
-
 export interface IContentReportRepository {
+  /** Cross-module ACL read: published listing/group under an approved partner (null = not reportable). */
   findPublishedTarget(
     tx: PrismaTx,
     target: ContentReportTarget,
     targetId: string,
-  ): Promise<ReportTargetRecord | null>;
+  ): Promise<ReportableTarget | null>;
   getReporterName(tx: PrismaTx, userId: string): Promise<string | null>;
+  /**
+   * Insert a new report or return the reporter's active one for the same target.
+   * Duplicate blocking stays concurrency-safe in here: createMany skipDuplicates +
+   * the DB partial unique index + refetch (never in-memory check-then-create).
+   */
   createOrFindActive(
     tx: PrismaTx,
     tenantId: string,
-    reporterUserId: string,
-    reporterName: string,
-    target: ReportTargetRecord,
-    input: CreateContentReportInput,
+    report: NewContentReport,
   ): Promise<{ report: ContentReportRecord; duplicate: boolean }>;
-  list(tx: PrismaTx, query: TenantContentReportsQuery): Promise<ContentReportPage>;
-  findById(tx: PrismaTx, id: string): Promise<ContentReportRecord | null>;
-  updateStatus(
-    tx: PrismaTx,
-    id: string,
-    status: ContentReportStatus,
-    resolutionNote: string | null,
-    handledByUserId: string,
-  ): Promise<ContentReportRecord>;
+  /** Narrow write-state for the moderation path (null = report not found). */
+  loadForModeration(tx: PrismaTx, id: string): Promise<ContentReportState | null>;
+  /**
+   * Persist only while the stored status still equals the aggregate pre-image.
+   * `null` is a CAS miss, not a not-found signal.
+   */
+  saveModeration(tx: PrismaTx, report: ContentReport): Promise<ContentReportRecord | null>;
 }

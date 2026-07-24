@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
@@ -9,12 +9,16 @@ import { PAYOUT_REPOSITORY } from '../../domain/ports/payout-repository.port';
 import { SETTLEMENT_REPOSITORY } from '../../domain/ports/settlement-repository.port';
 import { SETTLEMENT_DISPUTE_REPOSITORY } from '../../domain/ports/settlement-dispute-repository.port';
 import { FINANCE_TENANT_HOST_READER } from '../../domain/ports/finance-tenant-host-reader.port';
+import { PAYOUT_POLICY_STORE } from '../../domain/ports/payout-policy-store.port';
+import { PLATFORM_FINANCE_READER } from '../../domain/ports/platform-finance-reader.port';
 import { PrismaCommissionRuleRepository } from '../repositories/prisma-commission-rule.repository';
 import { PrismaLedgerRepository } from '../repositories/prisma-ledger.repository';
 import { PrismaPayoutRepository } from '../repositories/prisma-payout.repository';
 import { PrismaSettlementRepository } from '../repositories/prisma-settlement.repository';
 import { PrismaSettlementDisputeRepository } from '../repositories/prisma-settlement-dispute.repository';
 import { PrismaFinanceTenantHostReader } from '../repositories/prisma-finance-tenant-host.reader';
+import { PrismaPayoutPolicyStore } from '../repositories/prisma-payout-policy.store';
+import { PrismaPlatformFinanceReader } from '../repositories/prisma-platform-finance.reader';
 import { ResolveCommissionUseCase } from '../../application/use-cases/resolve-commission.use-case';
 import { RecordClawbackJournalUseCase } from '../../application/use-cases/record-clawback-journal.use-case';
 import { ComputePayoutPayableUseCase } from '../../application/use-cases/compute-payout-payable.use-case';
@@ -22,7 +26,6 @@ import { ListCommissionRulesUseCase } from '../../application/use-cases/list-com
 import { CreateCommissionRuleUseCase } from '../../application/use-cases/create-commission-rule.use-case';
 import { UpdateCommissionRuleUseCase } from '../../application/use-cases/update-commission-rule.use-case';
 import { DeleteCommissionRuleUseCase } from '../../application/use-cases/delete-commission-rule.use-case';
-import { SetPlatformRateUseCase } from '../../application/use-cases/set-platform-rate.use-case';
 import { ListPayoutsUseCase } from '../../application/use-cases/list-payouts.use-case';
 import { CreatePayoutUseCase } from '../../application/use-cases/create-payout.use-case';
 import { MarkPayoutPaidUseCase } from '../../application/use-cases/mark-payout-paid.use-case';
@@ -79,6 +82,8 @@ import { TenantDisputeController } from './tenant-dispute.controller';
       useClass: PrismaSettlementDisputeRepository,
     },
     { provide: FINANCE_TENANT_HOST_READER, useClass: PrismaFinanceTenantHostReader },
+    { provide: PAYOUT_POLICY_STORE, useClass: PrismaPayoutPolicyStore },
+    { provide: PLATFORM_FINANCE_READER, useClass: PrismaPlatformFinanceReader },
     ResolveCommissionUseCase,
     RecordClawbackJournalUseCase,
     ComputePayoutPayableUseCase,
@@ -86,7 +91,6 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     CreateCommissionRuleUseCase,
     UpdateCommissionRuleUseCase,
     DeleteCommissionRuleUseCase,
-    SetPlatformRateUseCase,
     ListPayoutsUseCase,
     CreatePayoutUseCase,
     MarkPayoutPaidUseCase,
@@ -123,6 +127,8 @@ import { TenantDisputeController } from './tenant-dispute.controller';
   exports: [ResolveCommissionUseCase],
 })
 export class FinanceModule implements OnModuleInit {
+  private readonly logger = new Logger(FinanceModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly recordHeldSettlement: RecordHeldSettlementUseCase,
@@ -146,25 +152,33 @@ export class FinanceModule implements OnModuleInit {
   onModuleInit(): void {
     this.registry.register('payment.succeeded', (event) => {
       const payload = event.payload as { paymentId: string };
-      return this.recordHeldSettlement.execute(event.tenantId ?? '', payload.paymentId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.recordHeldSettlement.execute(tenantId, payload.paymentId);
     });
     this.registry.register('booking.completed', (event) => {
       const payload = event.payload as { bookingId: string; onsiteCollectedAmount?: string };
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
       return this.startSettlementWindow.execute(
-        event.tenantId ?? '',
+        tenantId,
         payload.bookingId,
         payload.onsiteCollectedAmount === undefined
           ? undefined
           : BigInt(payload.onsiteCollectedAmount),
       );
     });
-    this.registry.register('booking.no_show', (event) =>
-      this.startNoShowWindow.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
+    this.registry.register('booking.no_show', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.startNoShowWindow.execute(tenantId, bookingIdOf(event.payload));
+    });
     this.registry.register('booking.cancelled', (event) => {
       const p = event.payload as { bookingId: string; refundAmount?: string };
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
       return this.prepareRefund.execute(
-        event.tenantId ?? '',
+        tenantId,
         p.bookingId,
         BigInt(p.refundAmount ?? '0'),
         'cancellation_fee',
@@ -178,8 +192,10 @@ export class FinanceModule implements OnModuleInit {
         affectsBookingStatus?: boolean;
       };
       if (p.affectsBookingStatus === false) return Promise.resolve();
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
       return this.prepareRefund.execute(
-        event.tenantId ?? '',
+        tenantId,
         p.bookingId,
         BigInt(p.amount),
         p.reason === 'booking_cancellation' ? 'cancellation_fee' : undefined,
@@ -195,22 +211,38 @@ export class FinanceModule implements OnModuleInit {
         affectsBookingStatus?: boolean;
       };
       if (p.affectsBookingStatus === false) return;
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return;
       await this.finalizeRefund.execute(
-        event.tenantId ?? '',
+        tenantId,
         p.bookingId,
         p.refundId,
         BigInt(p.amount),
         p.reason,
       );
-      await this.clawbackJournal.execute(event.tenantId ?? '', p.bookingId);
+      await this.clawbackJournal.execute(tenantId, p.bookingId);
     });
-    this.registry.register('booking.refunded', (event) =>
-      this.clawbackJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
+    this.registry.register('booking.refunded', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.clawbackJournal.execute(tenantId, bookingIdOf(event.payload));
+    });
     this.registry.register('settlement.release_requested', (event) => {
       const p = event.payload as { settlementId: string };
-      return this.releaseSettlement.execute(event.tenantId ?? '', p.settlementId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.releaseSettlement.execute(tenantId, p.settlementId);
     });
+  }
+
+  /**
+   * Finance handlers always open an RLS transaction. An unroutable event must be
+   * logged and skipped instead of passing an empty string to the tenant UUID GUC.
+   */
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }
 

@@ -11,6 +11,7 @@ import type { GatewayKey } from '../../domain/ports/payment-gateway.port';
 import type {
   CreatePaymentData,
   IPaymentRepository,
+  PaymentCompletionPayload,
   PaymentHistoryRecord,
   PaymentRecord,
   PaymentRef,
@@ -53,18 +54,10 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           gatewayTxnId: data.gatewayTxnId,
           paymentMethod: data.paymentMethod,
           idempotencyKey: data.idempotencyKey,
-          gatewayPayload: (data.gatewayPayload ?? undefined) as Prisma.InputJsonValue | undefined,
+          gatewayPayload: data.gatewayPayload as Prisma.InputJsonValue | undefined,
         },
       }),
     );
-  }
-
-  async findActivePendingByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
-    const p = await tx.payment.findFirst({
-      where: { bookingId, status: 'pending' },
-      orderBy: { createdAt: 'desc' },
-    });
-    return p ? toRecord(p) : null;
   }
 
   async findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
@@ -112,7 +105,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
   async markSucceeded(
     tx: PrismaTx,
     id: string,
-    payload: unknown,
+    payload: PaymentCompletionPayload,
     gatewayData: {
       gatewayTxnId?: string;
       gatewayOrderId?: string;

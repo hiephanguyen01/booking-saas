@@ -4,6 +4,10 @@ import type { TrackReferralInput, TrackReferralResponse } from '@booking/contrac
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import {
+  AFFILIATE_ATTRIBUTION_READER,
+  type IAffiliateAttributionReader,
+} from '../../domain/ports/affiliate-attribution-reader.port';
+import {
   REFERRAL_LINK_REPOSITORY,
   type IReferralLinkRepository,
 } from '../../domain/ports/referral-link-repository.port';
@@ -19,6 +23,8 @@ import { normalizeReferralCode } from '../../domain/referral-code';
 export class TrackReferralUseCase {
   constructor(
     @Inject(REFERRAL_LINK_REPOSITORY) private readonly links: IReferralLinkRepository,
+    @Inject(AFFILIATE_ATTRIBUTION_READER)
+    private readonly attributionReader: IAffiliateAttributionReader,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -33,19 +39,16 @@ export class TrackReferralUseCase {
     if (!code) return { valid: false };
 
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
-      const link = await tx.referralLink.findFirst({
-        where: { code },
-        select: { id: true, affiliate: { select: { status: true } } },
-      });
-      if (!link || link.affiliate.status !== 'approved') return { valid: false };
+      const link = await this.attributionReader.findApprovedForClick(tx, code);
+      if (!link) return { valid: false };
 
       await this.links.recordClick(tx, tenant.id, {
-        referralLinkId: link.id,
+        referralLinkId: link.linkId,
         visitorId: input.visitorId ?? null,
         ipHash: meta.ip ? createHash('sha256').update(meta.ip).digest('hex') : null,
         userAgent: meta.userAgent ?? null,
       });
-      await this.links.incrementClicks(tx, link.id);
+      await this.links.incrementClicks(tx, link.linkId);
       return { valid: true };
     });
   }

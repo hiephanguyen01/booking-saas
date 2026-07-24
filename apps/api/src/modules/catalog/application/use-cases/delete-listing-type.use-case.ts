@@ -1,6 +1,8 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { ListingType } from '../../domain/entities/listing-type.entity';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
 import {
   LISTING_TYPE_REPOSITORY,
   type IListingTypeRepository,
@@ -18,21 +20,9 @@ export class DeleteListingTypeUseCase {
   async execute(tenantId: string, id: string): Promise<void> {
     await this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.repo.findById(tx, id);
-      if (!existing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_TYPE_NOT_FOUND',
-          message: 'Listing type not found',
-        });
-      }
+      if (!existing) throw new ListingTypeNotFound();
       const inUse = await this.repo.countListingsOfType(tx, id);
-      if (inUse > 0) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_TYPE_IN_USE',
-          message: `Cannot delete a listing type with ${inUse} listing(s); deactivate it instead`,
-        });
-      }
+      ListingType.rehydrate(existing).assertDeletable(inUse);
       await this.repo.delete(tx, id);
       await this.outbox.emit(tx, {
         tenantId,

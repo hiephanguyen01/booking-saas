@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type {
   AvailabilityQuery,
   AvailabilityResponse,
@@ -44,6 +44,10 @@ import {
   findActivePackage,
   ListingModeConfigError,
 } from '../../../listing/domain/pricing/package-config';
+import { ListingNotFound } from '../../../../shared/domain/errors/listing-not-found';
+import { ModeNotEnabled } from '../../../../shared/domain/errors/mode-not-enabled';
+import { ListingPricingRejected } from '../../../listing/domain/errors/pricing-rule-errors';
+import { DailyModeConfigMissing } from '../../domain/errors/availability-errors';
 
 const DAY_MS = 86_400_000;
 
@@ -78,18 +82,10 @@ export class GetAvailabilityUseCase {
     return this.tenantDb.forTenant(tenant.id, async (tx) => {
       const listing = await this.listings.findPublicBySlug(tx, slug);
       if (!listing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_NOT_FOUND',
-          message: 'Listing not found',
-        });
+        throw new ListingNotFound();
       }
       if (!listing.bookingModes.includes(query.mode)) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'MODE_NOT_ENABLED',
-          message: `Listing does not enable "${query.mode}"`,
-        });
+        throw new ModeNotEnabled(query.mode);
       }
 
       const tz = listing.resourceTimezone;
@@ -116,11 +112,7 @@ export class GetAvailabilityUseCase {
           selectedPackage = findActivePackage(modeConfig, query.mode, query.packageId);
         } catch (error) {
           if (error instanceof ListingModeConfigError) {
-            throw new BadRequestException({
-              statusCode: 400,
-              code: error.code,
-              message: error.message,
-            });
+            throw new ListingPricingRejected(error.code, error.message);
           }
           throw error;
         }
@@ -252,11 +244,7 @@ export class GetAvailabilityUseCase {
       if (selectedPackage?.mode === 'daily') {
         const daily = modeConfig.daily;
         if (!daily) {
-          throw new BadRequestException({
-            statusCode: 400,
-            code: 'MODE_CONFIG_MISSING',
-            message: 'No daily config on this listing',
-          });
+          throw new DailyModeConfigMissing();
         }
         return {
           mode: 'daily',

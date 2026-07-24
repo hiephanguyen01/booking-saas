@@ -61,31 +61,31 @@ export class GatewayRegistry implements GatewayRegistryPort {
     if (!cfg || cfg.gateway === 'mock') return this.mock;
     if (cfg.gateway === 'sepay') {
       return new SepayGatewayAdapter({
-        merchantId: cfg.credentials.merchantId ?? '',
-        secretKey: cfg.credentials.secretKey ?? '',
+        merchantId: cfg.credentials.merchantId,
+        secretKey: cfg.credentials.secretKey,
         environment: cfg.environment,
       });
     }
     if (cfg.gateway === 'momo') {
       return new MomoGatewayAdapter({
-        partnerCode: cfg.credentials.partnerCode ?? '',
-        accessKey: cfg.credentials.accessKey ?? '',
-        secretKey: cfg.credentials.secretKey ?? '',
+        partnerCode: cfg.credentials.partnerCode,
+        accessKey: cfg.credentials.accessKey,
+        secretKey: cfg.credentials.secretKey,
         environment: cfg.environment,
       });
     }
     if (cfg.gateway === 'zalopay') {
       return new ZalopayGatewayAdapter({
-        appId: cfg.credentials.appId ?? '',
-        key1: cfg.credentials.key1 ?? '',
-        key2: cfg.credentials.key2 ?? '',
+        appId: cfg.credentials.appId,
+        key1: cfg.credentials.key1,
+        key2: cfg.credentials.key2,
         environment: cfg.environment,
       });
     }
     return new PayosGatewayAdapter({
-      clientId: cfg.credentials.clientId ?? '',
-      apiKey: cfg.credentials.apiKey ?? '',
-      checksumKey: cfg.credentials.checksumKey ?? '',
+      clientId: cfg.credentials.clientId,
+      apiKey: cfg.credentials.apiKey,
+      checksumKey: cfg.credentials.checksumKey,
       baseUrl: cfg.credentials.baseUrl,
     });
   }

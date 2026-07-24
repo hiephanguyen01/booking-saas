@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   LISTING_REPOSITORY,
@@ -9,6 +9,10 @@ import {
   type IPricingRuleRepository,
   type PricingRuleRecord,
 } from '../../domain/ports/pricing-rule-repository.port';
+import {
+  LegacyListingNotFound,
+  LegacyListingNotOwned,
+} from '../listing-legacy-http-errors';
 
 @Injectable()
 export class ListPartnerPricingRulesUseCase {
@@ -21,13 +25,9 @@ export class ListPartnerPricingRulesUseCase {
   execute(tenantId: string, partnerId: string, listingId: string): Promise<PricingRuleRecord[]> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const listing = await this.listings.findById(tx, listingId);
-      if (!listing)
-        throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
+      if (!listing) throw new LegacyListingNotFound();
       if (listing.partnerId !== partnerId) {
-        throw new ForbiddenException({
-          code: 'LISTING_NOT_OWNED',
-          message: 'This listing belongs to another partner',
-        });
+        throw new LegacyListingNotOwned();
       }
       return this.rules.listByListing(tx, listingId);
     });

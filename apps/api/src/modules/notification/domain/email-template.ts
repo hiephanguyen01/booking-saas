@@ -32,7 +32,8 @@ export interface TemplateData {
   expiresInMin?: number;
 }
 
-function normalizeLocale(locale: string | null | undefined): Locale {
+/** The recipient's locale, normalized to a supported one (`vi` is the fallback). */
+export function normalizeLocale(locale: string | null | undefined): Locale {
   return locale === 'en' ? 'en' : 'vi';
 }
 

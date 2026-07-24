@@ -48,7 +48,15 @@ export function toReviewResponse(review: ReviewRecord): ReviewResponse {
 
 function toPendingResponse(item: PendingReviewRecord): CustomerReviewItem {
   return {
-    ...item,
+    status: item.status,
+    bookingId: item.bookingId,
+    bookingCode: item.bookingCode,
+    listingId: item.listingId,
+    listingTitle: item.listingTitle,
+    listingSlug: item.listingSlug,
+    listingImageUrl: item.listingImageUrl,
+    groupTitle: item.groupTitle,
+    partnerName: item.partnerName,
     serviceCompletedAt: item.serviceCompletedAt?.toISOString() ?? null,
     bookingStartsAt: item.bookingStartsAt?.toISOString() ?? null,
     bookingEndsAt: item.bookingEndsAt?.toISOString() ?? null,

@@ -3,14 +3,14 @@ import type { ContentReportListResponse, TenantContentReportsQuery } from '@book
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { toContentReportResponse } from '../content-report.mapper';
 import {
-  CONTENT_REPORT_REPOSITORY,
-  type IContentReportRepository,
-} from '../../domain/ports/content-report-repository.port';
+  CONTENT_REPORT_READER,
+  type IContentReportReader,
+} from '../../domain/ports/content-report-reader.port';
 
 @Injectable()
 export class ListContentReportsUseCase {
   constructor(
-    @Inject(CONTENT_REPORT_REPOSITORY) private readonly reports: IContentReportRepository,
+    @Inject(CONTENT_REPORT_READER) private readonly reports: IContentReportReader,
     private readonly tenantDb: TenantDbService,
   ) {}
 

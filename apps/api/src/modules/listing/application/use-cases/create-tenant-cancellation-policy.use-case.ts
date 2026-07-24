@@ -6,6 +6,7 @@ import {
   CANCELLATION_POLICY_REPOSITORY,
   type ICancellationPolicyRepository,
 } from '../../domain/ports/cancellation-policy-repository.port';
+import { CancellationPolicy } from '../../domain/entities/cancellation-policy.entity';
 
 /** Creates a tenant-owned cancellation policy shared with every partner in the tenant. */
 @Injectable()
@@ -21,11 +22,11 @@ export class CreateTenantCancellationPolicyUseCase {
     input: CreateCancellationPolicyInput,
   ): Promise<CancellationPolicyResponse> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      const created = await this.policies.create(tx, tenantId, {
-        partnerId: null,
-        name: input.name,
-        rules: input.rules,
-      });
+      const created = await this.policies.create(
+        tx,
+        tenantId,
+        CancellationPolicy.open({ partnerId: null, name: input.name, rules: input.rules }),
+      );
       const defaultId = await this.policies.findTenantDefaultId(tx, tenantId);
       return toCancellationPolicyResponse(created, defaultId);
     });

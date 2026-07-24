@@ -1,8 +1,6 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
-  momoGatewayConfigInputSchema,
-  sepayGatewayConfigInputSchema,
-  zalopayGatewayConfigInputSchema,
+  upsertGatewayConfigInputSchema,
   type UpsertGatewayConfigInput,
 } from '@booking/contracts';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
@@ -12,6 +10,7 @@ import {
   type GatewayConfigRecord,
   type IGatewayConfigRepository,
 } from '../../domain/ports/gateway-config-repository.port';
+import { InvalidGatewayConfig } from '../payment-http-errors';
 
 /** Tenant admin stores gateway credentials (encrypted at rest, §11.1). */
 @Injectable()
@@ -23,30 +22,13 @@ export class UpsertGatewayConfigUseCase {
   ) {}
 
   execute(input: UpsertGatewayConfigInput): Promise<GatewayConfigRecord> {
-    const validated =
-      input.gateway === 'sepay'
-        ? sepayGatewayConfigInputSchema.safeParse(input)
-        : input.gateway === 'momo'
-          ? momoGatewayConfigInputSchema.safeParse(input)
-          : input.gateway === 'zalopay'
-            ? zalopayGatewayConfigInputSchema.safeParse(input)
-            : { success: true as const, data: input };
+    const validated = upsertGatewayConfigInputSchema.safeParse(input);
     if (!validated.success) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_GATEWAY_CONFIG',
-        message: 'Cấu hình cổng thanh toán không hợp lệ',
-        details: validated.error.flatten(),
-      });
+      throw new InvalidGatewayConfig(validated.error.flatten());
     }
     const tenantId = this.tenantContext.tenantIdOrThrow();
     return this.tenantDb.forTenant(tenantId, (tx) =>
-      this.configs.upsert(tx, tenantId, {
-        gateway: validated.data.gateway,
-        environment: validated.data.environment,
-        credentials: validated.data.credentials,
-        settings: 'settings' in validated.data ? validated.data.settings : undefined,
-      }),
+      this.configs.upsert(tx, tenantId, validated.data),
     );
   }
 }

@@ -77,6 +77,9 @@ export const listTenantsQuerySchema = paginationQuerySchema.extend({
 });
 export type ListTenantsQuery = z.infer<typeof listTenantsQuerySchema>;
 
+export const slugCheckQuerySchema = z.object({ slug: slugSchema });
+export type SlugCheckQuery = z.infer<typeof slugCheckQuerySchema>;
+
 /** Tenant toggle for partner-created promotions (§12.2). */
 export const partnerPromotionsToggleSchema = z.object({ partnerPromotionsEnabled: z.boolean() });
 export type PartnerPromotionsToggle = z.infer<typeof partnerPromotionsToggleSchema>;
@@ -196,6 +199,9 @@ export const themeConfigSchema = z.object({
 });
 export type ThemeConfigInput = z.infer<typeof themeConfigSchema>;
 
+export const updateThemeInputSchema = z.object({ themeConfig: themeConfigSchema });
+export type UpdateThemeInput = z.infer<typeof updateThemeInputSchema>;
+
 /**
  * The tenant-brand subset used by authenticated dashboard shells. It is derived
  * from the same theme schema as the storefront, so dashboard consumers never
@@ -279,6 +285,13 @@ export const subscriptionResponseSchema = z.object({
 });
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 
+/** `GET /admin/tenants/:id/subscription` — selected current row with its resolved plan. */
+export const currentSubscriptionResponseSchema = z.object({
+  subscription: subscriptionResponseSchema,
+  plan: planResponseSchema.nullable(),
+});
+export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;
+
 export const domainResponseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -289,6 +302,12 @@ export const domainResponseSchema = z.object({
   verificationToken: z.string().optional(),
 });
 export type DomainResponse = z.infer<typeof domainResponseSchema>;
+
+/** `POST /admin/tenants` — tenant plus the primary domain provisioned atomically with it. */
+export const createdTenantResponseSchema = tenantResponseSchema.extend({
+  primaryDomain: domainResponseSchema,
+});
+export type CreatedTenantResponse = z.infer<typeof createdTenantResponseSchema>;
 
 /** One row of a tenant's subscription history, with the plan resolved to its name. */
 export const subscriptionHistoryItemSchema = subscriptionResponseSchema.extend({

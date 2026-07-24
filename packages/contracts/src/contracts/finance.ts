@@ -123,12 +123,6 @@ export const updateCommissionRuleInputSchema = commissionRuleBaseSchema
   });
 export type UpdateCommissionRuleInput = z.infer<typeof updateCommissionRuleInputSchema>;
 
-/** Platform-admin-only: set the platform fee % on a rule (§7.7). */
-export const setPlatformRateInputSchema = z.object({
-  platformRate: z.number().int().min(0).max(100),
-});
-export type SetPlatformRateInput = z.infer<typeof setPlatformRateInputSchema>;
-
 export const commissionRuleResponseSchema = z.object({
   id: z.string(),
   appliesTo: commissionAppliesToSchema,

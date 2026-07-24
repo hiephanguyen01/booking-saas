@@ -4,10 +4,12 @@ import type { CancellationTier } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   CancellationPolicyRecord,
-  CreateCancellationPolicyData,
   ICancellationPolicyRepository,
-  UpdateCancellationPolicyData,
 } from '../../domain/ports/cancellation-policy-repository.port';
+import type {
+  CancellationPolicyPatch,
+  NewCancellationPolicy,
+} from '../../domain/entities/cancellation-policy.entity';
 
 type Row = {
   id: string;
@@ -57,7 +59,7 @@ export class PrismaCancellationPolicyRepository implements ICancellationPolicyRe
   async create(
     tx: PrismaTx,
     tenantId: string,
-    data: CreateCancellationPolicyData,
+    data: NewCancellationPolicy,
   ): Promise<CancellationPolicyRecord> {
     const row = await tx.cancellationPolicy.create({
       data: {
@@ -73,14 +75,14 @@ export class PrismaCancellationPolicyRepository implements ICancellationPolicyRe
   async update(
     tx: PrismaTx,
     id: string,
-    data: UpdateCancellationPolicyData,
+    patch: CancellationPolicyPatch,
   ): Promise<CancellationPolicyRecord> {
     const row = await tx.cancellationPolicy.update({
       where: { id },
       data: {
-        ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.rules !== undefined
-          ? { rules: data.rules as unknown as Prisma.InputJsonValue }
+        ...(patch.name !== undefined ? { name: patch.name } : {}),
+        ...(patch.rules !== undefined
+          ? { rules: patch.rules as unknown as Prisma.InputJsonValue }
           : {}),
       },
     });

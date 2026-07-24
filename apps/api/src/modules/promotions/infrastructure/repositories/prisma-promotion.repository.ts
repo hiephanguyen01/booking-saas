@@ -4,12 +4,11 @@ import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.servi
 import { pageOffset } from '../../../../shared/pagination/pagination';
 import type { PromoTimeWindow } from '../../domain/promotion-discount';
 import type {
-  CreatePromotionData,
   IPromotionRepository,
   PromotionListFilter,
   PromotionRecord,
-  UpdatePromotionData,
 } from '../../domain/ports/promotion-repository.port';
+import type { NewPromotion, PromotionPatch } from '../../domain/entities/promotion.entity';
 
 type Row = Prisma.PromotionGetPayload<Record<string, never>>;
 
@@ -66,7 +65,7 @@ function toRecord(p: Row): PromotionRecord {
 }
 
 /** Prisma write payload shared by create/update — `timeWindows` serialised to JSON. */
-function toWriteData(data: UpdatePromotionData): Omit<Prisma.PromotionUncheckedUpdateInput, 'tenantId' | 'id'> {
+function toWriteData(data: PromotionPatch): Omit<Prisma.PromotionUncheckedUpdateInput, 'tenantId' | 'id'> {
   return {
     name: data.name,
     code: data.code,
@@ -97,7 +96,7 @@ function toWriteData(data: UpdatePromotionData): Omit<Prisma.PromotionUncheckedU
 
 @Injectable()
 export class PrismaPromotionRepository implements IPromotionRepository {
-  async create(tx: PrismaTx, tenantId: string, data: CreatePromotionData): Promise<PromotionRecord> {
+  async create(tx: PrismaTx, tenantId: string, data: NewPromotion): Promise<PromotionRecord> {
     return toRecord(
       await tx.promotion.create({
         data: { tenantId, ...toWriteData(data) } as Prisma.PromotionUncheckedCreateInput,
@@ -105,8 +104,8 @@ export class PrismaPromotionRepository implements IPromotionRepository {
     );
   }
 
-  async update(tx: PrismaTx, id: string, data: UpdatePromotionData): Promise<PromotionRecord> {
-    return toRecord(await tx.promotion.update({ where: { id }, data: toWriteData(data) }));
+  async update(tx: PrismaTx, id: string, patch: PromotionPatch): Promise<PromotionRecord> {
+    return toRecord(await tx.promotion.update({ where: { id }, data: toWriteData(patch) }));
   }
 
   async findById(tx: PrismaTx, id: string): Promise<PromotionRecord | null> {

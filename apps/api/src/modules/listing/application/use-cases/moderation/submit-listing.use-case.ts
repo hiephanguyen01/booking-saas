@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ListingReviewResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../../shared/outbox/outbox.service';
@@ -8,16 +8,15 @@ import {
   type IListingRepository,
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionSubmit } from '../../../domain/moderation/listing-moderation';
+import { Listing } from '../../../domain/entities/listing.entity';
 import { buildListingReview } from '../../moderation/build-listing-review';
 import {
-  assertOwnership,
   listingNotFound,
-  runModeration,
   stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * A partner submits a draft for tenant review (draft → pending_review). Returns
@@ -38,28 +37,25 @@ export class SubmitListingUseCase {
     listingId: string,
   ): Promise<{ listing: ListingRecord; review: ListingReviewResponse }> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
-      const listing = await this.listings.findById(tx, listingId);
-      if (!listing) listingNotFound();
-      assertOwnership(listing, ctx.partnerId);
-      if (listing.groupId) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'GROUP_MANAGED_LISTING',
-          message: 'Submit the parent listing group instead',
-        });
-      }
+      const existing = await this.listings.findById(tx, listingId);
+      if (!existing) listingNotFound();
+      const listing = Listing.rehydrate(existing);
+      listing.assertOwnedForModeration(ctx.partnerId);
+      listing.assertNotGroupManaged('submit');
 
-      const outcome = runModeration(() => transitionSubmit(listing));
+      const outcome = listing.submit();
       const updated = await this.listings.moderate(
         tx,
         listingId,
-        stampModerationTimestamps(listing, outcome),
+        existing.status,
+        stampModerationTimestamps(existing, outcome),
       );
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.submitted',
         entityType: 'listing',
-        entityId: listing.id,
-        fromStatus: listing.status,
+        entityId: existing.id,
+        fromStatus: existing.status,
         toStatus: outcome.status,
       });
       await this.outbox.emit(tx, {

@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { MarkPayoutPaidInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -11,8 +11,10 @@ import {
   LEDGER_REPOSITORY,
   type ILedgerRepository,
 } from '../../domain/ports/ledger-repository.port';
-import { buildPayoutJournal } from '../../domain/ledger-journal';
 import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-writer.port';
+import { Payout } from '../../domain/entities/payout.entity';
+import { LedgerJournal } from '../../domain/entities/ledger-journal.entity';
+import { PayoutNotFound } from '../../domain/errors/finance-domain-errors';
 
 /**
  * Mark a payout paid (§13.2): write the Debit-payable / Credit-cash journal so the
@@ -36,30 +38,13 @@ export class MarkPayoutPaidUseCase {
   ): Promise<PayoutRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const payout = await this.payouts.findById(tx, id);
-      if (!payout)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'PAYOUT_NOT_FOUND',
-          message: 'Payout not found',
-        });
-      if (payout.status === 'paid' || payout.status === 'failed') {
-        if (payout.status === 'paid') return payout;
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'PAYOUT_SETTLED',
-          message: `Payout already ${payout.status}`,
-        });
-      }
+      if (!payout) throw new PayoutNotFound();
+      const aggregate = Payout.rehydrate(payout);
+      if (aggregate.classifyPayment() === 'already_paid') return payout;
       const claimed = await this.payouts.claimForPayment(tx, id);
-      if (!claimed) {
-        throw new BadRequestException({
-          statusCode: 409,
-          code: 'PAYOUT_IN_PROGRESS',
-          message: 'Payout is already being processed',
-        });
-      }
+      Payout.assertClaimed(claimed);
 
-      const legs = buildPayoutJournal({
+      const legs = LedgerJournal.payout({
         tenantId,
         payeeType: payout.payeeType,
         payeeId: payout.payeeId,
@@ -73,13 +58,7 @@ export class MarkPayoutPaidUseCase {
         reference: input.reference,
         evidenceKey: input.evidenceKey,
       });
-      if (!updated) {
-        throw new BadRequestException({
-          statusCode: 409,
-          code: 'PAYOUT_STATE_CHANGED',
-          message: 'Payout state changed concurrently',
-        });
-      }
+      Payout.assertStateUpdated(updated);
       await this.payouts.markAllocationsPaid(tx, id);
       await this.audit.write(tx, {
         tenantId,
