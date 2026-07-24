@@ -131,12 +131,16 @@ export class TenantDomain {
  * `verified`, NOT by `primary`. So deleting the primary while another verified (but
  * non-primary) domain exists succeeds and leaves the tenant with no primary at all.
  * Recorded as a known gap rather than tightened here.
+ *
+ * The second parameter is the tenant's FULL domain list; the target is excluded internally,
+ * so callers cannot get the contract wrong.
  */
 export function assertDeletableFromPortfolio(
-  target: { isPrimary: boolean; isVerified: boolean },
-  siblings: readonly { isVerified: boolean }[],
+  target: { id: string; isPrimary: boolean; isVerified: boolean },
+  allTenantDomains: readonly { id: string; isVerified: boolean }[],
 ): void {
   if (!target.isPrimary || !target.isVerified) return;
-  if (siblings.some((s) => s.isVerified)) return;
+  const otherVerified = allTenantDomains.some((d) => d.id !== target.id && d.isVerified);
+  if (otherVerified) return;
   throw new DomainPrimaryRequired();
 }
