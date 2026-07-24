@@ -8,10 +8,12 @@ const TTL_SECONDS = 60 * 60 * 24 * 30;
 const PREFIX = 'bookify:storefront:session:';
 const REFRESH_LOCK_PREFIX = 'bookify:storefront:session-refresh-lock:';
 // A contended path can validate a newly-rotated token, refresh it if needed,
-// and validate once more. Keep the lock above the API client's 3 × 10s budget.
+// and validate once more. Keep the lease above the API client's 3 × 10s budget.
 const REFRESH_LOCK_TTL_MS = 35_000;
-const REFRESH_LOCK_WAIT_MS = 2_500;
-const REFRESH_LOCK_RETRY_MS = 50;
+// A contender must wait through the full lease. Timing out earlier converts a
+// healthy in-flight refresh into a false 503 for concurrent storefront requests.
+const REFRESH_LOCK_RETRY_MS = 250;
+const REFRESH_LOCK_WAIT_MS = REFRESH_LOCK_TTL_MS + REFRESH_LOCK_RETRY_MS;
 
 export interface StorefrontSessionData {
   accessToken: string;
@@ -67,8 +69,10 @@ export function createStorefrontSessionService(store: RedisJsonStore = storefron
       const deadline = Date.now() + REFRESH_LOCK_WAIT_MS;
       let acquired = await store.setIfAbsent(key, value, REFRESH_LOCK_TTL_MS);
 
-      while (!acquired && Date.now() < deadline) {
-        await delay(REFRESH_LOCK_RETRY_MS);
+      while (!acquired) {
+        const remainingWaitMs = deadline - Date.now();
+        if (remainingWaitMs <= 0) break;
+        await delay(Math.min(REFRESH_LOCK_RETRY_MS, remainingWaitMs));
         acquired = await store.setIfAbsent(key, value, REFRESH_LOCK_TTL_MS);
       }
 
