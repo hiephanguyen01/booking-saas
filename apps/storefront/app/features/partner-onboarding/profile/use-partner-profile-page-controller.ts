@@ -1,0 +1,125 @@
+import {
+  partnerOnboardingProfileSchema,
+  type AdministrativeWard,
+  type PartnerOnboardingProfileInput,
+} from '@booking/contracts';
+import type { FieldConfig } from '@booking/ui/components/form/types';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useMemo, useRef } from 'react';
+import { useForm, useWatch, type Path } from 'react-hook-form';
+import { useFetcher, useNavigation, useSubmit } from 'react-router';
+import { NsI18n, useTranslation } from '../../../lib/i18n';
+import type { Route } from '../../../routes/partner-onboarding/+types/profile';
+import {
+  PARTNER_PROFILE_APPLY_ERRORS,
+  PARTNER_PROFILE_DEFAULTS,
+} from './partner-profile-fields';
+
+type PartnerProfilePageControllerArgs = Pick<Route.ComponentProps, 'loaderData' | 'actionData'>;
+
+export function usePartnerProfilePageController({
+  loaderData,
+  actionData,
+}: PartnerProfilePageControllerArgs) {
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
+  const wardsFetcher = useFetcher<{
+    provinceCode: string;
+    wards: AdministrativeWard[];
+  }>();
+  const form = useForm<PartnerOnboardingProfileInput>({
+    resolver: zodResolver(partnerOnboardingProfileSchema),
+    defaultValues: PARTNER_PROFILE_DEFAULTS,
+    mode: 'onSubmit',
+    reValidateMode: 'onBlur',
+    shouldUnregister: true,
+  });
+  const partnerType = useWatch({
+    control: form.control,
+    name: 'partnerType',
+    defaultValue: 'company',
+  });
+  const provinceCode = useWatch({
+    control: form.control,
+    name: 'provinceCode',
+    defaultValue: '',
+  });
+  const previousProvinceCode = useRef(provinceCode);
+  const loadWards = wardsFetcher.load;
+
+  useEffect(() => {
+    if (previousProvinceCode.current !== provinceCode) {
+      form.setValue('wardCode', '', { shouldDirty: true, shouldValidate: false });
+      previousProvinceCode.current = provinceCode;
+    }
+    if (provinceCode) {
+      void loadWards(
+        `/administrative-divisions/wards?provinceCode=${encodeURIComponent(provinceCode)}`,
+      );
+    }
+  }, [form, loadWards, provinceCode]);
+
+  useEffect(() => {
+    if (!actionData?.fieldErrors) return;
+    for (const [name, messages] of Object.entries(actionData.fieldErrors)) {
+      if (messages?.[0]) {
+        form.setError(name as Path<PartnerOnboardingProfileInput>, {
+          type: 'server',
+          message: messages[0],
+        });
+      }
+    }
+  }, [actionData?.fieldErrors, form]);
+
+  const errorCode = actionData?.error;
+  const errorMessage = errorCode
+    ? t(
+        PARTNER_PROFILE_APPLY_ERRORS[
+          errorCode as keyof typeof PARTNER_PROFILE_APPLY_ERRORS
+        ] ?? 'common:becomePartner.errors.generic',
+      )
+    : undefined;
+
+  const partnerTypeField = useMemo<FieldConfig<PartnerOnboardingProfileInput>>(
+    () => ({
+      name: 'partnerType',
+      label: t('common:becomePartner.partnerType'),
+      type: 'radio',
+      variant: 'segmented',
+      required: true,
+      options: [
+        { label: t('common:becomePartner.typeCompany'), value: 'company' },
+        { label: t('common:becomePartner.typeIndividual'), value: 'individual' },
+      ],
+    }),
+    [t],
+  );
+
+  const provinceOptions = loaderData.provinces.map((province) => ({
+    label: province.name,
+    value: province.code,
+  }));
+  const wardsData = wardsFetcher.data;
+  const wards = wardsData?.provinceCode === provinceCode ? wardsData.wards : [];
+  const wardOptions = wards.map((ward) => ({ label: ward.name, value: ward.code }));
+  const wardsLoading = wardsFetcher.state !== 'idle';
+  const submitting = navigation.state === 'submitting';
+  const onSubmit = form.handleSubmit((values) =>
+    submit(values as never, { method: 'post', encType: 'application/json' }),
+  );
+
+  return {
+    errorMessage,
+    form,
+    onSubmit,
+    partnerType,
+    partnerTypeField,
+    provinceCode,
+    provinceOptions,
+    submitting,
+    t,
+    wardOptions,
+    wardsLoading,
+  };
+}
