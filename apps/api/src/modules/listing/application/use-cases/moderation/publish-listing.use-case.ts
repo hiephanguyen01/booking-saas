@@ -7,6 +7,7 @@ import {
   type IListingRepository,
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
+import { Listing } from '../../../domain/entities/listing.entity';
 import { transitionPublish } from '../../../domain/moderation/listing-moderation';
 import { buildListingReview } from '../../moderation/build-listing-review';
 import {
@@ -34,17 +35,12 @@ export class PublishListingUseCase {
 
   async execute(ctx: ModerationContext, listingId: string, force = false): Promise<ListingRecord> {
     return this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
-      const listing = await this.listings.findById(tx, listingId);
-      if (!listing) listingNotFound();
-      if (listing.groupId) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'GROUP_MANAGED_LISTING',
-          message: 'Publish the parent listing group instead',
-        });
-      }
+      const existing = await this.listings.findById(tx, listingId);
+      if (!existing) listingNotFound();
+      const listing = Listing.rehydrate(existing);
+      listing.assertNotGroupManaged('publish');
 
-      const review = buildListingReview(listing);
+      const review = buildListingReview(existing);
       const overrode = review.contactFlags.length > 0 || !review.checklistPassed;
       if (!force && review.contactFlags.length > 0) {
         throw new BadRequestException({
@@ -55,17 +51,17 @@ export class PublishListingUseCase {
         });
       }
 
-      const outcome = runModeration(() => transitionPublish(listing, 'admin'));
+      const outcome = runModeration(() => transitionPublish(existing, 'admin'));
       const updated = await this.listings.moderate(
         tx,
         listingId,
-        stampModerationTimestamps(listing, outcome),
+        stampModerationTimestamps(existing, outcome),
       );
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.published',
         entityType: 'listing',
-        entityId: listing.id,
-        fromStatus: listing.status,
+        entityId: existing.id,
+        fromStatus: existing.status,
         toStatus: outcome.status,
         reason: force && overrode ? 'force-published: review gate bypassed' : undefined,
       });
