@@ -3,12 +3,14 @@ import type { Prisma } from '@prisma/client';
 import type { BookingMode, BookingSelection, ModerationActor } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
-  CreateListingGroupData,
   IListingGroupRepository,
   ListingGroupRecord,
-  UpdateListingGroupData,
 } from '../../domain/ports/listing-group-repository.port';
 import type { ModerationUpdate } from '../../domain/ports/listing-repository.port';
+import type {
+  ListingGroupContentPatch,
+  NewListingGroup,
+} from '../../domain/entities/listing-group.entity';
 
 /**
  * The child fields the post's aggregates are computed from (see
@@ -92,7 +94,7 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
   async create(
     tx: PrismaTx,
     tenantId: string,
-    data: CreateListingGroupData,
+    data: NewListingGroup,
   ): Promise<ListingGroupRecord> {
     return toRecord(
       await tx.listingGroup.create({
@@ -161,7 +163,7 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
   async update(
     tx: PrismaTx,
     id: string,
-    data: UpdateListingGroupData,
+    data: ListingGroupContentPatch,
   ): Promise<ListingGroupRecord> {
     return toRecord(
       await tx.listingGroup.update({

@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { UpdateListingGroupInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -19,6 +12,8 @@ import {
   type IListingRepository,
 } from '../../domain/ports/listing-repository.port';
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
+import { ListingGroup } from '../../domain/entities/listing-group.entity';
+import { ListingGroupSlugTaken } from '../../domain/errors/listing-group-errors';
 
 @Injectable()
 export class UpdateListingGroupUseCase {
@@ -57,19 +52,10 @@ export class UpdateListingGroupUseCase {
           message: 'Listing group not found',
         });
       }
-      if (options.requirePartnerId && existing.partnerId !== options.requirePartnerId) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'LISTING_GROUP_NOT_OWNED',
-          message: 'Listing group belongs to another partner',
-        });
-      }
-      if (options.requirePartnerId && !['draft', 'archived'].includes(existing.status)) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_GROUP_READ_ONLY',
-          message: 'Hide the listing group before editing it',
-        });
+      const group = ListingGroup.rehydrate(existing);
+      group.assertOwnedForManage(options.requirePartnerId);
+      if (options.requirePartnerId) {
+        group.assertEditableStatus();
       }
       if (options.requirePartnerId && existing.status === 'archived') {
         const draftState = { status: 'draft' as const, publishedBy: null, hiddenBy: null };
@@ -90,28 +76,28 @@ export class UpdateListingGroupUseCase {
       if (input.slug && input.slug !== existing.slug) {
         const other = await this.repo.findBySlug(tx, input.slug);
         if (other && other.id !== id) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'LISTING_GROUP_SLUG_TAKEN',
-            message: `Slug "${input.slug}" is already in use`,
-          });
+          throw new ListingGroupSlugTaken(input.slug);
         }
       }
-      const updated = await this.repo.update(tx, id, {
-        partnerId: options.requirePartnerId ? undefined : input.partnerId,
-        listingTypeId: options.requirePartnerId ? undefined : input.listingTypeId,
-        title: input.title,
-        slug: input.slug,
-        description: input.description,
-        provinceCode: location?.province.code,
-        provinceName: location?.province.name,
-        wardCode: location?.ward.code,
-        wardName: location?.ward.name,
-        address: input.address,
-        workingArea: input.workingArea,
-        amenities: input.amenities,
-        photos: input.photos,
-      });
+      const updated = await this.repo.update(
+        tx,
+        id,
+        group.applyContentUpdate({
+          partnerId: options.requirePartnerId ? undefined : input.partnerId,
+          listingTypeId: options.requirePartnerId ? undefined : input.listingTypeId,
+          title: input.title,
+          slug: input.slug,
+          description: input.description,
+          provinceCode: location?.province.code,
+          provinceName: location?.province.name,
+          wardCode: location?.ward.code,
+          wardName: location?.ward.name,
+          address: input.address,
+          workingArea: input.workingArea,
+          amenities: input.amenities,
+          photos: input.photos,
+        }),
+      );
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing_group.updated',
