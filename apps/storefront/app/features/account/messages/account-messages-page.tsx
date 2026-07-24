@@ -2,7 +2,6 @@ import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { MessageSquareText, Send } from 'lucide-react';
-import { useMemo, useState } from 'react';
 import type { Route } from '../../../routes/account/+types/messages';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { userInitials } from '../account-nav';
@@ -12,22 +11,21 @@ import {
   MockDisabledState,
   PageHeading,
 } from '../components/account-primitives';
+import { useAccountMessagesPageController } from './use-account-messages-page-controller';
 
 export function AccountMessagesPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation(NsI18n.Account);
-  const [selectedId, setSelectedId] = useState(loaderData.conversations[0]?.id ?? '');
-  const [query, setQuery] = useState('');
-  const [draft, setDraft] = useState('');
-  const [sent, setSent] = useState<string[]>([]);
-  const filtered = useMemo(
-    () =>
-      loaderData.conversations.filter((item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()),
-      ),
-    [loaderData.conversations, query],
-  );
-  const selected =
-    loaderData.conversations.find((item) => item.id === selectedId) ?? loaderData.conversations[0];
+  const {
+    draft,
+    filtered,
+    handleSubmit,
+    messages,
+    query,
+    selected,
+    selectConversation,
+    setDraft,
+    setQuery,
+  } = useAccountMessagesPageController(loaderData.conversations);
 
   if (!loaderData.enabled) {
     return (
@@ -56,7 +54,7 @@ export function AccountMessagesPage({ loaderData }: Route.ComponentProps) {
               <button
                 key={conversation.id}
                 type="button"
-                onClick={() => setSelectedId(conversation.id)}
+                onClick={() => selectConversation(conversation.id)}
                 className={`flex w-full gap-3 border-t border-border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${conversation.id === selected?.id ? 'bg-primary/5' : 'hover:bg-muted/60'}`}
               >
                 <Avatar>
@@ -82,14 +80,7 @@ export function AccountMessagesPage({ loaderData }: Route.ComponentProps) {
               <p className="text-sm font-semibold">{selected.name}</p>
             </div>
             <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-muted/25 p-4 sm:p-6">
-              {[
-                ...selected.messages,
-                ...sent.map((text, index) => ({
-                  from: 'me' as const,
-                  text,
-                  time: `${10 + index}:02`,
-                })),
-              ].map((message, index) => (
+              {messages.map((message, index) => (
                 <div
                   key={`${message.time}-${index}`}
                   className={`max-w-[82%] rounded-xl px-4 py-3 text-sm ${message.from === 'me' ? 'ml-auto bg-primary text-primary-foreground' : 'bg-background shadow-sm'}`}
@@ -103,16 +94,7 @@ export function AccountMessagesPage({ loaderData }: Route.ComponentProps) {
                 </div>
               ))}
             </div>
-            <form
-              className="flex gap-2 border-t border-border p-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const value = draft.trim();
-                if (!value) return;
-                setSent((items) => [...items, value]);
-                setDraft('');
-              }}
-            >
+            <form className="flex gap-2 border-t border-border p-4" onSubmit={handleSubmit}>
               <Input
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
