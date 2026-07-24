@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { useReviewMedia } from './review-dialog-media';
-import { createSubmissionLock } from './review-submit-lock';
+import { createSubmissionLock } from './submission-lock';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 type ReviewActionData = { ok: boolean; error: string | null; bookingId: string | null };
