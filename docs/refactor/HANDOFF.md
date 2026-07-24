@@ -33,17 +33,23 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 9 | catalog | ✅ merge (GitHub PR #26) |
 | 10a | tenancy — Tenant + domains | ✅ merge (GitHub PR #27) |
 | 10b | tenancy — plan + subscription | ✅ merge (GitHub PR #28) — **tenancy xong cả module** |
-| 11→16 | listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
+| 11a | listing — cancellation-policy + pricing-rule + resource | 🔍 review (GitHub PR #NN) |
+| 11b | listing — Listing content + moderation | chưa làm (dùng lại `listing-errors.ts` từ #11a) |
+| 11c | listing — ListingGroup + cascade | chưa làm |
+| 12→16 | scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Không còn PR module nào mở.** **11/16 module xong.** Việc kế tiếp: **PR #11 — module listing**.
-(PR #25 `refactor/entity-centric` → `main` đang mở là PR đưa cả nhánh tích hợp về main — không phải
-PR module; đừng nhầm.)
+**listing đang tách 3 PR con** (module lớn nhất còn lại: 45 use-case, 56 endpoint — như promotions
+5a/5b và tenancy 10a/10b). **PR #11a** (3 aggregate phụ: cancellation-policy + pricing-rule +
+resource) đang review. Kế tiếp: **PR #11b** — Listing content + moderation (**dùng lại
+`listing-errors.ts`** đã tạo ở #11a: `ListingNotFound`/`ListingNotOwned`; lưu ý
+`delete-listing.use-case.ts` dùng biến thể message `LISTING_NOT_OWNED` = `'Listing belongs to another
+partner'` **không** có "This" — đừng blind-reuse class `ListingNotOwned` cho nó), rồi **PR #11c** —
+ListingGroup + cascade. (PR #25 `refactor/entity-centric` → `main` đang mở là PR đưa cả nhánh tích
+hợp về main — không phải PR module; đừng nhầm.)
 
-Gợi ý riêng cho **PR #11 — module listing** (module kế tiếp, và **lớn nhất còn lại**: 45 use-case,
-56 endpoint) — nên cân nhắc **tách nhiều PR con**, như promotions (5a/5b) và tenancy (10a/10b) đã
-làm, thay vì một PR khổng lồ khó review. **Trước khi bắt đầu khảo sát/plan PR #11**: seed vẫn
-**CHƯA có** fixture listing/group `status='draft'` (spec §8c-bis mục 2) — thêm vào seed trước, vì
-hiện tại smoke rule "chỉ target published" phải giả bằng id không tồn tại thay vì dữ liệu thật.
+Ghi chú fixture seed: smoke #11a **tự tạo** listing/pricing draft trong tx thay vì thêm fixture seed
+(quyết định owner 2026-07-24). Việc thêm fixture `status='draft'` vào seed (spec §8c-bis mục 2) vẫn
+còn treo cho các đợt sau nếu cần dữ liệu bền.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 

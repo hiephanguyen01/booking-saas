@@ -245,6 +245,10 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | **Bốn** bản "current subscription" bất đồng (final review PR #10b bổ sung bản thứ tư): `findCurrentByTenant` (TypeScript, `PrismaSubscriptionRepository`) order `startsAt DESC` **không tiebreak `created_at`** — đây là đường chạy guard + plan-limit; `PrismaPlanRepository.liveSubscriberCounts` và platform-health (raw SQL) order `starts_at DESC, created_at DESC` + lọc billable/hết-hạn; và `ISubscriptionRepository.listByTenant` order `starts_at DESC, created_at DESC` **CÓ** tiebreak (comment của nó tự nhận "hàng đầu = current" nhưng khác `findCurrentByTenant` đúng ở tiebreak). Khi trùng `startsAt` các đường chọn khác hàng làm "current" | tenancy | Giữ nguyên ở PR #10b — PR hợp nhất riêng phải quét đủ **cả 4** (→ §8b-bis) |
 | `GetPlanLimitsUseCase` cấp limit theo subscription mới nhất (từ `findCurrentByTenant`) **bất kể status hay đã hết hạn** — liveness chỉ được enforce riêng, bởi `RequireActiveSubscriptionGuard`, và chỉ cho ghi dashboard, không cho lookup limit | tenancy | Giữ nguyên ở PR #10b — hành vi kế thừa từ code cũ |
 | `create-plan` không pre-check tên trùng trước khi insert ⇒ tên trùng leak thẳng Prisma `P2002` thay vì 409 dịch nghĩa (đường `update-plan` đã có pre-check tên) | tenancy | Giữ nguyên ở PR #10b, cùng loại với hàng "P2002 leak thành 500" phía trên |
+| Pricing-rule overlap check (`date_time_range` chồng window + replace `date_range`/`fixed` cùng params) **chỉ** chạy ở partner path (`create-partner-pricing-rule`); tenant path (`create-pricing-rule`) không kiểm overlap, không replace — tenant tạo được rule chồng window | listing | Giữ nguyên ở PR #11a (bất đối xứng kế thừa từ code cũ) |
+| `create-resource` nhận `partnerId` từ request và không kiểm partner đó có thuộc tenant hiện tại không (không guard partnerId-belongs-to-tenant); RLS chặn cross-tenant ghi nhưng partnerId sai-trong-tenant không bị bắt | listing | Giữ nguyên ở PR #11a |
+| Hai payload `pricing_rule.deleted` khác nhau: tenant `delete-pricing-rule` emit `{pricingRuleId}` (KHÔNG listingId), partner `delete-partner-pricing-rule` emit `{pricingRuleId, listingId}` (CÓ listingId) — consumer phải chịu cả hai shape | listing | Giữ nguyên ở PR #11a (bất đối xứng kế thừa; hợp nhất là wire change) |
+| Replace-match của pricing-rule (`sameWindowKey`) so `JSON.stringify(params)` của candidate với row đã lưu, nhưng Postgres `jsonb` **sắp xếp lại thứ tự key** khi round-trip (vd `{from,to}` → `{to,from}`) còn candidate giữ nguyên thứ tự client gửi ⇒ replace **chỉ fire khi FE tình cờ serialize đúng thứ tự canonical của jsonb**; thứ tự khác → không match → tạo row thứ hai thay vì thay thế (smoke #11a case 7 phát hiện). Hành vi copy nguyên văn từ code cũ (Task 4 review opus xác nhận predicate byte-identical) — **không phải regression** | listing | Giữ nguyên ở PR #11a; fix đúng là so field-wise theo giá trị (không JSON.stringify cả object) — behavior change nhỏ, tách sau |
 
 ### 8a-bis. Wire change đã duyệt (không phải known gap — thay đổi có chủ đích)
 
@@ -257,6 +261,15 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   module. FE đã grep, không bám vào message literal của mã này. Đây là **thay đổi wire có chủ đích
   duy nhất** của toàn bộ refactor entity-centric tính tới PR #10a — mọi mã lỗi khác vẫn giữ
   byte-identical theo luật §4.
+- **Envelope-normalization partner-path pricing-rule** (listing, PR #11a): các throw ở
+  `create-partner-pricing-rule` (`LISTING_NOT_FOUND`, `LISTING_NOT_OWNED`, `MODE_NOT_ENABLED`) và
+  `delete-partner-pricing-rule` (`LISTING_NOT_FOUND`, `LISTING_NOT_OWNED`, `PRICING_RULE_NOT_FOUND`)
+  trước đây phát body **thiếu `statusCode`** (`{code, message}`); đi qua `DomainError` +
+  `DomainExceptionFilter` nay body **có thêm `statusCode`** — khớp envelope tài liệu, **giống hệt các
+  throw tenant-path** vốn đã có `statusCode`. **Vô hình với consumer**: `@booking/api-client`
+  (`errors.ts`) đọc `status` từ HTTP status line + `message`/`error`/`code` từ body, **không đọc
+  `body.statusCode`**. Code + message + HTTP status line giữ byte-identical; đây **không** phải đổi
+  hợp đồng, chỉ chuẩn hóa shape body bất đối xứng kế thừa.
 
 ### 8b. Migration wave sau refactor (unique backstop còn thiếu)
 
