@@ -8,11 +8,12 @@ import {
 } from '@booking/ui/components/ui/input-group';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { Eye, EyeOff, LockKeyhole } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useNavigation } from 'react-router';
 import type { AuthActionData } from '../../../lib/auth-types';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { usePasswordVisibility } from '../../../lib/use-password-visibility';
 
 function messageFor(
   error: string | undefined,
@@ -70,7 +71,7 @@ export function AuthPasswordInput({
   invalid?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
-  const [visible, setVisible] = useState(false);
+  const { inputType, toggle, visible } = usePasswordVisibility();
 
   return (
     <InputGroup>
@@ -79,14 +80,14 @@ export function AuthPasswordInput({
       </InputGroupAddon>
       <InputGroupInput
         id={id}
-        type={visible ? 'text' : 'password'}
+        type={inputType}
         autoComplete={autoComplete}
         aria-invalid={invalid}
         {...registration}
       />
       <InputGroupAddon align="inline-end">
         <InputGroupButton
-          onClick={() => setVisible((value) => !value)}
+          onClick={toggle}
           aria-label={visible ? t('password.hide') : t('password.show')}
         >
           {visible ? <EyeOff /> : <Eye />}

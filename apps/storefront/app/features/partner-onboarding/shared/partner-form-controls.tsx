@@ -10,10 +10,11 @@ import {
 } from '@booking/ui/components/ui/input-group';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { Eye, EyeOff, Mail } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link, useNavigation } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
+import { usePasswordVisibility } from '../../../lib/use-password-visibility';
 
 export function EmailField({ defaultValue, error }: { defaultValue?: string; error?: string }) {
   const { t } = useTranslation(NsI18n.Auth);
@@ -52,7 +53,7 @@ export function PasswordField({
   autoFocus?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
-  const [visible, setVisible] = useState(false);
+  const { inputType, toggle, visible } = usePasswordVisibility();
   return (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor={name}>{label}</FieldLabel>
@@ -60,7 +61,7 @@ export function PasswordField({
         <InputGroupInput
           id={name}
           name={name}
-          type={visible ? 'text' : 'password'}
+          type={inputType}
           autoComplete="new-password"
           autoFocus={autoFocus}
           aria-invalid={Boolean(error)}
@@ -68,7 +69,7 @@ export function PasswordField({
         <InputGroupAddon align="inline-end">
           <InputGroupButton
             size="icon-sm"
-            onClick={() => setVisible((value) => !value)}
+            onClick={toggle}
             aria-label={visible ? t('password.hide') : t('password.show')}
           >
             {visible ? <EyeOff /> : <Eye />}
