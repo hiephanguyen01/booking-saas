@@ -1,6 +1,5 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { Clock3 } from 'lucide-react';
-import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import type { Route } from '../../../routes/account/+types/recent';
 import type { AccountOutletContext } from '../../../routes/account/layout';
@@ -8,17 +7,13 @@ import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { FavoriteListingCard } from '../../favorites/components/favorite-cards';
 import { AccountPanel } from '../components/account-primitives';
-
-const ALL_TYPES = 'all';
+import { useAccountRecentController } from './use-account-recent-controller';
 
 export function AccountRecentPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation(NsI18n.Account);
   const { listingTypes } = useOutletContext<AccountOutletContext>();
-  const [selectedType, setSelectedType] = useState(ALL_TYPES);
-  const visibleItems =
-    selectedType === ALL_TYPES
-      ? loaderData.items
-      : loaderData.items.filter((item) => item.listing.listingTypeSlug === selectedType);
+  const { isAllSelected, isTypeSelected, selectAll, selectType, visibleItems } =
+    useAccountRecentController(loaderData.items);
 
   return (
     <div className="flex flex-col gap-4 py-2 font-studio">
@@ -30,17 +25,13 @@ export function AccountRecentPage({ loaderData }: Route.ComponentProps) {
           aria-label={t('recent.filterLabel')}
           className="flex min-h-13 w-full overflow-x-auto bg-background shadow-[0_0_8px_rgba(0,0,0,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <RecentTab
-            active={selectedType === ALL_TYPES}
-            label={t('recent.all')}
-            onSelect={() => setSelectedType(ALL_TYPES)}
-          />
+          <RecentTab active={isAllSelected} label={t('recent.all')} onSelect={selectAll} />
           {listingTypes.map((type) => (
             <RecentTab
               key={type.id}
-              active={selectedType === type.slug}
+              active={isTypeSelected(type.slug)}
               label={type.name}
-              onSelect={() => setSelectedType(type.slug)}
+              onSelect={() => selectType(type.slug)}
             />
           ))}
         </div>
