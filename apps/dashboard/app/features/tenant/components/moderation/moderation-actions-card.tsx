@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSubmit } from 'react-router';
+import { useNavigation, useSubmit } from 'react-router';
 import type { ModerationActor, PublishStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import { Check, EyeOff } from 'lucide-react';
 import { ConfirmButton } from '~/components/confirm-button';
 import { EntityRef } from '~/components/entity-ref';
 import { WarningCallout } from '~/components/warning-callout';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 export interface ModerationActionsCardProps {
   /** Drives the generated moderation copy — the noun interpolated into confirm/label text (e.g. 'tin đăng'). */
@@ -77,6 +78,9 @@ export function ModerationActionsCard({
   busy,
 }: ModerationActionsCardProps) {
   const submit = useSubmit();
+  const navigation = useNavigation();
+  const { busy: guardedBusy, run } = useSubmissionGuard(navigation.state);
+  const isBusy = busy || guardedBusy;
   const [force, setForce] = useState(false);
   const [reason, setReason] = useState('');
   const entity = capitalize(entityLabel);
@@ -101,7 +105,7 @@ export function ModerationActionsCard({
   }
 
   return (
-    <Card>
+    <Card aria-busy={isBusy}>
       <CardHeader>
         <CardTitle>Hành động kiểm duyệt</CardTitle>
         <CardDescription>{cardDescription}</CardDescription>
@@ -122,6 +126,7 @@ export function ModerationActionsCard({
                     checked={force}
                     onCheckedChange={(v) => setForce(v === true)}
                     className="mt-0.5"
+                    disabled={isBusy}
                   />
                   <span className="text-foreground">
                     <span className="font-medium">Bỏ qua kiểm tra &amp; xuất bản</span> — xuất bản dù
@@ -134,7 +139,7 @@ export function ModerationActionsCard({
             ) : null}
             <ConfirmButton
               trigger={
-                <Button disabled={busy || (!canPublish && !force)}>
+                <Button disabled={isBusy || (!canPublish && !force)}>
                   <Check className="size-4" /> {canPublish ? 'Duyệt & xuất bản' : 'Ghi đè & xuất bản'}
                 </Button>
               }
@@ -145,8 +150,10 @@ export function ModerationActionsCard({
                   : `Bạn đang ghi đè kết quả kiểm duyệt — ${entityLabel} sẽ hiển thị công khai và quyết định được lưu vào nhật ký.`
               }
               confirmLabel="Xuất bản"
-              busy={busy}
-              onConfirm={() => submit({ intent: 'publish', force: force ? '1' : '' }, { method: 'post' })}
+              busy={isBusy}
+              onConfirm={() =>
+                run(() => submit({ intent: 'publish', force: force ? '1' : '' }, { method: 'post' }))
+              }
             />
           </div>
         ) : null}
@@ -161,15 +168,15 @@ export function ModerationActionsCard({
             {supportsRepublish ? (
               <ConfirmButton
                 trigger={
-                  <Button variant="outline" disabled={busy}>
+                  <Button variant="outline" disabled={isBusy}>
                     <Check className="size-4" /> Hiển thị lại
                   </Button>
                 }
                 title={`Hiển thị lại ${entityLabel}?`}
                 description={`${entity} sẽ được đăng lại lên storefront và tiếp tục nhận đặt chỗ.`}
                 confirmLabel="Hiển thị lại"
-                busy={busy}
-                onConfirm={() => submit({ intent: 'republish' }, { method: 'post' })}
+                busy={isBusy}
+                onConfirm={() => run(() => submit({ intent: 'republish' }, { method: 'post' }))}
               />
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -193,11 +200,12 @@ export function ModerationActionsCard({
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
                   placeholder="VD: Ảnh không rõ, thiếu mô tả, lộ số điện thoại…"
+                  disabled={isBusy}
                 />
               </div>
               <ConfirmButton
                 trigger={
-                  <Button variant="destructive" disabled={busy}>
+                  <Button variant="destructive" disabled={isBusy}>
                     <EyeOff className="size-4" />{' '}
                     {status === 'pending_review' ? 'Từ chối & ẩn' : `Ẩn ${entityLabel}`}
                   </Button>
@@ -214,8 +222,8 @@ export function ModerationActionsCard({
                 }
                 confirmLabel={status === 'published' ? `Ẩn ${entityLabel}` : 'Từ chối'}
                 destructive
-                busy={busy}
-                onConfirm={() => submit({ intent: 'hide', reason }, { method: 'post' })}
+                busy={isBusy}
+                onConfirm={() => run(() => submit({ intent: 'hide', reason }, { method: 'post' }))}
               />
             </div>
           </>

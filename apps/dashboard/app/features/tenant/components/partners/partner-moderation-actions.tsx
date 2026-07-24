@@ -1,4 +1,5 @@
-import { Form, useSubmit } from 'react-router';
+import type { FormEvent } from 'react';
+import { Form, useNavigation, useSubmit } from 'react-router';
 import type { PartnerResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -11,7 +12,7 @@ import {
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { BadgeCheck, Ban, Check } from 'lucide-react';
 import { ConfirmButton } from '~/components/confirm-button';
-import { useBusy } from '~/hooks/use-busy';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 /**
  * The tenant's moderation actions on a partner, gated by state + permission:
@@ -30,13 +31,20 @@ export function PartnerModerationActions({
   canManage: boolean;
 }) {
   const submit = useSubmit();
-  const busy = useBusy();
+  const navigation = useNavigation();
+  const { busy, run } = useSubmissionGuard(navigation.state);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
 
   return (
     <>
       {/* Approve a pending application. */}
       {partner.status === 'pending' && canApprove ? (
-        <Card>
+        <Card aria-busy={busy}>
           <CardHeader>
             <CardTitle>Duyệt đối tác</CardTitle>
             <CardDescription>
@@ -44,7 +52,7 @@ export function PartnerModerationActions({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form method="post">
+            <Form method="post" onSubmit={handleSubmit}>
               <input type="hidden" name="intent" value="approve" />
               <Button type="submit" disabled={busy}>
                 <Check className="size-4" /> Duyệt đối tác
@@ -56,7 +64,7 @@ export function PartnerModerationActions({
 
       {/* Manual identity review once the partner has submitted documents. */}
       {partner.verificationStatus === 'pending' && canApprove ? (
-        <Card>
+        <Card aria-busy={busy}>
           <CardHeader>
             <CardTitle>Xác minh danh tính</CardTitle>
             <CardDescription>
@@ -64,9 +72,14 @@ export function PartnerModerationActions({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form method="post" className="space-y-3">
+            <Form method="post" className="space-y-3" onSubmit={handleSubmit}>
               <input type="hidden" name="intent" value="verify" />
-              <Textarea name="note" placeholder="Ghi chú xét duyệt (tuỳ chọn)…" rows={2} />
+              <Textarea
+                name="note"
+                placeholder="Ghi chú xét duyệt (tuỳ chọn)…"
+                rows={2}
+                disabled={busy}
+              />
               <Button type="submit" disabled={busy}>
                 <BadgeCheck className="size-4" /> Xác minh danh tính
               </Button>
@@ -77,7 +90,7 @@ export function PartnerModerationActions({
 
       {/* Suspend an approved partner — behind a confirmation dialog. */}
       {partner.status === 'approved' && canManage ? (
-        <Card>
+        <Card aria-busy={busy}>
           <CardHeader>
             <CardTitle>Tạm ngưng đối tác</CardTitle>
             <CardDescription>
@@ -95,7 +108,7 @@ export function PartnerModerationActions({
               description="Tin đăng của đối tác sẽ bị ẩn khỏi storefront và không nhận đặt chỗ mới cho tới khi được khôi phục."
               confirmLabel="Tạm ngưng"
               busy={busy}
-              onConfirm={() => void submit({ intent: 'suspend' }, { method: 'post' })}
+              onConfirm={() => run(() => submit({ intent: 'suspend' }, { method: 'post' }))}
             />
           </CardContent>
         </Card>

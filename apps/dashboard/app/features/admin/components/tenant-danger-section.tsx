@@ -1,4 +1,4 @@
-import { useSubmit } from 'react-router';
+import { useNavigation, useSubmit } from 'react-router';
 import { PauseCircle, PlayCircle } from 'lucide-react';
 import type { TenantDetailResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -11,6 +11,7 @@ import {
 } from '@booking/ui/components/ui/card';
 import { ConfirmButton } from '~/components/confirm-button';
 import { ErrorBanner } from '~/components/action-feedback';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 /**
  * "Vùng nguy hiểm" card: suspend/reactivate the tenant behind a confirm dialog.
@@ -27,11 +28,14 @@ export function TenantDangerSection({
   error: string | null;
 }) {
   const submit = useSubmit();
+  const navigation = useNavigation();
+  const { busy: guardedBusy, run } = useSubmissionGuard(navigation.state);
+  const isBusy = busy || guardedBusy;
   const suspend = status === 'active';
   const nextStatus = suspend ? 'suspended' : 'active';
 
   return (
-    <Card className="border-destructive/40">
+    <Card className="border-destructive/40" aria-busy={isBusy}>
       <CardHeader>
         <CardTitle className="text-base text-destructive">Vùng nguy hiểm</CardTitle>
         <CardDescription>
@@ -44,7 +48,7 @@ export function TenantDangerSection({
         <ErrorBanner error={error} />
         <ConfirmButton
           trigger={
-            <Button variant={suspend ? 'destructive' : 'default'} size="sm" disabled={busy}>
+            <Button variant={suspend ? 'destructive' : 'default'} size="sm" disabled={isBusy}>
               {suspend ? (
                 <>
                   <PauseCircle className="size-4" />
@@ -66,8 +70,10 @@ export function TenantDangerSection({
           }
           confirmLabel={suspend ? 'Tạm ngưng' : 'Kích hoạt'}
           destructive={suspend}
-          busy={busy}
-          onConfirm={() => void submit({ intent: 'set-status', status: nextStatus }, { method: 'post' })}
+          busy={isBusy}
+          onConfirm={() =>
+            run(() => submit({ intent: 'set-status', status: nextStatus }, { method: 'post' }))
+          }
         />
       </CardContent>
     </Card>
