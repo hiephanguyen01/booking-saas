@@ -1,6 +1,7 @@
-import { BadRequestException, Controller, Get, Headers } from '@nestjs/common';
+import { Controller, Get, Headers } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { PublicTenantResponse } from '@booking/contracts';
+import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../application/use-cases/resolve-tenant-by-host.use-case';
 import { PublicTenantResponseDto } from './dto/tenancy.dto';
@@ -27,11 +28,7 @@ export class PublicTenantController {
     // the direct Host. A proxy chain may comma-join hosts — take the first.
     const resolvedHost = forwardedHost?.split(',')[0]?.trim() || host;
     if (!resolvedHost) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'MISSING_HOST',
-        message: 'Host header is required to resolve a tenant',
-      });
+      throw new MissingTenantHost();
     }
     return this.resolve.execute(resolvedHost);
   }

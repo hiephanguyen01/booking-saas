@@ -1,10 +1,10 @@
 import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod';
 import {
   addDomainInputSchema,
   assignSubscriptionInputSchema,
   createPlanInputSchema,
   createTenantInputSchema,
+  createdTenantResponseSchema,
   currentSubscriptionResponseSchema,
   domainResponseSchema,
   domainVerificationResultSchema,
@@ -16,7 +16,7 @@ import {
   publicTenantResponseSchema,
   setDefaultCancellationPolicyInputSchema,
   slugAvailabilityResponseSchema,
-  slugSchema,
+  slugCheckQuerySchema,
   subscriptionHistoryItemSchema,
   subscriptionResponseSchema,
   subscriptionStatusResponseSchema,
@@ -25,6 +25,7 @@ import {
   tenantResponseSchema,
   tenantThemeResponseSchema,
   updatePlanInputSchema,
+  updateThemeInputSchema,
   updateTenantInputSchema,
 } from '@booking/contracts';
 
@@ -42,10 +43,8 @@ export class PaginationQueryDto extends createZodDto(paginationQuerySchema) {}
 export class ListTenantsQueryDto extends createZodDto(listTenantsQuerySchema) {}
 
 /** `GET /admin/tenants/slug-check?slug=…` — validated with the same slug rule create enforces. */
-export class SlugCheckQueryDto extends createZodDto(z.object({ slug: slugSchema })) {}
+export class SlugCheckQueryDto extends createZodDto(slugCheckQuerySchema) {}
 
-/** Free-form storefront theme config body (§16.1). Stored as `tenants.theme_config`. */
-const updateThemeInputSchema = z.object({ themeConfig: z.record(z.unknown()) });
 export class UpdateThemeDto extends createZodDto(updateThemeInputSchema) {}
 export class PartnerPromotionsToggleDto extends createZodDto(partnerPromotionsToggleSchema) {}
 
@@ -64,9 +63,7 @@ export class PublicTenantResponseDto extends createZodDto(publicTenantResponseSc
 export class PlatformHealthResponseDto extends createZodDto(platformHealthResponseSchema) {}
 
 /** Newly created tenant plus its auto-provisioned primary domain (POST /admin/tenants). */
-export class CreatedTenantDto extends createZodDto(
-  tenantResponseSchema.extend({ primaryDomain: domainResponseSchema }),
-) {}
+export class CreatedTenantDto extends createZodDto(createdTenantResponseSchema) {}
 
 /** A tenant's selected current subscription and resolved plan. */
 export class CurrentSubscriptionDto extends createZodDto(currentSubscriptionResponseSchema) {}

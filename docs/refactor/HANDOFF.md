@@ -298,3 +298,32 @@ Nói với người dùng bạn đã đọc file này, xác nhận lại §1 (tr
 `git log --oneline -5 refactor/entity-centric` + `gh pr list`. Nếu có PR module đang mở, tiếp tục
 review/sửa/merge PR đó; chỉ bắt đầu từ §3 bước 1 cho module kế tiếp khi không còn PR module mở. Đừng
 khảo sát lại toàn bộ API — `entity-centric-survey.md` đã có sẵn.
+
+## 13. Final consistency audit xuyên module — 2026-07-25
+
+Audit cuối sau response-contract follow-up:
+
+- 16/16 module có đủ `application` / `domain` / `infrastructure`; inventory vẫn là 256 use-case.
+  Không có application service, direct Prisma/raw SQL trong use-case, application/domain import
+  infrastructure, concrete Prisma adapter injection hay executable empty-tenant fallback.
+- 249/249 controller route có access declaration và Swagger response declaration. Các response tạo
+  tenant, submit listing và webhook acknowledgement đã có Zod schema/type trong
+  `@booking/contracts`; API DTO/controller và dashboard caller liên quan dùng cùng contract/runtime
+  parser. Public listing-group detail và ba route 204 đã được bổ sung Swagger metadata.
+- DTO HTTP không còn tự tạo request/response Zod schema; mapper pending-review liệt kê field rõ ràng
+  thay vì spread read record. Trong `modules/*` không còn custom Nest envelope dựng inline ở
+  controller/guard/pipe/use-case; named boundary errors giữ nguyên từng status/code/message.
+- Bốn OTP use-case concrete không khai báo lại `execute()` vì kế thừa implementation duy nhất từ
+  `ResendOtpUseCase`/`VerifyOtpUseCase`; đây là reuse có chủ đích, không phải use-case thiếu entrypoint.
+- Final gate: `pnpm turbo lint typecheck build --force` **28/28 task xanh**, cache 0; `check:rls`
+  **46/46**. API production build boot sạch trên port 3001 và `GET /health` trả 200.
+
+Một nợ kiến trúc **chưa đóng** được đo riêng, không được coi là “đã consistent hoàn toàn”: static
+import graph hiện có 229 import xuyên bounded context. 131 là seam HTTP kỹ thuật
+(identity-access decorators/principal và tenancy guards); 98 là coupling còn lại, gồm 66 từ
+application, 24 từ infrastructure và 8 từ domain. Các cụm lớn nhất là scheduling→listing (14),
+affiliate→finance (8), listing→catalog (8), booking→listing (6), booking→promotions (5) và
+catalog→scheduling (5). Đây là surface đã được freeze trong spec/survey để bảo toàn wire/CAS trong
+Track A, nhưng vẫn trái đích ADR 0003 “module effects qua outbox”. Tách nó cần một track kiến trúc
+riêng (shared technical kernel + local reader/command ports + outbox migration), không nên sửa cơ học
+trong final review vì sẽ đổi transaction boundary và synchronous query semantics.

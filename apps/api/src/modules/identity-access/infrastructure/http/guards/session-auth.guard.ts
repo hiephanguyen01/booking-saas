@@ -1,9 +1,10 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SESSION_STORE, type ISessionStore } from '../../../domain/ports/session-store.port';
 import { IS_PUBLIC } from '../decorators/public.decorator';
 import { ACCESS_COOKIE } from '../cookies';
+import { NotAuthenticated, SessionExpired } from '../../../application/access-http-errors';
 
 /**
  * Global authentication guard: resolves the session cookie into a principal
@@ -36,19 +37,11 @@ export class SessionAuthGuard implements CanActivate {
 
     const token: string | undefined = req.cookies?.[ACCESS_COOKIE];
     if (!token) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        code: 'NOT_AUTHENTICATED',
-        message: 'Authentication required',
-      });
+      throw new NotAuthenticated();
     }
     const principal = await this.sessions.findByAccessToken(token);
     if (!principal || principal.status !== 'active') {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        code: 'SESSION_EXPIRED',
-        message: 'Session is invalid or expired',
-      });
+      throw new SessionExpired();
     }
     req.principal = principal;
     return true;

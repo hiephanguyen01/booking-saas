@@ -43,3 +43,14 @@ export class CatalogAttributeFilterInvalid extends BadRequestException {
     });
   }
 }
+
+export class InvalidCatalogSearch extends BadRequestException {
+  constructor(issues: unknown) {
+    super({
+      statusCode: 400,
+      code: 'INVALID_CATALOG_SEARCH',
+      message: 'Invalid catalog search query',
+      issues,
+    });
+  }
+}

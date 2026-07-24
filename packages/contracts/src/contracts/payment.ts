@@ -218,6 +218,25 @@ export const paymentStatusResponseSchema = z.object({
 });
 export type PaymentStatusResponse = z.infer<typeof paymentStatusResponseSchema>;
 
+/**
+ * Provider acknowledgement returned by the public webhook endpoint.
+ * ZaloPay requires its own callback shape; the other gateways use the generic acknowledgement.
+ */
+export const genericWebhookAcknowledgementResponseSchema = z
+  .object({ success: z.literal(true) })
+  .strict();
+export const zaloPayWebhookAcknowledgementResponseSchema = z
+  .object({
+    return_code: z.literal(1),
+    return_message: z.literal('success'),
+  })
+  .strict();
+export const webhookAcknowledgementResponseSchema = z.union([
+  genericWebhookAcknowledgementResponseSchema,
+  zaloPayWebhookAcknowledgementResponseSchema,
+]);
+export type WebhookAcknowledgementResponse = z.infer<typeof webhookAcknowledgementResponseSchema>;
+
 export const gatewayConfigResponseSchema = z.object({
   gateway: gatewayKeySchema,
   environment: gatewayEnvironmentSchema,

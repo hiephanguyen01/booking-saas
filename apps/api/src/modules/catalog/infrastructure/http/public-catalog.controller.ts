@@ -1,10 +1,11 @@
-import { BadRequestException, Controller, Get, Headers, Query } from '@nestjs/common';
+import { Controller, Get, Headers, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type {
   PublicCatalogSearchQuery,
   PublicCatalogSearchResponse,
   PublicListingTypeResponse,
 } from '@booking/contracts';
+import { MissingTenantHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
@@ -57,11 +58,7 @@ export class PublicCatalogController {
 function resolveHost(forwardedHost?: string, host?: string): string {
   const resolved = forwardedHost?.split(',')[0]?.trim() || host;
   if (!resolved) {
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'MISSING_HOST',
-      message: 'Host header is required to resolve a tenant',
-    });
+    throw new MissingTenantHost();
   }
   return resolved;
 }

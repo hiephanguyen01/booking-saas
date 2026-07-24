@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import type { TrackReferralResponse } from '@booking/contracts';
+import { MissingHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { TrackReferralUseCase } from '../../application/use-cases/track-referral.use-case';
 import { TrackReferralDto, TrackReferralResponseDto } from './dto/affiliate.dto';
@@ -17,7 +18,10 @@ export class PublicReferralController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Record a referral click and validate the code' })
   @ApiOkResponse({ type: TrackReferralResponseDto })
-  async track(@Body() input: TrackReferralDto, @Req() req: Request): Promise<TrackReferralResponse> {
+  async track(
+    @Body() input: TrackReferralDto,
+    @Req() req: Request,
+  ): Promise<TrackReferralResponse> {
     return this.trackReferral.execute(hostOf(req), input, {
       ip: clientIp(req),
       userAgent: headerOf(req, 'user-agent'),
@@ -27,8 +31,10 @@ export class PublicReferralController {
 
 function hostOf(req: Request): string {
   const forwarded = req.headers['x-forwarded-host'];
-  const raw = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() || req.headers.host;
-  if (!raw) throw new BadRequestException({ statusCode: 400, code: 'MISSING_HOST', message: 'Host header is required' });
+  const raw =
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() ||
+    req.headers.host;
+  if (!raw) throw new MissingHost();
   return raw;
 }
 

@@ -1,5 +1,5 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
   PERMISSION_RESOLVER,
@@ -9,6 +9,7 @@ import { TenantContextService } from '../../../../../shared/tenant-context/tenan
 import { AUTHENTICATED_ONLY } from '../decorators/authenticated-only.decorator';
 import { IS_PUBLIC } from '../decorators/public.decorator';
 import { REQUIRED_PERMISSIONS } from '../decorators/require-permissions.decorator';
+import { MissingPermission, NoPermissionDeclared } from '../../../application/access-http-errors';
 
 /**
  * Deny-by-default authorization (TONG-QUAN.md §20): a route must be @Public,
@@ -35,11 +36,7 @@ export class PermissionsGuard implements CanActivate {
 
     const required = this.reflector.getAllAndOverride<string[]>(REQUIRED_PERMISSIONS, targets);
     if (!required || required.length === 0) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'NO_PERMISSION_DECLARED',
-        message: 'Route declares no permissions and is denied by default',
-      });
+      throw new NoPermissionDeclared();
     }
 
     const req = context.switchToHttp().getRequest();
@@ -49,11 +46,7 @@ export class PermissionsGuard implements CanActivate {
 
     const missing = required.filter((key) => !held.has(key));
     if (missing.length > 0) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'MISSING_PERMISSION',
-        message: `Missing permission: ${missing.join(', ')}`,
-      });
+      throw new MissingPermission(missing);
     }
 
     if (tenantId) this.tenantContext.setTenantId(tenantId);

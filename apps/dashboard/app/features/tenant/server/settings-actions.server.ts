@@ -5,6 +5,7 @@ import {
   sepayGatewaySettingsFormSchema,
   zalopayGatewaySettingsFormSchema,
   themeConfigSchema,
+  tenantThemeResponseSchema,
   type DomainResponse,
   type TenantThemeResponse,
   payoutPolicySchema,
@@ -108,12 +109,9 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
             key2: parsed.data.key2,
           },
         };
-        const res = await apiPut<GatewayConfigResponse>(
-          '/tenant/gateway-config',
-          payload,
-          auth,
-          { schema: gatewayConfigResponseSchema },
-        );
+        const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+          schema: gatewayConfigResponseSchema,
+        });
         if (!res.ok) {
           return routeData(
             { form: 'zalopay', error: res.error ?? 'Không lưu được cấu hình ZaloPay.' },
@@ -145,12 +143,9 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
             secretKey: parsed.data.secretKey,
           },
         };
-        const res = await apiPut<GatewayConfigResponse>(
-          '/tenant/gateway-config',
-          payload,
-          auth,
-          { schema: gatewayConfigResponseSchema },
-        );
+        const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+          schema: gatewayConfigResponseSchema,
+        });
         if (!res.ok) {
           return routeData(
             { form: 'momo', error: res.error ?? 'Không lưu được cấu hình MoMo.' },
@@ -179,12 +174,9 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
           secretKey: parsed.data.secretKey,
         },
       };
-      const res = await apiPut<GatewayConfigResponse>(
-        '/tenant/gateway-config',
-        payload,
-        auth,
-        { schema: gatewayConfigResponseSchema },
-      );
+      const res = await apiPut<GatewayConfigResponse>('/tenant/gateway-config', payload, auth, {
+        schema: gatewayConfigResponseSchema,
+      });
       if (!res.ok) {
         return routeData(
           { form: 'sepay', error: res.error ?? 'Không lưu được cấu hình SePay.' },
@@ -222,6 +214,7 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
       '/tenant/theme',
       { themeConfig: parsed.data },
       auth,
+      { schema: tenantThemeResponseSchema },
     );
     if (!res.ok)
       return routeData(

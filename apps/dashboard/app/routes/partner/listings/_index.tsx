@@ -8,7 +8,9 @@ import type {
   Paginated,
   PaginatedWithCounts,
   PublishStatus,
+  SubmitListingResponse,
 } from '@booking/contracts';
+import { submitListingResponseSchema } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { DataTable } from '@booking/ui/components/data-table/data-table';
 import {
@@ -80,7 +82,9 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 403 },
       );
     }
-    const res = await apiPost(`/partner/listings/${id}/submit`, {}, auth);
+    const res = await apiPost<SubmitListingResponse>(`/partner/listings/${id}/submit`, {}, auth, {
+      schema: submitListingResponseSchema,
+    });
     return res.ok
       ? data<ListingsActionResult>({ ok: true, error: null })
       : data<ListingsActionResult>(
@@ -103,7 +107,10 @@ export async function action({ request }: Route.ActionArgs) {
           { status: 400 },
         );
   }
-  return data<ListingsActionResult>({ ok: false, error: 'Hành động không hợp lệ.' }, { status: 400 });
+  return data<ListingsActionResult>(
+    { ok: false, error: 'Hành động không hợp lệ.' },
+    { status: 400 },
+  );
 }
 
 const FILTERS: { value: string; label: string }[] = [
@@ -115,8 +122,16 @@ const FILTERS: { value: string; label: string }[] = [
 ];
 
 export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
-  const { result, groups, listingTypes, canWrite, canPublish, canAvailability, loadError, filters } =
-    loaderData;
+  const {
+    result,
+    groups,
+    listingTypes,
+    canWrite,
+    canPublish,
+    canAvailability,
+    loadError,
+    filters,
+  } = loaderData;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
   const listings = result?.items ?? [];
@@ -151,7 +166,9 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
                   <DropdownMenuContent align="end">
                     {eligibleTypes.map((type) => (
                       <DropdownMenuItem key={type.id} asChild>
-                        <Link to={dashboardPaths.partner.newListingGroup(type.id)}>{type.name}</Link>
+                        <Link to={dashboardPaths.partner.newListingGroup(type.id)}>
+                          {type.name}
+                        </Link>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>

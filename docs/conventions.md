@@ -91,8 +91,9 @@ follows the convention above without reopening that migration plan.
 
 ### Backend error placement
 
-Never repeat a custom error envelope inline in a use-case
-(`throw new NotFoundException({ statusCode, code, message, ... })`). Choose its home by semantics:
+Never repeat a custom error envelope inline at a call-site
+(`throw new NotFoundException({ statusCode, code, message, ... })`) — this applies to controllers,
+guards and pipes as well as use-cases. Choose its home by semantics:
 
 1. **Standard 4xx business/read/access error** → a named, framework-free `DomainError` in the owning
    module's `domain/errors/`; throw only the named class at call-sites. `DomainExceptionFilter`
@@ -105,6 +106,8 @@ Never repeat a custom error envelope inline in a use-case
 4. **Auth retry metadata, legacy non-standard body, webhook/provider boundary or other HTTP-only
    shape** → a named Nest exception in `application/*-http-errors.ts`. Preserve special top-level
    fields such as `retryAfterSec`/`attemptsRemaining`; do not force these through `DomainError`.
+   Reusable transport-only failures shared by public controllers belong in
+   `shared/http/request-boundary-errors.ts`.
 5. **Defensive/unreachable failure or 5xx** → ordinary `Error` or a named Nest 5xx exception at the
    application/infrastructure boundary. `DomainError` is a 4xx-only convention. A bare Nest
    exception is allowed only when the default Nest body is the intentional frozen contract.

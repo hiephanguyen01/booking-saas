@@ -1,8 +1,8 @@
 import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod';
 import {
   checkoutResponseSchema,
   gatewayConfigResponseSchema,
+  genericWebhookAcknowledgementResponseSchema,
   paymentStatusResponseSchema,
   paymentHistoryItemSchema,
   paymentHistoryQuerySchema,
@@ -13,6 +13,7 @@ import {
   publicPaymentOptionsSchema,
   startCheckoutInputSchema,
   updateGatewayPaymentSettingsInputSchema,
+  zaloPayWebhookAcknowledgementResponseSchema,
 } from '@booking/contracts';
 
 // Request bodies
@@ -33,5 +34,9 @@ export class RefundResponseDto extends createZodDto(refundResponseSchema) {}
 export class RefundHistoryItemDto extends createZodDto(refundHistoryItemSchema) {}
 export class PublicPaymentOptionsDto extends createZodDto(publicPaymentOptionsSchema) {}
 
-// Ad-hoc responses
-export class WebhookReceivedDto extends createZodDto(z.object({ success: z.literal(true) })) {}
+export class GenericWebhookAcknowledgementResponseDto extends createZodDto(
+  genericWebhookAcknowledgementResponseSchema,
+) {}
+export class ZaloPayWebhookAcknowledgementResponseDto extends createZodDto(
+  zaloPayWebhookAcknowledgementResponseSchema,
+) {}

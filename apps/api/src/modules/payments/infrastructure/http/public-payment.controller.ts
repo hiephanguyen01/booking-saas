@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -13,6 +13,7 @@ import {
   type PaymentStatusResponse,
   type PublicPaymentOptions,
 } from '@booking/contracts';
+import { MissingHost } from '../../../../shared/http/request-boundary-errors';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UuidParam } from '../../../../shared/openapi/decorators';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
@@ -72,11 +73,6 @@ function hostOf(req: Request): string {
   const raw =
     (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() ||
     req.headers.host;
-  if (!raw)
-    throw new BadRequestException({
-      statusCode: 400,
-      code: 'MISSING_HOST',
-      message: 'Host header is required',
-    });
+  if (!raw) throw new MissingHost();
   return raw;
 }

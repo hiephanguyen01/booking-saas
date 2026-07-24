@@ -25,6 +25,16 @@ export class BadWebhook extends BadRequestException {
   }
 }
 
+export class EmptyWebhookBody extends BadRequestException {
+  constructor() {
+    super({
+      statusCode: 400,
+      code: 'EMPTY_BODY',
+      message: 'Empty webhook body',
+    });
+  }
+}
+
 export class InvalidWebhookSignature extends UnauthorizedException {
   constructor() {
     super({
