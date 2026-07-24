@@ -1,9 +1,9 @@
 import {
   uuidSchema,
+  type CurrentSubscriptionResponse,
   type DomainResponse,
   type DomainVerificationResult,
   type Paginated,
-  type PlanResponse,
   type SlugAvailabilityResponse,
   type SubscriptionHistoryItem,
   type SubscriptionResponse,
@@ -183,7 +183,7 @@ export class AdminTenantController {
   @ApiOkResponse({ type: CurrentSubscriptionDto })
   async subscription(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-  ): Promise<{ subscription: SubscriptionResponse; plan: PlanResponse | null } | null> {
+  ): Promise<CurrentSubscriptionResponse | null> {
     const current = await this.getCurrentSubscription.execute(id);
     if (!current) return null;
     return {

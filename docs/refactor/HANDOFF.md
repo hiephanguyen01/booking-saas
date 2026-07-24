@@ -283,6 +283,11 @@ Plan:
   `/platform/health`, `/platform/finance` đều 200. Runtime guard giữ data nguyên trạng:
   `dismissed → reviewing` trả `409 CONTENT_REPORT_INVALID_TRANSITION`, draft listing hide trả
   `400 LISTING_NOT_HIDEABLE`; response content-report phát cả `target` và `targetType`.
+- Follow-up response-contract audit 2026-07-25: content-report API DTO/mapper và dashboard list/detail
+  đều dùng schema có `targetType`; current-subscription inline API/FE type đã hợp nhất thành
+  `currentSubscriptionResponseSchema`/`CurrentSubscriptionResponse`; gateway settings FE dùng
+  discriminated request type và parse shared response schema. Convention bốn bề mặt
+  contract→DTO/mapper→BFF→FE nằm trong `docs/conventions.md` và `packages/contracts/CLAUDE.md`.
 
 Không còn action kỹ thuật nào trong scope final-gap này. Các hàng chưa đóng trong spec §8a vẫn là
 backlog behavior/product độc lập; bước tiếp theo là final integration/PR vào `main`.

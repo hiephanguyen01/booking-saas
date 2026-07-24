@@ -279,6 +279,13 @@ export const subscriptionResponseSchema = z.object({
 });
 export type SubscriptionResponse = z.infer<typeof subscriptionResponseSchema>;
 
+/** `GET /admin/tenants/:id/subscription` — selected current row with its resolved plan. */
+export const currentSubscriptionResponseSchema = z.object({
+  subscription: subscriptionResponseSchema,
+  plan: planResponseSchema.nullable(),
+});
+export type CurrentSubscriptionResponse = z.infer<typeof currentSubscriptionResponseSchema>;
+
 export const domainResponseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),

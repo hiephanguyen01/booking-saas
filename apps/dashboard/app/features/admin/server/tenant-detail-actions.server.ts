@@ -5,19 +5,12 @@ import {
   updateTenantInputSchema,
   type DomainResponse,
   type DomainVerificationResult,
-  type PlanResponse,
   type SubscriptionResponse,
   type TenantDetailResponse,
 } from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost } from '~/lib/api.server';
 import { dashboardPaths } from '~/constants/paths';
 import { requirePlatform } from './admin.server';
-
-/** `GET /admin/tenants/:id/subscription` — the current subscription with its plan resolved. */
-export interface CurrentSubscription {
-  subscription: SubscriptionResponse;
-  plan: PlanResponse | null;
-}
 
 /** Which form/card an action result belongs to, so an error stays in its own card. */
 export type ActionScope = 'tenant' | 'domain' | 'subscription' | 'status';

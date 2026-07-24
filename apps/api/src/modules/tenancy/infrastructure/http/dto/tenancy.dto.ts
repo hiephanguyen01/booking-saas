@@ -5,6 +5,7 @@ import {
   assignSubscriptionInputSchema,
   createPlanInputSchema,
   createTenantInputSchema,
+  currentSubscriptionResponseSchema,
   domainResponseSchema,
   domainVerificationResultSchema,
   listTenantsQuerySchema,
@@ -67,9 +68,7 @@ export class CreatedTenantDto extends createZodDto(
   tenantResponseSchema.extend({ primaryDomain: domainResponseSchema }),
 ) {}
 
-/** A tenant's current subscription with its (possibly null) plan (GET /admin/tenants/:id/subscription). */
-export class CurrentSubscriptionDto extends createZodDto(
-  z.object({ subscription: subscriptionResponseSchema, plan: planResponseSchema.nullable() }),
-) {}
+/** A tenant's selected current subscription and resolved plan. */
+export class CurrentSubscriptionDto extends createZodDto(currentSubscriptionResponseSchema) {}
 
 export class TenantThemeResponseDto extends createZodDto(tenantThemeResponseSchema) {}

@@ -77,6 +77,18 @@ follows the convention above without reopening that migration plan.
   accidental `unknown` spread through ports. Response mappers enumerate contract keys explicitly so
   persistence column names cannot leak through object spread.
 
+### Shared API response contracts
+
+- Any HTTP response shape change starts in the matching Zod response schema and inferred type in
+  `@booking/contracts`; do not leave an inline controller type or a frontend-only duplicate.
+- In the same change, update the API response DTO and explicit mapper, then every dashboard/storefront
+  loader/action consumer. Prefer passing the shared response schema to `apiGet`/`apiPost`/`apiPut`/
+  `apiPatch` so the BFF narrows the runtime payload as well as its compile-time type.
+- A compatibility field must be declared and documented in the shared schema (including deprecation),
+  emitted explicitly by the mapper and removed only in a coordinated API + frontend removal wave.
+- Rebuild `@booking/contracts` before targeted API/frontend typechecks; its consumers resolve the
+  built package, not `src/`.
+
 ### Backend error placement
 
 Never repeat a custom error envelope inline in a use-case

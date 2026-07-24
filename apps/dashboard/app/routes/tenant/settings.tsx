@@ -1,9 +1,9 @@
-import type {
-  CancellationPolicyResponse,
-  DomainResponse,
-  GatewayConfigResponse,
-  PayoutPolicyDto,
-  TenantThemeResponse,
+import {
+  gatewayConfigsResponseSchema,
+  type CancellationPolicyResponse,
+  type DomainResponse,
+  type PayoutPolicyDto,
+  type TenantThemeResponse,
 } from '@booking/contracts';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
@@ -77,7 +77,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? apiGet<CancellationPolicyResponse[]>('/tenant/cancellation-policies', auth)
         : Promise.resolve(null),
       canSettings
-        ? apiGet<GatewayConfigResponse[]>('/tenant/gateway-config', auth)
+        ? apiGet('/tenant/gateway-config', auth, { schema: gatewayConfigsResponseSchema })
         : Promise.resolve(null),
       canFinance
         ? apiGet<PayoutPolicyDto>('/tenant/finance/payout-policy', auth)
