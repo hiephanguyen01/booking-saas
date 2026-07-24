@@ -9,6 +9,7 @@ import type {
   PublishStatus,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { ListingContentPatch, NewListing } from '../entities/listing.entity';
 
 export const LISTING_REPOSITORY = Symbol('LISTING_REPOSITORY');
 
@@ -97,38 +98,6 @@ export interface ModerationUpdate {
   publishedAt?: Date;
 }
 
-export interface CreateListingData {
-  partnerId: string;
-  listingTypeId: string;
-  resourceId: string;
-  groupId?: string | null;
-  categoryId?: string | null;
-  title: string;
-  slug: string;
-  description?: string | null;
-  provinceCode?: string | null;
-  provinceName?: string | null;
-  wardCode?: string | null;
-  wardName?: string | null;
-  address?: string | null;
-  photos: string[];
-  attributes: Record<string, unknown>;
-  bookingModes: BookingMode[];
-  modeConfig: Record<string, unknown>;
-  stockQuantity?: number | null;
-  capacity?: number | null;
-  bufferBefore: number;
-  bufferAfter: number;
-  approvalRequired: boolean;
-  depositPercent: number;
-  balanceDue: BalanceDue;
-  cancellationPolicyId?: string | null;
-}
-
-export type UpdateListingData = Partial<
-  Omit<CreateListingData, 'partnerId' | 'listingTypeId' | 'resourceId'>
->;
-
 export interface ListingFilter {
   groupId?: string;
   partnerId?: string;
@@ -138,7 +107,7 @@ export interface ListingFilter {
 }
 
 export interface IListingRepository {
-  create(tx: PrismaTx, tenantId: string, data: CreateListingData): Promise<ListingRecord>;
+  create(tx: PrismaTx, tenantId: string, data: NewListing): Promise<ListingRecord>;
   findById(tx: PrismaTx, id: string): Promise<ListingRecord | null>;
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingRecord | null>;
   findPublicBySlug(tx: PrismaTx, slug: string): Promise<PublicListingRecord | null>;
@@ -153,7 +122,7 @@ export interface IListingRepository {
     filter: ListingFilter,
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }>;
-  update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord>;
+  update(tx: PrismaTx, id: string, data: ListingContentPatch): Promise<ListingRecord>;
   moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingRecord>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   countBookings(tx: PrismaTx, listingId: string): Promise<number>;

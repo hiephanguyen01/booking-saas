@@ -1,10 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -15,6 +9,9 @@ import {
   LISTING_GROUP_REPOSITORY,
   type IListingGroupRepository,
 } from '../../domain/ports/listing-group-repository.port';
+import { Listing } from '../../domain/entities/listing.entity';
+import { ListingHasBookings } from '../../domain/errors/listing-errors';
+import { ListingGroupReadOnlyForDelete } from '../../domain/errors/listing-group-errors';
 
 /** Delete a listing; blocked while it has bookings (§7.3 — no orphaned bookings). */
 @Injectable()
@@ -40,30 +37,17 @@ export class DeleteListingUseCase {
           message: 'Listing not found',
         });
       }
-      if (options.requirePartnerId && existing.partnerId !== options.requirePartnerId) {
-        throw new ForbiddenException({
-          statusCode: 403,
-          code: 'LISTING_NOT_OWNED',
-          message: 'Listing belongs to another partner',
-        });
-      }
+      const listing = Listing.rehydrate(existing);
+      listing.assertOwnedForDelete(options.requirePartnerId);
       if (options.requirePartnerId && existing.groupId) {
         const group = await this.groups.findById(tx, existing.groupId);
         if (!group || group.status !== 'draft') {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'LISTING_GROUP_READ_ONLY',
-            message: 'Hide the listing group before deleting its items',
-          });
+          throw new ListingGroupReadOnlyForDelete();
         }
       }
       const bookings = await this.listings.countBookings(tx, id);
       if (bookings > 0) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_HAS_BOOKINGS',
-          message: `Cannot delete a listing with ${bookings} booking(s)`,
-        });
+        throw new ListingHasBookings(bookings);
       }
       await this.listings.delete(tx, id);
       await this.outbox.emit(tx, {

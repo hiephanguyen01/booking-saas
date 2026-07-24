@@ -11,14 +11,13 @@ import type {
 import { toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
-  CreateListingData,
   IListingRepository,
   ListingFilter,
   ListingRecord,
   ModerationUpdate,
   PublicListingRecord,
-  UpdateListingData,
 } from '../../domain/ports/listing-repository.port';
+import type { ListingContentPatch, NewListing } from '../../domain/entities/listing.entity';
 
 /**
  * Everything a `ListingRecord` needs beyond the row itself. Applied to EVERY
@@ -131,7 +130,7 @@ function toWhere(filter: ListingFilter): Prisma.ListingWhereInput {
 
 @Injectable()
 export class PrismaListingRepository implements IListingRepository {
-  async create(tx: PrismaTx, tenantId: string, data: CreateListingData): Promise<ListingRecord> {
+  async create(tx: PrismaTx, tenantId: string, data: NewListing): Promise<ListingRecord> {
     return toRecord(
       await tx.listing.create({
         data: {
@@ -274,7 +273,7 @@ export class PrismaListingRepository implements IListingRepository {
     return { items: items.map(toRecord), total, counts: toStatusCounts(countRows) };
   }
 
-  async update(tx: PrismaTx, id: string, data: UpdateListingData): Promise<ListingRecord> {
+  async update(tx: PrismaTx, id: string, data: ListingContentPatch): Promise<ListingRecord> {
     return toRecord(
       await tx.listing.update({
         where: { id },
