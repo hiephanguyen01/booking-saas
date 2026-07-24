@@ -36,6 +36,7 @@ export function CheckoutForm({
   dueNow,
   expectedSubtotal,
   paymentMethods,
+  checkoutAttemptId,
 }: {
   listingId: string;
   listingSlug: string;
@@ -51,6 +52,7 @@ export function CheckoutForm({
   dueNow: string;
   expectedSubtotal: string;
   paymentMethods: CustomerPaymentMethod[];
+  checkoutAttemptId: string;
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
   const {
@@ -70,6 +72,7 @@ export function CheckoutForm({
 
   return (
     <Form method="post" className="flex flex-col gap-4">
+      <input type="hidden" name="checkoutAttemptId" value={checkoutAttemptId} />
       <input type="hidden" name="listingId" value={listingId} />
       <input type="hidden" name="listingSlug" value={listingSlug} />
       <input type="hidden" name="mode" value={mode} />

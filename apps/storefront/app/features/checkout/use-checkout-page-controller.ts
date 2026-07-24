@@ -45,5 +45,6 @@ export function useCheckoutPageController({
     validPromoCode: promo?.valid ? promoCode : null,
     fieldErrors: actionData?.fieldErrors ?? null,
     serverError: actionData?.error ?? null,
+    checkoutAttemptId: actionData?.checkoutAttemptId ?? loaderData.checkoutAttemptId,
   };
 }

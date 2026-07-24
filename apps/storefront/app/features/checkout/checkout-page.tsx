@@ -30,6 +30,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
     validPromoCode,
     fieldErrors,
     serverError,
+    checkoutAttemptId,
   } = useCheckoutPageController({ loaderData, actionData });
 
   if (handoffDestination) {
@@ -73,6 +74,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
               dueNow={amounts.dueNow}
               expectedSubtotal={quote.subtotal}
               paymentMethods={paymentMethods}
+              checkoutAttemptId={checkoutAttemptId}
             />
           </div>
         </div>

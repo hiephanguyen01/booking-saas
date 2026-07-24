@@ -29,6 +29,7 @@ jobs:
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
           app/lib/tenant-availability.test.ts app/lib/refresh-lock.server.test.ts
+          app/lib/checkout-idempotency.server.test.ts
       - name: Storefront booking input contract tests
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
@@ -37,6 +38,8 @@ jobs:
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
           app/lib/optional-data.server.test.ts
+      - name: Shared brand theme tests
+        run: pnpm --filter=@booking/ui test
       - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls

@@ -15,7 +15,11 @@ import {
   validatePromo,
 } from '../../../lib/booking.server';
 import { fetchListing, fetchQuote } from '../../../lib/catalog.server';
-import { buildCheckoutIdempotencyKey } from '../../../lib/checkout-idempotency.server';
+import {
+  buildCheckoutIdempotencyKey,
+  createCheckoutAttemptId,
+  parseCheckoutAttemptId,
+} from '../../../lib/checkout-idempotency.server';
 import { getCheckoutFlowService } from '../../../lib/checkout-flow.server';
 import { errorStatus } from '../../../lib/http-status';
 import { createTranslator } from '../../../lib/i18n';
@@ -85,12 +89,15 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
     promo,
     currentUser: getOptionalAuth()?.info.user ?? null,
     paymentMethods: paymentOptions.methods,
+    checkoutAttemptId: createCheckoutAttemptId(),
   };
 }
 
 export async function handleCheckoutAction(request: Request, locale: Locale) {
   const t = createTranslator(locale).t;
   const form = await request.formData();
+  const checkoutAttemptId =
+    parseCheckoutAttemptId(form.get('checkoutAttemptId')) ?? createCheckoutAttemptId();
   const paymentMethod = customerPaymentMethodSchema.safeParse(form.get('paymentMethod'));
   const listingId = String(form.get('listingId') ?? '');
   const mode = String(form.get('mode') ?? '');
@@ -116,6 +123,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
         fieldErrors: guest.success ? null : guest.error.flatten().fieldErrors,
         error: paymentMethod.success ? null : 'PAYMENT_METHOD_UNAVAILABLE',
         code: paymentMethod.success ? null : 'PAYMENT_METHOD_UNAVAILABLE',
+        checkoutAttemptId,
       },
       { status: 400 },
     );
@@ -140,7 +148,12 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
 
   if (!parsed.success) {
     return data(
-      { fieldErrors: null, error: 'INVALID_CHECKOUT_INPUT', code: 'INVALID_CHECKOUT_INPUT' },
+      {
+        fieldErrors: null,
+        error: 'INVALID_CHECKOUT_INPUT',
+        code: 'INVALID_CHECKOUT_INPUT',
+        checkoutAttemptId,
+      },
       { status: 400 },
     );
   }
@@ -148,15 +161,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   const input = parsed.data;
   const idempotencyKey = buildCheckoutIdempotencyKey({
     tenantId: tenant.id,
-    listingId: input.listingId,
-    mode: input.mode,
-    start: input.from,
-    end: input.to,
-    quantity: input.quantity,
-    packageId: input.packageId ?? null,
-    promoCode: input.promoCode ?? null,
-    email: input.guest?.email ?? '',
-    phone: input.guest?.phone ?? '',
+    attemptId: checkoutAttemptId,
   });
   const created = await createBooking(request, input, idempotencyKey);
 
@@ -171,6 +176,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
         fieldErrors: null,
         error: bookingSelectionError ? created.code : t('checkout.bookingFailed'),
         code: created.code,
+        checkoutAttemptId,
       },
       { status: errorStatus(created.status) },
     );
@@ -200,6 +206,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
         fieldErrors: checkout.fieldErrors ?? null,
         error: t('checkout.paymentFailed'),
         code: checkout.code,
+        checkoutAttemptId,
       },
       { status: errorStatus(checkout.status), headers },
     );
@@ -213,7 +220,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
     const handoff = allowedPaymentFormPost(destination);
     if (handoff) {
       return data(
-        { fieldErrors: null, error: null, code: null, handoff },
+        { fieldErrors: null, error: null, code: null, handoff, checkoutAttemptId },
         { status: 200, headers },
       );
     }
@@ -227,6 +234,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
         fieldErrors: null,
         error: t('checkout.paymentFailed'),
         code: 'INVALID_PAYMENT_REDIRECT',
+        checkoutAttemptId,
       },
       { status: 502, headers },
     );
