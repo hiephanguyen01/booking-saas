@@ -1,5 +1,11 @@
-import type { PayoutCycleDto } from '@booking/contracts';
+import type { PayoutCycleDto, PayoutPolicyDto } from '@booking/contracts';
 import { addDays } from '../../../../shared/time/time';
+
+export interface StoredPayoutPolicy {
+  holdingDays: number;
+  minAmount: string;
+  cycle: PayoutCycleDto;
+}
 
 export class PayoutPolicy {
   private constructor(
@@ -27,6 +33,22 @@ export class PayoutPolicy {
         : 0n;
     const cycle: PayoutCycleDto = payout?.cycle === 'weekly' ? 'weekly' : 'monthly';
     return new PayoutPolicy(holdingDays, minAmount, cycle);
+  }
+
+  static define(input: PayoutPolicyDto): PayoutPolicy {
+    return new PayoutPolicy(input.holdingDays, BigInt(input.minAmount), input.cycle);
+  }
+
+  toDto(): PayoutPolicyDto {
+    return {
+      holdingDays: this.holdingDays,
+      minAmount: this.minAmount.toString(),
+      cycle: this.cycle,
+    };
+  }
+
+  toStored(): StoredPayoutPolicy {
+    return this.toDto();
   }
 
   period(input: { cycle?: PayoutCycleDto; periodFrom?: string; periodTo?: string; cutoff: Date }): {

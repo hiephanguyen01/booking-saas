@@ -9,12 +9,14 @@ import { PAYOUT_REPOSITORY } from '../../domain/ports/payout-repository.port';
 import { SETTLEMENT_REPOSITORY } from '../../domain/ports/settlement-repository.port';
 import { SETTLEMENT_DISPUTE_REPOSITORY } from '../../domain/ports/settlement-dispute-repository.port';
 import { FINANCE_TENANT_HOST_READER } from '../../domain/ports/finance-tenant-host-reader.port';
+import { PAYOUT_POLICY_STORE } from '../../domain/ports/payout-policy-store.port';
 import { PrismaCommissionRuleRepository } from '../repositories/prisma-commission-rule.repository';
 import { PrismaLedgerRepository } from '../repositories/prisma-ledger.repository';
 import { PrismaPayoutRepository } from '../repositories/prisma-payout.repository';
 import { PrismaSettlementRepository } from '../repositories/prisma-settlement.repository';
 import { PrismaSettlementDisputeRepository } from '../repositories/prisma-settlement-dispute.repository';
 import { PrismaFinanceTenantHostReader } from '../repositories/prisma-finance-tenant-host.reader';
+import { PrismaPayoutPolicyStore } from '../repositories/prisma-payout-policy.store';
 import { ResolveCommissionUseCase } from '../../application/use-cases/resolve-commission.use-case';
 import { RecordClawbackJournalUseCase } from '../../application/use-cases/record-clawback-journal.use-case';
 import { ComputePayoutPayableUseCase } from '../../application/use-cases/compute-payout-payable.use-case';
@@ -79,6 +81,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
       useClass: PrismaSettlementDisputeRepository,
     },
     { provide: FINANCE_TENANT_HOST_READER, useClass: PrismaFinanceTenantHostReader },
+    { provide: PAYOUT_POLICY_STORE, useClass: PrismaPayoutPolicyStore },
     ResolveCommissionUseCase,
     RecordClawbackJournalUseCase,
     ComputePayoutPayableUseCase,

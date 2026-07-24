@@ -33,6 +33,7 @@ type SettlementState = Pick<
   | 'refundedAmount'
   | 'retainedAmount'
   | 'refundId'
+  | 'disputeUntil'
 >;
 
 export type RefundPlan =
@@ -260,6 +261,15 @@ export class Settlement {
 
   isAwaitingRelease(): boolean {
     return this.state.status === 'dispute_window';
+  }
+
+  canOpenDispute(now: Date, hasExistingDispute: boolean): boolean {
+    return (
+      !hasExistingDispute &&
+      this.state.status === 'dispute_window' &&
+      this.state.disputeUntil !== null &&
+      this.state.disputeUntil > now
+    );
   }
 
   private isRefundTerminal(): boolean {
