@@ -24,13 +24,13 @@ import { NsI18n, useTranslation } from '../../../lib/i18n';
 export function RoomBookingDialogShell({
   desktopOpen,
   mobileOpen,
-  onDesktopOpenChange,
-  onMobileOpenChange,
   title,
   description,
   trigger,
   body,
   footer,
+  onDesktopOpenChange,
+  onMobileOpenChange,
 }: {
   desktopOpen: boolean;
   mobileOpen: boolean;
