@@ -1,13 +1,14 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CreateListingTypeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
+import { ListingType } from '../../domain/entities/listing-type.entity';
+import { ListingTypeSlugTaken } from '../../domain/errors/listing-type-errors';
 import {
   LISTING_TYPE_REPOSITORY,
   type IListingTypeRepository,
   type ListingTypeRecord,
 } from '../../domain/ports/listing-type-repository.port';
-import { assertValidListingTypeSearchConfig } from '../listing-type-search-config.validator';
 
 /** Tenant admin defines a new listing type with its typed attribute schema (§7.3). */
 @Injectable()
@@ -20,34 +21,11 @@ export class CreateListingTypeUseCase {
 
   async execute(tenantId: string, input: CreateListingTypeInput): Promise<ListingTypeRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
+      // Pre-check only: the `(tenant_id, slug)` unique index is the real arbiter.
       if (await this.repo.findBySlug(tx, input.slug)) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'LISTING_TYPE_SLUG_TAKEN',
-          message: `Slug "${input.slug}" is already in use`,
-        });
+        throw new ListingTypeSlugTaken(input.slug);
       }
-      assertValidListingTypeSearchConfig({
-        allowedModes: input.allowedModes,
-        attributeSchema: input.attributeSchema,
-        searchConfig: input.searchConfig,
-      });
-      const created = await this.repo.create(tx, tenantId, {
-        name: input.name,
-        slug: input.slug,
-        icon: input.icon ?? null,
-        allowedModes: input.allowedModes,
-        defaultModes: input.defaultModes,
-        bookingSelection: input.bookingSelection,
-        attributeSchema: input.attributeSchema,
-        searchConfig: input.searchConfig,
-        unitLabel: input.unitLabel ?? null,
-        sortOrder: input.sortOrder,
-        isActive: input.isActive,
-        requiresIdentityVerification: input.requiresIdentityVerification,
-        structure: input.structure,
-        itemLabel: input.itemLabel ?? null,
-      });
+      const created = await this.repo.create(tx, tenantId, ListingType.open(input));
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing_type.created',
