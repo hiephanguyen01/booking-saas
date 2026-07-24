@@ -37,6 +37,7 @@ export async function loadBookingDetail(request: Request, code: string) {
     mockEnabled: mockPaymentsEnabled(),
     canRetry: Boolean(flow && status.bookingStatus !== 'expired'),
     listingSlug: flow?.record.listingSlug ?? null,
+    maskedEmail: flow?.record.maskedEmail ?? null,
   };
   if (status.paymentStatus === 'succeeded' && flow) {
     return data(payload, {
@@ -46,11 +47,7 @@ export async function loadBookingDetail(request: Request, code: string) {
   return payload;
 }
 
-export async function handleBookingDetailAction(
-  request: Request,
-  code: string,
-  locale: Locale,
-) {
+export async function handleBookingDetailAction(request: Request, code: string, locale: Locale) {
   const form = await request.formData();
   const intent = String(form.get('intent') ?? '');
 

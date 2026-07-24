@@ -20,7 +20,7 @@ import {
   createCheckoutAttemptId,
   parseCheckoutAttemptId,
 } from '../../../lib/checkout-idempotency.server';
-import { getCheckoutFlowService } from '../../../lib/checkout-flow.server';
+import { getCheckoutFlowService, maskCheckoutEmail } from '../../../lib/checkout-flow.server';
 import { errorStatus } from '../../../lib/http-status';
 import { createTranslator } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
@@ -192,6 +192,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
       bookingCode: booking.code,
       listingSlug: String(form.get('listingSlug') ?? ''),
       locale,
+      maskedEmail: maskCheckoutEmail(guest.data.email),
     }),
   );
 
