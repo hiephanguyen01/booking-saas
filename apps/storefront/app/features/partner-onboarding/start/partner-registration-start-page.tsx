@@ -1,6 +1,5 @@
 import { Form, useActionData, useOutletContext } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { PartnerOnboardingActionData } from '../../../lib/partner-onboarding.server';
 import type { StorefrontContext } from '../../../root';
 import {
   AuthSplit,
@@ -10,6 +9,7 @@ import {
   LoginPrompt,
   PrimaryButton,
 } from '../../../routes/partner-onboarding/shared';
+import type { PartnerOnboardingActionData } from '../server/partner-onboarding-shared.server';
 
 export function PartnerRegistrationStartPage() {
   const { tenant, locale, currentUser } = useOutletContext<StorefrontContext>();
