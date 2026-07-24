@@ -40,6 +40,7 @@ export class PrismaListingReadRepository implements IListingReadRepository {
         ],
       },
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+      take: filter.limit,
       include: {
         listingType: { select: { slug: true, itemLabel: true, bookingSelection: true } },
         partner: { select: { slug: true } },
