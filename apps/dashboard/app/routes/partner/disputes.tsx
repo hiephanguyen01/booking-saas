@@ -1,3 +1,4 @@
+import type { FormEvent } from 'react';
 import {
   paginatedSchema,
   partnerSettlementDisputeResponseSchema,
@@ -8,7 +9,7 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { data, Form, useNavigation, useSearchParams } from 'react-router';
+import { data, Form, useNavigation, useSearchParams, useSubmit } from 'react-router';
 import type { Route } from './+types/disputes';
 import { ErrorBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
@@ -17,6 +18,7 @@ import { PaginationBar } from '~/components/pagination-bar';
 import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
@@ -83,11 +85,20 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function PartnerDisputes({ loaderData, actionData }: Route.ComponentProps) {
   const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy, run } = useSubmissionGuard(navigation.state);
   const [searchParams] = useSearchParams();
   const { pageSize } = readListParams(searchParams);
   const result = loaderData.result;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={busy}>
       <PageHeader
         title="Khiếu nại booking"
         description="Cung cấp thông tin đối chiếu sớm để Tenant có đủ căn cứ xử lý khoản tiền đang bị khóa."
@@ -101,57 +112,53 @@ export default function PartnerDisputes({ loaderData, actionData }: Route.Compon
         resetHref={dashboardPaths.partner.disputes}
         pageSize={pageSize}
       />
-      {result?.items.map((item) => {
-        const submitting =
-          navigation.state === 'submitting' && navigation.formData?.get('disputeId') === item.id;
-        return (
-          <Card key={item.id}>
-            <CardContent className="space-y-4 p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{item.listingTitle ?? 'Dịch vụ'}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.bookingCode ?? item.bookingId.slice(0, 8)} ·{' '}
-                    {formatDateTime(item.createdAt)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <Money value={item.remainingHeldAmount} className="font-semibold" />
-                  <div className="mt-1">
-                    <Badge variant={item.status === 'open' ? 'destructive' : 'secondary'}>
-                      {item.status === 'open' ? 'Chờ Tenant xử lý' : 'Đã kết luận'}
-                    </Badge>
-                  </div>
+      {result?.items.map((item) => (
+        <Card key={item.id}>
+          <CardContent className="space-y-4 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">{item.listingTitle ?? 'Dịch vụ'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {item.bookingCode ?? item.bookingId.slice(0, 8)} · {formatDateTime(item.createdAt)}
+                </p>
+              </div>
+              <div className="text-right">
+                <Money value={item.remainingHeldAmount} className="font-semibold" />
+                <div className="mt-1">
+                  <Badge variant={item.status === 'open' ? 'destructive' : 'secondary'}>
+                    {item.status === 'open' ? 'Chờ Tenant xử lý' : 'Đã kết luận'}
+                  </Badge>
                 </div>
               </div>
-              <p className="rounded-md bg-muted/60 p-3 text-sm leading-6">{item.reason}</p>
-              {item.partnerResponse ? (
-                <div className="border-t pt-4 text-sm">
-                  <p className="font-medium">Phản hồi của bạn</p>
-                  <p className="mt-2 leading-6 text-muted-foreground">{item.partnerResponse}</p>
+            </div>
+            <p className="rounded-md bg-muted/60 p-3 text-sm leading-6">{item.reason}</p>
+            {item.partnerResponse ? (
+              <div className="border-t pt-4 text-sm">
+                <p className="font-medium">Phản hồi của bạn</p>
+                <p className="mt-2 leading-6 text-muted-foreground">{item.partnerResponse}</p>
+              </div>
+            ) : item.status === 'open' && loaderData.canRespond ? (
+              <Form method="post" className="space-y-3 border-t pt-4" onSubmit={handleSubmit}>
+                <input type="hidden" name="disputeId" value={item.id} />
+                <Textarea
+                  name="response"
+                  required
+                  minLength={10}
+                  maxLength={2000}
+                  rows={4}
+                  placeholder="Mô tả quá trình cung cấp dịch vụ và các thông tin có thể đối chiếu..."
+                  disabled={busy}
+                />
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={busy}>
+                    {busy ? 'Đang gửi...' : 'Gửi phản hồi'}
+                  </Button>
                 </div>
-              ) : item.status === 'open' && loaderData.canRespond ? (
-                <Form method="post" className="space-y-3 border-t pt-4">
-                  <input type="hidden" name="disputeId" value={item.id} />
-                  <Textarea
-                    name="response"
-                    required
-                    minLength={10}
-                    maxLength={2000}
-                    rows={4}
-                    placeholder="Mô tả quá trình cung cấp dịch vụ và các thông tin có thể đối chiếu..."
-                  />
-                  <div className="flex justify-end">
-                    <Button type="submit" disabled={submitting}>
-                      {submitting ? 'Đang gửi...' : 'Gửi phản hồi'}
-                    </Button>
-                  </div>
-                </Form>
-              ) : null}
-            </CardContent>
-          </Card>
-        );
-      })}
+              </Form>
+            ) : null}
+          </CardContent>
+        </Card>
+      ))}
       {result && result.items.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-sm text-muted-foreground">
