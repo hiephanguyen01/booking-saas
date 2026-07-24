@@ -6,46 +6,30 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@booking/ui/components/ui/input-otp';
-import { useEffect, useState } from 'react';
-import { useSubmit } from 'react-router';
-import type { AuthActionData } from '../../../lib/auth-types';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { AuthFormError, AuthSubmitButton } from './auth-form-controls';
+import {
+  useOtpFormController,
+  type OtpActionData,
+} from './use-otp-form-controller';
 
 export function OtpForm({
   initialSeconds,
   actionData,
 }: {
   initialSeconds: number;
-  actionData?: AuthActionData & { resendAfterSec?: number };
+  actionData?: OtpActionData;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
-  const submit = useSubmit();
-  const [seconds, setSeconds] = useState(actionData?.resendAfterSec ?? initialSeconds);
-  const [code, setCode] = useState('');
-
-  useEffect(() => {
-    if (seconds <= 0) return;
-    const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1_000);
-    return () => window.clearInterval(timer);
-  }, [seconds]);
-
-  // Keyed on the response object, not on resendAfterSec: the server returns the
-  // same cooldown every time, so depending on the value skipped this effect from
-  // the second resend onward and the countdown never restarted.
-  useEffect(() => {
-    if (actionData?.resendAfterSec != null) setSeconds(actionData.resendAfterSec);
-  }, [actionData]);
+  const { code, handleSubmit, resendCode, seconds, setCode } = useOtpFormController({
+    initialSeconds,
+    actionData,
+  });
 
   return (
     <div className="flex flex-col gap-6">
       <AuthFormError actionData={actionData} />
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (code.length === 6) submit({ code }, { method: 'post' });
-        }}
-      >
+      <form onSubmit={handleSubmit}>
         <FieldGroup className="gap-6">
           <Field data-invalid={Boolean(actionData?.fieldErrors?.code)}>
             <FieldLabel htmlFor="otp-code" className="justify-center">
@@ -92,7 +76,7 @@ export function OtpForm({
         variant="ghost"
         className="mx-auto"
         disabled={seconds > 0}
-        onClick={() => submit({ intent: 'resend' }, { method: 'post' })}
+        onClick={resendCode}
       >
         {seconds > 0 ? t('verify.resendIn', { seconds }) : t('verify.resend')}
       </Button>
