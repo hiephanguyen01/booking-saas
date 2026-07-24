@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -17,6 +17,7 @@ import type {
   TransitionParams,
 } from '../../domain/ports/booking-repository.port';
 import { IdempotencyConflictError, SlotTakenError } from '../../domain/booking-errors';
+import { BookingStateChanged } from '../../domain/errors/booking-domain-errors';
 
 interface Row {
   id: string;
@@ -211,11 +212,7 @@ export class PrismaBookingRepository implements IBookingRepository {
       throw err;
     }
     if (affected === 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'BOOKING_STATE_CHANGED',
-        message: 'The booking is no longer in the expected state',
-      });
+      throw new BookingStateChanged();
     }
 
     await tx.$executeRaw(Prisma.sql`

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -6,13 +6,9 @@ import {
   type BookingRecord,
   type IBookingRepository,
 } from '../../domain/ports/booking-repository.port';
-import { assertTransition, type TransitionActor } from '../../domain/booking-state-machine';
-import {
-  computeRefund,
-  hoursUntil,
-  refundPercent,
-  type CancellationTier,
-} from '../../domain/cancellation-policy';
+import type { TransitionActor } from '../../domain/booking-state-machine';
+import { Booking } from '../../domain/entities/booking.entity';
+import { BookingNotFound } from '../../domain/errors/booking-domain-errors';
 
 export interface CancelResult {
   booking: BookingRecord;
@@ -41,32 +37,19 @@ export class CancelBookingUseCase {
   ): Promise<CancelResult> {
     const result = await this.tenantDb.forTenant(tenantId, async (tx) => {
       const booking = await this.bookings.findById(tx, bookingId);
-      if (!booking)
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'BOOKING_NOT_FOUND',
-          message: 'Booking not found',
-        });
-      assertTransition(booking.status, 'cancelled', actor);
-
-      const percent =
-        actor === 'customer'
-          ? refundPercent(
-              (booking.cancellationPolicySnapshot ?? []) as CancellationTier[],
-              hoursUntil(booking.startUtc, await this.tenantDb.databaseNow(tx)),
-            )
-          : 100; // partner/tenant cancellation is always full refund
-      // The refundable security deposit is ALWAYS returned in full on cancellation
-      // (no rental happened) — the cancellation policy only bites the paid deposit (§9.4).
-      const refundAmount = computeRefund(booking.paidAmount, percent) + booking.securityDeposit;
-
-      const cancelled = await this.bookings.applyTransition(tx, {
-        id: bookingId,
-        from: booking.status,
-        to: 'cancelled',
-        actor,
+      if (!booking) throw new BookingNotFound();
+      const aggregate = Booking.rehydrate(booking);
+      const transition = aggregate.transitionTo('cancelled', actor, {
         actorId: opts.actorId ?? null,
         reason: opts.reason ?? null,
+      });
+      const { refundAmount, refundPercent: percent } = aggregate.cancellationSettlement(
+        actor,
+        actor === 'customer' ? await this.tenantDb.databaseNow(tx) : booking.startUtc,
+      );
+
+      const cancelled = await this.bookings.applyTransition(tx, {
+        ...transition,
         refundDueAmount: refundAmount,
         refundPercent: percent,
       });
