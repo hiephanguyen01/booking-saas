@@ -1,5 +1,6 @@
+import { moneyStringSchema, timeOfDaySchema } from '@booking/contracts';
 import type { PriceUnit } from '../../lib/ui';
-import { normalizeDailyRange } from '../../lib/daily-range';
+import { datesInDailyRange, normalizeDailyRange } from '../../lib/daily-range';
 import { canOffsetDateOnly, isValidDateOnly } from '../../lib/date-only';
 import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
 
@@ -65,7 +66,6 @@ export interface SearchDateSelection {
   to: string;
 }
 
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MAX_SEARCH_AMENITIES = 30;
 const MAX_SEARCH_AMENITY_LENGTH = 120;
 const MAX_CATALOG_PAGE = 10_000;
@@ -80,9 +80,10 @@ function positiveInt(value: string | null, fallback: number, max = Number.MAX_SA
 }
 
 function money(value: string | null): number | null {
-  if (!value) return null;
-  const parsed = Number(value.replace(/\D/g, ''));
-  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+  const parsed = moneyStringSchema.safeParse(value);
+  if (!parsed.success) return null;
+  const amount = Number(parsed.data);
+  return Number.isSafeInteger(amount) ? amount : null;
 }
 
 function rating(value: string | null): number | null {
@@ -121,11 +122,13 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
   const rawStartTime = params.get('startTime');
   const rawEndTime = params.get('endTime');
   const validDateSelection = Boolean(rawDate && isValidDateOnly(rawDate));
-  const validFrom = Boolean(rawFrom && canOffsetDateOnly(rawFrom, 1));
-  const validTo = Boolean(rawTo && isValidDateOnly(rawTo));
-  const from = dateParam(rawFrom, today, 1);
-  const toCandidate = dateParam(rawTo, addDays(from, 1));
-  const to = toCandidate > from ? toCandidate : addDays(from, 1);
+  const explicitRange = normalizeDailyRange(rawFrom ?? undefined, rawTo ?? undefined);
+  const fallbackFrom = dateParam(rawFrom, today, 1);
+  const fallbackTo = addDays(fallbackFrom, 1);
+  const from = explicitRange?.from ?? fallbackFrom;
+  const to = explicitRange?.to ?? fallbackTo;
+  const parsedStartTime = timeOfDaySchema.safeParse(rawStartTime);
+  const parsedEndTime = timeOfDaySchema.safeParse(rawEndTime);
   const areaParam = params.get('area');
   const area: SearchArea = ['under-25', '25-50', '50-100', 'over-100'].includes(areaParam ?? '')
     ? (areaParam as SearchArea)
@@ -140,20 +143,18 @@ export function parseSearchState(params: URLSearchParams): StorefrontSearchState
     location: params.get('location')?.trim().slice(0, 200) ?? '',
     mode,
     date: dateParam(rawDate, today),
-    startTime: TIME_RE.test(rawStartTime ?? '') ? rawStartTime! : '09:00',
-    endTime: TIME_RE.test(rawEndTime ?? '') ? rawEndTime! : '10:00',
+    startTime: parsedStartTime.success ? parsedStartTime.data : '09:00',
+    endTime: parsedEndTime.success ? parsedEndTime.data : '10:00',
     from,
     to,
     hasDateSelection: validDateSelection,
     hasTimeSelection: Boolean(
       validDateSelection &&
-      rawStartTime &&
-      rawEndTime &&
-      TIME_RE.test(rawStartTime) &&
-      TIME_RE.test(rawEndTime) &&
-      rawStartTime < rawEndTime,
+      parsedStartTime.success &&
+      parsedEndTime.success &&
+      parsedStartTime.data < parsedEndTime.data,
     ),
-    hasDailyRange: Boolean(validFrom && validTo && rawFrom && rawTo && rawTo > rawFrom),
+    hasDailyRange: explicitRange !== null,
     guests: positiveInt(params.get('guests'), 1, 100),
     quantity: positiveInt(params.get('quantity'), 1, 100),
     minPrice: money(params.get('minPrice')),
@@ -251,9 +252,8 @@ export function canSubmitSearch(
 }
 
 export function rangeDates(from: string, to: string): string[] {
-  const dates: string[] = [];
-  for (let cursor = from; cursor < to; cursor = addDays(cursor, 1)) dates.push(cursor);
-  return dates;
+  const range = normalizeDailyRange(from, to);
+  return range ? datesInDailyRange(range) : [];
 }
 
 export function numberAttribute(
