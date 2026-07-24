@@ -77,7 +77,7 @@ export function OtpForm({
         type="button"
         variant="ghost"
         className="mx-auto"
-        disabled={seconds > 0 || resending}
+        disabled={seconds > 0 || resending || verifying}
         onClick={resendCode}
       >
         {seconds > 0 ? t('verify.resendIn', { seconds }) : t('verify.resend')}
