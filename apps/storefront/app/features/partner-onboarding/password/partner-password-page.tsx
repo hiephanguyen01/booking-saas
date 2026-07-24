@@ -4,7 +4,6 @@ import {
   useTranslation,
   type ScopedTranslationKey,
 } from '../../../lib/i18n';
-import type { PartnerOnboardingActionData } from '../../../lib/partner-onboarding.server';
 import type { StorefrontContext } from '../../../root';
 import {
   AuthSplit,
@@ -13,6 +12,7 @@ import {
   PasswordField,
   PrimaryButton,
 } from '../../../routes/partner-onboarding/shared';
+import type { PartnerOnboardingActionData } from '../server/partner-onboarding-shared.server';
 
 /** Error codes emitted by `partnerPasswordSchema`, which cannot know the locale. */
 const PASSWORD_ERRORS = {
