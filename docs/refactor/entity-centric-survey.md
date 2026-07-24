@@ -3,6 +3,11 @@
 > Sinh từ khảo sát tự động 16 module + shared infra (18 agent, đọc toàn bộ domain/application/infrastructure
 > ngày 2026-07-23). Dùng làm nguồn cho implementation plan từng module. Design chính thức:
 > [`docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md`](../superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md).
+>
+> **Lưu ý:** đây là snapshot trước refactor, nên các mô tả “hiện tại” bên dưới cố ý giữ nguyên bằng
+> chứng khảo sát ngày 2026-07-23. Trạng thái sau refactor/hardening nằm trong
+> [`HANDOFF.md`](./HANDOFF.md) và sổ follow-up §8 của design spec; đừng dùng snapshot này để kết luận
+> code hiện tại vẫn còn một gap đã được đánh dấu hoàn tất ở hai tài liệu đó.
 
 ## Ràng buộc hạ tầng dùng chung
 

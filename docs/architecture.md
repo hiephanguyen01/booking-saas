@@ -60,8 +60,9 @@ as its state change (`OutboxService.emit(tx, {eventType, payload})` → `outbox_
 registers `OutboxHandlerRegistry.register(eventType, handler)`. The BullMQ relay
 (`shared/outbox/outbox-relay.worker.ts`) polls every 2s, claims a batch of 20 with
 `FOR UPDATE SKIP LOCKED`, dispatches each handler inside the event's tenant context, and retries with
-exponential backoff (capped 300s, **no dead-letter**). Timing uses the **DB clock** (`now()`), never
-`Date.now()`. See [ADR 0003](./decisions/0003-outbox-for-inter-module.md).
+exponential backoff (capped 300s). After 20 failed attempts the relay sets `dead_lettered_at` and
+excludes that row from future claims. Timing uses the **DB clock** (`now()`), never `Date.now()`.
+See [ADR 0003](./decisions/0003-outbox-for-inter-module.md).
 
 Settlement event chain: `payment.succeeded` is consumed independently by Booking (confirmation) and
 Finance (held custody); `booking.completed/no_show` freezes the applicable split and opens the dispute

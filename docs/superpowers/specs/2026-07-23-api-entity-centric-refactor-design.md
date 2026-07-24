@@ -81,9 +81,9 @@ Quy tắc entity:
   - *HTTP-driven*: được throw typed domain error (extend `DomainError`, §2.9); global filter dịch ra
     **đúng mã lỗi + status + envelope hiện có, byte-compatible** — use-case không try/catch dịch lỗi.
   - *Outbox/worker-driven*: method trả boolean/result, **no-throw, no-op idempotent** khi redelivery
-    (relay at-least-once, KHÔNG có dead-letter — một throw mới sẽ kẹt event vĩnh viễn). Handler nào
-    hôm nay *cố ý* throw-để-retry (finance ordering-recovery, tenancy DNS TXT check) **giữ nguyên
-    throw**, ghi chú "retryable".
+    (relay at-least-once; hậu hardening có tối đa 20 lần thử rồi dead-letter). Handler nào hôm nay
+    *cố ý* throw-để-retry (finance ordering-recovery, tenancy DNS TXT check) **giữ nguyên throw**,
+    ghi chú "retryable"; lỗi nghiệp vụ không được tiêu retry budget.
 - **CAS ở lại repository (luật quan trọng nhất)**: mọi write đang guard bằng `WHERE status=…`,
   `LEAST/GREATEST`, advisory lock, `updateMany`, unique index, GiST **giữ nguyên hình dạng SQL sau
   port**. Entity phát biểu rule và ý định; repo thực thi guarded write và trả outcome. Không bao giờ
@@ -240,7 +240,7 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | P2002 leak thành 500 (partner slug, plan-name create) | partner, tenancy | Thiếu translation — fix là behavior change của error envelope → ghi sổ |
 | Finance: `SetPlatformRate` use-case tồn tại nhưng không có route | finance | Cần owner quyết: nối route hay xóa |
 | P2002 leak thành 500 (listing-type slug) + FK violation khi delete không dịch | catalog | Giữ nguyên ở PR #9 — fix là behavior change của error envelope |
-| `add-domain` cho phép tạo primary thứ hai (nhận thẳng `isPrimary` từ request, không tự clear primary cũ; không có DB constraint chặn 2 hàng `is_primary=true` cùng tenant) | tenancy | Giữ nguyên ở PR #10a — siết là behavior change + cần migration (→ §8b "one-primary-domain partial unique") |
+| `add-domain` cho phép tạo primary thứ hai (nhận thẳng `isPrimary` từ request, không tự clear primary cũ; không có DB constraint chặn 2 hàng `is_primary=true` cùng tenant) | tenancy | Giữ nguyên ở PR #10a; **đã đóng hậu refactor** bằng atomic primary swap + partial unique index |
 | `delete-domain` (`assertDeletableFromPortfolio`) thực chất bảo vệ "còn ít nhất 1 domain **verified**", không phải "còn primary" — xoá domain primary trong khi còn domain verified khác (không primary) vẫn thành công và để tenant không còn domain nào là primary | tenancy | Bất đối xứng kế thừa từ code cũ, giữ nguyên ở PR #10a |
 | **Bốn** bản "current subscription" bất đồng (final review PR #10b bổ sung bản thứ tư): `findCurrentByTenant` (TypeScript, `PrismaSubscriptionRepository`) order `startsAt DESC` **không tiebreak `created_at`** — đây là đường chạy guard + plan-limit; `PrismaPlanRepository.liveSubscriberCounts` và platform-health (raw SQL) order `starts_at DESC, created_at DESC` + lọc billable/hết-hạn; và `ISubscriptionRepository.listByTenant` order `starts_at DESC, created_at DESC` **CÓ** tiebreak (comment của nó tự nhận "hàng đầu = current" nhưng khác `findCurrentByTenant` đúng ở tiebreak). Khi trùng `startsAt` các đường chọn khác hàng làm "current" | tenancy | Giữ nguyên ở PR #10b — PR hợp nhất riêng phải quét đủ **cả 4** (→ §8b-bis) |
 | `GetPlanLimitsUseCase` cấp limit theo subscription mới nhất (từ `findCurrentByTenant`) **bất kể status hay đã hết hạn** — liveness chỉ được enforce riêng, bởi `RequireActiveSubscriptionGuard`, và chỉ cho ghi dashboard, không cho lookup limit | tenancy | Giữ nguyên ở PR #10b — hành vi kế thừa từ code cũ |
@@ -293,23 +293,21 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   `body.statusCode`**. Code + message + HTTP status line giữ byte-identical; đây **không** phải đổi
   hợp đồng, chỉ chuẩn hóa shape body bất đối xứng kế thừa.
 
-### 8b. Migration wave sau refactor (unique backstop còn thiếu)
+### 8b. Migration wave sau refactor (đã đối soát và hoàn tất)
 
-- `notification.dedupe_key` thành cột thật + unique index (kèm quyết định backfill row lịch sử)
-- `refunds (booking_id, reason)` unique (advisory-lock idempotency hiện không có DB backstop) +
-  manual-refund evidence reference unique theo tenant
-- Single-dispute-per-settlement backstop
-- One-primary-domain partial unique (tenancy)
+- **[ĐÃ LÀM hậu refactor]** `notification_logs.dedupe_key` thành cột thật, backfill từ payload và
+  partial unique cho row `sent`; one-primary-domain partial unique nằm trong
+  `20260724120000_entity_post_refactor_hardening`.
+- **[ĐÃ CÓ từ trước]** `refunds (booking_id, reason)` và single-dispute-per-settlement nằm trong
+  `20260719120000_finance_lifecycle_hardening`; manual-refund evidence reference unique theo tenant
+  nằm trong `20260721170000_payment_methods_and_refund_settings`. Không tạo index trùng ở wave mới.
 
 ### 8b-bis. Read-side follow-ups (ghi nhận trong refactor, sửa sau — có thể đổi wire)
 
 - content-reports: response đang leak key `targetType` thừa cạnh `target` (repo `toRecord` spread
   row + mapper spread record) — bỏ nó là wire change, cần duyệt riêng.
-- content-reports reader port: `reason: CreateContentReportInput['reason']` → nên dùng thẳng
-  `ContentReportReason` (cleanup type-only, không đổi wire) — đừng copy indirection này sang các
-  reader port module sau.
-- Clock: content-reports `handledAt` dùng app-clock `new Date()` (giữ nguyên trong refactor) — mục
-  đổi sang DB clock nằm trong danh sách clock follow-up chung (§3 Đồng hồ).
+- **[ĐÃ LÀM hậu refactor]** content-reports reader port dùng thẳng `ContentReportReason`.
+- **[ĐÃ LÀM hậu refactor]** content-reports `handledAt` dùng DB clock lấy trong cùng tenant tx.
 - favorites: `toVnd` + `priceFromModeConfig` trong `prisma-favorite.repository.ts` là bản sao gần
   như y hệt của `catalog.mapper.ts` — nên hợp nhất về một nơi dùng chung (giữ `priceFrom` là chuỗi
   chữ số VND ở boundary), nhưng là read-side + xuyên module nên tách khỏi refactor này.
@@ -318,13 +316,10 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   `isLive = tenant.status === 'active' && evaluation.storefrontLive`. Đây là read path với **14
   consumer xuyên module** (bề mặt đóng băng, xem HANDOFF gợi ý tenancy) nên để nguyên, tách refactor
   riêng sau khi khảo sát hết 14 consumer.
-- tenancy: cả 4 use-case domain vừa wire ở PR #10a (`add-domain`, `verify-domain`,
-  `set-primary-domain`, `delete-domain`) đều **không gọi `cache.invalidateHost`** — cache Redis
-  host→tenant có TTL 60s và negative-caching cho host lạ, nên một domain vừa xoá/đổi vẫn resolve
-  đúng tenant cũ tối đa 60s nữa trước khi tự hết hạn. Hành vi này có từ trước refactor (giữ nguyên,
-  không phải regression của PR #10a); 4 call site `invalidateHost` hiện có nằm ở `create-tenant`,
-  `update-tenant`, `resolve-tenant-by-host` (stale-cache eviction), và worker DNS verification —
-  không đụng.
+- **[ĐÃ LÀM hậu refactor]** tenancy: bốn mutation domain (`add-domain`, `verify-domain`,
+  `set-primary-domain`, `delete-domain`) trước đây không gọi `cache.invalidateHost`, khiến
+  positive/negative cache stale tối đa 60s. Hardening hiện invalidate host liên quan sau commit;
+  add-domain primary cũng swap primary atomically trong cùng RLS transaction.
 - tenancy: **hai đồng hồ trả lời cùng một câu hỏi** ("subscription này còn sống không?"). Bốn call
   site của `evaluateSubscription` (`resolve-tenant-by-host`, `get-subscription-status`,
   `get-platform-health`, `RequireActiveSubscriptionGuard`) đều nhận `now` là app clock
@@ -335,16 +330,10 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   nguyên ở PR #10b — cùng nhóm với known-gap "ba bản current subscription" (§8a): việc hợp nhất
   định nghĩa "current subscription" về một chỗ (một nguồn dữ liệu, một đồng hồ, một tiebreak) đáng
   một PR riêng, không nhét vào PR module tiếp theo.
-- **listing: bộ máy moderation (`domain/moderation/listing-moderation.ts` — `transition*` +
-  `ModerationError`; `application/moderation/moderation-support.ts` — `runModeration`,
-  `stampModerationTimestamps`, `writeModerationAudit`, `assertOwnership`) vẫn là pure function +
-  plain `Error` translate qua shim, CHƯA fold vào aggregate.** Lý do có chủ đích: nó **dùng chung**
-  giữa listing (#11b) và listing-group (#11c); fold vào `Listing` entity ở #11b sẽ phá đường group
-  của #11c. `Listing` aggregate ở #11b **chỉ** nuốt content invariants + access guard (ownership/
-  group-managed); transition giữ nguyên (thoả §3 "sanctioned pure domain function"). Sau khi cả
-  listing + group refactor xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
-  và đưa transition thành method trên `Listing`/`ListingGroup` (bỏ shim `runModeration`) — wire giữ
-  byte-identical (message/status đã khớp), chỉ đổi cấu trúc nội bộ.
+- **[ĐÃ LÀM hậu refactor] listing:** PR #11b/#11c chủ đích giữ bộ máy moderation dùng chung dưới
+  dạng pure function + application shim để không phá đường group khi hai phần chưa cùng hoàn tất.
+  Hardening sau đó đã promote `ModerationError` thành `DomainError`, fold transition vào
+  `Listing`/`ListingGroup`, và xoá `runModeration` shim; code/status/message và wire giữ nguyên.
 
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 
@@ -352,10 +341,10 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   — **[ĐÃ XOÁ ở PR #13]**
 - `catalog`: `ListPublicListingsUseCase` không có route — **[ĐÃ XOÁ ở PR #9]**
 - `favorites`: `isFavorited` (port + repo, 0 caller) — **đã xoá ở PR #4**
-- `catalog.mapper.ts`'s `toPublicListingResponse`, và `listPublicListingsQuerySchema` +
+- **[ĐÃ XOÁ hậu refactor]** `catalog.mapper.ts`'s `toPublicListingResponse`, và `listPublicListingsQuerySchema` +
   `publicListingsFilterSchema` trong `packages/contracts/src/contracts/listing-type.ts` — 0 consumer,
   xác nhận lại ở final review PR #9 nhưng **cố ý KHÔNG xoá** vì là read-side/shared-package (xoá cần
-  rebuild `contracts` + verify lại frontend); dọn dẹp follow-up, không thuộc phạm vi refactor này.
+  rebuild `contracts` + verify lại frontend); hardening đã xoá và rebuild toàn workspace.
 
 ### 8c-bis. Tooling & fixture follow-ups (PR nhỏ riêng, KHÔNG nhét vào PR module)
 
@@ -367,20 +356,23 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
    Thêm override `no-restricted-imports` cho `apps/api/src/modules/**/{application,domain}/**` cấm
    import `**/infrastructure/**`, kèm 1 câu vào §3 style-gate mục 1 ("không bao giờ inject class cụ
    thể — chỉ qua port").
-2. **Seed fixture chưa-published (làm TRƯỚC PR #9 catalog / #11 listing).** Tenant StudioHub hiện có
+2. **[ĐÃ LÀM hậu refactor] Seed fixture chưa-published.** Tenant StudioHub trước đây có
    0 listing/group `status <> 'published'`, nên smoke của rule "chỉ target published" phải thay bằng
    id không tồn tại (cùng nhánh code, nhưng không phải cùng dữ liệu). Thêm 1 listing + 1 group
-   `draft` vào seed.
+   `draft` vào seed; hiện có fixture id ổn định cho một listing và một group draft.
 3. **Type-only bookkeeping:** reader port của favorites lặp literal `'listing' | 'group'` 5 chỗ thay
    vì dùng `FavoriteTargetKind` (giữ nguyên ở PR #4 vì read side đóng băng) — đừng copy kiểu này
    sang reader port của các module sau.
-4. **turbo không hash `eslint.config.mjs` gốc** (phát hiện khi làm mục 1): `turbo.json` không liệt kê
+4. **[ĐÃ LÀM hậu refactor] turbo không hash `eslint.config.mjs` gốc** (phát hiện khi làm mục 1):
+   `turbo.json` không liệt kê
    config lint/tsconfig gốc trong `inputs`, nên sau khi đổi rule lint mà chạy `pnpm turbo lint` có thể
    trúng cache cũ và báo xanh giả — CI cũng vậy (phải `--force` mới thấy thật). Thêm chúng vào
-   `inputs`/`globalDependencies` trong một PR tooling riêng.
-5. **promotions import chéo module partner** (`AGREEMENT_REPOSITORY` + `PrismaAgreementRepository`
-   trong `opt-in-promotion` và module wiring) — vi phạm ADR 0003 có sẵn từ trước, PR #5a giữ
-   nguyên. Sửa bằng cách đưa việc ghi agreement qua outbox hoặc một port riêng, ở PR độc lập.
+   `inputs`/`globalDependencies` trong một PR tooling riêng; hardening đã thêm config gốc và
+   `packages/config` vào `globalDependencies`.
+5. **[ĐÃ LÀM hậu refactor] promotions import chéo module partner** (`AGREEMENT_REPOSITORY` +
+   `PrismaAgreementRepository` trong `opt-in-promotion` và module wiring) — vi phạm ADR 0003 có sẵn
+   từ trước, PR #5a giữ nguyên. Promotions hiện sở hữu `PROMO_AGREEMENT_RECORDER` và adapter cục bộ,
+   ghi agreement trong cùng tenant transaction.
 6. **[ĐÃ LÀM ở PR #5b]** Hoãn sang PR #5b (nó đụng lại module promotions nên gộp vào cho gọn), từ
    final review PR #5a:
    - xoá 2 hằng số chết `PROMO_SCOPE_TARGET_INVALID_CODE` (`assert-scope-target.ts`) và
@@ -396,14 +388,12 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
 7. **`rejectionException` (promotions) đã hợp nhất ở PR #14** — `PromoRejectionError` giữ nguyên
    status/code/`message === code`; `confirm-booking.use-case.ts` đổi đồng bộ và chỉ nuốt
    `PromoRejectionError` có code `PROMO_LIMIT_REACHED` trên đường late-webhook.
-8. **Outbox relay không có dead-letter/max-attempts park** (phát hiện ở final review PR #5b, khi soi
-   lại vì sao `forTenant('')` cũ lại nguy hiểm): một row lỗi vĩnh viễn chiếm 1 slot claim (batch 20,
-   poll ~2s) mãi mãi — không tự trôi ra khỏi hàng đợi. Đáng một PR infra nhỏ, độc lập với các wave
-   refactor này.
+8. **[ĐÃ LÀM hậu refactor] Outbox relay trước đây không có dead-letter/max-attempts park** (phát
+   hiện ở final review PR #5b): relay hiện park sau 20 lần lỗi bằng `dead_lettered_at`, query claim
+   bỏ qua row park và timing dùng DB clock.
 9. **[ĐÃ LÀM ở final review toàn nhánh] Pattern `event.tenantId ?? ''`** — scheduling/payments/
    booking/finance normalize trong PR #12–#15; listing được carry cuối cùng. Mọi handler tenant-scoped
-   giờ validate-and-skip-with-log thay vì đưa chuỗi rỗng vào RLS. Mục 8 (relay dead-letter) vẫn là
-   nợ hạ tầng độc lập.
+   giờ validate-and-skip-with-log thay vì đưa chuỗi rỗng vào RLS. Mục 8 cũng đã đóng hậu refactor.
 10. **`requireTenantId` copy per module là quyết định có chủ đích, không phải trôi dạt** — không
     hoist vào `shared/outbox` vì message log + eventType khác nhau mỗi module, và hoist sớm sẽ đóng
     băng shape trước khi thấy đủ số lần lặp để biết đâu là phần chung thật sự. Giữ copy per module

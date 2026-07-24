@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #16.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, sau đợt hardening hậu refactor.
 
 ## 0. Vì sao cần file này
 
@@ -52,17 +52,16 @@ Booking #14 đã đưa lifecycle qua aggregate, giữ CAS/GiST/second-tx và s�
 SettlementDispute/LedgerJournal/PayoutPolicy về entity-centric, giữ nguyên repository SQL,
 DB-clock/CAS, FIFO allocation và event order; finance outbox cũng đã normalize tenantId.
 Administrative-division #16 đã đưa membership province↔ward về immutable `AdministrativeAddress`,
-giữ resolver signature, tx-less global catalog và cache 24h. Final review toàn nhánh đã carry nốt
-tenantId normalization của listing; không còn finding blocking. Việc kế tiếp là **đưa
-`refactor/entity-centric` về `main` theo quyết định owner**. **Bộ máy moderation (`listing-moderation.ts` +
-`moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
-sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
-+ đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25
-`refactor/entity-centric` → `main` đang mở là PR đưa cả nhánh tích hợp về main — không phải PR module.)
+giữ resolver signature, tx-less global catalog và cache 24h. Đợt hardening hậu refactor sau đó đã
+đóng các nợ có quyết định rõ: relay park sau 20 lần lỗi, migration backstop, fixture draft, turbo
+hash config, promotions sở hữu port ghi agreement, moderation nằm trên aggregate, fulfillment
+pickup/return có CAS, content-report dùng DB clock, và mutation domain tenancy invalidate host cache.
+Các mục còn lại trong spec là wire/behavior/product decision, không tự suy đoán trong hardening.
+Việc kế tiếp là **đưa `refactor/entity-centric` về `main` theo quyết định owner**. PR #25
+`refactor/entity-centric` → `main` là PR đưa cả nhánh tích hợp về main — không phải PR module.
 
-Ghi chú fixture seed: smoke #11a **tự tạo** listing/pricing draft trong tx thay vì thêm fixture seed
-(quyết định owner 2026-07-24). Việc thêm fixture `status='draft'` vào seed (spec §8c-bis mục 2) vẫn
-còn treo cho các đợt sau nếu cần dữ liệu bền.
+Seed StudioHub hiện có fixture bền `seed-draft-studio` và `seed-draft-studio-group`, bên cạnh 120
+listing + 5 group published; seed chạy lặp không tạo bản ghi trùng.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 
@@ -108,13 +107,14 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
    `confirm-booking.use-case.ts:80` bắt `err instanceof ConflictException` để nuốt
    `PROMO_LIMIT_REACHED` trên đường late-webhook. Đổi một phía ⇒ tx confirm rollback ⇒ booking đã
    trả tiền không confirm được. Để dành **PR #14 (booking)** khi sửa được cả hai phía.
-2. **`forTenant('')` KHÔNG no-op êm** — nó **crash ở phép cast uuid của RLS** và làm kẹt event trong
-   retry vĩnh viễn (relay không có dead-letter). Khi PR đụng file đăng ký outbox của module thì thay
+2. **`forTenant('')` KHÔNG no-op êm** — nó **crash ở phép cast uuid của RLS**. Trước hardening lỗi
+   này retry vĩnh viễn; relay hiện park row sau 20 lần lỗi, nhưng handler vẫn phải thay
    `event.tenantId ?? ''` bằng validate-and-skip-with-log (spec §4 bắt buộc) — **skip, không throw**.
 3. **Gate đồng thuận phải so với state cũ.** Ở promotions, thiết kế đầu tiên không biểu diễn được
    `fundedBy` nên suýt để tenant đổi funding partner A→B mà **giữ opt-in của A** (chiết khấu ăn
    doanh thu B không đồng thuận). Rule loại này phải nằm trong entity và so với `state` đang lưu.
-4. **Handler outbox không được throw vì lý do nghiệp vụ** — relay at-least-once, không dead-letter.
+4. **Handler outbox không được throw vì lý do nghiệp vụ** — relay at-least-once và mỗi event chỉ có
+   20 lần thử trước khi bị dead-letter; chỉ lỗi hạ tầng thật sự mới nên tiêu retry budget.
 5. **Bất đối xứng cũ đôi khi là hợp đồng**: `end-promotion` short-circuit khi đã ended,
    `end-partner-promotion` ghi vô điều kiện (bump `updatedAt`) — "sửa cho nhất quán" là đổi API.
 6. **Subagent đổi branch trong cùng working tree** ⇒ commit doc của controller có thể rơi nhầm nhánh.
@@ -135,44 +135,41 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 - **Mailpit** `localhost:8025` (REST `/api/v1/messages`) để verify email.
 - Login seed: customer `customer@studiohub.vn`, tenant owner `owner@studiohub.vn`, partner
   `giang@giangstudio.vn` — mật khẩu `demo-password`; storefront resolve tenant qua `Host: localhost`.
-- **`turbo` không hash `eslint.config.mjs` gốc** ⇒ đổi rule lint xong chạy `pnpm turbo lint` có thể
-  trúng cache và **xanh giả**; dùng `--force` khi cần chắc.
-- Seed **không có** listing/group `status <> 'published'` ⇒ smoke rule "chỉ target published" phải
-  thay bằng id không tồn tại (spec §8c-bis đã ghi việc thêm fixture `draft`).
+- `turbo.json` hiện hash config ESLint/TypeScript gốc và `packages/config`; vẫn dùng `--force` cho
+  final review để chứng minh không dựa vào cache.
+- Seed hiện có listing/group draft ổn định (`seed-draft-studio`,
+  `seed-draft-studio-group`) cho smoke rule "chỉ target published".
 - Discount `percent` do tenant tài trợ dễ chạm guard `PROMO_TENANT_SHARE_NEGATIVE` — smoke nên dùng
   `fixed`.
 
-## 7. Nợ kỹ thuật đang mở (spec §8b, §8b-bis, §8c-bis)
+## 7. Follow-up còn mở và phần đã đóng
 
-Đọc spec để có bản đầy đủ; các mục đáng chú ý:
+Đợt hardening hậu refactor đã đóng các mục có hợp đồng rõ trong spec §8b/§8b-bis/§8c/§8c-bis:
 
-- **Relay outbox thiếu dead-letter/max-attempts** — một row hỏng vĩnh viễn chiếm claim slot mãi mãi.
-  Nên làm PR hạ tầng riêng, độc lập với các đợt refactor.
-- `event.tenantId ?? ''` đã được xóa khỏi toàn bộ module refactored: scheduling/payments/booking/
-  finance normalize trong PR #12–#15; listing được carry và normalize ở final review toàn nhánh.
-- Wave migration sau refactor: unique index còn thiếu (dedupe_key của notification, refunds,
-  dispute, one-primary-domain).
-- Thêm fixture `draft` vào seed trước PR #9/#11.
-- `rejectionException` đã hợp nhất vào `PromoRejectionError` ở PR #14; confirm chỉ nuốt đúng
-  `PROMO_LIMIT_REACHED`, wire `message === code` giữ nguyên.
-- promotions import chéo module partner (`AGREEMENT_REPOSITORY`) — vi phạm ADR 0003 có sẵn, sửa ở PR
-  độc lập.
-- Booking return vẫn giữ choreography legacy `patchFulfillment` không guard status rồi dùng status
-  re-read làm nguồn CAS; đổi sang guarded patch/version cần migration/concurrency PR riêng.
-- Smoke #14: seeded `giang@…` và `owner@…` đăng nhập được nhưng các endpoint partner/tenant booking
-  trả `MISSING_PERMISSION`; vì vậy partner complete/pick-up/return/no-show/ownership chưa smoke qua
-  HTTP. Public create/idempotency/GiST/confirm-replay/guest-cancel/promo-error đã smoke và dọn sạch.
-- Smoke #15: API boot/health đạt; owner login được nhưng endpoint commission trả
-  `MISSING_PERMISSION: tenant.commissions.manage`. Vì vậy finance write-flow được chạy trực tiếp qua
-  use-case với RLS transaction thật: commission create/update/delete + floor guard; settlement
-  completion/no-show/cancellation/refund/finalize + release idempotency; payout guards; dispute
-  open/respond/resolve-release. Tất cả fixture/rule/refund/dispute tạo tạm đã dọn và custody state
-  được khôi phục. Khi boot, relay vẫn thấy các `booking.completed` cũ đã retry hàng trăm lần — bằng
-  chứng thực tế cho nợ dead-letter ở trên, không phải regression của PR #15.
-- Smoke #16: API boot đạt; `GET /public/administrative-divisions/{provinces,wards}` trả 200, đúng
-  shape và `Cache-Control: public, max-age=86400`. Resolver chạy với catalog thật: cặp `01/00004`
-  hợp lệ; cặp ward thật gắn sang province `04` và ward `99999` đều trả đúng
-  `400 INVALID_ADMINISTRATIVE_DIVISION`.
+- Relay giới hạn 20 lần thử, dùng DB clock và park bằng `dead_lettered_at`; bốn event lỗi lịch sử
+  đã được park, không còn chiếm batch live.
+- Migration `20260724120000_entity_post_refactor_hardening` thêm notification `dedupe_key`,
+  one-primary-domain partial unique và index claim live. Backstop refund/evidence/dispute đã tồn tại
+  trong migration cũ nên không tạo index trùng.
+- Promotions không còn import code partner: module sở hữu port + adapter ghi agreement trong cùng
+  transaction.
+- Moderation listing/group nằm trên aggregate; `ModerationError` là `DomainError`; không còn
+  `runModeration` shim.
+- Booking pickup/return patch bằng CAS (`status` + marker null), loser trả
+  `409 BOOKING_STATE_CHANGED`.
+- Mutation tenant-domain swap primary atomically và invalidate positive/negative host cache;
+  content-report moderation lấy `handledAt` từ DB clock.
+- Draft fixtures, turbo config hashing, reader reason type và dead catalog/contracts đã được dọn.
+- Seeded owner/partner permissions đã được xác minh qua HTTP; các ghi chú `MISSING_PERMISSION` cũ là
+  trạng thái DB/cache smoke đã stale, không phải thiếu catalog permission.
+
+Các mục **còn mở vì cần quyết định wire/behavior/product**, không phải implementation bị bỏ quên:
+
+- Finance `SetPlatformRateUseCase`: expose route mới hay xoá code không reachable.
+- Content-report: có bỏ key response thừa `targetType` hay giữ tương thích.
+- Hợp nhất bốn định nghĩa “current subscription” về status/liveness/tiebreak/clock duy nhất.
+- Các known gap ở spec §8a và Track B I/O hardening (gateway typing, loose boundary,
+  moderation/listing CAS, state-transition tightening) phải được duyệt như behavior/wire change.
 
 ## 8. Final review toàn nhánh — 2026-07-24
 
@@ -188,9 +185,21 @@ Final review `main...refactor/entity-centric` sau khi merge đủ 16 module:
   validate-and-skip-with-log. Không còn `event.tenantId ?? ''` hay `forTenant('')` executable.
 - Finance final review riêng đã chứng minh repository/release-worker SQL zero-diff, ba bare Nest
   exception bắt buộc, CAS/event order/journal order; smoke dữ liệu thật đã dọn sạch.
-- Các nợ ở §7 vẫn là follow-up ngoài scope, nổi bật: relay chưa có dead-letter, promotions import
-  chéo partner, moderation shim chưa promote, seed permission/fixture gaps. Không mục nào bị che như
-  đã verify.
+- Sau review đầu, đợt hardening đã đóng relay/migration/seed/tooling/promotions/moderation/
+  fulfillment/tenant-cache/DB-clock như §7. Final suite hậu hardening bên dưới đã chạy sạch, không
+  tái sử dụng kết quả cache của review đầu.
+
+Final review hậu hardening:
+
+- `pnpm turbo lint typecheck build --force`: **28/28 task xanh**, cache 0, Node 24.18.0.
+- `pnpm --filter=@booking/api check:rls`: **46/46**; `prisma:deploy`: 29 migration, không pending.
+- Toàn bộ 29 migration deploy thành công từ database rỗng tạm; database tạm đã được drop sau verify.
+- API boot sạch. Runtime HTTP đã chứng minh moderation listing/group + admin-lock, booking
+  fulfillment CAS/replay/concurrency, tenant primary swap + cache invalidation, owner/partner
+  permissions và promotions opt-in + agreement adapter; mọi fixture tạm đều được phục hồi/dọn.
+- Scan toàn nhánh: 257/257 file `*.use-case.ts` có exported `XxxUseCase`; không có test/config/script
+  test mới; không còn executable `event.tenantId ?? ''`, `forTenant('')`, `runModeration`, hay
+  promotions import partner.
 
 ## 9. Nếu bạn là AI tiếp quản
 

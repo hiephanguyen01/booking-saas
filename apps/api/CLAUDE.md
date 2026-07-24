@@ -80,7 +80,9 @@ never created via UI. After any role-assignment change call `PermissionResolverS
 Producer: `OutboxService.emit(tx, { tenantId?, eventType, payload })` inside its `forTenant` tx.
 Consumer: `OutboxHandlerRegistry.register(eventType, handler)` (in the module's `onModuleInit`). The
 BullMQ relay (`src/shared/outbox/outbox-relay.worker.ts`) delivers each event with exponential backoff
-(poll 2s, batch 20, `FOR UPDATE SKIP LOCKED`, backoff capped 300s, **no dead-letter**). There is no
+(poll 2s, batch 20, `FOR UPDATE SKIP LOCKED`, backoff capped 300s). After 20 failed delivery
+attempts it parks the row by setting `dead_lettered_at`; parked rows are excluded from future claims.
+There is no
 `OutboxService.enqueue`/`.on` (older docs invented those). Time comparisons use the **DB clock**
 (`now()`), never `Date.now()`. The `outbox_events.aggregate_type`/`aggregate_id` columns exist but are
 currently unpopulated.

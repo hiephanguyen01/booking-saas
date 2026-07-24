@@ -150,8 +150,8 @@ export class PaymentsModule implements OnModuleInit {
   /**
    * A tenant-scoped payments event without a tenant id cannot be routed: skip it
    * (and say so) instead of running `forTenant('')`, which crashes on the RLS
-   * policy's uuid cast and parks the event in permanent retry. Skipping — not
-   * throwing — keeps the at-least-once relay moving without a dead-letter queue.
+   * policy's uuid cast. Skipping — not throwing — avoids wasting the event's
+   * finite retry budget and eventually dead-lettering a structurally invalid row.
    */
   private requireTenantId(eventType: string, tenantId: string | null): string | null {
     if (tenantId) return tenantId;

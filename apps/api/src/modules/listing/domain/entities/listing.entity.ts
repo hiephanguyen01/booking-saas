@@ -50,10 +50,10 @@ import {
  */
 
 /**
- * The persisted write-state these rules need — deliberately narrow. Only
- * `partnerId` (the three ownership gates) and `groupId` (the group-managed
- * gate) are read; the fat {@link ListingRecord} is assignable to it, so the
- * use-case rehydrates straight from a repository read.
+ * The persisted write-state these rules need — deliberately narrow. It contains
+ * the ownership/group guards plus moderation status and actor markers; the fat
+ * {@link ListingRecord} is assignable to it, so the use-case rehydrates straight
+ * from a repository read.
  */
 export interface ListingContentState {
   partnerId: string;

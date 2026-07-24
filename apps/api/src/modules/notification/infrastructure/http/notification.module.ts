@@ -92,9 +92,9 @@ export class NotificationModule implements OnModuleInit {
   /**
    * A tenant-scoped notification event without a tenant id cannot be routed: skip it
    * (and say so) instead of running `forTenant('')`, which crashes on the RLS policy's
-   * uuid cast (`invalid input syntax for type uuid: ""`) and parks the event in
-   * permanent retry. Skipping — not throwing — keeps the at-least-once relay from
-   * parking the event in permanent retry (there is no dead-letter queue).
+   * uuid cast (`invalid input syntax for type uuid: ""`). Skipping — not throwing —
+   * avoids wasting the event's finite retry budget and eventually dead-lettering a
+   * structurally invalid row.
    */
   private requireTenantId(eventType: string, tenantId: string | null): string | null {
     if (tenantId) return tenantId;
