@@ -11,7 +11,7 @@ import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Input } from '@booking/ui/components/ui/input';
 import { data, Form, Link } from 'react-router';
 import { z } from 'zod';
-import { apiGet } from '../lib/api.server';
+import { apiGet, rethrowApiInfrastructureFailure } from '../lib/api.server';
 import { getOptionalAuth } from '../lib/auth.server';
 import { requestBookingOtp } from '../lib/booking.server';
 import { storefrontEnv } from '../lib/env.server';
@@ -40,6 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         schema: z.array(bookingResponseSchema),
       },
     );
+    rethrowApiInfrastructureFailure(result);
     if (result.ok && result.data) myBookings = result.data;
   }
   return { recent: await recentPromise, myBookings };
