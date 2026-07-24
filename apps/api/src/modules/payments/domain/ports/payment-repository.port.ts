@@ -66,7 +66,6 @@ export interface PaymentHistoryRecord {
 
 export interface IPaymentRepository {
   create(tx: PrismaTx, tenantId: string, data: CreatePaymentData): Promise<PaymentRecord>;
-  findActivePendingByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null>;
   /** Reuse the stored provider handoff on retries/double-clicks. */
   findPendingCheckout(

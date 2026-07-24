@@ -59,14 +59,6 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     );
   }
 
-  async findActivePendingByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
-    const p = await tx.payment.findFirst({
-      where: { bookingId, status: 'pending' },
-      orderBy: { createdAt: 'desc' },
-    });
-    return p ? toRecord(p) : null;
-  }
-
   async findLatestByBooking(tx: PrismaTx, bookingId: string): Promise<PaymentRecord | null> {
     const payment = await tx.payment.findFirst({
       where: { bookingId },
