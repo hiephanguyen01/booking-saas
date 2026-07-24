@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigation, useSubmit } from 'react-router';
 import type { AuthActionData } from '../../../lib/auth-types';
+import { otpSubmissionIntent } from './otp-submission-state';
 
 export type OtpActionData = AuthActionData & { resendAfterSec?: number };
 
@@ -23,9 +24,9 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
   const [verifying, setVerifying] = useState(false);
   const [seconds, setSeconds] = useState(actionData?.resendAfterSec ?? initialSeconds);
   const [code, setCode] = useState('');
-  const formPending = navigation.state !== 'idle' && navigation.formMethod != null;
-  const navigationIsResend = formPending && navigation.formData?.get('intent') === 'resend';
-  const navigationIsVerify = formPending && !navigationIsResend;
+  const submissionIntent = otpSubmissionIntent(navigation);
+  const navigationIsResend = submissionIntent === 'resend';
+  const navigationIsVerify = submissionIntent === 'verify';
 
   useEffect(() => {
     if (seconds <= 0) return;
