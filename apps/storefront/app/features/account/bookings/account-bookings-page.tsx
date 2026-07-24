@@ -25,7 +25,10 @@ export function AccountBookingsPage({ loaderData }: Route.ComponentProps) {
     pending,
     setActiveCancellation,
     setActiveReview,
-  } = useAccountBookingsPageController({ loaderData });
+  } = useAccountBookingsPageController({
+    locale: loaderData.locale,
+    filter: loaderData.filter,
+  });
 
   return (
     <div className="space-y-3">
