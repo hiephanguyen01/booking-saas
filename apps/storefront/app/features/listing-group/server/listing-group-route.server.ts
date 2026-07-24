@@ -1,9 +1,15 @@
+import {
+  MAX_BOOKING_RANGE_DAYS,
+  moneyStringSchema,
+  timeOfDaySchema,
+} from '@booking/contracts';
 import { submitContentReport } from '../../content-reports/content-report.server';
 import { parseSearchState, rangeDates } from '../../search/search-state';
 import { loadAdministrativeProvinces } from '../../../lib/administrative-divisions.server';
 import { fetchAvailability } from '../../../lib/booking.server';
 import { fetchListing, fetchListingGroup, fetchListings, fetchQuote } from '../../../lib/catalog.server';
 import { mapWithConcurrency } from '../../../lib/concurrency.server';
+import { optionalData } from '../../../lib/optional-data.server';
 import { loadPublicReviews } from '../../../lib/public-reviews.server';
 import { addDays, nightsBetween, zonedToUtcIso } from '../../../lib/time';
 
@@ -84,7 +90,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
             return slots.length ? [{ ...result, slots }] : [];
           });
           const cheapest = availableResults.sort((left, right) =>
-            BigInt(left.item.price) < BigInt(right.item.price) ? -1 : 1,
+            compareMoney(left.item.price, right.item.price),
           )[0];
           return {
             child,
@@ -142,7 +148,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
           ? (quote?.subtotal ?? null)
           : openSlots.length
             ? openSlots.reduce(
-                (lowest, slot) => (BigInt(slot.price) < BigInt(lowest) ? slot.price : lowest),
+                (lowest, slot) => (compareMoney(slot.price, lowest) < 0 ? slot.price : lowest),
                 openSlots[0]!.price,
               )
             : null;
@@ -184,7 +190,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
                 (day) => day.date === state.date && day.status === 'available',
               ),
           )
-          .sort((left, right) => (BigInt(left.item.price) < BigInt(right.item.price) ? -1 : 1))[0];
+          .sort((left, right) => compareMoney(left.item.price, right.item.price))[0];
         return {
           child,
           detail,
@@ -217,8 +223,8 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         nights <= maxNights &&
         rangeDates(state.from, state.to).every((date) => open.has(date));
       const timezone = availability?.timezone ?? 'Asia/Ho_Chi_Minh';
-      const checkinTime = typeof daily.checkinTime === 'string' ? daily.checkinTime : '14:00';
-      const checkoutTime = typeof daily.checkoutTime === 'string' ? daily.checkoutTime : '12:00';
+      const checkinTime = validTime(daily.checkinTime, '14:00');
+      const checkoutTime = validTime(daily.checkoutTime, '12:00');
       const roomStart = zonedToUtcIso(state.from, checkinTime, timezone);
       const roomEnd = zonedToUtcIso(state.to, checkoutTime, timezone);
       const quote = available
@@ -270,12 +276,8 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
   };
 }
 
-async function safe<T>(promise: Promise<T>): Promise<T | null> {
-  try {
-    return await promise;
-  } catch {
-    return null;
-  }
+function safe<T>(promise: Promise<T>): Promise<T | null> {
+  return optionalData(promise, null);
 }
 
 function publicPackages(
@@ -289,8 +291,24 @@ function publicPackages(
     if (!item || typeof item !== 'object') return [];
     const row = item as Record<string, unknown>;
     const duration = Number(row[durationKey]);
-    return typeof row.id === 'string' && typeof row.price === 'string' && Number.isInteger(duration)
-      ? [{ id: row.id, price: row.price, duration }]
+    const price = moneyStringSchema.safeParse(row.price);
+    const validDuration =
+      Number.isInteger(duration) &&
+      duration > 0 &&
+      (durationKey !== 'durationDays' || duration <= MAX_BOOKING_RANGE_DAYS);
+    return typeof row.id === 'string' && price.success && validDuration
+      ? [{ id: row.id, price: price.data, duration }]
       : [];
   });
+}
+
+function validTime(value: unknown, fallback: string): string {
+  const parsed = timeOfDaySchema.safeParse(value);
+  return parsed.success ? parsed.data : fallback;
+}
+
+function compareMoney(left: string, right: string): number {
+  const a = BigInt(left);
+  const b = BigInt(right);
+  return a < b ? -1 : a > b ? 1 : 0;
 }
