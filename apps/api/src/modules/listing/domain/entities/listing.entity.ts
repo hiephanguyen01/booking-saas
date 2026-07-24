@@ -94,8 +94,8 @@ export interface NewListing {
  * The diff handed to `IListingRepository.update` — every key optional, an
  * omitted (or `undefined`) key means "leave the stored value alone" (Prisma
  * treats `undefined` as no-op). `resourceId` is deliberately ABSENT: the
- * update path never rewrites it even though the input carries one, matching
- * `UpdateListingData` (which omits `resourceId`, `partnerId`, `listingTypeId`).
+ * update path never rewrites it even though the input carries one (the port's
+ * update data likewise omits `resourceId`, `partnerId`, `listingTypeId`).
  * The `provinceCode`/`provinceName`/`wardCode`/`wardName` come from the
  * resolved administrative address (all four present together or all omitted),
  * and `modeConfig` from the re-normalized config; the rest pass through raw

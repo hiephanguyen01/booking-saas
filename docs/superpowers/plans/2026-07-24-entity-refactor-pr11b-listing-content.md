@@ -127,6 +127,11 @@ chữ ký `moderate(tx,id,update: ModerationUpdate)`, `delete`, `findBySlug`, `c
 - Narrow write-state (`ListingContentState`): chỉ field các assert/patch cần — `id, partnerId,
   listingTypeId, groupId, slug, status, bookingModes, modeConfig` (đủ cho ownership + group-binding +
   slug + modes + moderation guard). KHÔNG dùng `ListingRecord` fat.
+  > **Đã ship hẹp hơn có chủ đích**: instance method chỉ đọc `partnerId` (ownership) + `groupId`
+  > (group-managed), nên `ListingContentState = { partnerId, groupId }`. Modes-check là **static**
+  > `assertBookingModesAllowed(candidateModes, allowedModes)` (kiểm mode INPUT, không phải mode đã
+  > lưu). Các field còn lại trong sketch trên sẽ là unread state (vi phạm luật narrow-state của #11a
+  > final review) nên bỏ. Final review #11b xác nhận đây là lựa chọn đúng.
 - `static rehydrate(state)`.
 - `assertOwnedForEdit(partnerId?)` → `ListingNotOwned` khi `partnerId && this.partnerId !== partnerId`.
 - `assertOwnedForDelete(partnerId?)` → `ListingNotOwnedForDelete` (điều kiện y hệt).
