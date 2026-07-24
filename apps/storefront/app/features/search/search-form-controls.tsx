@@ -10,7 +10,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { cn } from '@booking/ui/lib/utils';
-import { Check, ChevronsUpDown, MapPin, Search } from 'lucide-react';
+import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { typeIcon } from '../../lib/ui';
@@ -223,7 +224,7 @@ export function SearchField({
   label,
   children,
 }: {
-  icon: typeof Search;
+  icon: LucideIcon;
   label: string;
   children: ReactNode;
 }) {
