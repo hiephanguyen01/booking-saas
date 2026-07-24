@@ -2,12 +2,19 @@ import type { Locale } from '@booking/i18n';
 import { BookingI18nProvider } from '@booking/i18n';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { Button } from '@booking/ui/components/ui/button';
-import { Link } from 'react-router';
+import { isRouteErrorResponse, Link } from 'react-router';
 import { TenantBrand } from '../../../layouts/tenant-brand';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import type { RootLoaderPayload } from '../server/root-loader.server';
+import { SuspendedNotice } from './suspended-notice';
 import { TenantThemeStyle } from './tenant-theme-style';
+
+interface TenantUnavailableErrorData {
+  code: 'TENANT_UNAVAILABLE';
+  tenantName: string;
+  locale: Locale;
+}
 
 export function RootErrorBoundaryView({
   error,
@@ -18,9 +25,17 @@ export function RootErrorBoundaryView({
   locale: Locale;
   rootData: RootLoaderPayload | undefined;
 }) {
+  const tenantUnavailable = tenantUnavailableErrorData(error);
+  const effectiveLocale = tenantUnavailable?.locale ?? locale;
+
   return (
-    <BookingI18nProvider locale={locale}>
-      <RootErrorNotice error={error} locale={locale} rootData={rootData} />
+    <BookingI18nProvider locale={effectiveLocale}>
+      <RootErrorNotice
+        error={error}
+        locale={effectiveLocale}
+        rootData={rootData}
+        tenantUnavailable={tenantUnavailable}
+      />
     </BookingI18nProvider>
   );
 }
@@ -29,12 +44,18 @@ function RootErrorNotice({
   error,
   locale,
   rootData,
+  tenantUnavailable,
 }: {
   error: unknown;
   locale: Locale;
   rootData: RootLoaderPayload | undefined;
+  tenantUnavailable: TenantUnavailableErrorData | null;
 }) {
   const { t } = useTranslation(NsI18n.Error);
+
+  if (tenantUnavailable) {
+    return <SuspendedNotice name={tenantUnavailable.tenantName} />;
+  }
 
   if (isNotFoundError(error)) {
     return (
@@ -97,6 +118,30 @@ function RootErrorNotice({
       />
     </main>
   );
+}
+
+function tenantUnavailableErrorData(error: unknown): TenantUnavailableErrorData | null {
+  if (!isRouteErrorResponse(error) || error.status !== 423) return null;
+  if (!error.data || typeof error.data !== 'object') return null;
+
+  const candidate = error.data as {
+    code?: unknown;
+    tenantName?: unknown;
+    locale?: unknown;
+  };
+  if (
+    candidate.code !== 'TENANT_UNAVAILABLE' ||
+    typeof candidate.tenantName !== 'string' ||
+    (candidate.locale !== 'vi' && candidate.locale !== 'en')
+  ) {
+    return null;
+  }
+
+  return {
+    code: candidate.code,
+    tenantName: candidate.tenantName,
+    locale: candidate.locale,
+  };
 }
 
 function isNotFoundError(error: unknown): boolean {

@@ -3,7 +3,7 @@ import type { RouterContextProvider } from 'react-router';
 import { storefrontAuthMiddleware } from './auth-middleware.server';
 import { storefrontEnv } from './env.server';
 import { storefrontCspNonceContext } from './security-context.server';
-import { resolveTenant } from './tenant.server';
+import { resolveTenant, type StorefrontTenant } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
@@ -12,6 +12,7 @@ const PRIVATE_CACHE_CONTROL = 'private, no-store';
 const PUBLIC_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=60, stale-while-revalidate=300';
 const PUBLIC_METADATA_CACHE_CONTROL =
   'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400';
+const TENANT_UNAVAILABLE_STATUS = 423;
 
 function requestOrigin(request: Request): string | null {
   const host = request.headers.get('host')?.split(',')[0]?.trim();
@@ -59,6 +60,26 @@ function forbidden(): Response {
 
 function createCspNonce(): string {
   return randomBytes(16).toString('base64');
+}
+
+function tenantUnavailableResponse(request: Request, tenant: StorefrontTenant): Response {
+  const firstSegment = new URL(request.url).pathname.split('/').filter(Boolean)[0];
+  const locale = firstSegment === 'en' ? 'en' : 'vi';
+  const message =
+    locale === 'en'
+      ? 'This storefront is currently unavailable. Please try again later.'
+      : 'Cửa hàng hiện đang tạm ngưng hoạt động. Vui lòng quay lại sau.';
+
+  return Response.json(
+    { code: 'TENANT_UNAVAILABLE', tenantName: tenant.name, locale, message },
+    {
+      status: TENANT_UNAVAILABLE_STATUS,
+      headers: {
+        'Cache-Control': PRIVATE_CACHE_CONTROL,
+        'Content-Language': locale,
+      },
+    },
+  );
 }
 
 function contentSecurityPolicy(nonce: string): string {
@@ -201,6 +222,9 @@ export async function storefrontRequestMiddleware(
   const rejected = csrfFailure(request);
   if (rejected) return withSecurityHeaders(rejected, request, cspNonce);
   const tenant = await resolveTenant(request);
+  if (!tenant.live) {
+    throw withSecurityHeaders(tenantUnavailableResponse(request, tenant), request, cspNonce);
+  }
   const response = await storefrontAuthMiddleware({ request }, next, tenant);
   return withSecurityHeaders(response, request, cspNonce);
 }
