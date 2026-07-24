@@ -14,6 +14,7 @@ import { AlertCircle } from 'lucide-react';
 import type { z } from 'zod';
 
 import { cn } from '@booking/ui/lib/utils';
+import { createSubmissionLock } from '@booking/ui/lib/submission-lock';
 import { Button } from '@booking/ui/components/ui/button';
 import { Form } from '@booking/ui/components/ui/form';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
@@ -127,9 +128,25 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   });
   const submit = useSubmit();
   const navigation = useNavigation();
-  const isSubmitting = navigation.state === 'submitting';
+  const submitLockRef = React.useRef(createSubmissionLock());
+  const navigationWasBusyRef = React.useRef(false);
+  const [locked, setLocked] = React.useState(false);
+  const isSubmitting = locked || navigation.state === 'submitting';
 
   const values = form.watch();
+
+  React.useEffect(() => {
+    if (locked && navigation.state !== 'idle') {
+      navigationWasBusyRef.current = true;
+      return;
+    }
+
+    if (navigation.state === 'idle' && navigationWasBusyRef.current) {
+      navigationWasBusyRef.current = false;
+      submitLockRef.current.release();
+      setLocked(false);
+    }
+  }, [locked, navigation.state]);
 
   React.useEffect(() => {
     if (resetDirtyOnSuccess) form.reset(form.getValues());
@@ -159,24 +176,36 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   const optionalNames = React.useMemo(() => optionalKeys(schema), [schema]);
 
   const onValid = (data: Values) => {
-    let payload: Record<string, unknown> = { ...data };
-    // Drop hidden fields and coerce blank optionals to undefined.
-    for (const field of fields) {
-      if (field.hidden?.(data)) {
-        delete payload[field.name];
-        continue;
+    if (!submitLockRef.current.tryAcquire()) return;
+
+    setLocked(true);
+    let submitted = false;
+    try {
+      let payload: Record<string, unknown> = { ...data };
+      // Drop hidden fields and coerce blank optionals to undefined.
+      for (const field of fields) {
+        if (field.hidden?.(data)) {
+          delete payload[field.name];
+          continue;
+        }
+        if (payload[field.name] === '' && optionalNames.has(field.name)) {
+          payload[field.name] = undefined;
+        }
       }
-      if (payload[field.name] === '' && optionalNames.has(field.name)) {
-        payload[field.name] = undefined;
+      // Let the caller assemble/coerce nested shapes (e.g. modeConfig) last.
+      if (transform) payload = transform(payload as Values);
+      submit(payload as never, {
+        method,
+        action,
+        encType: 'application/json',
+      });
+      submitted = true;
+    } finally {
+      if (!submitted) {
+        submitLockRef.current.release();
+        setLocked(false);
       }
     }
-    // Let the caller assemble/coerce nested shapes (e.g. modeConfig) last.
-    if (transform) payload = transform(payload as Values);
-    submit(payload as never, {
-      method,
-      action,
-      encType: 'application/json',
-    });
   };
 
   const renderedFields = fields.flatMap((field) => {
@@ -201,6 +230,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
         onSubmit={form.handleSubmit(onValid)}
         className={cn(renderFields ? undefined : 'space-y-6', className)}
         noValidate
+        aria-busy={isSubmitting}
       >
         {serverError ? (
           <div
