@@ -57,8 +57,8 @@ export function useAffiliateApplicationPageController({
   };
   actionData?: {
     ok?: boolean;
-    error?: string;
-    fieldErrors?: Partial<Record<string, string[]>>;
+    error?: string | null;
+    fieldErrors?: Partial<Record<keyof AffiliateRegistrationInput, string[]>> | null;
   };
 }) {
   const rootData = useRouteLoaderData<typeof rootLoader>('root');
