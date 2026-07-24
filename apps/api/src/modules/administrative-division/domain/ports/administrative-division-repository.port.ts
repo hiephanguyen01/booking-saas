@@ -7,11 +7,16 @@ export interface ResolvedAdministrativeAddress {
   ward: AdministrativeWard;
 }
 
+export interface AdministrativeAddressCandidates {
+  province: AdministrativeProvince | null;
+  ward: AdministrativeWard | null;
+}
+
 export interface IAdministrativeDivisionRepository {
   listProvinces(): Promise<AdministrativeProvince[]>;
   listWards(provinceCode: string): Promise<AdministrativeWard[]>;
-  findWardInProvince(
+  findAddressCandidates(
     provinceCode: string,
     wardCode: string,
-  ): Promise<ResolvedAdministrativeAddress | null>;
+  ): Promise<AdministrativeAddressCandidates>;
 }
