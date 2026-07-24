@@ -12,6 +12,7 @@ import { Spinner } from '@booking/ui/components/ui/spinner';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useNavigation } from 'react-router';
+import { isFormNavigationPending } from '../../auth/ui/otp-submission-state';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { usePasswordVisibility } from '../../../lib/use-password-visibility';
@@ -83,7 +84,7 @@ export function PasswordField({
 
 export function PrimaryButton({ children }: { children: ReactNode }) {
   const navigation = useNavigation();
-  const pending = navigation.state === 'submitting';
+  const pending = isFormNavigationPending(navigation);
   return (
     <Button type="submit" size="control" className="w-full text-base" disabled={pending}>
       {pending ? <Spinner data-icon="inline-start" /> : null}
