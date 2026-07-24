@@ -124,6 +124,14 @@
 }
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+  @supports (scrollbar-gutter: stable) {
+    body[data-scroll-locked] {
+      margin-right: 0 !important;
+    }
+  }
   * {
     @apply border-border outline-ring/50;
   }
