@@ -81,7 +81,7 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
       <Button
         type="button"
         variant="ghost"
-        disabled={seconds > 0 || resending}
+        disabled={seconds > 0 || resending || verifying}
         onClick={resendCode}
         className="mx-auto mt-5 flex text-primary hover:text-primary"
       >
