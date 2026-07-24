@@ -1,7 +1,6 @@
 import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3, PackageCheck, Users } from 'lucide-react';
-import { useState } from 'react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
@@ -9,6 +8,7 @@ import type { AccountBookingViewModel, BookingDetailState } from '../lib/booking
 import { CancellationPolicyList, StudioThumbnail } from './account-primitives';
 import { BookingCardHeader } from './booking-card-header';
 import { CancelBookingDialog } from './cancel-booking-dialog';
+import { useBookingDetailOverviewController } from './use-booking-detail-overview-controller';
 
 export function BookingDetailOverview({
   booking,
@@ -21,6 +21,8 @@ export function BookingDetailOverview({
   state: BookingDetailState;
   defaultCancelOpen: boolean;
 }) {
+  const controller = useBookingDetailOverviewController({ booking, state, defaultCancelOpen });
+
   return (
     <section className="overflow-hidden bg-background shadow-[0_3px_14px_rgba(15,23,42,0.035)]">
       <BookingCardHeader
@@ -31,25 +33,39 @@ export function BookingDetailOverview({
         locale={locale}
         createdAt={booking.createdAt}
       />
-      <ListingSummary booking={booking} />
+      <ListingSummary
+        booking={booking}
+        mode={controller.mode}
+        isInventory={controller.isInventory}
+        participantCount={controller.participantCount}
+      />
       <PolicyActions
         booking={booking}
         locale={locale}
         state={state}
-        defaultCancelOpen={defaultCancelOpen}
+        canPay={controller.canPay}
+        canCancel={controller.canCancel}
+        canDispute={controller.canDispute}
+        cancelOpen={controller.cancelOpen}
+        setCancelOpen={controller.setCancelOpen}
+        showActions={controller.showActions}
       />
     </section>
   );
 }
 
-function ListingSummary({ booking }: { booking: AccountBookingViewModel }) {
+function ListingSummary({
+  booking,
+  mode,
+  isInventory,
+  participantCount,
+}: {
+  booking: AccountBookingViewModel;
+  mode: 'hourly' | 'daily' | 'inventory' | 'other';
+  isInventory: boolean;
+  participantCount: string;
+}) {
   const { t } = useTranslation(NsI18n.Account);
-  const mode =
-    booking.bookingMode === 'hourly' ||
-    booking.bookingMode === 'daily' ||
-    booking.bookingMode === 'inventory'
-      ? booking.bookingMode
-      : 'other';
 
   return (
     <div className="px-5 pb-0 pt-5 sm:px-6">
@@ -92,13 +108,9 @@ function ListingSummary({ booking }: { booking: AccountBookingViewModel }) {
           value={t(`bookings.modes.${mode}`)}
         />
         <BookingFact
-          icon={booking.bookingMode === 'inventory' ? PackageCheck : Users}
-          label={
-            booking.bookingMode === 'inventory' ? t('bookings.quantity') : t('bookings.guests')
-          }
-          value={String(
-            booking.bookingMode === 'inventory' ? booking.quantity : booking.guestCount,
-          )}
+          icon={isInventory ? PackageCheck : Users}
+          label={isInventory ? t('bookings.quantity') : t('bookings.guests')}
+          value={participantCount}
         />
         {booking.attributes.map((attribute) => (
           <BookingFact
@@ -143,22 +155,26 @@ function PolicyActions({
   booking,
   locale,
   state,
-  defaultCancelOpen,
+  canPay,
+  canCancel,
+  canDispute,
+  cancelOpen,
+  setCancelOpen,
+  showActions,
 }: {
   booking: AccountBookingViewModel;
   locale: Locale;
   state: BookingDetailState;
-  defaultCancelOpen: boolean;
+  canPay: boolean;
+  canCancel: boolean;
+  canDispute: boolean;
+  cancelOpen: boolean;
+  setCancelOpen: (open: boolean) => void;
+  showActions: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Account);
-  const [cancelOpen, setCancelOpen] = useState(defaultCancelOpen);
-  const canPay = booking.status === 'pending_payment';
-  const canCancel = booking.status === 'confirmed';
-  const canDispute = state === 'absent';
-  const showPolicy =
-    booking.cancellationTiers.length > 0 || state === 'cancelled' || state === 'absent';
 
-  if (!showPolicy && !canPay && !canCancel && !canDispute) return null;
+  if (!showActions) return null;
 
   return (
     <div className="mx-5 flex flex-col gap-4 border-t border-[#d8dee8] py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
