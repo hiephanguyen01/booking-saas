@@ -6,6 +6,7 @@ import { CalendarDays, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
+import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
 import { AccountPanel } from './account-primitives';
 import { BookingCardHeader } from './booking-card-header';
 
@@ -21,6 +22,7 @@ export function ReviewBookingCard({
   onReview: (review: PendingReview) => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
+  const viewerLabels = useMediaViewerLabels();
   const dateRange = formatBookingRange(review.bookingStartsAt, review.bookingEndsAt, locale);
 
   return (
@@ -97,6 +99,7 @@ export function ReviewBookingCard({
             items={review.media}
             viewLabel={t('reviews.mediaView')}
             viewerTitle={t('reviews.mediaViewerTitle')}
+            viewerLabels={viewerLabels}
           />
           <p className="text-xs text-muted-foreground">
             {t('reviews.listingLabel', { title: review.listingTitle })}

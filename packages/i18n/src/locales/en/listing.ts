@@ -113,6 +113,9 @@ export const enListing = {
     colChoice: 'Your choice',
     packageDuration: '{count} hours',
     photographyStyle: 'Style: {value}',
+    photographyStyleLabel: 'Photography style',
+    postProduction: 'Post-production',
+    originalFiles: 'Original files',
     editedPhotos: '{count} edited photos',
     rawFilesIncluded: 'Original files included',
     rawFilesNotIncluded: 'Original files not included',
@@ -129,6 +132,8 @@ export const enListing = {
     allRatings: 'All',
     ratingFilter: '{count} stars ({total})',
     related: 'Similar services',
+    mediaViewerDescription: 'Photos and details for {name}',
+    viewPackagePhoto: 'View photo {index} of package {name}',
   },
   group: {
     viewMap: 'View map',

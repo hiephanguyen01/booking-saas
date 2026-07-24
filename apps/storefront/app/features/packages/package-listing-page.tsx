@@ -99,6 +99,7 @@ export function PackageListingPage({
               packages={packages}
               fallbackPhotos={listing.photos}
               title={listing.title}
+              listing={listing}
             />
           </div>
 

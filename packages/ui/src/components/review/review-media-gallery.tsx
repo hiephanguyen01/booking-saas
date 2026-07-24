@@ -2,12 +2,9 @@ import * as React from "react"
 import { Play } from "lucide-react"
 
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@booking/ui/components/ui/dialog"
+  MediaViewerDialog,
+  type MediaViewerLabels,
+} from "@booking/ui/components/media/media-viewer-dialog"
 import { cn } from "@booking/ui/lib/utils"
 
 export interface ReviewMediaGalleryItem {
@@ -20,14 +17,16 @@ export function ReviewMediaGallery({
   className,
   viewLabel,
   viewerTitle,
+  viewerLabels,
 }: {
   items: ReviewMediaGalleryItem[]
   className?: string
   viewLabel: string
   viewerTitle: string
+  viewerLabels: MediaViewerLabels
 }) {
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null)
-  const active = activeIndex === null ? null : items[activeIndex]
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null)
 
   if (items.length === 0) return null
 
@@ -38,7 +37,10 @@ export function ReviewMediaGallery({
           <button
             key={`${item.url}-${index}`}
             type="button"
-            onClick={() => setActiveIndex(index)}
+            onClick={(event) => {
+              triggerRef.current = event.currentTarget
+              setActiveIndex(index)
+            }}
             aria-label={`${viewLabel} ${index + 1}`}
             className="group relative size-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
@@ -62,30 +64,19 @@ export function ReviewMediaGallery({
         ))}
       </div>
 
-      <Dialog open={active !== null} onOpenChange={(open) => !open && setActiveIndex(null)}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] gap-3 overflow-hidden p-4 sm:max-w-4xl">
-          <DialogHeader className="pr-10">
-            <DialogTitle>{viewerTitle}</DialogTitle>
-            <DialogDescription className="sr-only">{viewLabel}</DialogDescription>
-          </DialogHeader>
-          {active?.kind === "image" ? (
-            <img
-              src={active.url}
-              alt=""
-              className="max-h-[calc(100vh-8rem)] w-full rounded-md object-contain"
-            />
-          ) : active ? (
-            <video
-              key={active.url}
-              src={active.url}
-              controls
-              autoPlay
-              playsInline
-              className="max-h-[calc(100vh-8rem)] w-full rounded-md bg-black object-contain"
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <MediaViewerDialog
+        open={activeIndex !== null}
+        items={items}
+        activeIndex={activeIndex ?? 0}
+        onOpenChange={(open) => {
+          if (!open) setActiveIndex(null)
+        }}
+        onActiveIndexChange={setActiveIndex}
+        labels={viewerLabels}
+        title={viewerTitle}
+        description={viewLabel}
+        returnFocusRef={triggerRef}
+      />
     </>
   )
 }

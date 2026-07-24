@@ -5,6 +5,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { ChevronDown, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../lib/i18n';
+import { useMediaViewerLabels } from '../lib/use-media-viewer-labels';
 import { RatingStars } from './rating-stars';
 import { SectionCard } from './section-card';
 import { usePublicReviewsSectionController } from './use-public-reviews-section-controller';
@@ -105,6 +106,7 @@ export function PublicReviewsSection({
 
 function ReviewItem({ review, locale }: { review: ReviewResponse; locale: 'vi' | 'en' }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const viewerLabels = useMediaViewerLabels();
   return (
     <article className="flex flex-col gap-2 py-5 first:pt-4 last:pb-0">
       <div className="flex items-start justify-between gap-4">
@@ -123,6 +125,7 @@ function ReviewItem({ review, locale }: { review: ReviewResponse; locale: 'vi' |
         items={review.media}
         viewLabel={t('reviews.mediaView')}
         viewerTitle={t('reviews.mediaViewerTitle')}
+        viewerLabels={viewerLabels}
       />
       <p className="text-sm leading-5 text-muted-foreground">
         {t('reviews.listingLabel', { title: review.listingTitle })}

@@ -10,6 +10,18 @@ export const enCommon = {
   currencyNote: 'Booking platform · secure payments · VND',
   notFound: 'Not found',
   close: 'Close',
+  mediaViewer: {
+    close: 'Close media viewer',
+    previous: 'Previous media',
+    next: 'Next media',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    resetZoom: 'Reset zoom',
+    mediaError: 'This media could not be loaded.',
+    video: 'Video',
+    item: 'View media {index}',
+    counter: '{current}/{total}',
+  },
   home: {
     heroTitleFallback: 'Book {name} in minutes',
     heroSubtitleFallback:

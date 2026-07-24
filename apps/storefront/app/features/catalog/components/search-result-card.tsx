@@ -1,5 +1,6 @@
-import { Heart, MapPin, Star } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
+import { RatingStars } from '../../../components/rating-stars';
 import {
   rangeDates,
   withSearchContext,
@@ -31,24 +32,28 @@ export function SearchResultCard({
   const href = withSearchContext(detailPath, state);
   const photos = listing.photos.slice(0, 3);
   const location = formatListingLocation(listing);
+  const price = formatVnd(listing.priceFrom);
+  const regularPrice = formatVnd(listing.regularPriceFrom);
+  const discountPercent = calculateDiscountPercent(listing.regularPriceFrom, listing.priceFrom);
   const selectedDayCount = state.hasDailyRange ? rangeDates(state.from, state.to).length : 0;
   const selectedHours = state.hasTimeSelection
     ? clockHoursBetween(state.startTime, state.endTime)
     : null;
 
   return (
-    <article className="group relative grid overflow-hidden rounded-lg border border-border bg-background transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)]">
-      {/* Heart floats over the whole card so it stays reachable on mobile too (the
-          secondary-photo column below is hidden under md). */}
+    <article className="group relative grid overflow-hidden rounded-lg border-[1.4px] border-border bg-card transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5">
       {favoriteControl ? (
         <button
           type="button"
           aria-label={favoriteControl.label}
           aria-pressed={favoriteControl.selected}
           onClick={favoriteControl.onToggle}
-          className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="absolute top-3 right-3 z-10 flex size-8 items-center justify-center rounded-full bg-background text-primary shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:top-6 md:right-auto md:left-[310px] md:size-10"
         >
-          <Heart className="size-4" fill={favoriteControl.selected ? 'currentColor' : 'none'} />
+          <Heart
+            className="size-4 md:size-5"
+            fill={favoriteControl.selected ? 'currentColor' : 'none'}
+          />
         </button>
       ) : null}
       <Link
@@ -59,60 +64,79 @@ export function SearchResultCard({
           <img
             src={photos[0]}
             alt={listing.title}
+            width={720}
+            height={480}
+            loading="lazy"
             className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
+        ) : null}
+        {discountPercent !== null ? (
+          <span className="absolute top-6 left-0 flex h-10 w-18 items-center bg-primary px-2 text-base font-semibold text-primary-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
+            - {discountPercent}%
+          </span>
         ) : null}
       </Link>
 
       <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
-        {photos.slice(1, 3).map((photo) => (
-          <img key={photo} src={photo} alt="" className="size-full min-h-0 object-cover" />
+        {[photos[1], photos[2]].map((photo, index) => (
+          <div key={photo ?? index} className="min-h-0 overflow-hidden bg-muted">
+            {photo ? (
+              <img
+                src={photo}
+                alt=""
+                width={360}
+                height={264}
+                loading="lazy"
+                className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+            ) : null}
+          </div>
         ))}
       </div>
 
-      <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4">
+      <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4 md:pr-6 md:pl-[18px]">
         <div className="min-w-0">
           <Link
             to={href}
-            className="block truncate text-base font-semibold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="block truncate text-lg leading-7 font-semibold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {listing.title}
           </Link>
           {location ? (
-            <p className="mt-1.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-              <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-              {location}
+            <p className="mt-1 flex items-center gap-2 text-sm leading-5 text-muted-foreground">
+              <MapPin className="size-5 shrink-0" aria-hidden="true" />
+              <span className="truncate">{location}</span>
             </p>
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 text-sm leading-5 text-muted-foreground">
           {listing.ratingAvg === null || listing.reviewCount === 0 ? (
             <span>{t('catalog:noReviews')}</span>
           ) : (
-            <span className="flex items-center gap-1.5">
-              <Star className="size-3.5 text-amber-400" fill="currentColor" aria-hidden="true" />
-              <strong className="font-semibold text-foreground">
-                {listing.ratingAvg.toFixed(1)}
-              </strong>
-              <span>({t('catalog:reviewCount', { count: listing.reviewCount })})</span>
-            </span>
+            <RatingStars rating={listing.ratingAvg} />
           )}
-          <span>{t('catalog:matchingRooms', { count: listing.matchingRoomCount })}</span>
+          <span className="shrink-0 text-right">
+            {t('catalog:completedBookings', { count: listing.completedBookings })}
+          </span>
         </div>
 
         <div className="flex items-end justify-end text-right">
-          <p className="text-xs text-muted-foreground">
-            {listing.regularPriceFrom !== listing.priceFrom ? (
-              <span className="mb-0.5 block line-through">
-                {formatVnd(listing.regularPriceFrom)}
+          <p className="text-sm leading-5 text-muted-foreground">
+            <span className="flex flex-wrap items-baseline justify-end gap-x-2">
+              {discountPercent !== null && regularPrice ? (
+                <span className="text-base leading-6 text-muted-foreground/65 line-through">
+                  {regularPrice}
+                </span>
+              ) : null}
+              <span className={discountPercent !== null ? 'text-primary' : 'text-foreground'}>
+                {t('listing:fromPriceShort')}{' '}
+                <strong className="text-lg leading-7 font-semibold">{price}</strong>
               </span>
-            ) : null}
-            {t('listing:fromPriceShort')}{' '}
-            <strong className="text-base font-semibold text-primary">
-              {formatVnd(listing.priceFrom)}
-            </strong>
-            <span className="block text-primary">
+            </span>
+            <span
+              className={`block ${discountPercent !== null ? 'text-primary' : 'text-muted-foreground'}`}
+            >
               {state.hasDailyRange
                 ? t('listing:forSelectedDays', { count: selectedDayCount })
                 : listing.priceUnit === 'hour'
@@ -130,4 +154,12 @@ export function SearchResultCard({
       </div>
     </article>
   );
+}
+
+function calculateDiscountPercent(regularPrice: string, salePrice: string): number | null {
+  const regular = BigInt(regularPrice);
+  const sale = BigInt(salePrice);
+  if (regular <= 0n || sale >= regular) return null;
+
+  return Number(((regular - sale) * 100n + regular / 2n) / regular);
 }

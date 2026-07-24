@@ -32,26 +32,26 @@ function LoadingRegion({
 export function CatalogResultSkeleton() {
   return (
     <div
-      className="grid overflow-hidden rounded-lg border border-border bg-background md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)]"
+      className="grid overflow-hidden rounded-lg border-[1.4px] border-border bg-card md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5"
       aria-hidden="true"
     >
       <StorefrontSkeleton className="min-h-52 rounded-none md:min-h-0" />
-      <div className="relative hidden grid-rows-2 gap-1.5 bg-muted md:grid">
-        <StorefrontSkeleton className="rounded-none" />
-        <StorefrontSkeleton className="rounded-none" />
+      <div className="hidden min-h-0 grid-rows-2 gap-1.5 bg-muted md:grid">
+        <StorefrontSkeleton className="min-h-0 rounded-none" />
+        <StorefrontSkeleton className="min-h-0 rounded-none" />
       </div>
-      <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4">
-        <div className="flex flex-col gap-1.5">
-          <StorefrontSkeleton className="h-5 w-3/5" />
-          <StorefrontSkeleton className="h-3.5 w-2/5" />
+      <div className="flex min-w-0 flex-col justify-center gap-3 px-5 py-4 md:pr-6 md:pl-[18px]">
+        <div className="flex flex-col gap-2">
+          <StorefrontSkeleton className="h-7 w-3/5" />
+          <StorefrontSkeleton className="h-5 w-2/5" />
         </div>
         <div className="flex items-center justify-between gap-3">
-          <StorefrontSkeleton className="h-4 w-28" />
-          <StorefrontSkeleton className="h-3.5 w-24" />
+          <StorefrontSkeleton className="h-4 w-24" />
+          <StorefrontSkeleton className="h-5 w-24" />
         </div>
         <div className="flex flex-col items-end gap-1">
-          <StorefrontSkeleton className="h-5 w-32" />
-          <StorefrontSkeleton className="h-3.5 w-20" />
+          <StorefrontSkeleton className="h-6 w-48" />
+          <StorefrontSkeleton className="h-5 w-20" />
         </div>
       </div>
     </div>

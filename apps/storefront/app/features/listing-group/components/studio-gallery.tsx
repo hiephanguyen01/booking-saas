@@ -1,36 +1,39 @@
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@booking/ui/components/ui/dialog';
-import { cn } from '@booking/ui/lib/utils';
+  MediaViewerDialog,
+  type MediaViewerItem,
+} from '@booking/ui/components/media/media-viewer-dialog';
 import { Expand, ImageIcon } from 'lucide-react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
 import { useStudioGalleryController } from './use-studio-gallery-controller';
 
 const TILE_COUNT = 6;
 
 export function StudioGallery({ photos, title }: { photos: string[]; title: string }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const viewerLabels = useMediaViewerLabels();
   const {
     activeIndex,
-    activePhoto,
     open,
     overflowCount,
     setActiveIndex,
     setOpen,
     showPhoto,
+    triggerRef,
     visiblePhotos,
   } = useStudioGalleryController(photos);
+  const mediaItems: MediaViewerItem[] = photos.map((photo, index) => ({
+    kind: 'image',
+    url: photo,
+    alt: t('group.photoAlt', { title, index: index + 1 }),
+  }));
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
       <div className="grid h-64 overflow-hidden rounded-md bg-muted md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
         <button
           type="button"
-          onClick={() => showPhoto(0)}
+          onClick={(event) => showPhoto(0, event.currentTarget)}
           disabled={!visiblePhotos[0]}
           className="group relative min-h-64 overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
           aria-label={
@@ -64,7 +67,7 @@ export function StudioGallery({ photos, title }: { photos: string[]; title: stri
               <button
                 type="button"
                 key={photo ?? `placeholder-${index}`}
-                onClick={() => showPhoto(index + 1)}
+                onClick={(event) => showPhoto(index + 1, event.currentTarget)}
                 disabled={!photo}
                 className="relative overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 aria-label={
@@ -92,50 +95,21 @@ export function StudioGallery({ photos, title }: { photos: string[]; title: stri
           })}
         </div>
       </div>
-      <DialogContent className="max-h-[90vh] gap-4 overflow-hidden p-4 sm:max-w-5xl">
-        <DialogHeader className="pr-10">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {t('group.photoCounter', {
-              current: activeIndex + 1,
-              total: Math.max(photos.length, 1),
-            })}
-          </DialogDescription>
-        </DialogHeader>
-        {activePhoto ? (
-          <img
-            src={activePhoto}
-            alt={t('group.photoAlt', { title, index: activeIndex + 1 })}
-            width={1400}
-            height={1000}
-            className="max-h-[68vh] w-full rounded-md object-contain"
-          />
-        ) : (
-          <div className="h-80">
-            <GalleryPlaceholder title={title} />
-          </div>
-        )}
-        {photos.length > 1 ? (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {photos.map((photo, index) => (
-              <button
-                type="button"
-                key={`${photo}-${index}`}
-                onClick={() => setActiveIndex(index)}
-                aria-label={t('group.goToPhoto', { index: index + 1 })}
-                aria-current={index === activeIndex ? 'true' : undefined}
-                className={cn(
-                  'h-16 w-24 shrink-0 overflow-hidden rounded-md border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  index === activeIndex ? 'border-primary' : 'border-transparent',
-                )}
-              >
-                <img src={photo} alt="" className="size-full object-cover" />
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+      <MediaViewerDialog
+        open={open}
+        items={mediaItems}
+        activeIndex={activeIndex}
+        onOpenChange={setOpen}
+        onActiveIndexChange={setActiveIndex}
+        labels={viewerLabels}
+        title={title}
+        description={t('group.photoCounter', {
+          current: activeIndex + 1,
+          total: Math.max(photos.length, 1),
+        })}
+        returnFocusRef={triggerRef}
+      />
+    </>
   );
 }
 

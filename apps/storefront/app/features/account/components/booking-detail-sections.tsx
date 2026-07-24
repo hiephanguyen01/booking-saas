@@ -4,6 +4,7 @@ import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-g
 import { Button } from '@booking/ui/components/ui/button';
 import { Info, Star } from 'lucide-react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
 import { bookingDetailState, type AccountBookingViewModel } from '../lib/booking-history';
 
 export function BookingContactSection({ booking }: { booking: AccountBookingViewModel }) {
@@ -92,6 +93,7 @@ export function BookingReviewSection({
   onReview: () => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
+  const viewerLabels = useMediaViewerLabels();
   const review = booking.review;
 
   return (
@@ -113,6 +115,7 @@ export function BookingReviewSection({
             className="mt-3"
             viewLabel={t('reviews.mediaView')}
             viewerTitle={t('reviews.mediaViewerTitle')}
+            viewerLabels={viewerLabels}
           />
           {review.reply ? (
             <div className="mt-4 bg-[#f1f3f7] p-4">
