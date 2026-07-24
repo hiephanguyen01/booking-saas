@@ -1,7 +1,7 @@
 # Entity-centric post-refactor hardening plan
 
-> Date: 2026-07-24  
-> Base: `refactor/entity-centric` at `f3b18e3`  
+> Date: 2026-07-24
+> Base: `refactor/entity-centric` at `f3b18e3`
 > Scope: the actionable follow-ups recorded in HANDOFF §7 and design spec
 > §8b/§8b-bis/§8c/§8c-bis after all 16 module refactors.
 
