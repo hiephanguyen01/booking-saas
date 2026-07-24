@@ -4,6 +4,7 @@ import {
   type PartnerOnboardingProfileInput,
 } from '@booking/contracts';
 import type { FieldConfig } from '@booking/ui/components/form/types';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch, type Path } from 'react-hook-form';
@@ -23,6 +24,7 @@ export function usePartnerProfilePageController({
 }: PartnerProfilePageControllerArgs) {
   const navigation = useNavigation();
   const submit = useSubmit();
+  const { busy: submitting, run } = useSubmissionGuard(navigation.state);
   const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
   const wardsFetcher = useFetcher<{
     provinceCode: string;
@@ -104,10 +106,9 @@ export function usePartnerProfilePageController({
   const wards = wardsData?.provinceCode === provinceCode ? wardsData.wards : [];
   const wardOptions = wards.map((ward) => ({ label: ward.name, value: ward.code }));
   const wardsLoading = wardsFetcher.state !== 'idle';
-  const submitting = navigation.state === 'submitting';
-  const onSubmit = form.handleSubmit((values) =>
-    submit(values as never, { method: 'post', encType: 'application/json' }),
-  );
+  const onSubmit = form.handleSubmit((values) => {
+    run(() => submit(values as never, { method: 'post', encType: 'application/json' }));
+  });
 
   return {
     errorMessage,
