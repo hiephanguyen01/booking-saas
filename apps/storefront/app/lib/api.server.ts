@@ -92,6 +92,14 @@ export function apiFailureStatus(result: ApiResult<unknown>): number {
   return result.status || 500;
 }
 
+export function rethrowApiInfrastructureFailure(result: ApiResult<unknown>): void {
+  if (result.ok) return;
+  const status = apiFailureStatus(result);
+  if (status >= 500) {
+    throw new Response('Storefront API request failed', { status });
+  }
+}
+
 function readFailure(result: ApiResult<unknown>): Response {
   return new Response('Storefront API request failed', {
     status: apiFailureStatus(result),
