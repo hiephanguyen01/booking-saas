@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
@@ -123,6 +123,8 @@ import { TenantDisputeController } from './tenant-dispute.controller';
   exports: [ResolveCommissionUseCase],
 })
 export class FinanceModule implements OnModuleInit {
+  private readonly logger = new Logger(FinanceModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly recordHeldSettlement: RecordHeldSettlementUseCase,
@@ -146,25 +148,33 @@ export class FinanceModule implements OnModuleInit {
   onModuleInit(): void {
     this.registry.register('payment.succeeded', (event) => {
       const payload = event.payload as { paymentId: string };
-      return this.recordHeldSettlement.execute(event.tenantId ?? '', payload.paymentId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.recordHeldSettlement.execute(tenantId, payload.paymentId);
     });
     this.registry.register('booking.completed', (event) => {
       const payload = event.payload as { bookingId: string; onsiteCollectedAmount?: string };
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
       return this.startSettlementWindow.execute(
-        event.tenantId ?? '',
+        tenantId,
         payload.bookingId,
         payload.onsiteCollectedAmount === undefined
           ? undefined
           : BigInt(payload.onsiteCollectedAmount),
       );
     });
-    this.registry.register('booking.no_show', (event) =>
-      this.startNoShowWindow.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
+    this.registry.register('booking.no_show', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.startNoShowWindow.execute(tenantId, bookingIdOf(event.payload));
+    });
     this.registry.register('booking.cancelled', (event) => {
       const p = event.payload as { bookingId: string; refundAmount?: string };
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
       return this.prepareRefund.execute(
-        event.tenantId ?? '',
+        tenantId,
         p.bookingId,
         BigInt(p.refundAmount ?? '0'),
         'cancellation_fee',
@@ -178,8 +188,10 @@ export class FinanceModule implements OnModuleInit {
         affectsBookingStatus?: boolean;
       };
       if (p.affectsBookingStatus === false) return Promise.resolve();
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
       return this.prepareRefund.execute(
-        event.tenantId ?? '',
+        tenantId,
         p.bookingId,
         BigInt(p.amount),
         p.reason === 'booking_cancellation' ? 'cancellation_fee' : undefined,
@@ -195,22 +207,38 @@ export class FinanceModule implements OnModuleInit {
         affectsBookingStatus?: boolean;
       };
       if (p.affectsBookingStatus === false) return;
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return;
       await this.finalizeRefund.execute(
-        event.tenantId ?? '',
+        tenantId,
         p.bookingId,
         p.refundId,
         BigInt(p.amount),
         p.reason,
       );
-      await this.clawbackJournal.execute(event.tenantId ?? '', p.bookingId);
+      await this.clawbackJournal.execute(tenantId, p.bookingId);
     });
-    this.registry.register('booking.refunded', (event) =>
-      this.clawbackJournal.execute(event.tenantId ?? '', bookingIdOf(event.payload)),
-    );
+    this.registry.register('booking.refunded', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.clawbackJournal.execute(tenantId, bookingIdOf(event.payload));
+    });
     this.registry.register('settlement.release_requested', (event) => {
       const p = event.payload as { settlementId: string };
-      return this.releaseSettlement.execute(event.tenantId ?? '', p.settlementId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.releaseSettlement.execute(tenantId, p.settlementId);
     });
+  }
+
+  /**
+   * Finance handlers always open an RLS transaction. An unroutable event must be
+   * logged and skipped instead of passing an empty string to the tenant UUID GUC.
+   */
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }
 

@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { RespondSettlementDisputeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -7,6 +7,7 @@ import {
   type ISettlementDisputeRepository,
   type SettlementDisputeRecord,
 } from '../../domain/ports/settlement-dispute-repository.port';
+import { SettlementDispute } from '../../domain/entities/settlement-dispute.entity';
 
 /** Partner adds a single factual response while the claim is still open. */
 @Injectable()
@@ -33,13 +34,7 @@ export class RespondSettlementDisputeUseCase {
         input.response,
         actorId,
       );
-      if (!dispute) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'DISPUTE_RESPONSE_NOT_ACCEPTED',
-          message: 'The dispute is closed, already answered, or does not belong to this partner',
-        });
-      }
+      SettlementDispute.assertResponseAccepted(dispute);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'settlement.dispute_responded',
