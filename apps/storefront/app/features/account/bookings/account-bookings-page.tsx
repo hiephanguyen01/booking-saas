@@ -1,42 +1,31 @@
-import type { CustomerReviewItem } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { ReceiptText, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useLocation, useNavigation } from 'react-router';
+import { Link } from 'react-router';
 import { AccountResultsSkeleton } from '../../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
-import { isReadNavigationMethod, useMinimumPending } from '../../../lib/use-minimum-pending';
 import type { Route } from '../../../routes/account/+types/bookings';
 import { AccountPanel, PageHeading } from '../components/account-primitives';
 import { BookingHistoryCard } from '../components/booking-history-card';
 import { CancelBookingDialog } from '../components/cancel-booking-dialog';
 import { ReviewDialog } from '../components/review-dialog';
-import {
-  BOOKING_HISTORY_FILTERS,
-  parseBookingHistoryFilter,
-  type AccountBookingViewModel,
-} from '../lib/booking-history';
-
-type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
+import { BOOKING_HISTORY_FILTERS } from '../lib/booking-history';
+import { useAccountBookingsPageController } from './use-account-bookings-page-controller';
 
 export function AccountBookingsPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Common]);
-  const locale = loaderData.locale === 'en' ? 'en' : 'vi';
-  const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
-  const [activeCancellation, setActiveCancellation] = useState<AccountBookingViewModel | null>(
-    null,
-  );
-  const location = useLocation();
-  const navigation = useNavigation();
-  const readNavigationActive =
-    navigation.state === 'loading' &&
-    navigation.location?.pathname === location.pathname &&
-    isReadNavigationMethod(navigation.formMethod);
-  const pending = useMinimumPending(readNavigationActive);
-  const activeFilter = readNavigationActive
-    ? parseBookingHistoryFilter(new URLSearchParams(navigation.location?.search).get('status'))
-    : loaderData.filter;
+  const {
+    action,
+    activeCancellation,
+    activeFilter,
+    activeReview,
+    handleCancellationOpenChange,
+    handleReviewOpenChange,
+    locale,
+    pending,
+    setActiveCancellation,
+    setActiveReview,
+  } = useAccountBookingsPageController(loaderData);
 
   return (
     <div className="space-y-3">
@@ -50,7 +39,7 @@ export function AccountBookingsPage({ loaderData }: Route.ComponentProps) {
           <RefreshCw className="size-9 text-destructive" />
           <p className="text-sm text-destructive">{t('bookings.unavailable')}</p>
           <Button asChild variant="outline">
-            <Link to={storefrontPaths.account.bookings(locale)}>{t('bookings.retry')}</Link>
+            <Link to={action}>{t('bookings.retry')}</Link>
           </Button>
         </AccountPanel>
       ) : loaderData.bookings.length === 0 ? (
@@ -75,16 +64,16 @@ export function AccountBookingsPage({ loaderData }: Route.ComponentProps) {
       <ReviewDialog
         review={activeReview}
         open={activeReview !== null}
-        action={storefrontPaths.account.bookings(locale)}
-        onOpenChange={(open) => !open && setActiveReview(null)}
+        action={action}
+        onOpenChange={handleReviewOpenChange}
       />
       {activeCancellation ? (
         <CancelBookingDialog
           booking={activeCancellation}
           locale={locale}
           open
-          action={storefrontPaths.account.bookings(locale)}
-          onOpenChange={(open) => !open && setActiveCancellation(null)}
+          action={action}
+          onOpenChange={handleCancellationOpenChange}
         />
       ) : null}
     </div>
