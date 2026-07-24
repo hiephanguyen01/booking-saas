@@ -30,19 +30,21 @@ export function PartnerReturnDialog({
   fetcher,
   booking,
   busy,
+  onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fetcher: ActionFetcher;
   booking: PartnerActionableBooking;
   busy: boolean;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }): React.JSX.Element {
   const settlement =
     fetcher.data && fetcher.data.ok && fetcher.data.intent === 'return'
       ? fetcher.data.settlement
       : null;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !busy && onOpenChange(nextOpen)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Nhận trả thiết bị</DialogTitle>
@@ -65,7 +67,7 @@ export function PartnerReturnDialog({
             ) : null}
           </div>
         ) : (
-          <fetcher.Form method="post" className="space-y-4">
+          <fetcher.Form method="post" className="space-y-4" onSubmit={onSubmit} aria-busy={busy}>
             <input type="hidden" name="id" value={booking.id} />
             <input type="hidden" name="intent" value="return" />
             <div className="space-y-2">
@@ -77,6 +79,7 @@ export function PartnerReturnDialog({
                 defaultValue="0"
                 pattern="\d*"
                 placeholder="0"
+                disabled={busy}
               />
               <p className="text-xs text-muted-foreground">
                 Khấu trừ từ tiền cọc; để 0 nếu thiết bị nguyên vẹn.
@@ -84,10 +87,21 @@ export function PartnerReturnDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`return-reason-${booking.id}`}>Ghi chú (tuỳ chọn)</Label>
-              <Textarea id={`return-reason-${booking.id}`} name="reason" rows={2} maxLength={500} />
+              <Textarea
+                id={`return-reason-${booking.id}`}
+                name="reason"
+                rows={2}
+                maxLength={500}
+                disabled={busy}
+              />
             </div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                disabled={busy}
+              >
                 Đóng
               </Button>
               <Button type="submit" disabled={busy}>
