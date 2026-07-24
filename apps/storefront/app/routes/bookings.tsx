@@ -6,22 +6,21 @@ import {
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { Input } from '@booking/ui/components/ui/input';
-import { data, Form, Link } from 'react-router';
+import { data, Link } from 'react-router';
 import { z } from 'zod';
+import { BookingAccessVerifyForm } from '../features/booking/components/booking-access-verify-form';
 import { apiGet, rethrowApiInfrastructureFailure } from '../lib/api.server';
 import { getOptionalAuth } from '../lib/auth.server';
 import { requestBookingOtp } from '../lib/booking.server';
 import { storefrontEnv } from '../lib/env.server';
+import { errorStatus } from '../lib/http-status';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import { readRecentCodes } from '../lib/recent.server';
 import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../lib/time';
 import { useLocale } from '../lib/use-locale';
 import type { Route } from './+types/bookings';
-import { errorStatus } from '../lib/http-status';
 
 export function meta() {
   return [{ title: 'Bookings' }, { name: 'robots', content: 'noindex' }];
@@ -147,7 +146,11 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
               </p>
             </div>
             {sent ? (
-              <VerifyForm code={actionData!.code} devOtp={actionData!.devOtp} locale={locale} />
+              <BookingAccessVerifyForm
+                code={actionData!.code}
+                devOtp={actionData!.devOtp}
+                locale={locale}
+              />
             ) : (
               <RequestForm
                 error={actionData?.error ?? null}
@@ -199,47 +202,6 @@ function RequestForm({
       transform={(values) => ({ code: values.code.trim().toUpperCase() })}
       className="[&_button[type=submit]]:h-12 [&_button[type=submit]]:rounded-sm [&_input]:h-12 [&_input]:rounded-sm [&_input]:font-mono [&_input]:uppercase [&_input]:tracking-wide"
     />
-  );
-}
-
-/** Verify via POST so the OTP never enters browser history, referrers or access logs. */
-function VerifyForm({
-  code,
-  devOtp,
-  locale,
-}: {
-  code: string;
-  devOtp: string | null;
-  locale: 'vi' | 'en';
-}) {
-  const { t } = useTranslation(NsI18n.Booking);
-  return (
-    <div className="space-y-5">
-      <p className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-foreground">
-        {t('lookup.otpSent')}
-      </p>
-      {devOtp ? (
-        <p className="rounded-sm bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
-          {t('lookup.otpHintDev', { otp: devOtp })}
-        </p>
-      ) : null}
-      <Form method="post" action={storefrontPaths.booking(locale, code)} className="space-y-5">
-        <input type="hidden" name="intent" value="verify-access" />
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">{t('lookup.otpLabel')}</span>
-          <Input
-            name="otp"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            className="h-12 rounded-sm font-mono tracking-[0.2em]"
-          />
-        </label>
-        <Button type="submit" className="h-12 w-full rounded-sm">
-          {t('lookup.verify')}
-        </Button>
-      </Form>
-    </div>
   );
 }
 
