@@ -1,5 +1,6 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { isModuleEnabled } from '../../domain/plan-limits';
+import { PlanFeatureDisabled } from '../../domain/errors/billing-errors';
 import { requirePlanLimits } from '../plan-limit-errors';
 import { GetPlanLimitsUseCase } from './get-plan-limits.use-case';
 
@@ -14,11 +15,7 @@ export class AssertCustomDomainAllowedUseCase {
   async execute(tenantId: string): Promise<void> {
     const limits = requirePlanLimits(await this.getPlanLimits.execute(tenantId));
     if (!isModuleEnabled(limits, 'customDomain')) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        code: 'PLAN_FEATURE_DISABLED',
-        message: 'The current plan does not include custom domains',
-      });
+      throw new PlanFeatureDisabled();
     }
   }
 }

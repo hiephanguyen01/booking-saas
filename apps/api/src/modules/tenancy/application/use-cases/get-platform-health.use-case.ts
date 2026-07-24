@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import { evaluateSubscription, type SubscriptionState } from '../../domain/subscription-status';
+import {
+  BILLABLE_SUBSCRIPTION_STATUSES,
+  evaluateSubscription,
+  type SubscriptionState,
+} from '../../domain/subscription-status';
 
 /**
  * Platform-admin health board (Task 1.12 / §13.3). A cross-tenant read that
@@ -234,7 +238,7 @@ export class GetPlatformHealthUseCase {
       .filter(
         (t) =>
           t.subscription &&
-          ['trial', 'active', 'past_due'].includes(t.subscription.status) &&
+          ([...BILLABLE_SUBSCRIPTION_STATUSES] as string[]).includes(t.subscription.status) &&
           (t.subscription.expiresAt.getTime() - now) / MS_PER_DAY <= 14,
       )
       .map((t) => ({

@@ -1,6 +1,8 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AssignSubscriptionInput } from '@booking/contracts';
 import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
+import { TenantSubscription } from '../../domain/entities/tenant-subscription.entity';
+import { PlanNotFound } from '../../domain/errors/billing-errors';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -30,22 +32,12 @@ export class AssignSubscriptionUseCase {
       throw new TenantNotFound();
     }
     if (!(await this.plans.findById(input.planId))) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PLAN_NOT_FOUND',
-        message: `Plan ${input.planId} not found`,
-      });
+      throw new PlanNotFound(input.planId);
     }
+    // App-clock fallback stays in the use-case — the aggregate reads no clock.
     const startsAt = input.startsAt ? new Date(input.startsAt) : new Date();
     const expiresAt = new Date(input.expiresAt);
-    if (expiresAt <= startsAt) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_SUBSCRIPTION_PERIOD',
-        message: 'expiresAt must be after startsAt',
-      });
-    }
-    return this.subscriptions.create({
+    const subscription = TenantSubscription.assign({
       tenantId,
       planId: input.planId,
       status: input.status,
@@ -53,5 +45,6 @@ export class AssignSubscriptionUseCase {
       expiresAt,
       note: input.note ?? null,
     });
+    return this.subscriptions.create(subscription);
   }
 }

@@ -1,4 +1,6 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { SubscriptionPlan } from '../../domain/entities/subscription-plan.entity';
+import { PlanNotFound } from '../../domain/errors/billing-errors';
 import { PLAN_REPOSITORY, type IPlanRepository } from '../../domain/ports/plan-repository.port';
 
 /**
@@ -21,12 +23,9 @@ export class DeletePlanUseCase {
   constructor(@Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository) {}
 
   async execute(id: string): Promise<void> {
-    if (!(await this.plans.findById(id))) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'PLAN_NOT_FOUND',
-        message: `Plan ${id} not found`,
-      });
+    const plan = await this.plans.findById(id);
+    if (!plan) {
+      throw new PlanNotFound(id);
     }
 
     const [liveCounts, totalSubscriptions] = await Promise.all([
@@ -35,29 +34,8 @@ export class DeletePlanUseCase {
     ]);
 
     const live = liveCounts.get(id) ?? 0;
-    if (live > 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'PLAN_HAS_SUBSCRIBERS',
-        message:
-          `Cannot delete a plan with ${live} live subscriber(s). Migrate them to another plan ` +
-          `first, or deactivate this one with PATCH { isActive: false } to hide it from new ` +
-          `assignments.`,
-        details: { subscribers: live },
-      });
-    }
-
-    if (totalSubscriptions > 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        code: 'PLAN_HAS_SUBSCRIPTION_HISTORY',
-        message:
-          `Cannot delete a plan that ${totalSubscriptions} past subscription(s) still reference — ` +
-          `it would destroy their billing history. Deactivate it with PATCH { isActive: false } ` +
-          `instead.`,
-        details: { subscriptions: totalSubscriptions },
-      });
-    }
+    // live subscribers first, subscription history second (see assertDeletable).
+    SubscriptionPlan.rehydrate(plan).assertDeletable(live, totalSubscriptions);
 
     await this.plans.delete(id);
   }
