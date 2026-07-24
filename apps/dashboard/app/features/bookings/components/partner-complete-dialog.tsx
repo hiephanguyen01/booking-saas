@@ -25,12 +25,14 @@ export function PartnerCompleteDialog({
   fetcher,
   booking,
   busy,
+  onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fetcher: ActionFetcher;
   booking: PartnerActionableBooking;
   busy: boolean;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }): React.JSX.Element {
   const expectedOnsite = (() => {
     const final = BigInt(booking.finalAmount || '0');
@@ -45,7 +47,7 @@ export function PartnerCompleteDialog({
   const result = fetcher.data?.intent === 'complete' ? fetcher.data : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !busy && onOpenChange(nextOpen)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Hoàn thành dịch vụ</DialogTitle>
@@ -60,7 +62,7 @@ export function PartnerCompleteDialog({
             Đã hoàn thành lượt đặt và mở thời gian tranh chấp.
           </div>
         ) : (
-          <fetcher.Form method="post" className="space-y-4">
+          <fetcher.Form method="post" className="space-y-4" onSubmit={onSubmit} aria-busy={busy}>
             <input type="hidden" name="id" value={booking.id} />
             <input type="hidden" name="intent" value="complete" />
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
@@ -78,6 +80,7 @@ export function PartnerCompleteDialog({
                 pattern="\d*"
                 defaultValue={expectedOnsite}
                 required
+                disabled={busy}
               />
               <p className="text-xs text-muted-foreground">
                 Hệ thống đối chiếu đúng số còn lại; sai lệch cần được xử lý trước khi hoàn thành.
@@ -85,13 +88,24 @@ export function PartnerCompleteDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`complete-note-${booking.id}`}>Ghi chú (tuỳ chọn)</Label>
-              <Textarea id={`complete-note-${booking.id}`} name="note" rows={2} maxLength={500} />
+              <Textarea
+                id={`complete-note-${booking.id}`}
+                name="note"
+                rows={2}
+                maxLength={500}
+                disabled={busy}
+              />
             </div>
             {result && !result.ok ? (
               <p className="text-sm text-destructive">{result.error}</p>
             ) : null}
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                disabled={busy}
+              >
                 Đóng
               </Button>
               <Button type="submit" disabled={busy}>

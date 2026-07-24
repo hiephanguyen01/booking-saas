@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useFetcher } from 'react-router';
 import { Ban, Check, CircleCheckBig, PackageCheck, Undo2, UserX, X } from 'lucide-react';
 import { cn } from '@booking/ui/lib/utils';
+import { createSubmissionLock } from '@booking/ui/lib/submission-lock';
 import { Button } from '@booking/ui/components/ui/button';
 import { Money } from '~/components/money';
 import { ReasonDialog } from '~/components/reason-dialog';
@@ -46,14 +47,55 @@ export function PartnerBookingActions({
   className?: string;
 }): React.JSX.Element | null {
   const fetcher = useFetcher<PartnerBookingActionResult>();
+  const submitLockRef = React.useRef(createSubmissionLock());
+  const fetcherWasBusyRef = React.useRef(false);
+  const [locked, setLocked] = useState(false);
   const [dialog, setDialog] = useState<DialogKind | null>(null);
-  const busy = fetcher.state !== 'idle';
+  const busy = locked || fetcher.state !== 'idle';
+
+  React.useEffect(() => {
+    if (fetcher.state !== 'idle') {
+      fetcherWasBusyRef.current = true;
+      return;
+    }
+
+    if (fetcherWasBusyRef.current) {
+      fetcherWasBusyRef.current = false;
+      submitLockRef.current.release();
+      setLocked(false);
+    }
+  }, [fetcher.state]);
+
+  const acquireSubmission = (): boolean => {
+    if (!submitLockRef.current.tryAcquire()) return false;
+    setLocked(true);
+    return true;
+  };
+
+  const releaseAbortedSubmission = (): void => {
+    submitLockRef.current.release();
+    setLocked(false);
+  };
 
   const submit = (intent: string, reason?: string): void => {
-    fetcher.submit(
-      reason === undefined ? { id: booking.id, intent } : { id: booking.id, intent, reason },
-      { method: 'post' },
-    );
+    if (!acquireSubmission()) return;
+
+    let submitted = false;
+    try {
+      fetcher.submit(
+        reason === undefined ? { id: booking.id, intent } : { id: booking.id, intent, reason },
+        { method: 'post' },
+      );
+      submitted = true;
+    } finally {
+      if (!submitted) releaseAbortedSubmission();
+    }
+  };
+
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
+    if (!acquireSubmission()) {
+      event.preventDefault();
+    }
   };
 
   const actions = availablePartnerBookingActions(booking, { canApprove, canManage, canWrite });
@@ -176,6 +218,7 @@ export function PartnerBookingActions({
         align === 'end' ? 'items-end' : 'items-start',
         className,
       )}
+      aria-busy={busy}
     >
       {cancelRefund ? (
         <p className="text-xs text-muted-foreground">
@@ -245,6 +288,7 @@ export function PartnerBookingActions({
         fetcher={fetcher}
         booking={booking}
         busy={busy}
+        onSubmit={handleFormSubmit}
       />
       <PartnerCompleteDialog
         open={dialog === 'complete'}
@@ -252,6 +296,7 @@ export function PartnerBookingActions({
         fetcher={fetcher}
         booking={booking}
         busy={busy}
+        onSubmit={handleFormSubmit}
       />
     </div>
   );
