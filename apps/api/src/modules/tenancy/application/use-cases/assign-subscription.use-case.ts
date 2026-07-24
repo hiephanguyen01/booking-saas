@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { AssignSubscriptionInput } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -26,11 +27,7 @@ export class AssignSubscriptionUseCase {
 
   async execute(tenantId: string, input: AssignSubscriptionInput): Promise<SubscriptionRecord> {
     if (!(await this.tenants.findById(tenantId))) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: `Tenant ${tenantId} not found`,
-      });
+      throw new TenantNotFound();
     }
     if (!(await this.plans.findById(input.planId))) {
       throw new NotFoundException({

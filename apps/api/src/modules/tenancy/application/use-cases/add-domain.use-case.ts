@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { AddDomainInput } from '@booking/contracts';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import { normalizeHostname } from '../../domain/hostname';
 import {
   TENANT_REPOSITORY,
@@ -28,11 +29,7 @@ export class AddDomainUseCase {
 
   async execute(tenantId: string, input: AddDomainInput): Promise<DomainRecord> {
     if (!(await this.tenants.findById(tenantId))) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: `Tenant ${tenantId} not found`,
-      });
+      throw new TenantNotFound();
     }
     await this.assertCustomDomainAllowed.execute(tenantId);
 

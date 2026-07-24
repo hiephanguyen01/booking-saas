@@ -1,4 +1,6 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
+import { Tenant } from '../../domain/entities/tenant.entity';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -15,20 +17,13 @@ export class SetTenantDefaultCancellationPolicyUseCase {
   constructor(@Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository) {}
 
   async execute(tenantId: string, policyId: string | null): Promise<TenantRecord> {
-    if (!(await this.tenants.findById(tenantId))) {
-      throw new NotFoundException({
-        statusCode: 404,
-        code: 'TENANT_NOT_FOUND',
-        message: `Tenant ${tenantId} not found`,
-      });
+    const tenant = await this.tenants.findById(tenantId);
+    if (!tenant) {
+      throw new TenantNotFound();
     }
-    if (policyId !== null && !(await this.tenants.isTenantLevelPolicy(tenantId, policyId))) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_CANCELLATION_POLICY',
-        message: 'Default must be a tenant-level cancellation policy of this tenant',
-      });
-    }
-    return this.tenants.update(tenantId, { defaultCancellationPolicyId: policyId });
+    const isTenantLevel =
+      policyId !== null ? await this.tenants.isTenantLevelPolicy(tenantId, policyId) : true;
+    const patch = Tenant.rehydrate(tenant).setDefaultCancellationPolicy(policyId, isTenantLevel);
+    return this.tenants.update(tenantId, patch);
   }
 }
