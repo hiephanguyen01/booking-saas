@@ -21,10 +21,11 @@ export function OtpForm({
   actionData?: OtpActionData;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
-  const { code, handleSubmit, resendCode, resending, seconds, setCode } = useOtpFormController({
-    initialSeconds,
-    actionData,
-  });
+  const { code, handleSubmit, resendCode, resending, seconds, setCode, verifying } =
+    useOtpFormController({
+      initialSeconds,
+      actionData,
+    });
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,6 +43,7 @@ export function OtpForm({
               onChange={setCode}
               inputMode="numeric"
               autoFocus
+              disabled={verifying}
               containerClassName="justify-center"
               aria-label={t('verify.code')}
               aria-invalid={Boolean(actionData?.fieldErrors?.code)}
