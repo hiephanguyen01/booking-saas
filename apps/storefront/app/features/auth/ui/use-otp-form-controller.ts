@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { useSubmit } from 'react-router';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useNavigation, useSubmit } from 'react-router';
 import type { AuthActionData } from '../../../lib/auth-types';
 
 export type OtpActionData = AuthActionData & { resendAfterSec?: number };
@@ -14,8 +14,16 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
   actionData?: TActionData;
 }) {
   const submit = useSubmit();
+  const navigation = useNavigation();
+  const resendLockRef = useRef(false);
+  const resendWasBusyRef = useRef(false);
+  const [resending, setResending] = useState(false);
   const [seconds, setSeconds] = useState(actionData?.resendAfterSec ?? initialSeconds);
   const [code, setCode] = useState('');
+  const navigationIsResend =
+    navigation.state !== 'idle' &&
+    navigation.formMethod != null &&
+    navigation.formData?.get('intent') === 'resend';
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -33,6 +41,19 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
     }
   }, [actionData]);
 
+  useEffect(() => {
+    if (navigationIsResend) {
+      resendWasBusyRef.current = true;
+      return;
+    }
+
+    if (navigation.state === 'idle' && resendWasBusyRef.current) {
+      resendWasBusyRef.current = false;
+      resendLockRef.current = false;
+      setResending(false);
+    }
+  }, [navigation.state, navigationIsResend]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (code.length === 6) {
@@ -41,13 +62,24 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
   }
 
   function resendCode(): void {
-    submit({ intent: 'resend' }, { method: 'post' });
+    if (seconds > 0 || resendLockRef.current) return;
+
+    resendLockRef.current = true;
+    setResending(true);
+    try {
+      submit({ intent: 'resend' }, { method: 'post' });
+    } catch (error) {
+      resendLockRef.current = false;
+      setResending(false);
+      throw error;
+    }
   }
 
   return {
     code,
     handleSubmit,
     resendCode,
+    resending,
     seconds,
     setCode,
   };
