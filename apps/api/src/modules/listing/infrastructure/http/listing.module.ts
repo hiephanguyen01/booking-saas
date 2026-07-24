@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
@@ -162,17 +162,27 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
   exports: [LISTING_REPOSITORY, RESOURCE_REPOSITORY, PRICING_RULE_REPOSITORY],
 })
 export class ListingModule implements OnModuleInit {
+  private readonly logger = new Logger(ListingModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly projectReviewAggregates: ProjectReviewAggregatesUseCase,
   ) {}
 
   onModuleInit(): void {
-    this.registry.register('review.created', (event) =>
-      this.projectReviewAggregates.execute(
-        event.tenantId ?? '',
+    this.registry.register('review.created', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.projectReviewAggregates.execute(
+        tenantId,
         (event.payload ?? {}) as { listingId?: string; groupId?: string | null },
-      ),
-    );
+      );
+    });
+  }
+
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }

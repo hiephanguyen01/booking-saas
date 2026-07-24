@@ -40,20 +40,21 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 13 | payments | ✅ merge local (`0e53b18`) |
 | 14 | booking | ✅ merge local (`5b8aa12`) |
 | 15 | finance | ✅ merge local (`ccc8178`) |
-| 16 | administrative-division | 🔍 final review đạt (branch `refactor/entity-administrative-division`, sẵn sàng merge) |
+| 16 | administrative-division | ✅ merge local (`90963a3`) |
 
 **listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint) — ✅ cả 3 merged (PR
-#29/#30/#31). Scheduling đã merge ở PR #32; payments, booking và finance cũng đã merge local vào
-integration: **15/16 module đã nằm trên integration**, administrative-division đã qua final review
-và là module cuối cùng chờ merge.
+#29/#30/#31). Scheduling đã merge ở PR #32; payments, booking, finance và
+administrative-division cũng đã merge local vào integration: **16/16 module đã nằm trên
+`refactor/entity-centric` và final review toàn nhánh đã đạt**.
 
 Booking #14 đã đưa lifecycle qua aggregate, giữ CAS/GiST/second-tx và sửa đồng bộ
 `rejectionException` promotions↔booking. Finance #15 đã đưa CommissionRule/Settlement/Payout/
 SettlementDispute/LedgerJournal/PayoutPolicy về entity-centric, giữ nguyên repository SQL,
 DB-clock/CAS, FIFO allocation và event order; finance outbox cũng đã normalize tenantId.
 Administrative-division #16 đã đưa membership province↔ward về immutable `AdministrativeAddress`,
-giữ resolver signature, tx-less global catalog và cache 24h. Việc kế tiếp sau merge module cuối:
-**final review toàn nhánh `refactor/entity-centric`**. **Bộ máy moderation (`listing-moderation.ts` +
+giữ resolver signature, tx-less global catalog và cache 24h. Final review toàn nhánh đã carry nốt
+tenantId normalization của listing; không còn finding blocking. Việc kế tiếp là **đưa
+`refactor/entity-centric` về `main` theo quyết định owner**. **Bộ máy moderation (`listing-moderation.ts` +
 `moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
 sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
 + đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25
@@ -147,9 +148,8 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 
 - **Relay outbox thiếu dead-letter/max-attempts** — một row hỏng vĩnh viễn chiếm claim slot mãi mãi.
   Nên làm PR hạ tầng riêng, độc lập với các đợt refactor.
-- `event.tenantId ?? ''` chỉ còn ở **listing** — finance đã normalize ở PR #15; scheduling,
-  payments và booking đã normalize ở PR #12/#13/#14. Listing đã refactor xong nhưng 3 PR con không
-  đụng file đăng ký outbox nên pattern còn đó; xử lý ở PR follow-up khi chạm wiring.
+- `event.tenantId ?? ''` đã được xóa khỏi toàn bộ module refactored: scheduling/payments/booking/
+  finance normalize trong PR #12–#15; listing được carry và normalize ở final review toàn nhánh.
 - Wave migration sau refactor: unique index còn thiếu (dedupe_key của notification, refunds,
   dispute, one-primary-domain).
 - Thêm fixture `draft` vào seed trước PR #9/#11.
@@ -174,7 +174,25 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
   hợp lệ; cặp ward thật gắn sang province `04` và ward `99999` đều trả đúng
   `400 INVALID_ADMINISTRATIVE_DIVISION`.
 
-## 8. Nếu bạn là AI tiếp quản
+## 8. Final review toàn nhánh — 2026-07-24
+
+Final review `main...refactor/entity-centric` sau khi merge đủ 16 module:
+
+- `pnpm turbo lint typecheck build --force`: **28/28 task xanh**, cache 0, Node 24.18.0.
+- `pnpm --filter=@booking/api check:rls`: **46/46** tenant-scoped table có FORCE RLS + policy.
+- Không có test/test config/test script mới; không đổi Prisma schema/migration, contracts,
+  controller hay DTO.
+- Mọi `domain/entities`, `domain/value-objects`, `domain/errors` không import Nest/Prisma, không tự
+  đọc clock/random/I/O; mỗi `*.use-case.ts` vẫn đúng một exported `XxxUseCase`.
+- Finding duy nhất được sửa trong review: listing `review.created` còn truyền tenantId rỗng; giờ đã
+  validate-and-skip-with-log. Không còn `event.tenantId ?? ''` hay `forTenant('')` executable.
+- Finance final review riêng đã chứng minh repository/release-worker SQL zero-diff, ba bare Nest
+  exception bắt buộc, CAS/event order/journal order; smoke dữ liệu thật đã dọn sạch.
+- Các nợ ở §7 vẫn là follow-up ngoài scope, nổi bật: relay chưa có dead-letter, promotions import
+  chéo partner, moderation shim chưa promote, seed permission/fixture gaps. Không mục nào bị che như
+  đã verify.
+
+## 9. Nếu bạn là AI tiếp quản
 
 Nói với người dùng bạn đã đọc file này, xác nhận lại §1 (trạng thái) bằng
 `git log --oneline -5 refactor/entity-centric` + `gh pr list`. Nếu có PR module đang mở, tiếp tục

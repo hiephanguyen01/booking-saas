@@ -1,6 +1,6 @@
 # Design: Entity-centric refactor toàn bộ `apps/api` (Rich DDD aggregate)
 
-**Ngày:** 2026-07-23 · **Trạng thái:** Đã duyệt hướng, chờ implementation plan từng module
+**Ngày:** 2026-07-23 · **Trạng thái:** Đã triển khai 16/16 module; final review toàn nhánh đạt 2026-07-24
 **Phụ lục khảo sát chi tiết (bắt buộc đọc khi plan từng module):** [`docs/refactor/entity-centric-survey.md`](../../refactor/entity-centric-survey.md)
 
 ## 1. Bối cảnh & mục tiêu
@@ -400,10 +400,10 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
    lại vì sao `forTenant('')` cũ lại nguy hiểm): một row lỗi vĩnh viễn chiếm 1 slot claim (batch 20,
    poll ~2s) mãi mãi — không tự trôi ra khỏi hàng đợi. Đáng một PR infra nhỏ, độc lập với các wave
    refactor này.
-9. **Pattern `event.tenantId ?? ''` chỉ còn ở listing** — finance đã normalize ở PR #15;
-   scheduling/payments/booking đã normalize ở PR #12/#13/#14. Listing tuy đã refactor nhưng 3 PR con
-   không đụng file đăng ký outbox nên pattern còn; normalize thành validate-and-skip-with-log ở PR
-   follow-up khi chạm wiring. Mục 8 (relay dead-letter) ở trên vẫn nên làm độc lập.
+9. **[ĐÃ LÀM ở final review toàn nhánh] Pattern `event.tenantId ?? ''`** — scheduling/payments/
+   booking/finance normalize trong PR #12–#15; listing được carry cuối cùng. Mọi handler tenant-scoped
+   giờ validate-and-skip-with-log thay vì đưa chuỗi rỗng vào RLS. Mục 8 (relay dead-letter) vẫn là
+   nợ hạ tầng độc lập.
 10. **`requireTenantId` copy per module là quyết định có chủ đích, không phải trôi dạt** — không
     hoist vào `shared/outbox` vì message log + eventType khác nhau mỗi module, và hoist sớm sẽ đóng
     băng shape trước khi thấy đủ số lần lặp để biết đâu là phần chung thật sự. Giữ copy per module
