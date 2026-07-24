@@ -1,13 +1,13 @@
 import type { ReviewListResponse, ReviewResponse, ReviewSummary } from '@booking/contracts';
+import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { cn } from '@booking/ui/lib/utils';
-import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { ChevronDown, Star } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router';
-import { PUBLIC_REVIEW_LIMIT_STEP, PUBLIC_REVIEW_MAX_LIMIT } from '../lib/public-reviews';
+import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { RatingStars } from './rating-stars';
 import { SectionCard } from './section-card';
+import { usePublicReviewsSectionController } from './use-public-reviews-section-controller';
 
 export function PublicReviewsSection({
   reviews,
@@ -23,28 +23,15 @@ export function PublicReviewsSection({
   visibleLimit: number;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const [searchParams] = useSearchParams();
+  const model = usePublicReviewsSectionController({
+    reviews,
+    summary,
+    locale,
+    selectedRating,
+    visibleLimit,
+  });
 
-  if (!summary || summary.reviewCount === 0) return null;
-
-  const ratingHref = (rating: number): string => {
-    const next = new URLSearchParams(searchParams);
-    if (selectedRating === rating) next.delete('rating');
-    else next.set('rating', String(rating));
-    next.delete('reviewLimit');
-    return searchHref(next);
-  };
-  const moreHref = (): string => {
-    const next = new URLSearchParams(searchParams);
-    next.set(
-      'reviewLimit',
-      String(Math.min(visibleLimit + PUBLIC_REVIEW_LIMIT_STEP, PUBLIC_REVIEW_MAX_LIMIT)),
-    );
-    return searchHref(next);
-  };
-  const canShowMore =
-    Boolean(reviews && reviews.total > reviews.items.length) &&
-    visibleLimit < PUBLIC_REVIEW_MAX_LIMIT;
+  if (!model) return null;
 
   return (
     <SectionCard aria-labelledby="public-reviews-title" className="flex flex-col gap-5">
@@ -54,17 +41,12 @@ export function PublicReviewsSection({
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-sm leading-5">
           <span className="inline-flex items-center gap-1">
-            <RatingStars rating={summary.ratingAvg ?? 0} />
-            <strong className="font-medium text-foreground">
-              {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              }).format(summary.ratingAvg ?? 0)}
-            </strong>
+            <RatingStars rating={model.summary.ratingAvg ?? 0} />
+            <strong className="font-medium text-foreground">{model.formattedAverage}</strong>
           </span>
           <span className="h-4 w-px bg-border" aria-hidden="true" />
           <span className="text-muted-foreground">
-            <strong className="font-medium text-foreground">{summary.reviewCount}</strong>{' '}
+            <strong className="font-medium text-foreground">{model.summary.reviewCount}</strong>{' '}
             {t('reviews.countLabel')}
           </span>
         </div>
@@ -74,29 +56,25 @@ export function PublicReviewsSection({
         className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:gap-3 [&::-webkit-scrollbar]:hidden"
         aria-label={t('reviews.filterLabel')}
       >
-        {[5, 4, 3, 2, 1].map((rating) => {
-          const active = selectedRating === rating;
-          const count = summary.distribution[rating as 1 | 2 | 3 | 4 | 5];
-          return (
-            <Link
-              key={rating}
-              to={ratingHref(rating)}
-              preventScrollReset
-              aria-current={active ? 'true' : undefined}
-              aria-label={`${rating} / 5, ${t('reviewCount', { count })}`}
-              className={cn(
-                'inline-flex h-8 shrink-0 items-center gap-1 rounded-sm border bg-card px-3 text-sm leading-5 shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                active
-                  ? 'border-primary text-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
-              )}
-            >
-              <span className="font-medium">{rating}</span>
-              <Star className="size-3.5 text-amber-500" fill="currentColor" aria-hidden="true" />
-              <span>({count})</span>
-            </Link>
-          );
-        })}
+        {model.ratingItems.map((item) => (
+          <Link
+            key={item.rating}
+            to={item.href}
+            preventScrollReset
+            aria-current={item.active ? 'true' : undefined}
+            aria-label={`${item.rating} / 5, ${t('reviewCount', { count: item.count })}`}
+            className={cn(
+              'inline-flex h-8 shrink-0 items-center gap-1 rounded-sm border bg-card px-3 text-sm leading-5 shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              item.active
+                ? 'border-primary text-primary'
+                : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
+            )}
+          >
+            <span className="font-medium">{item.rating}</span>
+            <Star className="size-3.5 text-amber-500" fill="currentColor" aria-hidden="true" />
+            <span>({item.count})</span>
+          </Link>
+        ))}
       </nav>
 
       <div className="divide-y divide-border border-t border-border">
@@ -111,9 +89,9 @@ export function PublicReviewsSection({
         </p>
       ) : null}
 
-      {canShowMore ? (
+      {model.canShowMore ? (
         <Link
-          to={moreHref()}
+          to={model.moreHref}
           preventScrollReset
           className="mx-auto inline-flex items-center gap-1 text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -226,9 +204,4 @@ function initials(name: string): string {
       .map((part) => part[0]?.toUpperCase())
       .join('') || 'BK'
   );
-}
-
-function searchHref(searchParams: URLSearchParams): string {
-  const query = searchParams.toString();
-  return query ? `?${query}` : '?';
 }
