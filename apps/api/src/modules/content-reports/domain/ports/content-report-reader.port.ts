@@ -1,7 +1,7 @@
 import type {
+  ContentReportReason,
   ContentReportStatus,
   ContentReportTarget,
-  CreateContentReportInput,
   TenantContentReportsQuery,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -18,7 +18,7 @@ export interface ContentReportRecord {
   partnerName: string;
   reporterUserId: string | null;
   reporterName: string;
-  reason: CreateContentReportInput['reason'];
+  reason: ContentReportReason;
   details: string | null;
   status: ContentReportStatus;
   handledByUserId: string | null;
