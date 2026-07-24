@@ -14,8 +14,9 @@ import {
   DrawerTitle,
 } from '@booking/ui/components/ui/drawer';
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '../../lib/i18n';
+import { usePackageBookingDialogShellController } from './use-package-booking-dialog-shell-controller';
 
 export function PackageBookingDialogShell({
   open,
@@ -32,14 +33,10 @@ export function PackageBookingDialogShell({
   body: ReactNode;
   footer: ReactNode;
 }) {
-  const isDesktop = useDesktopBookingDialog();
-  const titleRef = useRef<HTMLHeadingElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const frame = requestAnimationFrame(() => titleRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [isDesktop, open]);
+  const { closeDialog, isDesktop, titleRef } = usePackageBookingDialogShellController({
+    open,
+    onOpenChange,
+  });
 
   if (isDesktop) {
     return (
@@ -54,7 +51,7 @@ export function PackageBookingDialogShell({
             </DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
-          <PackageBookingCloseButton onClick={() => onOpenChange(false)} />
+          <PackageBookingCloseButton onClick={closeDialog} />
           {body}
           {footer}
         </DialogContent>
@@ -71,7 +68,7 @@ export function PackageBookingDialogShell({
           </DrawerTitle>
           <DrawerDescription>{description}</DrawerDescription>
         </DrawerHeader>
-        <PackageBookingCloseButton onClick={() => onOpenChange(false)} />
+        <PackageBookingCloseButton onClick={closeDialog} />
         {body}
         {footer}
       </DrawerContent>
@@ -93,18 +90,4 @@ function PackageBookingCloseButton({ onClick }: { onClick: () => void }) {
       <X aria-hidden="true" />
     </Button>
   );
-}
-
-function useDesktopBookingDialog(): boolean {
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 1024px)');
-    const update = () => setIsDesktop(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-
-  return isDesktop;
 }
