@@ -29,18 +29,14 @@ jobs:
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
           app/lib/tenant-availability.test.ts app/lib/refresh-lock.server.test.ts
-      - name: Storefront date-range tests
+      - name: Storefront booking input contract tests
         run: >-
-          pnpm --filter=@booking/storefront exec node --experimental-strip-types
-          --experimental-specifier-resolution=node --test app/lib/daily-range.test.ts
+          pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
+          app/lib/booking-input-contracts.test.ts
       - name: Storefront optional-data tests
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
           app/lib/optional-data.server.test.ts
-      - name: Storefront search-input tests
-        run: >-
-          pnpm --filter=@booking/storefront exec node --experimental-strip-types
-          --experimental-specifier-resolution=node --test app/features/search/search-state.test.ts
       - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
