@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useFetcher } from 'react-router';
 import type { BookingCancellationActionData } from '../server/booking-cancellation.server';
+import { createSubmissionLock } from './submission-lock';
 
 export function useCancelBookingDialogController({
   bookingCode,
@@ -12,12 +13,26 @@ export function useCancelBookingDialogController({
   onOpenChange: (open: boolean) => void;
 }) {
   const fetcher = useFetcher<BookingCancellationActionData>();
+  const submitLockRef = useRef(createSubmissionLock());
+  const fetcherWasBusyRef = useRef(false);
   const [selected, setSelected] = useState('');
   const [otherReason, setOtherReason] = useState('');
   const reason = selected === 'other' ? otherReason.trim() : selected;
   const submitting = fetcher.state !== 'idle';
   const serverError =
     fetcher.data?.bookingCode === bookingCode && !fetcher.data.ok ? fetcher.data.error : null;
+
+  useEffect(() => {
+    if (fetcher.state !== 'idle') {
+      fetcherWasBusyRef.current = true;
+      return;
+    }
+
+    if (fetcherWasBusyRef.current) {
+      fetcherWasBusyRef.current = false;
+      submitLockRef.current.release();
+    }
+  }, [fetcher.state]);
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.ok && fetcher.data.bookingCode === bookingCode) {
@@ -27,6 +42,8 @@ export function useCancelBookingDialogController({
 
   useEffect(() => {
     if (!open) {
+      fetcherWasBusyRef.current = false;
+      submitLockRef.current.release();
       setSelected('');
       setOtherReason('');
     }
@@ -34,6 +51,12 @@ export function useCancelBookingDialogController({
 
   function changeOpen(nextOpen: boolean): void {
     if (!submitting) onOpenChange(nextOpen);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    if (!reason || !submitLockRef.current.tryAcquire()) {
+      event.preventDefault();
+    }
   }
 
   return {
@@ -46,5 +69,6 @@ export function useCancelBookingDialogController({
     submitting,
     serverError,
     changeOpen,
+    handleSubmit,
   };
 }
