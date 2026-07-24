@@ -7,28 +7,9 @@ import {
 } from '@booking/ui/components/ui/pagination';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ComponentProps } from 'react';
-import { useHref, useLinkClickHandler, useSearchParams, type To } from 'react-router';
+import { useHref, useLinkClickHandler, type To } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-
-/** Pages either side of the current one kept expanded. */
-const SIBLINGS = 1;
-
-/**
- * `1 … 4 5 6 … 20` — a bounded window.
- *
- * The catalog used to render one button per page, which is fine at three pages
- * and unusable at forty.
- */
-function paginationRange(current: number, total: number): (number | 'ellipsis')[] {
-  const start = Math.max(2, current - SIBLINGS);
-  const end = Math.min(total - 1, current + SIBLINGS);
-  const items: (number | 'ellipsis')[] = [1];
-  if (start > 2) items.push('ellipsis');
-  for (let page = start; page <= end; page += 1) items.push(page);
-  if (end < total - 1) items.push('ellipsis');
-  items.push(total);
-  return items;
-}
+import { useCatalogPaginationController } from './use-catalog-pagination-controller';
 
 /**
  * `PaginationLink` renders a bare `<a>`, so routing it through the router keeps
@@ -50,22 +31,19 @@ export function CatalogPagination({
   currentPage: number;
   totalPages: number;
 }) {
-  const [searchParams] = useSearchParams();
   const { t } = useTranslation(NsI18n.Catalog);
-
-  function pageHref(page: number): string {
-    const next = new URLSearchParams(searchParams);
-    next.set('page', String(page));
-    return `?${next.toString()}`;
-  }
+  const { items, nextHref, previousHref } = useCatalogPaginationController({
+    currentPage,
+    totalPages,
+  });
 
   return (
     <Pagination className="mt-8" aria-label={t('pagination.ariaLabel')}>
       <PaginationContent>
-        {currentPage > 1 ? (
+        {previousHref ? (
           <PaginationItem>
             <PaginationRouterLink
-              to={pageHref(currentPage - 1)}
+              to={previousHref}
               size="default"
               className="gap-1 px-2.5 sm:pl-2.5"
               aria-label={t('pagination.previous')}
@@ -76,28 +54,28 @@ export function CatalogPagination({
           </PaginationItem>
         ) : null}
 
-        {paginationRange(currentPage, totalPages).map((page, index) =>
-          page === 'ellipsis' ? (
-            <PaginationItem key={`ellipsis-${index}`}>
+        {items.map((item) =>
+          item.kind === 'ellipsis' ? (
+            <PaginationItem key={item.key}>
               <PaginationEllipsis />
             </PaginationItem>
           ) : (
-            <PaginationItem key={page}>
+            <PaginationItem key={item.page}>
               <PaginationRouterLink
-                to={pageHref(page)}
-                isActive={page === currentPage}
-                aria-label={t('pagination.goToPage', { page })}
+                to={item.href}
+                isActive={item.active}
+                aria-label={t('pagination.goToPage', { page: item.page })}
               >
-                {page}
+                {item.page}
               </PaginationRouterLink>
             </PaginationItem>
           ),
         )}
 
-        {currentPage < totalPages ? (
+        {nextHref ? (
           <PaginationItem>
             <PaginationRouterLink
-              to={pageHref(currentPage + 1)}
+              to={nextHref}
               size="default"
               className="gap-1 px-2.5 sm:pr-2.5"
               aria-label={t('pagination.next')}
