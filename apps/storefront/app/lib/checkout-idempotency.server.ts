@@ -1,31 +1,24 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+
+const CHECKOUT_ATTEMPT_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface CheckoutIdempotencyInput {
   tenantId: string;
-  listingId: string;
-  mode: string;
-  start: string;
-  end: string;
-  quantity: number;
-  packageId: string | null;
-  promoCode: string | null;
-  email: string;
-  phone: string;
+  attemptId: string;
+}
+
+export function createCheckoutAttemptId(): string {
+  return randomUUID();
+}
+
+export function parseCheckoutAttemptId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const attemptId = value.trim();
+  return CHECKOUT_ATTEMPT_RE.test(attemptId) ? attemptId.toLowerCase() : null;
 }
 
 export function buildCheckoutIdempotencyKey(input: CheckoutIdempotencyInput): string {
-  const canonical = JSON.stringify({
-    tenantId: input.tenantId,
-    listingId: input.listingId,
-    mode: input.mode,
-    start: input.start,
-    end: input.end,
-    quantity: input.quantity,
-    packageId: input.packageId,
-    promoCode: input.promoCode?.trim().toUpperCase() || null,
-    email: input.email.trim().toLowerCase(),
-    phone: input.phone.trim(),
-  });
-
+  const canonical = `${input.tenantId}:${input.attemptId}`;
   return `checkout:${createHash('sha256').update(canonical).digest('hex')}`;
 }
