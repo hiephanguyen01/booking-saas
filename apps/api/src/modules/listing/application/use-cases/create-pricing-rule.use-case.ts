@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PricingRuleInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -11,6 +11,8 @@ import {
   type IPricingRuleRepository,
   type PricingRuleRecord,
 } from '../../domain/ports/pricing-rule-repository.port';
+import { PricingRule } from '../../domain/entities/pricing-rule.entity';
+import { ListingNotFound } from '../../domain/errors/listing-errors';
 
 /** Conditional pricing (weekday/weekend + golden-hour windows) for a listing (§7.3). */
 @Injectable()
@@ -30,27 +32,9 @@ export class CreatePricingRuleUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const listing = await this.listings.findById(tx, listingId);
       if (!listing) {
-        throw new NotFoundException({
-          statusCode: 404,
-          code: 'LISTING_NOT_FOUND',
-          message: 'Listing not found',
-        });
+        throw new ListingNotFound();
       }
-      if (!listing.bookingModes.includes(input.bookingMode)) {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'MODE_NOT_ENABLED',
-          message: `Listing does not enable "${input.bookingMode}"`,
-        });
-      }
-      if (listing.bookingSelection === 'fixed_packages') {
-        throw new BadRequestException({
-          statusCode: 400,
-          code: 'PACKAGE_PRICING_FIXED',
-          message: 'Fixed-package prices are managed in the listing package configuration',
-        });
-      }
-      const created = await this.rules.create(tx, tenantId, {
+      const candidate = PricingRule.open({
         listingId,
         bookingMode: input.bookingMode,
         ruleType: input.ruleType,
@@ -59,6 +43,11 @@ export class CreatePricingRuleUseCase {
         salePrice: input.salePrice ?? null,
         priority: input.priority,
       });
+      PricingRule.of(candidate).assertAllowedOn({
+        bookingModes: listing.bookingModes,
+        bookingSelection: listing.bookingSelection,
+      });
+      const created = await this.rules.create(tx, tenantId, candidate);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'pricing_rule.created',

@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import {
@@ -9,6 +9,8 @@ import {
   PRICING_RULE_REPOSITORY,
   type IPricingRuleRepository,
 } from '../../domain/ports/pricing-rule-repository.port';
+import { ListingNotFound, ListingNotOwned } from '../../domain/errors/listing-errors';
+import { PricingRuleNotFound } from '../../domain/errors/pricing-rule-errors';
 
 @Injectable()
 export class DeletePartnerPricingRuleUseCase {
@@ -22,20 +24,13 @@ export class DeletePartnerPricingRuleUseCase {
   execute(tenantId: string, partnerId: string, listingId: string, ruleId: string): Promise<void> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const listing = await this.listings.findById(tx, listingId);
-      if (!listing)
-        throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
+      if (!listing) throw new ListingNotFound();
       if (listing.partnerId !== partnerId) {
-        throw new ForbiddenException({
-          code: 'LISTING_NOT_OWNED',
-          message: 'This listing belongs to another partner',
-        });
+        throw new ListingNotOwned();
       }
       const rule = await this.rules.findById(tx, ruleId);
       if (!rule || rule.listingId !== listingId) {
-        throw new NotFoundException({
-          code: 'PRICING_RULE_NOT_FOUND',
-          message: 'Pricing rule not found',
-        });
+        throw new PricingRuleNotFound();
       }
       await this.rules.delete(tx, ruleId);
       await this.outbox.emit(tx, {

@@ -3,10 +3,10 @@ import type { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RuleType } from '../../domain/pricing/quote-calculator';
 import type {
-  CreatePricingRuleData,
   IPricingRuleRepository,
   PricingRuleRecord,
 } from '../../domain/ports/pricing-rule-repository.port';
+import type { NewPricingRule } from '../../domain/entities/pricing-rule.entity';
 
 type Row = Prisma.PricingRuleGetPayload<Record<string, never>>;
 
@@ -27,11 +27,7 @@ function toRecord(p: Row): PricingRuleRecord {
 
 @Injectable()
 export class PrismaPricingRuleRepository implements IPricingRuleRepository {
-  async create(
-    tx: PrismaTx,
-    tenantId: string,
-    data: CreatePricingRuleData,
-  ): Promise<PricingRuleRecord> {
+  async create(tx: PrismaTx, tenantId: string, data: NewPricingRule): Promise<PricingRuleRecord> {
     return toRecord(
       await tx.pricingRule.create({
         data: {

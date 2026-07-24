@@ -8,6 +8,7 @@ import {
   type IResourceRepository,
   type ResourceRecord,
 } from '../../domain/ports/resource-repository.port';
+import { Resource } from '../../domain/entities/resource.entity';
 
 /** A calendar-holding resource; several listings can share one (§7.3/§9.1). */
 @Injectable()
@@ -21,11 +22,12 @@ export class CreateResourceUseCase {
   async execute(tenantId: string, input: CreateResourceInput): Promise<ResourceRecord> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const timezone = input.timezone ?? (await resolveTenantTimezone(tx, tenantId));
-      const created = await this.repo.create(tx, tenantId, {
+      const candidate = Resource.provision({
         partnerId: input.partnerId,
         name: input.name,
         timezone,
       });
+      const created = await this.repo.create(tx, tenantId, candidate);
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'resource.created',
