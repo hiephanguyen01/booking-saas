@@ -249,6 +249,17 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | `create-resource` nhận `partnerId` từ request và không kiểm partner đó có thuộc tenant hiện tại không (không guard partnerId-belongs-to-tenant); RLS chặn cross-tenant ghi nhưng partnerId sai-trong-tenant không bị bắt | listing | Giữ nguyên ở PR #11a |
 | Hai payload `pricing_rule.deleted` khác nhau: tenant `delete-pricing-rule` emit `{pricingRuleId}` (KHÔNG listingId), partner `delete-partner-pricing-rule` emit `{pricingRuleId, listingId}` (CÓ listingId) — consumer phải chịu cả hai shape | listing | Giữ nguyên ở PR #11a (bất đối xứng kế thừa; hợp nhất là wire change) |
 | Replace-match của pricing-rule (`sameWindowKey`) so `JSON.stringify(params)` của candidate với row đã lưu, nhưng Postgres `jsonb` **sắp xếp lại thứ tự key** khi round-trip (vd `{from,to}` → `{to,from}`) còn candidate giữ nguyên thứ tự client gửi ⇒ replace **chỉ fire khi FE tình cờ serialize đúng thứ tự canonical của jsonb**; thứ tự khác → không match → tạo row thứ hai thay vì thay thế (smoke #11a case 7 phát hiện). Hành vi copy nguyên văn từ code cũ (Task 4 review opus xác nhận predicate byte-identical) — **không phải regression** | listing | Giữ nguyên ở PR #11a; fix đúng là so field-wise theo giá trị (không JSON.stringify cả object) — behavior change nhỏ, tách sau |
+| **moderate()/update() KHÔNG CAS** — `WHERE id=…` thuần, không `WHERE status=expectedFrom`, không version/row-lock. Máy trạng thái moderation chỉ enforce ở application layer trong 1 tx (đọc rồi ghi vô điều kiện). 2 request moderation đồng thời cùng một listing đều thắng (lost-update/TOCTOU); kẻ thua đáng lẽ nhận `LISTING_NOT_IN_REVIEW`/`LISTING_ALREADY_PUBLISHED` nhưng lại 200 | listing | Giữ nguyên ở PR #11b (frozen-surface: CAS ở repo, không thêm) |
+| `transitionHide` **không guard status** — hợp lệ từ mọi status (draft/pending_review/published/archived), không bao giờ throw. Any→archived thật sự | listing | Giữ nguyên ở PR #11b |
+| **3 shape "not owned" cho listing**: `LISTING_NOT_OWNED`/403/`This listing belongs to another partner` (update), `LISTING_NOT_OWNED`/403/`Listing belongs to another partner` (delete, KHÔNG "This"), `NOT_OWNED`/403/`This resource belongs to another partner` (submit/hide/republish qua `assertOwnership`) — 3 class riêng, giữ cả 3 | listing | Giữ nguyên ở PR #11b |
+| `GROUP_MANAGED_LISTING` 1 code / 4 message (submit/publish/republish/hide); `LISTING_GROUP_READ_ONLY` 1 code / 2 message (changing vs deleting its items); `INVALID_ADMINISTRATIVE_DIVISION` 1 code / 2 message (ward-province mismatch vs "both codes required") | listing | Giữ nguyên ở PR #11b |
+| **delete group-read-only guard chỉ chạy khi `requirePartnerId`** (partner path) — tenant-scoped delete bỏ qua "hide the group first" mà update + partner-delete đều enforce ⇒ tenant admin xoá được listing thuộc group non-draft | listing | Bất đối xứng kế thừa, giữ nguyên ở PR #11b |
+| `resourceId` trong `UpdateListingInput` **bị âm thầm bỏ** (immutable sau create — port `UpdateListingData` Omit nó); client gửi vẫn validate nhưng vô hiệu | listing | Giữ nguyên ở PR #11b |
+| `assertCanServeListingType` (partner identity-verification gate) chạy ở create, **KHÔNG** re-check ở update | listing | Giữ nguyên ở PR #11b |
+| `publish-listing`: `checklistPassed` (ảnh/mô tả/giá theo mode/CS policy) **chỉ để audit reason**, KHÔNG chặn publish; chỉ `contactFlags` (+ vắng `force`) mới chặn (`LISTING_HAS_CONTACT_INFO`) | listing | Giữ nguyên ở PR #11b |
+| `stampModerationTimestamps` dùng **app-clock `new Date()`** (không DB clock) — entity không đọc clock; use-case truyền `new Date()` vào máy moderation shared | listing | Giữ nguyên ở PR #11b (clock follow-up chung §3) |
+| `listing.hidden` outbox payload **bỏ `reason`** (dù audit log có); notification đọc `payload.reason` optional → luôn `undefined` cho event này | listing | Giữ nguyên ở PR #11b |
+| create-listing auto-provision resource gọi thẳng `resources.create` — cùng gap #11a (partnerId không check thuộc tenant); create/update/delete-listing **không ghi audit** (chỉ 5 moderation ghi); `listing.created`/`.deleted`/`.submitted` hiện **0 consumer** | listing | Giữ nguyên ở PR #11b |
 
 ### 8a-bis. Wire change đã duyệt (không phải known gap — thay đổi có chủ đích)
 
@@ -312,6 +323,16 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   nguyên ở PR #10b — cùng nhóm với known-gap "ba bản current subscription" (§8a): việc hợp nhất
   định nghĩa "current subscription" về một chỗ (một nguồn dữ liệu, một đồng hồ, một tiebreak) đáng
   một PR riêng, không nhét vào PR module tiếp theo.
+- **listing: bộ máy moderation (`domain/moderation/listing-moderation.ts` — `transition*` +
+  `ModerationError`; `application/moderation/moderation-support.ts` — `runModeration`,
+  `stampModerationTimestamps`, `writeModerationAudit`, `assertOwnership`) vẫn là pure function +
+  plain `Error` translate qua shim, CHƯA fold vào aggregate.** Lý do có chủ đích: nó **dùng chung**
+  giữa listing (#11b) và listing-group (#11c); fold vào `Listing` entity ở #11b sẽ phá đường group
+  của #11c. `Listing` aggregate ở #11b **chỉ** nuốt content invariants + access guard (ownership/
+  group-managed); transition giữ nguyên (thoả §3 "sanctioned pure domain function"). Sau khi cả
+  listing + group refactor xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
+  và đưa transition thành method trên `Listing`/`ListingGroup` (bỏ shim `runModeration`) — wire giữ
+  byte-identical (message/status đã khớp), chỉ đổi cấu trúc nội bộ.
 
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 

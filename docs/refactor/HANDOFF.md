@@ -33,19 +33,23 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 9 | catalog | ✅ merge (GitHub PR #26) |
 | 10a | tenancy — Tenant + domains | ✅ merge (GitHub PR #27) |
 | 10b | tenancy — plan + subscription | ✅ merge (GitHub PR #28) — **tenancy xong cả module** |
-| 11a | listing — cancellation-policy + pricing-rule + resource | 🔍 review (GitHub PR #NN) |
-| 11b | listing — Listing content + moderation | chưa làm (dùng lại `listing-errors.ts` từ #11a) |
-| 11c | listing — ListingGroup + cascade | chưa làm |
+| 11a | listing — cancellation-policy + pricing-rule + resource | ✅ merge (GitHub PR #29) |
+| 11b | listing — Listing content + moderation | 🔍 review (GitHub PR #NN) |
+| 11c | listing — ListingGroup + cascade | chưa làm (dùng lại `listing-group-errors.ts` + shared moderation machine từ #11b) |
 | 12→16 | scheduling → payments → booking → finance → administrative-division | chưa làm |
 
 **listing đang tách 3 PR con** (module lớn nhất còn lại: 45 use-case, 56 endpoint — như promotions
-5a/5b và tenancy 10a/10b). **PR #11a** (3 aggregate phụ: cancellation-policy + pricing-rule +
-resource) đang review. Kế tiếp: **PR #11b** — Listing content + moderation (**dùng lại
-`listing-errors.ts`** đã tạo ở #11a: `ListingNotFound`/`ListingNotOwned`; lưu ý
-`delete-listing.use-case.ts` dùng biến thể message `LISTING_NOT_OWNED` = `'Listing belongs to another
-partner'` **không** có "This" — đừng blind-reuse class `ListingNotOwned` cho nó), rồi **PR #11c** —
-ListingGroup + cascade. (PR #25 `refactor/entity-centric` → `main` đang mở là PR đưa cả nhánh tích
-hợp về main — không phải PR module; đừng nhầm.)
+5a/5b và tenancy 10a/10b). **PR #11a** (3 aggregate phụ) ✅ merged (PR #29). **PR #11b** (Listing
+content + moderation qua `Listing` aggregate) đang review. Kế tiếp: **PR #11c** — ListingGroup +
+cascade.
+
+Gợi ý cho **#11c**: dùng lại `domain/errors/listing-group-errors.ts` (đã tạo ở #11b) +
+`listing-errors.ts`. **Bộ máy moderation (`listing-moderation.ts` + `moderation-support.ts`) dùng
+chung listing↔group — #11b CỐ Ý không đụng nó** (xem spec §8b-bis); #11c cũng nên giữ shared, chỉ
+nuốt content/cascade invariant của ListingGroup vào aggregate, transition giữ nguyên qua
+`runModeration`/`transition*`. Cascade (publish/hide group → các listing con) là điểm mới của #11c —
+khảo sát kỹ `run-group-moderation.ts`. (PR #25 `refactor/entity-centric` → `main` đang mở là PR đưa
+cả nhánh tích hợp về main — không phải PR module; đừng nhầm.)
 
 Ghi chú fixture seed: smoke #11a **tự tạo** listing/pricing draft trong tx thay vì thêm fixture seed
 (quyết định owner 2026-07-24). Việc thêm fixture `status='draft'` vào seed (spec §8c-bis mục 2) vẫn
