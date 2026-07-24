@@ -62,79 +62,24 @@ function createCspNonce(): string {
   return randomBytes(16).toString('base64');
 }
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => {
-    if (character === '&') return '&amp;';
-    if (character === '<') return '&lt;';
-    if (character === '>') return '&gt;';
-    if (character === '"') return '&quot;';
-    return '&#39;';
-  });
-}
-
-function isDocumentRequest(request: Request): boolean {
-  if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) return false;
-  const url = new URL(request.url);
-  if (url.pathname.endsWith('.data')) return false;
-  return (request.headers.get('accept') ?? '').includes('text/html');
-}
-
-function tenantUnavailableResponse(
-  request: Request,
-  tenant: StorefrontTenant,
-  cspNonce: string,
-): Response {
+function tenantUnavailableResponse(request: Request, tenant: StorefrontTenant): Response {
   const firstSegment = new URL(request.url).pathname.split('/').filter(Boolean)[0];
-  const english = firstSegment === 'en';
-  const title = english ? 'Storefront temporarily unavailable' : 'Cửa hàng tạm ngưng hoạt động';
-  const message = english
-    ? 'This storefront is currently unavailable. Please try again later.'
-    : 'Cửa hàng hiện đang tạm ngưng hoạt động. Vui lòng quay lại sau.';
-  const responseHeaders = new Headers({
-    'Cache-Control': PRIVATE_CACHE_CONTROL,
-    'Content-Language': english ? 'en' : 'vi',
-  });
+  const locale = firstSegment === 'en' ? 'en' : 'vi';
+  const message =
+    locale === 'en'
+      ? 'This storefront is currently unavailable. Please try again later.'
+      : 'Cửa hàng hiện đang tạm ngưng hoạt động. Vui lòng quay lại sau.';
 
-  if (!isDocumentRequest(request)) {
-    return Response.json(
-      { code: 'TENANT_UNAVAILABLE', message },
-      { status: TENANT_UNAVAILABLE_STATUS, headers: responseHeaders },
-    );
-  }
-
-  if (request.method.toUpperCase() === 'HEAD') {
-    return new Response(null, { status: TENANT_UNAVAILABLE_STATUS, headers: responseHeaders });
-  }
-
-  const lang = english ? 'en' : 'vi';
-  const safeNonce = escapeHtml(cspNonce);
-  const safeTenantName = escapeHtml(tenant.name);
-  const html = `<!doctype html>
-<html lang="${lang}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escapeHtml(title)}</title>
-  <style nonce="${safeNonce}">
-    :root { color-scheme: light; font-family: ui-sans-serif, system-ui, sans-serif; }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f8fafc; color: #0f172a; }
-    main { width: min(100% - 2rem, 36rem); padding: 2.5rem; border: 1px solid #e2e8f0; border-radius: 1rem; background: #fff; text-align: center; box-shadow: 0 1rem 3rem rgba(15, 23, 42, .08); }
-    p { margin: .75rem 0 0; color: #475569; line-height: 1.6; }
-    small { display: block; margin-bottom: .75rem; color: #64748b; }
-  </style>
-</head>
-<body>
-  <main>
-    <small>${safeTenantName}</small>
-    <h1>${escapeHtml(title)}</h1>
-    <p>${escapeHtml(message)}</p>
-  </main>
-</body>
-</html>`;
-
-  responseHeaders.set('Content-Type', 'text/html; charset=utf-8');
-  return new Response(html, { status: TENANT_UNAVAILABLE_STATUS, headers: responseHeaders });
+  return Response.json(
+    { code: 'TENANT_UNAVAILABLE', tenantName: tenant.name, locale, message },
+    {
+      status: TENANT_UNAVAILABLE_STATUS,
+      headers: {
+        'Cache-Control': PRIVATE_CACHE_CONTROL,
+        'Content-Language': locale,
+      },
+    },
+  );
 }
 
 function contentSecurityPolicy(nonce: string): string {
@@ -278,11 +223,7 @@ export async function storefrontRequestMiddleware(
   if (rejected) return withSecurityHeaders(rejected, request, cspNonce);
   const tenant = await resolveTenant(request);
   if (!tenant.live) {
-    return withSecurityHeaders(
-      tenantUnavailableResponse(request, tenant, cspNonce),
-      request,
-      cspNonce,
-    );
+    throw withSecurityHeaders(tenantUnavailableResponse(request, tenant), request, cspNonce);
   }
   const response = await storefrontAuthMiddleware({ request }, next, tenant);
   return withSecurityHeaders(response, request, cspNonce);
