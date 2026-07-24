@@ -29,7 +29,8 @@ jobs:
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
           app/lib/tenant-availability.test.ts app/lib/refresh-lock.server.test.ts
-          app/lib/checkout-idempotency.server.test.ts
+          app/lib/checkout-idempotency.server.test.ts app/lib/json-request.server.test.ts
+          app/features/partner-onboarding/server/partner-onboarding-domain.test.ts
       - name: Storefront booking input contract tests
         run: >-
           pnpm --filter=@booking/storefront exec node --experimental-strip-types --test
