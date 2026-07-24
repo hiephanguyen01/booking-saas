@@ -108,7 +108,9 @@ export function useReviewMedia(open: boolean) {
     async (bookingId: string): Promise<ReviewMediaInput[] | null> => {
       setFileError(null);
       const snapshot = mediaRef.current;
-      commitMedia(snapshot.map((item) => (item.uploaded ? item : { ...item, state: 'uploading' })));
+      commitMedia(
+        snapshot.map((item) => (item.uploaded ? item : { ...item, state: 'uploading' as const })),
+      );
 
       const uploaded: ReviewMediaInput[] = [];
       let failed = false;
@@ -124,7 +126,7 @@ export function useReviewMedia(open: boolean) {
           commitMedia(
             mediaRef.current.map((candidate) =>
               candidate.id === item.id
-                ? { ...candidate, state: 'uploaded', uploaded: result }
+                ? { ...candidate, state: 'uploaded' as const, uploaded: result }
                 : candidate,
             ),
           );
@@ -132,7 +134,7 @@ export function useReviewMedia(open: boolean) {
           failed = true;
           commitMedia(
             mediaRef.current.map((candidate) =>
-              candidate.id === item.id ? { ...candidate, state: 'error' } : candidate,
+              candidate.id === item.id ? { ...candidate, state: 'error' as const } : candidate,
             ),
           );
         }
