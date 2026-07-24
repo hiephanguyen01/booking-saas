@@ -1,9 +1,16 @@
+import {
+  MAX_BOOKING_RANGE_DAYS,
+  bookingDateRangeSchema,
+  timeOfDaySchema,
+  type AvailabilityMode,
+  type PublicListingDetailResponse,
+} from '@booking/contracts';
 import { data } from 'react-router';
-import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
 import { fetchAvailability } from './booking.server';
 import { fetchQuote } from './catalog.server';
-import { isValidDateOnly } from './date-only';
-import { eligibleDailyRange } from './daily-range';
+import { canOffsetDateOnly, isValidDateOnly } from './date-only';
+import { datesInDailyRange, eligibleDailyRange } from './daily-range';
+import { rethrowCriticalDataError } from './optional-data.server';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from './time';
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
@@ -81,13 +88,15 @@ export async function loadListingBookingData(
 
     const requestedFrom = url.searchParams.get('from');
     const from =
-      requestedFrom && isValidDateOnly(requestedFrom) ? requestedFrom : todayInTz(timezone);
+      requestedFrom && canOffsetDateOnly(requestedFrom, MAX_BOOKING_RANGE_DAYS)
+        ? requestedFrom
+        : todayInTz(timezone);
     const requestedTo = url.searchParams.get('to');
     const to = requestedTo && isValidDateOnly(requestedTo) ? requestedTo : null;
     const availability = await fetchAvailability(request, listing.slug, {
       mode,
       from,
-      to: addDays(from, 30),
+      to: addDays(from, MAX_BOOKING_RANGE_DAYS - 1),
       ...(packageId ? { packageId } : {}),
     });
     const config = (listing.modeConfig.daily ?? {}) as Record<string, unknown>;
@@ -98,17 +107,25 @@ export async function loadListingBookingData(
         ) as Record<string, unknown> | undefined)
       : undefined;
     const durationDays = finiteNumber(selectedPackage?.durationDays, 0);
-    const effectiveTo =
-      listing.bookingSelection === 'fixed_packages' && durationDays > 0
-        ? addDays(from, durationDays)
-        : to;
+    const fixedPackageRange =
+      listing.bookingSelection === 'fixed_packages' &&
+      durationDays > 0 &&
+      durationDays <= MAX_BOOKING_RANGE_DAYS &&
+      canOffsetDateOnly(from, durationDays)
+        ? { from, to: addDays(from, durationDays) }
+        : null;
+    const effectiveTo = fixedPackageRange?.to ?? to;
     const minNights = finiteNumber(config.minNights, 1);
     const maxNights = finiteNumber(config.maxNights, Number.POSITIVE_INFINITY);
-    const range = effectiveTo
-      ? listing.bookingSelection === 'fixed_packages'
-        ? { from, to: effectiveTo }
-        : eligibleDailyRange(from, effectiveTo, minNights, maxNights)
+    const flexibleRange = effectiveTo
+      ? eligibleDailyRange(from, effectiveTo, minNights, maxNights)
       : null;
+    const range =
+      listing.bookingSelection === 'fixed_packages'
+        ? fixedPackageRange && bookingDateRangeSchema.safeParse(fixedPackageRange).success
+          ? fixedPackageRange
+          : null
+        : flexibleRange;
     const openDates = new Set(
       availability.mode === 'daily'
         ? availability.days.filter((day) => day.status === 'available').map((day) => day.date)
@@ -118,10 +135,10 @@ export async function loadListingBookingData(
       range &&
       (listing.bookingSelection === 'fixed_packages'
         ? openDates.has(range.from)
-        : datesInRange(range.from, range.to).every((dateValue) => openDates.has(dateValue))),
+        : datesInDailyRange(flexibleRange!).every((dateValue) => openDates.has(dateValue))),
     );
-    const checkinTime = typeof config.checkinTime === 'string' ? config.checkinTime : '14:00';
-    const checkoutTime = typeof config.checkoutTime === 'string' ? config.checkoutTime : '12:00';
+    const checkinTime = validTime(config.checkinTime, '14:00');
+    const checkoutTime = validTime(config.checkoutTime, '12:00');
     const selectionStart = selectionAvailable
       ? zonedToUtcIso(range!.from, checkinTime, availability.timezone)
       : null;
@@ -155,7 +172,8 @@ export async function loadListingBookingData(
       selectionEnd,
       packageId: packageId ?? null,
     };
-  } catch {
+  } catch (error) {
+    rethrowCriticalDataError(error);
     return bookingDataError('availability-unavailable', 502);
   }
 }
@@ -169,8 +187,7 @@ function finiteNumber(value: unknown, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function datesInRange(from: string, to: string): string[] {
-  const dates: string[] = [];
-  for (let cursor = from; cursor < to; cursor = addDays(cursor, 1)) dates.push(cursor);
-  return dates;
+function validTime(value: unknown, fallback: string): string {
+  const parsed = timeOfDaySchema.safeParse(value);
+  return parsed.success ? parsed.data : fallback;
 }
