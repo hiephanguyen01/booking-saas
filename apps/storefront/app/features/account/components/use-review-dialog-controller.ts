@@ -24,6 +24,7 @@ export function useReviewDialogController({
   const { t } = useTranslation(NsI18n.Account);
   const fetcher = useFetcher<ReviewActionData>();
   const submitLockRef = useRef(createSubmissionLock());
+  const fetcherWasBusyRef = useRef(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [content, setContent] = useState('');
@@ -33,7 +34,13 @@ export function useReviewDialogController({
   const formValid = rating > 0 && content.trim().length >= 10 && content.trim().length <= 2000;
 
   useEffect(() => {
-    if (fetcher.state === 'idle') {
+    if (fetcher.state !== 'idle') {
+      fetcherWasBusyRef.current = true;
+      return;
+    }
+
+    if (fetcherWasBusyRef.current) {
+      fetcherWasBusyRef.current = false;
       submitLockRef.current.release();
     }
   }, [fetcher.state]);
@@ -46,6 +53,7 @@ export function useReviewDialogController({
 
   useEffect(() => {
     if (!open) {
+      fetcherWasBusyRef.current = false;
       submitLockRef.current.release();
       setRating(0);
       setHoverRating(0);
