@@ -1,8 +1,9 @@
 import type { CustomerReviewItem } from '@booking/contracts';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { useReviewMedia } from './review-dialog-media';
+import { createSubmissionLock } from './review-submit-lock';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 type ReviewActionData = { ok: boolean; error: string | null; bookingId: string | null };
@@ -22,6 +23,8 @@ export function useReviewDialogController({
 }: UseReviewDialogControllerOptions) {
   const { t } = useTranslation(NsI18n.Account);
   const fetcher = useFetcher<ReviewActionData>();
+  const submitLockRef = useRef(createSubmissionLock());
+  const fetcherWasBusyRef = useRef(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [content, setContent] = useState('');
@@ -31,6 +34,18 @@ export function useReviewDialogController({
   const formValid = rating > 0 && content.trim().length >= 10 && content.trim().length <= 2000;
 
   useEffect(() => {
+    if (fetcher.state !== 'idle') {
+      fetcherWasBusyRef.current = true;
+      return;
+    }
+
+    if (fetcherWasBusyRef.current) {
+      fetcherWasBusyRef.current = false;
+      submitLockRef.current.release();
+    }
+  }, [fetcher.state]);
+
+  useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.ok && fetcher.data.bookingId === review?.bookingId) {
       onOpenChange(false);
     }
@@ -38,6 +53,8 @@ export function useReviewDialogController({
 
   useEffect(() => {
     if (!open) {
+      fetcherWasBusyRef.current = false;
+      submitLockRef.current.release();
       setRating(0);
       setHoverRating(0);
       setContent('');
@@ -45,17 +62,26 @@ export function useReviewDialogController({
   }, [open]);
 
   async function submit(): Promise<void> {
-    if (!review || !formValid || submitting) return;
-    const uploaded = await uploadAll(review.bookingId);
-    if (!uploaded) return;
+    if (!review || !formValid || submitting || !submitLockRef.current.tryAcquire()) return;
 
-    const formData = new FormData();
-    formData.set('intent', 'review');
-    formData.set('bookingId', review.bookingId);
-    formData.set('rating', String(rating));
-    formData.set('content', content);
-    formData.set('media', JSON.stringify(uploaded));
-    fetcher.submit(formData, { method: 'post', action });
+    let submitted = false;
+    try {
+      const uploaded = await uploadAll(review.bookingId);
+      if (!uploaded) return;
+
+      const formData = new FormData();
+      formData.set('intent', 'review');
+      formData.set('bookingId', review.bookingId);
+      formData.set('rating', String(rating));
+      formData.set('content', content);
+      formData.set('media', JSON.stringify(uploaded));
+      fetcher.submit(formData, { method: 'post', action });
+      submitted = true;
+    } finally {
+      if (!submitted) {
+        submitLockRef.current.release();
+      }
+    }
   }
 
   const actionData = fetcher.data;
