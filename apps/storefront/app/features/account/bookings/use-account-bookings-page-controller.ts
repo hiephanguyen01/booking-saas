@@ -1,21 +1,24 @@
 import type { CustomerReviewItem } from '@booking/contracts';
+import type { Locale } from '@booking/i18n';
 import { useState } from 'react';
 import { useLocation, useNavigation } from 'react-router';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { isReadNavigationMethod, useMinimumPending } from '../../../lib/use-minimum-pending';
-import type { Route } from '../../../routes/account/+types/bookings';
 import {
   parseBookingHistoryFilter,
   type AccountBookingViewModel,
+  type BookingHistoryFilter,
 } from '../lib/booking-history';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
-type AccountBookingsPageControllerArgs = Pick<Route.ComponentProps, 'loaderData'>;
 
 export function useAccountBookingsPageController({
-  loaderData,
-}: AccountBookingsPageControllerArgs) {
-  const locale = loaderData.locale === 'en' ? 'en' : 'vi';
+  locale,
+  filter,
+}: {
+  locale: Locale;
+  filter: BookingHistoryFilter;
+}) {
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
   const [activeCancellation, setActiveCancellation] = useState<AccountBookingViewModel | null>(
     null,
@@ -29,7 +32,7 @@ export function useAccountBookingsPageController({
   const pending = useMinimumPending(readNavigationActive);
   const activeFilter = readNavigationActive
     ? parseBookingHistoryFilter(new URLSearchParams(navigation.location?.search).get('status'))
-    : loaderData.filter;
+    : filter;
   const action = storefrontPaths.account.bookings(locale);
 
   function handleReviewOpenChange(open: boolean) {
