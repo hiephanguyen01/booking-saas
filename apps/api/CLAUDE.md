@@ -33,7 +33,7 @@ keep their business invariants on framework-free aggregates in `domain/entities/
 `domain/value-objects/`, typed `DomainError`s in `domain/errors/`); use-cases orchestrate load →
 method → save → emit. Refactored so far:
 **reviews, content-reports, notification, favorites, promotions, affiliate, identity-access,
-partner, catalog, tenancy, listing, scheduling**.
+partner, catalog, tenancy, listing, scheduling, payments**.
 
 ## Multi-tenancy — `forTenant()` + RLS (the most important rule)
 

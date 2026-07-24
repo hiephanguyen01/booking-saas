@@ -267,6 +267,10 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | **Reopen cascade** (`update-listing-group`, partner + status='archived'): ghi thẳng `{status:draft, publishedBy:null, hiddenBy:null}` cho group + mọi child (Promise.all), emit `listing_group.reopened` payload **`{listingGroupId}`** (khác key `{groupId}` của moderation event); **KHÔNG audit**; **bypass transition machine** (kể cả admin-lock của group) | listing | Giữ nguyên ở PR #11c |
 | Group **delete không status-gate** (any-status + 0-child là xoá được, kể cả published-rỗng); tenant-scoped update **được reassign `partnerId`/`listingTypeId`** (partner-scoped force undefined) | listing | Giữ nguyên ở PR #11c |
 | Payload key group event: CRUD (`created`/`updated`/`reopened`/`deleted`) = `{listingGroupId}`; moderation (`submitted`/`published`/`hidden`) = `{groupId}` — 0 consumer nên chưa normalize (normalize = wire change) | listing | Giữ nguyên ở PR #11c |
+| `confirm-manual-refund` còn một nhánh defensive throw `NotFoundException()` trần sau guarded update — body Nest mặc định không có `code`, khác các lỗi payments còn lại | payments | Giữ nguyên ở PR #13 để wire byte-identical |
+| DB enum `PaymentGateway` có `vnpay` nhưng `GatewayKey` TypeScript không có; code runtime không thể route/configure VNPAY | payments | Giữ nguyên ở PR #13; mở rộng gateway là thay đổi feature/wire riêng |
+| Ba guarded update refund (`completeAutomatic`/`requireManual`/`markSucceeded`) luôn re-read và trả row hiện tại bất kể guard có match; `null` chỉ có nghĩa row không tồn tại, không biểu diễn CAS miss | payments | Giữ nguyên ở PR #13 vì caller hiện dựa vào return quirk này |
+| Manual refund reference chỉ unique bằng query app-level theo tenant, không có DB unique backstop nên hai confirmation đồng thời vẫn có thể dùng trùng reference | payments | Giữ nguyên ở PR #13; thêm unique backstop trong migration wave §8b |
 
 ### 8a-bis. Wire change đã duyệt (không phải known gap — thay đổi có chủ đích)
 
@@ -292,7 +296,8 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 ### 8b. Migration wave sau refactor (unique backstop còn thiếu)
 
 - `notification.dedupe_key` thành cột thật + unique index (kèm quyết định backfill row lịch sử)
-- `refunds (booking_id, reason)` unique (advisory-lock idempotency hiện không có DB backstop)
+- `refunds (booking_id, reason)` unique (advisory-lock idempotency hiện không có DB backstop) +
+  manual-refund evidence reference unique theo tenant
 - Single-dispute-per-settlement backstop
 - One-primary-domain partial unique (tenancy)
 
@@ -344,6 +349,7 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 
 - `payments`: `canSucceed` (mâu thuẫn SQL guard thật — cái bẫy), `findActivePendingByBooking`
+  — **[ĐÃ XOÁ ở PR #13]**
 - `catalog`: `ListPublicListingsUseCase` không có route — **[ĐÃ XOÁ ở PR #9]**
 - `favorites`: `isFavorited` (port + repo, 0 caller) — **đã xoá ở PR #4**
 - `catalog.mapper.ts`'s `toPublicListingResponse`, và `listPublicListingsQuerySchema` +
@@ -397,8 +403,8 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
    poll ~2s) mãi mãi — không tự trôi ra khỏi hàng đợi. Đáng một PR infra nhỏ, độc lập với các wave
    refactor này.
 9. **Pattern `event.tenantId ?? ''` còn ở các module chưa đụng** (booking, finance, listing —
-   scheduling đã normalize ở PR #12; payments normalize ở PR #13; listing tuy đã refactor nhưng 3 PR
-   con không đụng file đăng ký outbox nên pattern còn) — sẽ tự biến mất khi PR refactor của từng
+   scheduling đã normalize ở PR #12; listing tuy đã refactor nhưng 3 PR con không đụng file đăng ký
+   outbox nên pattern còn) — sẽ tự biến mất khi PR refactor của từng
    module đó đụng file đăng ký outbox (§4 đã bắt buộc normalize thành validate-and-skip-with-log mỗi
    khi file đó bị đụng), nên KHÔNG cần một sweep riêng. Mục 8 (relay dead-letter) ở trên vẫn nên làm độc lập, không chờ các PR
    này xong.

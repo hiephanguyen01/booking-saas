@@ -170,7 +170,7 @@ Message VN có dấu — copy từng byte từ survey §B (đừng gõ lại tay
   `` `Cổng ${gateway} không hỗ trợ phương thức: ${invalid.join(', ')}` ``;
   `GatewayConfigNotFound` → 404 `Configure payment credentials before enabling payment methods`.
 - Edit `domain/payment-status.ts`: xóa `canSucceed` (giữ nguyên `amountMatches`,
-  `publicPaymentStatus` + comment file). Edit `domain/ports/payment-repository.port.ts` + 
+  `publicPaymentStatus` + comment file). Edit `domain/ports/payment-repository.port.ts` +
   `infrastructure/repositories/prisma-payment.repository.ts`: xóa `findActivePendingByBooking`.
 
 Message copy từng byte từ survey §B (VN có dấu, template literal đúng chỗ). Codes so lại file gốc
@@ -277,7 +277,7 @@ trước khi viết (đọc use-case tương ứng).
 
 **Files:** Create `domain/entities/tenant-gateway-configs.entity.ts`; edit
 `update-gateway-payment-settings.use-case.ts`, `payments.module.ts`. **0 diff:**
-`upsert-gateway-config.use-case.ts` (zod boundary giữ — không có gì chuyển), 
+`upsert-gateway-config.use-case.ts` (zod boundary giữ — không có gì chuyển),
 `deactivate-gateway.use-case.ts`, `prisma-gateway-config.repository.ts`, mapper, controllers.
 
 - [ ] **Step 1: `tenant-gateway-configs.entity.ts`** — thin set-aggregate, static-only:

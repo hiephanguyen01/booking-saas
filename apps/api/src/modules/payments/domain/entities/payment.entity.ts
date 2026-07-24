@@ -14,7 +14,7 @@ import {
  * plan, gateway acceptance, the webhook event routing, and the amount guard.
  *
  * Deliberately has NO instance state and NO status-based transition method: the
- * payment lifecycle flip (`pending → succeeded`, `pending → failed/expired`) is a
+ * payment lifecycle flip (`non-succeeded → succeeded`, `pending → failed/expired`) is a
  * compare-and-set that MUST stay in the repository (`markSucceeded` /
  * `markTerminalIfPending`, spec §2.8). A snapshot of `status` loaded before the tx
  * cannot be trusted under concurrent webhook deliveries (see handle-webhook
@@ -76,7 +76,7 @@ export class Payment {
    *     it must never downgrade the original successful payment);
    *   - any non-`succeeded` event → a terminal `failed`/`expired` (applied only
    *     while still pending, via the repo's guarded write);
-   *   - `succeeded` → attempt the pending → succeeded flip.
+   *   - `succeeded` → attempt the non-succeeded → succeeded flip (late success is valid).
    */
   static decideWebhookTransition(
     event: WebhookEvent,

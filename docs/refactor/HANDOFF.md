@@ -36,21 +36,18 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 11a | listing — cancellation-policy + pricing-rule + resource | ✅ merge (GitHub PR #29) |
 | 11b | listing — Listing content + moderation | ✅ merge (GitHub PR #30) |
 | 11c | listing — ListingGroup + cascade | ✅ merge (GitHub PR #31) — **listing xong cả module** |
-| 12 | scheduling | 🔍 review (GitHub PR #NN) |
-| 13 | payments | 🚧 đang làm (track song song, worktree riêng, branch `refactor/entity-payments`) |
+| 12 | scheduling | ✅ merge (GitHub PR #32) |
+| 13 | payments | 🔍 final review (branch `refactor/entity-payments`) |
 | 14→16 | booking → finance → administrative-division | chưa làm |
 
 **listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint) — ✅ cả 3 merged (PR
-#29/#30/#31). **12/16 module xong**.
+#29/#30/#31). Scheduling cũng đã merge ở PR #32: **13/16 module xong**, payments đang ở final
+review trước khi merge.
 
-**Đợt hiện tại (2026-07-24) chạy 2 track SONG SONG theo chỉ thị owner** (nới quyết định "tuần tự
-nghiêm" spec §2.6 — chỉ đổi cách chạy phiên, vẫn 1 module = 1 PR): **#12 scheduling** ở working
-tree chính (branch `refactor/entity-scheduling`) và **#13 payments** ở worktree
-`../booking-saas-wt-payments` (branch `refactor/entity-payments`). Hai module không đụng file code
-của nhau; conflict dự kiến chỉ ở docs (HANDOFF/spec §8a/§8c-bis, `apps/api/CLAUDE.md`) — PR merge
-sau rebase sửa. Việc kế tiếp sau đợt này: **đợt 2 = #14 booking + #15 finance (+#16
-administrative-division gộp kèm)** — finance tiêu thụ payload booking và bẫy `rejectionException`
-sửa cả 2 phía ở #14, nên đợt 2 cần cân nhắc mức song song riêng. **Bộ máy moderation (`listing-moderation.ts` +
+**Đợt song song scheduling/payments đã khép track đầu:** scheduling merge trước, payments đã rebase
+lên integration và đang final review. Việc kế tiếp: **#14 booking → #15 finance → #16
+administrative-division**; booking đi trước vì finance tiêu thụ payload booking, còn bẫy
+`rejectionException` phải sửa đồng bộ promotions↔booking ở #14. **Bộ máy moderation (`listing-moderation.ts` +
 `moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
 sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
 + đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25

@@ -15,7 +15,7 @@ import { Payment } from '../../domain/entities/payment.entity';
 /**
  * The webhook — the single source of truth for payment (§11.2). Resolves the
  * tenant from the gateway txn (admin pool), verifies the signature, is idempotent
- * (an atomic pending→succeeded flip means 5 duplicate deliveries record one
+ * (an atomic non-succeeded→succeeded flip means 5 duplicate deliveries record one
  * payment and confirm once), guards the amount, then confirms the booking.
  */
 @Injectable()
@@ -44,7 +44,7 @@ export class HandleWebhookUseCase {
     if (!payment) return; // unknown txn — acknowledge and ignore
 
     // Record the payment durably first (its own tx). markSucceeded is an atomic
-    // pending→succeeded flip, so 5 duplicate deliveries return `true` exactly once.
+    // non-succeeded→succeeded flip, so 5 duplicate deliveries return `true` exactly once.
     const flipped = await this.tenantDb.forTenant(payment.tenantId, async (tx) => {
       const gateway = await this.registry.resolveForTenant(tx, payment.tenantId, payment.gateway);
       const v = gateway.verifyWebhook(rawBody, headers);
