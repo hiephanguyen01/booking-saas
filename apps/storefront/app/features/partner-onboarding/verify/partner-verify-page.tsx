@@ -7,8 +7,8 @@ import {
   InputOTPSlot,
 } from '@booking/ui/components/ui/input-otp';
 import { Mail } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { Form, useOutletContext, useSubmit } from 'react-router';
+import { useOutletContext } from 'react-router';
+import { useOtpFormController } from '../../auth/ui/use-otp-form-controller';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { PartnerOnboardingActionData } from '../../../lib/partner-onboarding.server';
 import type { StorefrontContext } from '../../../root';
@@ -24,34 +24,12 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
   const verifyActionData = actionData as PartnerOnboardingActionData | undefined;
   const { tenant } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Auth);
-  const submit = useSubmit();
-  const [code, setCode] = useState('');
-  const [seconds, setSeconds] = useState(
-    verifyActionData?.resendAfterSec ?? loaderData.resendAfterSec,
-  );
-
-  useEffect(() => {
-    if (seconds <= 0) return;
-    const timer = window.setInterval(
-      () => setSeconds((value) => Math.max(0, value - 1)),
-      1_000,
-    );
-    return () => window.clearInterval(timer);
-  }, [seconds]);
-
-  // Keyed on the response object, not on resendAfterSec: the server returns the
-  // same cooldown every time, so depending on the value skipped this effect from
-  // the second resend onward and the countdown never restarted.
-  useEffect(() => {
-    if (verifyActionData?.resendAfterSec != null) {
-      setSeconds(verifyActionData.resendAfterSec);
-    }
-  }, [actionData, verifyActionData?.resendAfterSec]);
-
+  const { code, handleSubmit, resendCode, seconds, setCode } = useOtpFormController({
+    initialSeconds: loaderData.resendAfterSec,
+    actionData: verifyActionData,
+  });
   const message = verifyActionData?.error
-    ? t(
-        verifyActionData.error === 'OTP_INVALID' ? 'errors.invalidOtp' : 'errors.expired',
-      )
+    ? t(verifyActionData.error === 'OTP_INVALID' ? 'errors.invalidOtp' : 'errors.expired')
     : undefined;
 
   return (
@@ -72,14 +50,7 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
         </p>
       </div>
       <FormAlert>{message}</FormAlert>
-      <Form
-        method="post"
-        onSubmit={(event) => {
-          if (code.length !== 6) event.preventDefault();
-        }}
-        className="space-y-7"
-      >
-        <input type="hidden" name="code" value={code} />
+      <form onSubmit={handleSubmit} className="space-y-7">
         <div className="flex flex-col items-center">
           <InputOTP
             maxLength={6}
@@ -101,17 +72,15 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
               ))}
             </InputOTPGroup>
           </InputOTP>
-          <FieldError className="mt-2">
-            {verifyActionData?.fieldErrors?.code?.[0]}
-          </FieldError>
+          <FieldError className="mt-2">{verifyActionData?.fieldErrors?.code?.[0]}</FieldError>
         </div>
         <PrimaryButton>{t('verify.submit')}</PrimaryButton>
-      </Form>
+      </form>
       <Button
         type="button"
         variant="ghost"
         disabled={seconds > 0}
-        onClick={() => submit({ intent: 'resend' }, { method: 'post' })}
+        onClick={resendCode}
         className="mx-auto mt-5 flex text-primary hover:text-primary"
       >
         {seconds > 0 ? t('verify.resendIn', { seconds }) : t('verify.resend')}
