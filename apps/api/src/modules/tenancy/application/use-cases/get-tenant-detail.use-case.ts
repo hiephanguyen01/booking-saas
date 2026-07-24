@@ -11,10 +11,9 @@ import {
   type ITenantDomainRepository,
 } from '../../domain/ports/tenant-domain-repository.port';
 import {
-  SUBSCRIPTION_REPOSITORY,
-  type ISubscriptionRepository,
-} from '../../domain/ports/subscription-repository.port';
-import { PLAN_REPOSITORY, type IPlanRepository } from '../../domain/ports/plan-repository.port';
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
 import type { SubscriptionState } from '../../domain/subscription-status';
 
 /** Trailing window for the `bookings30d` count. */
@@ -42,8 +41,8 @@ export class GetTenantDetailUseCase {
   constructor(
     @Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository,
     @Inject(TENANT_DOMAIN_REPOSITORY) private readonly domains: ITenantDomainRepository,
-    @Inject(SUBSCRIPTION_REPOSITORY) private readonly subscriptions: ISubscriptionRepository,
-    @Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
   ) {}
 
   async execute(id: string, now: Date = new Date()): Promise<TenantDetailView> {
@@ -53,26 +52,23 @@ export class GetTenantDetailUseCase {
     }
 
     const from = new Date(now.getTime() - BOOKINGS_WINDOW_DAYS * MS_PER_DAY);
-    const [subscription, domains, partners, listings, bookings30d] = await Promise.all([
-      this.subscriptions.findCurrentByTenant(id),
+    const [selection, domains, partners, listings, bookings30d] = await Promise.all([
+      this.currentSubscriptions.findByTenant(id),
       this.domains.listByTenant(id),
       this.tenants.countPartners(id),
       this.tenants.countListings(id),
       this.tenants.countBookingsBetween(id, from, now),
     ]);
 
-    // The plan is only fetched once we know there is a subscription to name.
-    const plan = subscription ? await this.plans.findById(subscription.planId) : null;
+    const current = selection.current;
 
     return {
       tenant,
-      subscription: subscription
+      subscription: current
         ? {
-            // A subscription's plan is a RESTRICT FK, so it cannot dangle; the
-            // fallback only guards a manually-tampered row.
-            planName: plan?.name ?? 'Unknown plan',
-            status: subscription.status,
-            expiresAt: subscription.expiresAt,
+            planName: current.plan.name,
+            status: current.subscription.status,
+            expiresAt: current.subscription.expiresAt,
           }
         : null,
       primaryDomain: domains.find((d) => d.isPrimary) ?? null,

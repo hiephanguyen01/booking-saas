@@ -7,6 +7,10 @@ import {
   type IPlanRepository,
   type PlanWithSubscribers,
 } from '../../domain/ports/plan-repository.port';
+import {
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
 
 /**
  * Edits a subscription plan (§19). Exists because `subscription_plans.name` is
@@ -32,7 +36,11 @@ import {
  */
 @Injectable()
 export class UpdatePlanUseCase {
-  constructor(@Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository) {}
+  constructor(
+    @Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
+  ) {}
 
   async execute(id: string, input: UpdatePlanInput): Promise<PlanWithSubscribers> {
     const plan = await this.plans.findById(id);
@@ -50,7 +58,7 @@ export class UpdatePlanUseCase {
 
     // Money is parsed with BigInt, never Number — a VND price can exceed 2^53.
     const priceMonthly = input.priceMonthly === undefined ? undefined : BigInt(input.priceMonthly);
-    const subscriberCount = (await this.plans.liveSubscriberCounts()).get(id) ?? 0;
+    const subscriberCount = (await this.currentSubscriptions.liveSubscriberCounts()).get(id) ?? 0;
 
     // The repricing gate (409 PLAN_HAS_SUBSCRIBERS unless confirmed) lives on the
     // aggregate; it throws before this use-case touches the repository's update.

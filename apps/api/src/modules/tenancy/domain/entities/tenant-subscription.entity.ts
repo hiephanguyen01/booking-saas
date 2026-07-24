@@ -10,18 +10,11 @@ import { InvalidSubscriptionPeriod } from '../errors/billing-errors';
  * one by being more recent, but the previous row is never updated or deleted —
  * it stays as billing history (`ISubscriptionRepository.listByTenant`).
  *
- * "Current subscription" is, as of this PR, defined by **three implementations
- * that disagree** — a recorded known gap (§8a) this PR deliberately does NOT
- * fix:
- *   - `ISubscriptionRepository.findCurrentByTenant` (`PrismaSubscriptionRepository`,
- *     the TypeScript path) orders by `startsAt DESC` alone, with **no
- *     `created_at` tiebreak**;
- *   - `PrismaPlanRepository.liveSubscriberCounts` and
- *     `GetPlatformHealthUseCase`'s platform-health query are both raw SQL and
- *     both order by `starts_at DESC, created_at DESC`.
- *   On a `startsAt` tie (e.g. two assignments issued in the same request burst,
- *   or a back-dated assignment), the TypeScript path and the two SQL copies can
- *   pick different rows as "the current one". Left as-is here.
+ * "Current subscription" is selected only by `ICurrentSubscriptionReader`:
+ * newest `startsAt`, then newest persistence `createdAt`. The reader resolves
+ * the plan and captures PostgreSQL `now()` in the same statement, so guards,
+ * storefront liveness, subscriber counts and platform health share one row and
+ * one clock.
  *
  * The §6.5 lifecycle rules — grace period, storefront/dashboard/booking gating —
  * live exclusively in `evaluateSubscription` (`domain/subscription-status.ts`);

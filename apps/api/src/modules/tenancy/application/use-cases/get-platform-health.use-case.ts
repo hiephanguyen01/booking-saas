@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import {
   BILLABLE_SUBSCRIPTION_STATUSES,
   evaluateSubscription,
-  type SubscriptionState,
 } from '../../domain/subscription-status';
+import {
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
 
 /**
  * Platform-admin health board (Task 1.12 / §13.3). A cross-tenant read that
@@ -87,14 +90,6 @@ interface CountRow {
   tenant_id: string;
   count: number;
 }
-interface SubRow {
-  tenant_id: string;
-  status: string;
-  starts_at: Date;
-  expires_at: Date;
-  plan_name: string;
-  price_monthly: bigint;
-}
 interface TrendRow {
   date: string;
   gmv: bigint;
@@ -108,12 +103,23 @@ const MS_PER_DAY = MS_PER_HOUR * 24;
 
 @Injectable()
 export class GetPlatformHealthUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
+  ) {}
 
   async execute(): Promise<PlatformHealth> {
     const db = this.prisma.admin;
 
-    const [tenantRows, webhookRows, payoutRows, subRows, trendRows, webhookTotalRows] =
+    const [
+      tenantRows,
+      webhookRows,
+      payoutRows,
+      subscriptionSnapshot,
+      trendRows,
+      webhookTotalRows,
+    ] =
       await Promise.all([
         db.$queryRaw<TenantAggRow[]>(Prisma.sql`
           SELECT
@@ -157,18 +163,7 @@ export class GetPlatformHealthUseCase {
             )
           GROUP BY tenant_id`),
 
-        // The current subscription per tenant. `starts_at DESC` (with created_at
-        // as a deterministic tiebreak) matches ISubscriptionRepository's
-        // `findCurrentByTenant`, so this board names the same plan the tenant is
-        // actually being served under — including back- or future-dated
-        // assignments, which a created_at ordering gets wrong.
-        db.$queryRaw<SubRow[]>(Prisma.sql`
-          SELECT DISTINCT ON (s.tenant_id)
-            s.tenant_id, s.status::text AS status, s.starts_at, s.expires_at,
-            p.name AS plan_name, p.price_monthly
-          FROM tenant_subscriptions s
-          JOIN subscription_plans p ON p.id = s.plan_id
-          ORDER BY s.tenant_id, s.starts_at DESC, s.created_at DESC`),
+        this.currentSubscriptions.listCurrent(),
 
         db.$queryRaw<TrendRow[]>(Prisma.sql`
           SELECT to_char(d.day, 'YYYY-MM-DD') AS date, COALESCE(SUM(b.final_amount), 0)::bigint AS gmv
@@ -186,7 +181,9 @@ export class GetPlatformHealthUseCase {
 
     const webhookByTenant = new Map(webhookRows.map((r) => [r.tenant_id, r.count]));
     const payoutByTenant = new Map(payoutRows.map((r) => [r.tenant_id, r.count]));
-    const subByTenant = new Map(subRows.map((r) => [r.tenant_id, r]));
+    const subByTenant = new Map(
+      subscriptionSnapshot.items.map((item) => [item.subscription.tenantId, item]),
+    );
 
     const tenants: TenantHealthRow[] = tenantRows.map((t) => {
       const sub = subByTenant.get(t.id);
@@ -208,12 +205,16 @@ export class GetPlatformHealthUseCase {
         webhookFailures: webhookByTenant.get(t.id) ?? 0,
         overduePayouts: payoutByTenant.get(t.id) ?? 0,
         subscription: sub
-          ? { status: sub.status, expiresAt: sub.expires_at, planName: sub.plan_name }
+          ? {
+              status: sub.subscription.status,
+              expiresAt: sub.subscription.expiresAt,
+              planName: sub.plan.name,
+            }
           : null,
       };
     });
 
-    const nowDate = new Date();
+    const nowDate = subscriptionSnapshot.evaluatedAt;
     const now = nowDate.getTime();
 
     /**
@@ -222,16 +223,9 @@ export class GetPlatformHealthUseCase {
      * here, so this KPI cannot drift from the lifecycle the tenant actually
      * experiences. Summed as bigint — VND never goes through a float.
      */
-    const mrr = subRows.reduce((acc, r) => {
-      const { phase } = evaluateSubscription(
-        {
-          status: r.status as SubscriptionState,
-          startsAt: r.starts_at,
-          expiresAt: r.expires_at,
-        },
-        nowDate,
-      );
-      return phase === 'active' ? acc + r.price_monthly : acc;
+    const mrr = subscriptionSnapshot.items.reduce((acc, item) => {
+      const { phase } = evaluateSubscription(item.subscription, nowDate);
+      return phase === 'active' ? acc + item.plan.priceMonthly : acc;
     }, 0n);
 
     const expiring: ExpiringSubscriptionRow[] = tenants

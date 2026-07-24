@@ -11,9 +11,9 @@ import {
   type ITenantDomainRepository,
 } from '../../domain/ports/tenant-domain-repository.port';
 import {
-  SUBSCRIPTION_REPOSITORY,
-  type ISubscriptionRepository,
-} from '../../domain/ports/subscription-repository.port';
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
 import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache.port';
 import { toPublicTenantResponse } from '../tenancy.mapper';
 import { UnknownTenantHost } from '../../domain/errors/tenancy-errors';
@@ -30,11 +30,12 @@ export class ResolveTenantByHostUseCase {
   constructor(
     @Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository,
     @Inject(TENANT_DOMAIN_REPOSITORY) private readonly domains: ITenantDomainRepository,
-    @Inject(SUBSCRIPTION_REPOSITORY) private readonly subscriptions: ISubscriptionRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
     @Inject(TENANT_CACHE) private readonly cache: ITenantCache,
   ) {}
 
-  async execute(rawHost: string, now = new Date()): Promise<PublicTenantResponse> {
+  async execute(rawHost: string): Promise<PublicTenantResponse> {
     const hostname = normalizeHostname(rawHost);
 
     let tenantId = await this.cache.getHost(hostname);
@@ -55,8 +56,11 @@ export class ResolveTenantByHostUseCase {
       throw new UnknownTenantHost(hostname);
     }
 
-    const sub = await this.subscriptions.findCurrentByTenant(tenantId);
-    const evaluation = evaluateSubscription(sub, now);
+    const selection = await this.currentSubscriptions.findByTenant(tenantId);
+    const evaluation = evaluateSubscription(
+      selection.current?.subscription ?? null,
+      selection.evaluatedAt,
+    );
     const live = tenant.status === 'active' && evaluation.storefrontLive;
     return toPublicTenantResponse(tenant, live);
   }

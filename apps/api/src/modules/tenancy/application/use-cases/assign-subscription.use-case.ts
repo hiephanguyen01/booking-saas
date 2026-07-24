@@ -16,8 +16,8 @@ import {
 
 /**
  * Platform admin assigns a plan to a tenant (§3.1 — manual invoicing in Phase 1).
- * A new row supersedes the previous subscription (findCurrentByTenant reads the
- * latest by startsAt), preserving history.
+ * A new row supersedes the previous subscription (the current reader orders by
+ * startsAt then createdAt), preserving history.
  */
 @Injectable()
 export class AssignSubscriptionUseCase {

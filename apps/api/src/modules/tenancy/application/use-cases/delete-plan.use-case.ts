@@ -2,6 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SubscriptionPlan } from '../../domain/entities/subscription-plan.entity';
 import { PlanNotFound } from '../../domain/errors/billing-errors';
 import { PLAN_REPOSITORY, type IPlanRepository } from '../../domain/ports/plan-repository.port';
+import {
+  CURRENT_SUBSCRIPTION_READER,
+  type ICurrentSubscriptionReader,
+} from '../../domain/ports/current-subscription-reader.port';
 
 /**
  * Deletes a subscription plan (§19) — the escape hatch for a plan created by
@@ -20,7 +24,11 @@ import { PLAN_REPOSITORY, type IPlanRepository } from '../../domain/ports/plan-r
  */
 @Injectable()
 export class DeletePlanUseCase {
-  constructor(@Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository) {}
+  constructor(
+    @Inject(PLAN_REPOSITORY) private readonly plans: IPlanRepository,
+    @Inject(CURRENT_SUBSCRIPTION_READER)
+    private readonly currentSubscriptions: ICurrentSubscriptionReader,
+  ) {}
 
   async execute(id: string): Promise<void> {
     const plan = await this.plans.findById(id);
@@ -29,7 +37,7 @@ export class DeletePlanUseCase {
     }
 
     const [liveCounts, totalSubscriptions] = await Promise.all([
-      this.plans.liveSubscriberCounts(),
+      this.currentSubscriptions.liveSubscriberCounts(),
       this.plans.countSubscriptions(id),
     ]);
 
