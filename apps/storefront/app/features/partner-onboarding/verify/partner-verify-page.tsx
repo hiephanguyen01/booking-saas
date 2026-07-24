@@ -10,7 +10,6 @@ import { Mail } from 'lucide-react';
 import { useOutletContext } from 'react-router';
 import { useOtpFormController } from '../../auth/ui/use-otp-form-controller';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { PartnerOnboardingActionData } from '../../../lib/partner-onboarding.server';
 import type { StorefrontContext } from '../../../root';
 import type { Route } from '../../../routes/partner-onboarding/+types/verify';
 import {
@@ -19,6 +18,7 @@ import {
   FormHeading,
   PrimaryButton,
 } from '../../../routes/partner-onboarding/shared';
+import type { PartnerOnboardingActionData } from '../server/partner-onboarding-shared.server';
 
 export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentProps) {
   const verifyActionData = actionData as PartnerOnboardingActionData | undefined;
