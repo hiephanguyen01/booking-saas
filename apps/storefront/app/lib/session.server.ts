@@ -21,6 +21,10 @@ export interface StorefrontSessionData {
   userId: string;
 }
 
+export type RefreshLockObservation<T> =
+  | { resolved: false }
+  | { resolved: true; value: T };
+
 export class SessionRefreshLockTimeoutError extends Error {
   constructor() {
     super('Timed out waiting for the storefront session refresh lock');
@@ -63,19 +67,30 @@ export function createStorefrontSessionService(store: RedisJsonStore = storefron
     async rotate(id: string, data: StorefrontSessionData) {
       await store.set(`${PREFIX}${id}`, data, TTL_SECONDS);
     },
-    async withRefreshLock<T>(id: string, callback: () => Promise<T>): Promise<T> {
+    async withRefreshLock<T>(
+      id: string,
+      callback: () => Promise<T>,
+      observeWhileWaiting?: () => Promise<RefreshLockObservation<T>>,
+    ): Promise<T> {
       const key = `${REFRESH_LOCK_PREFIX}${id}`;
       const value = randomUUID();
       const deadline = Date.now() + REFRESH_LOCK_WAIT_MS;
       let acquired = await store.setIfAbsent(key, value, REFRESH_LOCK_TTL_MS);
 
       while (!acquired) {
+        const observation = await observeWhileWaiting?.();
+        if (observation?.resolved) return observation.value;
+
         const remainingWaitMs = deadline - Date.now();
         if (remainingWaitMs <= 0) break;
         await delay(Math.min(REFRESH_LOCK_RETRY_MS, remainingWaitMs));
         acquired = await store.setIfAbsent(key, value, REFRESH_LOCK_TTL_MS);
       }
 
+      if (!acquired && observeWhileWaiting) {
+        const finalObservation = await observeWhileWaiting();
+        if (finalObservation.resolved) return finalObservation.value;
+      }
       if (!acquired) throw new SessionRefreshLockTimeoutError();
 
       try {
