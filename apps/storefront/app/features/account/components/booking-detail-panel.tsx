@@ -1,11 +1,9 @@
-import type { CustomerBookingSettlementResponse, CustomerReviewItem } from '@booking/contracts';
+import type { CustomerBookingSettlementResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { bookingDetailState, type AccountBookingViewModel } from '../lib/booking-history';
+import type { AccountBookingViewModel } from '../lib/booking-history';
 import { BookingDetailOverview } from './booking-detail-overview';
 import { ReviewDialog } from './review-dialog';
 import {
@@ -14,8 +12,7 @@ import {
   BookingReviewSection,
   PaymentTaxNote,
 } from './booking-detail-sections';
-
-type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
+import { useBookingDetailPanelController } from './use-booking-detail-panel-controller';
 
 export function BookingDetailPanel({
   booking,
@@ -31,11 +28,16 @@ export function BookingDetailPanel({
   settlement: CustomerBookingSettlementResponse | null;
 }) {
   const { t } = useTranslation(NsI18n.Account);
-  const state = bookingDetailState(booking.status);
-  const pendingReview: PendingReview | null =
-    booking.review?.status === 'pending' ? booking.review : null;
-  const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
-  const detailPath = storefrontPaths.account.booking(locale, booking.code);
+  const {
+    activeReview,
+    bookingsPath,
+    closeReview,
+    detailPath,
+    openPendingReview,
+    reviewDialogOpen,
+    showReviewSection,
+    state,
+  } = useBookingDetailPanelController({ booking, locale });
 
   return (
     <div className="mx-auto w-full max-w-[870px]">
@@ -44,7 +46,7 @@ export function BookingDetailPanel({
       </h1>
       <div className="flex min-h-13 items-center bg-background px-5 shadow-[0_3px_14px_rgba(15,23,42,0.025)]">
         <Link
-          to={storefrontPaths.account.bookings(locale)}
+          to={bookingsPath}
           className="inline-flex min-h-10 items-center gap-3 text-sm font-medium text-[#263247] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ArrowLeft aria-hidden="true" className="size-4" />
@@ -68,11 +70,8 @@ export function BookingDetailPanel({
           state={state}
           defaultCancelOpen={defaultCancelOpen}
         />
-        {state === 'done' ? (
-          <BookingReviewSection
-            booking={booking}
-            onReview={() => pendingReview && setActiveReview(pendingReview)}
-          />
+        {showReviewSection ? (
+          <BookingReviewSection booking={booking} onReview={openPendingReview} />
         ) : null}
         <BookingContactSection booking={booking} />
         <BookingFinancialSection booking={booking} locale={locale} settlement={settlement} />
@@ -81,9 +80,9 @@ export function BookingDetailPanel({
 
       <ReviewDialog
         review={activeReview}
-        open={activeReview !== null}
+        open={reviewDialogOpen}
         action={detailPath}
-        onOpenChange={(open) => !open && setActiveReview(null)}
+        onOpenChange={closeReview}
       />
     </div>
   );
