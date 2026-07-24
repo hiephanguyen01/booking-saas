@@ -1,4 +1,4 @@
-import { Form, useSubmit } from 'react-router';
+import { useNavigation, useSubmit } from 'react-router';
 import { addDomainInputSchema, type DomainResponse } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import {
@@ -25,8 +25,10 @@ import { CheckCircle2, Clock, ExternalLink, Globe2, RefreshCw, Star, Trash2 } fr
 import { formatDate } from '~/lib/format';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { CopyableCode } from '~/components/copyable-code';
-import { useBusy } from '~/hooks/use-busy';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { domainFields } from './settings-fields';
+
+type DomainActionIntent = 'set-primary-domain' | 'verify-domain' | 'delete-domain';
 
 export function TenantDomainsCard({
   domains,
@@ -45,10 +47,16 @@ export function TenantDomainsCard({
   domainFieldErrors: Record<string, string[]> | null;
   successMessage: string | null;
 }) {
-  const busy = useBusy();
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const { busy, run } = useSubmissionGuard(navigation.state);
+
+  const submitDomainAction = (intent: DomainActionIntent, domainId: string): void => {
+    run(() => submit({ intent, domainId }, { method: 'post' }));
+  };
 
   return (
-    <Card className="shadow-none">
+    <Card className="shadow-none" aria-busy={busy}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe2 className="size-4 text-primary" aria-hidden="true" /> Tên miền storefront
@@ -64,7 +72,13 @@ export function TenantDomainsCard({
         {!loadError && domains && domains.length > 0 ? (
           <ul className="space-y-3">
             {domains.map((domain) => (
-              <DomainRow key={domain.id} domain={domain} busy={busy} readOnly={readOnly} />
+              <DomainRow
+                key={domain.id}
+                domain={domain}
+                busy={busy}
+                readOnly={readOnly}
+                onAction={submitDomainAction}
+              />
             ))}
           </ul>
         ) : !loadError && domains ? (
@@ -81,7 +95,7 @@ export function TenantDomainsCard({
         ) : null}
 
         <fieldset
-          disabled={readOnly || Boolean(loadError)}
+          disabled={readOnly || busy || Boolean(loadError)}
           className="min-w-0 rounded-xl border bg-muted/20 p-4 disabled:opacity-60 sm:p-5"
         >
           <div className="mb-5">
@@ -110,21 +124,15 @@ function DomainRow({
   domain,
   busy,
   readOnly,
+  onAction,
 }: {
   domain: DomainResponse;
   busy: boolean;
   readOnly: boolean;
+  onAction: (intent: DomainActionIntent, domainId: string) => void;
 }) {
-  const submit = useSubmit();
   const verified = Boolean(domain.verifiedAt);
   const url = storefrontUrl(domain.hostname);
-
-  const removeDomain = () => {
-    const formData = new FormData();
-    formData.set('intent', 'delete-domain');
-    formData.set('domainId', domain.id);
-    void submit(formData, { method: 'post' });
-  };
 
   return (
     <li className="rounded-xl border bg-background p-4 sm:p-5">
@@ -169,13 +177,15 @@ function DomainRow({
 
         <div className="flex shrink-0 items-center gap-2">
           {verified && !domain.isPrimary ? (
-            <Form method="post">
-              <input type="hidden" name="intent" value="set-primary-domain" />
-              <input type="hidden" name="domainId" value={domain.id} />
-              <Button type="submit" variant="ghost" size="sm" disabled={busy || readOnly}>
-                <Star className="size-3.5" /> Đặt làm chính
-              </Button>
-            </Form>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy || readOnly}
+              onClick={() => onAction('set-primary-domain', domain.id)}
+            >
+              <Star className="size-3.5" /> Đặt làm chính
+            </Button>
           ) : null}
           <Button asChild variant="outline" size="sm">
             <a href={url} target="_blank" rel="noreferrer">
@@ -185,7 +195,7 @@ function DomainRow({
           <DeleteDomainDialog
             hostname={domain.hostname}
             disabled={busy || readOnly}
-            onConfirm={removeDomain}
+            onConfirm={() => onAction('delete-domain', domain.id)}
           />
         </div>
       </div>
@@ -209,13 +219,16 @@ function DomainRow({
               />
             </dd>
           </dl>
-          <Form method="post" className="mt-4">
-            <input type="hidden" name="intent" value="verify-domain" />
-            <input type="hidden" name="domainId" value={domain.id} />
-            <Button type="submit" variant="outline" size="sm" disabled={busy || readOnly}>
-              <RefreshCw className="size-3.5" /> Kiểm tra lại DNS
-            </Button>
-          </Form>
+          <Button
+            type="button"
+            className="mt-4"
+            variant="outline"
+            size="sm"
+            disabled={busy || readOnly}
+            onClick={() => onAction('verify-domain', domain.id)}
+          >
+            <RefreshCw className="size-3.5" /> Kiểm tra lại DNS
+          </Button>
         </div>
       ) : null}
     </li>
@@ -255,7 +268,7 @@ function DeleteDomainDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Giữ lại</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+          <AlertDialogAction variant="destructive" onClick={onConfirm} disabled={disabled}>
             Xoá tên miền
           </AlertDialogAction>
         </AlertDialogFooter>
