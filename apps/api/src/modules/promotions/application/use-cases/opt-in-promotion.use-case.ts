@@ -9,9 +9,9 @@ import {
 import { Promotion } from '../../domain/entities/promotion.entity';
 import { PromotionNotFound } from '../../domain/errors/promotion-errors';
 import {
-  AGREEMENT_REPOSITORY,
-  type IAgreementRepository,
-} from '../../../partner/domain/ports/agreement-repository.port';
+  PROMO_AGREEMENT_RECORDER,
+  type IPromoAgreementRecorder,
+} from '../../domain/ports/promo-agreement-recorder.port';
 
 /**
  * The funding partner opts in to a tenant-created partner-funded promotion (§12.2)
@@ -22,7 +22,7 @@ import {
 export class OptInPromotionUseCase {
   constructor(
     @Inject(PROMOTION_REPOSITORY) private readonly promotions: IPromotionRepository,
-    @Inject(AGREEMENT_REPOSITORY) private readonly agreements: IAgreementRepository,
+    @Inject(PROMO_AGREEMENT_RECORDER) private readonly agreements: IPromoAgreementRecorder,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -44,8 +44,7 @@ export class OptInPromotionUseCase {
         tenantId,
         partnerId,
         userId: actor.userId,
-        agreementType: 'promo_funding',
-        version: promo.id, // ties the acceptance to this specific promotion
+        promotionId: promo.id,
         ip: actor.ip ?? null,
       });
       return updated;

@@ -3,15 +3,15 @@ import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { TenancyModule } from '../../../tenancy/infrastructure/http/tenancy.module';
-import { AGREEMENT_REPOSITORY } from '../../../partner/domain/ports/agreement-repository.port';
-import { PrismaAgreementRepository } from '../../../partner/infrastructure/repositories/prisma-agreement.repository';
 import { releasesUsageOnCancel } from '../../domain/entities/promo-redemption.entity';
+import { PROMO_AGREEMENT_RECORDER } from '../../domain/ports/promo-agreement-recorder.port';
 import { PROMOTION_REPOSITORY } from '../../domain/ports/promotion-repository.port';
 import { PROMO_REDEMPTION_REPOSITORY } from '../../domain/ports/promo-redemption-repository.port';
 import { PROMO_CONTEXT_LOOKUP } from '../../domain/ports/promo-context-lookup.port';
 import { PrismaPromotionRepository } from '../repositories/prisma-promotion.repository';
 import { PrismaPromoRedemptionRepository } from '../repositories/prisma-promo-redemption.repository';
 import { PrismaPromoContextLookup } from '../repositories/prisma-promo-context-lookup';
+import { PrismaPromoAgreementRecorder } from '../repositories/prisma-promo-agreement-recorder';
 import { PreparePromotionUseCase } from '../../application/use-cases/prepare-promotion.use-case';
 import { ReservePromotionUseCase } from '../../application/use-cases/reserve-promotion.use-case';
 import { MarkPromotionAppliedUseCase } from '../../application/use-cases/mark-promotion-applied.use-case';
@@ -44,7 +44,7 @@ import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabl
     { provide: PROMOTION_REPOSITORY, useClass: PrismaPromotionRepository },
     { provide: PROMO_REDEMPTION_REPOSITORY, useClass: PrismaPromoRedemptionRepository },
     { provide: PROMO_CONTEXT_LOOKUP, useClass: PrismaPromoContextLookup },
-    { provide: AGREEMENT_REPOSITORY, useClass: PrismaAgreementRepository },
+    { provide: PROMO_AGREEMENT_RECORDER, useClass: PrismaPromoAgreementRecorder },
     PreparePromotionUseCase,
     ReservePromotionUseCase,
     MarkPromotionAppliedUseCase,
@@ -69,7 +69,12 @@ import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabl
   ],
   // Exported so the booking module can prepare + reserve a redemption in-tx at booking creation
   // (and drive the applied/released lifecycle transitions).
-  exports: [PreparePromotionUseCase, ReservePromotionUseCase, MarkPromotionAppliedUseCase, ReleasePromotionUseCase],
+  exports: [
+    PreparePromotionUseCase,
+    ReservePromotionUseCase,
+    MarkPromotionAppliedUseCase,
+    ReleasePromotionUseCase,
+  ],
 })
 export class PromotionsModule implements OnModuleInit {
   private readonly logger = new Logger(PromotionsModule.name);
