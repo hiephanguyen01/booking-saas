@@ -7,40 +7,41 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { cn } from '@booking/ui/lib/utils';
 import { Expand, ImageIcon } from 'lucide-react';
-import { useState } from 'react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { useStudioGalleryController } from './use-studio-gallery-controller';
 
 const TILE_COUNT = 6;
-const VISIBLE_COUNT = TILE_COUNT + 1;
 
 export function StudioGallery({ photos, title }: { photos: string[]; title: string }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const visible = photos.slice(0, VISIBLE_COUNT);
-  const overflow = Math.max(0, photos.length - VISIBLE_COUNT);
-
-  function show(index: number): void {
-    if (!photos[index]) return;
-    setActiveIndex(index);
-    setOpen(true);
-  }
+  const {
+    activeIndex,
+    activePhoto,
+    open,
+    overflowCount,
+    setActiveIndex,
+    setOpen,
+    showPhoto,
+    visiblePhotos,
+  } = useStudioGalleryController(photos);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <div className="grid h-64 overflow-hidden rounded-md bg-muted md:h-85 md:grid-cols-[460px_1fr] md:gap-3">
         <button
           type="button"
-          onClick={() => show(0)}
-          disabled={!visible[0]}
+          onClick={() => showPhoto(0)}
+          disabled={!visiblePhotos[0]}
           className="group relative min-h-64 overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
           aria-label={
-            visible[0] ? t('group.viewMainPhoto', { title }) : t('group.noPhotoOf', { title })
+            visiblePhotos[0]
+              ? t('group.viewMainPhoto', { title })
+              : t('group.noPhotoOf', { title })
           }
         >
-          {visible[0] ? (
+          {visiblePhotos[0] ? (
             <img
-              src={visible[0]}
+              src={visiblePhotos[0]}
               alt={title}
               width={920}
               height={680}
@@ -49,7 +50,7 @@ export function StudioGallery({ photos, title }: { photos: string[]; title: stri
           ) : (
             <GalleryPlaceholder title={title} />
           )}
-          {visible[0] ? (
+          {visiblePhotos[0] ? (
             <span className="absolute right-4 bottom-4 grid size-11 place-items-center rounded-full bg-card/95 shadow-sm">
               <Expand className="size-4" aria-hidden="true" />
             </span>
@@ -57,13 +58,13 @@ export function StudioGallery({ photos, title }: { photos: string[]; title: stri
         </button>
         <div className="hidden grid-cols-3 grid-rows-2 gap-3 md:grid">
           {Array.from({ length: TILE_COUNT }, (_, index) => {
-            const photo = visible[index + 1];
+            const photo = visiblePhotos[index + 1];
             const isLast = index === TILE_COUNT - 1;
             return (
               <button
                 type="button"
                 key={photo ?? `placeholder-${index}`}
-                onClick={() => show(index + 1)}
+                onClick={() => showPhoto(index + 1)}
                 disabled={!photo}
                 className="relative overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 aria-label={
@@ -81,9 +82,9 @@ export function StudioGallery({ photos, title }: { photos: string[]; title: stri
                 ) : (
                   <GalleryPlaceholder />
                 )}
-                {isLast && overflow > 0 ? (
+                {isLast && overflowCount > 0 ? (
                   <span className="absolute inset-0 grid place-items-center bg-foreground/55 text-lg font-semibold text-background">
-                    +{overflow}
+                    +{overflowCount}
                   </span>
                 ) : null}
               </button>
@@ -101,9 +102,9 @@ export function StudioGallery({ photos, title }: { photos: string[]; title: stri
             })}
           </DialogDescription>
         </DialogHeader>
-        {photos[activeIndex] ? (
+        {activePhoto ? (
           <img
-            src={photos[activeIndex]}
+            src={activePhoto}
             alt={t('group.photoAlt', { title, index: activeIndex + 1 })}
             width={1400}
             height={1000}
