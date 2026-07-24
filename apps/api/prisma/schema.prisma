@@ -1847,20 +1847,21 @@ model ClassSession {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model OutboxEvent {
-  id            String    @id @default(uuid(7)) @db.Uuid
-  tenantId      String?   @map("tenant_id") @db.Uuid
-  aggregateType String?   @map("aggregate_type")
-  aggregateId   String?   @map("aggregate_id") @db.Uuid
-  eventType     String    @map("event_type")
-  payload       Json
-  attempts      Int       @default(0)
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tenantId       String?   @map("tenant_id") @db.Uuid
+  aggregateType  String?   @map("aggregate_type")
+  aggregateId    String?   @map("aggregate_id") @db.Uuid
+  eventType      String    @map("event_type")
+  payload        Json
+  attempts       Int       @default(0)
   // dbgenerated: the DB clock must own this value — a client-side now() can
   // run ahead of Postgres and make fresh events invisible to the relay's
   // `available_at <= now()` claim query
-  availableAt   DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @map("available_at") @db.Timestamptz(6)
-  processedAt   DateTime? @map("processed_at") @db.Timestamptz(6)
-  lastError     String?   @map("last_error")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  availableAt    DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @map("available_at") @db.Timestamptz(6)
+  processedAt    DateTime? @map("processed_at") @db.Timestamptz(6)
+  deadLetteredAt DateTime? @map("dead_lettered_at") @db.Timestamptz(6)
+  lastError      String?   @map("last_error")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([processedAt, availableAt])
   @@map("outbox_events")
@@ -1888,6 +1889,7 @@ model NotificationLog {
   userId    String?             @map("user_id") @db.Uuid
   channel   NotificationChannel
   eventType String              @map("event_type")
+  dedupeKey String?             @map("dedupe_key")
   recipient String?
   status    NotificationStatus  @default(pending)
   payload   Json?

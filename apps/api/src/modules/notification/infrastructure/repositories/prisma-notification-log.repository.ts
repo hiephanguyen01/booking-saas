@@ -6,8 +6,9 @@ import type { INotificationLogRepository } from '../../domain/ports/notification
 
 /**
  * `notification_logs` via the BYPASSRLS admin pool (writes carry a possibly-null
- * tenant_id and the RLS policy has no WITH CHECK for app_user). The dedupe key is
- * stored in `payload.dedupeKey` and read back for the exactly-once guard (§17).
+ * tenant_id and the RLS policy has no WITH CHECK for app_user). The dedupe key has
+ * a real indexed column; it is also retained in payload for historical/read-side
+ * compatibility.
  */
 @Injectable()
 export class PrismaNotificationLogRepository implements INotificationLogRepository {
@@ -17,7 +18,7 @@ export class PrismaNotificationLogRepository implements INotificationLogReposito
     const rows = await this.prisma.admin.$queryRaw<{ n: bigint }[]>(Prisma.sql`
       SELECT count(*)::bigint AS n
       FROM notification_logs
-      WHERE status = 'sent' AND payload->>'dedupeKey' = ${dedupeKey}`);
+      WHERE status = 'sent' AND dedupe_key = ${dedupeKey}`);
     return (rows[0]?.n ?? 0n) > 0n;
   }
 
@@ -28,6 +29,7 @@ export class PrismaNotificationLogRepository implements INotificationLogReposito
         userId: entry.userId,
         channel: entry.channel,
         eventType: entry.eventType,
+        dedupeKey: entry.dedupeKey,
         recipient: entry.recipient,
         status: entry.status,
         error: entry.error,
