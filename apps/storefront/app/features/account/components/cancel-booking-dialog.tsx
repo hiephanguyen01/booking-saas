@@ -1,3 +1,4 @@
+import type { Locale } from '@booking/i18n';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -11,14 +12,11 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import type { Locale } from '@booking/i18n';
 import { CircleAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useFetcher } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { AccountBookingViewModel } from '../lib/booking-history';
-import type { BookingCancellationActionData } from '../server/booking-cancellation.server';
 import { CancellationPolicyList } from './account-primitives';
+import { useCancelBookingDialogController } from './use-cancel-booking-dialog-controller';
 
 const REASON_KEYS = [
   'schedule',
@@ -46,29 +44,20 @@ export function CancelBookingDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation(NsI18n.Account);
-  const fetcher = useFetcher<BookingCancellationActionData>();
-  const [selected, setSelected] = useState('');
-  const [otherReason, setOtherReason] = useState('');
-  const reason = selected === 'other' ? otherReason.trim() : selected;
-  const submitting = fetcher.state !== 'idle';
-  const serverError =
-    fetcher.data?.bookingCode === booking.code && !fetcher.data.ok ? fetcher.data.error : null;
-
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data?.ok && fetcher.data.bookingCode === booking.code) {
-      onOpenChange(false);
-    }
-  }, [booking.code, fetcher.data, fetcher.state, onOpenChange]);
-
-  useEffect(() => {
-    if (!open) {
-      setSelected('');
-      setOtherReason('');
-    }
-  }, [booking.code, open]);
+  const {
+    fetcher,
+    selected,
+    setSelected,
+    otherReason,
+    setOtherReason,
+    reason,
+    submitting,
+    serverError,
+    changeOpen,
+  } = useCancelBookingDialogController({ bookingCode: booking.code, open, onOpenChange });
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !submitting && onOpenChange(nextOpen)}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-none border-0 p-6 shadow-2xl sm:max-w-[562px] sm:p-8">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-[#202a3a]">
