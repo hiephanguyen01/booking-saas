@@ -8,6 +8,25 @@ import {
   type PublicListingRecord,
 } from '../../domain/ports/listing-read-repository.port';
 
+export const MAX_FEATURED_LISTINGS = 24;
+const GROUP_OVERFETCH_FACTOR = 3;
+
+export function uniquePublicListingRecords(
+  records: PublicListingRecord[],
+  limit: number,
+): PublicListingRecord[] {
+  const unique: PublicListingRecord[] = [];
+  const seen = new Set<string>();
+  for (const record of records) {
+    const key = record.group?.id ?? record.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(record);
+    if (unique.length >= limit) break;
+  }
+  return unique;
+}
+
 /** Storefront listing results, filtered by type + dynamic `attr.*` (read-only). */
 @Injectable()
 export class ListPublicListingsUseCase {
@@ -20,5 +39,14 @@ export class ListPublicListingsUseCase {
   async execute(host: string, filter: PublicListingFilter): Promise<PublicListingRecord[]> {
     const tenant = await this.resolveTenant.execute(host);
     return this.tenantDb.forTenant(tenant.id, (tx) => this.listings.findPublished(tx, filter));
+  }
+
+  async featured(host: string, requestedLimit: number): Promise<PublicListingRecord[]> {
+    const limit = Math.max(1, Math.min(MAX_FEATURED_LISTINGS, requestedLimit));
+    const rows = await this.execute(host, {
+      attrFilters: {},
+      limit: limit * GROUP_OVERFETCH_FACTOR,
+    });
+    return uniquePublicListingRecords(rows, limit);
   }
 }
