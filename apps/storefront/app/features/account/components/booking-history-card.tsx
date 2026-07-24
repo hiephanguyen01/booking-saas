@@ -2,13 +2,14 @@ import type { CustomerReviewItem } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3 } from 'lucide-react';
-import { Form, Link } from 'react-router';
+import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import type { AccountBookingViewModel } from '../lib/booking-history';
 import { AccountPanel, CancellationPolicyList, StudioThumbnail } from './account-primitives';
 import { BookingCardHeader } from './booking-card-header';
 import { BookingFinancialSummary } from './booking-financial-summary';
+import { BookingPaymentForm } from './booking-payment-form';
 
 export function BookingHistoryCard({
   booking,
@@ -125,10 +126,9 @@ function CardFooter({
           </Button>
         ) : null}
         {booking.variant === 'payment' ? (
-          <Form method="post" action={detailPath}>
-            <input type="hidden" name="intent" value="pay" />
-            <Button size="sm">{t('bookings.payNow')}</Button>
-          </Form>
+          <BookingPaymentForm action={detailPath} buttonProps={{ size: 'sm' }}>
+            {t('bookings.payNow')}
+          </BookingPaymentForm>
         ) : null}
         {booking.variant === 'completed' && review?.status === 'pending' ? (
           <Button type="button" variant="outline" size="sm" onClick={() => onReview(review)}>
