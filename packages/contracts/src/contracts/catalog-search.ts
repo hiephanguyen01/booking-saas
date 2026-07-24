@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import {
+  bookingDateRangeSchema,
+  dateOnlySchema,
+  moneyStringSchema,
+  timeOfDaySchema,
+} from './common';
 import { publicListingTypeResponseSchema } from './listing-type';
-
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
-const moneySchema = z.string().regex(/^\d+$/).max(20);
 
 export const publicCatalogSortSchema = z.enum(['relevance', 'bookings-desc', 'price-asc']);
 export type PublicCatalogSort = z.infer<typeof publicCatalogSortSchema>;
@@ -28,13 +30,13 @@ export const publicCatalogSearchQuerySchema = z
     amenities: z.preprocess(toNonEmptyStrings, z.array(z.string().max(120)).max(30)),
     guests: z.coerce.number().int().min(1).max(100).default(1),
     quantity: z.coerce.number().int().min(1).max(100).default(1),
-    date: z.preprocess(emptyToUndefined, dateSchema.optional()),
-    startTime: z.preprocess(emptyToUndefined, timeSchema.optional()),
-    endTime: z.preprocess(emptyToUndefined, timeSchema.optional()),
-    from: z.preprocess(emptyToUndefined, dateSchema.optional()),
-    to: z.preprocess(emptyToUndefined, dateSchema.optional()),
-    minPrice: z.preprocess(emptyToUndefined, moneySchema.optional()),
-    maxPrice: z.preprocess(emptyToUndefined, moneySchema.optional()),
+    date: z.preprocess(emptyToUndefined, dateOnlySchema.optional()),
+    startTime: z.preprocess(emptyToUndefined, timeOfDaySchema.optional()),
+    endTime: z.preprocess(emptyToUndefined, timeOfDaySchema.optional()),
+    from: z.preprocess(emptyToUndefined, dateOnlySchema.optional()),
+    to: z.preprocess(emptyToUndefined, dateOnlySchema.optional()),
+    minPrice: z.preprocess(emptyToUndefined, moneyStringSchema.optional()),
+    maxPrice: z.preprocess(emptyToUndefined, moneyStringSchema.optional()),
     minRating: z.preprocess(
       emptyToUndefined,
       z.coerce.number().min(1).max(5).multipleOf(0.5).optional(),
@@ -123,8 +125,15 @@ export const publicCatalogSearchQuerySchema = z
         message: 'from and to are required together',
       });
     }
-    if (query.from && query.to && query.from >= query.to) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'to must be after from' });
+    if (query.from && query.to) {
+      const range = bookingDateRangeSchema.safeParse({ from: query.from, to: query.to });
+      if (!range.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['to'],
+          message: range.error.issues[0]?.message ?? 'Invalid booking date range',
+        });
+      }
     }
     if (query.minPrice && query.maxPrice && BigInt(query.minPrice) > BigInt(query.maxPrice)) {
       ctx.addIssue({
@@ -202,7 +211,7 @@ export type PublicCatalogFacet = z.infer<typeof publicCatalogFacetSchema>;
 export const publicCatalogSearchRoomSchema = z.object({
   slug: z.string(),
   title: z.string(),
-  price: moneySchema,
+  price: moneyStringSchema,
   capacity: z.number().int().nonnegative().nullable(),
 });
 
@@ -220,9 +229,9 @@ export const publicCatalogSearchItemSchema = z.object({
   wardCode: z.string().nullable(),
   wardName: z.string().nullable(),
   amenities: z.array(z.string()),
-  priceFrom: moneySchema,
+  priceFrom: moneyStringSchema,
   /** Price before a calendar sale; equals priceFrom when no sale applies. */
-  regularPriceFrom: moneySchema,
+  regularPriceFrom: moneyStringSchema,
   priceUnit: z.enum(['hour', 'day', 'item', 'session', 'package']),
   completedBookings: z.number().int().nonnegative(),
   ratingAvg: z.number().nullable(),
@@ -243,13 +252,13 @@ export const publicCatalogSearchResponseSchema = z.object({
     amenities: z.array(z.string()),
     guests: z.number(),
     quantity: z.number(),
-    date: dateSchema.optional(),
-    startTime: timeSchema.optional(),
-    endTime: timeSchema.optional(),
-    from: dateSchema.optional(),
-    to: dateSchema.optional(),
-    minPrice: moneySchema.optional(),
-    maxPrice: moneySchema.optional(),
+    date: dateOnlySchema.optional(),
+    startTime: timeOfDaySchema.optional(),
+    endTime: timeOfDaySchema.optional(),
+    from: dateOnlySchema.optional(),
+    to: dateOnlySchema.optional(),
+    minPrice: moneyStringSchema.optional(),
+    maxPrice: moneyStringSchema.optional(),
     minRating: z.number().min(1).max(5).multipleOf(0.5).optional(),
     sort: publicCatalogSortSchema,
     page: z.number(),
