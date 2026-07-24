@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { paymentPollDelay } from '../../lib/payment-polling';
+import { paymentPollDelay, runPaymentPollLoad } from '../../lib/payment-polling';
 
 const BUSY_RETRY_DELAY_MS = 1_000;
 
@@ -52,7 +52,7 @@ export function useAdaptivePaymentPolling({
         return;
       }
 
-      void loadRef.current(href);
+      void runPaymentPollLoad(loadRef.current, href);
       attempt += 1;
       schedule(paymentPollDelay(attempt));
     }
