@@ -71,7 +71,7 @@ export function ReviewDialogView({
         </DialogHeader>
 
         <div className="space-y-6 overflow-y-auto px-5 py-5 sm:px-6">
-          <fieldset>
+          <fieldset disabled={submitting}>
             <legend className="mb-3 text-sm font-semibold">{t('reviews.dialog.rating')}</legend>
             <div
               className="flex w-fit gap-1"
@@ -156,6 +156,7 @@ export function ReviewDialogView({
                 multiple
                 accept="image/jpeg,image/png,image/webp,image/avif,image/gif,video/mp4,video/webm,video/quicktime"
                 className="sr-only"
+                disabled={submitting}
                 onChange={(event) => {
                   onAddFiles(Array.from(event.target.files ?? []));
                   event.target.value = '';
