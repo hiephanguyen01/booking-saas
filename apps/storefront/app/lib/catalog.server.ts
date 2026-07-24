@@ -1,27 +1,29 @@
 import type {
+  PublicCatalogSearchResponse,
   PublicListingDetailResponse,
+  PublicListingGroupDetailResponse,
   PublicListingResponse,
   PublicListingTypeResponse,
-  PublicListingGroupDetailResponse,
-  PublicCatalogSearchResponse,
   QuoteResponse,
 } from '@booking/contracts';
 import {
   publicCatalogSearchResponseSchema,
   publicListingDetailResponseSchema,
   publicListingGroupDetailResponseSchema,
+  publicListingResponseSchema,
   publicListingTypeResponseSchema,
   quoteResponseSchema,
 } from '@booking/contracts';
 import { z } from 'zod';
 import { publicGetData } from './api.server';
-import { mapWithConcurrency } from './concurrency.server';
 import { getCurrentStorefrontTenant } from './request-context.server';
 
 const listingTypesSchema = z.array(publicListingTypeResponseSchema);
+const featuredListingsSchema = z.array(publicListingResponseSchema).max(24);
 const LISTING_TYPES_CACHE_TTL_MS = 60_000;
-const LISTING_TYPE_FANOUT_CONCURRENCY = 4;
 const MAX_TENANT_CACHE_ENTRIES = 500;
+export const DEFAULT_FEATURED_LISTINGS_PAGE_SIZE = 18;
+export const MAX_FEATURED_LISTINGS_PAGE_SIZE = 24;
 const listingTypesCache = new Map<
   string,
   { expiresAt: number; data: PublicListingTypeResponse[] }
@@ -59,23 +61,28 @@ export function fetchListingGroup(
   });
 }
 
+export function featuredListingsPageSize(value: string | number | null | undefined): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) return DEFAULT_FEATURED_LISTINGS_PAGE_SIZE;
+  return Math.min(parsed, MAX_FEATURED_LISTINGS_PAGE_SIZE);
+}
+
+export function fetchFeaturedListings(
+  request: Request,
+  pageSize: number = DEFAULT_FEATURED_LISTINGS_PAGE_SIZE,
+): Promise<PublicListingResponse[]> {
+  const bounded = featuredListingsPageSize(pageSize);
+  return publicGetData(request, `/public/featured-listings?pageSize=${bounded}`, {
+    schema: featuredListingsSchema,
+  });
+}
+
 export async function fetchListings(
   request: Request,
   search: URLSearchParams,
 ): Promise<PublicListingResponse[]> {
   if (!search.has('type')) {
-    const types = await fetchListingTypes(request);
-    const batches = await mapWithConcurrency(
-      types,
-      LISTING_TYPE_FANOUT_CONCURRENCY,
-      async (type) => {
-        const scoped = new URLSearchParams(search);
-        scoped.set('type', type.slug);
-        scoped.set('pageSize', '48');
-        return fetchListings(request, scoped);
-      },
-    );
-    return batches.flat();
+    return fetchFeaturedListings(request, featuredListingsPageSize(search.get('pageSize')));
   }
   const result = await searchListings(request, search);
   return result.items.map((item) => ({
