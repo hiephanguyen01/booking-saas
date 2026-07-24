@@ -34,6 +34,10 @@ async function checkAccess(data: StorefrontSessionData, request: Request): Promi
   return result.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
 }
 
+function sameSessionTokens(left: StorefrontSessionData, right: StorefrontSessionData): boolean {
+  return left.accessToken === right.accessToken && left.refreshToken === right.refreshToken;
+}
+
 async function authenticate(
   stored: { id: string; data: StorefrontSessionData },
   request: Request,
@@ -42,36 +46,49 @@ async function authenticate(
   const initial = await checkAccess(stored.data, request);
   if (initial.kind !== 'expired') return initial;
 
+  let observed = stored.data;
+
   try {
-    return await service.withRefreshLock<AuthResult>(stored.id, async () => {
-      const latest = await service.readById(stored.id);
-      if (!latest) return { kind: 'invalid' };
+    return await service.withRefreshLock<AuthResult>(
+      stored.id,
+      async () => {
+        const latest = await service.readById(stored.id);
+        if (!latest) return { kind: 'invalid' };
 
-      const unchanged =
-        latest.accessToken === stored.data.accessToken &&
-        latest.refreshToken === stored.data.refreshToken;
+        if (!sameSessionTokens(latest, observed)) {
+          observed = latest;
+          const current = await checkAccess(latest, request);
+          if (current.kind !== 'expired') return current;
+        }
 
-      if (!unchanged) {
+        const refreshed = await backendRefresh(request, latest.refreshToken);
+        if (!refreshed.ok || !refreshed.tokens) {
+          return refreshed.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
+        }
+
+        const next = { ...latest, ...refreshed.tokens };
+        const retried = await checkAccess(next, request);
+        if (retried.kind === 'expired') return { kind: 'invalid' };
+        if (retried.kind !== 'authenticated') return retried;
+
+        // Persist the rotated refresh token while the lock is still held. All
+        // contenders observe this change and validate the new session without
+        // serially acquiring the refresh lock themselves.
+        await service.rotate(stored.id, next);
+        return retried;
+      },
+      async () => {
+        const latest = await service.readById(stored.id);
+        if (!latest) return { resolved: true, value: { kind: 'invalid' } };
+        if (sameSessionTokens(latest, observed)) return { resolved: false };
+
+        observed = latest;
         const current = await checkAccess(latest, request);
-        if (current.kind !== 'expired') return current;
-      }
-
-      const refreshed = await backendRefresh(request, latest.refreshToken);
-      if (!refreshed.ok || !refreshed.tokens) {
-        return refreshed.status >= 500 ? { kind: 'unavailable' } : { kind: 'invalid' };
-      }
-
-      const next = { ...latest, ...refreshed.tokens };
-      const retried = await checkAccess(next, request);
-      if (retried.kind === 'expired') return { kind: 'invalid' };
-      if (retried.kind !== 'authenticated') return retried;
-
-      // Persist the rotated refresh token while the lock is still held. A waiting
-      // request will then re-read and validate this new session instead of using
-      // the now-invalid previous refresh token.
-      await service.rotate(stored.id, next);
-      return retried;
-    });
+        return current.kind === 'expired'
+          ? { resolved: false }
+          : { resolved: true, value: current };
+      },
+    );
   } catch (error) {
     if (!(error instanceof SessionRefreshLockTimeoutError)) {
       console.error('Storefront session refresh failed', error);
