@@ -102,15 +102,18 @@ per-tenant theme CSS at SSR; the dashboard resolves scope from the login session
 (raw TSX, Tailwind v4 CSS-first); the FE↔BE contract is `@booking/contracts` (zod). See the per-app
 `CLAUDE.md` and [`conventions.md`](./conventions.md).
 
-## Build & CI
+## Build, tests & CI
 
-Turborepo tasks: `build` (`^build`, outputs `dist`/`build`/`.react-router`), `dev`, `lint`, `typecheck`
-(`^build`). **No test task** ([ADR 0005](./decisions/0005-no-tests-policy.md)). CI
-(`.github/workflows/ci.yml`, "Frontend CI") runs `pnpm turbo run lint typecheck build` for the **two
-frontends**, the Storefront static security gate, and `pnpm --filter=@booking/api check:rls`, then
-docker-builds the two frontend images
-(`push: false`). The API is **not** compiled or linted directly in CI — run `pnpm typecheck`/`build`
-locally after backend changes.
+Turborepo tasks: `build` (`^build`, outputs `dist`/`build`/`.react-router`), `dev`, `lint`, `test`, and
+`typecheck` (`^build`). Targeted tests follow [ADR 0005](./decisions/0005-no-tests-policy.md).
+Storefront server-side unit tests use Node's built-in runner and cover security/concurrency helpers
+without starting Redis or React Router.
+
+CI (`.github/workflows/ci.yml`, "Frontend CI") runs the Storefront static security gate and Storefront
+unit tests, then `pnpm turbo run lint typecheck build` for the **two frontends** and
+`pnpm --filter=@booking/api check:rls`, followed by Docker builds for both frontend images (`push:
+false`). The API is **not** compiled or linted directly in CI — run `pnpm typecheck`/`build` locally
+after backend changes.
 
 ## Deployment status
 
