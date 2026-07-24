@@ -1,16 +1,10 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { useState } from 'react';
 import { HomeListingCardsSkeleton } from '../../components/loading-skeletons';
-import { NsI18n, useTranslation } from '../../lib/i18n';
 import { FavoriteListingCard } from '../../features/favorites/components/favorite-cards';
+import { NsI18n, useTranslation } from '../../lib/i18n';
 import { LocationTabs } from './location-tabs';
-import {
-  filterHomeListingsByLocation,
-  type HomeLocationKey,
-} from './home-listing-presentation';
-
-const PAGE_SIZE = 8;
+import { useRecommendedSectionController } from './use-recommended-section-controller';
 
 /**
  * "Đề xuất dành cho bạn" — location-filtered catalog with a client-side
@@ -25,18 +19,10 @@ export function RecommendedSection({
   pending: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Common);
-  const [visible, setVisible] = useState(PAGE_SIZE);
-  const [location, setLocation] = useState<HomeLocationKey>('hcm');
+  const { changeLocation, hasMore, loadMore, location, shown } =
+    useRecommendedSectionController(listings);
+
   if (!pending && listings.length === 0) return null;
-
-  const filtered = filterHomeListingsByLocation(listings, location);
-  const shown = filtered.slice(0, visible);
-  const hasMore = visible < filtered.length;
-
-  function changeLocation(next: HomeLocationKey): void {
-    setLocation(next);
-    setVisible(PAGE_SIZE);
-  }
 
   return (
     <section className="flex flex-col gap-6">
@@ -63,7 +49,7 @@ export function RecommendedSection({
             type="button"
             variant="outline"
             className="w-60 border-primary text-primary hover:bg-primary/10 hover:text-primary"
-            onClick={() => setVisible((current) => current + PAGE_SIZE)}
+            onClick={loadMore}
           >
             {t('home.loadMore')}
           </Button>
