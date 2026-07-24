@@ -1,15 +1,10 @@
-import { useLocation, useOutletContext, useSearchParams } from 'react-router';
 import type { Route } from '../../routes/+types/checkout';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { storefrontPaths } from '../../lib/locale-paths';
-import { useLocale } from '../../lib/use-locale';
-import type { StorefrontContext } from '../../root';
-import { checkoutDestinationSchema } from '@booking/contracts';
-import { checkoutAmounts, checkoutCancellationLines } from './checkout-presentation';
 import { BookingColumn } from './components/booking-column';
 import { CheckoutForm } from './components/checkout-form';
 import { MemberBanner } from './components/member-banner';
 import { PaymentHandoff } from './components/payment-handoff';
+import { useCheckoutPageController } from './use-checkout-page-controller';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
   const {
@@ -26,18 +21,19 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
     paymentMethods,
   } = loaderData;
   const { t } = useTranslation(NsI18n.Checkout);
-  const { tenant } = useOutletContext<StorefrontContext>();
-  const locale = useLocale();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const amounts = checkoutAmounts(quote, promo?.valid ? promo : null);
-  const checkoutPath = `${location.pathname}${location.search}`;
+  const {
+    amounts,
+    searchParams,
+    policyLines,
+    handoffDestination,
+    memberBanner,
+    validPromoCode,
+    fieldErrors,
+    serverError,
+  } = useCheckoutPageController({ loaderData, actionData });
 
-  const handoff = checkoutDestinationSchema.safeParse(
-    actionData && 'handoff' in actionData ? actionData.handoff : null,
-  );
-  if (handoff.success && handoff.data.type === 'form_post') {
-    return <PaymentHandoff destination={handoff.data} />;
+  if (handoffDestination) {
+    return <PaymentHandoff destination={handoffDestination} />;
   }
 
   return (
@@ -51,11 +47,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
             start={start}
             end={end}
             qty={qty}
-            policyLines={checkoutCancellationLines(
-              listing.effectiveCancellationPolicy ?? listing.cancellationPolicy,
-              start,
-              amounts.deposit,
-            )}
+            policyLines={policyLines}
             searchParams={searchParams}
             promoCode={promoCode}
             promo={promo}
@@ -64,13 +56,7 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
           />
 
           <div className="flex min-w-0 flex-col gap-4">
-            {!currentUser ? (
-              <MemberBanner
-                tenantName={tenant.name}
-                loginHref={storefrontPaths.login(locale, checkoutPath)}
-                registerHref={`${storefrontPaths.register(locale)}?redirectTo=${encodeURIComponent(checkoutPath)}`}
-              />
-            ) : null}
+            {memberBanner ? <MemberBanner {...memberBanner} /> : null}
 
             <CheckoutForm
               listingId={listing.id}
@@ -80,10 +66,10 @@ export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
               end={end}
               qty={qty}
               packageId={packageId}
-              promoCode={promo?.valid ? promoCode : null}
+              promoCode={validPromoCode}
               currentUser={currentUser}
-              fieldErrors={actionData?.fieldErrors ?? null}
-              serverError={actionData?.error ?? null}
+              fieldErrors={fieldErrors}
+              serverError={serverError}
               dueNow={amounts.dueNow}
               expectedSubtotal={quote.subtotal}
               paymentMethods={paymentMethods}
