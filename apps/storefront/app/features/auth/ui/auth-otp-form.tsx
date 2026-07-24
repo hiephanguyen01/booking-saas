@@ -21,7 +21,7 @@ export function OtpForm({
   actionData?: OtpActionData;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
-  const { code, handleSubmit, resendCode, seconds, setCode } = useOtpFormController({
+  const { code, handleSubmit, resendCode, resending, seconds, setCode } = useOtpFormController({
     initialSeconds,
     actionData,
   });
@@ -75,7 +75,7 @@ export function OtpForm({
         type="button"
         variant="ghost"
         className="mx-auto"
-        disabled={seconds > 0}
+        disabled={seconds > 0 || resending}
         onClick={resendCode}
       >
         {seconds > 0 ? t('verify.resendIn', { seconds }) : t('verify.resend')}
