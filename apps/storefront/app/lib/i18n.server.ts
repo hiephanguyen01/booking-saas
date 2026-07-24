@@ -1,5 +1,6 @@
 import type { Locale } from '@booking/i18n';
 import { storefrontEnv } from './env.server';
+
 const COOKIE = 'sf_locale';
 
 /**
@@ -8,9 +9,10 @@ const COOKIE = 'sf_locale';
  */
 export function resolveLocale(request: Request, fallback: Locale): Locale {
   const pathLocale = new URL(request.url).pathname.split('/').filter(Boolean)[0];
-  if (pathLocale === 'vi' || pathLocale === 'en') return pathLocale;
+  if (isLocale(pathLocale)) return pathLocale;
   const match = (request.headers.get('cookie') ?? '').match(/(?:^|;\s*)sf_locale=(vi|en)\b/);
-  return match ? (match[1] as Locale) : fallback;
+  const cookieLocale = match?.[1];
+  return isLocale(cookieLocale) ? cookieLocale : fallback;
 }
 
 /** `Set-Cookie` value for the language switcher (1 year, lax, path=/). */
@@ -21,4 +23,9 @@ export function localeCookie(locale: Locale): string {
 
 export function isLocale(value: unknown): value is Locale {
   return value === 'vi' || value === 'en';
+}
+
+export function requireLocale(value: unknown): Locale {
+  if (isLocale(value)) return value;
+  throw new Response('Locale not found', { status: 404 });
 }
