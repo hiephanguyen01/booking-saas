@@ -393,17 +393,15 @@ Từ final review PR #4 — làm sớm vì càng để lâu càng nhiều module
      (`undefined` = giữ, `null` = xoá, và `null` không đi qua `vnd()`/`new Date()`). Tiền lệ:
      `promotions/application/to-promotion-update-input.ts` (PR #5b).
    - chạy lại regression "đặt booking có promo code" sau khi #5b đổi seam `claimUsage`/`reserve`.
-7. **`rejectionException` (promotions) chưa hợp nhất vào `DomainError`** — vì
-   `confirm-booking.use-case.ts` bắt `err instanceof ConflictException` để nuốt
-   `PROMO_LIMIT_REACHED` trên đường late-webhook; đổi một phía sẽ làm tx confirm rollback.
-   Hợp nhất ở **PR #14 (booking)** khi sửa được cả hai phía cùng lúc. Giữ đặc điểm
-   `message === code`.
+7. **`rejectionException` (promotions) đã hợp nhất ở PR #14** — `PromoRejectionError` giữ nguyên
+   status/code/`message === code`; `confirm-booking.use-case.ts` đổi đồng bộ và chỉ nuốt
+   `PromoRejectionError` có code `PROMO_LIMIT_REACHED` trên đường late-webhook.
 8. **Outbox relay không có dead-letter/max-attempts park** (phát hiện ở final review PR #5b, khi soi
    lại vì sao `forTenant('')` cũ lại nguy hiểm): một row lỗi vĩnh viễn chiếm 1 slot claim (batch 20,
    poll ~2s) mãi mãi — không tự trôi ra khỏi hàng đợi. Đáng một PR infra nhỏ, độc lập với các wave
    refactor này.
-9. **Pattern `event.tenantId ?? ''` còn ở các module chưa đụng** (booking, finance, listing —
-   scheduling đã normalize ở PR #12; listing tuy đã refactor nhưng 3 PR con không đụng file đăng ký
+9. **Pattern `event.tenantId ?? ''` còn ở các module chưa đụng** (finance, listing —
+   scheduling đã normalize ở PR #12, booking ở PR #14; listing tuy đã refactor nhưng 3 PR con không đụng file đăng ký
    outbox nên pattern còn) — sẽ tự biến mất khi PR refactor của từng
    module đó đụng file đăng ký outbox (§4 đã bắt buộc normalize thành validate-and-skip-with-log mỗi
    khi file đó bị đụng), nên KHÔNG cần một sweep riêng. Mục 8 (relay dead-letter) ở trên vẫn nên làm độc lập, không chờ các PR

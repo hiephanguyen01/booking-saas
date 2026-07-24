@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
@@ -84,6 +84,8 @@ import { TenantBookingController } from './tenant-booking.controller';
   ],
 })
 export class BookingModule implements OnModuleInit {
+  private readonly logger = new Logger(BookingModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     private readonly confirmBooking: ConfirmBookingUseCase,
@@ -94,12 +96,22 @@ export class BookingModule implements OnModuleInit {
     this.registry.register('payment.succeeded', async (event) => {
       const payload = event.payload as { bookingId: string; skipBookingConfirmation?: boolean };
       if (payload.skipBookingConfirmation === true) return;
-      await this.confirmBooking.execute(event.tenantId ?? '', payload.bookingId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return;
+      await this.confirmBooking.execute(tenantId, payload.bookingId);
     });
     this.registry.register('refund.completed', async (event) => {
       const payload = event.payload as { bookingId: string; affectsBookingStatus?: boolean };
       if (payload.affectsBookingStatus === false) return;
-      await this.finalizeRefundedBooking.execute(event.tenantId ?? '', payload.bookingId);
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return;
+      await this.finalizeRefundedBooking.execute(tenantId, payload.bookingId);
     });
+  }
+
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.error(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }

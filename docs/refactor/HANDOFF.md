@@ -37,17 +37,17 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 11b | listing — Listing content + moderation | ✅ merge (GitHub PR #30) |
 | 11c | listing — ListingGroup + cascade | ✅ merge (GitHub PR #31) — **listing xong cả module** |
 | 12 | scheduling | ✅ merge (GitHub PR #32) |
-| 13 | payments | 🔍 final review (branch `refactor/entity-payments`) |
-| 14→16 | booking → finance → administrative-division | chưa làm |
+| 13 | payments | ✅ merge local (`0e53b18`) |
+| 14 | booking | 🔍 final review đạt (branch `refactor/entity-booking`, sẵn sàng merge) |
+| 15→16 | finance → administrative-division | chưa làm |
 
 **listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint) — ✅ cả 3 merged (PR
-#29/#30/#31). Scheduling cũng đã merge ở PR #32: **13/16 module xong**, payments đang ở final
-review trước khi merge.
+#29/#30/#31). Scheduling đã merge ở PR #32; payments cũng đã merge local vào integration:
+**14/16 module đã nằm trên integration**, booking đã qua final review và là module kế tiếp để merge.
 
-**Đợt song song scheduling/payments đã khép track đầu:** scheduling merge trước, payments đã rebase
-lên integration và đang final review. Việc kế tiếp: **#14 booking → #15 finance → #16
-administrative-division**; booking đi trước vì finance tiêu thụ payload booking, còn bẫy
-`rejectionException` phải sửa đồng bộ promotions↔booking ở #14. **Bộ máy moderation (`listing-moderation.ts` +
+**Đợt song song scheduling/payments đã khép:** cả hai đã merge local. Booking #14 đã đưa lifecycle
+qua aggregate, giữ CAS/GiST/second-tx và sửa đồng bộ `rejectionException` promotions↔booking.
+Việc kế tiếp sau merge booking: **#15 finance → #16 administrative-division**. **Bộ máy moderation (`listing-moderation.ts` +
 `moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
 sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
 + đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25
@@ -117,7 +117,9 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 
 ## 6. Môi trường (hay mất thời gian)
 
-- **Node 22.22.0**: `source ~/.nvm/nvm.sh && nvm use` trước mọi lệnh pnpm. Chỉ dùng **pnpm**.
+- **Node ≥22.22.0**: `.nvmrc` yêu cầu 22.22.0 nhưng máy hiện chỉ cài 22.12.0 và 24.18.0; dùng
+  `PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH"` trước lệnh pnpm để tránh React Router cảnh
+  báo engine. Chỉ dùng **pnpm**.
 - **Cổng bị project khác chiếm**: 5432 có thể bị container `kaigo-postgres-dev`, 3000 bị
   `cf-connect-be`. **Không đụng container/process của project khác** — smoke chạy API riêng bằng
   `PORT=3001 pnpm --filter=@booking/api dev`, xong thì kill.
@@ -139,15 +141,22 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 
 - **Relay outbox thiếu dead-letter/max-attempts** — một row hỏng vĩnh viễn chiếm claim slot mãi mãi.
   Nên làm PR hạ tầng riêng, độc lập với các đợt refactor.
-- `event.tenantId ?? ''` còn ở **booking, finance, listing** — sẽ tự hết khi từng module refactor
-  (spec §4), không cần quét riêng. (scheduling đã normalize ở PR #12; payments ở PR #13; lưu ý
+- `event.tenantId ?? ''` còn ở **finance, listing** — sẽ tự hết khi từng module refactor
+  (spec §4), không cần quét riêng. (scheduling đã normalize ở PR #12; payments ở PR #13; booking
+  ở PR #14; lưu ý
   listing đã refactor xong nhưng 3 PR con không đụng file đăng ký outbox nên pattern còn đó.)
 - Wave migration sau refactor: unique index còn thiếu (dedupe_key của notification, refunds,
   dispute, one-primary-domain).
 - Thêm fixture `draft` vào seed trước PR #9/#11.
-- `rejectionException` hợp nhất vào `DomainError` — để PR #14.
+- `rejectionException` đã hợp nhất vào `PromoRejectionError` ở PR #14; confirm chỉ nuốt đúng
+  `PROMO_LIMIT_REACHED`, wire `message === code` giữ nguyên.
 - promotions import chéo module partner (`AGREEMENT_REPOSITORY`) — vi phạm ADR 0003 có sẵn, sửa ở PR
   độc lập.
+- Booking return vẫn giữ choreography legacy `patchFulfillment` không guard status rồi dùng status
+  re-read làm nguồn CAS; đổi sang guarded patch/version cần migration/concurrency PR riêng.
+- Smoke #14: seeded `giang@…` và `owner@…` đăng nhập được nhưng các endpoint partner/tenant booking
+  trả `MISSING_PERMISSION`; vì vậy partner complete/pick-up/return/no-show/ownership chưa smoke qua
+  HTTP. Public create/idempotency/GiST/confirm-replay/guest-cancel/promo-error đã smoke và dọn sạch.
 
 ## 8. Nếu bạn là AI tiếp quản
 
