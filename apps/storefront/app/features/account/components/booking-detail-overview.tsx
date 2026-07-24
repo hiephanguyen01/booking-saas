@@ -1,12 +1,13 @@
 import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3, PackageCheck, Users } from 'lucide-react';
-import { Form, Link } from 'react-router';
+import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import type { AccountBookingViewModel, BookingDetailState } from '../lib/booking-history';
 import { CancellationPolicyList, StudioThumbnail } from './account-primitives';
 import { BookingCardHeader } from './booking-card-header';
+import { BookingPaymentForm } from './booking-payment-form';
 import { CancelBookingDialog } from './cancel-booking-dialog';
 import { useBookingDetailOverviewController } from './use-booking-detail-overview-controller';
 
@@ -195,12 +196,13 @@ function PolicyActions({
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         {canPay ? (
-          <Form method="post">
-            <input type="hidden" name="intent" value="pay" />
-            <Button className="h-10 rounded-sm bg-[#ff3f44] px-6 text-white hover:bg-[#e93439]">
-              {t('bookings.payNow')}
-            </Button>
-          </Form>
+          <BookingPaymentForm
+            buttonProps={{
+              className: 'h-10 rounded-sm bg-[#ff3f44] px-6 text-white hover:bg-[#e93439]',
+            }}
+          >
+            {t('bookings.payNow')}
+          </BookingPaymentForm>
         ) : null}
         {canCancel ? (
           <>
