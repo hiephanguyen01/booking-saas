@@ -1,7 +1,15 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import { useEffect, useRef, useState, type ComponentProps, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { Form, useNavigation } from 'react-router';
+import { isBookingPaymentNavigation } from './booking-payment-navigation';
 import { createSubmissionLock } from './submission-lock';
 
 export function BookingPaymentForm({
@@ -17,10 +25,7 @@ export function BookingPaymentForm({
   const submitLockRef = useRef(createSubmissionLock());
   const navigationWasBusyRef = useRef(false);
   const [locked, setLocked] = useState(false);
-  const paymentPending =
-    navigation.state !== 'idle' &&
-    navigation.formMethod != null &&
-    navigation.formData?.get('intent') === 'pay';
+  const paymentPending = isBookingPaymentNavigation(navigation);
 
   useEffect(() => {
     if (paymentPending) {
