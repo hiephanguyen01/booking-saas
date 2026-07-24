@@ -1,4 +1,4 @@
-import { Inject, Module, type OnModuleInit } from '@nestjs/common';
+import { Inject, Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
@@ -61,6 +61,8 @@ const BOOKING_BUSY_EVENTS = [
   ],
 })
 export class SchedulingModule implements OnModuleInit {
+  private readonly logger = new Logger(SchedulingModule.name);
+
   constructor(
     private readonly registry: OutboxHandlerRegistry,
     @Inject(AVAILABILITY_CACHE) private readonly cache: IAvailabilityCache,
@@ -75,8 +77,10 @@ export class SchedulingModule implements OnModuleInit {
   onModuleInit(): void {
     for (const eventType of BOOKING_BUSY_EVENTS) {
       this.registry.register(eventType, (event) => {
+        const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+        if (!tenantId) return Promise.resolve();
         const { bookingId } = event.payload as { bookingId: string };
-        return this.cache.invalidateByBooking(event.tenantId ?? '', bookingId);
+        return this.cache.invalidateByBooking(tenantId, bookingId);
       });
     }
     for (const eventType of ['pricing_rule.created', 'pricing_rule.deleted']) {
@@ -89,5 +93,20 @@ export class SchedulingModule implements OnModuleInit {
       const { listingId } = event.payload as { listingId: string };
       return this.cache.invalidateListing(listingId);
     });
+  }
+
+  /**
+   * A tenant-scoped booking event without a tenant id cannot be routed: skip it
+   * (and say so) instead of running `forTenant('')`, which crashes on the RLS
+   * policy's uuid cast and parks the event in permanent retry. Skipping — not
+   * throwing — keeps the at-least-once relay moving without a dead-letter queue.
+   */
+  private requireTenantId(
+    eventType: string,
+    tenantId: string | null,
+  ): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
   }
 }

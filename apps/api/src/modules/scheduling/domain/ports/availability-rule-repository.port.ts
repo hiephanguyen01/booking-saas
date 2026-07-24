@@ -23,6 +23,6 @@ export interface IAvailabilityRuleRepository {
     tx: PrismaTx,
     tenantId: string,
     listingId: string,
-    rules: AvailabilityRuleInputData[],
+    rules: readonly AvailabilityRuleInputData[],
   ): Promise<AvailabilityRuleRecord[]>;
 }

@@ -14,6 +14,7 @@ import {
   AVAILABILITY_CACHE,
   type IAvailabilityCache,
 } from '../../domain/ports/availability-cache.port';
+import { ResourceCalendar } from '../../domain/entities/resource-calendar.entity';
 import { assertResource, type ManageContext } from '../availability-support';
 
 /** Add a date-specific availability exception to a resource — §7.4/§9. */
@@ -34,7 +35,8 @@ export class AddAvailabilityExceptionUseCase {
   ): Promise<AvailabilityExceptionRecord> {
     const created = await this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       await assertResource(this.resources, tx, resourceId, ctx.partnerId);
-      return this.exceptions.create(tx, ctx.tenantId, resourceId, data);
+      const calendar = ResourceCalendar.forResource(resourceId);
+      return this.exceptions.create(tx, ctx.tenantId, resourceId, calendar.newException(data));
     });
     // Open windows changed → the cached slots for this resource are stale (§9.1).
     await this.cache.invalidateResource(resourceId);

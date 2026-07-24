@@ -14,6 +14,7 @@ import {
   AVAILABILITY_CACHE,
   type IAvailabilityCache,
 } from '../../domain/ports/availability-cache.port';
+import { ListingWeeklySchedule } from '../../domain/entities/listing-weekly-schedule.entity';
 import { assertListing, type ManageContext } from '../availability-support';
 
 /** Replace a listing's whole weekly availability rule set — §7.4/§9. */
@@ -33,7 +34,8 @@ export class SetAvailabilityRulesUseCase {
   ): Promise<AvailabilityRuleRecord[]> {
     const { saved, resourceId } = await this.tenantDb.forTenant(ctx.tenantId, async (tx) => {
       const listing = await assertListing(this.listings, tx, listingId, ctx.partnerId);
-      const saved = await this.rules.replaceForListing(tx, ctx.tenantId, listingId, rules);
+      const schedule = ListingWeeklySchedule.replaceWith(listingId, rules);
+      const saved = await this.rules.replaceForListing(tx, ctx.tenantId, listingId, schedule.rules);
       return { saved, resourceId: listing.resourceId };
     });
     // Open windows changed → the cached slots for this resource are stale (§9.1).

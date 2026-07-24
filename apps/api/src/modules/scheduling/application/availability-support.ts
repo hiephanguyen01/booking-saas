@@ -1,7 +1,11 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
 import type { IListingRepository } from '../../listing/domain/ports/listing-repository.port';
 import type { IResourceRepository } from '../../listing/domain/ports/resource-repository.port';
+import { ListingNotFound, ResourceNotFound } from '../../listing/domain/errors/listing-errors';
+import {
+  ListingNotOwnedForAvailability,
+  ResourceNotOwnedForAvailability,
+} from '../domain/errors/availability-errors';
 
 /** Tenant/partner context. `partnerId` set → the target must be the partner's own. */
 export interface ManageContext {
@@ -22,10 +26,10 @@ export async function assertListing(
 ): Promise<{ resourceId: string }> {
   const listing = await listings.findById(tx, listingId);
   if (!listing) {
-    throw new NotFoundException({ statusCode: 404, code: 'LISTING_NOT_FOUND', message: 'Listing not found' });
+    throw new ListingNotFound();
   }
   if (partnerId && listing.partnerId !== partnerId) {
-    throw new ForbiddenException({ statusCode: 403, code: 'NOT_OWNED', message: 'Listing belongs to another partner' });
+    throw new ListingNotOwnedForAvailability();
   }
   return { resourceId: listing.resourceId };
 }
@@ -42,9 +46,9 @@ export async function assertResource(
 ): Promise<void> {
   const resource = await resources.findById(tx, resourceId);
   if (!resource) {
-    throw new NotFoundException({ statusCode: 404, code: 'RESOURCE_NOT_FOUND', message: 'Resource not found' });
+    throw new ResourceNotFound();
   }
   if (partnerId && resource.partnerId !== partnerId) {
-    throw new ForbiddenException({ statusCode: 403, code: 'NOT_OWNED', message: 'Resource belongs to another partner' });
+    throw new ResourceNotOwnedForAvailability();
   }
 }
