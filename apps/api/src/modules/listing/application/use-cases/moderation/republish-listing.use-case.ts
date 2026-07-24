@@ -15,6 +15,7 @@ import {
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * Re-publish an archived post (→ published). Enforces the lockout: a partner
@@ -48,8 +49,10 @@ export class RepublishListingUseCase {
       const updated = await this.listings.moderate(
         tx,
         listingId,
+        existing.status,
         stampModerationTimestamps(existing, outcome),
       );
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.republished',
         entityType: 'listing',

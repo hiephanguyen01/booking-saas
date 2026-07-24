@@ -10,6 +10,7 @@ import type { IListingRepository, ListingRecord } from '../../domain/ports/listi
 import { Listing } from '../../domain/entities/listing.entity';
 import { ListingGroup } from '../../domain/entities/listing-group.entity';
 import { ListingGroupEmpty } from '../../domain/errors/listing-group-errors';
+import { ListingStateChanged } from '../../domain/errors/listing-errors';
 import {
   groupNotFound,
   stampModerationTimestamps,
@@ -63,7 +64,8 @@ export function runGroupModeration(
       throw new ListingGroupEmpty();
     }
     const outcome = transition(group, children);
-    const updated = await deps.groups.moderate(tx, id, outcome);
+    const updated = await deps.groups.moderate(tx, id, group.status, outcome);
+    if (!updated) throw new ListingStateChanged();
     for (const child of children) {
       const childAggregate = Listing.rehydrate(child);
       const childOutcome =
@@ -74,7 +76,13 @@ export function runGroupModeration(
             : action === 'hidden'
               ? childAggregate.hide(actorFromOutcome(outcome))
               : childAggregate.republish(actorFromOutcome(outcome));
-      await deps.listings.moderate(tx, child.id, stampModerationTimestamps(child, childOutcome));
+      const updatedChild = await deps.listings.moderate(
+        tx,
+        child.id,
+        child.status,
+        stampModerationTimestamps(child, childOutcome),
+      );
+      if (!updatedChild) throw new ListingStateChanged();
     }
     await writeModerationAudit(deps.audit, tx, ctx, {
       action: `listing_group.${action}`,

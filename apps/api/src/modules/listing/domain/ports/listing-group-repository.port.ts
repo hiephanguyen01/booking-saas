@@ -71,8 +71,18 @@ export interface IListingGroupRepository {
     filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingGroupRecord[]; total: number }>;
-  update(tx: PrismaTx, id: string, data: ListingGroupContentPatch): Promise<ListingGroupRecord>;
-  moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingGroupRecord>;
+  update(
+    tx: PrismaTx,
+    id: string,
+    expectedUpdatedAt: Date,
+    data: ListingGroupContentPatch,
+  ): Promise<ListingGroupRecord | null>;
+  moderate(
+    tx: PrismaTx,
+    id: string,
+    expectedStatus: PublishStatus,
+    update: ModerationUpdate,
+  ): Promise<ListingGroupRecord | null>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   countListings(tx: PrismaTx, groupId: string): Promise<number>;
 }

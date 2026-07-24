@@ -15,7 +15,7 @@ import {
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
-import { ListingHasContactInfo } from '../../../domain/errors/listing-errors';
+import { ListingHasContactInfo, ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * A tenant reviewer publishes a listing (pending_review → published, actor
@@ -49,8 +49,10 @@ export class PublishListingUseCase {
       const updated = await this.listings.moderate(
         tx,
         listingId,
+        existing.status,
         stampModerationTimestamps(existing, outcome),
       );
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.published',
         entityType: 'listing',

@@ -65,7 +65,9 @@ function toRecord(row: Row): ContentReportRecord {
 }
 
 @Injectable()
-export class PrismaContentReportRepository implements IContentReportRepository, IContentReportReader {
+export class PrismaContentReportRepository
+  implements IContentReportRepository, IContentReportReader
+{
   async findPublishedTarget(
     tx: PrismaTx,
     target: ContentReportTarget,
@@ -207,23 +209,25 @@ export class PrismaContentReportRepository implements IContentReportRepository, 
       : null;
   }
 
-  async saveModeration(tx: PrismaTx, report: ContentReport): Promise<ContentReportRecord> {
+  async saveModeration(tx: PrismaTx, report: ContentReport): Promise<ContentReportRecord | null> {
     const pending = report.pendingModeration();
     // Defensive: the use-case always calls moderate() first; null here is a programming error.
     if (!pending) {
-      throw new Error('saveModeration called without a pending moderation — moderate() must run first');
+      throw new Error(
+        'saveModeration called without a pending moderation — moderate() must run first',
+      );
     }
-    return toRecord(
-      await tx.contentReport.update({
-        where: { id: report.id },
-        data: {
-          status: pending.status,
-          resolutionNote: pending.resolutionNote,
-          handledByUserId: pending.handledByUserId,
-          handledAt: pending.handledAt,
-        },
-        select,
-      }),
-    );
+    const changed = await tx.contentReport.updateMany({
+      where: { id: report.id, status: report.status },
+      data: {
+        status: pending.status,
+        resolutionNote: pending.resolutionNote,
+        handledByUserId: pending.handledByUserId,
+        handledAt: pending.handledAt,
+      },
+    });
+    if (changed.count === 0) return null;
+    const updated = await tx.contentReport.findUnique({ where: { id: report.id }, select });
+    return updated ? toRecord(updated) : null;
   }
 }

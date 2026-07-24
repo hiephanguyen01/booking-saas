@@ -32,3 +32,23 @@ export class ContentReportNotFound extends DomainError {
     super('CONTENT_REPORT_NOT_FOUND', 404, 'Content report not found');
   }
 }
+
+export class ContentReportInvalidTransition extends DomainError {
+  constructor(from: string, to: string) {
+    super(
+      'CONTENT_REPORT_INVALID_TRANSITION',
+      409,
+      `Content report cannot transition from ${from} to ${to}`,
+    );
+  }
+}
+
+export class ContentReportStateChanged extends DomainError {
+  constructor() {
+    super(
+      'CONTENT_REPORT_STATE_CHANGED',
+      409,
+      'Content report state changed; reload and try again',
+    );
+  }
+}

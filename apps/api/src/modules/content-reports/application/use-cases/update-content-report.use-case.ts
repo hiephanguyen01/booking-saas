@@ -4,7 +4,10 @@ import { AUDIT_WRITER, type IAuditWriter } from '../../../../shared/audit/audit-
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { toContentReportResponse } from '../content-report.mapper';
 import { ContentReport } from '../../domain/entities/content-report.entity';
-import { ContentReportNotFound } from '../../domain/errors/content-report-errors';
+import {
+  ContentReportNotFound,
+  ContentReportStateChanged,
+} from '../../domain/errors/content-report-errors';
 import {
   CONTENT_REPORT_REPOSITORY,
   type IContentReportRepository,
@@ -36,6 +39,7 @@ export class UpdateContentReportUseCase {
         now,
       });
       const updated = await this.reports.saveModeration(tx, report);
+      if (!updated) throw new ContentReportStateChanged();
       await this.audit.write(tx, {
         tenantId,
         actorUserId,

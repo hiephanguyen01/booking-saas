@@ -14,6 +14,7 @@ import {
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * Hide a post (→ archived), recording who hid it (`published_by`/`hidden_by`,
@@ -42,7 +43,8 @@ export class HideListingUseCase {
       listing.assertNotGroupManaged('hide');
 
       const outcome = listing.hide(actor);
-      const updated = await this.listings.moderate(tx, listingId, outcome);
+      const updated = await this.listings.moderate(tx, listingId, existing.status, outcome);
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.hidden',
         entityType: 'listing',

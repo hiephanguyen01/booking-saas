@@ -30,6 +30,9 @@ export interface IContentReportRepository {
   ): Promise<{ report: ContentReportRecord; duplicate: boolean }>;
   /** Narrow write-state for the moderation path (null = report not found). */
   loadForModeration(tx: PrismaTx, id: string): Promise<ContentReportState | null>;
-  /** Persist the moderation queued on the aggregate. */
-  saveModeration(tx: PrismaTx, report: ContentReport): Promise<ContentReportRecord>;
+  /**
+   * Persist only while the stored status still equals the aggregate pre-image.
+   * `null` is a CAS miss, not a not-found signal.
+   */
+  saveModeration(tx: PrismaTx, report: ContentReport): Promise<ContentReportRecord | null>;
 }

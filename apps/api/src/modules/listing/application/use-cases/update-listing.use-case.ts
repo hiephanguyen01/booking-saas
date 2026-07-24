@@ -31,6 +31,7 @@ import {
   InvalidListingAdministrativeDivision,
   ListingNotFound,
   ListingSlugTaken,
+  ListingStateChanged,
 } from '../../domain/errors/listing-errors';
 import { ListingPricingRejected } from '../../domain/errors/pricing-rule-errors';
 import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
@@ -162,6 +163,7 @@ export class UpdateListingUseCase {
       const updated = await this.listings.update(
         tx,
         id,
+        existing.updatedAt,
         listing.applyContentUpdate({
           groupId: input.groupId,
           categoryId: input.categoryId,
@@ -187,6 +189,7 @@ export class UpdateListingUseCase {
           cancellationPolicyId: input.cancellationPolicyId,
         }),
       );
+      if (!updated) throw new ListingStateChanged();
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing.updated',

@@ -7,6 +7,7 @@ import type {
   CancellationPolicySummary,
   CancellationTier,
   ModerationActor,
+  PublishStatus,
 } from '@booking/contracts';
 import { toStatusCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
@@ -273,54 +274,64 @@ export class PrismaListingRepository implements IListingRepository {
     return { items: items.map(toRecord), total, counts: toStatusCounts(countRows) };
   }
 
-  async update(tx: PrismaTx, id: string, data: ListingContentPatch): Promise<ListingRecord> {
-    return toRecord(
-      await tx.listing.update({
-        where: { id },
-        data: {
-          groupId: data.groupId,
-          categoryId: data.categoryId,
-          title: data.title,
-          slug: data.slug,
-          description: data.description,
-          provinceCode: data.provinceCode,
-          provinceName: data.provinceName,
-          wardCode: data.wardCode,
-          wardName: data.wardName,
-          address: data.address,
-          photos: data.photos as Prisma.InputJsonValue | undefined,
-          attributes: data.attributes as Prisma.InputJsonValue | undefined,
-          bookingModes: data.bookingModes as never,
-          modeConfig: data.modeConfig as Prisma.InputJsonValue | undefined,
-          stockQuantity: data.stockQuantity,
-          capacity: data.capacity,
-          bufferBefore: data.bufferBefore,
-          bufferAfter: data.bufferAfter,
-          approvalRequired: data.approvalRequired,
-          depositPercent: data.depositPercent,
-          balanceDue: data.balanceDue,
-          cancellationPolicyId: data.cancellationPolicyId,
-        },
-        include: LISTING_INCLUDE,
-      }),
-    );
+  async update(
+    tx: PrismaTx,
+    id: string,
+    expectedUpdatedAt: Date,
+    data: ListingContentPatch,
+  ): Promise<ListingRecord | null> {
+    const changed = await tx.listing.updateMany({
+      where: { id, updatedAt: expectedUpdatedAt },
+      data: {
+        groupId: data.groupId,
+        categoryId: data.categoryId,
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        provinceCode: data.provinceCode,
+        provinceName: data.provinceName,
+        wardCode: data.wardCode,
+        wardName: data.wardName,
+        address: data.address,
+        photos: data.photos as Prisma.InputJsonValue | undefined,
+        attributes: data.attributes as Prisma.InputJsonValue | undefined,
+        bookingModes: data.bookingModes as never,
+        modeConfig: data.modeConfig as Prisma.InputJsonValue | undefined,
+        stockQuantity: data.stockQuantity,
+        capacity: data.capacity,
+        bufferBefore: data.bufferBefore,
+        bufferAfter: data.bufferAfter,
+        approvalRequired: data.approvalRequired,
+        depositPercent: data.depositPercent,
+        balanceDue: data.balanceDue,
+        cancellationPolicyId: data.cancellationPolicyId,
+      },
+    });
+    if (changed.count === 0) return null;
+    const updated = await tx.listing.findUnique({ where: { id }, include: LISTING_INCLUDE });
+    return updated ? toRecord(updated) : null;
   }
 
-  async moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingRecord> {
-    return toRecord(
-      await tx.listing.update({
-        where: { id },
-        data: {
-          status: update.status,
-          publishedBy: update.publishedBy,
-          hiddenBy: update.hiddenBy,
-          // Undefined = leave as stored (Prisma omits the column from the UPDATE).
-          submittedAt: update.submittedAt,
-          publishedAt: update.publishedAt,
-        },
-        include: LISTING_INCLUDE,
-      }),
-    );
+  async moderate(
+    tx: PrismaTx,
+    id: string,
+    expectedStatus: PublishStatus,
+    update: ModerationUpdate,
+  ): Promise<ListingRecord | null> {
+    const changed = await tx.listing.updateMany({
+      where: { id, status: expectedStatus },
+      data: {
+        status: update.status,
+        publishedBy: update.publishedBy,
+        hiddenBy: update.hiddenBy,
+        // Undefined = leave as stored (Prisma omits the column from the UPDATE).
+        submittedAt: update.submittedAt,
+        publishedAt: update.publishedAt,
+      },
+    });
+    if (changed.count === 0) return null;
+    const updated = await tx.listing.findUnique({ where: { id }, include: LISTING_INCLUDE });
+    return updated ? toRecord(updated) : null;
   }
 
   async delete(tx: PrismaTx, id: string): Promise<void> {

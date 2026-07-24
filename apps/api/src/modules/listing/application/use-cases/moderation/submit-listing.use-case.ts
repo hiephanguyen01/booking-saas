@@ -16,6 +16,7 @@ import {
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
+import { ListingStateChanged } from '../../../domain/errors/listing-errors';
 
 /**
  * A partner submits a draft for tenant review (draft → pending_review). Returns
@@ -46,8 +47,10 @@ export class SubmitListingUseCase {
       const updated = await this.listings.moderate(
         tx,
         listingId,
+        existing.status,
         stampModerationTimestamps(existing, outcome),
       );
+      if (!updated) throw new ListingStateChanged();
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.submitted',
         entityType: 'listing',

@@ -3,7 +3,10 @@ import type {
   ContentReportStatus,
   ContentReportTarget,
 } from '@booking/contracts';
-import { ContentReportValidationError } from '../errors/content-report-errors';
+import {
+  ContentReportInvalidTransition,
+  ContentReportValidationError,
+} from '../errors/content-report-errors';
 
 /**
  * ContentReport aggregate root — a customer's moderation report against a published
@@ -15,18 +18,11 @@ import { ContentReportValidationError } from '../errors/content-report-errors';
  *   - terminal-status derivation: handledAt is set iff the new status is terminal
  *     — {@link ContentReport.moderate}.
  *
- * KNOWN GAP (spec §8a, preserved on purpose): status transitions have NO legality
- * graph — any→any (including resolved→open) is allowed, exactly as before the
- * refactor. Tightening it is a behavior change that needs its own approval.
- *
  * Framework-free: no Nest, no Prisma, no zod (contracts imports are type-only).
  */
 
 /** The "active" statuses that block a duplicate report; mirrors the DB partial unique index. */
-export const ACTIVE_CONTENT_REPORT_STATUSES: readonly ContentReportStatus[] = [
-  'open',
-  'reviewing',
-];
+export const ACTIVE_CONTENT_REPORT_STATUSES: readonly ContentReportStatus[] = ['open', 'reviewing'];
 
 export function isTerminalContentReportStatus(status: ContentReportStatus): boolean {
   return status === 'resolved' || status === 'dismissed';
@@ -138,7 +134,6 @@ export class ContentReport {
    * `terminal ? new Date() : null`: handledAt is set iff the new status is terminal,
    * handledByUserId is stamped on every change. Mirrors the contracts superRefine
    * (terminal status needs a ≥ 10-char resolution note) as defensive depth.
-   * NO transition-legality check — see the class doc (spec §8a).
    */
   moderate(input: {
     status: ContentReportStatus;
@@ -146,6 +141,13 @@ export class ContentReport {
     handledByUserId: string;
     now: Date;
   }): void {
+    const allowed =
+      (this.state.status === 'open' && input.status === 'reviewing') ||
+      (this.state.status === 'reviewing' &&
+        (input.status === 'resolved' || input.status === 'dismissed'));
+    if (!allowed) {
+      throw new ContentReportInvalidTransition(this.state.status, input.status);
+    }
     const terminal = isTerminalContentReportStatus(input.status);
     if (terminal && (!input.resolutionNote || input.resolutionNote.length < 10)) {
       throw new ContentReportValidationError(

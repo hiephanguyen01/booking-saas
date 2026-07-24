@@ -87,11 +87,7 @@ export class ResourceNotOwned extends DomainError {
 }
 
 export class DepositBelowTenantCommission extends DomainError {
-  constructor(
-    depositPercent: number,
-    minimumDepositPercent: bigint,
-    commissionRuleId: string,
-  ) {
+  constructor(depositPercent: number, minimumDepositPercent: bigint, commissionRuleId: string) {
     super(
       'DEPOSIT_BELOW_TENANT_COMMISSION',
       400,
@@ -125,5 +121,12 @@ export class ListingHasContactInfo extends DomainError {
         : 'Remove contact information from the post and its items before publishing',
       details,
     );
+  }
+}
+
+/** A moderation pre-image changed after it was loaded; the caller must reload. */
+export class ListingStateChanged extends DomainError {
+  constructor() {
+    super('LISTING_STATE_CHANGED', 409, 'Listing state changed; reload and try again');
   }
 }

@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { BookingMode, BookingSelection, ModerationActor } from '@booking/contracts';
+import type {
+  BookingMode,
+  BookingSelection,
+  ModerationActor,
+  PublishStatus,
+} from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   IListingGroupRepository,
@@ -91,11 +96,7 @@ function toRecord(g: Row): ListingGroupRecord {
 
 @Injectable()
 export class PrismaListingGroupRepository implements IListingGroupRepository {
-  async create(
-    tx: PrismaTx,
-    tenantId: string,
-    data: NewListingGroup,
-  ): Promise<ListingGroupRecord> {
+  async create(tx: PrismaTx, tenantId: string, data: NewListingGroup): Promise<ListingGroupRecord> {
     return toRecord(
       await tx.listingGroup.create({
         data: {
@@ -163,43 +164,49 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
   async update(
     tx: PrismaTx,
     id: string,
+    expectedUpdatedAt: Date,
     data: ListingGroupContentPatch,
-  ): Promise<ListingGroupRecord> {
-    return toRecord(
-      await tx.listingGroup.update({
-        where: { id },
-        data: {
-          partnerId: data.partnerId,
-          listingTypeId: data.listingTypeId,
-          title: data.title,
-          slug: data.slug,
-          description: data.description,
-          provinceCode: data.provinceCode,
-          provinceName: data.provinceName,
-          wardCode: data.wardCode,
-          wardName: data.wardName,
-          address: data.address,
-          workingArea: data.workingArea,
-          amenities: data.amenities as Prisma.InputJsonValue | undefined,
-          photos: data.photos as Prisma.InputJsonValue | undefined,
-        },
-        include: GROUP_INCLUDE,
-      }),
-    );
+  ): Promise<ListingGroupRecord | null> {
+    const changed = await tx.listingGroup.updateMany({
+      where: { id, updatedAt: expectedUpdatedAt },
+      data: {
+        partnerId: data.partnerId,
+        listingTypeId: data.listingTypeId,
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        provinceCode: data.provinceCode,
+        provinceName: data.provinceName,
+        wardCode: data.wardCode,
+        wardName: data.wardName,
+        address: data.address,
+        workingArea: data.workingArea,
+        amenities: data.amenities as Prisma.InputJsonValue | undefined,
+        photos: data.photos as Prisma.InputJsonValue | undefined,
+      },
+    });
+    if (changed.count === 0) return null;
+    const updated = await tx.listingGroup.findUnique({ where: { id }, include: GROUP_INCLUDE });
+    return updated ? toRecord(updated) : null;
   }
 
   /**
    * `listing_groups` has no submitted_at/published_at columns (only `listings`
    * does), so the timestamps on `ModerationUpdate` are intentionally ignored here.
    */
-  async moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingGroupRecord> {
-    return toRecord(
-      await tx.listingGroup.update({
-        where: { id },
-        data: { status: update.status, publishedBy: update.publishedBy, hiddenBy: update.hiddenBy },
-        include: GROUP_INCLUDE,
-      }),
-    );
+  async moderate(
+    tx: PrismaTx,
+    id: string,
+    expectedStatus: PublishStatus,
+    update: ModerationUpdate,
+  ): Promise<ListingGroupRecord | null> {
+    const changed = await tx.listingGroup.updateMany({
+      where: { id, status: expectedStatus },
+      data: { status: update.status, publishedBy: update.publishedBy, hiddenBy: update.hiddenBy },
+    });
+    if (changed.count === 0) return null;
+    const updated = await tx.listingGroup.findUnique({ where: { id }, include: GROUP_INCLUDE });
+    return updated ? toRecord(updated) : null;
   }
 
   async delete(tx: PrismaTx, id: string): Promise<void> {

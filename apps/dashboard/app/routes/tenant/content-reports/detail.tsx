@@ -134,36 +134,46 @@ export default function ContentReportDetail({ loaderData, actionData }: Route.Co
             <CardTitle className="text-base">Cập nhật xử lý</CardTitle>
           </CardHeader>
           <CardContent>
-            <GenericForm
-              schema={updateContentReportInputSchema}
-              fields={[
-                {
-                  name: 'status',
-                  type: 'select',
-                  label: 'Trạng thái',
-                  required: true,
-                  options: [
-                    { value: 'open', label: 'Mới' },
-                    { value: 'reviewing', label: 'Đang xem xét' },
-                    { value: 'resolved', label: 'Đã xử lý' },
-                    { value: 'dismissed', label: 'Bỏ qua' },
-                  ],
-                },
-                {
-                  name: 'resolutionNote',
-                  type: 'textarea',
-                  rows: 5,
-                  label: 'Ghi chú xử lý',
-                  placeholder: 'Nêu quyết định và căn cứ xử lý…',
-                },
-              ]}
-              defaultValues={{ status: report.status, resolutionNote: report.resolutionNote ?? '' }}
-              submitLabel="Lưu trạng thái"
-              submitPendingLabel="Đang lưu…"
-              serverError={actionData?.error}
-              fieldErrors={actionData?.fieldErrors}
-              submitFullWidth
-            />
+            {report.status === 'resolved' || report.status === 'dismissed' ? (
+              <p className="text-sm text-muted-foreground">
+                Báo cáo đã kết thúc và không thể mở lại. Tạo báo cáo mới nếu phát sinh vấn đề khác.
+              </p>
+            ) : (
+              <GenericForm
+                schema={updateContentReportInputSchema}
+                fields={[
+                  {
+                    name: 'status',
+                    type: 'select',
+                    label: 'Trạng thái',
+                    required: true,
+                    options:
+                      report.status === 'open'
+                        ? [{ value: 'reviewing', label: 'Đang xem xét' }]
+                        : [
+                            { value: 'resolved', label: 'Đã xử lý' },
+                            { value: 'dismissed', label: 'Bỏ qua' },
+                          ],
+                  },
+                  {
+                    name: 'resolutionNote',
+                    type: 'textarea',
+                    rows: 5,
+                    label: 'Ghi chú xử lý',
+                    placeholder: 'Nêu quyết định và căn cứ xử lý…',
+                  },
+                ]}
+                defaultValues={{
+                  status: report.status === 'open' ? 'reviewing' : 'resolved',
+                  resolutionNote: report.resolutionNote ?? '',
+                }}
+                submitLabel="Lưu trạng thái"
+                submitPendingLabel="Đang lưu…"
+                serverError={actionData?.error}
+                fieldErrors={actionData?.fieldErrors}
+                submitFullWidth
+              />
+            )}
           </CardContent>
         </Card>
       </div>

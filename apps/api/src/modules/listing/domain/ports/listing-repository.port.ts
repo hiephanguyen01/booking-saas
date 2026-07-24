@@ -122,8 +122,18 @@ export interface IListingRepository {
     filter: ListingFilter,
     page: { page: number; pageSize: number },
   ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }>;
-  update(tx: PrismaTx, id: string, data: ListingContentPatch): Promise<ListingRecord>;
-  moderate(tx: PrismaTx, id: string, update: ModerationUpdate): Promise<ListingRecord>;
+  update(
+    tx: PrismaTx,
+    id: string,
+    expectedUpdatedAt: Date,
+    data: ListingContentPatch,
+  ): Promise<ListingRecord | null>;
+  moderate(
+    tx: PrismaTx,
+    id: string,
+    expectedStatus: PublishStatus,
+    update: ModerationUpdate,
+  ): Promise<ListingRecord | null>;
   delete(tx: PrismaTx, id: string): Promise<void>;
   countBookings(tx: PrismaTx, listingId: string): Promise<number>;
 }

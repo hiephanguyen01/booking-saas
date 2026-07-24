@@ -17,6 +17,7 @@ import {
   ListingGroupNotFound,
   ListingGroupSlugTaken,
 } from '../../domain/errors/listing-group-errors';
+import { ListingStateChanged } from '../../domain/errors/listing-errors';
 import { InvalidListingAdministrativeDivision } from '../../domain/errors/listing-errors';
 
 @Injectable()
@@ -49,20 +50,24 @@ export class UpdateListingGroupUseCase {
         throw new ListingGroupNotFound();
       }
       const group = ListingGroup.rehydrate(existing);
+      let expectedUpdatedAt = existing.updatedAt;
       group.assertOwnedForManage(options.requirePartnerId);
       if (options.requirePartnerId) {
         group.assertEditableStatus();
       }
       if (options.requirePartnerId && existing.status === 'archived') {
         const draftState = { status: 'draft' as const, publishedBy: null, hiddenBy: null };
-        await this.repo.moderate(tx, id, draftState);
+        const reopened = await this.repo.moderate(tx, id, existing.status, draftState);
+        if (!reopened) throw new ListingStateChanged();
+        expectedUpdatedAt = reopened.updatedAt;
         const children = await this.listings.list(tx, {
           groupId: id,
           partnerId: existing.partnerId,
         });
-        await Promise.all(
-          children.map((child) => this.listings.moderate(tx, child.id, draftState)),
+        const reopenedChildren = await Promise.all(
+          children.map((child) => this.listings.moderate(tx, child.id, child.status, draftState)),
         );
+        if (reopenedChildren.some((child) => child === null)) throw new ListingStateChanged();
         await this.outbox.emit(tx, {
           tenantId,
           eventType: 'listing_group.reopened',
@@ -78,6 +83,7 @@ export class UpdateListingGroupUseCase {
       const updated = await this.repo.update(
         tx,
         id,
+        expectedUpdatedAt,
         group.applyContentUpdate({
           partnerId: options.requirePartnerId ? undefined : input.partnerId,
           listingTypeId: options.requirePartnerId ? undefined : input.listingTypeId,
@@ -94,6 +100,7 @@ export class UpdateListingGroupUseCase {
           photos: input.photos,
         }),
       );
+      if (!updated) throw new ListingStateChanged();
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing_group.updated',
