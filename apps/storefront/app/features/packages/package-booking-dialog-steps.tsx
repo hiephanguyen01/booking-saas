@@ -3,18 +3,9 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw } from 'lucide-react';
-import { useMemo } from 'react';
 import { AvailabilitySkeleton } from '../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import {
-  DEFAULT_TZ,
-  dateLabelInTz,
-  dateOnlyToLocal,
-  localToDateOnly,
-  todayInTz,
-} from '../../lib/time';
-import { formatVnd } from '../../lib/ui';
-import { useLocale } from '../../lib/use-locale';
+import { usePackageBookingDialogStepsController } from './use-package-booking-dialog-steps-controller';
 
 export function PackageBookingDialogSteps({
   date,
@@ -50,45 +41,14 @@ export function PackageBookingDialogSteps({
   onRetryQuote: () => void;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
-  const locale = useLocale();
-  const todayDate = dateOnlyToLocal(todayInTz(DEFAULT_TZ));
-  const timeFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-        timeZone: timezone,
-      }),
-    [locale, timezone],
-  );
-  const calendarA11y = useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
-    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
-    const fullDate = new Intl.DateTimeFormat(tag, {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+  const { calendarA11y, dateInstruction, selectCalendarDay, slotModels, todayDate } =
+    usePackageBookingDialogStepsController({
+      date,
+      timezone,
+      slots,
+      selectedSlots,
+      onSelectDate,
     });
-    return {
-      formatters: {
-        formatCaption: (month: Date) => caption.format(month),
-        formatWeekdayName: (day: Date) =>
-          locale === 'en'
-            ? new Intl.DateTimeFormat(tag, { weekday: 'narrow' }).format(day)
-            : ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][day.getDay()],
-      },
-      labels: {
-        labelDayButton: (day: Date) => fullDate.format(day),
-        labelGrid: (month?: Date) =>
-          t('group.calendarLabel', { month: month ? caption.format(month) : '' }),
-        labelNav: () => t('group.calendarNavigation'),
-        labelPrevious: () => t('group.previousMonth'),
-        labelNext: () => t('group.nextMonth'),
-      },
-    };
-  }, [locale, t]);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -99,9 +59,7 @@ export function PackageBookingDialogSteps({
               <h3 id="packages-hourly-step-title" className="font-semibold">
                 {t('pickSlot')}
               </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {dateLabelInTz(date, DEFAULT_TZ, locale)} · {t('packages.hourlyInstruction')}
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{dateInstruction}</p>
             </div>
             <Button
               type="button"
@@ -118,41 +76,32 @@ export function PackageBookingDialogSteps({
             <AvailabilitySkeleton label={t('common:loading')} />
           ) : availabilityError ? (
             <PackageBookingErrorMessage onRetry={onRetryAvailability} />
-          ) : slots.length ? (
+          ) : slotModels.length ? (
             <div className="grid grid-cols-2 gap-2" aria-busy={quotePending}>
-              {slots.map((slot) => {
-                const selected = selectedSlots.some(
-                  (item) => item.startUtc === slot.startUtc && item.endUtc === slot.endUtc,
-                );
-                const startLabel = timeFormatter.format(new Date(slot.startUtc));
-                const endLabel = timeFormatter.format(new Date(slot.endUtc));
-                return (
-                  <button
-                    key={`${slot.startUtc}:${slot.endUtc}`}
-                    type="button"
-                    aria-pressed={selected}
-                    disabled={!slot.available}
-                    onClick={() => onToggleSlot(slot)}
-                    className={cn(
-                      'min-h-14 rounded-md border px-2 py-2 text-sm transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      selected && 'border-primary bg-primary/10 text-primary',
-                      !slot.available && 'cursor-not-allowed bg-muted opacity-60',
+              {slotModels.map(({ key, slot, selected, startLabel, endLabel, priceLabel }) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={!slot.available}
+                  onClick={() => onToggleSlot(slot)}
+                  className={cn(
+                    'min-h-14 rounded-md border px-2 py-2 text-sm transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    selected && 'border-primary bg-primary/10 text-primary',
+                    !slot.available && 'cursor-not-allowed bg-muted opacity-60',
+                  )}
+                >
+                  <span className="flex items-center justify-center gap-1 font-medium">
+                    {selected ? (
+                      <Check className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      <Clock3 className="size-3.5" aria-hidden="true" />
                     )}
-                  >
-                    <span className="flex items-center justify-center gap-1 font-medium">
-                      {selected ? (
-                        <Check className="size-3.5" aria-hidden="true" />
-                      ) : (
-                        <Clock3 className="size-3.5" aria-hidden="true" />
-                      )}
-                      {startLabel}–{endLabel}
-                    </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {slot.available ? formatVnd(slot.price) : t('group.unavailableSlot')}
-                    </span>
-                  </button>
-                );
-              })}
+                    {startLabel}–{endLabel}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{priceLabel}</span>
+                </button>
+              ))}
             </div>
           ) : (
             <p className="rounded-md border border-dashed px-5 py-10 text-center text-sm text-muted-foreground">
@@ -178,9 +127,7 @@ export function PackageBookingDialogSteps({
             fullWidth
             mode="single"
             selected={undefined}
-            onSelect={(day) => {
-              if (day) onSelectDate(localToDateOnly(day));
-            }}
+            onSelect={selectCalendarDay}
             disabled={{ before: todayDate }}
             startMonth={todayDate}
             defaultMonth={todayDate}
