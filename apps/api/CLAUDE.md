@@ -34,6 +34,7 @@ keep their business invariants on framework-free aggregates in `domain/entities/
 method → save → emit. Refactored so far:
 **reviews, content-reports, notification, favorites, promotions, affiliate, identity-access,
 partner, catalog, tenancy, listing, scheduling, payments, booking, finance**.
+`administrative-division` dùng immutable value object thay vì aggregate mutable.
 
 ## Multi-tenancy — `forTenant()` + RLS (the most important rule)
 

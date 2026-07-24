@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #15.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #16.
 
 ## 0. Vì sao cần file này
 
@@ -39,18 +39,21 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 12 | scheduling | ✅ merge (GitHub PR #32) |
 | 13 | payments | ✅ merge local (`0e53b18`) |
 | 14 | booking | ✅ merge local (`5b8aa12`) |
-| 15 | finance | 🔍 final review đạt (branch `refactor/entity-finance`, sẵn sàng merge) |
-| 16 | administrative-division | chưa làm |
+| 15 | finance | ✅ merge local (`ccc8178`) |
+| 16 | administrative-division | 🔍 final review đạt (branch `refactor/entity-administrative-division`, sẵn sàng merge) |
 
 **listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint) — ✅ cả 3 merged (PR
-#29/#30/#31). Scheduling đã merge ở PR #32; payments và booking cũng đã merge local vào integration:
-**15/16 module đã nằm trên integration**, finance đã qua final review và là module kế tiếp để merge.
+#29/#30/#31). Scheduling đã merge ở PR #32; payments, booking và finance cũng đã merge local vào
+integration: **15/16 module đã nằm trên integration**, administrative-division đã qua final review
+và là module cuối cùng chờ merge.
 
 Booking #14 đã đưa lifecycle qua aggregate, giữ CAS/GiST/second-tx và sửa đồng bộ
 `rejectionException` promotions↔booking. Finance #15 đã đưa CommissionRule/Settlement/Payout/
 SettlementDispute/LedgerJournal/PayoutPolicy về entity-centric, giữ nguyên repository SQL,
 DB-clock/CAS, FIFO allocation và event order; finance outbox cũng đã normalize tenantId.
-Việc kế tiếp sau merge finance: **#16 administrative-division**. **Bộ máy moderation (`listing-moderation.ts` +
+Administrative-division #16 đã đưa membership province↔ward về immutable `AdministrativeAddress`,
+giữ resolver signature, tx-less global catalog và cache 24h. Việc kế tiếp sau merge module cuối:
+**final review toàn nhánh `refactor/entity-centric`**. **Bộ máy moderation (`listing-moderation.ts` +
 `moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
 sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
 + đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25
@@ -166,6 +169,10 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
   open/respond/resolve-release. Tất cả fixture/rule/refund/dispute tạo tạm đã dọn và custody state
   được khôi phục. Khi boot, relay vẫn thấy các `booking.completed` cũ đã retry hàng trăm lần — bằng
   chứng thực tế cho nợ dead-letter ở trên, không phải regression của PR #15.
+- Smoke #16: API boot đạt; `GET /public/administrative-divisions/{provinces,wards}` trả 200, đúng
+  shape và `Cache-Control: public, max-age=86400`. Resolver chạy với catalog thật: cặp `01/00004`
+  hợp lệ; cặp ward thật gắn sang province `04` và ward `99999` đều trả đúng
+  `400 INVALID_ADMINISTRATIVE_DIVISION`.
 
 ## 8. Nếu bạn là AI tiếp quản
 
