@@ -13,11 +13,11 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { NavLink, useFetcher } from 'react-router';
+import { NavLink } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { accountNavItems, type AccountNavKey, userInitials } from '../account-nav';
+import { type AccountNavKey, userInitials } from '../account-nav';
 import type { AccountMenuSummary } from '../account-menu';
+import { useAccountShellController } from './use-account-shell-controller';
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -32,12 +32,6 @@ const NAV_ICONS: Record<AccountNavKey, Icon> = {
   security: ShieldCheck,
   help: CircleHelp,
 };
-
-const NAV_GROUPS: AccountNavKey[][] = [
-  ['profile', 'bookings', 'messages', 'reviews'],
-  ['favorites', 'recent'],
-  ['terms', 'security', 'help'],
-];
 
 export function AccountShell({
   user,
@@ -97,25 +91,20 @@ function AccountNavigation({
   closeOnSelect?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Account);
-  const fetcher = useFetcher();
-  const items = accountNavItems(locale);
-  const itemByKey = new Map(items.map((item) => [item.key, item]));
-  const badges: Partial<Record<AccountNavKey, number | undefined>> = {
-    messages: accountMenuSummary?.unreadMessages,
-    reviews: accountMenuSummary?.pendingReviews,
-  };
+  const { fetcher, groups, logoutAction } = useAccountShellController({
+    locale,
+    accountMenuSummary,
+  });
 
   return (
     <nav
       className="mt-6 flex w-full flex-col gap-2 border-t border-border py-2"
       aria-label={t('title')}
     >
-      {NAV_GROUPS.map((group, groupIndex) => (
-        <div key={group.join('-')} className="flex flex-col">
-          {group.map((key) => {
-            const item = itemByKey.get(key);
-            if (!item) return null;
-            const IconComponent = NAV_ICONS[key];
+      {groups.map((group, groupIndex) => (
+        <div key={group.map((item) => item.key).join('-')} className="flex flex-col">
+          {group.map((item) => {
+            const IconComponent = NAV_ICONS[item.key];
             const link = (
               <NavLink
                 to={item.to}
@@ -125,31 +114,31 @@ function AccountNavigation({
                     isActive
                       ? 'text-primary'
                       : 'text-foreground/80 hover:bg-background/70 hover:text-foreground'
-                  } ${key === 'messages' ? 'bg-muted/50' : ''}`
+                  } ${item.key === 'messages' ? 'bg-muted/50' : ''}`
                 }
               >
                 <IconComponent aria-hidden="true" className="size-5 shrink-0" />
-                <span className="min-w-0 flex-1">{t(`nav.${key}`)}</span>
-                {badges[key] ? (
+                <span className="min-w-0 flex-1">{t(`nav.${item.key}`)}</span>
+                {item.badge ? (
                   <span className="flex size-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold leading-4 text-primary-foreground">
-                    {badges[key]! > 99 ? '99+' : badges[key]}
+                    {item.badge}
                   </span>
                 ) : null}
               </NavLink>
             );
             return closeOnSelect ? (
-              <SheetClose key={key} asChild>
+              <SheetClose key={item.key} asChild>
                 {link}
               </SheetClose>
             ) : (
-              <div key={key}>{link}</div>
+              <div key={item.key}>{link}</div>
             );
           })}
-          {groupIndex < NAV_GROUPS.length - 1 ? <div className="mt-2 h-px bg-border" /> : null}
+          {groupIndex < groups.length - 1 ? <div className="mt-2 h-px bg-border" /> : null}
         </div>
       ))}
       <div className="h-px bg-border" />
-      <fetcher.Form method="post" action={storefrontPaths.logout(locale)}>
+      <fetcher.Form method="post" action={logoutAction}>
         <button
           type="submit"
           className="flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium leading-5 text-foreground/80 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
