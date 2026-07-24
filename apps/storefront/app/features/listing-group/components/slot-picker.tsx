@@ -32,7 +32,7 @@ import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '../../../lib/time';
 import { formatVnd } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
 import type { RoomOption } from '../listing-group-types';
-import { checkoutHref, slotInterval, toggleContiguousSlot } from '../listing-group-utils';
+import { useSlotPickerController } from './use-slot-picker-controller';
 
 /** The hour picker: a dialog on desktop, a drawer on touch widths. */
 export function SlotPicker({
@@ -96,35 +96,23 @@ function SlotPickerContent({
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
-  const [selected, setSelected] = useState<HourlySlot[]>([]);
-  const [useRequestedInterval, setUseRequestedInterval] = useState(
-    Boolean(option.start && option.end),
-  );
-  const [expanded, setExpanded] = useState(false);
-  const [selectionError, setSelectionError] = useState('');
+  const {
+    bookingHref,
+    clearSelection,
+    expanded,
+    selected,
+    selectionError,
+    setExpanded,
+    toggleSlot,
+    useRequestedInterval,
+  } = useSlotPickerController({
+    locale,
+    listingSlug: option.child.slug,
+    requestedStart: option.start,
+    requestedEnd: option.end,
+    contiguousError: t('group.contiguousOnly'),
+  });
   const timezone = option.availability?.timezone ?? DEFAULT_TZ;
-  const interval =
-    useRequestedInterval && option.start && option.end
-      ? { start: option.start, end: option.end }
-      : slotInterval(selected);
-
-  function toggle(slot: HourlySlot): void {
-    if (!slot.available) return;
-    setUseRequestedInterval(false);
-    const result = toggleContiguousSlot(selected, slot);
-    setSelected(result.slots);
-    setSelectionError(result.changed ? '' : t('group.contiguousOnly'));
-  }
-
-  const bookingHref = interval
-    ? checkoutHref({
-        locale,
-        listingSlug: option.child.slug,
-        mode: 'hourly',
-        start: interval.start,
-        end: interval.end,
-      })
-    : null;
 
   return (
     <div className="flex flex-col gap-4 p-5">
@@ -152,7 +140,7 @@ function SlotPickerContent({
                   id={slotFieldId(option.child.id, slot.startUtc)}
                   checked={selected.some((item) => item.startUtc === slot.startUtc)}
                   disabled={!slot.available}
-                  onToggle={() => toggle(slot)}
+                  onToggle={() => toggleSlot(slot)}
                 >
                   <span className="flex-1 text-sm">
                     {timeInTz(slot.startUtc, timezone)} - {timeInTz(slot.endUtc, timezone)}
@@ -169,16 +157,7 @@ function SlotPickerContent({
             )}
           </div>
           <div className="flex items-center justify-between border-t p-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelected([]);
-                setUseRequestedInterval(false);
-                setSelectionError('');
-              }}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
               {t('group.clearAll')}
             </Button>
             <Button type="button" size="sm" onClick={() => setExpanded(false)}>
@@ -205,7 +184,7 @@ function SlotPickerContent({
               {timeInTz(slot.startUtc, timezone)} - {timeInTz(slot.endUtc, timezone)}
               <button
                 type="button"
-                onClick={() => toggle(slot)}
+                onClick={() => toggleSlot(slot)}
                 className="grid size-6 place-items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={t('group.removeSlot', { time: timeInTz(slot.startUtc, timezone) })}
               >
