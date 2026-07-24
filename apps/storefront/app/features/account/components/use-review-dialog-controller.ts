@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { useReviewMedia } from './review-dialog-media';
+import { createSubmissionLock } from './review-submit-lock';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 type ReviewActionData = { ok: boolean; error: string | null; bookingId: string | null };
@@ -22,7 +23,7 @@ export function useReviewDialogController({
 }: UseReviewDialogControllerOptions) {
   const { t } = useTranslation(NsI18n.Account);
   const fetcher = useFetcher<ReviewActionData>();
-  const submitInFlightRef = useRef(false);
+  const submitLockRef = useRef(createSubmissionLock());
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [content, setContent] = useState('');
@@ -33,7 +34,7 @@ export function useReviewDialogController({
 
   useEffect(() => {
     if (fetcher.state === 'idle') {
-      submitInFlightRef.current = false;
+      submitLockRef.current.release();
     }
   }, [fetcher.state]);
 
@@ -45,7 +46,7 @@ export function useReviewDialogController({
 
   useEffect(() => {
     if (!open) {
-      submitInFlightRef.current = false;
+      submitLockRef.current.release();
       setRating(0);
       setHoverRating(0);
       setContent('');
@@ -53,9 +54,8 @@ export function useReviewDialogController({
   }, [open]);
 
   async function submit(): Promise<void> {
-    if (!review || !formValid || submitting || submitInFlightRef.current) return;
+    if (!review || !formValid || submitting || !submitLockRef.current.tryAcquire()) return;
 
-    submitInFlightRef.current = true;
     let submitted = false;
     try {
       const uploaded = await uploadAll(review.bookingId);
@@ -71,7 +71,7 @@ export function useReviewDialogController({
       submitted = true;
     } finally {
       if (!submitted) {
-        submitInFlightRef.current = false;
+        submitLockRef.current.release();
       }
     }
   }
