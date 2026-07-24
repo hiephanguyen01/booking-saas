@@ -1,6 +1,5 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { Heart } from 'lucide-react';
-import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router';
 import type { Route } from '../../../routes/account/+types/favorites';
 import type { AccountOutletContext } from '../../../routes/account/layout';
@@ -8,17 +7,13 @@ import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { AccountPanel } from '../components/account-primitives';
 import { FavoriteListingCard } from '../../favorites/components/favorite-cards';
-
-const ALL_TYPES = 'all';
+import { useAccountFavoritesController } from './use-account-favorites-controller';
 
 export function AccountFavoritesPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation(NsI18n.Account);
   const { listingTypes } = useOutletContext<AccountOutletContext>();
-  const [selectedType, setSelectedType] = useState(ALL_TYPES);
-  const visibleItems =
-    selectedType === ALL_TYPES
-      ? loaderData.items
-      : loaderData.items.filter((item) => item.listingTypeSlug === selectedType);
+  const { isAllSelected, isTypeSelected, selectAll, selectType, visibleItems } =
+    useAccountFavoritesController(loaderData.items);
 
   return (
     <div className="flex flex-col gap-4 py-2 font-studio">
@@ -30,17 +25,13 @@ export function AccountFavoritesPage({ loaderData }: Route.ComponentProps) {
           aria-label={t('favorites.filterLabel')}
           className="flex min-h-13 w-full overflow-x-auto bg-background shadow-[0_0_8px_rgba(0,0,0,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <FavoriteTab
-            active={selectedType === ALL_TYPES}
-            label={t('favorites.all')}
-            onSelect={() => setSelectedType(ALL_TYPES)}
-          />
+          <FavoriteTab active={isAllSelected} label={t('favorites.all')} onSelect={selectAll} />
           {listingTypes.map((type) => (
             <FavoriteTab
               key={type.id}
-              active={selectedType === type.slug}
+              active={isTypeSelected(type.slug)}
               label={type.name}
-              onSelect={() => setSelectedType(type.slug)}
+              onSelect={() => selectType(type.slug)}
             />
           ))}
         </div>
