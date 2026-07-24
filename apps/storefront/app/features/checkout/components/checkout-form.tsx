@@ -10,25 +10,16 @@ import {
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { cn } from '@booking/ui/lib/utils';
-import {
-  CircleAlert,
-  CreditCard,
-  Landmark,
-  Mail,
-  PencilLine,
-  Phone,
-  QrCode,
-  Smartphone,
-  UserRound,
-  Wallet,
-  type LucideIcon,
-} from 'lucide-react';
-import { Form, Link, useNavigation } from 'react-router';
+import { CircleAlert, type LucideIcon } from 'lucide-react';
+import { Form, Link } from 'react-router';
 import { SectionCard } from '../../../components/section-card';
-import { NsI18n, type ScopedI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { formatVnd } from '../../../lib/ui';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { useLocale } from '../../../lib/use-locale';
+import {
+  useCheckoutFormController,
+  type CheckoutContactFieldModel,
+  type CheckoutPaymentMethodModel,
+} from './use-checkout-form-controller';
 
 export function CheckoutForm({
   listingId,
@@ -62,9 +53,20 @@ export function CheckoutForm({
   paymentMethods: CustomerPaymentMethod[];
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
-  const navigation = useNavigation();
-  const locale = useLocale();
-  const submitting = navigation.state === 'submitting';
+  const {
+    contactFields,
+    defaultPaymentMethod,
+    packageRetryHref,
+    paymentMethodOptions,
+    serverErrorMessage,
+    submitting,
+  } = useCheckoutFormController({
+    listingSlug,
+    currentUser,
+    fieldErrors,
+    serverError,
+    paymentMethods,
+  });
 
   return (
     <Form method="post" className="flex flex-col gap-4">
@@ -85,16 +87,12 @@ export function CheckoutForm({
         >
           {t('guestSection')}
         </h2>
-        {serverError ? (
+        {serverErrorMessage ? (
           <Alert variant="destructive" className="mt-4 rounded-sm">
             <AlertDescription>
-              {checkoutError(serverError, t)}{' '}
-              {serverError === 'PACKAGE_UNAVAILABLE' ||
-              serverError === 'PACKAGE_DURATION_MISMATCH' ? (
-                <Link
-                  className="font-medium underline"
-                  to={storefrontPaths.listing(locale, listingSlug)}
-                >
+              {serverErrorMessage}{' '}
+              {packageRetryHref ? (
+                <Link className="font-medium underline" to={packageRetryHref}>
                   {t('selectPackageAgain')}
                 </Link>
               ) : null}
@@ -102,37 +100,9 @@ export function CheckoutForm({
           </Alert>
         ) : null}
         <FieldGroup className="mt-4 gap-4">
-          <ContactField
-            name="fullName"
-            label={t('fullName')}
-            icon={UserRound}
-            autoComplete="name"
-            defaultValue={currentUser?.fullName ?? ''}
-            errors={fieldErrors?.fullName}
-          />
-          <ContactField
-            name="phone"
-            label={t('phone')}
-            icon={Phone}
-            autoComplete="tel"
-            defaultValue={currentUser?.phone ?? ''}
-            errors={fieldErrors?.phone}
-          />
-          <ContactField
-            name="email"
-            type="email"
-            label={t('email')}
-            icon={Mail}
-            autoComplete="email"
-            defaultValue={currentUser?.email ?? ''}
-            errors={fieldErrors?.email}
-          />
-          <ContactField
-            name="customerNote"
-            label={t('notePlaceholder')}
-            icon={PencilLine}
-            defaultValue=""
-          />
+          {contactFields.map((field) => (
+            <ContactField key={field.name} {...field} />
+          ))}
         </FieldGroup>
       </SectionCard>
 
@@ -149,7 +119,7 @@ export function CheckoutForm({
             {formatVnd(dueNow)}
           </strong>
         </div>
-        <PaymentMethods methods={paymentMethods} />
+        <PaymentMethods options={paymentMethodOptions} defaultValue={defaultPaymentMethod} />
       </SectionCard>
 
       <Button
@@ -165,26 +135,13 @@ export function CheckoutForm({
   );
 }
 
-const PAYMENT_METHODS: Record<
-  CustomerPaymentMethod,
-  {
-    icon: LucideIcon;
-    label:
-      | 'payment.transfer'
-      | 'payment.domesticCard'
-      | 'payment.internationalCard'
-      | 'payment.momoWallet'
-      | 'payment.zaloWallet';
-  }
-> = {
-  bank_transfer: { icon: Landmark, label: 'payment.transfer' },
-  napas_qr: { icon: QrCode, label: 'payment.domesticCard' },
-  international_card: { icon: CreditCard, label: 'payment.internationalCard' },
-  momo_wallet: { icon: Wallet, label: 'payment.momoWallet' },
-  zalopay_wallet: { icon: Smartphone, label: 'payment.zaloWallet' },
-};
-
-function PaymentMethods({ methods }: { methods: CustomerPaymentMethod[] }) {
+function PaymentMethods({
+  options,
+  defaultValue,
+}: {
+  options: CheckoutPaymentMethodModel[];
+  defaultValue?: CustomerPaymentMethod;
+}) {
   const { t } = useTranslation(NsI18n.Checkout);
   return (
     <fieldset className="mt-4">
@@ -193,16 +150,13 @@ function PaymentMethods({ methods }: { methods: CustomerPaymentMethod[] }) {
       </legend>
       <RadioGroup
         name="paymentMethod"
-        defaultValue={methods[0]}
+        defaultValue={defaultValue}
         className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3"
         aria-label={t('payment.method')}
       >
-        {methods.map((method) => {
-          const option = PAYMENT_METHODS[method];
-          return (
-            <PaymentMethod key={method} value={method} icon={option.icon} label={t(option.label)} />
-          );
-        })}
+        {options.map((option) => (
+          <PaymentMethod key={option.value} {...option} />
+        ))}
       </RadioGroup>
     </fieldset>
   );
@@ -235,12 +189,6 @@ function PaymentMethod({
   );
 }
 
-const FIELD_ERROR_KEYS = {
-  fullName: 'fieldErrors.fullName',
-  phone: 'fieldErrors.phone',
-  email: 'fieldErrors.email',
-} as const;
-
 function ContactField({
   name,
   label,
@@ -248,18 +196,9 @@ function ContactField({
   type = 'text',
   autoComplete,
   defaultValue,
-  errors,
-}: {
-  name: string;
-  label: string;
-  icon: LucideIcon;
-  type?: string;
-  autoComplete?: string;
-  defaultValue: string;
-  errors?: string[];
-}) {
-  const { t } = useTranslation(NsI18n.Checkout);
-  const invalid = Boolean(errors?.length);
+  errorMessage,
+}: CheckoutContactFieldModel) {
+  const invalid = Boolean(errorMessage);
   return (
     <Field data-invalid={invalid}>
       <FieldLabel htmlFor={name} className="sr-only">
@@ -286,17 +225,8 @@ function ContactField({
         ) : null}
       </InputGroup>
       <FieldError id={`${name}-error`} className="mt-1 text-xs leading-4">
-        {invalid
-          ? t(FIELD_ERROR_KEYS[name as keyof typeof FIELD_ERROR_KEYS] ?? 'fieldErrors.generic')
-          : null}
+        {errorMessage}
       </FieldError>
     </Field>
   );
-}
-
-function checkoutError(error: string, t: ScopedI18n<NsI18n.Checkout>['t']): string {
-  if (error === 'PACKAGE_UNAVAILABLE' || error === 'PACKAGE_DURATION_MISMATCH') {
-    return t('packageUnavailable');
-  }
-  return error === 'SLOT_TAKEN' || error === 'SLOT_HELD' ? t('invalidSlot') : error;
 }
