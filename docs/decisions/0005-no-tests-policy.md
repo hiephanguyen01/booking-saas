@@ -1,28 +1,46 @@
-# ADR 0005 — No tests, by owner decision
+# ADR 0005 — Targeted automated tests
 
-**Status:** Accepted (owner policy; documented 2026-07-17).
+**Status:** Accepted (supersedes the former no-tests policy on 2026-07-24).
 
 ## Context
 
-The repo ships **zero tests** deliberately. Tickets, the design spec (`TONG-QUAN.md` §22 "Testing
-Strategy"), and some skills still mention tests — those are superseded by this decision.
+The repository previously prohibited every automated test and relied on lint, typecheck, build, manual
+verification, and static architecture scripts. That kept the toolchain small, but it left security and
+concurrency behavior without executable regression coverage. The suspended-tenant guard and distributed
+session-refresh lock demonstrated that type correctness alone cannot prove request-ordering invariants.
 
 ## Decision
 
-No tests, ever:
+Automated tests are allowed and expected where they protect high-risk behavior:
 
-- Never create `*.spec.*`, `*.test.*`, `*.e2e-spec.*`, or a `test/`/`e2e/`/`__tests__` directory.
-- Never add vitest/jest/playwright (configs, deps, `test` scripts, or CI test steps).
-- This overrides any ticket/spec/skill that says "add tests" — skip that part silently.
+- security boundaries and tenant isolation;
+- authentication, session rotation, locking, and other concurrency-sensitive flows;
+- money, commission, ledger, date/time, and idempotency invariants;
+- parsers, validators, and pure domain functions with meaningful edge cases.
 
-## Verification instead
+Keep tests deterministic, focused, and close to the code they protect. Prefer the smallest runner that
+fits the package. Storefront server unit tests use Node's built-in `node:test` runner with Node's
+TypeScript type stripping, so no test framework dependency is required. Do not introduce broad snapshot
+suites, brittle implementation-detail assertions, or browser end-to-end infrastructure without a clear
+risk-based reason.
 
-`pnpm turbo lint typecheck build` must pass, then run the app (`pnpm dev`) and exercise the changed flow
-manually (or `/run` + `/verify`). Requires Node ≥ 22.22.0. The former `architecture.spec.ts` and RLS
-integration test were removed under this policy and replaced by review + the static `check:rls` script.
+## Verification
+
+The standard repository check is:
+
+```bash
+pnpm test
+pnpm turbo lint typecheck build
+```
+
+Storefront CI also runs its static security gate and `pnpm --filter=@booking/api check:rls`. Manual flow
+verification remains required for user-visible or integration-heavy changes; automated tests supplement
+rather than replace it.
 
 ## Consequences
 
-- Fast to move; correctness rests on typecheck + lint + manual verification + code review.
-- Structural invariants that a test used to guard (dashboard folder architecture, RLS coverage) are now
-  guarded by documentation + review, plus `check:rls` for RLS coverage specifically.
+- Security-critical regressions can be reproduced and blocked in CI.
+- Test infrastructure grows incrementally instead of requiring an all-at-once coverage target.
+- Packages without meaningful tests may omit a `test` script until risk justifies one.
+- Static architecture checks remain appropriate for repository-wide structural invariants such as RLS
+  migration coverage.
