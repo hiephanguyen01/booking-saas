@@ -43,13 +43,19 @@ export function AuthFormError({ actionData }: { actionData?: AuthActionData }) {
   ) : null;
 }
 
-export function AuthSubmitButton({ children }: { children: ReactNode }) {
+export function AuthSubmitButton({
+  children,
+  disabled = false,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+}) {
   const navigation = useNavigation();
   // Every auth action redirects on success, so the navigation continues into a
   // 'loading' phase after the action resolves. Gating on 'submitting' alone
   // re-enabled the button mid-redirect and left a double-submit window; the
   // formMethod check keeps this scoped to submission-driven navigations.
-  const pending = navigation.state !== 'idle' && navigation.formMethod != null;
+  const pending = disabled || (navigation.state !== 'idle' && navigation.formMethod != null);
 
   return (
     <Button type="submit" size="control" className="w-full text-base" disabled={pending}>
@@ -64,11 +70,13 @@ export function AuthPasswordInput({
   autoComplete,
   registration,
   invalid,
+  disabled = false,
 }: {
   id: string;
   autoComplete: string;
   registration: UseFormRegisterReturn;
   invalid?: boolean;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
   const { inputType, toggle, visible } = usePasswordVisibility();
@@ -83,12 +91,14 @@ export function AuthPasswordInput({
         type={inputType}
         autoComplete={autoComplete}
         aria-invalid={invalid}
+        disabled={disabled}
         {...registration}
       />
       <InputGroupAddon align="inline-end">
         <InputGroupButton
           onClick={toggle}
           aria-label={visible ? t('password.hide') : t('password.show')}
+          disabled={disabled}
         >
           {visible ? <EyeOff /> : <Eye />}
         </InputGroupButton>
