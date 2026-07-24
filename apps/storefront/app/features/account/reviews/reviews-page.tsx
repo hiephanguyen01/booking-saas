@@ -1,37 +1,24 @@
-import type { CustomerReviewItem } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { ChevronLeft, ChevronRight, MessageSquareText } from 'lucide-react';
-import { useState } from 'react';
-import { Form, Link, useLocation, useNavigation } from 'react-router';
+import { Form, Link } from 'react-router';
 import { AccountResultsSkeleton } from '../../../components/loading-skeletons';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { isReadNavigationMethod, useMinimumPending } from '../../../lib/use-minimum-pending';
 import type { Route } from '../../../routes/account/+types/reviews';
 import { AccountPanel, PageHeading } from '../components/account-primitives';
 import { ReviewBookingCard } from '../components/review-booking-card';
 import { ReviewDialog } from '../components/review-dialog';
-import {
-  parseAccountReviewFilter,
-  type AccountReviewFilter,
-} from './review-filter';
-
-type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
+import type { AccountReviewFilter } from './review-filter';
+import { useAccountReviewsPageController } from './use-account-reviews-page-controller';
 
 export function AccountReviewsPage({ loaderData }: Route.ComponentProps) {
   const { t } = useTranslation([NsI18n.Account, NsI18n.Common]);
-  const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
-  const location = useLocation();
-  const navigation = useNavigation();
-  const readNavigationActive =
-    navigation.state === 'loading' &&
-    navigation.location?.pathname === location.pathname &&
-    isReadNavigationMethod(navigation.formMethod);
-  const pending = useMinimumPending(readNavigationActive);
-  const activeStatus = readNavigationActive
-    ? parseAccountReviewFilter(
-        new URLSearchParams(navigation.location?.search).get('status'),
-      )
-    : loaderData.status;
+  const {
+    activeReview,
+    activeStatus,
+    handleReviewOpenChange,
+    pending,
+    setActiveReview,
+  } = useAccountReviewsPageController({ status: loaderData.status });
 
   return (
     <div className="space-y-4 py-2 font-studio">
@@ -71,7 +58,7 @@ export function AccountReviewsPage({ loaderData }: Route.ComponentProps) {
       <ReviewDialog
         review={activeReview}
         open={activeReview !== null}
-        onOpenChange={(open) => !open && setActiveReview(null)}
+        onOpenChange={handleReviewOpenChange}
       />
     </div>
   );
