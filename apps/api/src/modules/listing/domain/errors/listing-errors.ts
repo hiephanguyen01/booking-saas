@@ -89,3 +89,22 @@ export class ResourceNotOwned extends DomainError {
     super('RESOURCE_NOT_OWNED', 403, 'The resource belongs to another partner');
   }
 }
+
+export class DepositBelowTenantCommission extends DomainError {
+  constructor(
+    depositPercent: number,
+    minimumDepositPercent: bigint,
+    commissionRuleId: string,
+  ) {
+    super(
+      'DEPOSIT_BELOW_TENANT_COMMISSION',
+      400,
+      `Deposit ${depositPercent}% must be at least the tenant commission ${minimumDepositPercent}%`,
+      {
+        depositPercent,
+        minimumDepositPercent: Number(minimumDepositPercent),
+        commissionRuleId,
+      },
+    );
+  }
+}
