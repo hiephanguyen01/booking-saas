@@ -12,6 +12,16 @@ export const enBooking = {
   cancelConfirm: 'Confirm cancellation',
   refundInfo: 'Refund: {amount} ({percent}%)',
   cancelled: 'Your booking has been cancelled.',
+  success: {
+    title: 'Booking successful',
+    thanks: 'Thank you for your booking',
+    bookingCodePrefix: 'Your booking code',
+    bookingCodeFallbackPrefix: 'Your booking code is',
+    sentToEmail: 'was sent to',
+    emailSentFallback: 'A confirmation was sent by email.',
+    lookup: 'Find booking',
+    home: 'Home',
+  },
   statusLabels: {
     draft: 'Draft',
     pending_approval: 'Pending approval',

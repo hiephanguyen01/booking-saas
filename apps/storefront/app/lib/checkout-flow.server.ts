@@ -11,8 +11,18 @@ export interface CheckoutFlowRecord {
   bookingCode: string;
   listingSlug: string;
   locale: 'vi' | 'en';
+  /** Checkout contact email masked before storage and safe to expose in the success UI. */
+  maskedEmail?: string;
   /** Guest access credential; Redis-only and never serialized into a URL or loader payload. */
   otp?: string;
+}
+
+export function maskCheckoutEmail(email: string): string {
+  const [localPart = '', domain = ''] = email.split('@');
+  const visibleLength = Math.min(2, localPart.length);
+  const visible = localPart.slice(0, visibleLength);
+  const hidden = '*'.repeat(Math.max(3, localPart.length - visibleLength));
+  return `${visible}${hidden}@${domain}`;
 }
 
 export function createCheckoutFlowService(store: RedisJsonStore = storefrontRedisStore) {

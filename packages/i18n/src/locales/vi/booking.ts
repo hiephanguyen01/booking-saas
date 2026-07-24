@@ -9,6 +9,16 @@ export const viBooking = {
   cancelConfirm: 'Xác nhận hủy',
   refundInfo: 'Hoàn tiền: {amount} ({percent}%)',
   cancelled: 'Đặt chỗ đã được hủy.',
+  success: {
+    title: 'Đặt thành công',
+    thanks: 'Cảm ơn bạn đã đặt đơn',
+    bookingCodePrefix: 'Mã Booking của bạn',
+    bookingCodeFallbackPrefix: 'Mã Booking của bạn là',
+    sentToEmail: 'được gửi về email',
+    emailSentFallback: 'Xác nhận đã được gửi qua email.',
+    lookup: 'Tra cứu đặt chỗ',
+    home: 'Trang chủ',
+  },
   statusLabels: {
     draft: 'Nháp',
     pending_approval: 'Chờ duyệt',
