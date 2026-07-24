@@ -201,7 +201,31 @@ Final review hậu hardening:
   test mới; không còn executable `event.tenantId ?? ''`, `forTenant('')`, `runModeration`, hay
   promotions import partner.
 
-## 9. Nếu bạn là AI tiếp quản
+## 9. Audit entity coverage của 257 use-case — 2026-07-24
+
+Audit AST + transitive local-import graph trên đúng 257 file trong `apps/api/src/modules`:
+
+- Trước hardening: 216 đi tới entity/VO/pure domain policy; 41 không đi tới domain.
+- 41 file được đọc và phân loại: 27 query/projection thuần; 6 delegate qua store adapter đã dùng
+  `Session`/`AuthChallenge`; 2 guarded/set-based repository transition; 1 provider-credential
+  boundary validation; 1 read-model projection command; **4 file còn business rule inline**.
+- Bốn file đã sửa: finance customer settlement eligibility + payout policy persistence/mapping;
+  listing deposit coverage assert + requirement projection.
+- Sau hardening: 220/257 đi tới domain policy, trong đó 184 đi tới entity/VO. 37 file còn
+  entity-free đều thuộc nhóm orchestration hợp lệ ở trên; không tạo entity giả cho query/CAS/adapter.
+- Audit ranh giới kèm theo đã chuyển ba persistence bypass khỏi application: payout settings
+  `tx.tenant`, review aggregate raw SQL và booking `tx.partner` lookup đều qua local token/port/
+  Prisma adapter. Không còn direct Prisma model/raw SQL trong `modules/*/application/use-cases`.
+- Runtime smoke: payout GET/PUT 200; settlement eligible 200 + miss 404 đúng wire; deposit
+  requirement 200 + guard 400 đúng message/details; booking create 201; `review.created` projection
+  được relay xử lý. Dữ liệu smoke đã phục hồi/dọn sạch.
+- Final gate hậu audit: `pnpm turbo lint typecheck build --force` **28/28 task xanh**, cache 0;
+  `check:rls` **46/46** tenant-scoped table.
+
+Plan và registry chi tiết:
+[`2026-07-24-entity-centric-use-case-audit-hardening.md`](../superpowers/plans/2026-07-24-entity-centric-use-case-audit-hardening.md).
+
+## 10. Nếu bạn là AI tiếp quản
 
 Nói với người dùng bạn đã đọc file này, xác nhận lại §1 (trạng thái) bằng
 `git log --oneline -5 refactor/entity-centric` + `gh pr list`. Nếu có PR module đang mở, tiếp tục

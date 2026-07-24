@@ -405,6 +405,23 @@ Không thuộc refactor này nhưng ghi lại để không thất lạc lần n�
 `payments` credentials `Record<string,string>` → discriminated union per-gateway (đổi wire + đụng FE
 + security); `gatewayPayload`/Evidence typed; khử `unknown`/jsonb tự do ở boundary.
 
+### 8e. Audit coverage toàn bộ use-case (đã làm hậu refactor 2026-07-24)
+
+Audit AST/import graph trên 257 `modules/**/*.use-case.ts` không dùng tên file làm kết luận:
+
+- 216 file đã đi tới entity/VO/pure domain policy; 41 file còn lại được đọc thủ công và phân loại.
+- Không ép 27 query, 6 adapter-backed state machine, 2 set-based transition, 1 boundary validation
+  và 1 projection command tạo entity không có state/invariant.
+- Bốn business rule còn inline đã được đưa vào domain: `Settlement.canOpenDispute`,
+  `PayoutPolicy.define/toStored/toDto`, và `ListingDepositPolicy` dùng chung cho assert + preview.
+- Ba application persistence bypass phát hiện cùng lúc đã qua local port/adapter: payout settings,
+  review aggregate projection và booking partner `isHouse`.
+- Kết quả sau sửa: 220/257 đi tới domain policy, 184 đi tới entity/VO; 37 entity-free còn lại đều là
+  orchestration có chủ đích. Application use-case không còn direct Prisma model/raw SQL.
+
+Xem plan có frozen-wire matrix và inventory:
+[`2026-07-24-entity-centric-use-case-audit-hardening.md`](../plans/2026-07-24-entity-centric-use-case-audit-hardening.md).
+
 ## 9. Xác minh mỗi PR (ADR 0005 — không có test)
 
 1. `pnpm turbo lint typecheck build` xanh.
