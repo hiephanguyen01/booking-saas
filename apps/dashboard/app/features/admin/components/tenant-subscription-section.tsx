@@ -1,4 +1,5 @@
-import { Form, Link } from 'react-router';
+import type { FormEvent } from 'react';
+import { Form, Link, useNavigation, useSubmit } from 'react-router';
 import type {
   CurrentSubscriptionResponse,
   PlanResponse,
@@ -27,25 +28,29 @@ import { PaginationBar } from '~/components/pagination-bar';
 import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { SubscriptionStatusBadge } from '~/components/status-badge';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 const historyColumns: DataTableColumn<SubscriptionHistoryItem>[] = [
-  { header: 'Gói', cell: (s) => <span className="font-medium">{s.planName}</span> },
-  { header: 'Trạng thái', cell: (s) => <SubscriptionStatusBadge status={s.status} /> },
+  { header: 'Gói', cell: (subscription) => <span className="font-medium">{subscription.planName}</span> },
+  {
+    header: 'Trạng thái',
+    cell: (subscription) => <SubscriptionStatusBadge status={subscription.status} />,
+  },
   {
     header: 'Bắt đầu',
     className: 'tabular-nums text-muted-foreground',
-    cell: (s) => <DateTimeValue iso={s.startsAt} />,
+    cell: (subscription) => <DateTimeValue iso={subscription.startsAt} />,
   },
   {
     header: 'Hết hạn',
     className: 'tabular-nums text-muted-foreground',
-    cell: (s) => <DateTimeValue iso={s.expiresAt} />,
+    cell: (subscription) => <DateTimeValue iso={subscription.expiresAt} />,
   },
   {
     header: 'Ghi chú',
-    cell: (s) =>
-      s.note ? (
-        <span className="text-sm text-muted-foreground">{s.note}</span>
+    cell: (subscription) =>
+      subscription.note ? (
+        <span className="text-sm text-muted-foreground">{subscription.note}</span>
       ) : (
         <span className="text-muted-foreground">—</span>
       ),
@@ -62,52 +67,66 @@ function AssignSubscriptionForm({
   busy: boolean;
   hasSubscription: boolean;
 }) {
-  const defaultExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy: guardedBusy, run } = useSubmissionGuard(navigation.state);
+  const isBusy = busy || guardedBusy;
+  const defaultExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const minDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <Form method="post" className="space-y-3">
+    <Form method="post" className="space-y-3" onSubmit={handleSubmit} aria-busy={isBusy}>
       <input type="hidden" name="intent" value="assign-subscription" />
-      <div className="space-y-1.5">
-        <Label htmlFor="planId">Gói</Label>
-        <NativeSelect id="planId" name="planId" className="w-full" required>
-          {activePlans.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
+      <fieldset disabled={isBusy} className="m-0 min-w-0 space-y-3 border-0 p-0">
         <div className="space-y-1.5">
-          <Label htmlFor="status">Trạng thái</Label>
-          <NativeSelect id="status" name="status" className="w-full" defaultValue="active">
-            {(['trial', 'active', 'past_due'] as const).map((s) => (
-              <option key={s} value={s}>
-                {SUBSCRIPTION_STATUS_LABELS[s]}
+          <Label htmlFor="planId">Gói</Label>
+          <NativeSelect id="planId" name="planId" className="w-full" required>
+            {activePlans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.name}
               </option>
             ))}
           </NativeSelect>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="expiresAt">Hết hạn</Label>
-          <Input
-            id="expiresAt"
-            name="expiresAt"
-            type="date"
-            required
-            min={minDate}
-            defaultValue={defaultExpiry}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="status">Trạng thái</Label>
+            <NativeSelect id="status" name="status" className="w-full" defaultValue="active">
+              {(['trial', 'active', 'past_due'] as const).map((status) => (
+                <option key={status} value={status}>
+                  {SUBSCRIPTION_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="expiresAt">Hết hạn</Label>
+            <Input
+              id="expiresAt"
+              name="expiresAt"
+              type="date"
+              required
+              min={minDate}
+              defaultValue={defaultExpiry}
+            />
+          </div>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="note">Ghi chú</Label>
-        <Textarea id="note" name="note" rows={2} placeholder="Số hoá đơn, ghi chú nội bộ…" />
-      </div>
-      <Button type="submit" className="w-full" disabled={busy}>
-        {hasSubscription ? 'Đổi gói' : 'Gán gói'}
-      </Button>
+        <div className="space-y-1.5">
+          <Label htmlFor="note">Ghi chú</Label>
+          <Textarea id="note" name="note" rows={2} placeholder="Số hoá đơn, ghi chú nội bộ…" />
+        </div>
+        <Button type="submit" className="w-full" disabled={isBusy}>
+          {isBusy ? 'Đang lưu…' : hasSubscription ? 'Đổi gói' : 'Gán gói'}
+        </Button>
+      </fieldset>
     </Form>
   );
 }
@@ -134,7 +153,7 @@ export function TenantSubscriptionSection({
   busy: boolean;
   serverError: string | null;
 }) {
-  const activePlans = plans.filter((p) => p.isActive);
+  const activePlans = plans.filter((plan) => plan.isActive);
   const plan = subscription?.plan ?? null;
 
   return (
@@ -224,10 +243,15 @@ export function TenantSubscriptionSection({
               <DataTable
                 columns={historyColumns}
                 data={history}
-                getRowKey={(s) => s.id}
+                getRowKey={(subscriptionItem) => subscriptionItem.id}
                 emptyMessage="Chưa có lịch sử đăng ký."
               />
-              <PaginationBar page={page} pageSize={pageSize} total={historyTotal} hrefFor={pageHref} />
+              <PaginationBar
+                page={page}
+                pageSize={pageSize}
+                total={historyTotal}
+                hrefFor={pageHref}
+              />
             </>
           ) : null}
         </DetailSection>
