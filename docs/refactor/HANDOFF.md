@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #10b.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #12.
 
 ## 0. Vì sao cần file này
 
@@ -35,16 +35,22 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 10b | tenancy — plan + subscription | ✅ merge (GitHub PR #28) — **tenancy xong cả module** |
 | 11a | listing — cancellation-policy + pricing-rule + resource | ✅ merge (GitHub PR #29) |
 | 11b | listing — Listing content + moderation | ✅ merge (GitHub PR #30) |
-| 11c | listing — ListingGroup + cascade | 🔍 review (GitHub PR #NN) — **listing xong cả module** |
-| 12→16 | scheduling → payments → booking → finance → administrative-division | chưa làm |
+| 11c | listing — ListingGroup + cascade | ✅ merge (GitHub PR #31) — **listing xong cả module** |
+| 12 | scheduling | 🔍 review (GitHub PR #NN) |
+| 13 | payments | 🚧 đang làm (track song song, worktree riêng, branch `refactor/entity-payments`) |
+| 14→16 | booking → finance → administrative-division | chưa làm |
 
-**listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint). **#11a** (3 aggregate phụ) ✅
-merged (PR #29). **#11b** (Listing content + moderation) ✅ merged (PR #30). **#11c** (ListingGroup +
-cascade) đang review → **hoàn tất module listing 3/3**. **12/16 module xong** (còn scheduling,
-payments, booking, finance, administrative-division).
+**listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint) — ✅ cả 3 merged (PR
+#29/#30/#31). **12/16 module xong**.
 
-Việc kế tiếp: **PR #12 — module scheduling** (§6 thứ tự). Đọc mục scheduling trong
-`entity-centric-survey.md` trước khi plan. **Bộ máy moderation (`listing-moderation.ts` +
+**Đợt hiện tại (2026-07-24) chạy 2 track SONG SONG theo chỉ thị owner** (nới quyết định "tuần tự
+nghiêm" spec §2.6 — chỉ đổi cách chạy phiên, vẫn 1 module = 1 PR): **#12 scheduling** ở working
+tree chính (branch `refactor/entity-scheduling`) và **#13 payments** ở worktree
+`../booking-saas-wt-payments` (branch `refactor/entity-payments`). Hai module không đụng file code
+của nhau; conflict dự kiến chỉ ở docs (HANDOFF/spec §8a/§8c-bis, `apps/api/CLAUDE.md`) — PR merge
+sau rebase sửa. Việc kế tiếp sau đợt này: **đợt 2 = #14 booking + #15 finance (+#16
+administrative-division gộp kèm)** — finance tiêu thụ payload booking và bẫy `rejectionException`
+sửa cả 2 phía ở #14, nên đợt 2 cần cân nhắc mức song song riêng. **Bộ máy moderation (`listing-moderation.ts` +
 `moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
 sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
 + đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25
@@ -136,8 +142,9 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 
 - **Relay outbox thiếu dead-letter/max-attempts** — một row hỏng vĩnh viễn chiếm claim slot mãi mãi.
   Nên làm PR hạ tầng riêng, độc lập với các đợt refactor.
-- `event.tenantId ?? ''` còn ở **booking, finance, listing, payments, scheduling** — sẽ tự
-  hết khi từng module refactor (spec §4), không cần quét riêng.
+- `event.tenantId ?? ''` còn ở **booking, finance, listing** — sẽ tự hết khi từng module refactor
+  (spec §4), không cần quét riêng. (scheduling đã normalize ở PR #12; payments ở PR #13; lưu ý
+  listing đã refactor xong nhưng 3 PR con không đụng file đăng ký outbox nên pattern còn đó.)
 - Wave migration sau refactor: unique index còn thiếu (dedupe_key của notification, refunds,
   dispute, one-primary-domain).
 - Thêm fixture `draft` vào seed trước PR #9/#11.
