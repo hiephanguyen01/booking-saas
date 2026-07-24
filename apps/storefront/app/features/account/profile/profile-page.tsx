@@ -1,21 +1,15 @@
-import {
-  customerAccountSettingsInputSchema,
-  type CustomerAccountSettingsInput,
-} from '@booking/contracts';
+import { customerAccountSettingsInputSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
-import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import { CheckCircle2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { Route } from '../../../routes/account/+types/profile';
 import type { AccountOutletContext } from '../../../routes/account/layout';
 import { userInitials } from '../account-nav';
 import { AccountPanel } from '../components/account-primitives';
-
-const ACCOUNT_AVATAR_PLACEHOLDER = '/images/booking-studio/home/promo-photographer.png';
+import { useAccountProfileController } from './use-account-profile-controller';
 
 type AccountProfilePageProps = {
   actionData: Route.ComponentProps['actionData'];
@@ -24,61 +18,26 @@ type AccountProfilePageProps = {
 export function AccountProfilePage({ actionData }: AccountProfilePageProps) {
   const { user } = useOutletContext<AccountOutletContext>();
   const { t } = useTranslation(NsI18n.Account);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(
-    () => () => {
-      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
-    },
-    [avatarUrl],
-  );
-
-  const fields: FieldConfig<CustomerAccountSettingsInput>[] = [
-    {
-      name: 'fullName',
-      type: 'text',
-      label: t('profile.fullName'),
+  const {
+    avatarSrc,
+    choosePhoto,
+    customerId,
+    defaultValues,
+    fields,
+    inputRef,
+    selectAvatar,
+  } = useAccountProfileController({
+    user,
+    labels: {
+      fullName: t('profile.fullName'),
+      email: t('profile.email'),
+      phone: t('profile.phone'),
+      currentPassword: t('profile.currentPassword'),
+      newPassword: t('profile.newPassword'),
+      confirmPassword: t('profile.confirmPassword'),
       placeholder: t('profile.placeholder'),
-      autoComplete: 'name',
     },
-    {
-      name: 'email',
-      type: 'email',
-      label: t('profile.email'),
-      placeholder: t('profile.placeholder'),
-      autoComplete: 'email',
-    },
-    {
-      name: 'phone',
-      type: 'text',
-      label: t('profile.phone'),
-      placeholder: t('profile.placeholder'),
-      autoComplete: 'tel',
-      disabled: true,
-    },
-    {
-      name: 'currentPassword',
-      type: 'password',
-      label: t('profile.currentPassword'),
-      placeholder: t('profile.placeholder'),
-      autoComplete: 'current-password',
-    },
-    {
-      name: 'newPassword',
-      type: 'password',
-      label: t('profile.newPassword'),
-      placeholder: t('profile.placeholder'),
-      autoComplete: 'new-password',
-    },
-    {
-      name: 'confirmPassword',
-      type: 'password',
-      label: t('profile.confirmPassword'),
-      placeholder: t('profile.placeholder'),
-      autoComplete: 'new-password',
-    },
-  ];
+  });
 
   return (
     <AccountPanel className="rounded-none px-6 py-8 sm:px-8 lg:px-10">
@@ -86,11 +45,7 @@ export function AccountProfilePage({ actionData }: AccountProfilePageProps) {
 
       <div className="mt-6 flex items-center gap-4">
         <Avatar className="size-18">
-          <AvatarImage
-            src={avatarUrl ?? ACCOUNT_AVATAR_PLACEHOLDER}
-            alt=""
-            className="object-cover"
-          />
+          <AvatarImage src={avatarSrc} alt="" className="object-cover" />
           <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
             {userInitials(user.fullName)}
           </AvatarFallback>
@@ -100,19 +55,14 @@ export function AccountProfilePage({ actionData }: AccountProfilePageProps) {
           type="file"
           accept="image/png,image/jpeg,image/webp"
           className="sr-only"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            if (!file) return;
-            if (avatarUrl) URL.revokeObjectURL(avatarUrl);
-            setAvatarUrl(URL.createObjectURL(file));
-          }}
+          onChange={(event) => selectAvatar(event.currentTarget.files?.[0])}
         />
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="h-8 rounded-sm border-foreground/75 px-4 text-xs font-semibold shadow-xs"
-          onClick={() => inputRef.current?.click()}
+          onClick={choosePhoto}
         >
           {t('profile.choosePhoto')}
         </Button>
@@ -123,14 +73,7 @@ export function AccountProfilePage({ actionData }: AccountProfilePageProps) {
       <GenericForm
         schema={customerAccountSettingsInputSchema}
         fields={fields}
-        defaultValues={{
-          fullName: user.fullName,
-          email: user.email,
-          phone: user.phone ?? '',
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: '',
-        }}
+        defaultValues={defaultValues}
         submitLabel={t('profile.save')}
         fieldErrors={actionData?.fieldErrors}
         renderFields={(renderedFields) => {
@@ -138,10 +81,7 @@ export function AccountProfilePage({ actionData }: AccountProfilePageProps) {
           return (
             <div>
               <div className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,375px)_minmax(0,375px)]">
-                <CustomerIdField
-                  label={t('profile.customerId')}
-                  value={`CUS${user.id.replaceAll('-', '').slice(0, 8).toUpperCase()}`}
-                />
+                <CustomerIdField label={t('profile.customerId')} value={customerId} />
                 {field.get('fullName')}
                 {field.get('email')}
                 {field.get('phone')}
