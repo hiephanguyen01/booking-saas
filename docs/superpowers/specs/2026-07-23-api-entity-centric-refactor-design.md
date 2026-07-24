@@ -259,6 +259,10 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 - `payments`: `canSucceed` (mâu thuẫn SQL guard thật — cái bẫy), `findActivePendingByBooking`
 - `catalog`: `ListPublicListingsUseCase` không có route — **[ĐÃ XOÁ ở PR #9]**
 - `favorites`: `isFavorited` (port + repo, 0 caller) — **đã xoá ở PR #4**
+- `catalog.mapper.ts`'s `toPublicListingResponse`, và `listPublicListingsQuerySchema` +
+  `publicListingsFilterSchema` trong `packages/contracts/src/contracts/listing-type.ts` — 0 consumer,
+  xác nhận lại ở final review PR #9 nhưng **cố ý KHÔNG xoá** vì là read-side/shared-package (xoá cần
+  rebuild `contracts` + verify lại frontend); dọn dẹp follow-up, không thuộc phạm vi refactor này.
 
 ### 8c-bis. Tooling & fixture follow-ups (PR nhỏ riêng, KHÔNG nhét vào PR module)
 

@@ -3,10 +3,8 @@ import type { UpdateListingTypeInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ListingType } from '../../domain/entities/listing-type.entity';
-import {
-  ListingTypeNotFound,
-  ListingTypeSlugTaken,
-} from '../../domain/errors/listing-type-errors';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
+import { ListingTypeSlugTaken } from '../../domain/errors/listing-type-errors';
 import {
   LISTING_TYPE_REPOSITORY,
   type IListingTypeRepository,

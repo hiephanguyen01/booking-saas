@@ -30,12 +30,11 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 6 | affiliate | ✅ merge (GitHub PR #22) |
 | 7 | identity-access | ✅ merge (GitHub PR #23) |
 | 8 | partner | ✅ merge (GitHub PR #24) |
-| 9 | catalog | ✅ (PR #9) |
+| 9 | catalog | 🔍 review (GitHub PR #26) |
 | 10→16 | tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Đang mở:** **PR #9 — module catalog** (nhánh `refactor/entity-catalog`, vừa push + mở PR vào
-`refactor/entity-centric` — xem Step 5 của task brief). Không bắt đầu PR #10 trước khi PR này được
-review và merge.
+**Đang mở:** **PR #9 — module catalog** (nhánh `refactor/entity-catalog`, [GitHub PR #26](https://github.com/vnkduy/booking-saas/pull/26)).
+Không bắt đầu PR #10 trước khi PR này được review và merge vào `refactor/entity-centric`.
 
 Gợi ý riêng cho tenancy (từ khảo sát): 4 aggregate — `Tenant`, `TenantDomainPortfolio`,
 `SubscriptionPlan`, `TenantSubscription`. Gần như toàn bộ luồng chạy trên **admin pool** (không phải

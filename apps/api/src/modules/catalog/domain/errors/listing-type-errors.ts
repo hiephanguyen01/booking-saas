@@ -3,14 +3,9 @@ import { DomainError } from '../../../../shared/domain/domain-error';
 /**
  * Domain errors for the ListingType aggregate. Every code + status + message is
  * byte-identical to the pre-refactor use-case / search-config-validator behaviour
- * (wire frozen) — the dashboard branches on these codes.
+ * (wire frozen) — these messages are user-visible text, and the envelope shape
+ * is frozen by the refactor's wire-freeze rule.
  */
-
-export class ListingTypeNotFound extends DomainError {
-  constructor() {
-    super('LISTING_TYPE_NOT_FOUND', 404, 'Listing type not found');
-  }
-}
 
 export class ListingTypeSlugTaken extends DomainError {
   constructor(slug: string) {

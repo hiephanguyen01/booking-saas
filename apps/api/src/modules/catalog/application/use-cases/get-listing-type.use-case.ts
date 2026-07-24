@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { ListingTypeNotFound } from '../../domain/errors/listing-type-errors';
+import { ListingTypeNotFound } from '../../../../shared/domain/errors/listing-type-not-found';
 import {
   LISTING_TYPE_REPOSITORY,
   type IListingTypeRepository,
