@@ -1,10 +1,14 @@
-import { BadRequestException } from '@nestjs/common';
 import type {
   AttributeField,
   BookingMode,
   ListingTypeSearchAttributeFacet,
   ListingTypeSearchConfig,
 } from '@booking/contracts';
+import {
+  InvalidSearchBuckets,
+  InvalidSearchFacet,
+  InvalidSearchSchedule,
+} from './errors/listing-type-errors';
 
 const CONTROL_BY_TYPE: Record<
   AttributeField['type'],
@@ -16,10 +20,6 @@ const CONTROL_BY_TYPE: Record<
   number: new Set(['range', 'buckets']),
   text: new Set(['checkbox', 'radio']),
 };
-
-function invalid(code: string, message: string): never {
-  throw new BadRequestException({ statusCode: 400, code, message });
-}
 
 function bucketsOverlap(
   left: NonNullable<ListingTypeSearchAttributeFacet['buckets']>[number],
@@ -40,30 +40,24 @@ export function assertValidListingTypeSearchConfig(input: {
 }): void {
   const { allowedModes, attributeSchema, searchConfig } = input;
   if (searchConfig.schedule !== 'none' && !allowedModes.includes(searchConfig.schedule)) {
-    invalid(
-      'INVALID_SEARCH_SCHEDULE',
-      `Search schedule "${searchConfig.schedule}" must be enabled by allowedModes`,
-    );
+    throw new InvalidSearchSchedule(searchConfig.schedule);
   }
 
   const fields = new Map(attributeSchema.map((field) => [field.key, field]));
   for (const facet of searchConfig.attributeFacets) {
     const field = fields.get(facet.key);
     if (!field?.filterable) {
-      invalid(
-        'INVALID_SEARCH_FACET',
+      throw new InvalidSearchFacet(
         `Search facet "${facet.key}" must reference a filterable attribute`,
       );
     }
     if (!CONTROL_BY_TYPE[field.type].has(facet.control)) {
-      invalid(
-        'INVALID_SEARCH_FACET',
+      throw new InvalidSearchFacet(
         `Control "${facet.control}" is not supported for ${field.type} attribute "${facet.key}"`,
       );
     }
     if (facet.matchAll && (field.type !== 'multiselect' || facet.control !== 'checkbox')) {
-      invalid(
-        'INVALID_SEARCH_FACET',
+      throw new InvalidSearchFacet(
         `matchAll is only supported for multiselect checkbox facet "${facet.key}"`,
       );
     }
@@ -72,10 +66,7 @@ export function assertValidListingTypeSearchConfig(input: {
     for (let left = 0; left < buckets.length; left += 1) {
       for (let right = left + 1; right < buckets.length; right += 1) {
         if (bucketsOverlap(buckets[left]!, buckets[right]!)) {
-          invalid(
-            'INVALID_SEARCH_BUCKETS',
-            `Buckets "${buckets[left]!.id}" and "${buckets[right]!.id}" overlap in facet "${facet.key}"`,
-          );
+          throw new InvalidSearchBuckets(buckets[left]!.id, buckets[right]!.id, facet.key);
         }
       }
     }
