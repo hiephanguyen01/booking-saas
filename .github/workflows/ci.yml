@@ -25,6 +25,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@booking/storefront security
       - run: pnpm --filter=@booking/contracts build
+      - name: Storefront unit tests
+        run: pnpm --filter=@booking/storefront test
       - name: Frontend lint
         run: pnpm turbo run lint --filter=@booking/storefront --filter=@booking/dashboard
       - name: Storefront typecheck
