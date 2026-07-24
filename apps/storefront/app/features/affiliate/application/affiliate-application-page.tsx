@@ -1,48 +1,9 @@
-import { affiliateRegistrationSchema, type AffiliateRegistrationInput } from '@booking/contracts';
+import { affiliateRegistrationSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
-import type { FieldConfig } from '@booking/ui/components/form/types';
 import { CheckCircle2 } from 'lucide-react';
-import { useMemo } from 'react';
-import { Link, useRouteLoaderData } from 'react-router';
-import { NsI18n, useTranslation, type ScopedI18n, type ScopedTranslationKey } from '../../../lib/i18n';
-import type { loader as rootLoader } from '../../../root';
+import { Link } from 'react-router';
 import type { Route } from '../../../routes/+types/become-affiliate';
-
-const APPLY_ERRORS = {
-  emailTakenWrongPassword: 'common:becomePartner.errors.emailTakenWrongPassword',
-  TENANT_INACTIVE: 'auth:affiliate.errors.tenantInactive',
-} as const satisfies Record<string, ScopedTranslationKey<[NsI18n.Auth, NsI18n.Common]>>;
-
-function fields(
-  t: ScopedI18n<[NsI18n.Auth, NsI18n.Common]>['t'],
-): FieldConfig<AffiliateRegistrationInput>[] {
-  return [
-    {
-      name: 'fullName',
-      type: 'text',
-      label: t('common:becomePartner.fullName'),
-      autoComplete: 'name',
-      colSpan: 2,
-    },
-    { name: 'email', type: 'email', label: t('common:becomePartner.email'), autoComplete: 'email' },
-    { name: 'phone', type: 'text', label: t('common:becomePartner.phone'), autoComplete: 'tel' },
-    {
-      name: 'password',
-      type: 'password',
-      label: t('common:becomePartner.password'),
-      autoComplete: 'new-password',
-      colSpan: 2,
-    },
-    { name: 'bankName', type: 'text', label: t('auth:affiliate.bankOptional') },
-    { name: 'accountNo', type: 'text', label: t('auth:affiliate.accountNoOptional') },
-    {
-      name: 'accountHolder',
-      type: 'text',
-      label: t('auth:affiliate.accountHolderOptional'),
-      colSpan: 2,
-    },
-  ];
-}
+import { useAffiliateApplicationPageController } from './use-affiliate-application-page-controller';
 
 function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantName: string }) {
   return (
@@ -62,21 +23,18 @@ function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantNa
 }
 
 export function AffiliateApplicationPage({ loaderData, actionData }: Route.ComponentProps) {
-  const { tenantName, dashboardUrl } = loaderData;
-  const rootData = useRouteLoaderData<typeof rootLoader>('root');
-  const logoUrl = loaderData.tenantLogoUrl ?? rootData?.tenant?.themeConfig.logoUrl ?? null;
-  const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);
-  const formFields = useMemo(() => fields(t), [t]);
+  const {
+    dashboardLoginHref,
+    fieldErrors,
+    formFields,
+    logoUrl,
+    serverError,
+    success,
+    t,
+    tenantName,
+  } = useAffiliateApplicationPageController({ loaderData, actionData });
 
-  const errorCode = actionData?.error;
-  const serverError = errorCode
-    ? t(
-        APPLY_ERRORS[errorCode as keyof typeof APPLY_ERRORS] ??
-          'common:becomePartner.errors.generic',
-      )
-    : null;
-
-  if (actionData?.ok) {
+  if (success) {
     return (
       <div className="min-h-dvh bg-background">
         <BrandHeader logoUrl={logoUrl} tenantName={tenantName} />
@@ -95,7 +53,7 @@ export function AffiliateApplicationPage({ loaderData, actionData }: Route.Compo
               {t('auth:affiliate.successBody', { tenant: tenantName })}
             </p>
             <a
-              href={`${dashboardUrl}/auth/login`}
+              href={dashboardLoginHref}
               className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
             >
               {t('common:becomePartner.goToDashboard')}
@@ -126,7 +84,7 @@ export function AffiliateApplicationPage({ loaderData, actionData }: Route.Compo
               submitLabel={t('auth:affiliate.submit')}
               submitFullWidth
               serverError={serverError}
-              fieldErrors={actionData?.fieldErrors ?? null}
+              fieldErrors={fieldErrors}
             />
           </div>
         </div>
