@@ -18,6 +18,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     status,
     canRetry: Boolean(flow && status.bookingStatus !== 'expired'),
     listingSlug: flow?.record.listingSlug ?? null,
+    maskedEmail: flow?.record.maskedEmail ?? null,
   };
   const headers = new Headers({ 'Cache-Control': 'no-store' });
 

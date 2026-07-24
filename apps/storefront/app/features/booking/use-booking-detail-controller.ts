@@ -27,6 +27,7 @@ export function useBookingDetailController({
   const status = polled?.status ?? loaderData.status;
   const canRetry = polled?.canRetry ?? loaderData.canRetry;
   const listingSlug = polled?.listingSlug ?? loaderData.listingSlug;
+  const maskedEmail = polled?.maskedEmail ?? loaderData.maskedEmail;
   const paymentState = deriveBookingPaymentState(status, searchParams);
 
   useAdaptivePaymentPolling({
@@ -52,6 +53,7 @@ export function useBookingDetailController({
       isPending: paymentState.isPending,
       canRetry,
       listingSlug,
+      maskedEmail,
       mockEnabled,
       submitting: navigation.state === 'submitting',
       signedIn: Boolean(currentUser),

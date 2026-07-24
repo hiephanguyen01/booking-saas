@@ -7,7 +7,6 @@ import {
   CircleCheckBig,
   CircleX,
   Clock3,
-  History,
   Home,
   RefreshCw,
   ShieldCheck,
@@ -16,6 +15,7 @@ import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { formatVnd } from '../../../lib/ui';
+import { BookingSuccessView } from './booking-success-view';
 
 interface BookingPaymentViewProps {
   code: string;
@@ -27,6 +27,7 @@ interface BookingPaymentViewProps {
   isPending: boolean;
   canRetry: boolean;
   listingSlug: string | null;
+  maskedEmail: string | null;
   mockEnabled: boolean;
   submitting: boolean;
   signedIn: boolean;
@@ -43,12 +44,24 @@ export function BookingPaymentView({
   isPending,
   canRetry,
   listingSlug,
+  maskedEmail,
   mockEnabled,
   submitting,
   signedIn,
   actionError,
 }: BookingPaymentViewProps) {
   const { t } = useTranslation([NsI18n.Booking, NsI18n.Error]);
+
+  if (isSuccess) {
+    return (
+      <BookingSuccessView
+        code={code}
+        locale={locale}
+        maskedEmail={maskedEmail}
+        signedIn={signedIn}
+      />
+    );
+  }
 
   return (
     <div className="bg-muted/20 font-studio">
@@ -124,15 +137,6 @@ export function BookingPaymentView({
                     {submitting ? t('payment.redirecting') : t('payment.payNow')}
                   </Button>
                 </Form>
-              ) : null}
-
-              {isSuccess && signedIn ? (
-                <Button asChild className="h-12 w-full rounded-sm text-base">
-                  <Link to={storefrontPaths.bookings(locale)}>
-                    <History data-icon="inline-start" />
-                    {t('bookingHistory')}
-                  </Link>
-                </Button>
               ) : null}
 
               {paymentFailed && !canRetry && listingSlug ? (
