@@ -1,9 +1,9 @@
-import type { Locale } from '@booking/i18n';
 import { Outlet } from 'react-router';
 import { AccountContentSkeleton } from '../../components/loading-skeletons';
 import { AccountShell } from '../../features/account/components/account-shell';
 import { getAccountMenuSummary } from '../../features/account/server/account-menu.server';
 import { requireAuth } from '../../lib/auth.server';
+import { requireLocale } from '../../lib/i18n.server';
 import { storefrontPaths } from '../../lib/locale-paths';
 import type { Route } from './+types/layout';
 import { useAccountLayoutController } from './use-account-layout-controller';
@@ -15,7 +15,7 @@ export function meta() {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const locale = params.locale as Locale;
+  const locale = requireLocale(params.locale);
   const url = new URL(request.url);
   const auth = requireAuth(storefrontPaths.login(locale, `${url.pathname}${url.search}`));
   const accountMenuSummary = await getAccountMenuSummary(request, auth.session.accessToken);
