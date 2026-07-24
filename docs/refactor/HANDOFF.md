@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #9.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #10b.
 
 ## 0. Vì sao cần file này
 
@@ -31,28 +31,19 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 7 | identity-access | ✅ merge (GitHub PR #23) |
 | 8 | partner | ✅ merge (GitHub PR #24) |
 | 9 | catalog | ✅ merge (GitHub PR #26) |
-| 10a | tenancy — Tenant + domains | 🔍 review (GitHub PR #27) |
-| 10b→16 | tenancy Plan+Subscription → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
+| 10a | tenancy — Tenant + domains | ✅ merge (GitHub PR #27) |
+| 10b | tenancy — plan + subscription | 🔍 review (GitHub PR #28) — **tenancy xong cả module** |
+| 11→16 | listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Đang mở:** **PR #10a — tenancy (Tenant + domains)** (nhánh `refactor/entity-tenancy-core`,
-[GitHub PR #27](https://github.com/vnkduy/booking-saas/pull/27)). Không bắt đầu PR #10b trước khi PR
+**Đang mở:** **PR #10b — tenancy (Plan + Subscription)** (nhánh `refactor/entity-tenancy-billing`,
+[GitHub PR #28](https://github.com/vnkduy/booking-saas/pull/28)). Không bắt đầu PR #11 trước khi PR
 này được review và merge vào `refactor/entity-centric`.
 
-Gợi ý riêng cho **PR #10b — tenancy Plan + Subscription** (module kế tiếp, cùng thư mục `tenancy/`
-nhưng aggregate `SubscriptionPlan`/`TenantSubscription`, tách vì PR #10a đã đủ lớn với Tenant +
-TenantDomain):
-- rule **"current subscription"** hiện đang **nhân ba** (một bản TypeScript trong
-  `get-current-subscription.use-case.ts` + hai bản raw-SQL trong repository) — hợp nhất về một chỗ
-  trên aggregate/entity là mục tiêu chính của #10b.
-- `create-plan` **thiếu pre-check tên** trước khi insert → P2002 (tên trùng) leak thành 500 thay vì
-  409 dịch nghĩa (đã ghi trong §8a known-gap register, hàng "P2002 leak thành 500 … tenancy").
-- **repricing** (đổi giá plan) cần **confirm khi đã có subscriber** đang dùng plan đó — kiểm tra rule
-  này còn thiếu ở use-case hiện tại trước khi coi refactor này là behavior-preserving.
-- **MRR** (monthly recurring revenue, `bigint` VND) **không được đi qua `Number()`** ở bất kỳ điểm
-  nào trong luồng — giữ nguyên như tiền tệ khác trong repo (xem `shared/money`).
-- Phần `Tenant` + `TenantDomain` của #10a đã đủ: `setPrimary` là **atomic swap** ở repository (CAS ở
-  lại, không load-check-save), worker DNS TXT verification **cố ý throw để trigger retry** — cả hai
-  giữ nguyên, không đụng lại ở #10b trừ khi cùng file.
+Gợi ý riêng cho **PR #11 — module listing** (module kế tiếp, và **lớn nhất còn lại**: 45 use-case,
+56 endpoint) — nên cân nhắc **tách nhiều PR con**, như promotions (5a/5b) và tenancy (10a/10b) đã
+làm, thay vì một PR khổng lồ khó review. **Trước khi bắt đầu khảo sát/plan PR #11**: seed vẫn
+**CHƯA có** fixture listing/group `status='draft'` (spec §8c-bis mục 2) — thêm vào seed trước, vì
+hiện tại smoke rule "chỉ target published" phải giả bằng id không tồn tại thay vì dữ liệu thật.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 

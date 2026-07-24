@@ -238,7 +238,7 @@ export class GetPlatformHealthUseCase {
       .filter(
         (t) =>
           t.subscription &&
-          ([...BILLABLE_SUBSCRIPTION_STATUSES] as string[]).includes(t.subscription.status) &&
+          (BILLABLE_SUBSCRIPTION_STATUSES as readonly string[]).includes(t.subscription.status) &&
           (t.subscription.expiresAt.getTime() - now) / MS_PER_DAY <= 14,
       )
       .map((t) => ({

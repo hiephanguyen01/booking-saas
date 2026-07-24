@@ -15,8 +15,8 @@ import { PLAN_REPOSITORY, type IPlanRepository } from '../../domain/ports/plan-r
  *    the billing history with it; deactivating (`PATCH { isActive: false }`) is the
  *    correct move and keeps the trail intact.
  *
- * Both are checked in the application layer so the caller gets an actionable 409
- * instead of a leaked Prisma foreign-key error.
+ * Both are checked on the aggregate before the delete, via `assertDeletable`, so
+ * the caller gets an actionable 409 instead of a leaked Prisma foreign-key error.
  */
 @Injectable()
 export class DeletePlanUseCase {

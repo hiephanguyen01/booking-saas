@@ -242,6 +242,9 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | P2002 leak thành 500 (listing-type slug) + FK violation khi delete không dịch | catalog | Giữ nguyên ở PR #9 — fix là behavior change của error envelope |
 | `add-domain` cho phép tạo primary thứ hai (nhận thẳng `isPrimary` từ request, không tự clear primary cũ; không có DB constraint chặn 2 hàng `is_primary=true` cùng tenant) | tenancy | Giữ nguyên ở PR #10a — siết là behavior change + cần migration (→ §8b "one-primary-domain partial unique") |
 | `delete-domain` (`assertDeletableFromPortfolio`) thực chất bảo vệ "còn ít nhất 1 domain **verified**", không phải "còn primary" — xoá domain primary trong khi còn domain verified khác (không primary) vẫn thành công và để tenant không còn domain nào là primary | tenancy | Bất đối xứng kế thừa từ code cũ, giữ nguyên ở PR #10a |
+| Ba bản "current subscription" bất đồng: `ISubscriptionRepository.findCurrentByTenant` (đường TypeScript, `PrismaSubscriptionRepository`) order theo `startsAt DESC` **không có tiebreak `created_at`**, trong khi `PrismaPlanRepository.liveSubscriberCounts` và truy vấn platform-health (`GetPlatformHealthUseCase`) — cả hai raw SQL — đều order `starts_at DESC, created_at DESC`; khi trùng `startsAt` (hai assignment cùng request burst, hoặc back-dated), ba đường có thể chọn khác hàng làm "current" | tenancy | Giữ nguyên ở PR #10b — hợp nhất về một chỗ là đề xuất PR riêng (→ §8b-bis) |
+| `GetPlanLimitsUseCase` cấp limit theo subscription mới nhất (từ `findCurrentByTenant`) **bất kể status hay đã hết hạn** — liveness chỉ được enforce riêng, bởi `RequireActiveSubscriptionGuard`, và chỉ cho ghi dashboard, không cho lookup limit | tenancy | Giữ nguyên ở PR #10b — hành vi kế thừa từ code cũ |
+| `create-plan` không pre-check tên trùng trước khi insert ⇒ tên trùng leak thẳng Prisma `P2002` thay vì 409 dịch nghĩa (đường `update-plan` đã có pre-check tên) | tenancy | Giữ nguyên ở PR #10b, cùng loại với hàng "P2002 leak thành 500" phía trên |
 
 ### 8a-bis. Wire change đã duyệt (không phải known gap — thay đổi có chủ đích)
 
@@ -286,6 +289,16 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   không phải regression của PR #10a); 4 call site `invalidateHost` hiện có nằm ở `create-tenant`,
   `update-tenant`, `resolve-tenant-by-host` (stale-cache eviction), và worker DNS verification —
   không đụng.
+- tenancy: **hai đồng hồ trả lời cùng một câu hỏi** ("subscription này còn sống không?"). Bốn call
+  site của `evaluateSubscription` (`resolve-tenant-by-host`, `get-subscription-status`,
+  `get-platform-health`, `RequireActiveSubscriptionGuard`) đều nhận `now` là app clock
+  (`new Date()`, tham số theo §3), trong khi `PrismaPlanRepository.liveSubscriberCounts` lọc
+  `expires_at > now()` bằng **DB clock**. Hai đồng hồ có thể lệch vài chục/vài trăm mili-giây, đủ
+  để một request ngay sát ranh giới hết hạn thấy kết quả khác nhau giữa "tenant này còn active
+  không" (app clock) và "tenant này có tính vào subscriber count của plan không" (DB clock). Giữ
+  nguyên ở PR #10b — cùng nhóm với known-gap "ba bản current subscription" (§8a): việc hợp nhất
+  định nghĩa "current subscription" về một chỗ (một nguồn dữ liệu, một đồng hồ, một tiebreak) đáng
+  một PR riêng, không nhét vào PR module tiếp theo.
 
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 
