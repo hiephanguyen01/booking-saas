@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSubmit } from 'react-router';
+import { useNavigation, useSubmit } from 'react-router';
 import { Pencil, Plus, ReceiptText, Trash2 } from 'lucide-react';
 import type { CancellationPolicyResponse } from '@booking/contracts';
 import {
@@ -40,7 +40,7 @@ import {
 import { Separator } from '@booking/ui/components/ui/separator';
 import { CancellationTiers } from '~/components/cancellation-tiers';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
-import { useBusy } from '~/hooks/use-busy';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { CancellationPolicyForm } from '~/features/cancellation-policies/components/cancellation-policy-form';
 
 const NONE = '__none__';
@@ -65,14 +65,29 @@ export function TenantDefaultCancellationPolicyCard({
   manageSuccess: string | null;
 }) {
   const submit = useSubmit();
-  const busy = useBusy();
+  const navigation = useNavigation();
+  const { busy, run } = useSubmissionGuard(navigation.state);
   const current = policies?.find((policy) => policy.isDefault) ?? null;
   const [value, setValue] = useState(current?.id ?? NONE);
   const selected = policies?.find((policy) => policy.id === value) ?? null;
   const dirty = value !== (current?.id ?? NONE);
 
+  const saveDefault = (): void => {
+    const formData = new FormData();
+    formData.set('intent', 'set-default-cancellation-policy');
+    formData.set('policyId', value === NONE ? '' : value);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
+  const removePolicy = (policyId: string): void => {
+    const formData = new FormData();
+    formData.set('intent', 'delete-tenant-cancellation-policy');
+    formData.set('policyId', policyId);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <Card className="shadow-none">
+    <Card className="shadow-none" aria-busy={busy}>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -86,7 +101,7 @@ export function TenantDefaultCancellationPolicyCard({
           {!readOnly && policies ? (
             <PolicyDialog
               trigger={
-                <Button type="button" size="sm">
+                <Button type="button" size="sm" disabled={busy}>
                   <Plus className="size-4" /> Tạo chính sách
                 </Button>
               }
@@ -149,12 +164,7 @@ export function TenantDefaultCancellationPolicyCard({
               type="button"
               size="control"
               disabled={readOnly || busy || !dirty}
-              onClick={() => {
-                const formData = new FormData();
-                formData.set('intent', 'set-default-cancellation-policy');
-                formData.set('policyId', value === NONE ? '' : value);
-                void submit(formData, { method: 'post' });
-              }}
+              onClick={saveDefault}
             >
               Lưu chính sách mặc định
             </Button>
@@ -177,6 +187,7 @@ export function TenantDefaultCancellationPolicyCard({
                     busy={busy}
                     manageError={manageError}
                     manageFieldErrors={manageFieldErrors}
+                    onRemove={() => removePolicy(policy.id)}
                   />
                 ))}
               </ul>
@@ -194,21 +205,15 @@ function PolicyRow({
   busy,
   manageError,
   manageFieldErrors,
+  onRemove,
 }: {
   policy: CancellationPolicyResponse;
   readOnly: boolean;
   busy: boolean;
   manageError: string | null;
   manageFieldErrors: Record<string, string[]> | null;
+  onRemove: () => void;
 }) {
-  const submit = useSubmit();
-  const remove = () => {
-    const formData = new FormData();
-    formData.set('intent', 'delete-tenant-cancellation-policy');
-    formData.set('policyId', policy.id);
-    void submit(formData, { method: 'post' });
-  };
-
   return (
     <li className="rounded-xl border bg-background p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -225,7 +230,7 @@ function PolicyRow({
           <div className="flex shrink-0 items-center gap-1">
             <PolicyDialog
               trigger={
-                <Button type="button" variant="ghost" size="sm">
+                <Button type="button" variant="ghost" size="sm" disabled={busy}>
                   <Pencil className="size-3.5" /> Sửa
                 </Button>
               }
@@ -262,7 +267,7 @@ function PolicyRow({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Giữ lại</AlertDialogCancel>
-                  <AlertDialogAction variant="destructive" onClick={remove}>
+                  <AlertDialogAction variant="destructive" onClick={onRemove} disabled={busy}>
                     Xoá chính sách
                   </AlertDialogAction>
                 </AlertDialogFooter>
