@@ -225,7 +225,31 @@ Audit AST + transitive local-import graph trên đúng 257 file trong `apps/api/
 Plan và registry chi tiết:
 [`2026-07-24-entity-centric-use-case-audit-hardening.md`](../superpowers/plans/2026-07-24-entity-centric-use-case-audit-hardening.md).
 
-## 10. Nếu bạn là AI tiếp quản
+## 10. Deduplicate application error literals — 2026-07-24
+
+Audit AST toàn bộ `modules/*/application/**/*.ts`:
+
+- Baseline có 82 `throw new *Exception`; 77 site mang custom payload và 5 bare Nest exception.
+  Ngoài ra có 2 helper trả về custom Nest exception, tổng cộng 79 inline custom construction.
+- Sau cleanup: **0 inline custom Nest exception construction**. Năm bare
+  `NotFoundException()`/`ConflictException()` được giữ có chủ đích vì đổi sang `DomainError` sẽ đổi
+  default Nest body.
+- Standard 4xx chuyển sang typed module/shared `DomainError`. Các code dùng xuyên module
+  (`BOOKING_NOT_FOUND`, `LISTING_NOT_FOUND`, `LISTING_TYPE_NOT_FOUND`, `PARTNER_NOT_FOUND`,
+  `TENANT_NOT_FOUND`, `MODE_NOT_ENABLED`, `CANCELLATION_POLICY_NOT_FOUND`) chỉ còn một definition;
+  module cũ re-export alias để giữ import seam.
+- Auth retry metadata, legacy body thiếu `statusCode`, webhook/provider error và defensive 500 dùng
+  named application HTTP errors, không bị ép thành `DomainError`.
+- `DomainError.details` nhận `unknown` để giữ nguyên cả object lẫn array details trên wire.
+- Runtime smoke giữ đúng cancellation 404, partner-pricing legacy body, unknown-host 404, bad-webhook
+  400, OTP `attemptsRemaining` và resend `retryAfterSec`.
+- Final gate: `pnpm turbo lint typecheck build --force` **28/28 task xanh**, cache 0;
+  `check:rls` **46/46**; 257 use-case vẫn đủ, không thêm test.
+
+Plan:
+[`2026-07-24-application-error-deduplication.md`](../superpowers/plans/2026-07-24-application-error-deduplication.md).
+
+## 11. Nếu bạn là AI tiếp quản
 
 Nói với người dùng bạn đã đọc file này, xác nhận lại §1 (trạng thái) bằng
 `git log --oneline -5 refactor/entity-centric` + `gh pr list`. Nếu có PR module đang mở, tiếp tục

@@ -422,6 +422,22 @@ Audit AST/import graph trên 257 `modules/**/*.use-case.ts` không dùng tên fi
 Xem plan có frozen-wire matrix và inventory:
 [`2026-07-24-entity-centric-use-case-audit-hardening.md`](../plans/2026-07-24-entity-centric-use-case-audit-hardening.md).
 
+### 8f. Typed application errors (đã làm hậu refactor 2026-07-24)
+
+AST audit trên application layer tìm 82 site `throw new *Exception`: 77 custom payload và 5 bare.
+Hai helper khác trả về custom exception, nên baseline có 79 inline custom construction.
+
+- Tất cả 79 custom construction đã rời use-case/helper. Standard 4xx dùng typed `DomainError`;
+  legacy/auth/provider/5xx shape dùng named Nest exception trong application error file.
+- Năm bare Nest exception được giữ vì chúng cố ý dùng default Nest body.
+- Error tuple dùng xuyên module nằm trong `shared/domain/errors`; module-owned message variant ở
+  `domain/errors`; exact tuple duplicate scan không còn kết quả.
+- Không đổi status/code/message/details; các legacy body thiếu `statusCode` và OTP top-level retry
+  field được giữ nguyên.
+
+Xem inventory, allowlist và frozen-wire matrix:
+[`2026-07-24-application-error-deduplication.md`](../plans/2026-07-24-application-error-deduplication.md).
+
 ## 9. Xác minh mỗi PR (ADR 0005 — không có test)
 
 1. `pnpm turbo lint typecheck build` xanh.
