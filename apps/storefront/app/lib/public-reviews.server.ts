@@ -5,6 +5,7 @@ import {
   type ReviewSummary,
 } from '@booking/contracts';
 import { publicGetData } from './api.server';
+import { optionalData } from './optional-data.server';
 import { DEFAULT_PUBLIC_REVIEW_LIMIT, PUBLIC_REVIEW_MAX_LIMIT } from './public-reviews';
 
 export interface PublicReviewData {
@@ -36,17 +37,20 @@ export async function loadPublicReviews(
   const reviewRating = parseReviewRating(searchParams);
   const reviewLimit = parseReviewLimit(searchParams);
   const fetchReviews = (rating?: number, pageSize = reviewLimit) =>
-    publicGetData(request, '/public/reviews', {
-      query: {
-        target,
-        slug,
-        page: 1,
-        pageSize,
-        sort: 'newest',
-        ...(rating ? { rating } : {}),
-      },
-      schema: reviewListResponseSchema,
-    }).catch(() => null);
+    optionalData(
+      publicGetData(request, '/public/reviews', {
+        query: {
+          target,
+          slug,
+          page: 1,
+          pageSize,
+          sort: 'newest',
+          ...(rating ? { rating } : {}),
+        },
+        schema: reviewListResponseSchema,
+      }),
+      null,
+    );
 
   const reviewsPromise = fetchReviews(reviewRating);
   const summaryPromise = reviewRating ? fetchReviews(undefined, 1) : Promise.resolve(null);
