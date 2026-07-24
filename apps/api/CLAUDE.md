@@ -26,15 +26,25 @@ Module shape (copy `modules/partner/` or `modules/booking/`):
 `infrastructure/{repositories, http/{controllers split by audience, dto, <module>.module.ts}}`.
 Controllers are split by audience: `public-` / `tenant-` / `partner-` / `admin-`.
 
-Modules refactored to the entity style (see
-[`../../docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md`](../../docs/superpowers/specs/2026-07-23-api-entity-centric-refactor-design.md))
-keep their business invariants on framework-free aggregates in `domain/entities/`
-(`static rehydrate(state)` + `static create/open(...)`, narrow write-state, VOs in
-`domain/value-objects/`, typed `DomainError`s in `domain/errors/`); use-cases orchestrate load →
-method → save → emit. Refactored so far:
-**reviews, content-reports, notification, favorites, promotions, affiliate, identity-access,
-partner, catalog, tenancy, listing, scheduling, payments, booking, finance**.
-`administrative-division` dùng immutable value object thay vì aggregate mutable.
+## Entity and error policy
+
+- Write-path invariants/state transitions live on framework-free entities, VOs or pure domain
+  policies; use-cases orchestrate `load → rehydrate/create → domain method → save → emit`.
+- Do not invent entities for query/projection, adapter-backed state machines, CAS/set-based
+  transitions or provider-boundary validation. These paths still use ports; no direct Prisma model
+  access/raw SQL in application code.
+- Entities/VOs/errors import no Nest, Prisma, application or infrastructure code and perform no I/O
+  or clock reads. External facts are method arguments.
+- Never inline a custom Nest error envelope in a use-case. Standard 4xx errors are named
+  `DomainError`s in `domain/errors/`; exact cross-module tuples live once in
+  `shared/domain/errors/`.
+- Same code with different frozen messages stays as separate named classes. Auth retry fields,
+  legacy HTTP bodies, webhook/provider shapes and 5xx use named Nest exceptions in
+  `application/*-http-errors.ts`; `DomainError` is 4xx-only.
+
+The full decision rules and wire-freeze requirements are in
+[`docs/conventions.md`](../../docs/conventions.md#entityuse-case-decision) and
+[`Backend error placement`](../../docs/conventions.md#backend-error-placement).
 
 ## Multi-tenancy — `forTenant()` + RLS (the most important rule)
 
@@ -95,9 +105,10 @@ currently unpopulated.
 `DomainExceptionFilter` (`src/shared/domain/domain-exception.filter.ts`, wired via `APP_FILTER`) —
 it only catches framework-free `DomainError`s thrown by entities/VOs and emits the standard envelope
 `{ statusCode, code, message, details? }`; everything else keeps Nest's default handling.
-Application code may still throw NestJS `HttpException`s directly. Never leak Prisma errors. Env
-vars are read via `process.env`; API bootstrap, Prisma CLI, seed, and storage scripts all load the
-single workspace-root `.env` (see `.env.example`). Never add an app-local env file.
+Application code uses NestJS `HttpException` only through named HTTP-boundary error classes described
+above; never restore inline payload literals. Never leak Prisma errors. Env vars are read via
+`process.env`; API bootstrap, Prisma CLI, seed, and storage scripts all load the single workspace-root
+`.env` (see `.env.example`). Never add an app-local env file.
 
 ## Scripts (verified)
 
