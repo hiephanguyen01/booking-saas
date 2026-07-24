@@ -82,6 +82,8 @@ export interface PublicListingFilter {
   attrFilters: Record<string, string>;
   exceptionFrom?: Date;
   exceptionTo?: Date;
+  /** Database read bound. Callers may still deduplicate grouped records afterward. */
+  limit?: number;
 }
 
 /** Storefront reads. All methods run inside one tenant-scoped transaction. */
