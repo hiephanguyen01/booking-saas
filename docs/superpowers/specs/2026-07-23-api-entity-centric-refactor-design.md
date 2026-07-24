@@ -133,6 +133,13 @@ Quy tắc entity:
      trùng tên field state đã persist.
    - VO validation-error mirror của zod chỉ là defensive-depth (zod pipe là boundary thật) — ghi rõ
      trong doc comment, không cần khớp từng byte envelope của pipe.
+5. **Import enum/union type từ `@booking/contracts` khi đã có sẵn** thay vì khai lại union cục bộ
+   trong entity (union cục bộ sẽ trôi khi enum được mở rộng). Ví dụ vừa gặp: `TenantStatus` đã có
+   ở contracts nhưng `tenant.entity.ts` khai lại.
+6. **Không thêm getter/method không có consumer** trên entity. Ngoài chuyện thừa, một getter như
+   `belongsToTenant` còn *gợi ý sai* rằng việc kiểm tra ownership diễn ra ở entity — trong khi ở
+   các path chạy trên admin pool (không có RLS) việc kiểm tra đó **phải** ở lại trên record thô
+   trước khi rehydrate.
 
 ## 4. Luật cross-cutting cho mọi PR
 
@@ -276,8 +283,9 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
   `set-primary-domain`, `delete-domain`) đều **không gọi `cache.invalidateHost`** — cache Redis
   host→tenant có TTL 60s và negative-caching cho host lạ, nên một domain vừa xoá/đổi vẫn resolve
   đúng tenant cũ tối đa 60s nữa trước khi tự hết hạn. Hành vi này có từ trước refactor (giữ nguyên,
-  không phải regression của PR #10a); 3 call site `invalidateHost` hiện có nằm ở `update-tenant`,
-  `resolve-tenant-by-host` (stale-cache eviction), và worker DNS verification — không đụng.
+  không phải regression của PR #10a); 4 call site `invalidateHost` hiện có nằm ở `create-tenant`,
+  `update-tenant`, `resolve-tenant-by-host` (stale-cache eviction), và worker DNS verification —
+  không đụng.
 
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 

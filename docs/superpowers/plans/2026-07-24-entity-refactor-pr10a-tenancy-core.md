@@ -544,6 +544,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [ ] **Step 4: `delete-domain.use-case.ts`** — thay 404 → `new DomainNotFound()`; khối lọc sibling →
 
+  > **Ghi chú sau khi làm:** `assertDeletableFromPortfolio` trong entity file (`apps/api/src/modules/tenancy/domain/entities/tenant-domain.entity.ts`) là mẫu chuẩn tắc. Khi implement, chữ ký thực từ entity là tác giả của chân lý.
+
   ```ts
       const target = TenantDomain.rehydrate(domain);
       if (target.isPrimary && target.isVerified) {
