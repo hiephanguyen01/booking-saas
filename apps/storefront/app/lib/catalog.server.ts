@@ -16,14 +16,16 @@ import {
 } from '@booking/contracts';
 import { z } from 'zod';
 import { publicGetData } from './api.server';
+import {
+  DEFAULT_FEATURED_LISTINGS_PAGE_SIZE,
+  featuredListingsPageSize,
+} from './featured-catalog';
 import { getCurrentStorefrontTenant } from './request-context.server';
 
 const listingTypesSchema = z.array(publicListingTypeResponseSchema);
 const featuredListingsSchema = z.array(publicListingResponseSchema).max(24);
 const LISTING_TYPES_CACHE_TTL_MS = 60_000;
 const MAX_TENANT_CACHE_ENTRIES = 500;
-export const DEFAULT_FEATURED_LISTINGS_PAGE_SIZE = 18;
-export const MAX_FEATURED_LISTINGS_PAGE_SIZE = 24;
 const listingTypesCache = new Map<
   string,
   { expiresAt: number; data: PublicListingTypeResponse[] }
@@ -59,12 +61,6 @@ export function fetchListingGroup(
     schema: publicListingGroupDetailResponseSchema,
     allowNotFound: true,
   });
-}
-
-export function featuredListingsPageSize(value: string | number | null | undefined): number {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) return DEFAULT_FEATURED_LISTINGS_PAGE_SIZE;
-  return Math.min(parsed, MAX_FEATURED_LISTINGS_PAGE_SIZE);
 }
 
 export function fetchFeaturedListings(
