@@ -4,6 +4,7 @@ import type { ListingGroupDetailResponse, PublishStatus } from '@booking/contrac
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
 import { ConfirmButton } from '~/components/confirm-button';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import type { GroupActionResult } from '../../server/listing-groups.server';
 
 /** Group publish status → the workspace's status banner copy. */
@@ -86,13 +87,13 @@ export function GroupLifecycleActions({
   adminLocked: boolean;
 }) {
   const fetcher = useFetcher<GroupActionResult>();
-  const busy = fetcher.state !== 'idle';
+  const { busy, run } = useSubmissionGuard(fetcher.state);
   const submit = (intent: string): void => {
-    void fetcher.submit({ intent }, { method: 'post' });
+    run(() => fetcher.submit({ intent }, { method: 'post' }));
   };
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mt-2 flex flex-wrap gap-2" aria-busy={busy}>
       {group.status === 'published' && canPublish ? (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => submit('hide')}>
           <EyeOff /> Ẩn để chỉnh sửa
@@ -142,11 +143,12 @@ export function GroupLifecycleActions({
 /** "Gửi duyệt" — submits the whole group for tenant review. */
 export function SubmitGroupButton({ disabled }: { disabled: boolean }) {
   const fetcher = useFetcher<GroupActionResult>();
+  const { busy, run } = useSubmissionGuard(fetcher.state);
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className="flex flex-col items-start gap-1" aria-busy={busy}>
       <Button
-        disabled={disabled || fetcher.state !== 'idle'}
-        onClick={() => void fetcher.submit({ intent: 'submit' }, { method: 'post' })}
+        disabled={disabled || busy}
+        onClick={() => run(() => fetcher.submit({ intent: 'submit' }, { method: 'post' }))}
       >
         <Send data-icon="inline-start" /> Gửi duyệt
       </Button>

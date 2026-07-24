@@ -3,6 +3,7 @@ import { CalendarDays, Copy, Pencil, Trash2 } from 'lucide-react';
 import type { ListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { ConfirmButton } from '~/components/confirm-button';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import type { GroupActionResult } from '../../server/listing-groups.server';
 
 /** Per-child action strip (hours · edit · duplicate · delete) for a grouped listing. */
@@ -20,9 +21,14 @@ export function GroupedListingActions({
   canManageCalendar: boolean;
 }) {
   const fetcher = useFetcher<GroupActionResult>();
-  const busy = fetcher.state !== 'idle';
+  const { busy, run } = useSubmissionGuard(fetcher.state);
+
+  const submit = (intent: 'duplicate-child' | 'delete-child'): void => {
+    run(() => fetcher.submit({ intent, listingId: listing.id }, { method: 'post' }));
+  };
+
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-1" aria-busy={busy}>
       <div className="flex flex-wrap justify-end gap-1">
         {canManageCalendar ? (
           <Button asChild size="xs" variant="ghost">
@@ -46,12 +52,7 @@ export function GroupedListingActions({
           variant="ghost"
           disabled={!canEdit || busy}
           title={`Nhân bản ${itemLabel}`}
-          onClick={() =>
-            void fetcher.submit(
-              { intent: 'duplicate-child', listingId: listing.id },
-              { method: 'post' },
-            )
-          }
+          onClick={() => submit('duplicate-child')}
         >
           <Copy /> Nhân bản
         </Button>
@@ -71,12 +72,7 @@ export function GroupedListingActions({
           description="Thao tác này không thể hoàn tác."
           confirmLabel="Xóa"
           busy={busy}
-          onConfirm={() =>
-            void fetcher.submit(
-              { intent: 'delete-child', listingId: listing.id },
-              { method: 'post' },
-            )
-          }
+          onConfirm={() => submit('delete-child')}
         />
       </div>
       {fetcher.data?.error ? (

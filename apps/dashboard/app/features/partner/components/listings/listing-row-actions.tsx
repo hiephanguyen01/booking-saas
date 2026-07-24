@@ -2,6 +2,7 @@ import { Link, useFetcher } from 'react-router';
 import { Clock, EyeOff, Lock, Pencil, Send, Undo2 } from 'lucide-react';
 import type { ListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { usesOpeningHours } from '../../lib/listing-hours';
 import type { ListingsActionResult } from './types';
 
@@ -18,15 +19,15 @@ export function ListingRowActions({
   canAvailability: boolean;
 }) {
   const fetcher = useFetcher<ListingsActionResult>();
-  const busy = fetcher.state !== 'idle';
+  const { busy, run } = useSubmissionGuard(fetcher.state);
   const adminLocked = listing.status === 'archived' && listing.hiddenBy === 'admin';
 
   const submit = (intent: string): void => {
-    void fetcher.submit({ id: listing.id, intent }, { method: 'post' });
+    run(() => fetcher.submit({ id: listing.id, intent }, { method: 'post' }));
   };
 
   return (
-    <div className="flex flex-wrap justify-end gap-1.5">
+    <div className="flex flex-wrap justify-end gap-1.5" aria-busy={busy}>
       {canAvailability && usesOpeningHours(listing) ? (
         <Button asChild size="xs" variant="ghost" title="Giờ mở cửa">
           <Link to={`/partner/listings/${listing.id}/hours`}>
