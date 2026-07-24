@@ -4,12 +4,14 @@ import type { AuthActionData } from '../../../lib/auth-types';
 
 export type OtpActionData = AuthActionData & { resendAfterSec?: number };
 
-export function useOtpFormController({
+type OtpCooldownActionData = { resendAfterSec?: number };
+
+export function useOtpFormController<TActionData extends OtpCooldownActionData>({
   initialSeconds,
   actionData,
 }: {
   initialSeconds: number;
-  actionData?: OtpActionData;
+  actionData?: TActionData;
 }) {
   const submit = useSubmit();
   const [seconds, setSeconds] = useState(actionData?.resendAfterSec ?? initialSeconds);
