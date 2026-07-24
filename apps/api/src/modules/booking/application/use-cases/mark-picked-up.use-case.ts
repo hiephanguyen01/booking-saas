@@ -23,9 +23,14 @@ export class MarkPickedUpUseCase {
       const booking = await loadOwnedBooking(this.bookings, tx, bookingId, ctx.partnerId);
       const aggregate = Booking.rehydrate(booking);
       aggregate.assertPickupAllowed();
-      const updated = await this.bookings.patchFulfillment(tx, bookingId, {
-        ...aggregate.fulfillment().planPickup(await this.tenantDb.databaseNow(tx)),
-      });
+      const updated = await this.bookings.patchFulfillment(
+        tx,
+        bookingId,
+        {
+          ...aggregate.fulfillment().planPickup(await this.tenantDb.databaseNow(tx)),
+        },
+        { expectedStatus: booking.status, unsetMarker: 'pickedUpAt' },
+      );
       await this.outbox.emit(tx, {
         tenantId: ctx.tenantId,
         eventType: 'booking.picked_up',

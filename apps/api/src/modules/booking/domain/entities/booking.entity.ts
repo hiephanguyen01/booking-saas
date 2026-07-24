@@ -9,6 +9,7 @@ import {
   BookingOutOfStock,
   BookingPriceChanged,
   BookingServiceNotEnded,
+  BookingStateChanged,
   InventoryRequiresReturn,
   InvalidNoShowWindow,
   OnsiteAmountMismatch,
@@ -221,6 +222,7 @@ export class Booking {
   /** Guard before DB-clock/listing I/O; the returned intent remains the repository CAS input. */
   assertReturnable(actorId: string): BookingTransitionIntent {
     if (this.state.bookingMode !== 'inventory') throw new BookingNotInventory();
+    if (this.state.status !== 'confirmed') throw new BookingStateChanged();
     return this.transitionTo('completed', 'partner', {
       actorId,
       reason: 'inventory returned',

@@ -49,13 +49,11 @@ export class MarkReturnedUseCase {
         depositShortfall: shortfall,
       } = aggregate.planReturn(returnedAt, damageAmount, inventory, ctx.actorId);
 
-      const patched = await this.bookings.patchFulfillment(tx, bookingId, patch);
-      const completed = await this.bookings.applyTransition(tx, {
-        ...completion,
-        // Preserve the legacy CAS source: patchFulfillment re-reads the row and
-        // its observed status is what the immediately-following UPDATE guards.
-        from: patched.status,
+      await this.bookings.patchFulfillment(tx, bookingId, patch, {
+        expectedStatus: booking.status,
+        unsetMarker: 'returnedAt',
       });
+      const completed = await this.bookings.applyTransition(tx, completion);
       await this.outbox.emit(tx, {
         tenantId: ctx.tenantId,
         eventType: 'booking.returned',

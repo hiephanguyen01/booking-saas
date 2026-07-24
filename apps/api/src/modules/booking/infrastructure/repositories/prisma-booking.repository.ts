@@ -7,6 +7,7 @@ import { pageOffset } from '../../../../shared/pagination/pagination';
 import type {
   BookingRecord,
   BookingStatusHistoryRecord,
+  FulfillmentGuard,
   FulfillmentPatch,
   IBookingRepository,
   InsertBookingData,
@@ -479,6 +480,7 @@ export class PrismaBookingRepository implements IBookingRepository {
     tx: PrismaTx,
     id: string,
     patch: FulfillmentPatch,
+    guard: FulfillmentGuard,
   ): Promise<BookingRecord> {
     const sets = [Prisma.sql`updated_at = now()`];
     if (patch.pickedUpAt !== undefined) sets.push(Prisma.sql`picked_up_at = ${patch.pickedUpAt}`);
@@ -488,9 +490,17 @@ export class PrismaBookingRepository implements IBookingRepository {
     if (patch.additionalCharges !== undefined) {
       sets.push(Prisma.sql`additional_charges = ${JSON.stringify(patch.additionalCharges)}::jsonb`);
     }
-    await tx.$executeRaw(
-      Prisma.sql`UPDATE bookings SET ${Prisma.join(sets)} WHERE id = ${id}::uuid`,
-    );
+    const unsetMarker =
+      guard.unsetMarker === 'pickedUpAt'
+        ? Prisma.sql`picked_up_at IS NULL`
+        : Prisma.sql`returned_at IS NULL`;
+    const affected = await tx.$executeRaw(Prisma.sql`
+      UPDATE bookings
+      SET ${Prisma.join(sets)}
+      WHERE id = ${id}::uuid
+        AND status = ${guard.expectedStatus}::booking_status
+        AND ${unsetMarker}`);
+    if (affected === 0) throw new BookingStateChanged();
     return this.byId(tx, id);
   }
 
