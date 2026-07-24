@@ -12,11 +12,12 @@ import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-g
 import { cn } from '@booking/ui/lib/utils';
 import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import { typeIcon } from '../../lib/ui';
 import type { SearchMode } from './search-state';
 import type { SearchFormVariant } from './search-form-types';
+import { useLocationComboboxController } from './use-location-combobox-controller';
 
 type ModeAppearance = 'pills' | 'tabs';
 type Translate = ReturnType<typeof useTranslation<typeof NsI18n.Common>>['t'];
@@ -35,16 +36,11 @@ export function LocationCombobox({
   options: { value: string; label: string }[];
 }) {
   const { t } = useTranslation(NsI18n.Common);
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(initialValue);
-  const listId = useId();
-  const selected = options.find((option) => option.value === value);
+  const { listId, open, select, selected, setOpen, value } = useLocationComboboxController({
+    initialValue,
+    options,
+  });
   const placeholder = t('home.locationPlaceholder');
-
-  function select(nextValue: string): void {
-    setValue(nextValue);
-    setOpen(false);
-  }
 
   return (
     <>
