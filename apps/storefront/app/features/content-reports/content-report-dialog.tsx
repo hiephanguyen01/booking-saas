@@ -10,17 +10,9 @@ import {
   DialogTitle,
 } from '@booking/ui/components/ui/dialog';
 import { Flag, ShieldAlert } from 'lucide-react';
-import { Link, useActionData, useLocation, useOutletContext } from 'react-router';
+import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { storefrontPaths } from '../../lib/locale-paths';
-import type { StorefrontContext } from '../../root';
-
-type ReportActionData = {
-  reportOk?: boolean;
-  duplicate?: boolean;
-  error?: string;
-  fieldErrors?: Record<string, string[] | undefined>;
-};
+import { useContentReportDialogController } from './use-content-report-dialog-controller';
 
 export function ContentReportDialog({
   open,
@@ -35,14 +27,13 @@ export function ContentReportDialog({
   targetId: string;
   title: string;
 }) {
-  const { currentUser, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Listing);
-  const location = useLocation();
-  const actionData = useActionData() as ReportActionData | undefined;
+  const { actionData, defaultValues, loginPath, view } = useContentReportDialogController({
+    target,
+    targetId,
+  });
 
-  if (!currentUser) {
-    const joiner = location.search ? '&' : '?';
-    const returnTo = `${location.pathname}${location.search}${joiner}report=1`;
+  if (view === 'login') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-sm">
@@ -55,7 +46,7 @@ export function ContentReportDialog({
           </DialogHeader>
           <DialogFooter className="gap-2 sm:flex-col">
             <Button asChild className="w-full">
-              <Link to={storefrontPaths.login(locale, returnTo)}>{t('report.loginCta')}</Link>
+              <Link to={loginPath}>{t('report.loginCta')}</Link>
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
               {t('report.cancel')}
@@ -66,7 +57,7 @@ export function ContentReportDialog({
     );
   }
 
-  if (actionData?.reportOk) {
+  if (view === 'success') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-sm">
@@ -76,7 +67,7 @@ export function ContentReportDialog({
             </span>
             <DialogTitle className="text-center">{t('report.successTitle')}</DialogTitle>
             <DialogDescription className="text-center">
-              {actionData.duplicate ? t('report.duplicateBody') : t('report.successBody')}
+              {actionData?.duplicate ? t('report.duplicateBody') : t('report.successBody')}
             </DialogDescription>
           </DialogHeader>
           <Button className="w-full" onClick={() => onOpenChange(false)}>
@@ -122,7 +113,7 @@ export function ContentReportDialog({
               placeholder: t('report.detailsPlaceholder'),
             },
           ]}
-          defaultValues={{ target, targetId, reason: 'misleading', details: '' }}
+          defaultValues={defaultValues}
           submitLabel={t('report.submit')}
           submitPendingLabel={t('report.submitting')}
           serverError={actionData?.error === 'failed' ? t('report.failed') : null}
