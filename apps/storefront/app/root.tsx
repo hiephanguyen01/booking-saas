@@ -1,4 +1,4 @@
-import { useRouteLoaderData } from 'react-router';
+import { useLocation, useRouteLoaderData } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
 import { RootErrorBoundaryView } from './features/root/components/root-error-boundary';
@@ -23,9 +23,10 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const loaderData = useRouteLoaderData<typeof loader>('root');
+  const location = useLocation();
   return (
     <StorefrontDocument
-      locale={loaderData?.locale ?? 'vi'}
+      locale={loaderData?.locale ?? localeFromPath(location.pathname)}
       faviconUrl={loaderData?.tenant?.themeConfig.faviconUrl || null}
     >
       {children}
@@ -38,8 +39,12 @@ export default function App({ loaderData }: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  // The root loader may be what threw, so fall back to the default locale.
   const rootData = useRouteLoaderData<typeof loader>('root');
-  const locale = rootData?.locale ?? 'vi';
+  const location = useLocation();
+  const locale = rootData?.locale ?? localeFromPath(location.pathname);
   return <RootErrorBoundaryView error={error} locale={locale} rootData={rootData} />;
+}
+
+function localeFromPath(pathname: string): 'vi' | 'en' {
+  return pathname.split('/').filter(Boolean)[0] === 'en' ? 'en' : 'vi';
 }
