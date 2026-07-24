@@ -1,3 +1,4 @@
+import type { PublicCatalogFacet } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import {
@@ -13,15 +14,13 @@ import {
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { ChevronDown, Star } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Form, Link, useSearchParams } from 'react-router';
-import type { PublicCatalogFacet } from '@booking/contracts';
+import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { StorefrontSearchState } from '../../search/search-state';
-
-interface FilterOption {
-  value: string;
-  label: string;
-}
+import {
+  type FilterOption,
+  useFilterPanelController,
+} from './use-filter-panel-controller';
 
 /**
  * The catalog sidebar filters.
@@ -44,10 +43,10 @@ export function FilterPanel({
   booleanFacetKeys?: string[];
 }) {
   const { t } = useTranslation(NsI18n.Catalog);
-  const [params] = useSearchParams();
+  const { facetModels, formKey } = useFilterPanelController({ facets, booleanFacetKeys });
 
   return (
-    <Form key={params.toString()} method="get" className="flex flex-col gap-6">
+    <Form key={formKey} method="get" className="flex flex-col gap-6">
       <input type="hidden" name="q" value={state.q} />
       {state.mode !== 'none' ? <input type="hidden" name="mode" value={state.mode} /> : null}
       <input type="hidden" name="guests" value={state.guests} />
@@ -96,10 +95,10 @@ export function FilterPanel({
         </RadioGroup>
       </FilterSection>
 
-      {facets.map((facet) => {
-        if (facet.key === 'price') {
+      {facetModels.map((facet) => {
+        if (facet.kind === 'price') {
           return (
-            <FilterSection key={facet.key} title={t('filters.price')}>
+            <FilterSection key={facet.key} title={facet.title}>
               <div className="flex items-center gap-2">
                 <PriceInput name="minPrice" value={state.minPrice} label={t('filters.minPrice')} />
                 <span aria-hidden="true">–</span>
@@ -108,74 +107,49 @@ export function FilterPanel({
             </FilterSection>
           );
         }
-        const facetLabel =
-          facet.key === 'location'
-            ? t('filters.location')
-            : facet.key === 'amenities'
-              ? t('filters.amenities')
-              : facet.label;
-        if (facet.control === 'range') {
-          const min = Number(params.get(`${facet.key}.min`));
-          const max = Number(params.get(`${facet.key}.max`));
+
+        if (facet.kind === 'range') {
           return (
-            <FilterSection key={facet.key} title={facetLabel}>
+            <FilterSection key={facet.key} title={facet.title}>
               <div className="flex items-center gap-2">
                 <input
-                  aria-label={`${facetLabel}: ${t('filters.minimum')}`}
+                  aria-label={`${facet.title}: ${t('filters.minimum')}`}
                   className="h-10 min-w-0 rounded-md border px-3 text-sm"
-                  name={`${facet.key}.min`}
+                  name={facet.minName}
                   type="number"
-                  defaultValue={Number.isFinite(min) && params.has(`${facet.key}.min`) ? min : ''}
-                  placeholder={String(facet.min ?? '')}
+                  defaultValue={facet.minValue}
+                  placeholder={facet.minPlaceholder}
                 />
                 <span aria-hidden="true">–</span>
                 <input
-                  aria-label={`${facetLabel}: ${t('filters.maximum')}`}
+                  aria-label={`${facet.title}: ${t('filters.maximum')}`}
                   className="h-10 min-w-0 rounded-md border px-3 text-sm"
-                  name={`${facet.key}.max`}
+                  name={facet.maxName}
                   type="number"
-                  defaultValue={Number.isFinite(max) && params.has(`${facet.key}.max`) ? max : ''}
-                  placeholder={String(facet.max ?? '')}
+                  defaultValue={facet.maxValue}
+                  placeholder={facet.maxPlaceholder}
                 />
               </div>
             </FilterSection>
           );
         }
-        const selected = params
-          .getAll(facet.key)
-          .flatMap((value) => value.split(','))
-          .filter(Boolean);
-        const isBoolean = booleanFacetKeys.includes(facet.key);
-        const options = facet.options.map((option) => {
-          const label = isBoolean
-            ? option.value === 'true'
-              ? t('filters.yes')
-              : option.value === 'false'
-                ? t('filters.no')
-                : option.label
-            : option.label;
-          return { value: option.value, label: `${label} (${option.count})` };
-        });
-        for (const value of selected) {
-          if (!options.some((option) => option.value === value))
-            options.unshift({ value, label: value });
-        }
+
         return (
-          <FilterSection key={facet.key} title={facetLabel}>
+          <FilterSection key={facet.key} title={facet.title}>
             {facet.control === 'radio' ? (
               <FilterRadioList
                 name={facet.key}
-                options={options}
-                selected={selected[0] ?? ''}
+                options={facet.options}
+                selected={facet.selected[0] ?? ''}
                 allLabel={t('filters.all')}
-                visibleCount={facet.key === 'location' ? 6 : 8}
+                visibleCount={facet.visibleCount}
               />
             ) : (
               <FilterCheckList
                 name={facet.key}
-                options={options}
-                selected={selected}
-                visibleCount={facet.key === 'location' ? 6 : 8}
+                options={facet.options}
+                selected={facet.selected}
+                visibleCount={facet.visibleCount}
               />
             )}
           </FilterSection>
