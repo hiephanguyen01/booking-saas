@@ -21,6 +21,7 @@ export function CustomerSettlementDisputePanel({
   const {
     settlement: currentSettlement,
     canOpen,
+    handleSubmit,
     submitting,
     heldAmount,
     deadlineLabel,
@@ -52,7 +53,12 @@ export function CustomerSettlementDisputePanel({
       </dl>
 
       {canOpen ? (
-        <Form method="post" className="mt-5 space-y-3 border-t border-border pt-5">
+        <Form
+          method="post"
+          className="mt-5 space-y-3 border-t border-border pt-5"
+          onSubmit={handleSubmit}
+          aria-busy={submitting}
+        >
           <input type="hidden" name="intent" value="dispute" />
           <label htmlFor="dispute-reason" className="text-sm font-medium">
             {t('bookings.disputePanel.reason')}
@@ -66,6 +72,7 @@ export function CustomerSettlementDisputePanel({
             rows={4}
             placeholder={t('bookings.disputePanel.reasonPlaceholder')}
             className="rounded-lg"
+            disabled={submitting}
           />
           <label htmlFor="dispute-evidence" className="text-sm font-medium">
             {t('bookings.disputePanel.evidence')}
@@ -77,6 +84,7 @@ export function CustomerSettlementDisputePanel({
             rows={2}
             placeholder={t('bookings.disputePanel.evidencePlaceholder')}
             className="rounded-lg"
+            disabled={submitting}
           />
           <div className="flex items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-xs text-muted-foreground">

@@ -1,6 +1,8 @@
+import type { FormEvent } from 'react';
 import type { CustomerBookingSettlementResponse } from '@booking/contracts';
 import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
-import { useNavigation } from 'react-router';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
+import { useNavigation, useSubmit } from 'react-router';
 
 export function useCustomerSettlementDisputePanelController({
   settlement,
@@ -10,6 +12,8 @@ export function useCustomerSettlementDisputePanelController({
   locale: Locale;
 }) {
   const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy: submitting, run } = useSubmissionGuard(navigation.state);
   if (!settlement) return null;
 
   const deadline = settlement.disputeUntil ? new Date(settlement.disputeUntil) : null;
@@ -19,11 +23,17 @@ export function useCustomerSettlementDisputePanelController({
       ? formatCurrency(BigInt(dispute.refundAmount), 'VND', locale)
       : null;
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return {
     settlement,
     canOpen: settlement.canOpenDispute,
-    submitting:
-      navigation.state === 'submitting' && navigation.formData?.get('intent') === 'dispute',
+    handleSubmit,
+    submitting,
     heldAmount: formatCurrency(BigInt(settlement.remainingHeldAmount), 'VND', locale),
     deadlineLabel: deadline ? formatDateTime(deadline, locale, 'Asia/Ho_Chi_Minh') : '-',
     refundAmount,
