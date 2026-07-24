@@ -63,7 +63,7 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (code.length !== 6 || verifyLockRef.current) return;
+    if (code.length !== 6 || verifyLockRef.current || resendLockRef.current) return;
 
     verifyLockRef.current = true;
     setVerifying(true);
@@ -77,7 +77,7 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
   }
 
   function resendCode(): void {
-    if (seconds > 0 || resendLockRef.current) return;
+    if (seconds > 0 || resendLockRef.current || verifyLockRef.current) return;
 
     resendLockRef.current = true;
     setResending(true);
