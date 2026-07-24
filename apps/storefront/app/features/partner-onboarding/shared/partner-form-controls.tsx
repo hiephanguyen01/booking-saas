@@ -83,7 +83,7 @@ export function PasswordField({
 
 export function PrimaryButton({ children }: { children: ReactNode }) {
   const navigation = useNavigation();
-  const pending = navigation.state === 'submitting';
+  const pending = navigation.state !== 'idle' && navigation.formMethod != null;
   return (
     <Button type="submit" size="control" className="w-full text-base" disabled={pending}>
       {pending ? <Spinner data-icon="inline-start" /> : null}
