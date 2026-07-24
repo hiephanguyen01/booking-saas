@@ -1,40 +1,23 @@
 import { BookingI18nProvider } from '@booking/i18n';
-import { useState } from 'react';
-import { Outlet, useMatches } from 'react-router';
+import { Outlet } from 'react-router';
 import { SiteFooter } from '../../../layouts/site-footer';
 import { SiteHeader } from '../../../layouts/site-header';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { RootLoaderPayload } from '../server/root-loader.server';
-import type { StorefrontContext } from '../storefront-context';
 import { TenantThemeStyle } from './tenant-theme-style';
+import { useStorefrontAppShellController } from './use-storefront-app-shell-controller';
 
 export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPayload }) {
   const {
-    tenant,
+    accountMenuSummary,
+    currentUser,
+    documentNonce,
+    isStandalone,
     listingTypes,
     locale,
-    canonical,
-    cspNonce,
-    currentUser,
-    accountMenuSummary,
-  } = loaderData;
-  // A document keeps the nonce it was rendered with even if the root loader
-  // later revalidates and receives a nonce generated for a data request.
-  const [documentNonce] = useState(cspNonce);
-  const matches = useMatches();
-  const isStandalone = matches.some(
-    (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
-  );
-
-  const outletContext: StorefrontContext = {
+    outletContext,
     tenant,
-    listingTypes,
-    locale,
-    canonical,
-    cspNonce: documentNonce,
-    currentUser,
-    accountMenuSummary,
-  };
+  } = useStorefrontAppShellController(loaderData);
 
   return (
     <BookingI18nProvider locale={locale}>
