@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createSubmissionLock } from './review-submit-lock';
+import { createSubmissionLock } from './submission-lock';
 
 test('submission lock allows only one in-flight attempt', () => {
   const lock = createSubmissionLock();
