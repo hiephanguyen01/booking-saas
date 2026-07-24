@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #12.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #15.
 
 ## 0. Vì sao cần file này
 
@@ -38,16 +38,19 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 11c | listing — ListingGroup + cascade | ✅ merge (GitHub PR #31) — **listing xong cả module** |
 | 12 | scheduling | ✅ merge (GitHub PR #32) |
 | 13 | payments | ✅ merge local (`0e53b18`) |
-| 14 | booking | 🔍 final review đạt (branch `refactor/entity-booking`, sẵn sàng merge) |
-| 15→16 | finance → administrative-division | chưa làm |
+| 14 | booking | ✅ merge local (`5b8aa12`) |
+| 15 | finance | 🔍 final review đạt (branch `refactor/entity-finance`, sẵn sàng merge) |
+| 16 | administrative-division | chưa làm |
 
 **listing tách 3 PR con** (module lớn nhất: 45 use-case, 56 endpoint) — ✅ cả 3 merged (PR
-#29/#30/#31). Scheduling đã merge ở PR #32; payments cũng đã merge local vào integration:
-**14/16 module đã nằm trên integration**, booking đã qua final review và là module kế tiếp để merge.
+#29/#30/#31). Scheduling đã merge ở PR #32; payments và booking cũng đã merge local vào integration:
+**15/16 module đã nằm trên integration**, finance đã qua final review và là module kế tiếp để merge.
 
-**Đợt song song scheduling/payments đã khép:** cả hai đã merge local. Booking #14 đã đưa lifecycle
-qua aggregate, giữ CAS/GiST/second-tx và sửa đồng bộ `rejectionException` promotions↔booking.
-Việc kế tiếp sau merge booking: **#15 finance → #16 administrative-division**. **Bộ máy moderation (`listing-moderation.ts` +
+Booking #14 đã đưa lifecycle qua aggregate, giữ CAS/GiST/second-tx và sửa đồng bộ
+`rejectionException` promotions↔booking. Finance #15 đã đưa CommissionRule/Settlement/Payout/
+SettlementDispute/LedgerJournal/PayoutPolicy về entity-centric, giữ nguyên repository SQL,
+DB-clock/CAS, FIFO allocation và event order; finance outbox cũng đã normalize tenantId.
+Việc kế tiếp sau merge finance: **#16 administrative-division**. **Bộ máy moderation (`listing-moderation.ts` +
 `moderation-support.ts`) đã dùng chung listing↔group và cả 2 PR CỐ Ý không đụng** (spec §8b-bis) —
 sau khi các module còn lại xong, một PR hợp nhất riêng có thể promote `ModerationError`→`DomainError`
 + đưa transition thành method trên entity (bỏ shim `runModeration`); wire giữ byte-identical. (PR #25
@@ -141,10 +144,9 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 
 - **Relay outbox thiếu dead-letter/max-attempts** — một row hỏng vĩnh viễn chiếm claim slot mãi mãi.
   Nên làm PR hạ tầng riêng, độc lập với các đợt refactor.
-- `event.tenantId ?? ''` còn ở **finance, listing** — sẽ tự hết khi từng module refactor
-  (spec §4), không cần quét riêng. (scheduling đã normalize ở PR #12; payments ở PR #13; booking
-  ở PR #14; lưu ý
-  listing đã refactor xong nhưng 3 PR con không đụng file đăng ký outbox nên pattern còn đó.)
+- `event.tenantId ?? ''` chỉ còn ở **listing** — finance đã normalize ở PR #15; scheduling,
+  payments và booking đã normalize ở PR #12/#13/#14. Listing đã refactor xong nhưng 3 PR con không
+  đụng file đăng ký outbox nên pattern còn đó; xử lý ở PR follow-up khi chạm wiring.
 - Wave migration sau refactor: unique index còn thiếu (dedupe_key của notification, refunds,
   dispute, one-primary-domain).
 - Thêm fixture `draft` vào seed trước PR #9/#11.
@@ -157,6 +159,13 @@ Skill dùng: `superpowers:writing-plans` rồi `superpowers:subagent-driven-deve
 - Smoke #14: seeded `giang@…` và `owner@…` đăng nhập được nhưng các endpoint partner/tenant booking
   trả `MISSING_PERMISSION`; vì vậy partner complete/pick-up/return/no-show/ownership chưa smoke qua
   HTTP. Public create/idempotency/GiST/confirm-replay/guest-cancel/promo-error đã smoke và dọn sạch.
+- Smoke #15: API boot/health đạt; owner login được nhưng endpoint commission trả
+  `MISSING_PERMISSION: tenant.commissions.manage`. Vì vậy finance write-flow được chạy trực tiếp qua
+  use-case với RLS transaction thật: commission create/update/delete + floor guard; settlement
+  completion/no-show/cancellation/refund/finalize + release idempotency; payout guards; dispute
+  open/respond/resolve-release. Tất cả fixture/rule/refund/dispute tạo tạm đã dọn và custody state
+  được khôi phục. Khi boot, relay vẫn thấy các `booking.completed` cũ đã retry hàng trăm lần — bằng
+  chứng thực tế cho nợ dead-letter ở trên, không phải regression của PR #15.
 
 ## 8. Nếu bạn là AI tiếp quản
 
