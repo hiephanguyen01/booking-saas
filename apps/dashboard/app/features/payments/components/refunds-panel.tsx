@@ -1,3 +1,4 @@
+import type { FormEvent } from 'react';
 import type { RefundHistoryItem } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
@@ -6,8 +7,9 @@ import { Input } from '@booking/ui/components/ui/input';
 import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { ArrowUpRight, CircleAlert, Wallet } from 'lucide-react';
-import { Form, Link, useNavigation } from 'react-router';
+import { Form, Link, useNavigation, useSubmit } from 'react-router';
 import { dashboardPaths } from '~/constants/paths';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { formatDateTime, formatVnd } from '~/lib/format';
 
 const STATUS_LABEL: Record<RefundHistoryItem['status'], string> = {
@@ -39,14 +41,22 @@ export function RefundsPanel({
   error: string | null;
 }) {
   const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy, run } = useSubmissionGuard(navigation.state);
   if (!error && refunds.length === 0) return null;
 
   const inProgress = refunds.filter(
     (r) => r.status === 'pending' || r.status === 'manual_required',
   ).length;
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <Card>
+    <Card aria-busy={busy}>
       <CardHeader>
         <CardTitle>Hoàn tiền khách hàng</CardTitle>
         <p className="text-sm text-muted-foreground">
@@ -70,8 +80,6 @@ export function RefundsPanel({
           </p>
         ) : null}
         {refunds.map((refund) => {
-          const submitting =
-            navigation.state === 'submitting' && navigation.formData?.get('refundId') === refund.id;
           const auto = isAuto(refund);
           const statusLabel =
             refund.status === 'succeeded' && auto ? 'Đã hoàn tự động' : STATUS_LABEL[refund.status];
@@ -124,7 +132,11 @@ export function RefundsPanel({
               </div>
 
               {refund.status === 'manual_required' && canManage ? (
-                <Form method="post" className="mt-4 grid gap-3 border-t pt-4 md:grid-cols-2">
+                <Form
+                  method="post"
+                  className="mt-4 grid gap-3 border-t pt-4 md:grid-cols-2"
+                  onSubmit={handleSubmit}
+                >
                   <input type="hidden" name="intent" value="confirm-refund" />
                   <input type="hidden" name="refundId" value={refund.id} />
                   <div className="space-y-1.5">
@@ -134,6 +146,7 @@ export function RefundsPanel({
                       name="reference"
                       required
                       maxLength={200}
+                      disabled={busy}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -143,6 +156,7 @@ export function RefundsPanel({
                       name="evidenceKey"
                       maxLength={500}
                       placeholder="refunds/... hoặc URL nội bộ"
+                      disabled={busy}
                     />
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
@@ -152,11 +166,12 @@ export function RefundsPanel({
                       name="note"
                       maxLength={500}
                       rows={2}
+                      disabled={busy}
                     />
                   </div>
                   <div className="md:col-span-2 md:text-right">
-                    <Button type="submit" disabled={submitting}>
-                      {submitting ? 'Đang xác nhận…' : 'Xác nhận đã chuyển hoàn'}
+                    <Button type="submit" disabled={busy}>
+                      {busy ? 'Đang xác nhận…' : 'Xác nhận đã chuyển hoàn'}
                     </Button>
                   </div>
                 </Form>
