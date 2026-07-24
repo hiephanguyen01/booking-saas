@@ -3,9 +3,10 @@ import {
   passwordResetStartInputSchema,
   registrationStartInputSchema,
 } from '@booking/contracts';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useSubmit } from 'react-router';
+import { useNavigation, useSubmit } from 'react-router';
 import { z } from 'zod';
 
 export type AuthStartMode = 'register' | 'login' | 'reset';
@@ -28,6 +29,8 @@ type AuthStartValues = z.infer<ReturnType<typeof createAuthStartSchema>>;
 
 export function useAuthStartFormController(mode: AuthStartMode) {
   const submit = useSubmit();
+  const navigation = useNavigation();
+  const { busy: submitting, run } = useSubmissionGuard(navigation.state);
   const schema = createAuthStartSchema(mode);
   const {
     register,
@@ -40,11 +43,14 @@ export function useAuthStartFormController(mode: AuthStartMode) {
     defaultValues: { fullName: '', email: '', password: '' },
   });
 
-  const submitForm = handleSubmit((values) => submit(values, { method: 'post' }));
+  const submitForm = handleSubmit((values) => {
+    run(() => submit(values, { method: 'post' }));
+  });
 
   return {
     errors,
     register,
     submitForm,
+    submitting,
   };
 }

@@ -21,10 +21,10 @@ export function StartForm({
   actionData?: AuthActionData;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
-  const { errors, register, submitForm } = useAuthStartFormController(mode);
+  const { errors, register, submitForm, submitting } = useAuthStartFormController(mode);
 
   return (
-    <form onSubmit={submitForm} noValidate>
+    <form onSubmit={submitForm} noValidate aria-busy={submitting}>
       <FieldGroup className="gap-5">
         <AuthFormError actionData={actionData} />
         {mode === 'register' ? (
@@ -37,6 +37,7 @@ export function StartForm({
                 autoComplete="name"
                 className="pl-11"
                 aria-invalid={Boolean(errors.fullName)}
+                disabled={submitting}
                 {...register('fullName')}
               />
             </div>
@@ -55,6 +56,7 @@ export function StartForm({
               autoComplete="email"
               className="pl-11"
               aria-invalid={Boolean(errors.email)}
+              disabled={submitting}
               {...register('email')}
             />
           </div>
@@ -76,13 +78,14 @@ export function StartForm({
               autoComplete="current-password"
               registration={register('password')}
               invalid={Boolean(errors.password)}
+              disabled={submitting}
             />
             <FieldError errors={[errors.password]}>
               {actionData?.fieldErrors?.password?.[0]}
             </FieldError>
           </Field>
         ) : null}
-        <AuthSubmitButton>
+        <AuthSubmitButton disabled={submitting}>
           {mode === 'register'
             ? t('register.submit')
             : mode === 'reset'
