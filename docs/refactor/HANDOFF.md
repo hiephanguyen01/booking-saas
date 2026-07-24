@@ -32,12 +32,12 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 8 | partner | ✅ merge (GitHub PR #24) |
 | 9 | catalog | ✅ merge (GitHub PR #26) |
 | 10a | tenancy — Tenant + domains | ✅ merge (GitHub PR #27) |
-| 10b | tenancy — plan + subscription | 🔍 review (GitHub PR #28) — **tenancy xong cả module** |
+| 10b | tenancy — plan + subscription | ✅ merge (GitHub PR #28) — **tenancy xong cả module** |
 | 11→16 | listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Đang mở:** **PR #10b — tenancy (Plan + Subscription)** (nhánh `refactor/entity-tenancy-billing`,
-[GitHub PR #28](https://github.com/vnkduy/booking-saas/pull/28)). Không bắt đầu PR #11 trước khi PR
-này được review và merge vào `refactor/entity-centric`.
+**Không còn PR module nào mở.** **11/16 module xong.** Việc kế tiếp: **PR #11 — module listing**.
+(PR #25 `refactor/entity-centric` → `main` đang mở là PR đưa cả nhánh tích hợp về main — không phải
+PR module; đừng nhầm.)
 
 Gợi ý riêng cho **PR #11 — module listing** (module kế tiếp, và **lớn nhất còn lại**: 45 use-case,
 56 endpoint) — nên cân nhắc **tách nhiều PR con**, như promotions (5a/5b) và tenancy (10a/10b) đã
