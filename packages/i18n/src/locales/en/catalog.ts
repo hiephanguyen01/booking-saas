@@ -10,6 +10,7 @@ export const enCatalog = {
   emptyDescription: 'Try other dates, another area, or remove a filter.',
   clearFilters: 'Clear filters',
   matchingRooms: '{count} matching rooms',
+  completedBookings: '{count} bookings',
   noReviews: 'No reviews yet',
   reviewCount: '{count} reviews',
   sort: {

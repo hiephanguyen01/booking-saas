@@ -7,6 +7,7 @@ export const viCatalog = {
   emptyDescription: 'Hãy thử đổi ngày, khu vực hoặc bỏ bớt bộ lọc.',
   clearFilters: 'Xóa bộ lọc',
   matchingRooms: '{count} phòng phù hợp',
+  completedBookings: '{count} đã đặt',
   noReviews: 'Chưa có đánh giá',
   reviewCount: '{count} đánh giá',
   sort: {

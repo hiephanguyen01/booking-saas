@@ -1,4 +1,6 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
+import type { MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
+import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Empty,
@@ -8,12 +10,15 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { cn } from '@booking/ui/lib/utils';
-import { Aperture, Check, Clock3, FileImage, Images } from 'lucide-react';
+import { Aperture, Check, Clock3, Expand, FileImage, Images } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { PublicPackageOption } from '../../lib/package-options';
+import { useMediaViewerLabels } from '../../lib/use-media-viewer-labels';
 import { formatVnd } from '../../lib/ui';
 import { packageDurationHours, packageDetails } from './package-data';
+import { PackageMediaDetails } from './package-media-details';
 
 export function PackageTable({
   listing,
@@ -27,6 +32,27 @@ export function PackageTable({
   onSelect: (packageId: string, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const viewerLabels = useMediaViewerLabels();
+  const [activeMedia, setActiveMedia] = useState<{ packageId: string; index: number } | null>(null);
+  const mediaTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const activePackage = activeMedia
+    ? (packages.find((item) => item.id === activeMedia.packageId) ?? null)
+    : null;
+  const mediaItems: MediaViewerItem[] =
+    activePackage?.photos.map((photo, index) => ({
+      kind: 'image',
+      url: photo,
+      alt: t('group.photoAlt', { title: activePackage.name, index: index + 1 }),
+    })) ?? [];
+
+  function openPackageMedia(
+    packageId: string,
+    index: number,
+    trigger: HTMLButtonElement,
+  ): void {
+    mediaTriggerRef.current = trigger;
+    setActiveMedia({ packageId, index });
+  }
 
   return (
     <SectionCard id="packages" aria-labelledby="packages-title" className="scroll-mt-28">
@@ -73,6 +99,7 @@ export function PackageTable({
                     listing={listing}
                     selected={selectedId === item.id}
                     onSelect={onSelect}
+                    onOpenMedia={openPackageMedia}
                   />
                 ))}
               </tbody>
@@ -87,20 +114,42 @@ export function PackageTable({
                 listing={listing}
                 selected={selectedId === item.id}
                 onSelect={onSelect}
+                onOpenMedia={openPackageMedia}
               />
             ))}
           </div>
         </>
       )}
+
+      <PackageMediaViewerDialog
+        open={Boolean(activePackage)}
+        items={mediaItems}
+        activeIndex={activeMedia?.index ?? 0}
+        onOpenChange={(open) => {
+          if (!open) setActiveMedia(null);
+        }}
+        onActiveIndexChange={(index) => {
+          setActiveMedia((current) => (current ? { ...current, index } : current));
+        }}
+        labels={viewerLabels}
+        title={activePackage?.name ?? t('packages.servicePackages')}
+        description={t('packages.mediaViewerDescription', {
+          name: activePackage?.name ?? t('packages.servicePackages'),
+        })}
+        returnFocusRef={mediaTriggerRef}
+        details={
+          activePackage ? <PackageMediaDetails item={activePackage} listing={listing} /> : null
+        }
+      />
     </SectionCard>
   );
 }
 
-function PackageRow({ item, listing, selected, onSelect }: PackageProps) {
+function PackageRow({ item, listing, selected, onSelect, onOpenMedia }: PackageProps) {
   return (
     <tr className={cn('border-t align-top', selected && 'bg-primary/5')}>
       <td className="p-5">
-        <PackageSummary item={item} listing={listing} />
+        <PackageSummary item={item} listing={listing} onOpenMedia={onOpenMedia} />
       </td>
       <td className="border-l p-5">
         <PackageFacts item={item} listing={listing} />
@@ -123,7 +172,11 @@ function PackageCard(props: PackageProps) {
         props.selected && 'border-primary bg-primary/5',
       )}
     >
-      <PackagePhotoStrip photos={props.item.photos} title={props.item.name} />
+      <PackagePhotoStrip
+        photos={props.item.photos}
+        title={props.item.name}
+        onOpenPhoto={(index, trigger) => props.onOpenMedia(props.item.id, index, trigger)}
+      />
       <div className="grid gap-5 p-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <PackageSummary {...props} hidePhotos />
@@ -143,19 +196,27 @@ interface PackageProps {
   listing: PublicListingDetailResponse;
   selected: boolean;
   onSelect: (packageId: string, trigger: HTMLButtonElement) => void;
+  onOpenMedia: (packageId: string, index: number, trigger: HTMLButtonElement) => void;
 }
 
 function PackageSummary({
   item,
   listing,
+  onOpenMedia,
   hidePhotos = false,
-}: Pick<PackageProps, 'item' | 'listing'> & { hidePhotos?: boolean }) {
+}: Pick<PackageProps, 'item' | 'listing' | 'onOpenMedia'> & { hidePhotos?: boolean }) {
   const { t } = useTranslation(NsI18n.Listing);
   const details = packageDetails(listing.attributes);
   return (
     <div className="space-y-4">
       <h3 className="text-base font-semibold">{item.name}</h3>
-      {!hidePhotos ? <PackagePhotoStrip photos={item.photos} title={item.name} /> : null}
+      {!hidePhotos ? (
+        <PackagePhotoStrip
+          photos={item.photos}
+          title={item.name}
+          onOpenPhoto={(index, trigger) => onOpenMedia(item.id, index, trigger)}
+        />
+      ) : null}
       <p className="text-sm leading-6 text-muted-foreground">
         {item.description || t('packages.packageDescriptionFallback')}
       </p>
@@ -206,7 +267,12 @@ function PackagePrice({ item }: { item: PublicPackageOption }) {
   );
 }
 
-function PackageChoice({ item, listing, selected, onSelect }: PackageProps) {
+function PackageChoice({
+  item,
+  listing,
+  selected,
+  onSelect,
+}: Pick<PackageProps, 'item' | 'listing' | 'selected' | 'onSelect'>) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
     <div>
@@ -237,7 +303,16 @@ function PackageChoice({ item, listing, selected, onSelect }: PackageProps) {
   );
 }
 
-function PackagePhotoStrip({ photos, title }: { photos: string[]; title: string }) {
+function PackagePhotoStrip({
+  photos,
+  title,
+  onOpenPhoto,
+}: {
+  photos: string[];
+  title: string;
+  onOpenPhoto: (index: number, trigger: HTMLButtonElement) => void;
+}) {
+  const { t } = useTranslation(NsI18n.Listing);
   const visible = photos.slice(0, 3);
   if (!visible.length) {
     return (
@@ -248,11 +323,36 @@ function PackagePhotoStrip({ photos, title }: { photos: string[]; title: string 
   }
   return (
     <div className="grid h-36 grid-cols-[2fr_1fr] gap-2 overflow-hidden rounded-md">
-      <img src={visible[0]} alt={title} className="size-full object-cover" />
+      <button
+        type="button"
+        onClick={(event) => onOpenPhoto(0, event.currentTarget)}
+        aria-label={t('packages.viewPackagePhoto', { name: title, index: 1 })}
+        className="group relative min-h-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <img
+          src={visible[0]}
+          alt={title}
+          className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+        />
+        <span className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-full bg-card/90 text-card-foreground shadow-sm">
+          <Expand className="size-3.5" aria-hidden="true" />
+        </span>
+      </button>
       <div className="grid gap-2 overflow-hidden">
         {[visible[1], visible[2]].map((photo, index) =>
           photo ? (
-            <img key={photo} src={photo} alt="" className="min-h-0 size-full object-cover" />
+            <button
+              key={photo}
+              type="button"
+              onClick={(event) => onOpenPhoto(index + 1, event.currentTarget)}
+              aria-label={t('packages.viewPackagePhoto', {
+                name: title,
+                index: index + 2,
+              })}
+              className="min-h-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              <img src={photo} alt="" className="size-full object-cover" />
+            </button>
           ) : (
             <span key={index} className="bg-muted" />
           ),

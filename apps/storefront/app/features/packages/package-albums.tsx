@@ -1,28 +1,44 @@
+import type { PublicListingDetailResponse } from '@booking/contracts';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@booking/ui/components/ui/dialog';
-import { ImageIcon } from 'lucide-react';
+  MediaViewerDialog,
+  type MediaViewerItem,
+} from '@booking/ui/components/media/media-viewer-dialog';
+import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { SectionCard } from '../../components/section-card';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { PublicPackageOption } from '../../lib/package-options';
+import { useMediaViewerLabels } from '../../lib/use-media-viewer-labels';
+import { PackageMediaDetails } from './package-media-details';
 import { usePackageAlbumsController } from './use-package-albums-controller';
 
 export function PackageAlbums({
   packages,
   fallbackPhotos,
   title,
+  listing,
 }: {
   packages: PublicPackageOption[];
   fallbackPhotos: string[];
   title: string;
+  listing: PublicListingDetailResponse;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const { active, albums, handleOpenChange, openAlbum, restoreTriggerFocus } =
-    usePackageAlbumsController({ packages, fallbackPhotos, title });
+  const viewerLabels = useMediaViewerLabels();
+  const {
+    active,
+    activeIndex,
+    albums,
+    handleOpenChange,
+    openAlbum,
+    setActiveIndex,
+    triggerRef,
+  } = usePackageAlbumsController({ packages, fallbackPhotos, title });
+  const mediaItems: MediaViewerItem[] =
+    active?.photos.map((photo, index) => ({
+      kind: 'image',
+      url: photo,
+      alt: t('group.photoAlt', { title: active.name, index: index + 1 }),
+    })) ?? [];
 
   if (!albums.length) return null;
 
@@ -55,35 +71,34 @@ export function PackageAlbums({
         </div>
       </SectionCard>
 
-      <Dialog open={Boolean(active)} onOpenChange={handleOpenChange}>
-        <DialogContent
-          className="max-h-[90vh] overflow-y-auto sm:max-w-4xl"
-          onCloseAutoFocus={restoreTriggerFocus}
-        >
-          <DialogHeader>
-            <DialogTitle>{active?.name ?? title}</DialogTitle>
-            <DialogDescription>
-              {active ? t('group.photoCounter', { current: 1, total: active.photos.length }) : ''}
-            </DialogDescription>
-          </DialogHeader>
-          {active?.photos.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {active.photos.map((photo, index) => (
-                <img
-                  key={`${photo}-${index}`}
-                  src={photo}
-                  alt={t('group.photoAlt', { title: active.name, index: index + 1 })}
-                  className="aspect-4/3 w-full rounded-md object-cover"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="grid h-64 place-items-center rounded-md bg-muted text-muted-foreground">
-              <ImageIcon className="size-8" aria-hidden="true" />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {active?.item ? (
+        <PackageMediaViewerDialog
+          open={Boolean(active)}
+          items={mediaItems}
+          activeIndex={activeIndex}
+          onOpenChange={handleOpenChange}
+          onActiveIndexChange={setActiveIndex}
+          labels={viewerLabels}
+          title={active.name}
+          description={t('packages.mediaViewerDescription', { name: active.name })}
+          returnFocusRef={triggerRef}
+          details={<PackageMediaDetails item={active.item} listing={listing} />}
+        />
+      ) : (
+        <MediaViewerDialog
+          open={Boolean(active)}
+          items={mediaItems}
+          activeIndex={activeIndex}
+          onOpenChange={handleOpenChange}
+          onActiveIndexChange={setActiveIndex}
+          labels={viewerLabels}
+          title={active?.name ?? title}
+          description={t('packages.mediaViewerDescription', {
+            name: active?.name ?? title,
+          })}
+          returnFocusRef={triggerRef}
+        />
+      )}
     </>
   );
 }

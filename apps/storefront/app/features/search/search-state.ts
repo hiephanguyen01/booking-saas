@@ -51,6 +51,7 @@ export interface EnrichedSearchListing {
   amenities: string[];
   priceFrom: string;
   regularPriceFrom: string;
+  completedBookings: number;
   ratingAvg: number | null;
   reviewCount: number;
   /** Locale-independent; rendered via the listing.perHour/perDay i18n keys. */

@@ -110,6 +110,9 @@ export const viListing = {
     colChoice: 'Lựa chọn của bạn',
     packageDuration: 'Thời lượng {count} giờ',
     photographyStyle: 'Phong cách: {value}',
+    photographyStyleLabel: 'Phong cách chụp',
+    postProduction: 'Hậu kì',
+    originalFiles: 'File ảnh gốc',
     editedPhotos: '{count} ảnh chỉnh sửa',
     rawFilesIncluded: 'Có bàn giao file gốc',
     rawFilesNotIncluded: 'Không bao gồm file gốc',
@@ -126,6 +129,8 @@ export const viListing = {
     allRatings: 'Tất cả',
     ratingFilter: '{count} sao ({total})',
     related: 'Dịch vụ tương tự',
+    mediaViewerDescription: 'Ảnh và thông tin chi tiết của {name}',
+    viewPackagePhoto: 'Xem ảnh {index} của gói {name}',
   },
   /** The listing-group ("studio") page — a group of bookable child listings. */
   group: {

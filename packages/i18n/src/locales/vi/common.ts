@@ -7,6 +7,18 @@ export const viCommon = {
   currencyNote: 'Nền tảng đặt chỗ · thanh toán an toàn · VND',
   notFound: 'Không tìm thấy',
   close: 'Đóng',
+  mediaViewer: {
+    close: 'Đóng trình xem',
+    previous: 'Nội dung trước',
+    next: 'Nội dung tiếp theo',
+    zoomIn: 'Phóng to',
+    zoomOut: 'Thu nhỏ',
+    resetZoom: 'Đặt lại thu phóng',
+    mediaError: 'Không thể tải nội dung này.',
+    video: 'Video',
+    item: 'Xem nội dung {index}',
+    counter: '{current}/{total}',
+  },
   home: {
     heroTitleFallback: 'Đặt {name} chỉ trong vài phút',
     heroSubtitleFallback:

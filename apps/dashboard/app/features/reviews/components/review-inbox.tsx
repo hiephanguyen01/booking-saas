@@ -1,4 +1,5 @@
 import type { ReviewListResponse } from '@booking/contracts';
+import type { MediaViewerLabels } from '@booking/ui/components/media/media-viewer-dialog';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
@@ -13,6 +14,19 @@ import { ListToolbar } from '~/components/list-toolbar';
 import { readListParams } from '~/lib/pagination';
 import { formatDateTime } from '~/lib/format';
 import { REVIEW_FILTER_SPEC } from '../lib/review-filters';
+
+const MEDIA_VIEWER_LABELS: MediaViewerLabels = {
+  close: 'Đóng trình xem',
+  previous: 'Nội dung trước',
+  next: 'Nội dung tiếp theo',
+  zoomIn: 'Phóng to',
+  zoomOut: 'Thu nhỏ',
+  resetZoom: 'Đặt lại thu phóng',
+  mediaError: 'Không thể tải nội dung này.',
+  video: 'Video',
+  item: (index) => `Xem nội dung ${index}`,
+  counter: (current, total) => `${current}/${total}`,
+};
 
 export function ReviewInbox({
   title,
@@ -92,6 +106,7 @@ export function ReviewInbox({
                       className="mt-3"
                       viewLabel="Xem nội dung đính kèm"
                       viewerTitle="Ảnh và video đánh giá"
+                      viewerLabels={MEDIA_VIEWER_LABELS}
                     />
                   </div>
                   {review.reply ? (
