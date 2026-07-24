@@ -1,10 +1,11 @@
 import type { CustomerBookingSettlementResponse } from '@booking/contracts';
-import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
+import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { CircleAlert, Clock3, Scale } from 'lucide-react';
-import { Form, useNavigation } from 'react-router';
+import { Form } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { useCustomerSettlementDisputePanelController } from './use-customer-settlement-dispute-panel-controller';
 
 export function CustomerSettlementDisputePanel({
   settlement,
@@ -14,13 +15,18 @@ export function CustomerSettlementDisputePanel({
   locale: Locale;
 }) {
   const { t } = useTranslation(NsI18n.Account);
-  const navigation = useNavigation();
-  if (!settlement) return null;
+  const model = useCustomerSettlementDisputePanelController({ settlement, locale });
+  if (!model) return null;
 
-  const deadline = settlement.disputeUntil ? new Date(settlement.disputeUntil) : null;
-  const canOpen = settlement.canOpenDispute;
-  const submitting =
-    navigation.state === 'submitting' && navigation.formData?.get('intent') === 'dispute';
+  const {
+    settlement: currentSettlement,
+    canOpen,
+    submitting,
+    heldAmount,
+    deadlineLabel,
+    refundAmount,
+    showDisputedFallback,
+  } = model;
 
   return (
     <section className="rounded-xl border border-border/70 bg-background px-5 py-5 shadow-[0_10px_35px_rgba(15,23,42,0.045)] sm:px-6">
@@ -29,7 +35,7 @@ export function CustomerSettlementDisputePanel({
         <div>
           <h2 className="font-semibold">{t('bookings.disputePanel.title')}</h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {t(`bookings.disputePanel.status.${settlement.status}`)}
+            {t(`bookings.disputePanel.status.${currentSettlement.status}`)}
           </p>
         </div>
       </div>
@@ -37,15 +43,11 @@ export function CustomerSettlementDisputePanel({
       <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-xs text-muted-foreground">{t('bookings.disputePanel.held')}</dt>
-          <dd className="mt-1 font-semibold">
-            {formatCurrency(BigInt(settlement.remainingHeldAmount), 'VND', locale)}
-          </dd>
+          <dd className="mt-1 font-semibold">{heldAmount}</dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">{t('bookings.disputePanel.deadline')}</dt>
-          <dd className="mt-1 font-medium">
-            {deadline ? formatDateTime(deadline, locale, 'Asia/Ho_Chi_Minh') : '-'}
-          </dd>
+          <dd className="mt-1 font-medium">{deadlineLabel}</dd>
         </div>
       </dl>
 
@@ -87,38 +89,39 @@ export function CustomerSettlementDisputePanel({
             </Button>
           </div>
         </Form>
-      ) : settlement.dispute ? (
+      ) : currentSettlement.dispute ? (
         <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm">
           <p className="flex items-center gap-2 font-medium text-amber-700">
             <CircleAlert className="size-4" />
-            {settlement.dispute.status === 'open'
+            {currentSettlement.dispute.status === 'open'
               ? t('bookings.disputePanel.opened')
-              : t(`bookings.disputePanel.resolution.${settlement.dispute.resolution ?? 'release'}`)}
+              : t(
+                  `bookings.disputePanel.resolution.${currentSettlement.dispute.resolution ?? 'release'}`,
+                )}
           </p>
-          {settlement.dispute.partnerResponse ? (
+          {currentSettlement.dispute.partnerResponse ? (
             <p className="text-muted-foreground">
               <span className="font-medium text-foreground">
                 {t('bookings.disputePanel.partnerResponse')}:{' '}
               </span>
-              {settlement.dispute.partnerResponse}
+              {currentSettlement.dispute.partnerResponse}
             </p>
           ) : null}
-          {settlement.dispute.resolutionNote ? (
+          {currentSettlement.dispute.resolutionNote ? (
             <p className="text-muted-foreground">
               <span className="font-medium text-foreground">
                 {t('bookings.disputePanel.resolutionNote')}:{' '}
               </span>
-              {settlement.dispute.resolutionNote}
+              {currentSettlement.dispute.resolutionNote}
             </p>
           ) : null}
-          {BigInt(settlement.dispute.refundAmount) > 0n ? (
+          {refundAmount ? (
             <p className="font-medium">
-              {t('bookings.disputePanel.refundAmount')}:{' '}
-              {formatCurrency(BigInt(settlement.dispute.refundAmount), 'VND', locale)}
+              {t('bookings.disputePanel.refundAmount')}: {refundAmount}
             </p>
           ) : null}
         </div>
-      ) : settlement.status === 'disputed' ? (
+      ) : showDisputedFallback ? (
         <p className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-sm text-amber-700">
           <CircleAlert className="size-4" /> {t('bookings.disputePanel.opened')}
         </p>
