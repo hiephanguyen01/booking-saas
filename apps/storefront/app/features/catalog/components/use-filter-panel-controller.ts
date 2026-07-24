@@ -97,7 +97,7 @@ export function useFilterPanelController({
       kind: 'options',
       key: facet.key,
       title,
-      control: facet.control,
+      control: facet.control === 'radio' ? 'radio' : 'checkbox',
       options,
       selected,
       visibleCount: facet.key === 'location' ? 6 : 8,
