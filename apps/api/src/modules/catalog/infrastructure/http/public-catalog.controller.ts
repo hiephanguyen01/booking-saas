@@ -8,11 +8,9 @@ import {
 } from '@booking/contracts';
 import { z } from 'zod';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
+import { MAX_FEATURED_LISTINGS } from '../../application/featured-listings';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
-import {
-  ListPublicListingsUseCase,
-  MAX_FEATURED_LISTINGS,
-} from '../../application/use-cases/list-public-listings.use-case';
+import { ListPublicListingsUseCase } from '../../application/use-cases/list-public-listings.use-case';
 import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
 import {
   toPublicListingResponse,
