@@ -27,6 +27,9 @@ export class DeleteDomainUseCase {
       throw new DomainNotFound();
     }
     const target = TenantDomain.rehydrate(domain);
+    // Gate is for the query, not the rule — the assertion re-checks it. Keeps
+    // listByTenant off the common delete path (non-primary/unverified deletes
+    // never pay for the extra round-trip).
     if (target.isPrimary && target.isVerified) {
       const siblings = (await this.domains.listByTenant(tenantId)).map((d) => ({
         id: d.id,

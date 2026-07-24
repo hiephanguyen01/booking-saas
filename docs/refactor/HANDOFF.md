@@ -30,19 +30,29 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 6 | affiliate | ✅ merge (GitHub PR #22) |
 | 7 | identity-access | ✅ merge (GitHub PR #23) |
 | 8 | partner | ✅ merge (GitHub PR #24) |
-| 9 | catalog | 🔍 review (GitHub PR #26) |
-| 10→16 | tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
+| 9 | catalog | ✅ merge (GitHub PR #26) |
+| 10a | tenancy — Tenant + domains | 🔍 review (GitHub PR #27) |
+| 10b→16 | tenancy Plan+Subscription → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Đang mở:** **PR #9 — module catalog** (nhánh `refactor/entity-catalog`, [GitHub PR #26](https://github.com/vnkduy/booking-saas/pull/26)).
-Không bắt đầu PR #10 trước khi PR này được review và merge vào `refactor/entity-centric`.
+**Đang mở:** **PR #10a — tenancy (Tenant + domains)** (nhánh `refactor/entity-tenancy-core`,
+[GitHub PR #27](https://github.com/vnkduy/booking-saas/pull/27)). Không bắt đầu PR #10b trước khi PR
+này được review và merge vào `refactor/entity-centric`.
 
-Gợi ý riêng cho tenancy (từ khảo sát): 4 aggregate — `Tenant`, `TenantDomainPortfolio`,
-`SubscriptionPlan`, `TenantSubscription`. Gần như toàn bộ luồng chạy trên **admin pool** (không phải
-`forTenant`) — giữ nguyên kiến trúc dual-pool, đừng cố ép qua RLS tenant pool. Rule "current
-subscription" hiện đang **nhân ba** (một bản TypeScript + hai bản raw-SQL) — refactor này là dịp hợp
-nhất về một chỗ trên aggregate/entity. `setPrimary` (domain portfolio) là một **atomic swap** — giữ
-nguyên tính chất set-based, đừng biến thành load-check-save từng domain. Worker DNS TXT verification
-**cố ý throw để trigger retry** — giữ nguyên, đừng nuốt lỗi rồi return false êm.
+Gợi ý riêng cho **PR #10b — tenancy Plan + Subscription** (module kế tiếp, cùng thư mục `tenancy/`
+nhưng aggregate `SubscriptionPlan`/`TenantSubscription`, tách vì PR #10a đã đủ lớn với Tenant +
+TenantDomain):
+- rule **"current subscription"** hiện đang **nhân ba** (một bản TypeScript trong
+  `get-current-subscription.use-case.ts` + hai bản raw-SQL trong repository) — hợp nhất về một chỗ
+  trên aggregate/entity là mục tiêu chính của #10b.
+- `create-plan` **thiếu pre-check tên** trước khi insert → P2002 (tên trùng) leak thành 500 thay vì
+  409 dịch nghĩa (đã ghi trong §8a known-gap register, hàng "P2002 leak thành 500 … tenancy").
+- **repricing** (đổi giá plan) cần **confirm khi đã có subscriber** đang dùng plan đó — kiểm tra rule
+  này còn thiếu ở use-case hiện tại trước khi coi refactor này là behavior-preserving.
+- **MRR** (monthly recurring revenue, `bigint` VND) **không được đi qua `Number()`** ở bất kỳ điểm
+  nào trong luồng — giữ nguyên như tiền tệ khác trong repo (xem `shared/money`).
+- Phần `Tenant` + `TenantDomain` của #10a đã đủ: `setPrimary` là **atomic swap** ở repository (CAS ở
+  lại, không load-check-save), worker DNS TXT verification **cố ý throw để trigger retry** — cả hai
+  giữ nguyên, không đụng lại ở #10b trừ khi cùng file.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 

@@ -233,6 +233,20 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | P2002 leak thành 500 (partner slug, plan-name create) | partner, tenancy | Thiếu translation — fix là behavior change của error envelope → ghi sổ |
 | Finance: `SetPlatformRate` use-case tồn tại nhưng không có route | finance | Cần owner quyết: nối route hay xóa |
 | P2002 leak thành 500 (listing-type slug) + FK violation khi delete không dịch | catalog | Giữ nguyên ở PR #9 — fix là behavior change của error envelope |
+| `add-domain` cho phép tạo primary thứ hai (nhận thẳng `isPrimary` từ request, không tự clear primary cũ; không có DB constraint chặn 2 hàng `is_primary=true` cùng tenant) | tenancy | Giữ nguyên ở PR #10a — siết là behavior change + cần migration (→ §8b "one-primary-domain partial unique") |
+| `delete-domain` (`assertDeletableFromPortfolio`) thực chất bảo vệ "còn ít nhất 1 domain **verified**", không phải "còn primary" — xoá domain primary trong khi còn domain verified khác (không primary) vẫn thành công và để tenant không còn domain nào là primary | tenancy | Bất đối xứng kế thừa từ code cũ, giữ nguyên ở PR #10a |
+
+### 8a-bis. Wire change đã duyệt (không phải known gap — thay đổi có chủ đích)
+
+- **`TENANT_NOT_FOUND`** (tenancy): message đổi từ `` `Tenant ${id} not found` `` (per-instance, id động)
+  sang `'Tenant not found'` (tĩnh) dùng chung `shared/domain/errors/tenant-not-found.ts` — cùng
+  code (`TENANT_NOT_FOUND`) và cùng status (404), chỉ message đổi. **Owner duyệt 2026-07-24**, áp
+  dụng cho **cả 8 site** phát ra mã này trong tenancy (`get-tenant`, `get-tenant-detail`,
+  `update-tenant`, `set-partner-promotions`, `set-tenant-default-cancellation-policy`, `add-domain`,
+  và 2 site thuộc PR #10b — `assign-subscription`, `list-subscriptions`) để không nửa vời trong cùng
+  module. FE đã grep, không bám vào message literal của mã này. Đây là **thay đổi wire có chủ đích
+  duy nhất** của toàn bộ refactor entity-centric tính tới PR #10a — mọi mã lỗi khác vẫn giữ
+  byte-identical theo luật §4.
 
 ### 8b. Migration wave sau refactor (unique backstop còn thiếu)
 
@@ -253,6 +267,17 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 - favorites: `toVnd` + `priceFromModeConfig` trong `prisma-favorite.repository.ts` là bản sao gần
   như y hệt của `catalog.mapper.ts` — nên hợp nhất về một nơi dùng chung (giữ `priceFrom` là chuỗi
   chữ số VND ở boundary), nhưng là read-side + xuyên module nên tách khỏi refactor này.
+- tenancy: `resolve-tenant-by-host` (`ResolveTenantByHostUseCase`) còn giữ rule nghiệp vụ inline
+  ngay trong use-case thay vì trên aggregate — "chỉ domain **verified** mới resolve host" và
+  `isLive = tenant.status === 'active' && evaluation.storefrontLive`. Đây là read path với **14
+  consumer xuyên module** (bề mặt đóng băng, xem HANDOFF gợi ý tenancy) nên để nguyên, tách refactor
+  riêng sau khi khảo sát hết 14 consumer.
+- tenancy: cả 4 use-case domain vừa wire ở PR #10a (`add-domain`, `verify-domain`,
+  `set-primary-domain`, `delete-domain`) đều **không gọi `cache.invalidateHost`** — cache Redis
+  host→tenant có TTL 60s và negative-caching cho host lạ, nên một domain vừa xoá/đổi vẫn resolve
+  đúng tenant cũ tối đa 60s nữa trước khi tự hết hạn. Hành vi này có từ trước refactor (giữ nguyên,
+  không phải regression của PR #10a); 3 call site `invalidateHost` hiện có nằm ở `update-tenant`,
+  `resolve-tenant-by-host` (stale-cache eviction), và worker DNS verification — không đụng.
 
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 
