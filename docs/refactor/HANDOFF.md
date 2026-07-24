@@ -1,7 +1,7 @@
 # Bàn giao — Entity-centric refactor `apps/api`
 
 > Đọc file này **đầu tiên** nếu bạn (người hoặc AI) tiếp quản công việc refactor này trên một máy
-> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #8.
+> khác / một phiên khác. Cập nhật lần cuối: **2026-07-24**, trong PR #9.
 
 ## 0. Vì sao cần file này
 
@@ -29,19 +29,21 @@ Nhánh tích hợp: **`refactor/entity-centric`** (mọi PR module merge vào đ
 | 5b | promotions — redemption + usage claim | ✅ merge (PR #21) — **promotions xong cả module** |
 | 6 | affiliate | ✅ merge (GitHub PR #22) |
 | 7 | identity-access | ✅ merge (GitHub PR #23) |
-| 8 | partner | 🔍 review (GitHub PR #24) |
-| 9→16 | catalog → tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
+| 8 | partner | ✅ merge (GitHub PR #24) |
+| 9 | catalog | ✅ (PR #9) |
+| 10→16 | tenancy → listing → scheduling → payments → booking → finance → administrative-division | chưa làm |
 
-**Đang mở:** **PR #8 — module partner** ([GitHub PR #24](https://github.com/vnkduy/booking-saas/pull/24)).
-Không bắt đầu PR #9 trước khi PR này được review và merge vào `refactor/entity-centric`.
+**Đang mở:** **PR #9 — module catalog** (nhánh `refactor/entity-catalog`, vừa push + mở PR vào
+`refactor/entity-centric` — xem Step 5 của task brief). Không bắt đầu PR #10 trước khi PR này được
+review và merge.
 
-Gợi ý riêng cho partner (từ khảo sát): một aggregate `Partner` với hai lifecycle độc lập
-(`status` + `verificationStatus`); `AgreementAcceptance` vẫn là append-only record. Giữ nguyên
-commit-then-throw khi reject identity, `SELECT … FOR UPDATE`, SQL future confirmed booking dùng DB
-`now()`, write JSONB theo từng cột, cache invalidation sau commit, và đường import
-`assertCanServeListingType`/`PARTNER_REPOSITORY` mà listing đang dùng. Promotions vẫn import chéo
-agreement port + concrete repository — nợ ADR có sẵn, không sửa trong refactor. Plan:
-`docs/superpowers/plans/2026-07-23-entity-refactor-pr8-partner.md`.
+Gợi ý riêng cho tenancy (từ khảo sát): 4 aggregate — `Tenant`, `TenantDomainPortfolio`,
+`SubscriptionPlan`, `TenantSubscription`. Gần như toàn bộ luồng chạy trên **admin pool** (không phải
+`forTenant`) — giữ nguyên kiến trúc dual-pool, đừng cố ép qua RLS tenant pool. Rule "current
+subscription" hiện đang **nhân ba** (một bản TypeScript + hai bản raw-SQL) — refactor này là dịp hợp
+nhất về một chỗ trên aggregate/entity. `setPrimary` (domain portfolio) là một **atomic swap** — giữ
+nguyên tính chất set-based, đừng biến thành load-check-save từng domain. Worker DNS TXT verification
+**cố ý throw để trigger retry** — giữ nguyên, đừng nuốt lỗi rồi return false êm.
 
 ## 2. Tài liệu chi phối (đều trong repo)
 

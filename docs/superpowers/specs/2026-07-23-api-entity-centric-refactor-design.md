@@ -232,6 +232,7 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 | Promotions: end-partner-promotion thiếu guard "đã ended" | promotions | Idempotent-by-accident |
 | P2002 leak thành 500 (partner slug, plan-name create) | partner, tenancy | Thiếu translation — fix là behavior change của error envelope → ghi sổ |
 | Finance: `SetPlatformRate` use-case tồn tại nhưng không có route | finance | Cần owner quyết: nối route hay xóa |
+| P2002 leak thành 500 (listing-type slug) + FK violation khi delete không dịch | catalog | Giữ nguyên ở PR #9 — fix là behavior change của error envelope |
 
 ### 8b. Migration wave sau refactor (unique backstop còn thiếu)
 
@@ -256,7 +257,7 @@ rẻ nhất để chỉnh style, mọi PR sau copy pattern từ nó.
 ### 8c. Dead-code list (xóa trong PR module sở hữu)
 
 - `payments`: `canSucceed` (mâu thuẫn SQL guard thật — cái bẫy), `findActivePendingByBooking`
-- `catalog`: `ListPublicListingsUseCase` không có route
+- `catalog`: `ListPublicListingsUseCase` không có route — **[ĐÃ XOÁ ở PR #9]**
 - `favorites`: `isFavorited` (port + repo, 0 caller) — **đã xoá ở PR #4**
 
 ### 8c-bis. Tooling & fixture follow-ups (PR nhỏ riêng, KHÔNG nhét vào PR module)
