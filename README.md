@@ -4,7 +4,7 @@ Multi-tenant booking SaaS (design: `TONG-QUAN.md`, task breakdown: `tasks/`).
 
 ## Stack
 
-pnpm + Turborepo · NestJS 11 (hexagonal) · Prisma + PostgreSQL 16 (RLS) · Redis + BullMQ · Zod contracts (`@booking/contracts`). **No tests — by design** (see `CLAUDE.md`).
+pnpm + Turborepo · NestJS 11 (hexagonal) · Prisma + PostgreSQL 16 (RLS) · Redis + BullMQ · Zod contracts (`@booking/contracts`). Targeted automated tests protect security, concurrency, money, time, parser, and domain invariants.
 
 ## Getting started
 
@@ -29,7 +29,7 @@ pnpm --filter=@booking/storefront dev # customer site, multi-tenant by Host head
 pnpm --filter=@booking/dashboard dev  # 4 role areas: /admin /tenant /partner /affiliate
 ```
 
-React Router 7 framework mode (SSR) + Tailwind v4. Storefront resolves the tenant in `app/lib/tenant.server.ts` (Phase 0: demo stub — real API + Redis lookup lands with task 1.1) and themes via `--sf-*` CSS variables from tenant config.
+React Router 8 framework mode (SSR) + Tailwind v4. Storefront resolves the tenant in `app/lib/tenant.server.ts` and themes via tenant-configured semantic CSS variables.
 
 ## Agent skills
 
@@ -37,7 +37,7 @@ Project-level skills in `.agents/skills/` (symlinked into `.claude/skills/`), in
 
 | Skill | For |
 | --- | --- |
-| `react-router-framework-mode` | RR7 routes/loaders/actions conventions (official, remix-run) |
+| `react-router-framework-mode` | RR framework routes/loaders/actions conventions (official, remix-run) |
 | `design-taste-frontend` | Anti-generic design direction for storefront/dashboard UI |
 | `prisma-client-api`, `prisma-cli` | Query patterns + migrate workflows (official, prisma) |
 | `nestjs-best-practices` | NestJS architecture patterns |
@@ -46,7 +46,14 @@ Project-level skills in `.agents/skills/` (symlinked into `.claude/skills/`), in
 ## Commands
 
 ```bash
-pnpm turbo lint typecheck build  # the full check suite (there are no tests — by design)
+pnpm test                       # targeted package tests
+pnpm turbo lint typecheck build # static checks and production builds
+```
+
+Storefront-only tests:
+
+```bash
+pnpm --filter=@booking/storefront test
 ```
 
 ## Architecture notes (Phase 0)

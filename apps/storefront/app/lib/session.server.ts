@@ -1,19 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { createCookie, redirect } from 'react-router';
 import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
+import {
+  SessionRefreshLockTimeoutError,
+  withDistributedRefreshLock,
+  type RefreshLockObservation,
+} from './refresh-lock.server';
 import { storefrontEnv } from './env.server';
 import { safeRedirectPath } from './safe-redirect';
 
 const TTL_SECONDS = 60 * 60 * 24 * 30;
 const PREFIX = 'bookify:storefront:session:';
-const REFRESH_LOCK_PREFIX = 'bookify:storefront:session-refresh-lock:';
-// A contended path can validate a newly-rotated token, refresh it if needed,
-// and validate once more. Keep the lease above the API client's 3 × 10s budget.
-const REFRESH_LOCK_TTL_MS = 35_000;
-// A contender must wait through the full lease. Timing out earlier converts a
-// healthy in-flight refresh into a false 503 for concurrent storefront requests.
-const REFRESH_LOCK_RETRY_MS = 250;
-const REFRESH_LOCK_WAIT_MS = REFRESH_LOCK_TTL_MS + REFRESH_LOCK_RETRY_MS;
 
 export interface StorefrontSessionData {
   accessToken: string;
@@ -21,19 +18,8 @@ export interface StorefrontSessionData {
   userId: string;
 }
 
-export type RefreshLockObservation<T> =
-  | { resolved: false }
-  | { resolved: true; value: T };
-
-export class SessionRefreshLockTimeoutError extends Error {
-  constructor() {
-    super('Timed out waiting for the storefront session refresh lock');
-    this.name = 'SessionRefreshLockTimeoutError';
-  }
-}
-
-const delay = (milliseconds: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+export { SessionRefreshLockTimeoutError };
+export type { RefreshLockObservation };
 
 export function createStorefrontSessionService(store: RedisJsonStore = storefrontRedisStore) {
   const cookie = createCookie('__storefront_session', {
@@ -67,39 +53,12 @@ export function createStorefrontSessionService(store: RedisJsonStore = storefron
     async rotate(id: string, data: StorefrontSessionData) {
       await store.set(`${PREFIX}${id}`, data, TTL_SECONDS);
     },
-    async withRefreshLock<T>(
+    withRefreshLock<T>(
       id: string,
       callback: () => Promise<T>,
       observeWhileWaiting?: () => Promise<RefreshLockObservation<T>>,
     ): Promise<T> {
-      const key = `${REFRESH_LOCK_PREFIX}${id}`;
-      const value = randomUUID();
-      const deadline = Date.now() + REFRESH_LOCK_WAIT_MS;
-      let acquired = await store.setIfAbsent(key, value, REFRESH_LOCK_TTL_MS);
-
-      while (!acquired) {
-        const observation = await observeWhileWaiting?.();
-        if (observation?.resolved) return observation.value;
-
-        const remainingWaitMs = deadline - Date.now();
-        if (remainingWaitMs <= 0) break;
-        await delay(Math.min(REFRESH_LOCK_RETRY_MS, remainingWaitMs));
-        acquired = await store.setIfAbsent(key, value, REFRESH_LOCK_TTL_MS);
-      }
-
-      if (!acquired && observeWhileWaiting) {
-        const finalObservation = await observeWhileWaiting();
-        if (finalObservation.resolved) return finalObservation.value;
-      }
-      if (!acquired) throw new SessionRefreshLockTimeoutError();
-
-      try {
-        return await callback();
-      } finally {
-        await store.deleteIfValue(key, value).catch((error: unknown) => {
-          console.error('Failed to release storefront session refresh lock', error);
-        });
-      }
+      return withDistributedRefreshLock(store, id, callback, observeWhileWaiting);
     },
     async destroy(request: Request) {
       const id: unknown = await cookie.parse(request.headers.get('Cookie'));

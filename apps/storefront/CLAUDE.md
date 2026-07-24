@@ -45,9 +45,17 @@ Image upload works: `app/routes/uploads.presign.tsx` is a same-origin presign pr
 auth cookie to the backend `POST /uploads/presign`, then the browser PUTs bytes straight to MinIO/S3.
 (The dashboard has its own presign route; the storefront's is real — older docs claimed it had none.)
 
+## Tests
+
+Use Node's built-in `node:test` runner for deterministic server-side unit tests. Keep test files beside
+the helper they protect as `*.test.ts`; import the subject with an explicit `.ts` extension. Extract
+runtime-independent security/concurrency logic into small helpers instead of mocking React Router,
+Redis, or environment modules. Add coverage when changing tenant guards, session rotation/locking,
+request-security rules, parsers, money/idempotency, or time-sensitive behavior.
+
 ## Scripts (verified)
 
 `dev` (`react-router dev`, port `STOREFRONT_PORT`/5173) · `build` · `start`
 (`react-router-serve ./build/server/index.js`) · `lint` (`eslint app`) · `security` (static policy
-gate) · `typecheck`
+gate) · `test` (`node:test` with TypeScript stripping) · `typecheck`
 (`react-router typegen && tsc`). Requires Node ≥ 22.22.0.
