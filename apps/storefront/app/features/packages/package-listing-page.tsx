@@ -1,7 +1,7 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { MapPin } from 'lucide-react';
-import { Suspense, useRef, useState } from 'react';
-import { Await, useOutletContext, useSearchParams } from 'react-router';
+import { Suspense } from 'react';
+import { Await, useOutletContext } from 'react-router';
 import { ListingRatingSummary } from '../../components/listing-rating-summary';
 import {
   RelatedListingsSkeleton,
@@ -23,19 +23,7 @@ import { PackageBookingDialog } from './package-booking-dialog';
 import { listingPackages, minimumPackagePrice } from './package-data';
 import { PackageTable } from './package-table';
 import { RelatedListings } from './related-listings';
-
-const STALE_SELECTION_PARAMS = [
-  'day',
-  'date',
-  'start',
-  'end',
-  'startTime',
-  'endTime',
-  'from',
-  'to',
-  'qty',
-  'quantity',
-] as const;
+import { usePackageBookingController } from './use-package-booking-controller';
 
 export function PackageListingPage({
   loaderData,
@@ -45,36 +33,17 @@ export function PackageListingPage({
   const { listing, locations, auxiliaryData } = loaderData;
   const { listingTypes, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [bookingOpen, setBookingOpen] = useState(false);
-  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
-  const bookingTriggerRef = useRef<HTMLButtonElement | null>(null);
   const packages = listingPackages(listing);
-  const selectedPackage = packages.find((item) => item.id === selectedPackageId) ?? null;
+  const {
+    bookingOpen,
+    selectedPackage,
+    galleryPhotos,
+    bookingTriggerRef,
+    selectPackage,
+    changeBookingOpen,
+  } = usePackageBookingController(packages, listing.photos);
   const minimumPrice = minimumPackagePrice(packages);
   const location = formatListingLocation(listing, 'full');
-  const galleryPhotos = selectedPackage?.photos.length ? selectedPackage.photos : listing.photos;
-
-  function selectPackage(packageId: string, trigger: HTMLButtonElement): void {
-    bookingTriggerRef.current = trigger;
-    setSelectedPackageId(packageId);
-    const next = new URLSearchParams(searchParams);
-    next.set('packageId', packageId);
-    for (const key of STALE_SELECTION_PARAMS) next.delete(key);
-    setBookingOpen(true);
-    setSearchParams(next, { preventScrollReset: true });
-  }
-
-  function changeBookingOpen(open: boolean): void {
-    setBookingOpen(open);
-    if (open) return;
-    setSelectedPackageId(null);
-
-    const next = new URLSearchParams(searchParams);
-    next.delete('packageId');
-    for (const key of STALE_SELECTION_PARAMS) next.delete(key);
-    setSearchParams(next, { preventScrollReset: true });
-  }
 
   return (
     <div className="font-studio overflow-x-clip bg-muted/40 pb-20 text-foreground">
