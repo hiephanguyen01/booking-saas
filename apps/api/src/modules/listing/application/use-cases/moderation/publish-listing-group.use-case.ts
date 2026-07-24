@@ -11,9 +11,9 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionPublish } from '../../../domain/moderation/listing-moderation';
+import { ListingGroup } from '../../../domain/entities/listing-group.entity';
 import { groupContactFlags } from '../../moderation/build-listing-group-review';
-import { runModeration, type ModerationContext } from '../../moderation/moderation-support';
+import type { ModerationContext } from '../../moderation/moderation-support';
 import {
   runGroupModeration,
   type GroupModerationDeps,
@@ -54,7 +54,7 @@ export class PublishListingGroupUseCase {
             details: flags,
           });
         }
-        return runModeration(() => transitionPublish(g, 'admin'));
+        return ListingGroup.rehydrate(g).publish('admin');
       },
       force ? 'force-published: contact-info gate bypassed' : undefined,
     );

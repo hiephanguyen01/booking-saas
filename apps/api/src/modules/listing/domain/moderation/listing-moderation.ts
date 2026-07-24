@@ -1,11 +1,12 @@
 import type { ModerationActor, PublishStatus } from '@booking/contracts';
+import { DomainError } from '../../../../shared/domain/domain-error';
 
 /**
  * Post moderation state machine (TONG-QUAN.md §7.3). A post/standalone listing
  * flows `draft → pending_review → published`, and can be hidden to `archived`.
  * The load-bearing domain rule: a post **hidden by an admin cannot be
  * re-published by the partner** — only an admin can unlock it. Pure and
- * framework-free; the use case maps `ModerationError` onto HTTP status codes.
+ * framework-free; typed `DomainError`s are translated by the global filter.
  */
 
 export interface ModerationState {
@@ -20,13 +21,9 @@ export interface ModerationOutcome {
   hiddenBy: ModerationActor | null;
 }
 
-export class ModerationError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ModerationError';
+export class ModerationError extends DomainError {
+  constructor(code: string, message: string) {
+    super(code, code === 'LISTING_ADMIN_LOCKED' ? 403 : 400, message);
   }
 }
 

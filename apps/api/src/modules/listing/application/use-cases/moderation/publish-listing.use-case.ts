@@ -8,11 +8,9 @@ import {
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
 import { Listing } from '../../../domain/entities/listing.entity';
-import { transitionPublish } from '../../../domain/moderation/listing-moderation';
 import { buildListingReview } from '../../moderation/build-listing-review';
 import {
   listingNotFound,
-  runModeration,
   stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
@@ -51,7 +49,7 @@ export class PublishListingUseCase {
         });
       }
 
-      const outcome = runModeration(() => transitionPublish(existing, 'admin'));
+      const outcome = listing.publish('admin');
       const updated = await this.listings.moderate(
         tx,
         listingId,

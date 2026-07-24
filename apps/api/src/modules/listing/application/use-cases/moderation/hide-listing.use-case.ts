@@ -9,10 +9,8 @@ import {
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
 import { Listing } from '../../../domain/entities/listing.entity';
-import { transitionHide } from '../../../domain/moderation/listing-moderation';
 import {
   listingNotFound,
-  runModeration,
   writeModerationAudit,
   type ModerationContext,
 } from '../../moderation/moderation-support';
@@ -43,7 +41,7 @@ export class HideListingUseCase {
       listing.assertOwnedForModeration(ctx.partnerId);
       listing.assertNotGroupManaged('hide');
 
-      const outcome = runModeration(() => transitionHide(existing, actor));
+      const outcome = listing.hide(actor);
       const updated = await this.listings.moderate(tx, listingId, outcome);
       await writeModerationAudit(this.audit, tx, ctx, {
         action: 'listing.hidden',

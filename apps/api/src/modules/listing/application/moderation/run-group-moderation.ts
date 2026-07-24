@@ -7,17 +7,11 @@ import type {
   ListingGroupRecord,
 } from '../../domain/ports/listing-group-repository.port';
 import type { IListingRepository, ListingRecord } from '../../domain/ports/listing-repository.port';
-import {
-  transitionHide,
-  transitionPublish,
-  transitionRepublish,
-  transitionSubmit,
-} from '../../domain/moderation/listing-moderation';
+import { Listing } from '../../domain/entities/listing.entity';
+import { ListingGroup } from '../../domain/entities/listing-group.entity';
 import { ListingGroupEmpty } from '../../domain/errors/listing-group-errors';
 import {
-  assertOwnership,
   groupNotFound,
-  runModeration,
   stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
@@ -59,7 +53,8 @@ export function runGroupModeration(
   return deps.tenantDb.forTenant(ctx.tenantId, async (tx) => {
     const group = await deps.groups.findById(tx, id);
     if (!group) groupNotFound();
-    assertOwnership(group, ctx.partnerId);
+    const groupAggregate = ListingGroup.rehydrate(group);
+    groupAggregate.assertOwnedForModeration(ctx.partnerId);
     const children = await deps.listings.list(tx, {
       groupId: group.id,
       partnerId: group.partnerId,
@@ -70,14 +65,15 @@ export function runGroupModeration(
     const outcome = transition(group, children);
     const updated = await deps.groups.moderate(tx, id, outcome);
     for (const child of children) {
+      const childAggregate = Listing.rehydrate(child);
       const childOutcome =
         action === 'submitted'
-          ? runModeration(() => transitionSubmit(child))
+          ? childAggregate.submit()
           : action === 'published'
-            ? runModeration(() => transitionPublish(child, 'admin'))
+            ? childAggregate.publish('admin')
             : action === 'hidden'
-              ? runModeration(() => transitionHide(child, actorFromOutcome(outcome)))
-              : runModeration(() => transitionRepublish(child, actorFromOutcome(outcome)));
+              ? childAggregate.hide(actorFromOutcome(outcome))
+              : childAggregate.republish(actorFromOutcome(outcome));
       await deps.listings.moderate(tx, child.id, stampModerationTimestamps(child, childOutcome));
     }
     await writeModerationAudit(deps.audit, tx, ctx, {

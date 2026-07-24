@@ -1,4 +1,4 @@
-import type { BalanceDue, BookingMode } from '@booking/contracts';
+import type { BalanceDue, BookingMode, ModerationActor, PublishStatus } from '@booking/contracts';
 import {
   GroupManagedListing,
   InvalidBookingModes,
@@ -6,6 +6,13 @@ import {
   ListingNotOwnedForDelete,
   ListingNotOwnedForModeration,
 } from '../errors/listing-errors';
+import {
+  transitionHide,
+  transitionPublish,
+  transitionRepublish,
+  transitionSubmit,
+  type ModerationOutcome,
+} from '../moderation/listing-moderation';
 
 /**
  * Listing aggregate (§7.3) — a single bookable post owned by one partner. This
@@ -31,10 +38,9 @@ import {
  * modes (create input / update patch), never the stored ones, so it takes both
  * arrays as arguments and owns no state.
  *
- * NOT owned here (deliberately): the moderation status transitions
- * (draft → pending_review → published → archived, with the admin-lock rule)
- * stay in the pure `domain/moderation/listing-moderation.ts` state machine —
- * this aggregate only owns the access guards around them. Slug uniqueness,
+ * Moderation transitions delegate to the shared, pure state-machine functions,
+ * while callers interact with the aggregate rather than a translation shim.
+ * Slug uniqueness,
  * booking counts, address resolution, deposit coverage, attribute validation
  * and the group binding checks all need cross-module reads or the repository,
  * so the use-case resolves them; this aggregate never touches a repository, a
@@ -52,6 +58,9 @@ import {
 export interface ListingContentState {
   partnerId: string;
   groupId: string | null;
+  status: PublishStatus;
+  publishedBy: ModerationActor | null;
+  hiddenBy: ModerationActor | null;
 }
 
 /**
@@ -214,6 +223,22 @@ export class Listing {
     if (this.state.groupId) {
       throw new GroupManagedListing(action);
     }
+  }
+
+  submit(): ModerationOutcome {
+    return transitionSubmit(this.state);
+  }
+
+  publish(actor: ModerationActor): ModerationOutcome {
+    return transitionPublish(this.state, actor);
+  }
+
+  hide(actor: ModerationActor): ModerationOutcome {
+    return transitionHide(this.state, actor);
+  }
+
+  republish(actor: ModerationActor): ModerationOutcome {
+    return transitionRepublish(this.state, actor);
   }
 
   /**

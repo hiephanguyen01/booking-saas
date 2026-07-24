@@ -1,9 +1,17 @@
-import type { PublishStatus } from '@booking/contracts';
+import type { ModerationActor, PublishStatus } from '@booking/contracts';
 import {
   ListingGroupNotOwnedForManage,
   ListingGroupReadOnlyForOwnEdit,
   ListingTypeNotGroupable,
 } from '../errors/listing-group-errors';
+import { ListingNotOwnedForModeration } from '../errors/listing-errors';
+import {
+  transitionHide,
+  transitionPublish,
+  transitionRepublish,
+  transitionSubmit,
+  type ModerationOutcome,
+} from '../moderation/listing-moderation';
 
 /**
  * ListingGroup aggregate (§7.3) — a two-tier post (album/amenities/address)
@@ -32,13 +40,9 @@ import {
  *     {@link ListingGroup.applyContentUpdate}): the pure insert/patch
  *     field-maps handed to `IListingGroupRepository.create` / `.update`.
  *
- * NOT owned here (deliberately): the moderation status transitions
- * (draft → pending_review → published → archived, with the admin-lock rule)
- * and the submit/publish/hide/republish cascade over child listings stay in
- * the shared `domain/moderation/listing-moderation.ts` state machine plus the
- * application-layer `run-group-moderation.ts` orchestration — this aggregate
- * only owns the access guards and content invariants around create/update/
- * delete. Slug uniqueness, administrative-address resolution and the
+ * Moderation transitions delegate to the same pure state machine as Listing;
+ * the application-layer group orchestration still owns the child cascade.
+ * Slug uniqueness, administrative-address resolution and the
  * listing-type lookup all need cross-module reads or the repository, so the
  * use-case resolves them; this aggregate never touches a repository, a
  * clock, or randomness.
@@ -55,6 +59,8 @@ import {
 export interface ListingGroupState {
   partnerId: string;
   status: PublishStatus;
+  publishedBy: ModerationActor | null;
+  hiddenBy: ModerationActor | null;
 }
 
 /**
@@ -167,6 +173,13 @@ export class ListingGroup {
     }
   }
 
+  /** Group moderation keeps the shared `NOT_OWNED` wire shape used by listings. */
+  assertOwnedForModeration(partnerId?: string): void {
+    if (partnerId && this.state.partnerId !== partnerId) {
+      throw new ListingNotOwnedForModeration();
+    }
+  }
+
   /**
    * The partner-scoped update path's answer when the group itself isn't
    * editable (status not in draft/archived). Reproduces the
@@ -178,6 +191,22 @@ export class ListingGroup {
     if (!['draft', 'archived'].includes(this.state.status)) {
       throw new ListingGroupReadOnlyForOwnEdit();
     }
+  }
+
+  submit(): ModerationOutcome {
+    return transitionSubmit(this.state);
+  }
+
+  publish(actor: ModerationActor): ModerationOutcome {
+    return transitionPublish(this.state, actor);
+  }
+
+  hide(actor: ModerationActor): ModerationOutcome {
+    return transitionHide(this.state, actor);
+  }
+
+  republish(actor: ModerationActor): ModerationOutcome {
+    return transitionRepublish(this.state, actor);
   }
 
   /**

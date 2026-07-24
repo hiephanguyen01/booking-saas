@@ -9,10 +9,8 @@ import {
   type ListingRecord,
 } from '../../../domain/ports/listing-repository.port';
 import { Listing } from '../../../domain/entities/listing.entity';
-import { transitionRepublish } from '../../../domain/moderation/listing-moderation';
 import {
   listingNotFound,
-  runModeration,
   stampModerationTimestamps,
   writeModerationAudit,
   type ModerationContext,
@@ -44,7 +42,7 @@ export class RepublishListingUseCase {
       listing.assertOwnedForModeration(ctx.partnerId);
       listing.assertNotGroupManaged('republish');
 
-      const outcome = runModeration(() => transitionRepublish(existing, actor));
+      const outcome = listing.republish(actor);
       // A republish keeps the ORIGINAL publishedAt — stampModerationTimestamps
       // only sets it when the listing has never been published.
       const updated = await this.listings.moderate(

@@ -12,8 +12,8 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionHide } from '../../../domain/moderation/listing-moderation';
-import { runModeration, type ModerationContext } from '../../moderation/moderation-support';
+import { ListingGroup } from '../../../domain/entities/listing-group.entity';
+import type { ModerationContext } from '../../moderation/moderation-support';
 import {
   runGroupModeration,
   type GroupModerationDeps,
@@ -46,7 +46,7 @@ export class HideListingGroupUseCase {
       id,
       'hidden',
       'listing_group.hidden',
-      (g) => runModeration(() => transitionHide(g, actor)),
+      (g) => ListingGroup.rehydrate(g).hide(actor),
       reason,
     );
   }

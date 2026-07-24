@@ -11,8 +11,8 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../../domain/ports/listing-repository.port';
-import { transitionSubmit } from '../../../domain/moderation/listing-moderation';
-import { runModeration, type ModerationContext } from '../../moderation/moderation-support';
+import { ListingGroup } from '../../../domain/entities/listing-group.entity';
+import type { ModerationContext } from '../../moderation/moderation-support';
 import {
   runGroupModeration,
   type GroupModerationDeps,
@@ -35,7 +35,7 @@ export class SubmitListingGroupUseCase {
 
   execute(ctx: ModerationContext, id: string): Promise<ListingGroupRecord> {
     return runGroupModeration(this.deps(), ctx, id, 'submitted', 'listing_group.submitted', (g) =>
-      runModeration(() => transitionSubmit(g)),
+      ListingGroup.rehydrate(g).submit(),
     );
   }
 
