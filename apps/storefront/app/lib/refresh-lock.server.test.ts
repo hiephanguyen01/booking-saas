@@ -117,8 +117,45 @@ test('takes over refresh work when the previous holder releases without rotating
   assert.equal(releaseCalls, 1);
 });
 
-test('performs a final observation before reporting lock timeout', async () => {
-  let observations = 0;
+test('accepts a rotated session observed at the wait deadline', async () => {
+  let currentTime = 0;
+  let callbackCalls = 0;
+  const store: RefreshLockStore = {
+    async setIfAbsent() {
+      return false;
+    },
+    async deleteIfValue() {
+      throw new Error('must not release an unowned lock');
+    },
+  };
+
+  const result = await withDistributedRefreshLock(
+    store,
+    'session-4',
+    async () => {
+      callbackCalls += 1;
+      return 'never';
+    },
+    async () =>
+      currentTime >= 25
+        ? { resolved: true, value: 'rotated-at-deadline' }
+        : { resolved: false },
+    {
+      ttlMs: 20,
+      retryMs: 5,
+      now: () => currentTime,
+      delay: async (milliseconds) => {
+        currentTime += milliseconds;
+      },
+      valueFactory: () => 'lock-owner',
+    },
+  );
+
+  assert.equal(result, 'rotated-at-deadline');
+  assert.equal(callbackCalls, 0);
+});
+
+test('reports timeout when the lock remains held and the session never rotates', async () => {
   const store: RefreshLockStore = {
     async setIfAbsent() {
       return false;
@@ -132,16 +169,11 @@ test('performs a final observation before reporting lock timeout', async () => {
     () =>
       withDistributedRefreshLock(
         store,
-        'session-4',
+        'session-5',
         async () => 'never',
-        async () => {
-          observations += 1;
-          return { resolved: false };
-        },
+        async () => ({ resolved: false }),
         deterministicTiming({ ttlMs: 20, retryMs: 5, waitMs: undefined }),
       ),
     SessionRefreshLockTimeoutError,
   );
-
-  assert.equal(observations, 7);
 });
