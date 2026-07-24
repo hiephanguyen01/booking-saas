@@ -1,4 +1,5 @@
 import { partnerOnboardingProfileSchema } from '@booking/contracts';
+import { redirect } from 'react-router';
 import { loadAdministrativeProvinces } from '../../../../lib/administrative-divisions.server';
 import { authFlow } from '../../../../lib/auth-flow.server';
 import { requireAuth } from '../../../../lib/auth.server';
@@ -47,8 +48,5 @@ export async function submitPartnerProfileRoute(request: Request, localeParam?: 
     email: flow.record.email,
     maskedDestination: flow.record.maskedDestination,
   });
-  return Response.redirect(
-    new URL(partnerStepPath(locale, 'done'), request.url),
-    302,
-  );
+  return redirect(partnerStepPath(locale, 'done'));
 }
