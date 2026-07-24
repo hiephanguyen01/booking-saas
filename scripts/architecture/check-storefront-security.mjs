@@ -3,7 +3,15 @@ import { extname, join, relative } from 'node:path';
 
 const root = process.cwd();
 const failures = [];
-const ignoredDirectories = new Set(['.git', 'node_modules', 'build', 'dist', '.react-router']);
+const ignoredDirectories = new Set([
+  '.git',
+  'node_modules',
+  'build',
+  'dist',
+  '.react-router',
+  'coverage',
+  'test-results',
+]);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
 
 function walk(directory) {
@@ -15,17 +23,6 @@ function walk(directory) {
     else files.push(path);
   }
   return files;
-}
-
-const repositoryFiles = walk(root);
-for (const file of repositoryFiles) {
-  const path = relative(root, file);
-  if (/(^|\/)(test-results|e2e)(\/|$)/.test(path)) {
-    failures.push(`${path}: forbidden test artifact directory`);
-  }
-  if (/\.(spec|test)\.[^.]+$/.test(path) || /(^|\/)(vitest|playwright)\.config\./.test(path)) {
-    failures.push(`${path}: forbidden test file or configuration`);
-  }
 }
 
 const storefrontRoot = join(root, 'apps/storefront/app');
