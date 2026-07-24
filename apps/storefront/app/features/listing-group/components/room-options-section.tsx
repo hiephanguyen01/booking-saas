@@ -8,15 +8,13 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { Building2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
 import { SectionCard } from '../../../components/section-card';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { BookingMode, RoomOption } from '../listing-group-types';
-import { atomicHourlySlots, roomAvailabilityState } from '../listing-group-utils';
+import { roomAvailabilityState } from '../listing-group-utils';
 import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
 import { RoomPhotoStrip } from './room-photo-strip';
-
-type SlotsByRoom = ReadonlyMap<string, HourlySlot[]>;
+import { useRoomOptionsController } from './use-room-options-controller';
 
 export function RoomOptionsSection({
   roomOptions,
@@ -32,20 +30,14 @@ export function RoomOptionsSection({
   hideUnavailableByDefault: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const [hideUnavailable, setHideUnavailable] = useState(hideUnavailableByDefault);
-  // The table and the card list are both mounted at every width, so deriving
-  // the atomic slots per room here keeps `atomicHourlySlots` off the render path.
-  const slotsByRoom = useMemo<SlotsByRoom>(
-    () => new Map(roomOptions.map((option) => [option.child.id, hourlySlotsOf(option)])),
-    [roomOptions],
-  );
-  const browsing = roomOptions.some((option) => option.browsing);
-  const unavailableCount = roomOptions.filter(
-    (option) => !option.browsing && option.available === false,
-  ).length;
-  const visibleOptions = hideUnavailable
-    ? roomOptions.filter((option) => option.browsing || option.available)
-    : roomOptions;
+  const {
+    browsing,
+    hideUnavailable,
+    slotsByRoom,
+    toggleHideUnavailable,
+    unavailableCount,
+    visibleOptions,
+  } = useRoomOptionsController({ hideUnavailableByDefault, roomOptions });
 
   return (
     <SectionCard id="room-options" aria-labelledby="room-options-title" className="scroll-mt-28">
@@ -67,7 +59,7 @@ export function RoomOptionsSection({
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => setHideUnavailable((current) => !current)}
+            onClick={toggleHideUnavailable}
           >
             {hideUnavailable
               ? t('group.showUnavailableRooms', { count: unavailableCount })
@@ -198,9 +190,4 @@ function RoomCard({ option, groupSlug, mode, date, slots }: RoomProps) {
       </div>
     </article>
   );
-}
-
-function hourlySlotsOf(option: RoomOption): HourlySlot[] {
-  if (option.availability?.mode !== 'hourly') return [];
-  return atomicHourlySlots(option.availability.days.flatMap((day) => day.slots));
 }
