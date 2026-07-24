@@ -54,6 +54,7 @@ export function CancelBookingDialog({
     submitting,
     serverError,
     changeOpen,
+    handleSubmit,
   } = useCancelBookingDialogController({ bookingCode: booking.code, open, onOpenChange });
 
   return (
@@ -79,11 +80,16 @@ export function CancelBookingDialog({
           </AlertDescription>
         </Alert>
 
-        <fetcher.Form method="post" action={action} className="space-y-5">
+        <fetcher.Form method="post" action={action} className="space-y-5" onSubmit={handleSubmit}>
           <input type="hidden" name="intent" value="cancel" />
           <input type="hidden" name="bookingCode" value={booking.code} />
           <input type="hidden" name="reason" value={reason} />
-          <RadioGroup value={selected} onValueChange={setSelected} className="gap-4">
+          <RadioGroup
+            value={selected}
+            onValueChange={setSelected}
+            className="gap-4"
+            disabled={submitting}
+          >
             {REASON_KEYS.map((key) => (
               <label
                 key={key}
@@ -104,6 +110,7 @@ export function CancelBookingDialog({
                 value={otherReason}
                 onChange={(event) => setOtherReason(event.currentTarget.value)}
                 maxLength={500}
+                disabled={submitting}
                 placeholder={t('bookings.cancelDialog.otherPlaceholder')}
                 aria-invalid={selected === 'other' && otherReason.trim().length === 0}
                 className="min-h-11 rounded-sm border-[#ff8e91] text-sm"
