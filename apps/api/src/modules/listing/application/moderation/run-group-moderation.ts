@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import type { ModerationActor } from '@booking/contracts';
 import type { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import type { OutboxService } from '../../../../shared/outbox/outbox.service';
@@ -14,6 +13,7 @@ import {
   transitionRepublish,
   transitionSubmit,
 } from '../../domain/moderation/listing-moderation';
+import { ListingGroupEmpty } from '../../domain/errors/listing-group-errors';
 import {
   assertOwnership,
   groupNotFound,
@@ -65,11 +65,7 @@ export function runGroupModeration(
       partnerId: group.partnerId,
     });
     if (action === 'submitted' && children.length === 0) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'LISTING_GROUP_EMPTY',
-        message: 'Add at least one listing before submitting the group',
-      });
+      throw new ListingGroupEmpty();
     }
     const outcome = transition(group, children);
     const updated = await deps.groups.moderate(tx, id, outcome);
