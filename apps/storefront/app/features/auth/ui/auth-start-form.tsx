@@ -1,56 +1,30 @@
-import {
-  loginInputSchema,
-  passwordResetStartInputSchema,
-  registrationStartInputSchema,
-} from '@booking/contracts';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@booking/ui/components/ui/field';
 import { Input } from '@booking/ui/components/ui/input';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, UserRound } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { Link, useSubmit } from 'react-router';
-import { z } from 'zod';
+import { Link } from 'react-router';
 import type { AuthActionData } from '../../../lib/auth-types';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { AuthFormError, AuthPasswordInput, AuthSubmitButton } from './auth-form-controls';
+import {
+  useAuthStartFormController,
+  type AuthStartMode,
+} from './use-auth-start-form-controller';
 
 export function StartForm({
   mode,
   locale,
   actionData,
 }: {
-  mode: 'register' | 'login' | 'reset';
+  mode: AuthStartMode;
   locale: 'vi' | 'en';
   actionData?: AuthActionData;
 }) {
   const { t } = useTranslation(NsI18n.Auth);
-  const submit = useSubmit();
-  const schema = z.object({
-    fullName:
-      mode === 'register' ? registrationStartInputSchema.shape.fullName : z.string().optional(),
-    email:
-      mode === 'login'
-        ? loginInputSchema.shape.email
-        : mode === 'reset'
-          ? passwordResetStartInputSchema.shape.email
-          : registrationStartInputSchema.shape.email,
-    password: mode === 'login' ? loginInputSchema.shape.password : z.string().optional(),
-  });
-  type Values = z.infer<typeof schema>;
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<Values>({
-    resolver: zodResolver(schema),
-    mode: 'onSubmit',
-    reValidateMode: 'onBlur',
-    defaultValues: { fullName: '', email: '', password: '' },
-  });
+  const { errors, register, submitForm } = useAuthStartFormController(mode);
 
   return (
-    <form onSubmit={handleSubmit((values) => submit(values, { method: 'post' }))} noValidate>
+    <form onSubmit={submitForm} noValidate>
       <FieldGroup className="gap-5">
         <AuthFormError actionData={actionData} />
         {mode === 'register' ? (
