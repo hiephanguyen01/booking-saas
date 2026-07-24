@@ -16,11 +16,17 @@ test('derives a readable placeholder name from email', () => {
 test('selects the correct onboarding entry for auth state and tenant membership', () => {
   assert.equal(partnerRegistrationEntry(null, 'tenant-1'), 'register');
   assert.equal(
-    partnerRegistrationEntry({ info: { scopes: [{ scope: 'customer', tenantId: 'tenant-1' }] } }, 'tenant-1'),
+    partnerRegistrationEntry(
+      { info: { scopes: [{ scope: 'customer', tenantId: 'tenant-1' }] } },
+      'tenant-1',
+    ),
     'profile',
   );
   assert.equal(
-    partnerRegistrationEntry({ info: { scopes: [{ scope: 'partner', tenantId: 'tenant-1' }] } }, 'tenant-1'),
+    partnerRegistrationEntry(
+      { info: { scopes: [{ scope: 'partner', tenantId: 'tenant-1' }] } },
+      'tenant-1',
+    ),
     'dashboard',
   );
 });
@@ -62,7 +68,7 @@ test('maps company profile data to the partner application payload', () => {
 
   assert.equal(payload.tenantId, 'tenant-1');
   assert.equal(payload.slug, 'anh-duong-12345678');
-  assert.equal(payload.businessInfo.taxId, '0312345678');
+  assert.equal(payload.businessInfo?.taxId, '0312345678');
   assert.equal(payload.contactInfo.provinceCode, '79');
-  assert.equal(payload.payoutInfo.accountNumber, '123456789');
+  assert.equal(payload.payoutInfo?.accountNumber, '123456789');
 });
