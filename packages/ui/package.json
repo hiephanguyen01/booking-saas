@@ -17,6 +17,7 @@
   "scripts": {
     "build": "echo 'no build — raw TSX is compiled by each consuming app'",
     "lint": "eslint src",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
