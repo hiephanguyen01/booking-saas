@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { data, Form } from 'react-router';
+import { useState, type FormEvent } from 'react';
+import { data, Form, useNavigation, useSubmit } from 'react-router';
 import { Plus, X } from 'lucide-react';
 import {
   setAvailabilityRulesInputSchema,
@@ -15,7 +15,7 @@ import { requirePartner } from '~/features/partner/server/partner.server';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
-import { useBusy } from '~/hooks/use-busy';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import {
   DAYS,
   DEFAULT_CLOSE,
@@ -38,7 +38,6 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requirePartner(request, 'partner.availability.manage');
   const id = params.listingId;
-  // The single partner listing endpoint enforces ownership (404 if not this partner's).
   const listingRes = await apiGet<ListingResponse>(`/partner/listings/${id}`, auth);
   if (!listingRes.ok || !listingRes.data) {
     throw new Response('Không tìm thấy tin đăng.', { status: 404 });
@@ -61,8 +60,6 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data({ ok: false, error: 'Không có quyền quản lý lịch.' }, { status: 403 });
   }
   const form = await request.formData();
-
-  // Every window of every open weekday — a day may legitimately have several.
   const rules = decodeWindows(form.getAll(WINDOW_FIELD).map(String));
 
   const parsed = setAvailabilityRulesInputSchema.safeParse({ rules });
@@ -84,26 +81,32 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function ListingHoursPage({ loaderData, actionData }: Route.ComponentProps) {
   const { listing, rules } = loaderData;
-  const saving = useBusy();
-
-  // Seed EVERY window of every weekday. A listing may store a split shift
-  // (08:00–12:00 + 14:00–18:00); keeping only the first would delete the rest on
-  // save, because the PUT replaces the whole rule set.
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy: saving, run } = useSubmissionGuard(navigation.state);
   const [week, setWeek] = useState<WeekWindows>(() => seedWeek(rules));
 
   const setDay = (dow: number, windows: HoursWindow[]): void =>
-    setWeek((prev) => ({ ...prev, [dow]: windows }));
+    setWeek((previous) => ({ ...previous, [dow]: windows }));
 
   const updateWindow = (dow: number, index: number, patch: Partial<HoursWindow>): void =>
     setDay(
       dow,
-      (week[dow] ?? []).map((w, i) => (i === index ? { ...w, ...patch } : w)),
+      (week[dow] ?? []).map((window, currentIndex) =>
+        currentIndex === index ? { ...window, ...patch } : window,
+      ),
     );
 
   const errors = validateWeek(week);
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" aria-busy={saving}>
       <div>
         <BackLink
           to={listing.groupId ? `/partner/listing-groups/${listing.groupId}` : '/partner/listings'}
@@ -119,104 +122,118 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
       <SuccessBanner message={actionData?.ok ? 'Đã lưu giờ mở cửa.' : null} />
       <ErrorBanner error={actionData?.error} />
 
-      <Form method="post" className="space-y-3">
-        {DAYS.map((d) => {
-          const windows = week[d.dow] ?? [];
-          const open = windows.length > 0;
-          const clashes = overlappingIndices(windows);
+      <Form method="post" className="space-y-3" onSubmit={handleSubmit}>
+        <fieldset disabled={saving} className="m-0 min-w-0 space-y-3 border-0 p-0">
+          {DAYS.map((day) => {
+            const windows = week[day.dow] ?? [];
+            const open = windows.length > 0;
+            const clashes = overlappingIndices(windows);
 
-          return (
-            <div key={d.dow} className="rounded-lg border px-4 py-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex w-28 items-center gap-2">
-                  <Switch
-                    checked={open}
-                    onCheckedChange={(on) =>
-                      setDay(d.dow, on ? [{ open: DEFAULT_OPEN, close: DEFAULT_CLOSE }] : [])
-                    }
-                    aria-label={`Bật ${d.label}`}
-                  />
-                  <span className="text-sm font-medium">{d.label}</span>
+            return (
+              <div key={day.dow} className="rounded-lg border px-4 py-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex w-28 items-center gap-2">
+                    <Switch
+                      checked={open}
+                      onCheckedChange={(enabled) =>
+                        setDay(
+                          day.dow,
+                          enabled ? [{ open: DEFAULT_OPEN, close: DEFAULT_CLOSE }] : [],
+                        )
+                      }
+                      aria-label={`Bật ${day.label}`}
+                    />
+                    <span className="text-sm font-medium">{day.label}</span>
+                  </div>
+                  {!open ? <span className="text-sm text-muted-foreground">Đóng cửa</span> : null}
                 </div>
-                {!open ? <span className="text-sm text-muted-foreground">Đóng cửa</span> : null}
-              </div>
 
-              {open ? (
-                <div className="mt-3 space-y-2 sm:pl-28">
-                  {windows.map((w, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        {/* Controlled inputs are display-only; the hidden field is
-                            what submits, so add/remove needs no index bookkeeping. */}
-                        <input type="hidden" name={WINDOW_FIELD} value={encodeWindow(d.dow, w)} />
-                        <Input
-                          type="time"
-                          value={w.open}
-                          onChange={(e) => updateWindow(d.dow, i, { open: e.target.value })}
-                          className="w-32"
-                          aria-label={`${d.label} — giờ mở, khung ${i + 1}`}
-                        />
-                        <span className="text-muted-foreground" aria-hidden>
-                          →
-                        </span>
-                        <Input
-                          type="time"
-                          value={w.close}
-                          onChange={(e) => updateWindow(d.dow, i, { close: e.target.value })}
-                          className="w-32"
-                          aria-label={`${d.label} — giờ đóng, khung ${i + 1}`}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            setDay(
-                              d.dow,
-                              windows.filter((_, idx) => idx !== i),
-                            )
-                          }
-                          aria-label={`Xoá khung giờ ${i + 1} của ${d.label}`}
-                        >
-                          <X className="size-4" aria-hidden />
-                        </Button>
+                {open ? (
+                  <div className="mt-3 space-y-2 sm:pl-28">
+                    {windows.map((window, index) => (
+                      <div key={index} className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <input
+                            type="hidden"
+                            name={WINDOW_FIELD}
+                            value={encodeWindow(day.dow, window)}
+                          />
+                          <Input
+                            type="time"
+                            value={window.open}
+                            onChange={(event) =>
+                              updateWindow(day.dow, index, { open: event.target.value })
+                            }
+                            className="w-32"
+                            aria-label={`${day.label} — giờ mở, khung ${index + 1}`}
+                          />
+                          <span className="text-muted-foreground" aria-hidden>
+                            →
+                          </span>
+                          <Input
+                            type="time"
+                            value={window.close}
+                            onChange={(event) =>
+                              updateWindow(day.dow, index, { close: event.target.value })
+                            }
+                            className="w-32"
+                            aria-label={`${day.label} — giờ đóng, khung ${index + 1}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setDay(
+                                day.dow,
+                                windows.filter((_, currentIndex) => currentIndex !== index),
+                              )
+                            }
+                            aria-label={`Xoá khung giờ ${index + 1} của ${day.label}`}
+                          >
+                            <X className="size-4" aria-hidden />
+                          </Button>
+                        </div>
+                        {!isValidWindow(window) ? (
+                          <p className="text-xs text-destructive">Giờ đóng phải sau giờ mở</p>
+                        ) : clashes.has(index) ? (
+                          <p className="text-xs text-destructive">Trùng với khung giờ khác</p>
+                        ) : null}
                       </div>
-                      {!isValidWindow(w) ? (
-                        <p className="text-xs text-destructive">Giờ đóng phải sau giờ mở</p>
-                      ) : clashes.has(i) ? (
-                        <p className="text-xs text-destructive">Trùng với khung giờ khác</p>
-                      ) : null}
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setDay(d.dow, [...windows, { open: DEFAULT_OPEN, close: DEFAULT_CLOSE }])
-                    }
-                  >
-                    <Plus className="size-4" aria-hidden /> Thêm khung giờ
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setDay(day.dow, [
+                          ...windows,
+                          { open: DEFAULT_OPEN, close: DEFAULT_CLOSE },
+                        ])
+                      }
+                    >
+                      <Plus className="size-4" aria-hidden /> Thêm khung giờ
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
 
-        {errors.length > 0 ? (
-          <ul className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {errors.map((e) => (
-              <li key={e}>{e}</li>
-            ))}
-          </ul>
-        ) : null}
+          {errors.length > 0 ? (
+            <ul className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          ) : null}
 
-        <div className="flex justify-end pt-1">
-          <Button type="submit" disabled={saving || errors.length > 0}>
-            {saving ? 'Đang lưu…' : 'Lưu giờ mở cửa'}
-          </Button>
-        </div>
+          <div className="flex justify-end pt-1">
+            <Button type="submit" disabled={saving || errors.length > 0}>
+              {saving ? 'Đang lưu…' : 'Lưu giờ mở cửa'}
+            </Button>
+          </div>
+        </fieldset>
       </Form>
     </div>
   );
