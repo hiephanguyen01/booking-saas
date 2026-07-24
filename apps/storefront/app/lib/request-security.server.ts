@@ -7,9 +7,7 @@ import { resolveTenant, type StorefrontTenant } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
-const PUBLIC_PAGE_KINDS = new Set(['t', 'l', 'g', 'p']);
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
-const PUBLIC_PAGE_CACHE_CONTROL = 'public, max-age=0, s-maxage=60, stale-while-revalidate=300';
 const PUBLIC_METADATA_CACHE_CONTROL =
   'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400';
 const TENANT_UNAVAILABLE_STATUS = 423;
@@ -134,21 +132,16 @@ function appendVary(headers: Headers, value: string): void {
   headers.set('Vary', current ? `${current}, ${value}` : value);
 }
 
-function publicCacheControl(url: URL): string | null {
+function sharedCacheControl(url: URL): string | null {
   if (url.search) return null;
-  const { pathname } = url;
-  if (pathname === '/sitemap.xml' || pathname === '/robots.txt') {
+
+  // HTML responses embed a request-specific CSP nonce in both the document and
+  // response header, so they must never enter a shared cache. These metadata
+  // endpoints do not render nonce-bearing HTML and are safe to cache publicly.
+  if (url.pathname === '/sitemap.xml' || url.pathname === '/robots.txt') {
     return PUBLIC_METADATA_CACHE_CONTROL;
   }
 
-  const segments = pathname.split('/').filter(Boolean);
-  const locale = segments[0];
-  if (locale !== 'vi' && locale !== 'en') return null;
-  if (segments.length === 1) return PUBLIC_PAGE_CACHE_CONTROL;
-  if (segments.length === 2 && segments[1] === 'community') return PUBLIC_PAGE_CACHE_CONTROL;
-  if (segments.length === 3 && PUBLIC_PAGE_KINDS.has(segments[1]!)) {
-    return PUBLIC_PAGE_CACHE_CONTROL;
-  }
   return null;
 }
 
@@ -156,7 +149,7 @@ function applyCachePolicy(headers: Headers, request: Request, responseStatus: nu
   appendVary(headers, 'Cookie');
 
   const method = request.method.toUpperCase();
-  const publicPolicy = publicCacheControl(new URL(request.url));
+  const sharedPolicy = sharedCacheControl(new URL(request.url));
   const existing = headers.get('Cache-Control')?.toLowerCase() ?? '';
   const mustStayPrivate =
     !['GET', 'HEAD'].includes(method) ||
@@ -165,9 +158,9 @@ function applyCachePolicy(headers: Headers, request: Request, responseStatus: nu
     headers.has('set-cookie') ||
     existing.includes('no-store') ||
     existing.includes('private') ||
-    !publicPolicy;
+    !sharedPolicy;
 
-  headers.set('Cache-Control', mustStayPrivate ? PRIVATE_CACHE_CONTROL : publicPolicy);
+  headers.set('Cache-Control', mustStayPrivate ? PRIVATE_CACHE_CONTROL : sharedPolicy);
 }
 
 function applySecurityHeaders(
