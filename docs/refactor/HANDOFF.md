@@ -56,7 +56,9 @@ giữ resolver signature, tx-less global catalog và cache 24h. Đợt hardening
 đóng các nợ có quyết định rõ: relay park sau 20 lần lỗi, migration backstop, fixture draft, turbo
 hash config, promotions sở hữu port ghi agreement, moderation nằm trên aggregate, fulfillment
 pickup/return có CAS, content-report dùng DB clock, và mutation domain tenancy invalidate host cache.
-Các mục còn lại trong spec là wire/behavior/product decision, không tự suy đoán trong hardening.
+Vòng quyết định cuối đã xoá `SetPlatformRate` unreachable, formalize alias `targetType`, hợp nhất
+current subscription, harden gateway/JSON boundary và siết moderation CAS/state transition. Các hàng
+chưa đóng trong spec §8a là backlog product được giữ có chủ đích, không phải việc refactor còn dang dở.
 Việc kế tiếp là **đưa `refactor/entity-centric` về `main` theo quyết định owner**. PR #25
 `refactor/entity-centric` → `main` là PR đưa cả nhánh tích hợp về main — không phải PR module.
 
@@ -207,11 +209,12 @@ Final review hậu hardening:
 - API boot sạch. Runtime HTTP đã chứng minh moderation listing/group + admin-lock, booking
   fulfillment CAS/replay/concurrency, tenant primary swap + cache invalidation, owner/partner
   permissions và promotions opt-in + agreement adapter; mọi fixture tạm đều được phục hồi/dọn.
-- Scan toàn nhánh: 257/257 file `*.use-case.ts` có exported `XxxUseCase`; không có test/config/script
-  test mới; không còn executable `event.tenantId ?? ''`, `forTenant('')`, `runModeration`, hay
-  promotions import partner.
+- Scan tại mốc này: 257/257 file `*.use-case.ts` có exported `XxxUseCase`; không có
+  test/config/script test mới; không còn executable `event.tenantId ?? ''`, `forTenant('')`,
+  `runModeration`, hay promotions import partner. Inventory hiện tại là **256/256** vì vòng quyết
+  định cuối đã xoá đúng một use-case dead `SetPlatformRateUseCase`; xem §11.
 
-## 9. Audit entity coverage của 257 use-case — 2026-07-24
+## 9. Audit entity coverage của 257 use-case (baseline trước khi xoá dead code) — 2026-07-24
 
 Audit AST + transitive local-import graph trên đúng 257 file trong `apps/api/src/modules`:
 
@@ -253,13 +256,38 @@ Audit AST toàn bộ `modules/*/application/**/*.ts`:
 - `DomainError.details` nhận `unknown` để giữ nguyên cả object lẫn array details trên wire.
 - Runtime smoke giữ đúng cancellation 404, partner-pricing legacy body, unknown-host 404, bad-webhook
   400, OTP `attemptsRemaining` và resend `retryAfterSec`.
-- Final gate: `pnpm turbo lint typecheck build --force` **28/28 task xanh**, cache 0;
-  `check:rls` **46/46**; 257 use-case vẫn đủ, không thêm test.
+- Final gate tại mốc audit: `pnpm turbo lint typecheck build --force` **28/28 task xanh**, cache 0;
+  `check:rls` **46/46**; 257 use-case vẫn đủ, không thêm test. Inventory hiện là 256 sau khi xoá
+  `SetPlatformRateUseCase` unreachable theo quyết định ở §7.
 
 Plan:
 [`2026-07-24-application-error-deduplication.md`](../superpowers/plans/2026-07-24-application-error-deduplication.md).
 
-## 11. Nếu bạn là AI tiếp quản
+## 11. Final-gap review sau rebase — 2026-07-24
+
+- Đã fetch và rebase sạch `refactor/entity-centric` lên `origin/main@a1d6ebf`; nhánh backup trước
+  rebase là `codex/backup-entity-centric-pre-rebase-20260724`. Không có conflict.
+- Các quyết định owner nêu ở §7 đã implement trong `59a6e79`..`5c36ba3`; named boundary pipes ở
+  `56723cf`, docs/conventions ở `bd7961a`.
+- Latest `main` mang test trở lại trái ADR 0005; `5e90e30` đã bỏ toàn bộ executable test,
+  test script/task và CI test step vừa rebase vào. Repo hiện lại đúng no-tests policy.
+- Final static review phát hiện hai cross-tenant query còn nằm trực tiếp trong
+  `GetPlatformHealthUseCase` và `GetPlatformFinanceUseCase`; `9856a53` chuyển nguyên SQL sang local
+  read port/Prisma adapter. `bf4993c` bỏ nốt Prisma enum import khỏi application use-case.
+- Inventory hiện tại: **256/256** file `*.use-case.ts` có đúng exported `XxxUseCase`; không use-case
+  nào inject `PrismaService`, import `@prisma/client`, gọi raw SQL hoặc import infrastructure.
+  Không có application service, inline structured Nest error hay empty-tenant fallback.
+- `pnpm turbo lint typecheck build --force`: **28/28 task xanh**, cache 0; RLS:
+  **46/46**. `prisma:deploy` thấy 29 migration và không có migration pending.
+- API boot sạch trên port 3001; `/health`, `/health/ready`, `/public/tenant`,
+  `/platform/health`, `/platform/finance` đều 200. Runtime guard giữ data nguyên trạng:
+  `dismissed → reviewing` trả `409 CONTENT_REPORT_INVALID_TRANSITION`, draft listing hide trả
+  `400 LISTING_NOT_HIDEABLE`; response content-report phát cả `target` và `targetType`.
+
+Không còn action kỹ thuật nào trong scope final-gap này. Các hàng chưa đóng trong spec §8a vẫn là
+backlog behavior/product độc lập; bước tiếp theo là final integration/PR vào `main`.
+
+## 12. Nếu bạn là AI tiếp quản
 
 Nói với người dùng bạn đã đọc file này, xác nhận lại §1 (trạng thái) bằng
 `git log --oneline -5 refactor/entity-centric` + `gh pr list`. Nếu có PR module đang mở, tiếp tục
