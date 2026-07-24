@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { RefundHistoryQuery } from '@booking/contracts';
+import {
+  refundEvidenceSchema,
+  type ConfirmManualRefundInput,
+  type RefundHistoryQuery,
+} from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type {
@@ -15,6 +19,10 @@ import type {
 type Row = Prisma.RefundGetPayload<Record<string, never>>;
 
 function toRecord(r: Row): RefundRecord {
+  const parsedEvidence = r.evidence === null ? null : refundEvidenceSchema.safeParse(r.evidence);
+  if (parsedEvidence && !parsedEvidence.success) {
+    throw new Error(`Invalid stored refund evidence for refund ${r.id}`);
+  }
   return {
     id: r.id,
     tenantId: r.tenantId,
@@ -25,7 +33,7 @@ function toRecord(r: Row): RefundRecord {
     gatewayRefundId: r.gatewayRefundId,
     reason: r.reason,
     affectsBookingStatus: r.affectsBookingStatus,
-    evidence: (r.evidence as RefundRecord['evidence']) ?? null,
+    evidence: parsedEvidence?.data ?? null,
     executionMode: r.executionMode,
     dueAt: r.dueAt,
     completedAt: r.completedAt,
@@ -95,7 +103,7 @@ export class PrismaRefundRepository implements IRefundRepository {
   async markSucceeded(
     tx: PrismaTx,
     id: string,
-    evidence: { reference: string; evidenceKey?: string; note?: string },
+    evidence: ConfirmManualRefundInput,
   ): Promise<RefundRecord | null> {
     const changed = await tx.refund.updateMany({
       where: { id, status: { in: ['pending', 'manual_required'] } },

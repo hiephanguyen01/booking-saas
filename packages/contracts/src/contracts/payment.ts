@@ -84,6 +84,20 @@ export const sepayGatewayConfigInputSchema = z.object({
   }),
 });
 export type SepayGatewayConfigInput = z.infer<typeof sepayGatewayConfigInputSchema>;
+export type SepayGatewayCredentials = SepayGatewayConfigInput['credentials'];
+
+export const payosGatewayConfigInputSchema = z.object({
+  gateway: z.literal('payos'),
+  environment: gatewayEnvironmentSchema,
+  credentials: z.object({
+    clientId: z.string().trim().min(1).max(200),
+    apiKey: z.string().trim().min(1).max(500),
+    checksumKey: z.string().trim().min(16).max(500),
+    baseUrl: z.string().url().optional(),
+  }),
+});
+export type PayosGatewayConfigInput = z.infer<typeof payosGatewayConfigInputSchema>;
+export type PayosGatewayCredentials = PayosGatewayConfigInput['credentials'];
 
 export const sepayGatewaySettingsFormSchema = z.object({
   environment: gatewayEnvironmentSchema,
@@ -103,6 +117,7 @@ export const momoGatewayConfigInputSchema = z.object({
   }),
 });
 export type MomoGatewayConfigInput = z.infer<typeof momoGatewayConfigInputSchema>;
+export type MomoGatewayCredentials = MomoGatewayConfigInput['credentials'];
 
 export const momoGatewaySettingsFormSchema = z.object({
   environment: gatewayEnvironmentSchema,
@@ -122,6 +137,7 @@ export const zalopayGatewayConfigInputSchema = z.object({
   }),
 });
 export type ZalopayGatewayConfigInput = z.infer<typeof zalopayGatewayConfigInputSchema>;
+export type ZalopayGatewayCredentials = ZalopayGatewayConfigInput['credentials'];
 
 export const zalopayGatewaySettingsFormSchema = z.object({
   environment: gatewayEnvironmentSchema,
@@ -131,14 +147,34 @@ export const zalopayGatewaySettingsFormSchema = z.object({
 });
 export type ZalopayGatewaySettingsForm = z.infer<typeof zalopayGatewaySettingsFormSchema>;
 
-/** Tenant admin stores gateway credentials (encrypted at rest, §11.1). */
-export const upsertGatewayConfigInputSchema = z.object({
-  gateway: gatewayKeySchema,
-  environment: gatewayEnvironmentSchema.default('sandbox'),
-  credentials: z.record(z.string()).default({}),
-  settings: gatewayPaymentSettingsSchema.optional(),
+export const mockGatewayConfigInputSchema = z.object({
+  gateway: z.literal('mock'),
+  environment: gatewayEnvironmentSchema,
+  credentials: z.object({}).strict(),
 });
+export type MockGatewayConfigInput = z.infer<typeof mockGatewayConfigInputSchema>;
+export type MockGatewayCredentials = MockGatewayConfigInput['credentials'];
+
+const withOptionalSettings = <T extends z.ZodRawShape>(shape: z.ZodObject<T>) =>
+  shape.extend({ settings: gatewayPaymentSettingsSchema.optional() });
+
+/**
+ * Tenant admin stores provider credentials (encrypted at rest, §11.1).
+ * `gateway` is the discriminator: credentials for one provider cannot cross the
+ * HTTP boundary under another provider key.
+ */
+export const upsertGatewayConfigInputSchema = z.discriminatedUnion('gateway', [
+  withOptionalSettings(sepayGatewayConfigInputSchema),
+  withOptionalSettings(payosGatewayConfigInputSchema),
+  withOptionalSettings(momoGatewayConfigInputSchema),
+  withOptionalSettings(zalopayGatewayConfigInputSchema),
+  withOptionalSettings(mockGatewayConfigInputSchema),
+]);
 export type UpsertGatewayConfigInput = z.infer<typeof upsertGatewayConfigInputSchema>;
+export type GatewayCredentialsFor<K extends GatewayKey> = Extract<
+  UpsertGatewayConfigInput,
+  { gateway: K }
+>['credentials'];
 
 export const updateGatewayPaymentSettingsInputSchema = gatewayPaymentSettingsSchema.extend({
   gateway: gatewayKeySchema,
@@ -229,10 +265,15 @@ export const paymentHistoryItemSchema = z.object({
 });
 export type PaymentHistoryItem = z.infer<typeof paymentHistoryItemSchema>;
 
-export const confirmManualRefundInputSchema = z.object({
-  reference: z.string().trim().min(1, 'Mã tham chiếu là bắt buộc').max(200),
+export const refundEvidenceSchema = z.object({
+  reference: z.string().trim().max(200).optional(),
   evidenceKey: z.string().trim().max(500).optional(),
   note: z.string().trim().max(500).optional(),
+});
+export type RefundEvidence = z.infer<typeof refundEvidenceSchema>;
+
+export const confirmManualRefundInputSchema = refundEvidenceSchema.extend({
+  reference: z.string().trim().min(1, 'Mã tham chiếu là bắt buộc').max(200),
 });
 export type ConfirmManualRefundInput = z.infer<typeof confirmManualRefundInputSchema>;
 

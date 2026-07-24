@@ -1,4 +1,10 @@
-import { gatewayKeySchema, type GatewayConfigResponse, type GatewayKey } from '@booking/contracts';
+import {
+  gatewayKeySchema,
+  upsertGatewayConfigInputSchema,
+  type GatewayConfigResponse,
+  type GatewayKey,
+  type UpsertGatewayConfigInput,
+} from '@booking/contracts';
 import { Body, Controller, Delete, Get, HttpCode, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
@@ -14,7 +20,6 @@ import { toGatewayConfigResponse } from '../../application/payments.mapper';
 import {
   GatewayConfigResponseDto,
   UpdateGatewayPaymentSettingsDto,
-  UpsertGatewayConfigDto,
 } from './dto/payments.dto';
 
 /** Tenant-side gateway credential management (§11.1). Scope via x-tenant-id. */
@@ -41,7 +46,10 @@ export class TenantGatewayController {
   @Put()
   @ApiOperation({ summary: 'Create or update the tenant payment gateway credentials' })
   @ApiOkResponse({ type: GatewayConfigResponseDto })
-  async put(@Body() input: UpsertGatewayConfigDto): Promise<GatewayConfigResponse> {
+  async put(
+    @Body(new ZodValidationPipe(upsertGatewayConfigInputSchema))
+    input: UpsertGatewayConfigInput,
+  ): Promise<GatewayConfigResponse> {
     return toGatewayConfigResponse(await this.upsert.execute(input));
   }
 

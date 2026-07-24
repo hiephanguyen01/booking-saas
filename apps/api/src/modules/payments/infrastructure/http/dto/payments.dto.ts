@@ -6,7 +6,6 @@ import {
   paymentStatusResponseSchema,
   paymentHistoryItemSchema,
   paymentHistoryQuerySchema,
-  upsertGatewayConfigInputSchema,
   confirmManualRefundInputSchema,
   refundResponseSchema,
   refundHistoryItemSchema,
@@ -17,7 +16,6 @@ import {
 } from '@booking/contracts';
 
 // Request bodies
-export class UpsertGatewayConfigDto extends createZodDto(upsertGatewayConfigInputSchema) {}
 export class PaymentHistoryQueryDto extends createZodDto(paymentHistoryQuerySchema) {}
 export class ConfirmManualRefundDto extends createZodDto(confirmManualRefundInputSchema) {}
 export class RefundHistoryQueryDto extends createZodDto(refundHistoryQuerySchema) {}

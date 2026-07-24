@@ -67,7 +67,7 @@ export class HandleWebhookUseCase {
         tx,
         payment.id,
         {
-          event: v.event,
+          event: 'succeeded',
           amountVnd: v.amountVnd.toString(),
           gatewayOrderRef: v.gatewayOrderRef ?? ref,
         },

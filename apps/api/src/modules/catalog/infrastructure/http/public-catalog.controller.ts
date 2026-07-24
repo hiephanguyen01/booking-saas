@@ -1,10 +1,6 @@
 import { BadRequestException, Controller, Get, Headers, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import {
-  publicCatalogSearchQuerySchema,
-  type PublicCatalogSearchResponse,
-  type PublicListingTypeResponse,
-} from '@booking/contracts';
+import type { PublicCatalogSearchResponse, PublicListingTypeResponse } from '@booking/contracts';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
@@ -44,21 +40,12 @@ export class PublicCatalogController {
   @ApiQuery({ type: ListPublicListingsQueryDto })
   @ApiOkResponse({ type: PublicListingResponseDto })
   async listings(
-    @Query() query: Record<string, unknown>,
+    @Query() query: ListPublicListingsQueryDto,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
   ): Promise<PublicCatalogSearchResponse> {
     const resolvedHost = resolveHost(forwardedHost, host);
-    const parsed = publicCatalogSearchQuerySchema.safeParse(query);
-    if (!parsed.success) {
-      throw new BadRequestException({
-        statusCode: 400,
-        code: 'INVALID_CATALOG_SEARCH',
-        message: 'Invalid catalog search query',
-        issues: parsed.error.issues,
-      });
-    }
-    return this.searchCatalog.execute(resolvedHost, parsed.data);
+    return this.searchCatalog.execute(resolvedHost, query);
   }
 }
 

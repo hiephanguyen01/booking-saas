@@ -17,9 +17,9 @@ export function toGatewayConfigResponse(config: GatewayConfigRecord): GatewayCon
     gateway: config.gateway,
     environment: config.environment,
     isActive: true,
-    merchantId: config.gateway === 'sepay' ? (config.credentials.merchantId ?? null) : null,
-    partnerCode: config.gateway === 'momo' ? (config.credentials.partnerCode ?? null) : null,
-    appId: config.gateway === 'zalopay' ? (config.credentials.appId ?? null) : null,
+    merchantId: config.gateway === 'sepay' ? config.credentials.merchantId : null,
+    partnerCode: config.gateway === 'momo' ? config.credentials.partnerCode : null,
+    appId: config.gateway === 'zalopay' ? config.credentials.appId : null,
     settings: config.settings,
   };
 }

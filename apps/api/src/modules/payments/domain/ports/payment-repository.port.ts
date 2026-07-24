@@ -30,8 +30,20 @@ export interface CreatePaymentData {
   gatewayOrderRef?: string | null;
   paymentMethod?: string | null;
   idempotencyKey: string;
-  gatewayPayload?: unknown;
+  gatewayPayload?: CheckoutGatewayPayload;
 }
+
+export interface CheckoutGatewayPayload {
+  destination: CheckoutDestination;
+}
+
+export type PaymentCompletionPayload =
+  | {
+      event: 'succeeded';
+      amountVnd: string;
+      gatewayOrderRef: string;
+    }
+  | { reconciled: true };
 
 /** Minimal cross-tenant view a webhook/reconciliation needs (admin pool). */
 export interface PaymentRef {
@@ -78,7 +90,7 @@ export interface IPaymentRepository {
   markSucceeded(
     tx: PrismaTx,
     id: string,
-    payload: unknown,
+    payload: PaymentCompletionPayload,
     gatewayData?: {
       gatewayTxnId?: string;
       gatewayOrderId?: string;
