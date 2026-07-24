@@ -1,6 +1,5 @@
 import {
   gatewayKeySchema,
-  upsertGatewayConfigInputSchema,
   type GatewayConfigResponse,
   type GatewayKey,
   type UpsertGatewayConfigInput,
@@ -12,6 +11,7 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { GatewayConfigValidationPipe } from './gateway-config-validation.pipe';
 import { UpsertGatewayConfigUseCase } from '../../application/use-cases/upsert-gateway-config.use-case';
 import { GetGatewayConfigUseCase } from '../../application/use-cases/get-gateway-config.use-case';
 import { DeactivateGatewayUseCase } from '../../application/use-cases/deactivate-gateway.use-case';
@@ -47,7 +47,7 @@ export class TenantGatewayController {
   @ApiOperation({ summary: 'Create or update the tenant payment gateway credentials' })
   @ApiOkResponse({ type: GatewayConfigResponseDto })
   async put(
-    @Body(new ZodValidationPipe(upsertGatewayConfigInputSchema))
+    @Body(new GatewayConfigValidationPipe())
     input: UpsertGatewayConfigInput,
   ): Promise<GatewayConfigResponse> {
     return toGatewayConfigResponse(await this.upsert.execute(input));

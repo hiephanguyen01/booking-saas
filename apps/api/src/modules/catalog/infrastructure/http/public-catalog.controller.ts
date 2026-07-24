@@ -1,6 +1,10 @@
 import { BadRequestException, Controller, Get, Headers, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import type { PublicCatalogSearchResponse, PublicListingTypeResponse } from '@booking/contracts';
+import type {
+  PublicCatalogSearchQuery,
+  PublicCatalogSearchResponse,
+  PublicListingTypeResponse,
+} from '@booking/contracts';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ListPublicListingTypesUseCase } from '../../application/use-cases/list-public-listing-types.use-case';
 import { SearchPublicCatalogUseCase } from '../../application/use-cases/search-public-catalog.use-case';
@@ -10,6 +14,7 @@ import {
   PublicListingResponseDto,
   PublicListingTypeResponseDto,
 } from './dto/catalog.dto';
+import { CatalogSearchValidationPipe } from './catalog-search-validation.pipe';
 
 /** Storefront-facing catalog (§16, §17). Tenant resolved from Host (BFF proxy). */
 @ApiTags('public-catalog')
@@ -40,7 +45,7 @@ export class PublicCatalogController {
   @ApiQuery({ type: ListPublicListingsQueryDto })
   @ApiOkResponse({ type: PublicListingResponseDto })
   async listings(
-    @Query() query: ListPublicListingsQueryDto,
+    @Query(new CatalogSearchValidationPipe()) query: PublicCatalogSearchQuery,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
   ): Promise<PublicCatalogSearchResponse> {
