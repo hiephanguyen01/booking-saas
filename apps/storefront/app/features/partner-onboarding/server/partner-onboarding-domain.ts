@@ -3,7 +3,7 @@ import type { PartnerApplyPayload } from '../../../lib/partner.server';
 
 interface PartnerAuthSnapshot {
   info: {
-    scopes: Array<{ scope: string; tenantId: string }>;
+    scopes: Array<{ scope: string; tenantId: string | null }>;
   };
 }
 
