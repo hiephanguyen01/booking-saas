@@ -41,7 +41,14 @@ jobs:
           app/lib/optional-data.server.test.ts
       - name: Shared brand theme tests
         run: pnpm --filter=@booking/ui test
-      - run: pnpm turbo run lint typecheck build --filter=@booking/storefront --filter=@booking/dashboard
+      - name: Frontend lint
+        run: pnpm turbo run lint --filter=@booking/storefront --filter=@booking/dashboard
+      - name: Storefront typecheck
+        run: pnpm turbo run typecheck --filter=@booking/storefront
+      - name: Dashboard typecheck
+        run: pnpm turbo run typecheck --filter=@booking/dashboard
+      - name: Frontend production builds
+        run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
 
