@@ -9,7 +9,8 @@ import type { ZodType, ZodTypeDef } from 'zod';
 import { getOptionalAccessToken } from './auth.server';
 import { storefrontEnv } from './env.server';
 
-const client = () => createApiClient(storefrontEnv.backendUrl);
+const apiClient = createApiClient(storefrontEnv.backendUrl);
+const requestReads = new WeakMap<Request, Map<string, Promise<unknown>>>();
 const SAFE_ERROR_CODE_RE = /^[A-Z][A-Z0-9_]{1,63}$/;
 const SAFE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/;
 const INVALID_HOST_DELIMITER_RE = /[\\/?#@]/;
@@ -84,16 +85,16 @@ function requestOptions<T>(
   };
 }
 
-function statusForReadFailure(result: ApiResult<unknown>): number {
+export function apiFailureStatus(result: ApiResult<unknown>): number {
   if (result.failure === 'timeout') return 504;
   if (result.failure === 'invalid-response') return 502;
   if (result.status >= 500 || result.failure === 'network') return 503;
-  return result.status;
+  return result.status || 500;
 }
 
 function readFailure(result: ApiResult<unknown>): Response {
   return new Response('Storefront API request failed', {
-    status: statusForReadFailure(result),
+    status: apiFailureStatus(result),
   });
 }
 
@@ -165,6 +166,30 @@ function sanitizeApiResult<T>(request: Request, result: ApiResult<T>): ApiResult
   };
 }
 
+function memoizedRead<T>(request: Request, key: string, read: () => Promise<T>): Promise<T> {
+  let reads = requestReads.get(request);
+  if (!reads) {
+    reads = new Map();
+    requestReads.set(request, reads);
+  }
+  const existing = reads.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+
+  const pending = read();
+  reads.set(key, pending);
+  pending.catch(() => reads?.delete(key));
+  return pending;
+}
+
+function queryKey(query: ApiRequestOptions<unknown>['query']): string {
+  if (!query) return '';
+  return JSON.stringify(
+    Object.entries(query)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => [key, value]),
+  );
+}
+
 export function publicGetData<T>(
   request: Request,
   path: string,
@@ -175,19 +200,22 @@ export function publicGetData<T>(
   path: string,
   options: StorefrontJsonOptions<T>,
 ): Promise<T>;
-export async function publicGetData<T>(
+export function publicGetData<T>(
   request: Request,
   path: string,
   options: StorefrontJsonOptions<T> & { allowNotFound?: boolean },
 ): Promise<T | null> {
   const accessToken = getOptionalAccessToken();
-  const requestOptionsForCall = requestOptions(request, options);
-  const result = accessToken
-    ? await client().get(path, accessToken, requestOptionsForCall)
-    : await client().publicGet(path, requestOptionsForCall);
-  if (result.status === 404 && options.allowNotFound) return null;
-  if (!result.ok || result.data === null) throw readFailure(result);
-  return result.data;
+  const key = `public-get:${accessToken ? 'authenticated' : 'anonymous'}:${path}:${queryKey(options.query)}:${Boolean(options.allowNotFound)}`;
+  return memoizedRead(request, key, async () => {
+    const requestOptionsForCall = requestOptions(request, options);
+    const result = accessToken
+      ? await apiClient.get(path, accessToken, requestOptionsForCall)
+      : await apiClient.publicGet(path, requestOptionsForCall);
+    if (result.status === 404 && options.allowNotFound) return null;
+    if (!result.ok || result.data === null) throw readFailure(result);
+    return result.data;
+  });
 }
 
 export async function publicPost<T>(
@@ -196,7 +224,7 @@ export async function publicPost<T>(
   body: unknown,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await client().publicPost(path, body, requestOptions(request, options));
+  const result = await apiClient.publicPost(path, body, requestOptions(request, options));
   return sanitizeApiResult(request, result);
 }
 
@@ -209,19 +237,22 @@ export async function optionalAuthPost<T>(
   const accessToken = getOptionalAccessToken();
   const requestOptionsForCall = requestOptions(request, options);
   const result = accessToken
-    ? await client().post(path, body, accessToken, requestOptionsForCall)
-    : await client().publicPost(path, body, requestOptionsForCall);
+    ? await apiClient.post(path, body, accessToken, requestOptionsForCall)
+    : await apiClient.publicPost(path, body, requestOptionsForCall);
   return sanitizeApiResult(request, result);
 }
 
-export async function apiGet<T>(
+export function apiGet<T>(
   request: Request,
   path: string,
   auth: Auth,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await client().get(path, auth, requestOptions(request, options));
-  return sanitizeApiResult(request, result);
+  const key = `api-get:${path}:${queryKey(options.query)}`;
+  return memoizedRead(request, key, async () => {
+    const result = await apiClient.get(path, auth, requestOptions(request, options));
+    return sanitizeApiResult(request, result);
+  });
 }
 
 export async function apiPost<T>(
@@ -231,7 +262,7 @@ export async function apiPost<T>(
   auth: Auth,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await client().post(path, body, auth, requestOptions(request, options));
+  const result = await apiClient.post(path, body, auth, requestOptions(request, options));
   return sanitizeApiResult(request, result);
 }
 
@@ -244,10 +275,10 @@ function authOptions(request: Request) {
 }
 
 export const backendLogin = (request: Request, credentials: { email: string; password: string }) =>
-  client().login(credentials, authOptions(request));
+  apiClient.login(credentials, authOptions(request));
 export const backendRegister = (request: Request, credentials: BackendRegisterCredentials) =>
-  client().register(credentials, authOptions(request));
+  apiClient.register(credentials, authOptions(request));
 export const backendRefresh = (request: Request, refreshToken: string) =>
-  client().refresh(refreshToken, authOptions(request));
+  apiClient.refresh(refreshToken, authOptions(request));
 export const backendLogout = (request: Request, accessToken: string) =>
-  client().logout(accessToken, authOptions(request));
+  apiClient.logout(accessToken, authOptions(request));
