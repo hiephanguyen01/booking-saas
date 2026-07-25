@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { data as routeData, Form } from 'react-router';
+import { useState, type FormEvent } from 'react';
+import { data as routeData, Form, useNavigation, useSubmit } from 'react-router';
 import { Ban } from 'lucide-react';
 import {
   reasonInputSchema,
@@ -29,7 +29,7 @@ import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
-import { useBusy } from '~/hooks/use-busy';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { BookingDetailCard } from '~/features/bookings/components/booking-detail-card';
 import { Money } from '~/components/money';
 import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
@@ -140,16 +140,29 @@ export default function TenantBookingDetail({ loaderData, actionData }: Route.Co
 
 function CancelDialog({ booking }: { booking: TenantBookingResponse }) {
   const [open, setOpen] = useState(false);
-  const busy = useBusy();
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy, run } = useSubmissionGuard(navigation.state);
+
+  const handleOpenChange = (nextOpen: boolean): void => {
+    if (!busy) setOpen(nextOpen);
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    if (run(() => submit(formData, { method: 'post' }))) setOpen(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="sm">
+        <Button variant="destructive" size="sm" disabled={busy}>
           <Ban className="size-4" /> Huỷ đặt chỗ
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <Form method="post" onSubmit={() => setOpen(false)}>
+      <DialogContent aria-busy={busy}>
+        <Form method="post" onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Huỷ đặt chỗ {booking.code}</DialogTitle>
             <DialogDescription>
@@ -158,16 +171,22 @@ function CancelDialog({ booking }: { booking: TenantBookingResponse }) {
           </DialogHeader>
           <div className="space-y-2 py-4">
             <Label htmlFor="cancel-reason">Lý do (tuỳ chọn)</Label>
-            <Input id="cancel-reason" name="reason" maxLength={500} placeholder="Lý do huỷ đơn…" />
+            <Input
+              id="cancel-reason"
+              name="reason"
+              maxLength={500}
+              placeholder="Lý do huỷ đơn…"
+              disabled={busy}
+            />
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="ghost">
+              <Button type="button" variant="ghost" disabled={busy}>
                 Đóng
               </Button>
             </DialogClose>
             <Button type="submit" variant="destructive" disabled={busy}>
-              Huỷ & hoàn tiền cho khách
+              {busy ? 'Đang huỷ…' : 'Huỷ & hoàn tiền cho khách'}
             </Button>
           </DialogFooter>
         </Form>
