@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigation, useSubmit } from 'react-router';
 import type { PlanResponse } from '@booking/contracts';
 import { DataTable } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
@@ -13,6 +14,7 @@ import { CreatePlanCard } from '~/features/admin/components/plans/create-plan-ca
 import { EditPlanDialog } from '~/features/admin/components/plans/edit-plan-dialog';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Gói dịch vụ · Bookify Admin' }];
@@ -31,6 +33,9 @@ export async function action({ request }: Route.ActionArgs) {
 export default function PlansPage({ loaderData, actionData }: Route.ComponentProps) {
   const { plans, error } = loaderData;
   const result = (actionData ?? null) as PlansActionResult | null;
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy, run } = useSubmissionGuard(navigation.state);
 
   const [editing, setEditing] = useState<PlanResponse | null>(null);
 
@@ -48,10 +53,16 @@ export default function PlansPage({ loaderData, actionData }: Route.ComponentPro
   const editFieldErrors =
     result?.scope === 'update' && result.id === editing?.id ? (result.fieldErrors ?? null) : null;
 
-  const columns = buildPlanColumns({ onEdit: setEditing });
+  const handleDelete = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
+  const columns = buildPlanColumns({ onEdit: setEditing, onDelete: handleDelete, busy });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={busy}>
       <PageHeader
         title="Gói dịch vụ"
         description="Định nghĩa các gói đăng ký, hạn mức, và theo dõi doanh thu định kỳ."
@@ -60,26 +71,33 @@ export default function PlansPage({ loaderData, actionData }: Route.ComponentPro
       <ErrorBanner error={error ? `Không tải được danh sách gói: ${error}` : null} />
       <ErrorBanner error={deleteError} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3 lg:col-span-2">
-          <div className="overflow-x-auto">
-            <DataTable
-              columns={columns}
-              data={plans}
-              getRowKey={(p) => p.id}
-              emptyMessage="Chưa có gói nào. Tạo gói đầu tiên ở bên phải."
-            />
+      <fieldset disabled={busy} className="contents">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
+            <div className="overflow-x-auto">
+              <DataTable
+                columns={columns}
+                data={plans}
+                getRowKey={(p) => p.id}
+                emptyMessage="Chưa có gói nào. Tạo gói đầu tiên ở bên phải."
+              />
+            </div>
           </div>
-        </div>
 
-        <CreatePlanCard ok={createOk ?? null} error={createError} fieldErrors={createFieldErrors} />
-      </div>
+          <CreatePlanCard
+            ok={createOk ?? null}
+            error={createError}
+            fieldErrors={createFieldErrors}
+          />
+        </div>
+      </fieldset>
 
       <EditPlanDialog
         editing={editing}
         onClose={() => setEditing(null)}
         error={editError}
         fieldErrors={editFieldErrors}
+        busy={busy}
       />
     </div>
   );

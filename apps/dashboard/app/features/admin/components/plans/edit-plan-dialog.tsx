@@ -18,15 +18,17 @@ export function EditPlanDialog({
   onClose,
   error,
   fieldErrors,
+  busy,
 }: {
   editing: PlanResponse | null;
   onClose: () => void;
   error: string | null;
   fieldErrors: Partial<Record<string, string[] | undefined>> | null;
+  busy: boolean;
 }) {
   return (
-    <Dialog open={editing !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+    <Dialog open={editing !== null} onOpenChange={(open) => !open && !busy && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" aria-busy={busy}>
         <DialogHeader>
           <DialogTitle>Sửa gói{editing ? ` “${editing.name}”` : ''}</DialogTitle>
           <DialogDescription>
@@ -34,23 +36,25 @@ export function EditPlanDialog({
           </DialogDescription>
         </DialogHeader>
         {editing ? (
-          <GenericForm
-            key={editing.id}
-            schema={updatePlanInputSchema}
-            fields={planEditFields}
-            method="patch"
-            submitLabel="Lưu thay đổi"
-            serverError={error}
-            fieldErrors={fieldErrors}
-            transform={(v) => ({ ...v, id: editing.id })}
-            defaultValues={{
-              name: editing.name,
-              priceMonthly: editing.priceMonthly,
-              limits: { ...editing.limits },
-              isActive: editing.isActive,
-              repriceExistingSubscribers: false,
-            }}
-          />
+          <fieldset disabled={busy} className="contents">
+            <GenericForm
+              key={editing.id}
+              schema={updatePlanInputSchema}
+              fields={planEditFields}
+              method="patch"
+              submitLabel="Lưu thay đổi"
+              serverError={error}
+              fieldErrors={fieldErrors}
+              transform={(v) => ({ ...v, id: editing.id })}
+              defaultValues={{
+                name: editing.name,
+                priceMonthly: editing.priceMonthly,
+                limits: { ...editing.limits },
+                isActive: editing.isActive,
+                repriceExistingSubscribers: false,
+              }}
+            />
+          </fieldset>
         ) : null}
       </DialogContent>
     </Dialog>
