@@ -40,6 +40,7 @@ export function RoomBookingDialogSteps({
   onSelectRange,
   onRetryHourly,
   onRetryDaily,
+  onOpenPackageMedia,
 }: {
   mode: ListingBookingMode;
   supportedModes: ListingBookingMode[];
@@ -67,6 +68,7 @@ export function RoomBookingDialogSteps({
   onSelectRange: (range: RoomBookingDateRange | undefined) => void;
   onRetryHourly: () => void;
   onRetryDaily: () => void;
+  onOpenPackageMedia: (index: number, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const {
@@ -140,7 +142,9 @@ export function RoomBookingDialogSteps({
                 )}
               >
                 <span className="flex items-center gap-3">
-                  {photo ? <img src={photo} alt="" className="size-12 rounded-md object-cover" /> : null}
+                  {photo ? (
+                    <img src={photo} alt="" className="size-12 rounded-md object-cover" />
+                  ) : null}
                   <span className="min-w-0 flex-1">
                     <span className="flex justify-between gap-3 text-sm font-medium">
                       <span>{item.name}</span>
@@ -158,6 +162,7 @@ export function RoomBookingDialogSteps({
             <RoomPhotoStrip
               photos={selectedPackageGallery.photos}
               title={selectedPackageGallery.title}
+              onOpenPhoto={onOpenPackageMedia}
             />
           ) : null}
         </div>

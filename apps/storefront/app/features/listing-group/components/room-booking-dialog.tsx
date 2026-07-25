@@ -1,13 +1,16 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
+import type { MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
+import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { BookingDialogFooter } from '../../../components/booking-dialog-footer';
+import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '../listing-group-types';
+import { PackageMediaDetails } from '../../packages/package-media-details';
 import { RoomBookingDialogShell } from './room-booking-dialog-shell';
-import {
-  RoomBookingDialogSteps,
-  type ListingBookingMode,
-} from './room-booking-dialog-steps';
+import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';
 import { useListingBookingDialogController } from './use-listing-booking-dialog-controller';
 
 export type { ListingBookingMode } from './room-booking-dialog-steps';
@@ -21,17 +24,79 @@ export function ListingBookingDialog({
   groupSlug?: string;
   preferredMode: ListingBookingMode;
 }) {
-  const { triggerLabel, shellProps, stepsProps, footerProps } =
-    useListingBookingDialogController({ listing, groupSlug, preferredMode });
+  const { t } = useTranslation(NsI18n.Listing);
+  const viewerLabels = useMediaViewerLabels();
+  const [activePackageMediaIndex, setActivePackageMediaIndex] = useState<number | null>(null);
+  const mediaTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const { triggerLabel, shellProps, stepsProps, footerProps } = useListingBookingDialogController({
+    listing,
+    groupSlug,
+    preferredMode,
+  });
+  const selectedPackage = stepsProps.selectedPackage;
+  const galleryPhotos = selectedPackage?.photos.length ? selectedPackage.photos : listing.photos;
+  const mediaItems: MediaViewerItem[] = selectedPackage
+    ? galleryPhotos.map((photo, index) => ({
+        kind: 'image',
+        url: photo,
+        alt: t('group.photoAlt', { title: selectedPackage.name, index: index + 1 }),
+      }))
+    : [];
+
+  function openPackageMedia(index: number, trigger: HTMLButtonElement): void {
+    mediaTriggerRef.current = trigger;
+    setActivePackageMediaIndex(index);
+  }
+
+  function closePackageMedia(): void {
+    setActivePackageMediaIndex(null);
+  }
+
   const trigger = (
     <Button className="w-full">
       <CalendarDays aria-hidden="true" /> {triggerLabel}
     </Button>
   );
-  const body = <RoomBookingDialogSteps {...stepsProps} />;
+  const body = <RoomBookingDialogSteps {...stepsProps} onOpenPackageMedia={openPackageMedia} />;
   const footer = <BookingDialogFooter {...footerProps} />;
 
-  return <RoomBookingDialogShell {...shellProps} trigger={trigger} body={body} footer={footer} />;
+  return (
+    <>
+      <RoomBookingDialogShell
+        {...shellProps}
+        onDesktopOpenChange={(open) => {
+          shellProps.onDesktopOpenChange(open);
+          if (!open) closePackageMedia();
+        }}
+        onMobileOpenChange={(open) => {
+          shellProps.onMobileOpenChange(open);
+          if (!open) closePackageMedia();
+        }}
+        trigger={trigger}
+        body={body}
+        footer={footer}
+      />
+
+      <PackageMediaViewerDialog
+        open={activePackageMediaIndex !== null && Boolean(selectedPackage)}
+        items={mediaItems}
+        activeIndex={activePackageMediaIndex ?? 0}
+        onOpenChange={(open) => {
+          if (!open) closePackageMedia();
+        }}
+        onActiveIndexChange={setActivePackageMediaIndex}
+        labels={viewerLabels}
+        title={selectedPackage?.name ?? listing.title}
+        description={t('packages.mediaViewerDescription', {
+          name: selectedPackage?.name ?? listing.title,
+        })}
+        returnFocusRef={mediaTriggerRef}
+        details={
+          selectedPackage ? <PackageMediaDetails item={selectedPackage} listing={listing} /> : null
+        }
+      />
+    </>
+  );
 }
 
 export function RoomBookingDialog({
