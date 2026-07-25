@@ -13,7 +13,7 @@ import {
 import { getCheckoutFlowService, maskCheckoutEmail } from '../../../lib/checkout-flow.server';
 import { errorStatus } from '../../../lib/http-status';
 import { storefrontPaths } from '../../../lib/locale-paths';
-import { optionalData, rethrowCriticalDataError } from '../../../lib/optional-data.server';
+import { rethrowCriticalDataError } from '../../../lib/optional-data.server';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
