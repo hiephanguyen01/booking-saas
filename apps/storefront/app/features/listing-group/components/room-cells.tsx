@@ -21,9 +21,11 @@ import { RoomPhotoStrip } from './room-photo-strip';
 export function RoomDetails({
   option,
   hidePhotos = false,
+  onOpenPhoto,
 }: {
   option: RoomOption;
   hidePhotos?: boolean;
+  onOpenPhoto?: (index: number, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const attributes = roomAttributes(option.child.attributes);
@@ -39,7 +41,11 @@ export function RoomDetails({
         </span>
       ) : null}
       {!hidePhotos ? (
-        <RoomPhotoStrip photos={option.child.photos} title={option.child.title} />
+        <RoomPhotoStrip
+          photos={option.child.photos}
+          title={option.child.title}
+          onOpenPhoto={onOpenPhoto}
+        />
       ) : null}
       <div className="flex flex-col gap-2.5">
         {attributes.length ? (
