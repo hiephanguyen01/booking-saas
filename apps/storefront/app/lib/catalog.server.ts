@@ -26,6 +26,18 @@ const listingTypesCache = new Map<
   string,
   { expiresAt: number; data: PublicListingTypeResponse[] }
 >();
+const listingTypesReads = new Map<string, Promise<PublicListingTypeResponse[]>>();
+
+function rememberListingTypes(tenantId: string, data: PublicListingTypeResponse[]): void {
+  if (listingTypesCache.size >= MAX_TENANT_CACHE_ENTRIES) {
+    const oldest = listingTypesCache.keys().next().value as string | undefined;
+    if (oldest) listingTypesCache.delete(oldest);
+  }
+  listingTypesCache.set(tenantId, {
+    expiresAt: Date.now() + LISTING_TYPES_CACHE_TTL_MS,
+    data,
+  });
+}
 
 /**
  * Server-only catalog fetches (BFF). The storefront menu + filters are generated
@@ -36,17 +48,24 @@ const listingTypesCache = new Map<
 export async function fetchListingTypes(request: Request): Promise<PublicListingTypeResponse[]> {
   const tenantId = getCurrentStorefrontTenant().id;
   const cached = listingTypesCache.get(tenantId);
-  const now = Date.now();
-  if (cached && cached.expiresAt > now) return cached.data;
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
   if (cached) listingTypesCache.delete(tenantId);
 
-  const data = await publicGetData(request, '/public/listing-types', { schema: listingTypesSchema });
-  if (listingTypesCache.size >= MAX_TENANT_CACHE_ENTRIES) {
-    const oldest = listingTypesCache.keys().next().value as string | undefined;
-    if (oldest) listingTypesCache.delete(oldest);
-  }
-  listingTypesCache.set(tenantId, { expiresAt: now + LISTING_TYPES_CACHE_TTL_MS, data });
-  return data;
+  const existingRead = listingTypesReads.get(tenantId);
+  if (existingRead) return existingRead;
+
+  const pending = publicGetData(request, '/public/listing-types', {
+    schema: listingTypesSchema,
+  })
+    .then((data) => {
+      rememberListingTypes(tenantId, data);
+      return data;
+    })
+    .finally(() => {
+      if (listingTypesReads.get(tenantId) === pending) listingTypesReads.delete(tenantId);
+    });
+  listingTypesReads.set(tenantId, pending);
+  return pending;
 }
 
 export function fetchListingGroup(
