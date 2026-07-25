@@ -106,7 +106,14 @@ const CATALOG: CatalogDefinition[] = [
     bufferAfter: 30,
     depositPercent: 50,
     attributeSchema: [
-      { key: 'area', label: 'Diện tích (m²)', type: 'number', required: true, filterable: true },
+      {
+        key: 'area',
+        label: 'Diện tích (m²)',
+        type: 'number',
+        required: true,
+        filterable: true,
+        icon: 'Building2',
+      },
       {
         key: 'style',
         label: 'Phong cách',
@@ -114,9 +121,26 @@ const CATALOG: CatalogDefinition[] = [
         required: true,
         filterable: true,
         options: STYLES,
+        icon: 'Palette',
       },
-      { key: 'naturalLight', label: 'Ánh sáng tự nhiên', type: 'boolean', filterable: true },
-      { key: 'ceilingHeight', label: 'Chiều cao trần (m)', type: 'number', filterable: true },
+      {
+        key: 'naturalLight',
+        label: 'Ánh sáng tự nhiên',
+        type: 'boolean',
+        filterable: true,
+        icon: 'Lightbulb',
+      },
+      {
+        key: 'ceilingHeight',
+        label: 'Chiều cao trần (m)',
+        type: 'number',
+        filterable: true,
+        icon: 'Boxes',
+      },
+      { key: 'studioEquipment', label: 'Thiết bị sẵn có', type: 'list', icon: 'Lightbulb' },
+      { key: 'includedServices', label: 'Dịch vụ kèm theo', type: 'list', icon: 'Check' },
+      { key: 'houseRules', label: 'Nội quy', type: 'list', icon: 'Info' },
+      { key: 'notIncluded', label: 'Không bao gồm', type: 'list', icon: 'CircleSlash' },
     ],
     title: (index, location) =>
       index === 0
@@ -129,6 +153,24 @@ const CATALOG: CatalogDefinition[] = [
       style: cycle(STYLES, index),
       naturalLight: index % 2 === 0,
       ceilingHeight: 3 + (index % 4) * 0.5,
+      studioEquipment: [
+        'Phông nền 5 màu (trắng, đen, xám, pastel, xanh)',
+        'Bộ đèn Godox 600W kèm softbox và beauty dish',
+        'Gương toàn thân và bàn trang điểm có đèn',
+        'Đạo cụ chụp cơ bản (ghế, bàn, khung tranh)',
+      ],
+      includedServices: [
+        'Hỗ trợ set-up ánh sáng theo concept',
+        'Wi-Fi tốc độ cao',
+        'Nước uống miễn phí',
+        'Chỗ để xe máy và ô tô',
+      ],
+      houseRules: [
+        'Giữ vệ sinh chung, trả phòng đúng giờ',
+        'Không hút thuốc trong phòng',
+        'Đền bù theo giá trị nếu hư hỏng thiết bị',
+      ],
+      notIncluded: ['Nhiếp ảnh gia', 'Trang điểm - làm tóc', 'Chi phí in ấn ảnh'],
     }),
     modeConfig: (index) => ({
       hourly: {
@@ -173,9 +215,27 @@ const CATALOG: CatalogDefinition[] = [
         required: true,
         filterable: true,
         options: PHOTO_STYLES,
+        icon: 'Camera',
       },
-      { key: 'editedPhotos', label: 'Số ảnh chỉnh sửa', type: 'number', required: true },
-      { key: 'rawFiles', label: 'Bàn giao file gốc', type: 'boolean', filterable: true },
+      {
+        key: 'editedPhotos',
+        label: 'Số ảnh chỉnh sửa',
+        type: 'number',
+        required: true,
+        icon: 'Images',
+      },
+      {
+        key: 'rawFiles',
+        label: 'Bàn giao file gốc',
+        type: 'boolean',
+        filterable: true,
+        icon: 'Package',
+      },
+      { key: 'crew', label: 'Ê-kíp', type: 'list', icon: 'Users' },
+      { key: 'gear', label: 'Thiết bị sử dụng', type: 'text', icon: 'Camera' },
+      { key: 'deliverables', label: 'Sản phẩm bàn giao', type: 'list', icon: 'Images' },
+      { key: 'offers', label: 'Ưu đãi khác', type: 'list', icon: 'Gift' },
+      { key: 'notIncluded', label: 'Không bao gồm', type: 'list', icon: 'CircleSlash' },
     ],
     title: (index, location) =>
       `Dịch vụ chụp ${cycle(PHOTO_STYLES, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
@@ -185,6 +245,24 @@ const CATALOG: CatalogDefinition[] = [
       photographyStyle: cycle(PHOTO_STYLES, index),
       editedPhotos: 20 + (index % 5) * 10,
       rawFiles: index % 2 === 0,
+      crew: [
+        '01 nhiếp ảnh gia chính + 01 trợ lý',
+        'Hỗ trợ tư vấn concept và tạo dáng',
+        'Makeup artist đi kèm (gói nâng cao)',
+      ],
+      gear: 'Sony A7 IV, ống kính 35mm & 85mm, đèn Godox',
+      deliverables: [
+        'Album online chất lượng cao',
+        `${20 + (index % 5) * 10} ảnh chỉnh sửa kỹ`,
+        'Toàn bộ file gốc chưa chỉnh',
+        '01 video hậu trường 30 giây',
+      ],
+      offers: [
+        'Giảm 10% cho lần đặt thứ hai',
+        'Tặng 05 ảnh in 10x15',
+        'Miễn phí di chuyển nội thành',
+      ],
+      notIncluded: ['Chi phí thuê trang phục', 'Vé vào cửa địa điểm chụp', 'In album vật lý'],
     }),
     modeConfig: (index) => ({
       hourly: {
@@ -239,9 +317,13 @@ const CATALOG: CatalogDefinition[] = [
         required: true,
         filterable: true,
         options: MAKEUP_STYLES,
+        icon: 'Sparkles',
       },
-      { key: 'hairStyling', label: 'Kèm làm tóc', type: 'boolean', filterable: true },
-      { key: 'touchUpHours', label: 'Số giờ dặm lại', type: 'number' },
+      { key: 'hairStyling', label: 'Kèm làm tóc', type: 'boolean', filterable: true, icon: 'Scissors' },
+      { key: 'touchUpHours', label: 'Số giờ dặm lại', type: 'number', icon: 'Clock' },
+      { key: 'products', label: 'Mỹ phẩm sử dụng', type: 'list', icon: 'Sparkles' },
+      { key: 'includes', label: 'Quy trình', type: 'list', icon: 'Check' },
+      { key: 'notIncluded', label: 'Không bao gồm', type: 'list', icon: 'CircleSlash' },
     ],
     title: (index, location) =>
       `Dịch vụ makeup ${cycle(MAKEUP_STYLES, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
@@ -251,6 +333,18 @@ const CATALOG: CatalogDefinition[] = [
       makeupStyle: cycle(MAKEUP_STYLES, index),
       hairStyling: true,
       touchUpHours: index % 4,
+      products: [
+        'Mỹ phẩm cao cấp (MAC, Nars, Charlotte Tilbury)',
+        'Lông mi giả và phụ kiện đi kèm',
+        'Bộ cọ tiệt trùng riêng cho từng khách',
+      ],
+      includes: [
+        'Tư vấn phong cách theo trang phục',
+        'Chăm sóc và chuẩn bị nền da',
+        'Trang điểm hoàn thiện + làm tóc',
+        'Dặm lại tại chỗ trong buổi chụp',
+      ],
+      notIncluded: ['Chi phí di chuyển ngoài nội thành', 'Nối mi/uốn mi chuyên sâu'],
     }),
     modeConfig: (index) => ({
       hourly: {
@@ -296,8 +390,8 @@ const CATALOG: CatalogDefinition[] = [
     bufferAfter: 180,
     depositPercent: 100,
     attributeSchema: [
-      { key: 'brand', label: 'Hãng', type: 'text', required: true, filterable: true },
-      { key: 'model', label: 'Model', type: 'text', required: true },
+      { key: 'brand', label: 'Hãng', type: 'text', required: true, filterable: true, icon: 'Tag' },
+      { key: 'model', label: 'Model', type: 'text', required: true, icon: 'Package' },
       {
         key: 'condition',
         label: 'Tình trạng',
@@ -305,8 +399,18 @@ const CATALOG: CatalogDefinition[] = [
         required: true,
         filterable: true,
         options: ['Mới', 'Rất tốt', 'Tốt'],
+        icon: 'Check',
       },
-      { key: 'insuranceIncluded', label: 'Kèm bảo hiểm', type: 'boolean', filterable: true },
+      {
+        key: 'insuranceIncluded',
+        label: 'Kèm bảo hiểm',
+        type: 'boolean',
+        filterable: true,
+        icon: 'Info',
+      },
+      { key: 'includedItems', label: 'Phụ kiện đi kèm', type: 'list', icon: 'Package' },
+      { key: 'specs', label: 'Thông số nổi bật', type: 'list', icon: 'Cpu' },
+      { key: 'rentalTerms', label: 'Điều khoản thuê', type: 'list', icon: 'ShieldCheck' },
     ],
     title: (index, location) =>
       `${cycle(EQUIPMENT_BRANDS, index)} Production Kit ${String(index + 1).padStart(2, '0')} — ${location.shortName}`,
@@ -317,6 +421,22 @@ const CATALOG: CatalogDefinition[] = [
       model: `Production Kit ${100 + index}`,
       condition: index % 3 === 0 ? 'Mới' : index % 3 === 1 ? 'Rất tốt' : 'Tốt',
       insuranceIncluded: index % 2 === 0,
+      includedItems: [
+        '02 pin và bộ sạc chính hãng',
+        'Thẻ nhớ 128GB tốc độ cao',
+        'Túi chống sốc và dây đeo',
+        'Bộ vệ sinh ống kính',
+      ],
+      specs: [
+        'Cảm biến full-frame 33MP',
+        'Quay video 4K 60fps',
+        'Chống rung 5 trục trong thân máy',
+      ],
+      rentalTerms: [
+        'Đặt cọc theo giá trị thiết bị',
+        'Kiểm tra kỹ thuật khi giao và nhận',
+        'Bồi thường nếu hư hỏng do người thuê',
+      ],
     }),
     modeConfig: (index) => ({
       inventory: {
@@ -351,6 +471,7 @@ const CATALOG: CatalogDefinition[] = [
         required: true,
         filterable: true,
         options: COSTUME_STYLES,
+        icon: 'Shirt',
       },
       {
         key: 'size',
@@ -359,8 +480,18 @@ const CATALOG: CatalogDefinition[] = [
         required: true,
         filterable: true,
         options: ['XS', 'S', 'M', 'L', 'XL'],
+        icon: 'Tag',
       },
-      { key: 'accessoriesIncluded', label: 'Kèm phụ kiện', type: 'boolean', filterable: true },
+      {
+        key: 'accessoriesIncluded',
+        label: 'Kèm phụ kiện',
+        type: 'boolean',
+        filterable: true,
+        icon: 'Gift',
+      },
+      { key: 'included', label: 'Dịch vụ kèm theo', type: 'list', icon: 'Check' },
+      { key: 'careNotes', label: 'Lưu ý sử dụng', type: 'list', icon: 'Info' },
+      { key: 'notIncluded', label: 'Không bao gồm', type: 'list', icon: 'CircleSlash' },
     ],
     title: (index, location) =>
       `Bộ ${cycle(COSTUME_STYLES, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
@@ -370,6 +501,17 @@ const CATALOG: CatalogDefinition[] = [
       costumeStyle: cycle(COSTUME_STYLES, index),
       size: index % 2 === 0 ? ['S', 'M', 'L'] : ['M', 'L', 'XL'],
       accessoriesIncluded: true,
+      included: [
+        'Giặt hấp sạch sẽ sau mỗi lượt thuê',
+        'Phụ kiện đồng bộ (giày, túi, trang sức)',
+        'Hỗ trợ thử đồ và chỉnh sửa cơ bản',
+      ],
+      careNotes: [
+        'Giữ trang phục sạch, tránh dây bẩn',
+        'Không tự ý cắt sửa trang phục',
+        'Hoàn trả đúng hạn để tránh phụ phí',
+      ],
+      notIncluded: ['Phí giặt nếu bẩn nặng hoặc hư hỏng', 'Dịch vụ giao tận nơi ngoài nội thành'],
     }),
     modeConfig: (index) => ({
       inventory: {
@@ -398,7 +540,14 @@ const CATALOG: CatalogDefinition[] = [
     depositPercent: 50,
     requiresIdentityVerification: true,
     attributeSchema: [
-      { key: 'height', label: 'Chiều cao (cm)', type: 'number', required: true, filterable: true },
+      {
+        key: 'height',
+        label: 'Chiều cao (cm)',
+        type: 'number',
+        required: true,
+        filterable: true,
+        icon: 'Users',
+      },
       {
         key: 'experienceLevel',
         label: 'Kinh nghiệm',
@@ -406,9 +555,13 @@ const CATALOG: CatalogDefinition[] = [
         required: true,
         filterable: true,
         options: MODEL_LEVELS,
+        icon: 'Trophy',
       },
-      { key: 'languages', label: 'Ngôn ngữ', type: 'text', filterable: true },
-      { key: 'travelReady', label: 'Có thể đi tỉnh', type: 'boolean', filterable: true },
+      { key: 'languages', label: 'Ngôn ngữ', type: 'text', filterable: true, icon: 'BookOpen' },
+      { key: 'travelReady', label: 'Có thể đi tỉnh', type: 'boolean', filterable: true, icon: 'Plane' },
+      { key: 'measurements', label: 'Số đo', type: 'text', icon: 'Ruler' },
+      { key: 'portfolio', label: 'Kinh nghiệm nổi bật', type: 'list', icon: 'Star' },
+      { key: 'services', label: 'Nhận chụp', type: 'list', icon: 'Camera' },
     ],
     title: (index, location) =>
       `Model ${cycle(MODEL_LEVELS, index)} ${location.shortName} ${String(index + 1).padStart(2, '0')}`,
@@ -419,6 +572,17 @@ const CATALOG: CatalogDefinition[] = [
       experienceLevel: cycle(MODEL_LEVELS, index),
       languages: index % 2 === 0 ? 'Tiếng Việt, Tiếng Anh' : 'Tiếng Việt',
       travelReady: index % 3 !== 0,
+      measurements: `Số đo 3 vòng: ${82 + (index % 6)}-${60 + (index % 5)}-${88 + (index % 6)} cm`,
+      portfolio: [
+        'Đã chụp lookbook cho nhiều local brand',
+        'Kinh nghiệm quay TVC và ảnh quảng cáo',
+        'Chụp ảnh cưới và ảnh gia đình',
+      ],
+      services: [
+        'Chụp lookbook thời trang',
+        'Quảng cáo sản phẩm, TVC',
+        'Ảnh lifestyle và sự kiện',
+      ],
     }),
     modeConfig: (index) => ({
       appointment: {

@@ -13,8 +13,8 @@ import { cn } from '@booking/ui/lib/utils';
 import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ListingTypeGlyph } from '../../components/listing-type-glyph';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { typeIcon } from '../../lib/ui';
 import type { SearchMode } from './search-state';
 import type { SearchFormVariant } from './search-form-types';
 import { useLocationComboboxController } from './use-location-combobox-controller';
@@ -148,7 +148,6 @@ export function CategoryPicker({
       )}
     >
       {types.map((type) => {
-        const Icon = typeIcon(type.slug);
         const iconClass = cn(isHero ? 'size-7 md:size-8' : 'size-5');
         return (
           <ToggleGroupItem
@@ -161,20 +160,7 @@ export function CategoryPicker({
                 : 'min-h-11 gap-2 rounded-full! border border-transparent px-4 py-2 text-sm text-background/75 hover:bg-background/10 hover:text-background data-[state=on]:border-background data-[state=on]:bg-transparent data-[state=on]:text-background',
             )}
           >
-            {type.iconImageUrl ? (
-              <img
-                src={type.iconImageUrl}
-                alt=""
-                className={cn(iconClass, 'object-contain')}
-                aria-hidden="true"
-              />
-            ) : (
-              <Icon
-                className={cn(iconClass, isHero && 'text-foreground')}
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
-            )}
+            <ListingTypeGlyph type={type} className={cn(iconClass, isHero && 'text-foreground')} />
             {type.name}
           </ToggleGroupItem>
         );

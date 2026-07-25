@@ -66,6 +66,14 @@ export function validateAttributes(
         }
         break;
       }
+      case 'list': {
+        const ok =
+          Array.isArray(value) && value.every((v) => typeof v === 'string' && v.trim() !== '');
+        if (!ok) {
+          errors.push({ key: field.key, message: `"${field.label}" must be a list of text lines` });
+        }
+        break;
+      }
     }
   }
 

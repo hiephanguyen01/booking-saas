@@ -1,4 +1,4 @@
-import type { HourlySlot } from '@booking/contracts';
+import type { AttributeField, HourlySlot } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Collapsible,
@@ -13,22 +13,25 @@ import { hoursBetween } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
 import type { BookingMode, RoomOption } from '../listing-group-types';
 import { checkoutHref, type RoomAvailabilityState } from '../listing-group-utils';
-import { attributeIcon, roomAttributes, roomCapacity } from '../room-attributes';
+import { roomCapacity, specCards } from '../room-attributes';
+import { AttributeSpecCards } from './attribute-spec-cards';
 import { SlotPicker } from './slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';
 import { RoomPhotoStrip } from './room-photo-strip';
 
 export function RoomDetails({
   option,
+  attributeSchema,
   hidePhotos = false,
   onOpenPhoto,
 }: {
   option: RoomOption;
+  attributeSchema: AttributeField[];
   hidePhotos?: boolean;
   onOpenPhoto?: (index: number, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const attributes = roomAttributes(option.child.attributes);
+  const cards = specCards(option.child.attributes, attributeSchema);
   const description = option.detail.description || option.child.description;
   const location = formatListingLocation(option.detail);
   return (
@@ -47,33 +50,19 @@ export function RoomDetails({
           onOpenPhoto={onOpenPhoto}
         />
       ) : null}
-      <div className="flex flex-col gap-2.5">
-        {attributes.length ? (
-          attributes.map((attribute, index) => {
-            const Icon = attributeIcon(index);
-            return (
-              <span key={attribute.key} className="flex items-start gap-2.5 text-muted-foreground">
-                <Icon className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden="true" />
-                {attribute.kind === 'area'
-                  ? t('group.area', { value: attribute.value })
-                  : attribute.label}
-              </span>
-            );
-          })
-        ) : (
-          <span className="text-muted-foreground">{t('group.roomInfoPending')}</span>
-        )}
-      </div>
-      {description ? (
+      {cards.length || description ? (
         <Collapsible>
           <CollapsibleTrigger className="inline-flex items-center gap-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {t('group.viewRoomDescription')} <ChevronDown className="size-4" aria-hidden="true" />
+            {t('group.viewRoomDetails')} <ChevronDown className="size-4" aria-hidden="true" />
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3 leading-6 text-muted-foreground">
-            {description}
+          <CollapsibleContent className="flex flex-col gap-4 pt-3">
+            {cards.length ? <AttributeSpecCards cards={cards} /> : null}
+            {description ? <p className="leading-6 text-muted-foreground">{description}</p> : null}
           </CollapsibleContent>
         </Collapsible>
-      ) : null}
+      ) : (
+        <span className="text-muted-foreground">{t('group.roomInfoPending')}</span>
+      )}
     </div>
   );
 }

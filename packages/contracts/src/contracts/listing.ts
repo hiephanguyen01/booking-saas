@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
 import { slugSchema } from './tenancy';
-import { bookingModeSchema, bookingSelectionSchema, type BookingMode } from './listing-type';
+import {
+  attributeFieldSchema,
+  bookingModeSchema,
+  bookingSelectionSchema,
+  type BookingMode,
+} from './listing-type';
 import { partnerVerificationStatusSchema } from './partner';
 import {
   administrativeAddressInputSchema,
@@ -549,6 +554,9 @@ export const publicListingDetailResponseSchema = z
     description: z.string().nullable(),
     photos: z.array(z.string()),
     attributes: z.record(z.unknown()),
+    /** The listing type's attribute definitions (label + icon + type + order) so
+     * the storefront renders icon-led spec cards, not humanized keys. */
+    attributeSchema: z.array(attributeFieldSchema).default([]),
     bookingModes: z.array(bookingModeSchema),
     bookingSelection: bookingSelectionSchema,
     modeConfig: z.record(z.unknown()),
@@ -576,6 +584,8 @@ export const publicListingGroupDetailResponseSchema = z
     amenities: z.array(z.string()),
     photos: z.array(z.string()),
     listingTypeSlug: z.string(),
+    /** The listing type's attribute definitions, shared by every child listing. */
+    attributeSchema: z.array(attributeFieldSchema).default([]),
     bookingSelection: bookingSelectionSchema,
     itemLabel: z.string(),
     ratingAvg: z.number().nullable(),

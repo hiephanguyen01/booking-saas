@@ -12,11 +12,13 @@ export type FilterFacetModel =
       kind: 'price';
       key: string;
       title: string;
+      icon: string | null;
     }
   | {
       kind: 'range';
       key: string;
       title: string;
+      icon: string | null;
       minName: string;
       maxName: string;
       minValue: number | '';
@@ -28,6 +30,7 @@ export type FilterFacetModel =
       kind: 'options';
       key: string;
       title: string;
+      icon: string | null;
       control: 'radio' | 'checkbox';
       options: FilterOption[];
       selected: string[];
@@ -44,8 +47,10 @@ export function useFilterPanelController({
   const { t } = useTranslation(NsI18n.Catalog);
   const [params] = useSearchParams();
   const facetModels = facets.map((facet): FilterFacetModel => {
+    // System facets (price/location/amenities) carry no icon; attribute facets do.
+    const icon = facet.icon ?? null;
     if (facet.key === 'price') {
-      return { kind: 'price', key: facet.key, title: t('filters.price') };
+      return { kind: 'price', key: facet.key, title: t('filters.price'), icon };
     }
 
     const title =
@@ -62,6 +67,7 @@ export function useFilterPanelController({
         kind: 'range',
         key: facet.key,
         title,
+        icon,
         minName,
         maxName,
         minValue: queryNumber(params, minName),
@@ -97,6 +103,7 @@ export function useFilterPanelController({
       kind: 'options',
       key: facet.key,
       title,
+      icon,
       control: facet.control === 'radio' ? 'radio' : 'checkbox',
       options,
       selected,

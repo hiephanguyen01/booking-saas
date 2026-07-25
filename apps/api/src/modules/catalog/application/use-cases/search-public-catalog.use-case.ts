@@ -608,7 +608,13 @@ export class SearchPublicCatalogUseCase {
     for (const systemFacet of type.searchConfig.systemFacets) {
       if (systemFacet === 'price') {
         if (rows.length)
-          facets.push({ key: 'price', label: 'Khoảng giá', control: 'range', options: [] });
+          facets.push({
+            key: 'price',
+            label: 'Khoảng giá',
+            control: 'range',
+            options: [],
+            icon: null,
+          });
       } else if (systemFacet === 'location') {
         facets.push(
           optionFacet(
@@ -640,6 +646,7 @@ export class SearchPublicCatalogUseCase {
           label: field.label,
           control: 'range',
           options: [],
+          icon: field.icon ?? null,
           ...(values.length ? { min: Math.min(...values), max: Math.max(...values) } : {}),
         });
       } else {
@@ -660,7 +667,9 @@ export class SearchPublicCatalogUseCase {
                   (v) => [v, optionLabel(field, v)] as [string, string],
                 ),
               );
-        facets.push(optionFacet(`attr.${config.key}`, field.label, pairs, config.control));
+        facets.push(
+          optionFacet(`attr.${config.key}`, field.label, pairs, config.control, field.icon ?? null),
+        );
       }
     }
     return facets;
@@ -850,6 +859,7 @@ function optionFacet(
   label: string,
   pairs: Array<[string | null | undefined, string | null | undefined]>,
   control: 'checkbox' | 'radio' | 'buckets' = 'checkbox',
+  icon: string | null = null,
 ): PublicCatalogFacet {
   const counts = new Map<string, { label: string; count: number }>();
   for (const [value, option] of pairs) {
@@ -857,7 +867,13 @@ function optionFacet(
     const current = counts.get(value);
     counts.set(value, { label: option, count: (current?.count ?? 0) + 1 });
   }
-  return { key, label, control, options: [...counts].map(([value, item]) => ({ value, ...item })) };
+  return {
+    key,
+    label,
+    control,
+    icon,
+    options: [...counts].map(([value, item]) => ({ value, ...item })),
+  };
 }
 
 function optionLabel(field: AttributeField, value: string): string {

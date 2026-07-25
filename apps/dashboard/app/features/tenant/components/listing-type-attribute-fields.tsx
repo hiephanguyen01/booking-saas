@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import { Plus, X } from 'lucide-react';
+import { IconPicker } from '~/components/icon-picker';
 import { ATTRIBUTE_FIELD_TYPE_LABEL } from '../constants';
 import { normalizeSearchConfig } from './listing-type-search-config';
 
@@ -23,8 +24,11 @@ import { normalizeSearchConfig } from './listing-type-search-config';
 export const isChoice = (type: AttributeFieldType): boolean =>
   type === 'select' || type === 'multiselect';
 
+/** `list` attributes are descriptive bullet lists — display-only, never filterable. */
+export const isDisplayOnly = (type: AttributeFieldType): boolean => type === 'list';
+
 const FIELD_TYPES: { value: AttributeFieldType; label: string }[] = (
-  ['text', 'number', 'select', 'multiselect', 'boolean'] as const
+  ['text', 'number', 'select', 'multiselect', 'boolean', 'list'] as const
 ).map((value) => ({ value, label: ATTRIBUTE_FIELD_TYPE_LABEL[value] }));
 
 /**
@@ -185,6 +189,11 @@ export function ListingTypeAttributeFields({
                               ...(isChoice(v as AttributeFieldType)
                                 ? {}
                                 : { options: undefined }),
+                              // Display-only types can never be filtered — drop it
+                              // (update() also strips any facet pointing here).
+                              ...(isDisplayOnly(v as AttributeFieldType)
+                                ? { filterable: false }
+                                : {}),
                             })
                           }
                         >
@@ -199,6 +208,14 @@ export function ListingTypeAttributeFields({
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Biểu tượng</Label>
+                        <IconPicker
+                          value={a.icon ?? null}
+                          onChange={(icon) => update(i, { icon })}
+                          ariaLabel={`Biểu tượng cho ${a.label || a.key || 'thuộc tính'}`}
+                        />
                       </div>
                       {isChoice(a.type) ? (
                         <div className="space-y-1.5">
@@ -240,13 +257,19 @@ export function ListingTypeAttributeFields({
                       />
                       Bắt buộc
                     </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={a.filterable}
-                        onCheckedChange={(v) => update(i, { filterable: v === true })}
-                      />
-                      Lọc được
-                    </label>
+                    {isDisplayOnly(a.type) ? (
+                      <span className="text-sm text-muted-foreground">
+                        Danh sách chỉ để hiển thị (không lọc được)
+                      </span>
+                    ) : (
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={a.filterable}
+                          onCheckedChange={(v) => update(i, { filterable: v === true })}
+                        />
+                        Lọc được
+                      </label>
+                    )}
                   </div>
                 </div>
               ))}

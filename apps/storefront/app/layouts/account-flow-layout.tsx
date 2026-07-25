@@ -5,7 +5,7 @@ import { SiteFooter } from './site-footer';
 import { SiteHeader } from './site-header';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
-import { typeIcon } from '../lib/ui';
+import { ListingTypeGlyph } from '../components/listing-type-glyph';
 
 type AccountFlowLayoutProps = {
   children: ReactNode;
@@ -55,25 +55,22 @@ function CategoryNav({ context }: { context: StorefrontContext }) {
   return (
     <nav aria-label={t('categories')} className="bg-foreground text-background">
       <div className="mx-auto flex h-14 max-w-292.5 items-center gap-1 overflow-x-auto px-4 sm:px-6 xl:px-0">
-        {context.listingTypes.map((type) => {
-          const Icon = typeIcon(type.slug);
-          return (
-            <NavLink
-              key={type.id}
-              to={storefrontPaths.catalog(context.locale, type.slug)}
-              className={({ isActive }) =>
-                `inline-flex h-9 shrink-0 items-center gap-2 rounded-sm px-3 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background ${
-                  isActive
-                    ? 'bg-background/15 text-background'
-                    : 'text-background/70 hover:bg-background/10 hover:text-background'
-                }`
-              }
-            >
-              <Icon className="size-4" aria-hidden="true" />
-              {type.name}
-            </NavLink>
-          );
-        })}
+        {context.listingTypes.map((type) => (
+          <NavLink
+            key={type.id}
+            to={storefrontPaths.catalog(context.locale, type.slug)}
+            className={({ isActive }) =>
+              `inline-flex h-9 shrink-0 items-center gap-2 rounded-sm px-3 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background ${
+                isActive
+                  ? 'bg-background/15 text-background'
+                  : 'text-background/70 hover:bg-background/10 hover:text-background'
+              }`
+            }
+          >
+            <ListingTypeGlyph type={type} className="size-4" />
+            {type.name}
+          </NavLink>
+        ))}
       </div>
     </nav>
   );

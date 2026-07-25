@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-grou
 import { ChevronDown, Star } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Form, Link } from 'react-router';
+import { LucideByName } from '../../../components/lucide-by-name';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { StorefrontSearchState } from '../../search/search-state';
 import {
@@ -98,7 +99,7 @@ export function FilterPanel({
       {facetModels.map((facet) => {
         if (facet.kind === 'price') {
           return (
-            <FilterSection key={facet.key} title={facet.title}>
+            <FilterSection key={facet.key} title={facet.title} icon={facet.icon}>
               <div className="flex items-center gap-2">
                 <PriceInput name="minPrice" value={state.minPrice} label={t('filters.minPrice')} />
                 <span aria-hidden="true">–</span>
@@ -110,7 +111,7 @@ export function FilterPanel({
 
         if (facet.kind === 'range') {
           return (
-            <FilterSection key={facet.key} title={facet.title}>
+            <FilterSection key={facet.key} title={facet.title} icon={facet.icon}>
               <div className="flex items-center gap-2">
                 <input
                   aria-label={`${facet.title}: ${t('filters.minimum')}`}
@@ -135,7 +136,7 @@ export function FilterPanel({
         }
 
         return (
-          <FilterSection key={facet.key} title={facet.title}>
+          <FilterSection key={facet.key} title={facet.title} icon={facet.icon}>
             {facet.control === 'radio' ? (
               <FilterRadioList
                 name={facet.key}
@@ -313,10 +314,21 @@ function OptionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-function FilterSection({ title, children }: { title: string; children: ReactNode }) {
+function FilterSection({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon?: string | null;
+  children: ReactNode;
+}) {
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-3 text-sm font-medium text-foreground">{title}</legend>
+      <legend className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+        {icon ? <LucideByName name={icon} className="size-4 text-muted-foreground" /> : null}
+        {title}
+      </legend>
       {children}
     </fieldset>
   );

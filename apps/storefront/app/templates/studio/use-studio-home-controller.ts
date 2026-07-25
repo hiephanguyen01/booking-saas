@@ -10,9 +10,9 @@ export function useStudioHomeController({
   listingTypes: PublicListingTypeResponse[];
   listings: PublicListingResponse[];
 }) {
-  const [selectedType, setSelectedType] = useState(
-    listingTypes.find((type) => type.slug === 'studio')?.slug ?? listingTypes[0]?.slug ?? '',
-  );
+  // Default to the tenant's first listing type (by sortOrder from the API) — never a
+  // hard-coded slug, so the home reflects whatever types the tenant actually created.
+  const [selectedType, setSelectedType] = useState(listingTypes[0]?.slug ?? '');
   const [filterPending, triggerFilterPending] = useMinimumPendingPulse();
   const selectedListingType = listingTypes.find((type) => type.slug === selectedType);
   const visibleListings = selectedType

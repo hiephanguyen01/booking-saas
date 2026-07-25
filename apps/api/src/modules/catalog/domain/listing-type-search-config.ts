@@ -19,6 +19,8 @@ const CONTROL_BY_TYPE: Record<
   multiselect: new Set(['checkbox']),
   number: new Set(['range', 'buckets']),
   text: new Set(['checkbox', 'radio']),
+  // `list` is display-only — it can never back a search facet.
+  list: new Set([]),
 };
 
 function bucketsOverlap(
