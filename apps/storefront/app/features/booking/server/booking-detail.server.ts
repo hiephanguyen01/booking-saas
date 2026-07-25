@@ -56,6 +56,9 @@ export async function handleBookingDetailAction(request: Request, code: string, 
     return verifyAccess(request, code, locale, form);
   }
   if (intent === 'mock-pay') {
+    if (!mockPaymentsEnabled()) {
+      return data({ ok: false, error: 'NOT_FOUND' }, { status: 404 });
+    }
     const result = await mockPay(request, code);
     return data(
       { ok: result.ok, error: result.error ?? null },
