@@ -1,5 +1,6 @@
 import { sessionInfoResponseSchema, type SessionInfoResponse } from '@booking/contracts';
 import { apiGet, backendRefresh } from './api.server';
+import { loadAuthSessionSnapshot } from './auth-session-snapshot.server';
 import {
   runWithStorefrontRequestContext,
   type StorefrontRequestContextState,
@@ -23,9 +24,26 @@ type AuthResult =
 
 type AccessResult = AuthResult | { kind: 'expired' };
 
-async function checkAccess(data: StorefrontSessionData, request: Request): Promise<AccessResult> {
-  const result = await apiGet<SessionInfoResponse>(request, '/auth/session', data.accessToken, {
-    schema: sessionInfoResponseSchema,
+interface SessionCacheIdentity {
+  tenantId: string;
+  sessionId: string;
+}
+
+async function checkAccess(
+  data: StorefrontSessionData,
+  request: Request,
+  identity: SessionCacheIdentity,
+): Promise<AccessResult> {
+  // The process-level single-flight must not inherit one browser request's abort
+  // signal, otherwise an aborted navigation could fail every concurrent waiter.
+  const probeRequest = new Request(request.url, { headers: request.headers });
+  const result = await loadAuthSessionSnapshot({
+    ...identity,
+    accessToken: data.accessToken,
+    probe: () =>
+      apiGet<SessionInfoResponse>(probeRequest, '/auth/session', data.accessToken, {
+        schema: sessionInfoResponseSchema,
+      }),
   });
   if (result.ok && result.data) {
     return { kind: 'authenticated', info: result.data, data };
@@ -42,8 +60,10 @@ async function authenticate(
   stored: { id: string; data: StorefrontSessionData },
   request: Request,
   service: StorefrontSessionService,
+  tenantId: string,
 ): Promise<AuthResult> {
-  const initial = await checkAccess(stored.data, request);
+  const identity = { tenantId, sessionId: stored.id };
+  const initial = await checkAccess(stored.data, request, identity);
   if (initial.kind !== 'expired') return initial;
 
   let observed = stored.data;
@@ -57,7 +77,7 @@ async function authenticate(
 
         if (!sameSessionTokens(latest, observed)) {
           observed = latest;
-          const current = await checkAccess(latest, request);
+          const current = await checkAccess(latest, request, identity);
           if (current.kind !== 'expired') return current;
         }
 
@@ -67,7 +87,7 @@ async function authenticate(
         }
 
         const next = { ...latest, ...refreshed.tokens };
-        const retried = await checkAccess(next, request);
+        const retried = await checkAccess(next, request, identity);
         if (retried.kind === 'expired') return { kind: 'invalid' };
         if (retried.kind !== 'authenticated') return retried;
 
@@ -83,7 +103,7 @@ async function authenticate(
         if (sameSessionTokens(latest, observed)) return { resolved: false };
 
         observed = latest;
-        const current = await checkAccess(latest, request);
+        const current = await checkAccess(latest, request, identity);
         return current.kind === 'expired'
           ? { resolved: false }
           : { resolved: true, value: current };
@@ -115,7 +135,7 @@ export async function storefrontAuthMiddleware(
       next,
     );
   }
-  const result = await authenticate(stored, request, service);
+  const result = await authenticate(stored, request, service, tenant.id);
   if (result.kind === 'unavailable') {
     throw new Response('Authentication service temporarily unavailable', { status: 503 });
   }
