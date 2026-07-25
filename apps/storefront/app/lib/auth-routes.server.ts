@@ -140,6 +140,13 @@ export async function verifyAction(
   const flow = await requireFlowPhase(request, expected, start);
   const form = await request.formData();
   if (form.get('intent') === 'resend') {
+    if (flow.resendAfterSec > 0) {
+      return data<AuthActionData>(
+        { resent: false, resendAfterSec: flow.resendAfterSec },
+        { status: 429 },
+      );
+    }
+
     const result = await publicPost<AuthChallengeResponse>(
       request,
       `/auth/${purpose === 'registration' ? 'registration' : 'password-reset'}/resend`,

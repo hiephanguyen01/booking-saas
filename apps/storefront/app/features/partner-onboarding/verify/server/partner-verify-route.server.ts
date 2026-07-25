@@ -28,6 +28,10 @@ export async function submitPartnerVerifyRoute(request: Request, localeParam?: s
   const form = await request.formData();
 
   if (form.get('intent') === 'resend') {
+    if (flow.resendAfterSec > 0) {
+      return data({ resendAfterSec: flow.resendAfterSec }, { status: 429 });
+    }
+
     const result = await publicPost<AuthChallengeResponse>(
       request,
       '/auth/registration/resend',
