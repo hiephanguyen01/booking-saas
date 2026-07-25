@@ -149,6 +149,7 @@ export function CategoryPicker({
     >
       {types.map((type) => {
         const Icon = typeIcon(type.slug);
+        const iconClass = cn(isHero ? 'size-7 md:size-8' : 'size-5');
         return (
           <ToggleGroupItem
             key={type.id}
@@ -160,11 +161,20 @@ export function CategoryPicker({
                 : 'min-h-11 gap-2 rounded-full! border border-transparent px-4 py-2 text-sm text-background/75 hover:bg-background/10 hover:text-background data-[state=on]:border-background data-[state=on]:bg-transparent data-[state=on]:text-background',
             )}
           >
-            <Icon
-              className={cn(isHero ? 'size-7 text-foreground md:size-8' : 'size-5')}
-              strokeWidth={1.7}
-              aria-hidden="true"
-            />
+            {type.iconImageUrl ? (
+              <img
+                src={type.iconImageUrl}
+                alt=""
+                className={cn(iconClass, 'object-contain')}
+                aria-hidden="true"
+              />
+            ) : (
+              <Icon
+                className={cn(iconClass, isHero && 'text-foreground')}
+                strokeWidth={1.7}
+                aria-hidden="true"
+              />
+            )}
             {type.name}
           </ToggleGroupItem>
         );
