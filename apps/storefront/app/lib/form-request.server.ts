@@ -4,6 +4,8 @@ export type FormRequestBody =
   | { ok: true; value: FormData }
   | { ok: false; code: 'INVALID_FORM_DATA' | 'PAYLOAD_TOO_LARGE' };
 
+export type FormRequestFailureCode = Extract<FormRequestBody, { ok: false }>['code'];
+
 interface FormReadableRequest {
   body?: ReadableStream<Uint8Array> | null;
   headers?: { get(name: string): string | null };
@@ -75,7 +77,7 @@ async function parseFormBytes(
   }
 }
 
-export function formRequestFailureStatus(code: FormRequestBody extends infer _Result ? 'INVALID_FORM_DATA' | 'PAYLOAD_TOO_LARGE' : never): 400 | 413 {
+export function formRequestFailureStatus(code: FormRequestFailureCode): 400 | 413 {
   return code === 'PAYLOAD_TOO_LARGE' ? 413 : 400;
 }
 
