@@ -42,9 +42,9 @@ export class RedisBookingAccessGrantStore implements IBookingAccessGrantStore {
     }
   }
 
-  revoke(token: string): Promise<number> {
-    if (!token || token.length > MAX_TOKEN_LENGTH) return Promise.resolve(0);
-    return this.redis.del(this.key(token));
+  async revoke(token: string): Promise<void> {
+    if (!token || token.length > MAX_TOKEN_LENGTH) return;
+    await this.redis.del(this.key(token));
   }
 
   private key(token: string): string {
