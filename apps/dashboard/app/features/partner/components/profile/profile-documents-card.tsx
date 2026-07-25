@@ -1,4 +1,5 @@
-import { Form } from 'react-router';
+import type { FormEvent } from 'react';
+import { Form, useNavigation, useSubmit } from 'react-router';
 import { Trash2 } from 'lucide-react';
 import type { PartnerResponse, UpdatePartnerDocumentsInput } from '@booking/contracts';
 import { updatePartnerDocumentsInputSchema } from '@booking/contracts';
@@ -14,7 +15,7 @@ import {
 } from '@booking/ui/components/ui/card';
 import { SuccessBanner } from '~/components/action-feedback';
 import { PhotoStrip } from '~/components/photo-strip';
-import { useBusy } from '~/hooks/use-busy';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import type { PartnerProfileActionResult } from '../../server/profile-actions.server';
 
 const documentFields: FieldConfig<UpdatePartnerDocumentsInput>[] = [
@@ -55,13 +56,21 @@ export function ProfileDocumentsCard({
   partner: PartnerResponse;
   result: PartnerProfileActionResult | null;
 }) {
-  const busy = useBusy();
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy, run } = useSubmissionGuard(navigation.state);
   const logoUrl = readString(partner.businessInfo.logoUrl);
   const licenseDocs = readStringArray(partner.businessInfo.licenseDocs);
   const documentDefaults = { logoUrl, licenseDocs: [] as string[] };
 
+  const handleDelete = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <Card>
+    <Card aria-busy={busy}>
       <CardHeader>
         <CardTitle>Logo & giấy tờ</CardTitle>
         <CardDescription>
@@ -80,7 +89,7 @@ export function ProfileDocumentsCard({
               {licenseDocs.map((url, i) => (
                 <div key={`${url}-${i}`} className="space-y-1.5">
                   <PhotoStrip photos={[url]} alt="Giấy tờ" />
-                  <Form method="post">
+                  <Form method="post" onSubmit={handleDelete}>
                     <input type="hidden" name="intent" value="deleteDoc" />
                     <input type="hidden" name="url" value={url} />
                     <Button
@@ -99,19 +108,21 @@ export function ProfileDocumentsCard({
           )}
         </div>
 
-        <div className="border-t border-border pt-6">
-          <h3 className="mb-4 text-sm font-semibold">Tải lên</h3>
-          <GenericForm
-            schema={updatePartnerDocumentsInputSchema}
-            fields={documentFields}
-            defaultValues={documentDefaults}
-            submitLabel="Lưu giấy tờ"
-            method="patch"
-            transform={(v) => ({ ...v, intent: 'documents' })}
-            serverError={result?.error ?? null}
-            fieldErrors={result?.fieldErrors ?? null}
-          />
-        </div>
+        <fieldset disabled={busy} className="contents">
+          <div className="border-t border-border pt-6">
+            <h3 className="mb-4 text-sm font-semibold">Tải lên</h3>
+            <GenericForm
+              schema={updatePartnerDocumentsInputSchema}
+              fields={documentFields}
+              defaultValues={documentDefaults}
+              submitLabel="Lưu giấy tờ"
+              method="patch"
+              transform={(v) => ({ ...v, intent: 'documents' })}
+              serverError={result?.error ?? null}
+              fieldErrors={result?.fieldErrors ?? null}
+            />
+          </div>
+        </fieldset>
       </CardContent>
     </Card>
   );
