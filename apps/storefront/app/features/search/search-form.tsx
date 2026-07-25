@@ -94,12 +94,17 @@ export function SearchForm({
       >
         {isHero && availableModes.length ? (
           <div className="flex flex-col items-start gap-2">
-            <ModeToggle
-              mode={mode}
-              modes={availableModes}
-              onModeChange={changeMode}
-              appearance="pills"
-            />
+            {/* Only offer the day/hour toggle when the type actually supports both.
+                A type with a single booking mode needs no toggle — its lone mode is
+                applied silently (the hidden `mode` input below still carries it). */}
+            {availableModes.length > 1 ? (
+              <ModeToggle
+                mode={mode}
+                modes={availableModes}
+                onModeChange={changeMode}
+                appearance="pills"
+              />
+            ) : null}
             <span className="text-xs font-medium text-primary">{modeHint(mode, t)}</span>
           </div>
         ) : null}
