@@ -1,3 +1,4 @@
+import { customerPaymentMethodSchema } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import {
@@ -116,7 +117,28 @@ async function retryPayment(request: Request, code: string, locale: Locale, form
   }
 
   const options = await fetchPaymentOptions(request);
-  const checkout = await checkoutBooking(request, bookingId, options.methods[0]);
+  const hasStoredPaymentMethod = flow?.record.paymentMethod !== undefined;
+  const storedPaymentMethod = customerPaymentMethodSchema.safeParse(flow?.record.paymentMethod);
+  const paymentMethod =
+    storedPaymentMethod.success && options.methods.includes(storedPaymentMethod.data)
+      ? storedPaymentMethod.data
+      : !hasStoredPaymentMethod && options.methods.length === 1
+        ? options.methods[0]!
+        : null;
+
+  if (!paymentMethod) {
+    return data(
+      {
+        ok: false,
+        error: hasStoredPaymentMethod
+          ? 'PAYMENT_METHOD_UNAVAILABLE'
+          : 'PAYMENT_METHOD_SELECTION_REQUIRED',
+      },
+      { status: 409 },
+    );
+  }
+
+  const checkout = await checkoutBooking(request, bookingId, paymentMethod);
   const destination = checkout.data?.destination;
   if (
     checkout.ok &&
