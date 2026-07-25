@@ -1,4 +1,5 @@
-import { Form, useNavigation } from 'react-router';
+import type { FormEvent } from 'react';
+import { Form, useNavigation, useSubmit } from 'react-router';
 import type { GatewayConfigResponse, GatewayKey } from '@booking/contracts';
 import { Alert, AlertDescription } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
@@ -14,6 +15,7 @@ import { CircleAlert, PowerOff, WalletCards } from 'lucide-react';
 import { SepayGatewayBody } from './sepay-gateway-card';
 import { MomoGatewayBody } from './momo-gateway-card';
 import { ZalopayGatewayBody } from './zalopay-gateway-card';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 const BASE_GATEWAYS: readonly GatewayKey[] = ['sepay', 'payos', 'mock'];
 
@@ -48,14 +50,22 @@ export function PaymentGatewayCard({
   const momoConfig = configs.find((c) => c.gateway === 'momo') ?? null;
   const zalopayConfig = configs.find((c) => c.gateway === 'zalopay') ?? null;
 
-  const nav = useNavigation();
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy, run } = useSubmissionGuard(navigation.state);
   const disablingGateway =
-    nav.state !== 'idle' && nav.formData?.get('intent') === 'disable-gateway'
-      ? String(nav.formData.get('gateway') ?? '')
+    navigation.state !== 'idle' && navigation.formData?.get('intent') === 'disable-gateway'
+      ? String(navigation.formData.get('gateway') ?? '')
       : null;
 
+  const handleDisable = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <Card>
+    <Card aria-busy={busy}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -76,102 +86,104 @@ export function PaymentGatewayCard({
           </Alert>
         ) : null}
 
-        <section>
-          <h3 className="mb-1 text-sm font-semibold">Cổng cơ bản</h3>
-          <p className="mb-4 text-xs leading-5 text-muted-foreground">
-            Chuyển khoản ngân hàng, Napas QR và thẻ nội địa/quốc tế.
-          </p>
-          {!base ? (
-            <Alert className="mb-4">
-              <PowerOff className="size-4" />
-              <AlertDescription>
-                Chưa bật cổng cơ bản. Khách chưa thể thanh toán chuyển khoản hoặc thẻ trên storefront.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          <SepayGatewayBody
-            config={base}
-            readOnly={readOnly}
-            saved={sepaySaved}
-            error={sepayError}
-            fieldErrors={sepayFieldErrors}
-          />
-          {base?.gateway === 'sepay' ? (
-            <Form method="post" className="mt-3">
-              <input type="hidden" name="intent" value="disable-gateway" />
-              <input type="hidden" name="gateway" value="sepay" />
-              <Button
-                type="submit"
-                variant="destructive"
-                size="sm"
-                disabled={readOnly || disablingGateway === 'sepay'}
-              >
-                {disablingGateway === 'sepay' ? 'Đang tắt…' : 'Tắt cổng cơ bản'}
-              </Button>
-            </Form>
-          ) : null}
-        </section>
+        <fieldset disabled={busy} className="contents">
+          <section>
+            <h3 className="mb-1 text-sm font-semibold">Cổng cơ bản</h3>
+            <p className="mb-4 text-xs leading-5 text-muted-foreground">
+              Chuyển khoản ngân hàng, Napas QR và thẻ nội địa/quốc tế.
+            </p>
+            {!base ? (
+              <Alert className="mb-4">
+                <PowerOff className="size-4" />
+                <AlertDescription>
+                  Chưa bật cổng cơ bản. Khách chưa thể thanh toán chuyển khoản hoặc thẻ trên storefront.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <SepayGatewayBody
+              config={base}
+              readOnly={readOnly}
+              saved={sepaySaved}
+              error={sepayError}
+              fieldErrors={sepayFieldErrors}
+            />
+            {base?.gateway === 'sepay' ? (
+              <Form method="post" className="mt-3" onSubmit={handleDisable}>
+                <input type="hidden" name="intent" value="disable-gateway" />
+                <input type="hidden" name="gateway" value="sepay" />
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  size="sm"
+                  disabled={readOnly || busy}
+                >
+                  {disablingGateway === 'sepay' ? 'Đang tắt…' : 'Tắt cổng cơ bản'}
+                </Button>
+              </Form>
+            ) : null}
+          </section>
 
-        <Separator />
+          <Separator />
 
-        <section>
-          <h3 className="mb-1 text-sm font-semibold">Ví điện tử (song song)</h3>
-          <p className="mb-4 text-xs leading-5 text-muted-foreground">
-            Có thể bật cùng lúc nhiều ví — mỗi ví hoạt động độc lập, không ảnh hưởng đến cổng cơ bản
-            hay ví còn lại.
-          </p>
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div className="rounded-xl border p-4">
-              <WalletStatusLine enabled={Boolean(momoConfig)} label="MoMo" />
-              <MomoGatewayBody
-                config={momoConfig}
-                readOnly={readOnly}
-                saved={momoSaved}
-                error={momoError}
-                fieldErrors={momoFieldErrors}
-              />
-              {momoConfig ? (
-                <Form method="post" className="mt-3">
-                  <input type="hidden" name="intent" value="disable-gateway" />
-                  <input type="hidden" name="gateway" value="momo" />
-                  <Button
-                    type="submit"
-                    variant="destructive"
-                    size="sm"
-                    disabled={readOnly || disablingGateway === 'momo'}
-                  >
-                    {disablingGateway === 'momo' ? 'Đang tắt…' : 'Tắt ví MoMo'}
-                  </Button>
-                </Form>
-              ) : null}
+          <section>
+            <h3 className="mb-1 text-sm font-semibold">Ví điện tử (song song)</h3>
+            <p className="mb-4 text-xs leading-5 text-muted-foreground">
+              Có thể bật cùng lúc nhiều ví — mỗi ví hoạt động độc lập, không ảnh hưởng đến cổng cơ bản
+              hay ví còn lại.
+            </p>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="rounded-xl border p-4">
+                <WalletStatusLine enabled={Boolean(momoConfig)} label="MoMo" />
+                <MomoGatewayBody
+                  config={momoConfig}
+                  readOnly={readOnly}
+                  saved={momoSaved}
+                  error={momoError}
+                  fieldErrors={momoFieldErrors}
+                />
+                {momoConfig ? (
+                  <Form method="post" className="mt-3" onSubmit={handleDisable}>
+                    <input type="hidden" name="intent" value="disable-gateway" />
+                    <input type="hidden" name="gateway" value="momo" />
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      size="sm"
+                      disabled={readOnly || busy}
+                    >
+                      {disablingGateway === 'momo' ? 'Đang tắt…' : 'Tắt ví MoMo'}
+                    </Button>
+                  </Form>
+                ) : null}
+              </div>
+
+              <div className="rounded-xl border p-4">
+                <WalletStatusLine enabled={Boolean(zalopayConfig)} label="ZaloPay" />
+                <ZalopayGatewayBody
+                  config={zalopayConfig}
+                  readOnly={readOnly}
+                  saved={zalopaySaved}
+                  error={zalopayError}
+                  fieldErrors={zalopayFieldErrors}
+                />
+                {zalopayConfig ? (
+                  <Form method="post" className="mt-3" onSubmit={handleDisable}>
+                    <input type="hidden" name="intent" value="disable-gateway" />
+                    <input type="hidden" name="gateway" value="zalopay" />
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      size="sm"
+                      disabled={readOnly || busy}
+                    >
+                      {disablingGateway === 'zalopay' ? 'Đang tắt…' : 'Tắt ví ZaloPay'}
+                    </Button>
+                  </Form>
+                ) : null}
+              </div>
             </div>
-
-            <div className="rounded-xl border p-4">
-              <WalletStatusLine enabled={Boolean(zalopayConfig)} label="ZaloPay" />
-              <ZalopayGatewayBody
-                config={zalopayConfig}
-                readOnly={readOnly}
-                saved={zalopaySaved}
-                error={zalopayError}
-                fieldErrors={zalopayFieldErrors}
-              />
-              {zalopayConfig ? (
-                <Form method="post" className="mt-3">
-                  <input type="hidden" name="intent" value="disable-gateway" />
-                  <input type="hidden" name="gateway" value="zalopay" />
-                  <Button
-                    type="submit"
-                    variant="destructive"
-                    size="sm"
-                    disabled={readOnly || disablingGateway === 'zalopay'}
-                  >
-                    {disablingGateway === 'zalopay' ? 'Đang tắt…' : 'Tắt ví ZaloPay'}
-                  </Button>
-                </Form>
-              ) : null}
-            </div>
-          </div>
-        </section>
+          </section>
+        </fieldset>
       </CardContent>
     </Card>
   );
