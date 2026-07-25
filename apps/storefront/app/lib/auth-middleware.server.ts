@@ -34,11 +34,14 @@ async function checkAccess(
   request: Request,
   identity: SessionCacheIdentity,
 ): Promise<AccessResult> {
+  // The process-level single-flight must not inherit one browser request's abort
+  // signal, otherwise an aborted navigation could fail every concurrent waiter.
+  const probeRequest = new Request(request.url, { headers: request.headers });
   const result = await loadAuthSessionSnapshot({
     ...identity,
     accessToken: data.accessToken,
     probe: () =>
-      apiGet<SessionInfoResponse>(request, '/auth/session', data.accessToken, {
+      apiGet<SessionInfoResponse>(probeRequest, '/auth/session', data.accessToken, {
         schema: sessionInfoResponseSchema,
       }),
   });
