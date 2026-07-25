@@ -39,7 +39,12 @@ export function useBookingDetailController({
 
   const handoffDestination =
     actionData && 'handoff' in actionData && actionData.handoff ? actionData.handoff : null;
-  const actionError = actionData && !actionData.ok ? actionData.error : null;
+  const rawActionError = actionData && !actionData.ok ? actionData.error : null;
+  const actionError =
+    rawActionError === 'PAYMENT_METHOD_SELECTION_REQUIRED' ||
+    rawActionError === 'PAYMENT_METHOD_UNAVAILABLE'
+      ? 'PAYMENT_RETRY_UNAVAILABLE'
+      : rawActionError;
 
   return {
     handoffDestination,
