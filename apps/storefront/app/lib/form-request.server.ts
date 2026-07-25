@@ -23,7 +23,7 @@ function declaredContentLength(request: FormReadableRequest): number | null {
 async function readBodyBytes(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
-): Promise<Uint8Array | null> {
+): Promise<ArrayBuffer | null> {
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
@@ -51,7 +51,7 @@ async function readBodyBytes(
     bodyBytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return bodyBytes;
+  return bodyBytes.buffer;
 }
 
 function invalidFormData(error: unknown): FormRequestBody {
@@ -62,7 +62,7 @@ function invalidFormData(error: unknown): FormRequestBody {
 }
 
 async function parseFormBytes(
-  bodyBytes: Uint8Array,
+  bodyBytes: ArrayBuffer,
   contentType: string | null,
 ): Promise<FormRequestBody> {
   if (!contentType) return { ok: false, code: 'INVALID_FORM_DATA' };
