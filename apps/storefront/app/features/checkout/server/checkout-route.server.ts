@@ -182,8 +182,8 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
     );
   }
 
-  const booking = created.data.booking;
-  const accessGrant = created.data.accessGrant ?? undefined;
+  const booking = created.data;
+  const accessGrant = booking.accessGrant ?? undefined;
   const headers = new Headers();
   headers.append('Set-Cookie', await appendRecentCookie(request, booking.code));
   headers.append(
