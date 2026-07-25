@@ -94,6 +94,15 @@ export function createCheckoutFlowService(store: RedisJsonStore = storefrontRedi
     }
   }
 
+  async function writeRecord(id: string, record: CheckoutFlowRecord): Promise<void> {
+    try {
+      await store.set(`${PREFIX}${id}`, record, TTL_SECONDS);
+    } catch {
+      // Redis stores display/retry metadata only. Do not fail a booking that the
+      // API already created; the signed cookie grant remains enough to authorize.
+    }
+  }
+
   return {
     async readForCode(request: Request, bookingCode: string): Promise<CheckoutFlowRead | null> {
       const normalizedCode = bookingCode.trim().toUpperCase();
@@ -135,7 +144,7 @@ export function createCheckoutFlowService(store: RedisJsonStore = storefrontRedi
       };
       const existing = await entriesFrom(request);
       const id = randomUUID();
-      await store.set(`${PREFIX}${id}`, normalizedRecord, TTL_SECONDS);
+      await writeRecord(id, normalizedRecord);
 
       const replaced = existing.filter(
         (entry) => entry.bookingCode === normalizedRecord.bookingCode || entry.id === id,
