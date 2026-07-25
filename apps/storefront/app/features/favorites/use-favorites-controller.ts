@@ -108,17 +108,23 @@ export function useFavoritesController({
 
   useEffect(() => {
     for (const fetcher of fetchers) {
-      if (fetcher.state !== 'idle' || fetcher.data == null) continue;
+      if (fetcher.state !== 'idle') continue;
       const key = fetcher.key;
       const active = inFlight.current.get(key);
       if (!active) continue;
 
-      const result = fetcher.data as FavoriteActionResult;
-      if (result.clientMutationId !== active.mutationId) continue;
+      const result =
+        fetcher.data && typeof fetcher.data === 'object'
+          ? (fetcher.data as FavoriteActionResult)
+          : null;
+      // Fetcher data may be empty after a route/network failure or may still hold
+      // the previous submission's result. Either case settles the current write as
+      // rejected; leaving it in `inFlight` would block every later toggle for this key.
+      const rejected =
+        result?.clientMutationId !== active.mutationId || result.ok !== true;
 
       inFlight.current.delete(key);
       const queued = pending.current.get(key);
-      const rejected = result.ok === false;
 
       if (rejected && !queued) {
         setOverrides((prev) => {
