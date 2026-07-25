@@ -15,12 +15,12 @@ import {
   validatePromo,
 } from '../../../lib/booking.server';
 import { fetchListing, fetchQuote } from '../../../lib/catalog.server';
+import { getCheckoutFlowService, maskCheckoutEmail } from '../../../lib/checkout-flow.server';
 import {
   buildCheckoutIdempotencyKey,
   createCheckoutAttemptId,
   parseCheckoutAttemptId,
 } from '../../../lib/checkout-idempotency.server';
-import { getCheckoutFlowService, maskCheckoutEmail } from '../../../lib/checkout-flow.server';
 import { errorStatus } from '../../../lib/http-status';
 import { createTranslator } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
@@ -182,25 +182,36 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
     );
   }
 
-  const booking = created.data;
+  const booking = created.data.booking;
+  const accessGrant = created.data.accessGrant ?? undefined;
   const headers = new Headers();
   headers.append('Set-Cookie', await appendRecentCookie(request, booking.code));
   headers.append(
     'Set-Cookie',
-    await getCheckoutFlowService().create(request, {
-      bookingId: booking.id,
-      bookingCode: booking.code,
-      listingSlug: String(form.get('listingSlug') ?? ''),
-      locale,
-      maskedEmail: maskCheckoutEmail(guest.data.email),
-    }),
+    await getCheckoutFlowService().create(
+      request,
+      {
+        bookingId: booking.id,
+        bookingCode: booking.code,
+        listingSlug: String(form.get('listingSlug') ?? ''),
+        locale,
+        maskedEmail: maskCheckoutEmail(guest.data.email),
+      },
+      accessGrant,
+    ),
   );
 
   if (booking.status !== 'pending_payment') {
     return redirect(storefrontPaths.booking(locale, booking.code), { headers });
   }
 
-  const checkout = await checkoutBooking(request, booking.id, paymentMethod.data);
+  const checkout = await checkoutBooking(
+    request,
+    booking.id,
+    booking.code,
+    paymentMethod.data,
+    accessGrant,
+  );
   if (!checkout.ok) {
     return data(
       {
