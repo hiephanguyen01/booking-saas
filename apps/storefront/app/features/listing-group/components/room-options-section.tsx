@@ -1,4 +1,8 @@
 import type { HourlySlot } from '@booking/contracts';
+import {
+  MediaViewerDialog,
+  type MediaViewerItem,
+} from '@booking/ui/components/media/media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Empty,
@@ -8,8 +12,10 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { Building2 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { SectionCard } from '../../../components/section-card';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '../listing-group-types';
 import { roomAvailabilityState } from '../listing-group-utils';
 import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
@@ -30,6 +36,9 @@ export function RoomOptionsSection({
   hideUnavailableByDefault: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const viewerLabels = useMediaViewerLabels();
+  const [activeMedia, setActiveMedia] = useState<{ roomId: string; index: number } | null>(null);
+  const mediaTriggerRef = useRef<HTMLButtonElement | null>(null);
   const {
     browsing,
     hideUnavailable,
@@ -38,6 +47,20 @@ export function RoomOptionsSection({
     unavailableCount,
     visibleOptions,
   } = useRoomOptionsController({ hideUnavailableByDefault, roomOptions });
+  const activeRoom = activeMedia
+    ? (visibleOptions.find((option) => option.child.id === activeMedia.roomId) ?? null)
+    : null;
+  const mediaItems: MediaViewerItem[] =
+    activeRoom?.child.photos.map((photo, index) => ({
+      kind: 'image',
+      url: photo,
+      alt: t('group.photoAlt', { title: activeRoom.child.title, index: index + 1 }),
+    })) ?? [];
+
+  function openRoomMedia(roomId: string, index: number, trigger: HTMLButtonElement): void {
+    mediaTriggerRef.current = trigger;
+    setActiveMedia({ roomId, index });
+  }
 
   return (
     <SectionCard id="room-options" aria-labelledby="room-options-title" className="scroll-mt-28">
@@ -55,12 +78,7 @@ export function RoomOptionsSection({
           </p>
         </div>
         {unavailableCount > 0 ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={toggleHideUnavailable}
-          >
+          <Button type="button" size="sm" variant="outline" onClick={toggleHideUnavailable}>
             {hideUnavailable
               ? t('group.showUnavailableRooms', { count: unavailableCount })
               : t('group.hideUnavailableRooms')}
@@ -98,6 +116,7 @@ export function RoomOptionsSection({
                     mode={mode}
                     date={date}
                     slots={slotsByRoom.get(option.child.id) ?? []}
+                    onOpenMedia={openRoomMedia}
                   />
                 ))}
               </tbody>
@@ -112,6 +131,7 @@ export function RoomOptionsSection({
                 mode={mode}
                 date={date}
                 slots={slotsByRoom.get(option.child.id) ?? []}
+                onOpenMedia={openRoomMedia}
               />
             ))}
           </div>
@@ -127,6 +147,21 @@ export function RoomOptionsSection({
           </EmptyHeader>
         </Empty>
       )}
+
+      <MediaViewerDialog
+        open={Boolean(activeRoom)}
+        items={mediaItems}
+        activeIndex={activeMedia?.index ?? 0}
+        onOpenChange={(open) => {
+          if (!open) setActiveMedia(null);
+        }}
+        onActiveIndexChange={(index) => {
+          setActiveMedia((current) => (current ? { ...current, index } : current));
+        }}
+        labels={viewerLabels}
+        title={activeRoom?.child.title ?? t('group.roomTypes')}
+        returnFocusRef={mediaTriggerRef}
+      />
     </SectionCard>
   );
 }
@@ -137,14 +172,18 @@ interface RoomProps {
   mode: BookingMode;
   date: string;
   slots: HourlySlot[];
+  onOpenMedia: (roomId: string, index: number, trigger: HTMLButtonElement) => void;
 }
 
-function RoomRow({ option, groupSlug, mode, date, slots }: RoomProps) {
+function RoomRow({ option, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <tr className="border-t border-border align-top">
       <td className="min-w-0 p-5">
-        <RoomDetails option={option} />
+        <RoomDetails
+          option={option}
+          onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
+        />
       </td>
       <td className="border-l border-border p-5">
         <CapacityDetails option={option} />
@@ -167,11 +206,15 @@ function RoomRow({ option, groupSlug, mode, date, slots }: RoomProps) {
   );
 }
 
-function RoomCard({ option, groupSlug, mode, date, slots }: RoomProps) {
+function RoomCard({ option, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <article className="overflow-hidden rounded-lg border border-border bg-card">
-      <RoomPhotoStrip photos={option.child.photos} title={option.child.title} />
+      <RoomPhotoStrip
+        photos={option.child.photos}
+        title={option.child.title}
+        onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
+      />
       <div className="flex flex-col gap-5 p-5">
         <RoomDetails option={option} hidePhotos />
         <div className="grid gap-4 sm:grid-cols-2">
