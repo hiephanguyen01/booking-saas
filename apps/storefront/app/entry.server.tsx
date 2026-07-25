@@ -26,30 +26,66 @@ export default function handleRequest(
 
   return new Promise((resolve, reject) => {
     let shellRendered = false;
+    let responseSettled = false;
+    let body: PassThrough | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let abortRender: () => void = () => undefined;
+
+    const cleanup = () => {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+      request.signal.removeEventListener('abort', handleRequestAbort);
+    };
+
+    const failBeforeShell = (error: Error) => {
+      if (responseSettled) return;
+      responseSettled = true;
+      cleanup();
+      reject(error);
+    };
+
+    const handleRequestAbort = () => {
+      const error =
+        request.signal.reason instanceof Error
+          ? request.signal.reason
+          : new Error('Storefront SSR request aborted');
+      abortRender();
+      body?.destroy(error);
+      if (shellRendered) cleanup();
+      else failBeforeShell(error);
+    };
+
     const userAgent = request.headers.get('user-agent');
     const readyOption: keyof RenderToPipeableStreamOptions =
       (userAgent && isbot(userAgent)) || routerContext.isSpaMode ? 'onAllReady' : 'onShellReady';
-    let timeoutId: ReturnType<typeof setTimeout> | undefined = setTimeout(
-      () => abort(),
-      streamTimeout + 1_000,
-    );
 
-    const { pipe, abort } = renderToPipeableStream(
+    const rendered = renderToPipeableStream(
       <ServerRouter context={routerContext} url={request.url} nonce={cspNonce} />,
       {
         nonce: cspNonce,
         [readyOption]() {
+          if (responseSettled) return;
+          if (request.signal.aborted) {
+            handleRequestAbort();
+            return;
+          }
+
           shellRendered = true;
-          const body = new PassThrough({
+          body = new PassThrough({
             final(callback) {
-              clearTimeout(timeoutId);
-              timeoutId = undefined;
+              cleanup();
               callback();
             },
           });
+          body.once('close', cleanup);
+          body.once('error', cleanup);
+
           const stream = createReadableStreamFromReadable(body);
           responseHeaders.set('Content-Type', 'text/html');
-          pipe(body);
+          rendered.pipe(body);
+          responseSettled = true;
           resolve(
             new Response(stream, {
               headers: responseHeaders,
@@ -58,7 +94,7 @@ export default function handleRequest(
           );
         },
         onShellError(error: unknown) {
-          reject(error);
+          failBeforeShell(error instanceof Error ? error : new Error('Storefront SSR shell failed'));
         },
         onError(error: unknown) {
           responseStatusCode = 500;
@@ -66,5 +102,15 @@ export default function handleRequest(
         },
       },
     );
+    abortRender = rendered.abort;
+
+    request.signal.addEventListener('abort', handleRequestAbort, { once: true });
+    timeoutId = setTimeout(() => {
+      timeoutId = undefined;
+      abortRender();
+      if (!shellRendered) failBeforeShell(new Error('Storefront SSR render timed out'));
+    }, streamTimeout + 1_000);
+
+    if (request.signal.aborted) handleRequestAbort();
   });
 }
