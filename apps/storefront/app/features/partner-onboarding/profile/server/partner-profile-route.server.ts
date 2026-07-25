@@ -32,7 +32,12 @@ export async function submitPartnerProfileRoute(request: Request, localeParam?: 
   const tenant = getCurrentStorefrontTenant();
 
   const body = await readJsonRequestBody(request);
-  if (!body.ok) return failedPartnerOnboarding({ status: 400, code: body.code });
+  if (!body.ok) {
+    return failedPartnerOnboarding({
+      status: body.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400,
+      code: body.code,
+    });
+  }
 
   const parsed = partnerOnboardingProfileSchema.safeParse(body.value);
   if (!parsed.success) {
