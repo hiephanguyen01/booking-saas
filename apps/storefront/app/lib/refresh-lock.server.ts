@@ -51,7 +51,8 @@ export async function withDistributedRefreshLock<T>(
   const ttlMs = options.ttlMs ?? DEFAULT_REFRESH_LOCK_TTL_MS;
   const retryMs = options.retryMs ?? DEFAULT_REFRESH_LOCK_RETRY_MS;
   const waitMs = options.waitMs ?? ttlMs + retryMs;
-  const renewMs = Math.max(1, options.renewMs ?? Math.floor(ttlMs / 3));
+  const requestedRenewMs = options.renewMs ?? Math.floor(ttlMs / 3);
+  const renewMs = Math.max(1, Math.min(requestedRenewMs, Math.max(1, ttlMs - 1)));
   const now = options.now ?? Date.now;
   const delay = options.delay ?? defaultDelay;
   const key = `${REFRESH_LOCK_PREFIX}${id}`;
@@ -101,9 +102,11 @@ export async function withDistributedRefreshLock<T>(
   };
 
   scheduleRenewal();
-  let result: T;
+  let callbackCompleted = false;
   try {
-    result = await callback();
+    const result = await callback();
+    callbackCompleted = true;
+    return result;
   } finally {
     stopped = true;
     if (renewalTimer !== undefined) clearTimeout(renewalTimer);
@@ -111,8 +114,6 @@ export async function withDistributedRefreshLock<T>(
     await store.deleteIfValue(key, value).catch((error: unknown) => {
       console.error('Failed to release storefront session refresh lock', error);
     });
+    if (callbackCompleted && leaseLost) throw new SessionRefreshLockLostError();
   }
-
-  if (leaseLost) throw new SessionRefreshLockLostError();
-  return result;
 }
