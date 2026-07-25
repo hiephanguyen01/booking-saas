@@ -1,3 +1,4 @@
+import type { FormEvent } from 'react';
 import { Form } from 'react-router';
 import { Check, Minus, Pencil, Trash2 } from 'lucide-react';
 import type { PlanResponse } from '@booking/contracts';
@@ -27,13 +28,17 @@ const Bool = ({ on }: { on: boolean }) =>
 
 /**
  * Plans table columns. `onEdit` opens the edit dialog for a row (the route owns
- * the `editing` state); delete keeps its inline confirm dialog — the hidden-field
- * `<Form>` posts `intent=delete` FormData to the route.
+ * the `editing` state); delete keeps its inline confirm dialog and submits the
+ * existing `intent=delete` FormData through the route-owned guarded handler.
  */
 export function buildPlanColumns({
   onEdit,
+  onDelete,
+  busy,
 }: {
   onEdit: (plan: PlanResponse) => void;
+  onDelete: (event: FormEvent<HTMLFormElement>) => void;
+  busy: boolean;
 }): DataTableColumn<PlanResponse>[] {
   return [
     {
@@ -116,6 +121,7 @@ export function buildPlanColumns({
             size="icon"
             aria-label={`Sửa gói ${p.name}`}
             onClick={() => onEdit(p)}
+            disabled={busy}
           >
             <Pencil className="size-4" />
           </Button>
@@ -126,11 +132,12 @@ export function buildPlanColumns({
                 size="icon"
                 aria-label={`Xoá gói ${p.name}`}
                 className="text-destructive hover:text-destructive"
+                disabled={busy}
               >
                 <Trash2 className="size-4" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent aria-busy={busy}>
               <AlertDialogHeader>
                 <AlertDialogTitle>Xoá gói “{p.name}”?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -139,12 +146,12 @@ export function buildPlanColumns({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Huỷ</AlertDialogCancel>
-                <Form method="post">
+                <AlertDialogCancel disabled={busy}>Huỷ</AlertDialogCancel>
+                <Form method="post" onSubmit={onDelete}>
                   <input type="hidden" name="intent" value="delete" />
                   <input type="hidden" name="id" value={p.id} />
-                  <AlertDialogAction type="submit" variant="destructive">
-                    Xoá gói
+                  <AlertDialogAction type="submit" variant="destructive" disabled={busy}>
+                    {busy ? 'Đang xoá…' : 'Xoá gói'}
                   </AlertDialogAction>
                 </Form>
               </AlertDialogFooter>
