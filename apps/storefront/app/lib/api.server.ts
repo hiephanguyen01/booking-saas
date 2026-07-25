@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   createApiClient,
   type ApiRequestOptions,
@@ -198,6 +199,26 @@ function queryKey(query: ApiRequestOptions<unknown>['query']): string {
   );
 }
 
+function authReadKey(auth: Auth | null): string {
+  if (!auth) return 'anonymous';
+
+  const identity =
+    typeof auth === 'string'
+      ? ['token', auth]
+      : [
+          'context',
+          auth.token,
+          auth.tenantId ?? '',
+          auth.partnerId ?? '',
+          auth.affiliateTenantId ?? '',
+        ];
+
+  // Never retain the opaque access token itself in the memoization key. The
+  // digest still changes after token rotation, so a refreshed session cannot
+  // reuse the cached 401 response produced by the expired token.
+  return createHash('sha256').update(JSON.stringify(identity)).digest('base64url');
+}
+
 export function publicGetData<T>(
   request: Request,
   path: string,
@@ -214,7 +235,7 @@ export function publicGetData<T>(
   options: StorefrontJsonOptions<T> & { allowNotFound?: boolean },
 ): Promise<T | null> {
   const accessToken = getOptionalAccessToken();
-  const key = `public-get:${accessToken ? 'authenticated' : 'anonymous'}:${path}:${queryKey(options.query)}:${Boolean(options.allowNotFound)}`;
+  const key = `public-get:${authReadKey(accessToken)}:${path}:${queryKey(options.query)}:${Boolean(options.allowNotFound)}`;
   return memoizedRead(request, key, async () => {
     const requestOptionsForCall = requestOptions(request, options);
     const result = accessToken
@@ -256,7 +277,7 @@ export function apiGet<T>(
   auth: Auth,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const key = `api-get:${path}:${queryKey(options.query)}`;
+  const key = `api-get:${authReadKey(auth)}:${path}:${queryKey(options.query)}`;
   return memoizedRead(request, key, async () => {
     const result = await apiClient.get(path, auth, requestOptions(request, options));
     return sanitizeApiResult(request, result);
