@@ -25,6 +25,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@booking/storefront security
       - run: pnpm --filter=@booking/contracts build
+      - name: API typecheck
+        run: pnpm --filter=@booking/api typecheck
       - name: Storefront unit tests
         run: pnpm --filter=@booking/storefront test
       - name: Frontend lint
@@ -59,4 +61,3 @@ jobs:
           push: false
           tags: booking-dashboard:ci
           cache-from: type=gha,scope=dashboard
-          cache-to: type=gha,mode=max,scope=dashboard
