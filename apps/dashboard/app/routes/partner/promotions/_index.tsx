@@ -1,4 +1,5 @@
-import { data, Form, Link, useSearchParams } from 'react-router';
+import type { FormEvent } from 'react';
+import { data, Form, Link, useNavigation, useSearchParams, useSubmit } from 'react-router';
 import type { Paginated, PromotionResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
@@ -16,7 +17,7 @@ import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
-import { useBusy } from '~/hooks/use-busy';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { formatDiscount } from '~/lib/format';
 import { PaginationBar } from '~/components/pagination-bar';
@@ -62,12 +63,20 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function PartnerPromotions({ loaderData, actionData }: Route.ComponentProps) {
   const { result, pending, error, filters } = loaderData;
-  const busy = useBusy();
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy, run } = useSubmissionGuard(navigation.state);
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
   const promotions = result?.items ?? [];
   const total = result?.total ?? 0;
+
+  const handleOptIn = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
 
   const columns: DataTableColumn<PromotionResponse>[] = [
     {
@@ -103,7 +112,7 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={busy}>
       <PageHeader
         title="Khuyến mãi"
         description="Tạo mã giảm giá do bạn tài trợ cho tin đăng của mình."
@@ -144,11 +153,11 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
                     Giảm {formatDiscount(p.discountType, p.discountValue)}
                   </p>
                 </div>
-                <Form method="post">
+                <Form method="post" onSubmit={handleOptIn}>
                   <input type="hidden" name="intent" value="opt-in" />
                   <input type="hidden" name="promotionId" value={p.id} />
                   <Button type="submit" size="sm" disabled={busy}>
-                    Đồng ý tài trợ
+                    {busy ? 'Đang xử lý…' : 'Đồng ý tài trợ'}
                   </Button>
                 </Form>
               </div>
