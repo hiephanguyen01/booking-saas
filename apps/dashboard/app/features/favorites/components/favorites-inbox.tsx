@@ -1,6 +1,11 @@
-import type { FavoriteListResponse, FavoriteSummaryResponse } from '@booking/contracts';
+import type {
+  FavoriteEntryResponse,
+  FavoriteListResponse,
+  FavoriteSummaryResponse,
+} from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
+import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Heart, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
@@ -9,6 +14,7 @@ import { PaginationBar } from '~/components/pagination-bar';
 import { ListToolbar } from '~/components/list-toolbar';
 import { BarRow, StatCard } from '~/components/stat-card';
 import { readListParams } from '~/lib/pagination';
+import { hasActiveFilters } from '~/lib/list-filters';
 import { formatDateTime } from '~/lib/format';
 import { FAVORITE_FILTER_SPEC } from '../lib/favorite-filters';
 
@@ -34,6 +40,37 @@ export function FavoritesInbox({
   const { pageSize } = readListParams(searchParams);
   const items = result?.items ?? [];
   const topMax = summary?.topTargets.reduce((max, t) => Math.max(max, t.count), 0) ?? 0;
+
+  const columns: DataTableColumn<FavoriteEntryResponse>[] = [
+    {
+      header: 'Khách hàng',
+      cell: (entry) => (
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
+          >
+            {initials(entry.customerName)}
+          </span>
+          <span className="truncate font-medium">{entry.customerName}</span>
+        </div>
+      ),
+    },
+    { header: 'Đã thích', cell: (entry) => <span className="truncate">{entry.targetTitle}</span> },
+    {
+      header: 'Loại',
+      cell: (entry) => (
+        <Badge variant={entry.target === 'group' ? 'secondary' : 'default'}>
+          {entry.target === 'group' ? 'Studio' : 'Dịch vụ'}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Thời điểm',
+      className: 'whitespace-nowrap text-muted-foreground',
+      cell: (entry) => formatDateTime(entry.createdAt),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -84,69 +121,30 @@ export function FavoritesInbox({
         pageSize={pageSize}
       />
 
-      {items.length ? (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-5 py-3 font-medium">Khách hàng</th>
-                    <th className="px-5 py-3 font-medium">Đã thích</th>
-                    <th className="px-5 py-3 font-medium">Loại</th>
-                    <th className="px-5 py-3 font-medium">Thời điểm</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((entry) => (
-                    <tr key={entry.id} className="border-b last:border-0">
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <span
-                            aria-hidden
-                            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-                          >
-                            {initials(entry.customerName)}
-                          </span>
-                          <span className="font-medium">{entry.customerName}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">{entry.targetTitle}</td>
-                      <td className="px-5 py-3">
-                        <Badge variant={entry.target === 'group' ? 'secondary' : 'default'}>
-                          {entry.target === 'group' ? 'Studio' : 'Dịch vụ'}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3 text-muted-foreground">
-                        {formatDateTime(entry.createdAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      ) : !error ? (
-        <Card>
-          <CardContent className="py-16 text-center text-sm text-muted-foreground">
-            Chưa có lượt thích phù hợp bộ lọc.
-          </CardContent>
-        </Card>
-      ) : null}
-
       {result ? (
-        <PaginationBar
-          page={result.page}
-          pageSize={result.pageSize}
-          total={result.total}
-          hrefFor={({ page, pageSize }) => {
-            const next = new URLSearchParams(searchParams);
-            next.set('page', String(page));
-            next.set('pageSize', String(pageSize));
-            return `?${next.toString()}`;
-          }}
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={items}
+            getRowKey={(entry) => entry.id}
+            emptyMessage={
+              hasActiveFilters(filters)
+                ? 'Không có lượt thích nào khớp bộ lọc.'
+                : 'Chưa có lượt thích nào.'
+            }
+          />
+          <PaginationBar
+            page={result.page}
+            pageSize={result.pageSize}
+            total={result.total}
+            hrefFor={({ page, pageSize: size }) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('page', String(page));
+              next.set('pageSize', String(size));
+              return `?${next.toString()}`;
+            }}
+          />
+        </>
       ) : null}
     </div>
   );

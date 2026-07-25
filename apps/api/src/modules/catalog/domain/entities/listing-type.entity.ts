@@ -45,6 +45,7 @@ export interface ListingTypeState {
   name: string;
   slug: string;
   icon: string | null;
+  iconImageUrl: string | null;
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
   bookingSelection: BookingSelection;
@@ -63,6 +64,7 @@ export interface NewListingType {
   name: string;
   slug: string;
   icon: string | null;
+  iconImageUrl: string | null;
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
   bookingSelection: BookingSelection;
@@ -84,6 +86,7 @@ export interface ListingTypeCreateFields {
   name: string;
   slug: string;
   icon?: string | null;
+  iconImageUrl?: string | null;
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
   bookingSelection: BookingSelection;
@@ -125,6 +128,7 @@ export class ListingType {
       name: input.name,
       slug: input.slug,
       icon: input.icon ?? null,
+      iconImageUrl: input.iconImageUrl ?? null,
       allowedModes: input.allowedModes,
       defaultModes: input.defaultModes,
       bookingSelection: input.bookingSelection,
@@ -178,6 +182,7 @@ export class ListingType {
       name: input.name,
       slug: input.slug,
       icon: input.icon,
+      iconImageUrl: input.iconImageUrl,
       allowedModes: input.allowedModes,
       defaultModes: input.defaultModes,
       bookingSelection: input.bookingSelection,

@@ -16,6 +16,7 @@ export interface ListingTypeRecord {
   name: string;
   slug: string;
   icon: string | null;
+  iconImageUrl: string | null;
   allowedModes: BookingMode[];
   defaultModes: BookingMode[];
   bookingSelection: BookingSelection;

@@ -23,8 +23,10 @@ import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { buildListingColumns } from '~/features/partner/components/listings/listing-table-columns';
-import { ListingGroupCard } from '~/features/partner/components/listings/listing-group-card';
+import { buildListingGroupColumns } from '~/features/partner/components/listings/listing-group-table-columns';
+import { CreateListingDialog } from '~/features/partner/components/listings/create-listing-dialog';
 import type { ListingsActionResult } from '~/features/partner/components/listings/types';
+import { ListingTypeIcon } from '~/components/listing-type-icon';
 import { PageHeader } from '~/components/page-header';
 import { RelationshipHint } from '~/components/relationship-hint';
 import { ErrorBanner } from '~/components/action-feedback';
@@ -38,12 +40,14 @@ export function meta(): Route.MetaDescriptors {
 }
 
 const STATUS_VALUES: PublishStatus[] = ['published', 'draft', 'pending_review', 'archived'];
+type ListingsView = 'single' | 'grouped';
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
   const { toApiQuery } = readListParams(url.searchParams);
   const statusRaw = url.searchParams.get('status') ?? '';
   const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
+  const view: ListingsView = url.searchParams.get('view') === 'grouped' ? 'grouped' : 'single';
   const [res, groupsRes, typesRes] = await Promise.all([
     apiGet<PaginatedWithCounts<ListingResponse>>('/partner/listings', auth, {
       query: toApiQuery({ status }),
@@ -59,6 +63,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     groups: groupsRes.ok ? (groupsRes.data?.items ?? []) : [],
     listingTypes: typesRes.data ?? [],
     filters: { status },
+    view,
     canWrite: can('partner.listings.write'),
     canPublish: can('partner.listings.publish'),
     canAvailability: can('partner.availability.manage'),
@@ -121,6 +126,11 @@ const FILTERS: { value: string; label: string }[] = [
   { value: 'archived', label: 'Đã ẩn' },
 ];
 
+const VIEW_FILTERS: { value: string; label: string }[] = [
+  { value: 'single', label: 'Tin đăng đơn' },
+  { value: 'grouped', label: 'Tin đăng nhiều hạng mục' },
+];
+
 export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
   const {
     result,
@@ -131,6 +141,7 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
     canAvailability,
     loadError,
     filters,
+    view,
   } = loaderData;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
@@ -141,6 +152,8 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
   const eligibleTypes = listingTypes.filter((type) => type.structure !== 'standalone');
 
   const columns = buildListingColumns({ canWrite, canPublish, canAvailability });
+  const groupColumns = buildListingGroupColumns({ listingTypes });
+  const viewCounts = { single: total, grouped: groups.length };
 
   return (
     <div className="space-y-5">
@@ -150,11 +163,7 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
         actions={
           canWrite ? (
             <>
-              <Button asChild size="sm">
-                <Link to="/partner/listings/new">
-                  <Plus className="size-4" aria-hidden /> Thêm tin đăng
-                </Link>
-              </Button>
+              <CreateListingDialog listingTypes={listingTypes} />
               {eligibleTypes.length > 0 ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -167,6 +176,11 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
                     {eligibleTypes.map((type) => (
                       <DropdownMenuItem key={type.id} asChild>
                         <Link to={dashboardPaths.partner.newListingGroup(type.id)}>
+                          <ListingTypeIcon
+                            imageUrl={type.iconImageUrl}
+                            name={type.icon}
+                            className="size-4"
+                          />
                           {type.name}
                         </Link>
                       </DropdownMenuItem>
@@ -182,40 +196,38 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
       <RelationshipHint variant="listings" />
 
       <StatusFilterTabs
-        filters={FILTERS}
-        value={statusValue}
-        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
-        counts={counts}
+        filters={VIEW_FILTERS}
+        value={view}
+        hrefFor={(v) => filterHref({ view: v === 'single' ? undefined : v })}
+        counts={viewCounts}
       />
 
       <ErrorBanner error={loadError} />
 
-      {groups.length > 0 ? (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold">Tin đăng nhiều hạng mục</h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {groups.map((group) => (
-              <ListingGroupCard
-                key={group.id}
-                group={group}
-                listingType={listingTypes.find((item) => item.id === group.listingTypeId)}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">Tin đăng đơn</h2>
+      {view === 'grouped' ? (
         <DataTable
-          columns={columns}
-          data={listings}
-          getRowKey={(l) => l.id}
-          emptyMessage="Chưa có tin đăng nào."
+          columns={groupColumns}
+          data={groups}
+          getRowKey={(g) => g.id}
+          emptyMessage="Chưa có tin đăng nhiều hạng mục nào."
         />
-      </div>
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
+      ) : (
+        <>
+          <StatusFilterTabs
+            filters={FILTERS}
+            value={statusValue}
+            hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
+            counts={counts}
+          />
+          <DataTable
+            columns={columns}
+            data={listings}
+            getRowKey={(l) => l.id}
+            emptyMessage="Chưa có tin đăng nào."
+          />
+          <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
+        </>
+      )}
     </div>
   );
 }
