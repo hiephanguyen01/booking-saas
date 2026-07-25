@@ -24,7 +24,7 @@ export function BookingDialogFooter({
   return (
     <div className="shrink-0 border-t bg-card px-5 py-4 shadow-[0_-8px_24px_-20px_rgba(0,0,0,0.35)]">
       <div
-        className="grid h-11 grid-cols-[minmax(0,1fr)_minmax(8rem,auto)] items-stretch gap-4"
+        className="grid min-h-11 grid-cols-[minmax(0,1fr)_minmax(8rem,auto)] items-stretch gap-4"
         aria-live="polite"
         aria-atomic="true"
         aria-busy={quotePending}
@@ -40,8 +40,8 @@ export function BookingDialogFooter({
           <p
             className={
               selectionSummary
-                ? 'mt-0.5 truncate text-sm font-medium'
-                : 'invisible mt-0.5 truncate text-sm select-none'
+                ? 'mt-0.5 text-sm leading-5 font-medium'
+                : 'invisible mt-0.5 text-sm leading-5 select-none'
             }
           >
             {selectionSummary ?? t('group.selectedSchedule')}
