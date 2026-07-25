@@ -29,7 +29,7 @@ export default function handleRequest(
     let responseSettled = false;
     let body: PassThrough | undefined;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    let abortRender = () => undefined;
+    let abortRender: () => void = () => undefined;
 
     const cleanup = () => {
       if (timeoutId !== undefined) {
@@ -66,6 +66,7 @@ export default function handleRequest(
       {
         nonce: cspNonce,
         [readyOption]() {
+          if (responseSettled) return;
           if (request.signal.aborted) {
             handleRequestAbort();
             return;
