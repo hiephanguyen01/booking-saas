@@ -8,11 +8,19 @@ end
 return 0
 `;
 
+const EXTEND_IF_VALUE_SCRIPT = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('PEXPIRE', KEYS[1], ARGV[2])
+end
+return 0
+`;
+
 export interface RedisJsonStore {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttlSeconds: number): Promise<void>;
   delete(key: string): Promise<void>;
   setIfAbsent(key: string, value: string, ttlMs: number): Promise<boolean>;
+  extendIfValue(key: string, value: string, ttlMs: number): Promise<boolean>;
   deleteIfValue(key: string, value: string): Promise<void>;
   ping(): Promise<void>;
 }
@@ -62,6 +70,12 @@ export const storefrontRedisStore: RedisJsonStore = {
   async setIfAbsent(key, value, ttlMs) {
     const result = await (await client()).set(key, value, { NX: true, PX: ttlMs });
     return result === 'OK';
+  },
+  async extendIfValue(key, value, ttlMs) {
+    const result = await (
+      await client()
+    ).sendCommand(['EVAL', EXTEND_IF_VALUE_SCRIPT, '1', key, value, String(ttlMs)]);
+    return Number(result) === 1;
   },
   async deleteIfValue(key, value) {
     await (
