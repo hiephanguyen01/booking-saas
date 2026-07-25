@@ -328,7 +328,6 @@ export class PrismaReviewRepository implements IReviewRepository {
       const time = times.get(row.bookingId);
       return {
         ...toReviewRecord(row),
-        status: 'reviewed' as const,
         bookingStartsAt: time?.startsAt ?? null,
         bookingEndsAt: time?.endsAt ?? null,
       };
@@ -353,8 +352,8 @@ export class PrismaReviewRepository implements IReviewRepository {
       };
     });
     const combined = [...pending, ...reviewed].sort((a, b) => {
-      const aTime = a.status === 'pending' ? a.serviceCompletedAt : a.createdAt;
-      const bTime = b.status === 'pending' ? b.serviceCompletedAt : b.createdAt;
+      const aTime = 'status' in a ? a.serviceCompletedAt : a.createdAt;
+      const bTime = 'status' in b ? b.serviceCompletedAt : b.createdAt;
       return (bTime?.getTime() ?? 0) - (aTime?.getTime() ?? 0);
     });
     const start = (query.page - 1) * query.pageSize;

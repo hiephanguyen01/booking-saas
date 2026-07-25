@@ -116,6 +116,10 @@ function CardFooter({
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const review = booking.review;
+  if (booking.variant === 'completed' && review?.status === 'reviewed') {
+    return null;
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/15 px-5 py-4 sm:px-6">
       <PolicyNotes booking={booking} locale={locale} />
@@ -133,11 +137,6 @@ function CardFooter({
         {booking.variant === 'completed' && review?.status === 'pending' ? (
           <Button type="button" variant="outline" size="sm" onClick={() => onReview(review)}>
             {t('bookings.review')}
-          </Button>
-        ) : null}
-        {booking.variant === 'completed' && review?.status === 'reviewed' ? (
-          <Button asChild variant="outline" size="sm">
-            <Link to={detailPath}>{t('reviews.reviewed')}</Link>
           </Button>
         ) : null}
         {booking.variant === 'no-show' ? (
