@@ -28,7 +28,6 @@ function walk(directory) {
 const storefrontRoot = join(root, 'apps/storefront/app');
 const storefrontFiles = walk(storefrontRoot).filter((file) => sourceExtensions.has(extname(file)));
 const directFetchAllowlist = new Set(['apps/storefront/app/routes/readyz.ts']);
-let otpCompatibilityExceptions = 0;
 let tenantResolutionCallSites = 0;
 
 for (const file of storefrontFiles) {
@@ -63,20 +62,9 @@ for (const file of storefrontFiles) {
     }
   }
 
-  const sensitiveUrl = /[?&](otp|token|password|challengeId)=/g;
-  const matches = [...source.matchAll(sensitiveUrl)];
-  if (matches.length === 0) continue;
-  const approvedCompatibilityDebt =
-    path === 'apps/storefront/app/lib/booking.server.ts' &&
-    source.includes('SECURITY_EXCEPTION API-DEP-01');
-  if (approvedCompatibilityDebt) otpCompatibilityExceptions += matches.length;
-  else failures.push(`${path}: sensitive credential encoded in a URL`);
-}
-
-if (otpCompatibilityExceptions !== 1) {
-  failures.push(
-    'apps/storefront/app/lib/booking.server.ts: expected exactly one documented API-DEP-01 compatibility exception',
-  );
+  if (/[?&](otp|token|password|challengeId)=/.test(source)) {
+    failures.push(`${path}: sensitive credential encoded in a URL`);
+  }
 }
 
 if (tenantResolutionCallSites !== 1) {
@@ -92,6 +80,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(
-  'Storefront security check passed (one server-to-server OTP URL exception remains blocked on API-DEP-01).',
-);
+console.log('Storefront security check passed (sensitive credentials are forbidden in URLs).');
