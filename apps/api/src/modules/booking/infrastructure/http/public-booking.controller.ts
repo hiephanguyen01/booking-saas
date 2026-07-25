@@ -142,13 +142,9 @@ export class PublicBookingController {
     @Param('code') code: string,
     @Body() body: VerifyBookingAccessDto,
     @Req() req: Request,
-    @OptionalPrincipal() principal?: SessionPrincipal,
   ): Promise<BookingAccessResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
-    const booking = await this.resolveBookingAccess.execute(tenant.id, code, {
-      otp: body.otp,
-      sessionUserId: principal?.userId,
-    });
+    const booking = await this.resolveBookingAccess.execute(tenant.id, code, { otp: body.otp });
     const issued = await this.accessGrants.issue({
       tenantId: tenant.id,
       bookingId: booking.id,
