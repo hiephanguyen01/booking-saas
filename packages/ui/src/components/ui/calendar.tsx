@@ -1,6 +1,12 @@
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import * as React from 'react';
-import { DayPicker, getDefaultClassNames, type DayButton } from 'react-day-picker';
+import {
+  Day as DayCell,
+  DayPicker,
+  getDefaultClassNames,
+  type DayButton,
+  type DayProps,
+} from 'react-day-picker';
 
 import { Button, buttonVariants } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
@@ -135,6 +141,7 @@ function Calendar({
         Root: ({ className, rootRef, ...props }) => {
           return <div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />;
         },
+        Day: CalendarDayCell,
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === 'left') {
             return <ChevronLeftIcon className={cn('size-4', className)} {...props} />;
@@ -158,6 +165,18 @@ function Calendar({
         },
         ...components,
       }}
+      {...props}
+    />
+  );
+}
+
+function CalendarDayCell({ modifiers, ...props }: DayProps) {
+  return (
+    <DayCell
+      data-range-start={modifiers.range_start || undefined}
+      data-range-end={modifiers.range_end || undefined}
+      data-range-middle={modifiers.range_middle || undefined}
+      modifiers={modifiers}
       {...props}
     />
   );

@@ -1,9 +1,17 @@
 import type { HourlySlot, PublicListingDetailResponse } from '@booking/contracts';
 import { useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
+import { normalizeDailyRange } from '../../../lib/daily-range';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { packagesForMode } from '../../../lib/package-options';
-import { DEFAULT_TZ, addDays, dateLabelInTz, localToDateOnly, todayInTz } from '../../../lib/time';
+import {
+  DEFAULT_TZ,
+  addDays,
+  dateLabelInTz,
+  localToDateOnly,
+  todayInTz,
+  zonedToUtcIso,
+} from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
 import type { loader as bookingDataLoader } from '../../../routes/listing-group-booking-data';
 import {
@@ -15,8 +23,6 @@ import {
 import type { ListingBookingMode, RoomBookingDateRange } from './room-booking-dialog-steps';
 
 type BookingRequestKind = 'availability' | 'quote';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function useListingBookingDialogController({
   listing,
@@ -37,6 +43,12 @@ export function useListingBookingDialogController({
     ? preferredMode
     : (supportedModes[0] ?? 'hourly');
   const fixedPackages = listing.bookingSelection === 'fixed_packages';
+  const dailyConfig = (listing.modeConfig.daily ?? {}) as {
+    checkinTime?: string;
+    checkoutTime?: string;
+  };
+  const dailyCheckinTime = dailyConfig.checkinTime ?? '14:00';
+  const dailyCheckoutTime = dailyConfig.checkoutTime ?? '12:00';
   const packageOptions = (selectedMode: ListingBookingMode) =>
     packagesForMode(listing.modeConfig, selectedMode);
   const today = todayInTz(DEFAULT_TZ);
@@ -176,7 +188,8 @@ export function useListingBookingDialogController({
     currentData?.selectionStart &&
     currentData.selectionEnd &&
     (mode === 'daily' ||
-      (interval?.start === currentData.selectionStart && interval.end === currentData.selectionEnd)),
+      (interval?.start === currentData.selectionStart &&
+        interval.end === currentData.selectionEnd)),
   );
   const hasCompleteSelection = mode === 'hourly' ? Boolean(interval) : Boolean(from && to);
   const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';
@@ -276,6 +289,29 @@ export function useListingBookingDialogController({
       }),
     [availability?.timezone, locale],
   );
+  const bookingTimezone = availability?.timezone ?? DEFAULT_TZ;
+  const bookingDateTimeFormatter = useMemo(() => {
+    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
+    const weekday = new Intl.DateTimeFormat(tag, {
+      weekday: 'long',
+      timeZone: bookingTimezone,
+    });
+    const time = new Intl.DateTimeFormat(tag, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      timeZone: bookingTimezone,
+    });
+    const date = new Intl.DateTimeFormat(tag, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: bookingTimezone,
+    });
+
+    return (value: string): string =>
+      `${weekday.format(new Date(value))}, ${time.format(new Date(value))} ${date.format(new Date(value))}`;
+  }, [bookingTimezone, locale]);
   const numberFormatter = useMemo(
     () => new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'vi-VN', { maximumFractionDigits: 1 }),
     [locale],
@@ -286,11 +322,30 @@ export function useListingBookingDialogController({
       return `${dateLabelInTz(date, DEFAULT_TZ, locale)} · ${timeFormatter.format(new Date(interval.start))}–${timeFormatter.format(new Date(interval.end))} · ${t('hours', { count: numberFormatter.format(duration) })}`;
     }
     if (mode === 'daily' && from && to) {
-      const duration = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS;
-      return `${dateLabelInTz(from, DEFAULT_TZ, locale)} – ${dateLabelInTz(to, DEFAULT_TZ, locale)} · ${t('nights', { count: numberFormatter.format(duration) })}`;
+      const effectiveTo = normalizeDailyRange(from, to)?.to ?? to;
+      const selectionStart =
+        currentData?.selectionStart ?? zonedToUtcIso(from, dailyCheckinTime, bookingTimezone);
+      const selectionEnd =
+        currentData?.selectionEnd ?? zonedToUtcIso(effectiveTo, dailyCheckoutTime, bookingTimezone);
+      return `${bookingDateTimeFormatter(selectionStart)} – ${bookingDateTimeFormatter(selectionEnd)}`;
     }
     return null;
-  }, [date, from, interval, locale, mode, numberFormatter, t, timeFormatter, to]);
+  }, [
+    bookingDateTimeFormatter,
+    bookingTimezone,
+    currentData,
+    dailyCheckinTime,
+    dailyCheckoutTime,
+    date,
+    from,
+    interval,
+    locale,
+    mode,
+    numberFormatter,
+    t,
+    timeFormatter,
+    to,
+  ]);
 
   return {
     triggerLabel: t('group.chooseSchedule'),
