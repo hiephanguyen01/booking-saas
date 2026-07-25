@@ -246,6 +246,11 @@ const listingTypeBaseSchema = z.object({
   slug: slugSchema,
   /** A lucide-react icon NAME from `LISTING_TYPE_ICONS` — never a URL. */
   icon: listingTypeIconSchema.optional(),
+  /**
+   * An uploaded icon image URL (presigned direct-to-storage `publicUrl`). Takes
+   * precedence over the lucide `icon` when set; a blank string means "not set".
+   */
+  iconImageUrl: z.string().url({ message: 'Phải là một URL hợp lệ' }).or(z.literal('')).optional(),
   allowedModes: z.array(bookingModeSchema).min(1),
   defaultModes: z.array(bookingModeSchema).default([]),
   bookingSelection: bookingSelectionSchema.default('flexible_duration'),
@@ -326,6 +331,8 @@ export const listingTypeResponseSchema = z.object({
    * written before the enum existed must still deserialize.
    */
   icon: z.string().nullable(),
+  /** Uploaded icon image URL; takes precedence over the lucide `icon` when set. */
+  iconImageUrl: z.string().nullable(),
   allowedModes: z.array(bookingModeSchema),
   defaultModes: z.array(bookingModeSchema),
   bookingSelection: bookingSelectionSchema,
@@ -354,6 +361,7 @@ export const publicListingTypeResponseSchema = z.object({
   name: z.string(),
   slug: z.string(),
   icon: z.string().nullable(),
+  iconImageUrl: z.string().nullable(),
   unitLabel: z.string().nullable(),
   sortOrder: z.number(),
   requiresIdentityVerification: z.boolean(),

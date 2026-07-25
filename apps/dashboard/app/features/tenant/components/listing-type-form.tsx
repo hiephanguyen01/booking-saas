@@ -1,9 +1,7 @@
 import {
   createListingTypeInputSchema,
-  listingTypeIconSchema,
   listingTypeSearchConfigSchema,
   type CreateListingTypeInput,
-  type ListingTypeIcon,
   type ListingTypeResponse,
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
@@ -17,7 +15,6 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import { isChoice, ListingTypeAttributeFields } from './listing-type-attribute-fields';
-import { IconPicker } from './listing-type-icon-picker';
 import { ListingTypeModesFields } from './listing-type-modes-fields';
 import { ListingTypeSearchConfigFields } from './listing-type-search-config-fields';
 import { normalizeSearchConfig } from './listing-type-search-config';
@@ -26,6 +23,15 @@ import { normalizeSearchConfig } from './listing-type-search-config';
 const fields: FieldConfig<CreateListingTypeInput>[] = [
   { name: 'name', type: 'text', label: 'Tên loại', placeholder: 'VD: Studio', colSpan: 1 },
   { name: 'slug', type: 'text', label: 'Slug', placeholder: 'studio', colSpan: 1 },
+  {
+    name: 'iconImageUrl',
+    type: 'file',
+    label: 'Biểu tượng (ảnh tải lên)',
+    description: 'Ảnh hiển thị cạnh tên loại dịch vụ trên storefront. Nên dùng ảnh vuông, nền trong.',
+    target: 'tenants',
+    maxSizeMb: 1,
+    colSpan: 2,
+  },
   {
     name: 'unitLabel',
     type: 'text',
@@ -63,23 +69,13 @@ const fields: FieldConfig<CreateListingTypeInput>[] = [
   },
 ];
 
-/**
- * `ListingTypeResponse.icon` is a plain string (rows predating the allowlist must
- * still deserialize), so an unknown value is dropped rather than prefilled — it
- * would otherwise fail validation on a save the user never intended to change.
- */
-function knownIcon(icon: string | null | undefined): ListingTypeIcon | undefined {
-  const parsed = listingTypeIconSchema.safeParse(icon);
-  return parsed.success ? parsed.data : undefined;
-}
-
 export function listingTypeFormDefaultValues(t?: ListingTypeResponse): CreateListingTypeInput {
   const structure = t?.structure ?? 'standalone';
 
   return {
     name: t?.name ?? '',
     slug: t?.slug ?? '',
-    icon: knownIcon(t?.icon),
+    iconImageUrl: t?.iconImageUrl ?? '',
     unitLabel: t?.unitLabel ?? '',
     bookingSelection: t?.bookingSelection ?? 'flexible_duration',
     allowedModes: t?.allowedModes ?? ['hourly'],
@@ -163,21 +159,6 @@ export function ListingTypeForm({
               </section>
             )}
           />
-          <Controller
-            control={form.control}
-            name="icon"
-            render={({ field }) => (
-              <IconPicker
-                value={field.value}
-                onChange={field.onChange}
-                error={
-                  form.formState.errors.icon
-                    ? String(form.formState.errors.icon.message)
-                    : undefined
-                }
-              />
-            )}
-          />
           <ListingTypeModesFields form={form} />
           <ListingTypeAttributeFields form={form} />
           <ListingTypeSearchConfigFields form={form} />
@@ -186,7 +167,7 @@ export function ListingTypeForm({
       transform={(d) => ({
         name: d.name.trim(),
         slug: d.slug.trim(),
-        icon: d.icon || undefined,
+        iconImageUrl: d.iconImageUrl || undefined,
         unitLabel: d.unitLabel?.trim() || undefined,
         bookingSelection: d.bookingSelection,
         allowedModes: d.allowedModes,

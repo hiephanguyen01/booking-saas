@@ -827,6 +827,8 @@ model ListingType {
   name                         String
   slug                         String
   icon                         String?
+  /// uploaded icon image URL (presign publicUrl); takes precedence over the lucide `icon`.
+  iconImageUrl                 String?          @map("icon_image_url")
   /// which BookingModes this type may enable / enables by default on a new listing.
   allowedModes                 BookingMode[]    @map("allowed_modes")
   defaultModes                 BookingMode[]    @map("default_modes")

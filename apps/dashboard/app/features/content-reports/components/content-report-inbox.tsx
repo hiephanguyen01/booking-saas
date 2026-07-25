@@ -1,11 +1,11 @@
 import type {
   ContentReportListResponse,
   ContentReportReason,
+  ContentReportResponse,
   ContentReportStatus,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { Flag, Store, UserRound } from 'lucide-react';
+import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Link, useSearchParams } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
 import { ListToolbar } from '~/components/list-toolbar';
@@ -53,6 +53,52 @@ export function ContentReportInbox({
     next.set('page', '1');
     return `?${next}`;
   };
+
+  const columns: DataTableColumn<ContentReportResponse>[] = [
+    {
+      header: 'Nội dung bị báo cáo',
+      cell: (report) => (
+        <div className="min-w-0 max-w-64">
+          <Link
+            to={dashboardPaths.tenant.contentReport(report.id)}
+            className="block truncate font-medium text-primary hover:underline"
+          >
+            {report.targetTitle}
+          </Link>
+          <p className="truncate text-xs text-muted-foreground">{report.partnerName}</p>
+        </div>
+      ),
+    },
+    {
+      header: 'Lý do',
+      cell: (report) => <Badge variant="outline">{reasonLabels[report.reason]}</Badge>,
+    },
+    {
+      header: 'Người báo cáo',
+      className: 'hidden sm:table-cell',
+      headClassName: 'hidden sm:table-cell',
+      cell: (report) => <span className="truncate">{report.reporterName}</span>,
+    },
+    {
+      header: 'Chi tiết',
+      className: 'hidden lg:table-cell',
+      headClassName: 'hidden lg:table-cell',
+      cell: (report) =>
+        report.details ? (
+          <p className="line-clamp-2 max-w-80 text-muted-foreground">{report.details}</p>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    { header: 'Trạng thái', cell: (report) => <StatusBadge status={report.status} /> },
+    {
+      header: 'Thời điểm',
+      className: 'hidden whitespace-nowrap text-muted-foreground md:table-cell',
+      headClassName: 'hidden md:table-cell',
+      cell: (report) => formatDateTime(report.createdAt),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -72,64 +118,26 @@ export function ContentReportInbox({
         resetHref={dashboardPaths.tenant.contentReports}
         pageSize={list.pageSize}
       />
-      {result?.items.length ? (
-        <div className="space-y-3">
-          {result.items.map((report) => (
-            <Link
-              key={report.id}
-              to={dashboardPaths.tenant.contentReport(report.id)}
-              className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Card className="transition-colors hover:border-primary/40">
-                <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={report.status} />
-                      <Badge variant="outline">{reasonLabels[report.reason]}</Badge>
-                    </div>
-                    <h2 className="mt-3 truncate font-semibold">{report.targetTitle}</h2>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <Store className="size-3.5" />
-                        {report.partnerName}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <UserRound className="size-3.5" />
-                        {report.reporterName}
-                      </span>
-                      <span>{formatDateTime(report.createdAt)}</span>
-                    </div>
-                    {report.details ? (
-                      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-                        {report.details}
-                      </p>
-                    ) : null}
-                  </div>
-                  <Flag className="size-5 shrink-0 text-muted-foreground" />
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      ) : !error ? (
-        <Card>
-          <CardContent className="py-16 text-center text-sm text-muted-foreground">
-            Chưa có báo cáo phù hợp bộ lọc.
-          </CardContent>
-        </Card>
-      ) : null}
       {result ? (
-        <PaginationBar
-          page={result.page}
-          pageSize={result.pageSize}
-          total={result.total}
-          hrefFor={({ page, pageSize }) => {
-            const next = new URLSearchParams(searchParams);
-            next.set('page', String(page));
-            next.set('pageSize', String(pageSize));
-            return `?${next}`;
-          }}
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={result.items}
+            getRowKey={(report) => report.id}
+            emptyMessage="Chưa có báo cáo phù hợp bộ lọc."
+          />
+          <PaginationBar
+            page={result.page}
+            pageSize={result.pageSize}
+            total={result.total}
+            hrefFor={({ page, pageSize }) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('page', String(page));
+              next.set('pageSize', String(pageSize));
+              return `?${next}`;
+            }}
+          />
+        </>
       ) : null}
     </div>
   );
