@@ -61,3 +61,4 @@ jobs:
           push: false
           tags: booking-dashboard:ci
           cache-from: type=gha,scope=dashboard
+          cache-to: type=gha,mode=max,scope=dashboard
