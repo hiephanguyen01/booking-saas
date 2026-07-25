@@ -60,6 +60,7 @@ export class GetPublicListingGroupUseCase {
         amenities: group.amenities,
         photos: group.photos,
         listingTypeSlug: listingType?.slug ?? '',
+        attributeSchema: listingType?.attributeSchema ?? [],
         bookingSelection: listingType?.bookingSelection ?? 'flexible_duration',
         itemLabel: listingType?.itemLabel?.trim() || 'hạng mục',
         ratingAvg: group.ratingAvg,

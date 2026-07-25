@@ -92,6 +92,158 @@ export const LISTING_TYPE_ICONS = [
   'CalendarDays',
   'Clock',
   'Tag',
+  // Attribute / spec-card glyphs (photographers, gear, makeup, offers, excludes…)
+  'Gift',
+  'Images',
+  'CircleSlash',
+  'Star',
+  'Info',
+  'Check',
+  // ── Amenities / in-space utilities ──────────────────────────────────────────
+  'Wifi',
+  'Bluetooth',
+  'AirVent',
+  'Fan',
+  'Snowflake',
+  'Thermometer',
+  'Flame',
+  'WashingMachine',
+  'Refrigerator',
+  'Microwave',
+  'Tv',
+  'ShowerHead',
+  'Bed',
+  'Cctv',
+  'Lock',
+  'KeyRound',
+  'Bell',
+  'Cigarette',
+  'CigaretteOff',
+  'Accessibility',
+  'Plug',
+  'PlugZap',
+  'Zap',
+  'LampDesk',
+  'Battery',
+  'BatteryCharging',
+  'Flashlight',
+  'Droplet',
+  'Droplets',
+  // ── Food & drink ────────────────────────────────────────────────────────────
+  'CookingPot',
+  'ChefHat',
+  'Wine',
+  'Beer',
+  'Pizza',
+  'IceCreamCone',
+  'Croissant',
+  'Soup',
+  'Salad',
+  'Popcorn',
+  'Cookie',
+  'UtensilsCrossed',
+  // ── Nature / weather / outdoors ─────────────────────────────────────────────
+  'Sun',
+  'Moon',
+  'Umbrella',
+  'Wind',
+  'Leaf',
+  'Trees',
+  'Mountain',
+  'MountainSnow',
+  'Sunrise',
+  'Sunset',
+  'TreePalm',
+  // ── Transport ───────────────────────────────────────────────────────────────
+  'Bus',
+  'Train',
+  'TramFront',
+  'Truck',
+  'Caravan',
+  'Fuel',
+  'Sailboat',
+  'Anchor',
+  'Navigation',
+  'Compass',
+  'Map',
+  'MapPinned',
+  'Route',
+  // ── Beauty / fashion / lifestyle ────────────────────────────────────────────
+  'Gem',
+  'Crown',
+  'Glasses',
+  'Watch',
+  'ShoppingBag',
+  'Smile',
+  'Hand',
+  'HandHeart',
+  'Flower',
+  // ── Events / media / audio ──────────────────────────────────────────────────
+  'Ticket',
+  'Headphones',
+  'Guitar',
+  'Piano',
+  'Drum',
+  'Radio',
+  'Disc',
+  'Film',
+  'Presentation',
+  'Volume2',
+  // ── Kids / pets ─────────────────────────────────────────────────────────────
+  'Cat',
+  'Bird',
+  'Fish',
+  'Rabbit',
+  'PawPrint',
+  // ── Sports / wellness ───────────────────────────────────────────────────────
+  'Medal',
+  'Award',
+  'Target',
+  'Backpack',
+  // ── Tools / tech ────────────────────────────────────────────────────────────
+  'Hammer',
+  'Ruler',
+  'PaintBucket',
+  'PaintRoller',
+  'Pen',
+  'Pencil',
+  'Briefcase',
+  'Smartphone',
+  'Tablet',
+  'Printer',
+  'Cpu',
+  'Keyboard',
+  'Mouse',
+  'Webcam',
+  'Server',
+  // ── Commerce / trust ────────────────────────────────────────────────────────
+  'ShoppingCart',
+  'CreditCard',
+  'Wallet',
+  'Banknote',
+  'Coins',
+  'Percent',
+  'Tags',
+  'Receipt',
+  'ShieldCheck',
+  'Shield',
+  'BadgeCheck',
+  'Key',
+  'Timer',
+  'Hourglass',
+  'Heart',
+  'ThumbsUp',
+  // ── Contact / people / general ──────────────────────────────────────────────
+  'Phone',
+  'PhoneCall',
+  'Mail',
+  'MessageCircle',
+  'Send',
+  'Globe',
+  'HelpCircle',
+  'User',
+  'UserRound',
+  'UserCheck',
 ] as const;
 
 /**
@@ -119,6 +271,9 @@ export const attributeFieldTypeSchema = z.enum([
   'select',
   'multiselect',
   'boolean',
+  // A descriptive bullet list (string[]). Display-only — never filterable; renders
+  // as an icon-led spec card on the storefront (e.g. "Thợ chụp" → 15 bạn/thợ chụp…).
+  'list',
 ]);
 export type AttributeFieldType = z.infer<typeof attributeFieldTypeSchema>;
 
@@ -131,6 +286,12 @@ export const attributeFieldSchema = z
     required: z.boolean().default(false),
     filterable: z.boolean().default(false),
     options: z.array(z.string().min(1)).optional(),
+    /**
+     * A tenant-chosen glyph for this attribute, a lucide icon NAME from
+     * `LISTING_TYPE_ICONS` (same allowlist as the listing type's own icon — never a
+     * URL). Renders on the storefront spec card and next to the search facet.
+     */
+    icon: listingTypeIconSchema.optional(),
   })
   .superRefine((field, ctx) => {
     if ((field.type === 'select' || field.type === 'multiselect') && !field.options?.length) {
@@ -138,6 +299,13 @@ export const attributeFieldSchema = z
         code: z.ZodIssueCode.custom,
         message: '`options` is required for select/multiselect fields',
         path: ['options'],
+      });
+    }
+    if (field.type === 'list' && field.filterable) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'List attributes are display-only and cannot be filterable',
+        path: ['filterable'],
       });
     }
   });

@@ -1,16 +1,18 @@
-import { ImageIcon, Ruler, Sparkles, type LucideIcon } from 'lucide-react';
+import type { AttributeField } from '@booking/contracts';
 import { formatVnd } from '../../lib/ui';
 import type { RoomOption } from './listing-group-types';
 
 /**
- * A room attribute ready to render. Area carries its raw number so the unit
- * sentence stays in the `listing` namespace; every other attribute is
- * tenant-authored (its key comes from the listing type's attribute schema) and
- * has no translation to look up.
+ * One attribute ready to render as an icon-led spec card. Resolved against the
+ * listing type's attribute schema, so the label, icon and order are tenant-authored
+ * rather than derived from the value's position. `list`/`multiselect` values render
+ * as bullet lines; everything else is a single line. `area` keeps its own kind so
+ * the unit sentence stays in the `listing` i18n namespace.
  */
-export type RoomAttribute =
-  | { kind: 'area'; key: string; value: number }
-  | { kind: 'text'; key: string; label: string };
+export type SpecCard =
+  | { kind: 'area'; key: string; icon: string | null; label: string; value: number }
+  | { kind: 'text'; key: string; icon: string | null; label: string; line: string }
+  | { kind: 'list'; key: string; icon: string | null; label: string; lines: string[] };
 
 /** The lowest quoted price across the bookable rooms, formatted, or null. */
 export function minimumRoomPrice(options: RoomOption[]): string | null {
@@ -31,34 +33,50 @@ export function roomCapacity(attributes: Record<string, unknown>): number | null
   return null;
 }
 
-/** Capacity is rendered on its own, so it is filtered out here. */
-export function roomAttributes(attributes: Record<string, unknown>): RoomAttribute[] {
-  return Object.entries(attributes)
-    .flatMap<RoomAttribute>(([key, value]) => {
-      if (typeof value === 'boolean' || value === null || value === undefined || value === '')
-        return [];
-      if (/capacity|guest|succhua/i.test(key)) return [];
-      if (typeof value === 'number' && /area|dientich/i.test(key))
-        return [{ kind: 'area', key, value }];
-      if (typeof value === 'string' || typeof value === 'number')
-        return [{ kind: 'text', key, label: `${humanizeKey(key)}: ${String(value)}` }];
-      return [];
-    })
-    .slice(0, 5);
-}
+const isCapacityKey = (key: string): boolean => /capacity|guest|succhua/i.test(key);
+
+const stringLines = (raw: unknown): string[] =>
+  Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string' && v.trim() !== '') : [];
 
 /**
- * Attributes are icon-tagged by position (not by `kind`), so the first row
- * gets a ruler, the second a photo, the rest a spark. Shared by the listing
- * detail page and the room list so the two never drift.
+ * Resolves a listing's `attributes` against its type's `attributeSchema` into ordered
+ * spec cards. Capacity is rendered on its own (see {@link roomCapacity}) so it is
+ * skipped here, and boolean attributes are display-suppressed (a bare label reads as
+ * noise). Attributes absent from the schema are ignored — the schema is the source
+ * of what a type exposes.
  */
-export function attributeIcon(index: number): LucideIcon {
-  return index === 0 ? Ruler : index === 1 ? ImageIcon : Sparkles;
-}
-
-export function humanizeKey(key: string): string {
-  return key
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/^./, (letter) => letter.toUpperCase());
+export function specCards(
+  attributes: Record<string, unknown>,
+  schema: AttributeField[],
+): SpecCard[] {
+  const cards: SpecCard[] = [];
+  for (const field of schema) {
+    const { key } = field;
+    if (isCapacityKey(key)) continue;
+    const raw = attributes[key];
+    if (raw === null || raw === undefined || raw === '') continue;
+    const icon = field.icon ?? null;
+    const label = field.label || key;
+    switch (field.type) {
+      case 'boolean':
+        break;
+      case 'list':
+      case 'multiselect': {
+        const lines = stringLines(raw);
+        if (lines.length) cards.push({ kind: 'list', key, icon, label, lines });
+        break;
+      }
+      case 'number':
+        if (typeof raw === 'number' && /area|dientich/i.test(key)) {
+          cards.push({ kind: 'area', key, icon, label, value: raw });
+        } else if (typeof raw === 'number') {
+          cards.push({ kind: 'text', key, icon, label, line: String(raw) });
+        }
+        break;
+      default:
+        if (typeof raw === 'string' || typeof raw === 'number')
+          cards.push({ kind: 'text', key, icon, label, line: String(raw) });
+    }
+  }
+  return cards;
 }

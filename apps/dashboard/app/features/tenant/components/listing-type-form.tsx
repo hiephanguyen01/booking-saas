@@ -1,7 +1,9 @@
 import {
   createListingTypeInputSchema,
+  listingTypeIconSchema,
   listingTypeSearchConfigSchema,
   type CreateListingTypeInput,
+  type ListingTypeIcon,
   type ListingTypeResponse,
 } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
@@ -14,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@booking/ui/components/ui/select';
+import { Label } from '@booking/ui/components/ui/label';
+import { IconPicker } from '~/components/icon-picker';
 import { isChoice, ListingTypeAttributeFields } from './listing-type-attribute-fields';
 import { ListingTypeModesFields } from './listing-type-modes-fields';
 import { ListingTypeSearchConfigFields } from './listing-type-search-config-fields';
@@ -72,9 +76,14 @@ const fields: FieldConfig<CreateListingTypeInput>[] = [
 export function listingTypeFormDefaultValues(t?: ListingTypeResponse): CreateListingTypeInput {
   const structure = t?.structure ?? 'standalone';
 
+  // The response types `icon` as a plain nullable string (legacy rows), so validate
+  // it back into the allowlist before it seeds the picker.
+  const parsedIcon = listingTypeIconSchema.safeParse(t?.icon);
+
   return {
     name: t?.name ?? '',
     slug: t?.slug ?? '',
+    icon: parsedIcon.success ? parsedIcon.data : undefined,
     iconImageUrl: t?.iconImageUrl ?? '',
     unitLabel: t?.unitLabel ?? '',
     bookingSelection: t?.bookingSelection ?? 'flexible_duration',
@@ -118,6 +127,23 @@ export function ListingTypeForm({
         // so the shared zod schema validates them and their values ride along in
         // the submitted payload.
         <div className="space-y-6">
+          <Controller
+            control={form.control}
+            name="icon"
+            render={({ field }) => (
+              <section className="space-y-2 rounded-lg border p-4">
+                <Label className="text-sm font-semibold">Biểu tượng (chọn từ bộ icon)</Label>
+                <IconPicker
+                  value={(field.value as ListingTypeIcon | undefined) ?? null}
+                  onChange={(icon) => field.onChange(icon)}
+                  ariaLabel="Biểu tượng loại dịch vụ"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Dùng khi chưa tải ảnh biểu tượng. Ảnh tải lên (ở trên) sẽ được ưu tiên.
+                </p>
+              </section>
+            )}
+          />
           <Controller
             control={form.control}
             name="bookingSelection"
@@ -167,6 +193,7 @@ export function ListingTypeForm({
       transform={(d) => ({
         name: d.name.trim(),
         slug: d.slug.trim(),
+        icon: d.icon,
         iconImageUrl: d.iconImageUrl || undefined,
         unitLabel: d.unitLabel?.trim() || undefined,
         bookingSelection: d.bookingSelection,

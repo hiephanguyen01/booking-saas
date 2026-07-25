@@ -120,6 +120,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
         <RoomOptionsSection
           key={`${state.mode}:${state.date}:${state.startTime}:${state.endTime}:${state.from}:${state.to}`}
           roomOptions={roomOptions}
+          attributeSchema={group.attributeSchema}
           groupSlug={group.slug}
           mode={state.mode}
           date={state.date}

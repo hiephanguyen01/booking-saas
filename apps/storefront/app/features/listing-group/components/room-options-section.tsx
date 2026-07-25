@@ -1,8 +1,6 @@
-import type { HourlySlot } from '@booking/contracts';
-import {
-  MediaViewerDialog,
-  type MediaViewerItem,
-} from '@booking/ui/components/media/media-viewer-dialog';
+import type { AttributeField, HourlySlot } from '@booking/contracts';
+import { type MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
+import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Empty,
@@ -19,17 +17,20 @@ import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '../listing-group-types';
 import { roomAvailabilityState } from '../listing-group-utils';
 import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
+import { RoomMediaDetails } from './room-media-details';
 import { RoomPhotoStrip } from './room-photo-strip';
 import { useRoomOptionsController } from './use-room-options-controller';
 
 export function RoomOptionsSection({
   roomOptions,
+  attributeSchema,
   groupSlug,
   mode,
   date,
   hideUnavailableByDefault,
 }: {
   roomOptions: RoomOption[];
+  attributeSchema: AttributeField[];
   groupSlug: string;
   mode: BookingMode;
   date: string;
@@ -112,6 +113,7 @@ export function RoomOptionsSection({
                   <RoomRow
                     key={option.child.id}
                     option={option}
+                    attributeSchema={attributeSchema}
                     groupSlug={groupSlug}
                     mode={mode}
                     date={date}
@@ -127,6 +129,7 @@ export function RoomOptionsSection({
               <RoomCard
                 key={option.child.id}
                 option={option}
+                attributeSchema={attributeSchema}
                 groupSlug={groupSlug}
                 mode={mode}
                 date={date}
@@ -148,7 +151,7 @@ export function RoomOptionsSection({
         </Empty>
       )}
 
-      <MediaViewerDialog
+      <PackageMediaViewerDialog
         open={Boolean(activeRoom)}
         items={mediaItems}
         activeIndex={activeMedia?.index ?? 0}
@@ -161,6 +164,11 @@ export function RoomOptionsSection({
         labels={viewerLabels}
         title={activeRoom?.child.title ?? t('group.roomTypes')}
         returnFocusRef={mediaTriggerRef}
+        details={
+          activeRoom ? (
+            <RoomMediaDetails option={activeRoom} attributeSchema={attributeSchema} />
+          ) : null
+        }
       />
     </SectionCard>
   );
@@ -168,6 +176,7 @@ export function RoomOptionsSection({
 
 interface RoomProps {
   option: RoomOption;
+  attributeSchema: AttributeField[];
   groupSlug: string;
   mode: BookingMode;
   date: string;
@@ -175,13 +184,14 @@ interface RoomProps {
   onOpenMedia: (roomId: string, index: number, trigger: HTMLButtonElement) => void;
 }
 
-function RoomRow({ option, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
+function RoomRow({ option, attributeSchema, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <tr className="border-t border-border align-top">
       <td className="min-w-0 p-5">
         <RoomDetails
           option={option}
+          attributeSchema={attributeSchema}
           onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
         />
       </td>
@@ -206,7 +216,7 @@ function RoomRow({ option, groupSlug, mode, date, slots, onOpenMedia }: RoomProp
   );
 }
 
-function RoomCard({ option, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
+function RoomCard({ option, attributeSchema, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <article className="overflow-hidden rounded-lg border border-border bg-card">
@@ -216,7 +226,7 @@ function RoomCard({ option, groupSlug, mode, date, slots, onOpenMedia }: RoomPro
         onOpenPhoto={(index, trigger) => onOpenMedia(option.child.id, index, trigger)}
       />
       <div className="flex flex-col gap-5 p-5">
-        <RoomDetails option={option} hidePhotos />
+        <RoomDetails option={option} attributeSchema={attributeSchema} hidePhotos />
         <div className="grid gap-4 sm:grid-cols-2">
           <CapacityDetails option={option} />
           <RoomPrice option={option} mode={mode} state={state} />

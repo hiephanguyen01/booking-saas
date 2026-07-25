@@ -17,7 +17,8 @@ import { ExpandableDescription } from '../listing-group/components/expandable-de
 import { HeaderActions } from '../listing-group/components/header-actions';
 import { ProviderCard } from '../listing-group/components/provider-card';
 import { StudioGallery } from '../listing-group/components/studio-gallery';
-import { attributeIcon, roomAttributes, roomCapacity } from '../listing-group/room-attributes';
+import { AttributeSpecCards } from '../listing-group/components/attribute-spec-cards';
+import { roomCapacity, specCards } from '../listing-group/room-attributes';
 import { DeferredSearchBar } from '../search/deferred-search-bar';
 import { StudioBookingCard } from './components/studio-booking-card';
 
@@ -68,7 +69,10 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
               <ExpandableDescription description={listing.description} />
             </SectionCard>
 
-            <ListingDetails attributes={listing.attributes} />
+            <ListingDetails
+              attributes={listing.attributes}
+              attributeSchema={listing.attributeSchema}
+            />
             <Suspense fallback={<ReviewsSectionSkeleton label={t('common:loading')} />}>
               <Await resolve={loaderData.auxiliaryData}>
                 {({ reviews, reviewSummary, reviewRating, reviewLimit }) => (
@@ -158,35 +162,32 @@ function ListingHeader({
   );
 }
 
-function ListingDetails({ attributes }: { attributes: Record<string, unknown> }) {
+function ListingDetails({
+  attributes,
+  attributeSchema,
+}: {
+  attributes: Record<string, unknown>;
+  attributeSchema: PublicListingDetailResponse['attributeSchema'];
+}) {
   const { t } = useTranslation(NsI18n.Listing);
-  const details = roomAttributes(attributes);
+  const cards = specCards(attributes, attributeSchema);
   const capacity = roomCapacity(attributes);
-  const items = [
-    ...(capacity
-      ? [{ key: 'capacity', label: t('group.maxGuests', { count: capacity }), Icon: Users }]
-      : []),
-    ...details.map((detail, index) => ({
-      key: detail.key,
-      label: detail.kind === 'area' ? t('group.area', { value: detail.value }) : detail.label,
-      Icon: attributeIcon(index),
-    })),
-  ];
 
-  if (!items.length) return null;
+  if (!cards.length && !capacity) return null;
 
   return (
     <SectionCard aria-labelledby="listing-details-title">
       <h2 id="listing-details-title" className="text-base font-semibold">
         {t('info')}
       </h2>
-      <div className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map(({ key, label, Icon }) => (
-          <div key={key} className="flex min-w-0 items-center gap-2.5 text-sm">
-            <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span>{label}</span>
+      <div className="mt-5 flex flex-col gap-3">
+        {capacity ? (
+          <div className="flex items-start gap-2.5 text-sm">
+            <Users className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden="true" />
+            <span className="text-muted-foreground">{t('group.maxGuests', { count: capacity })}</span>
           </div>
-        ))}
+        ) : null}
+        <AttributeSpecCards cards={cards} />
       </div>
     </SectionCard>
   );

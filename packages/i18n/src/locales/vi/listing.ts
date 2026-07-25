@@ -171,6 +171,7 @@ export const viListing = {
     noRoomsBody: 'Thử đổi ngày hoặc hình thức đặt ở thanh tìm kiếm phía trên.',
     roomInfoPending: 'Thông tin phòng đang được cập nhật.',
     viewRoomDescription: 'Xem mô tả',
+    viewRoomDetails: 'Xem chi tiết',
     area: 'Diện tích: {value} m²',
     capacity: 'Sức chứa',
     maxGuests: 'Tối đa {count} người',

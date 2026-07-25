@@ -1,4 +1,5 @@
 import type {
+  AttributeField,
   BalanceDue,
   BookingMode,
   BookingSelection,
@@ -72,6 +73,8 @@ export interface ListingRecord {
 export interface PublicListingRecord extends ListingRecord {
   resourceTimezone: string;
   listingTypeSlug: string;
+  /** The listing type's attribute definitions (label + icon + type + order). */
+  attributeSchema: AttributeField[];
   group: { title: string; slug: string } | null;
   partnerName: string;
   partnerSlug: string;

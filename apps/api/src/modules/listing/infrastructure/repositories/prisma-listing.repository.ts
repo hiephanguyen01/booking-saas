@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type {
+  AttributeField,
   BookingMode,
   BookingSelection,
   CancellationPolicySource,
@@ -183,7 +184,7 @@ export class PrismaListingRepository implements IListingRepository {
       include: {
         ...LISTING_INCLUDE,
         resource: { select: { timezone: true } },
-        listingType: { select: { slug: true, bookingSelection: true } },
+        listingType: { select: { slug: true, bookingSelection: true, attributeSchema: true } },
         group: { select: { title: true, slug: true, status: true } },
         // Trust signals (§16.1) — partner display name + verification + tenure.
         // Contact info is deliberately NOT selected: it is revealed only after a
@@ -220,6 +221,7 @@ export class PrismaListingRepository implements IListingRepository {
       ...toRecord(l),
       resourceTimezone: l.resource.timezone,
       listingTypeSlug: l.listingType.slug,
+      attributeSchema: (l.listingType.attributeSchema ?? []) as unknown as AttributeField[],
       group:
         l.group && l.group.status === 'published'
           ? { title: l.group.title, slug: l.group.slug }

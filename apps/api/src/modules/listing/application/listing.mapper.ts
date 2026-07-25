@@ -151,6 +151,7 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
     address: l.address,
     photos: l.photos,
     attributes: l.attributes,
+    attributeSchema: l.attributeSchema,
     bookingModes: l.bookingModes,
     bookingSelection: l.bookingSelection,
     modeConfig: publicModeConfig(l.modeConfig),

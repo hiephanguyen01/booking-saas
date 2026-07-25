@@ -71,4 +71,5 @@ export const ATTRIBUTE_FIELD_TYPE_LABEL: Record<AttributeFieldType, string> = {
   select: 'Chọn một',
   multiselect: 'Chọn nhiều',
   boolean: 'Có/Không',
+  list: 'Danh sách',
 };

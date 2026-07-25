@@ -204,6 +204,8 @@ export const publicCatalogFacetSchema = z.object({
   control: z.enum(['checkbox', 'radio', 'range', 'buckets']),
   options: z.array(publicCatalogFacetOptionSchema).default([]),
   min: z.number().finite().nonnegative().optional(),
+  /** A lucide icon NAME (from the attribute's `icon`) for the filter, or null. */
+  icon: z.string().nullable().default(null),
   max: z.number().finite().nonnegative().optional(),
 });
 export type PublicCatalogFacet = z.infer<typeof publicCatalogFacetSchema>;

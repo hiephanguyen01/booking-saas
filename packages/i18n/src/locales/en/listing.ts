@@ -173,6 +173,7 @@ export const enListing = {
     noRoomsBody: 'Try another date or booking type in the search bar above.',
     roomInfoPending: 'Room details are being updated.',
     viewRoomDescription: 'View description',
+    viewRoomDetails: 'View details',
     area: 'Area: {value} m²',
     capacity: 'Capacity',
     maxGuests: 'Up to {count} guests',
