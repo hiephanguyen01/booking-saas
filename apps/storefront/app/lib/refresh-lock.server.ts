@@ -6,6 +6,7 @@ const DEFAULT_REFRESH_LOCK_RETRY_MS = 250;
 
 export interface RefreshLockStore {
   setIfAbsent(key: string, value: string, ttlMs: number): Promise<boolean>;
+  extendIfValue(key: string, value: string, ttlMs: number): Promise<boolean>;
   deleteIfValue(key: string, value: string): Promise<void>;
 }
 
@@ -17,6 +18,7 @@ export interface RefreshLockOptions {
   ttlMs?: number;
   retryMs?: number;
   waitMs?: number;
+  renewMs?: number;
   now?: () => number;
   delay?: (milliseconds: number) => Promise<void>;
   valueFactory?: () => string;
@@ -26,6 +28,13 @@ export class SessionRefreshLockTimeoutError extends Error {
   constructor() {
     super('Timed out waiting for the storefront session refresh lock');
     this.name = 'SessionRefreshLockTimeoutError';
+  }
+}
+
+export class SessionRefreshLockLostError extends Error {
+  constructor() {
+    super('Lost ownership of the storefront session refresh lock');
+    this.name = 'SessionRefreshLockLostError';
   }
 }
 
@@ -42,6 +51,7 @@ export async function withDistributedRefreshLock<T>(
   const ttlMs = options.ttlMs ?? DEFAULT_REFRESH_LOCK_TTL_MS;
   const retryMs = options.retryMs ?? DEFAULT_REFRESH_LOCK_RETRY_MS;
   const waitMs = options.waitMs ?? ttlMs + retryMs;
+  const renewMs = Math.max(1, options.renewMs ?? Math.floor(ttlMs / 3));
   const now = options.now ?? Date.now;
   const delay = options.delay ?? defaultDelay;
   const key = `${REFRESH_LOCK_PREFIX}${id}`;
@@ -65,11 +75,44 @@ export async function withDistributedRefreshLock<T>(
   }
   if (!acquired) throw new SessionRefreshLockTimeoutError();
 
+  let stopped = false;
+  let leaseLost = false;
+  let renewalTimer: ReturnType<typeof setTimeout> | undefined;
+  let renewalInFlight: Promise<void> | undefined;
+
+  const scheduleRenewal = () => {
+    if (stopped || leaseLost) return;
+    renewalTimer = setTimeout(() => {
+      renewalTimer = undefined;
+      renewalInFlight = store
+        .extendIfValue(key, value, ttlMs)
+        .then((extended) => {
+          if (!extended) {
+            leaseLost = true;
+            return;
+          }
+          scheduleRenewal();
+        })
+        .catch((error: unknown) => {
+          leaseLost = true;
+          console.error('Failed to renew storefront session refresh lock', error);
+        });
+    }, renewMs);
+  };
+
+  scheduleRenewal();
+  let result: T;
   try {
-    return await callback();
+    result = await callback();
   } finally {
+    stopped = true;
+    if (renewalTimer !== undefined) clearTimeout(renewalTimer);
+    await renewalInFlight?.catch(() => undefined);
     await store.deleteIfValue(key, value).catch((error: unknown) => {
       console.error('Failed to release storefront session refresh lock', error);
     });
   }
+
+  if (leaseLost) throw new SessionRefreshLockLostError();
+  return result;
 }
