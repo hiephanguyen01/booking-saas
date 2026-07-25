@@ -10,9 +10,11 @@ import { publicPost } from '../../../../lib/api.server';
 import { authFlow } from '../../../../lib/auth-flow.server';
 import { requireLocale } from '../../../../lib/i18n.server';
 import {
+  failedPartnerFormData,
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
   partnerStepPath,
+  readPartnerFormData,
   requirePartnerPhase,
   requirePartnerView,
 } from '../../server/partner-onboarding-shared.server';
@@ -25,7 +27,9 @@ export function loadPartnerVerifyRoute(request: Request, localeParam?: string) {
 export async function submitPartnerVerifyRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   const flow = await requirePartnerPhase(request, 'partner_registration_verify', locale);
-  const form = await request.formData();
+  const formBody = await readPartnerFormData(request);
+  if (!formBody.ok) return failedPartnerFormData(formBody);
+  const form = formBody.value;
 
   if (form.get('intent') === 'resend') {
     if (flow.resendAfterSec > 0) {
