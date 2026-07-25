@@ -93,7 +93,7 @@ export class PublicBookingController {
     const response = toCustomerBookingResponse(booking);
 
     if (principal) {
-      return { booking: response, accessGrant: null, accessGrantExpiresInSec: null };
+      return { ...response, accessGrant: null, accessGrantExpiresInSec: null };
     }
 
     const issued = await this.accessGrants.issue({
@@ -102,7 +102,7 @@ export class PublicBookingController {
       bookingCode: booking.code,
     });
     return {
-      booking: response,
+      ...response,
       accessGrant: issued.token,
       accessGrantExpiresInSec: issued.expiresInSec,
     };
