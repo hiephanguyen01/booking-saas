@@ -30,6 +30,7 @@ export function useAdaptivePaymentPolling({
     if (!enabled) return;
 
     let cancelled = false;
+    let inFlight = false;
     let attempt = 0;
     let timer: number | undefined;
 
@@ -42,19 +43,24 @@ export function useAdaptivePaymentPolling({
     const schedule = (delay: number) => {
       clearTimer();
       if (cancelled || document.visibilityState !== 'visible') return;
-      timer = window.setTimeout(poll, delay);
+      timer = window.setTimeout(() => void poll(), delay);
     };
 
-    function poll() {
+    async function poll(): Promise<void> {
       if (cancelled || document.visibilityState !== 'visible') return;
-      if (stateRef.current !== 'idle') {
+      if (inFlight || stateRef.current !== 'idle') {
         schedule(BUSY_RETRY_DELAY_MS);
         return;
       }
 
-      void runPaymentPollLoad(loadRef.current, href);
-      attempt += 1;
-      schedule(paymentPollDelay(attempt));
+      inFlight = true;
+      try {
+        await runPaymentPollLoad(loadRef.current, href);
+        attempt += 1;
+      } finally {
+        inFlight = false;
+        if (!cancelled) schedule(paymentPollDelay(attempt));
+      }
     }
 
     const handleVisibilityChange = () => {
@@ -66,7 +72,7 @@ export function useAdaptivePaymentPolling({
       // The user may have completed payment in another tab/app. Refresh now,
       // then restart with the responsive part of the polling curve.
       attempt = 0;
-      poll();
+      void poll();
     };
 
     schedule(paymentPollDelay(attempt));
