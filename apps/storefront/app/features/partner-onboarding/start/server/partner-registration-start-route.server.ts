@@ -11,10 +11,12 @@ import {
   partnerRegistrationEntry,
 } from '../../server/partner-onboarding-domain';
 import {
+  failedPartnerFormData,
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
   partnerFormFields,
   partnerStepPath,
+  readPartnerFormData,
 } from '../../server/partner-onboarding-shared.server';
 
 export async function submitPartnerRegistrationStartRoute(
@@ -39,7 +41,9 @@ export async function submitPartnerRegistrationStartRoute(
     });
   }
 
-  const form = partnerFormFields(await request.formData());
+  const formBody = await readPartnerFormData(request);
+  if (!formBody.ok) return failedPartnerFormData(formBody);
+  const form = partnerFormFields(formBody.value);
   const email = String(form.email ?? '')
     .trim()
     .toLowerCase();
