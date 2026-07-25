@@ -9,9 +9,12 @@ export const bookingAccessGrantSchema = z
   .regex(/^[A-Za-z0-9_-]+$/);
 export type BookingAccessGrant = z.infer<typeof bookingAccessGrantSchema>;
 
-/** Response from guest booking creation. Signed-in customers do not need a grant. */
-export const createBookingResponseSchema = z.object({
-  booking: bookingResponseSchema,
+/**
+ * Booking creation keeps the existing booking response shape. New clients may
+ * additionally persist the optional guest access grant; old clients safely
+ * ignore the extra fields.
+ */
+export const createBookingResponseSchema = bookingResponseSchema.extend({
   accessGrant: bookingAccessGrantSchema.nullable(),
   accessGrantExpiresInSec: z.number().int().positive().nullable(),
 });
