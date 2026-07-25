@@ -193,6 +193,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
       listingSlug: String(form.get('listingSlug') ?? ''),
       locale,
       maskedEmail: maskCheckoutEmail(guest.data.email),
+      paymentMethod: paymentMethod.data,
     }),
   );
 

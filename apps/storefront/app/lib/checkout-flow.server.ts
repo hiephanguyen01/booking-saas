@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { CustomerPaymentMethod } from '@booking/contracts';
 import { createCookie } from 'react-router';
 import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
 import { storefrontEnv } from './env.server';
@@ -13,6 +14,8 @@ export interface CheckoutFlowRecord {
   locale: 'vi' | 'en';
   /** Checkout contact email masked before storage and safe to expose in the success UI. */
   maskedEmail?: string;
+  /** Provider-neutral method selected for the initial payment attempt. */
+  paymentMethod?: CustomerPaymentMethod;
   /** Guest access credential; Redis-only and never serialized into a URL or loader payload. */
   otp?: string;
 }
