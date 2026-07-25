@@ -1,4 +1,5 @@
-import { Form } from 'react-router';
+import type { FormEvent } from 'react';
+import { Form, useNavigation, useSubmit } from 'react-router';
 import { Globe, ShieldCheck, Trash2 } from 'lucide-react';
 import { addDomainInputSchema, type AddDomainInput, type DomainResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -13,6 +14,7 @@ import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { CopyableCode } from '~/components/copyable-code';
 import { DateTimeValue } from '~/components/date-time-value';
+import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 const domainFields: FieldConfig<AddDomainInput>[] = [
   { name: 'hostname', type: 'text', label: 'Tên miền', placeholder: 'booking.tenant.com' },
@@ -20,7 +22,15 @@ const domainFields: FieldConfig<AddDomainInput>[] = [
 ];
 
 /** One domain row: hostname, verification state + TXT record, verify/remove quick actions. */
-function DomainListItem({ domain, busy }: { domain: DomainResponse; busy: boolean }) {
+function DomainListItem({
+  domain,
+  busy,
+  onSubmit,
+}: {
+  domain: DomainResponse;
+  busy: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
   return (
     <li className="space-y-2 rounded-md border px-3 py-2 text-sm">
       <div className="flex items-center justify-between gap-2">
@@ -48,7 +58,7 @@ function DomainListItem({ domain, busy }: { domain: DomainResponse; busy: boolea
               <CopyableCode value={domain.verificationToken} label="bản ghi TXT" />
             </div>
           ) : null}
-          <Form method="post">
+          <Form method="post" onSubmit={onSubmit}>
             <input type="hidden" name="intent" value="verify-domain" />
             <input type="hidden" name="domainId" value={domain.id} />
             <Button type="submit" variant="outline" size="sm" disabled={busy}>
@@ -58,7 +68,7 @@ function DomainListItem({ domain, busy }: { domain: DomainResponse; busy: boolea
           </Form>
         </div>
       )}
-      <Form method="post" className="pt-1">
+      <Form method="post" className="pt-1" onSubmit={onSubmit}>
         <input type="hidden" name="intent" value="remove-domain" />
         <input type="hidden" name="domainId" value={domain.id} />
         <Button
@@ -90,8 +100,19 @@ export function TenantDomainsCard({
   serverError: string | null;
   fieldErrors: Partial<Record<string, string[] | undefined>> | null;
 }) {
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const { busy: guardedBusy, run } = useSubmissionGuard(navigation.state);
+  const isBusy = busy || guardedBusy;
+
+  const handleDomainAction = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    run(() => submit(formData, { method: 'post' }));
+  };
+
   return (
-    <Card>
+    <Card aria-busy={isBusy}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Globe className="size-4 text-muted-foreground" />
@@ -105,29 +126,36 @@ export function TenantDomainsCard({
         ) : (
           <ul className="space-y-2">
             {domains.map((d) => (
-              <DomainListItem key={d.id} domain={d} busy={busy} />
+              <DomainListItem
+                key={d.id}
+                domain={d}
+                busy={isBusy}
+                onSubmit={handleDomainAction}
+              />
             ))}
           </ul>
         )}
 
-        <div className="space-y-3 border-t pt-4">
-          <p className="text-sm font-medium">Thêm tên miền</p>
-          {customDomainAllowed ? (
-            <GenericForm
-              schema={addDomainInputSchema}
-              fields={domainFields}
-              submitLabel="Thêm tên miền"
-              serverError={serverError}
-              fieldErrors={fieldErrors}
-              defaultValues={{ hostname: '', isPrimary: false }}
-            />
-          ) : (
-            <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
-              Gói hiện tại không cho phép tên miền riêng. Nâng cấp gói của tenant để bật tính năng
-              này.
-            </p>
-          )}
-        </div>
+        <fieldset disabled={isBusy} className="contents">
+          <div className="space-y-3 border-t pt-4">
+            <p className="text-sm font-medium">Thêm tên miền</p>
+            {customDomainAllowed ? (
+              <GenericForm
+                schema={addDomainInputSchema}
+                fields={domainFields}
+                submitLabel="Thêm tên miền"
+                serverError={serverError}
+                fieldErrors={fieldErrors}
+                defaultValues={{ hostname: '', isPrimary: false }}
+              />
+            ) : (
+              <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+                Gói hiện tại không cho phép tên miền riêng. Nâng cấp gói của tenant để bật tính năng
+                này.
+              </p>
+            )}
+          </div>
+        </fieldset>
       </CardContent>
     </Card>
   );
