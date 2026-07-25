@@ -21,12 +21,12 @@ const snapshots = new Map<string, SessionSnapshot>();
 const inFlightProbes = new Map<string, Promise<SessionProbeResult>>();
 let probeSequence = 0;
 
-function snapshotKey(tenantId: string, sessionId: string): string {
-  return `${tenantId}:${sessionId}`;
+function credentialDigest(value: string): string {
+  return createHash('sha256').update(value).digest('base64url');
 }
 
-function tokenDigest(accessToken: string): string {
-  return createHash('sha256').update(accessToken).digest('base64url');
+function snapshotKey(tenantId: string, sessionId: string): string {
+  return `${tenantId}:${credentialDigest(sessionId)}`;
 }
 
 function cachedSnapshot(key: string, digest: string): SessionInfoResponse | null {
@@ -88,7 +88,7 @@ export async function loadAuthSessionSnapshot({
   probe: () => Promise<SessionProbeResult>;
 }): Promise<SessionProbeResult> {
   const key = snapshotKey(tenantId, sessionId);
-  const digest = tokenDigest(accessToken);
+  const digest = credentialDigest(accessToken);
   const cached = cachedSnapshot(key, digest);
   if (cached) return { ok: true, status: 200, data: cached };
 
