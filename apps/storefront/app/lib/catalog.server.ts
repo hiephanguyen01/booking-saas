@@ -62,7 +62,7 @@ export async function fetchListingTypes(request: Request): Promise<PublicListing
       return data;
     })
     .finally(() => {
-      if (listingTypesReads.get(tenantId) === pending) listingTypesReads.delete(tenantId);
+      listingTypesReads.delete(tenantId);
     });
   listingTypesReads.set(tenantId, pending);
   return pending;
