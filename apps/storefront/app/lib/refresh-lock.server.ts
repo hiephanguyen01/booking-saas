@@ -41,6 +41,8 @@ export class SessionRefreshLockLostError extends Error {
 const defaultDelay = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
+type CallbackOutcome<T> = { ok: true; value: T } | { ok: false; error: unknown };
+
 export async function withDistributedRefreshLock<T>(
   store: RefreshLockStore,
   id: string,
@@ -102,18 +104,21 @@ export async function withDistributedRefreshLock<T>(
   };
 
   scheduleRenewal();
-  let callbackCompleted = false;
+  let outcome: CallbackOutcome<T>;
   try {
-    const result = await callback();
-    callbackCompleted = true;
-    return result;
-  } finally {
-    stopped = true;
-    if (renewalTimer !== undefined) clearTimeout(renewalTimer);
-    await renewalInFlight?.catch(() => undefined);
-    await store.deleteIfValue(key, value).catch((error: unknown) => {
-      console.error('Failed to release storefront session refresh lock', error);
-    });
-    if (callbackCompleted && leaseLost) throw new SessionRefreshLockLostError();
+    outcome = { ok: true, value: await callback() };
+  } catch (error) {
+    outcome = { ok: false, error };
   }
+
+  stopped = true;
+  if (renewalTimer !== undefined) clearTimeout(renewalTimer);
+  await renewalInFlight?.catch(() => undefined);
+  await store.deleteIfValue(key, value).catch((error: unknown) => {
+    console.error('Failed to release storefront session refresh lock', error);
+  });
+
+  if (!outcome.ok) throw outcome.error;
+  if (leaseLost) throw new SessionRefreshLockLostError();
+  return outcome.value;
 }
