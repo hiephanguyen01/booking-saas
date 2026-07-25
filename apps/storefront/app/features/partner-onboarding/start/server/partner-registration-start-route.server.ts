@@ -24,6 +24,9 @@ export async function submitPartnerRegistrationStartRoute(
   localeParam?: string,
 ) {
   const locale = requireLocale(localeParam);
+  const formBody = await readPartnerFormData(request);
+  if (!formBody.ok) return failedPartnerFormData(formBody);
+
   const auth = getOptionalAuth();
   if (auth) {
     const tenant = getCurrentStorefrontTenant();
@@ -41,8 +44,6 @@ export async function submitPartnerRegistrationStartRoute(
     });
   }
 
-  const formBody = await readPartnerFormData(request);
-  if (!formBody.ok) return failedPartnerFormData(formBody);
   const form = partnerFormFields(formBody.value);
   const email = String(form.email ?? '')
     .trim()
