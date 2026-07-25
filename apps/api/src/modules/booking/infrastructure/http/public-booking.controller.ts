@@ -37,7 +37,6 @@ import { toCancelResponse, toCustomerBookingResponse } from '../../application/b
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
 import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
-import { GetBookingByCodeUseCase } from '../../application/use-cases/get-booking-by-code.use-case';
 import { ListMyBookingsUseCase } from '../../application/use-cases/list-my-bookings.use-case';
 import { RequestBookingOtpUseCase } from '../../application/use-cases/request-booking-otp.use-case';
 import { ResolveBookingAccessUseCase } from '../../application/use-cases/resolve-booking-access.use-case';
@@ -69,7 +68,6 @@ export class PublicBookingController {
     private readonly confirmBooking: ConfirmBookingUseCase,
     private readonly cancelBooking: CancelBookingUseCase,
     private readonly listMyBookings: ListMyBookingsUseCase,
-    private readonly getBookingByCode: GetBookingByCodeUseCase,
     private readonly requestBookingOtp: RequestBookingOtpUseCase,
     private readonly resolveBookingAccess: ResolveBookingAccessUseCase,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
