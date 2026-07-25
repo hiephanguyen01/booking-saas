@@ -21,6 +21,10 @@ import {
   parseCheckoutAttemptId,
 } from '../../../lib/checkout-idempotency.server';
 import { getCheckoutFlowService, maskCheckoutEmail } from '../../../lib/checkout-flow.server';
+import {
+  formRequestFailureStatus,
+  readFormRequestBody,
+} from '../../../lib/form-request.server';
 import { errorStatus } from '../../../lib/http-status';
 import { createTranslator } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
@@ -31,6 +35,8 @@ import {
 } from '../../../lib/payment-redirect.server';
 import { appendRecentCookie } from '../../../lib/recent.server';
 import { getCurrentStorefrontTenant } from '../../../lib/request-context.server';
+
+const CHECKOUT_MAX_FORM_BYTES = 64 * 1024;
 
 export async function loadCheckout(request: Request, url: URL, locale: Locale) {
   const searchParams = url.searchParams;
@@ -95,7 +101,19 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
 
 export async function handleCheckoutAction(request: Request, locale: Locale) {
   const t = createTranslator(locale).t;
-  const form = await request.formData();
+  const formBody = await readFormRequestBody(request, CHECKOUT_MAX_FORM_BYTES);
+  if (!formBody.ok) {
+    return data(
+      {
+        fieldErrors: null,
+        error: t('checkout.bookingFailed'),
+        code: formBody.code,
+        checkoutAttemptId: createCheckoutAttemptId(),
+      },
+      { status: formRequestFailureStatus(formBody.code) },
+    );
+  }
+  const form = formBody.value;
   const checkoutAttemptId =
     parseCheckoutAttemptId(form.get('checkoutAttemptId')) ?? createCheckoutAttemptId();
   const paymentMethod = customerPaymentMethodSchema.safeParse(form.get('paymentMethod'));
