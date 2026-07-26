@@ -133,7 +133,12 @@ async function readPresignGrant(res: Response): Promise<PresignGrant> {
     throw new Error("Phản hồi liên kết tải lên không hợp lệ")
   }
 
-  return grant as unknown as PresignGrant
+  return {
+    uploadUrl: grant.uploadUrl,
+    key: grant.key,
+    publicUrl: grant.publicUrl,
+    expiresInSec: grant.expiresInSec,
+  }
 }
 
 function isNonEmptyString(value: unknown): value is string {
