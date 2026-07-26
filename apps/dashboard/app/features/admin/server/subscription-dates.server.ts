@@ -24,9 +24,7 @@ export function vietnamCalendarDayEndIso(date: string): string | null {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const utc = new Date(
-    Date.UTC(year, month - 1, day + 1, -MARKET_UTC_OFFSET_HOURS, 59, 59, 0),
-  );
+  const utc = new Date(Date.UTC(year, month - 1, day, 24 - MARKET_UTC_OFFSET_HOURS - 1, 59, 59));
 
   if (
     utc.getUTCFullYear() !== year ||
