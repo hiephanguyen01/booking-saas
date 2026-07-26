@@ -1,5 +1,5 @@
-import { createZodDto } from 'nestjs-zod';
 import {
+  bookingAccessResponseSchema,
   bookingOtpResponseSchema,
   bookingResponseSchema,
   bookingStatusHistoryResponseSchema,
@@ -7,6 +7,7 @@ import {
   cancelBookingResponseSchema,
   completeBookingInputSchema,
   createBookingInputSchema,
+  createBookingResponseSchema,
   listPartnerBookingsQuerySchema,
   markReturnedInputSchema,
   partnerBookingResponseSchema,
@@ -18,10 +19,13 @@ import {
   returnBookingResponseSchema,
   tenantBookingResponseSchema,
   tenantBookingsQuerySchema,
+  verifyBookingAccessInputSchema,
 } from '@booking/contracts';
+import { createZodDto } from 'nestjs-zod';
 
 // ── Request bodies ───────────────────────────────────────────────────────────
 export class CreateBookingDto extends createZodDto(createBookingInputSchema) {}
+export class VerifyBookingAccessDto extends createZodDto(verifyBookingAccessInputSchema) {}
 export class CancelBookingDto extends createZodDto(cancelBookingInputSchema) {}
 export class ReasonDto extends createZodDto(reasonInputSchema) {}
 export class MarkReturnedDto extends createZodDto(markReturnedInputSchema) {}
@@ -39,6 +43,8 @@ export class TenantBookingsQueryDto extends createZodDto(tenantBookingsQuerySche
 // ── Responses ────────────────────────────────────────────────────────────────
 /** Customer audience (`/public/*`) — no partner note, no commission snapshot. */
 export class BookingResponseDto extends createZodDto(bookingResponseSchema) {}
+export class CreateBookingResponseDto extends createZodDto(createBookingResponseSchema) {}
+export class BookingAccessResponseDto extends createZodDto(bookingAccessResponseSchema) {}
 /** Tenant audience — the customer shape plus the tenant's internal detail. */
 export class TenantBookingResponseDto extends createZodDto(tenantBookingResponseSchema) {}
 /** Partner audience — masked customer, no email (§7.3). */
