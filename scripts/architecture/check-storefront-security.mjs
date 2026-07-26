@@ -28,6 +28,7 @@ function walk(directory) {
 const storefrontRoot = join(root, 'apps/storefront/app');
 const storefrontFiles = walk(storefrontRoot).filter((file) => sourceExtensions.has(extname(file)));
 const directFetchAllowlist = new Set(['apps/storefront/app/routes/readyz.ts']);
+const directFormDataAllowlist = new Set(['apps/storefront/app/lib/form-request.server.ts']);
 let otpCompatibilityExceptions = 0;
 let tenantResolutionCallSites = 0;
 
@@ -38,6 +39,11 @@ for (const file of storefrontFiles) {
   if (/\bfetch\s*\(/.test(source) && !directFetchAllowlist.has(path)) {
     failures.push(
       `${path}: direct fetch is forbidden; use apps/storefront/app/lib/api.server.ts`,
+    );
+  }
+  if (/\brequest\.formData\s*\(/.test(source) && !directFormDataAllowlist.has(path)) {
+    failures.push(
+      `${path}: direct formData parsing is forbidden; use apps/storefront/app/lib/form-request.server.ts`,
     );
   }
   if (source.includes('process.env') && !path.endsWith('/lib/env.server.ts')) {
@@ -93,5 +99,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  'Storefront security check passed (one server-to-server OTP URL exception remains blocked on API-DEP-01).',
+  'Storefront security check passed (bounded form parsing enforced; one server-to-server OTP URL exception remains blocked on API-DEP-01).',
 );
