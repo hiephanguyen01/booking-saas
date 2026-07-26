@@ -27,6 +27,7 @@ import {
   type ActionResult,
   type ActionScope,
 } from '~/features/admin/server/tenant-detail-actions.server';
+import { getSubscriptionDateDefaults } from '~/features/admin/server/subscription-dates.server';
 import { tenantEditFields } from '~/features/admin/tenant-form-fields';
 import { TenantConfigSection } from '~/features/admin/components/tenant-config-section';
 import { TenantDangerSection } from '~/features/admin/components/tenant-danger-section';
@@ -52,6 +53,7 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
 export async function loader({ request, params, url }: Route.LoaderArgs) {
   const id = params.id;
   const { auth } = await requirePlatform(request, 'platform.tenants.read');
+  const subscriptionDates = getSubscriptionDateDefaults();
   // The subscription-history table is server-paginated with its OWN namespaced params
   // (subPage/subPageSize) so it never collides with anything else on this detail page.
   const { toApiQuery } = readListParams(url.searchParams, {
@@ -80,6 +82,7 @@ export async function loader({ request, params, url }: Route.LoaderArgs) {
     historyTotal: historyRes.ok ? (historyRes.data?.total ?? 0) : 0,
     domains: domainsRes.ok ? (domainsRes.data ?? []) : [],
     plans: plansRes.ok ? (plansRes.data ?? []) : [],
+    subscriptionDates,
   };
 }
 
@@ -95,7 +98,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function TenantDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { tenant, subscription, history, historyTotal, domains, plans } = loaderData;
+  const { tenant, subscription, history, historyTotal, domains, plans, subscriptionDates } = loaderData;
   const busy = useBusy();
   const [searchParams] = useSearchParams();
   const {
@@ -230,6 +233,8 @@ export default function TenantDetail({ loaderData, actionData }: Route.Component
         plans={plans}
         busy={busy}
         serverError={scopedError('subscription')}
+        minDate={subscriptionDates.minDate}
+        defaultExpiry={subscriptionDates.defaultExpiry}
       />
 
       <TenantConfigSection tenant={tenant} />

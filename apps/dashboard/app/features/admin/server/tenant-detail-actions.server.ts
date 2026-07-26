@@ -11,6 +11,7 @@ import {
 import { apiDelete, apiPatch, apiPost } from '~/lib/api.server';
 import { dashboardPaths } from '~/constants/paths';
 import { requirePlatform } from './admin.server';
+import { vietnamCalendarDayEndIso } from './subscription-dates.server';
 
 /** Which form/card an action result belongs to, so an error stays in its own card. */
 export type ActionScope = 'tenant' | 'domain' | 'subscription' | 'status';
@@ -118,8 +119,8 @@ export async function handleTenantDetailFormAction(request: Request, id: string)
     const expiresAtRaw = String(form.get('expiresAt') ?? '');
     const payload = {
       planId: String(form.get('planId') ?? ''),
-      // A calendar day → end-of-day UTC so it is strictly after `startsAt` (now).
-      expiresAt: expiresAtRaw ? new Date(`${expiresAtRaw}T23:59:59.000Z`).toISOString() : '',
+      // The date input is a Vietnam calendar day; preserve that boundary in UTC.
+      expiresAt: vietnamCalendarDayEndIso(expiresAtRaw) ?? '',
       status: String(form.get('status') ?? 'active'),
       note: (form.get('note') as string) || undefined,
     };
