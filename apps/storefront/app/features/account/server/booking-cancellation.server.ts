@@ -1,7 +1,8 @@
 import { data } from 'react-router';
 import { z } from 'zod';
-import { cancelBooking } from '../../../lib/booking.server';
 import { requireAuth } from '../../../lib/auth.server';
+import { cancelBooking } from '../../../lib/booking.server';
+import { formRequestFailureStatus, readFormRequestBody } from '../../../lib/form-request.server';
 import { errorStatus } from '../../../lib/http-status';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { loadAccountBooking } from './booking-history.server';
@@ -23,9 +24,18 @@ export async function submitBookingCancellation(
   formData?: FormData,
 ) {
   const normalizedCode = bookingCode.trim().toUpperCase();
+  const body = formData
+    ? ({ ok: true, value: formData } as const)
+    : await readFormRequestBody(request);
+  if (!body.ok) {
+    return data<BookingCancellationActionData>(
+      { ok: false, error: body.code, bookingCode: normalizedCode },
+      { status: formRequestFailureStatus(body.code) },
+    );
+  }
+
   const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
-  const fields = formData ?? (await request.formData());
-  const parsed = cancellationSchema.safeParse({ reason: fields.get('reason') });
+  const parsed = cancellationSchema.safeParse({ reason: body.value.get('reason') });
 
   if (!normalizedCode || !parsed.success) {
     return data<BookingCancellationActionData>(

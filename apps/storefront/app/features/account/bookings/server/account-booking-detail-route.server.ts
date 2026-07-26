@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { apiGet, apiPost } from '../../../../lib/api.server';
 import { requireAuth } from '../../../../lib/auth.server';
 import { checkoutBooking, fetchPaymentOptions } from '../../../../lib/booking.server';
+import { formRequestFailureStatus, readFormRequestBody } from '../../../../lib/form-request.server';
 import { errorStatus } from '../../../../lib/http-status';
 import { storefrontPaths } from '../../../../lib/locale-paths';
 import {
@@ -62,12 +63,26 @@ export async function handleAccountBookingDetailAction(
   code: string,
   locale: 'vi' | 'en',
 ) {
-  const formData = await request.formData();
+  const normalizedCode = code.trim().toUpperCase();
+  const body = await readFormRequestBody(request);
+  if (!body.ok) {
+    return data(
+      {
+        ok: false,
+        error: body.code,
+        bookingCode: normalizedCode,
+        bookingId: null,
+      },
+      { status: formRequestFailureStatus(body.code) },
+    );
+  }
+
+  const formData = body.value;
   if (formData.get('intent') === 'review') {
     return submitCustomerReview(request, locale, formData);
   }
   if (formData.get('intent') === 'cancel') {
-    return submitBookingCancellation(request, locale, code, formData);
+    return submitBookingCancellation(request, locale, normalizedCode, formData);
   }
 
   const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
@@ -76,7 +91,12 @@ export async function handleAccountBookingDetailAction(
     return data({ ok: false, error: 'CANCEL_REASON_REQUIRED' }, { status: 400 });
   }
 
-  const booking = await loadAccountBooking(request, code, locale, auth.session.accessToken);
+  const booking = await loadAccountBooking(
+    request,
+    normalizedCode,
+    locale,
+    auth.session.accessToken,
+  );
   if (!booking) return data({ ok: false, error: 'BOOKING_NOT_FOUND' }, { status: 404 });
 
   if (parsed.data.intent === 'dispute') {

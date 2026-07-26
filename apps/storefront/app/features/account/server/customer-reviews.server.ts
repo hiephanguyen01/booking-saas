@@ -7,6 +7,7 @@ import {
 import { data } from 'react-router';
 import { apiGet, apiPost } from '../../../lib/api.server';
 import { requireAuth } from '../../../lib/auth.server';
+import { formRequestFailureStatus, readFormRequestBody } from '../../../lib/form-request.server';
 import { errorStatus } from '../../../lib/http-status';
 import { storefrontPaths } from '../../../lib/locale-paths';
 
@@ -47,8 +48,18 @@ export async function submitCustomerReview(
   locale: 'vi' | 'en',
   formData?: FormData,
 ) {
+  const body = formData
+    ? ({ ok: true, value: formData } as const)
+    : await readFormRequestBody(request);
+  if (!body.ok) {
+    return data<ReviewActionData>(
+      { ok: false, error: body.code, bookingId: null },
+      { status: formRequestFailureStatus(body.code) },
+    );
+  }
+
   const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
-  const fields = formData ?? (await request.formData());
+  const fields = body.value;
   const bookingId =
     typeof fields.get('bookingId') === 'string' ? String(fields.get('bookingId')) : null;
   const mediaValue = fields.get('media');
