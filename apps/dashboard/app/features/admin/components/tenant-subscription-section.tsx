@@ -62,19 +62,19 @@ function AssignSubscriptionForm({
   activePlans,
   busy,
   hasSubscription,
+  minDate,
+  defaultExpiry,
 }: {
   activePlans: PlanResponse[];
   busy: boolean;
   hasSubscription: boolean;
+  minDate: string;
+  defaultExpiry: string;
 }) {
   const navigation = useNavigation();
   const submit = useSubmit();
   const { busy: guardedBusy, run } = useSubmissionGuard(navigation.state);
   const isBusy = busy || guardedBusy;
-  const defaultExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const minDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -142,6 +142,8 @@ export function TenantSubscriptionSection({
   plans,
   busy,
   serverError,
+  minDate,
+  defaultExpiry,
 }: {
   subscription: CurrentSubscriptionResponse | null;
   history: SubscriptionHistoryItem[] | null;
@@ -152,6 +154,8 @@ export function TenantSubscriptionSection({
   plans: PlanResponse[];
   busy: boolean;
   serverError: string | null;
+  minDate: string;
+  defaultExpiry: string;
 }) {
   const activePlans = plans.filter((plan) => plan.isActive);
   const plan = subscription?.plan ?? null;
@@ -227,6 +231,8 @@ export function TenantSubscriptionSection({
                 activePlans={activePlans}
                 busy={busy}
                 hasSubscription={subscription !== null}
+                minDate={minDate}
+                defaultExpiry={defaultExpiry}
               />
             )}
           </DetailSection>
