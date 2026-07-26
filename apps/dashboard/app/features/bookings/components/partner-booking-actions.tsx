@@ -31,6 +31,7 @@ export function PartnerBookingActions({
   canApprove,
   canManage,
   canWrite,
+  initialNow,
   size = 'xs',
   align = 'end',
   emptyLabel,
@@ -40,6 +41,8 @@ export function PartnerBookingActions({
   canApprove: boolean;
   canManage: boolean;
   canWrite: boolean;
+  /** Request-time clock serialized by the route loader for deterministic hydration. */
+  initialNow: number;
   size?: 'xs' | 'sm';
   align?: 'start' | 'end';
   /** Rendered when no action is available; omit to render nothing. */
@@ -51,7 +54,16 @@ export function PartnerBookingActions({
   const fetcherWasBusyRef = React.useRef(false);
   const [locked, setLocked] = useState(false);
   const [dialog, setDialog] = useState<DialogKind | null>(null);
+  const [now, setNow] = useState(initialNow);
   const busy = locked || fetcher.state !== 'idle';
+
+  React.useEffect(() => {
+    setNow(initialNow);
+    const update = (): void => setNow(Date.now());
+    update();
+    const timer = window.setInterval(update, 60_000);
+    return () => window.clearInterval(timer);
+  }, [initialNow]);
 
   React.useEffect(() => {
     if (fetcher.state !== 'idle') {
@@ -98,7 +110,11 @@ export function PartnerBookingActions({
     }
   };
 
-  const actions = availablePartnerBookingActions(booking, { canApprove, canManage, canWrite });
+  const actions = availablePartnerBookingActions(
+    booking,
+    { canApprove, canManage, canWrite },
+    now,
+  );
   const buttons = actions.map((kind) => renderAction(kind));
 
   function renderAction(kind: PartnerBookingActionKind): React.ReactNode {
