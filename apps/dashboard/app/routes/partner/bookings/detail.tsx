@@ -51,6 +51,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     canApprove: can('partner.bookings.approve'),
     canManage: can('partner.bookings.cancel'),
     canWrite: can('partner.bookings.write'),
+    actionNow: Date.now(),
   };
 }
 
@@ -60,8 +61,16 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerBookingDetail({ loaderData }: Route.ComponentProps) {
-  const { booking, history, historyFailed, settlement, canApprove, canManage, canWrite } =
-    loaderData;
+  const {
+    booking,
+    history,
+    historyFailed,
+    settlement,
+    canApprove,
+    canManage,
+    canWrite,
+    actionNow,
+  } = loaderData;
   const canAct = canApprove || canManage || canWrite;
 
   const footer =
@@ -74,6 +83,7 @@ export default function PartnerBookingDetail({ loaderData }: Route.ComponentProp
               canApprove={canApprove}
               canManage={canManage}
               canWrite={canWrite}
+              initialNow={actionNow}
               size="sm"
               align="start"
               emptyLabel="Không có thao tác nào ở trạng thái hiện tại."
