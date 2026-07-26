@@ -8,6 +8,7 @@ export * from './contracts/catalog-search';
 export * from './contracts/listing';
 export * from './contracts/availability';
 export * from './contracts/booking';
+export * from './contracts/booking-access';
 export * from './contracts/payment';
 export * from './contracts/promotion';
 export * from './contracts/finance';
