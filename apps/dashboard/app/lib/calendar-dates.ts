@@ -37,13 +37,13 @@ export function weekDays(monday: Date): Date[] {
 }
 
 /** Today's calendar date in TZ, as "YYYY-MM-DD". */
-export function todayString(): string {
+export function todayString(value: Date = new Date()): string {
   const p = new Intl.DateTimeFormat('en-CA', {
     timeZone: TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date());
+  }).formatToParts(value);
   const get = (t: string): string => p.find((x) => x.type === t)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
