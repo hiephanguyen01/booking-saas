@@ -3,7 +3,7 @@
 Shared, tool-agnostic context for every AI agent (Claude Code, Codex, Cursor, Gemini CLI, …).
 Claude Code reads this via `@AGENTS.md` from `CLAUDE.md`; other tools read it directly.
 
-> **This file was rebuilt from the actual code on 2026-07-17.** The product/design spec is
+> **This file was rebuilt from the actual code on 2026-07-27.** The product/design spec is
 > [`TONG-QUAN.md`](./TONG-QUAN.md) (English, the source of truth for *what* we build); the
 > ticket-by-ticket plan is [`tasks/`](./tasks/). When a doc and the code disagree, **the code wins** —
 > and please fix the doc. Deep docs live in [`docs/`](./docs/); read the one that matches your task.
@@ -34,7 +34,7 @@ Phases 2–3 are spec + tickets only. See [`docs/glossary.md`](./docs/glossary.m
 ```
 apps/api          @booking/api        NestJS 11, hexagonal, RLS-aware       PORT (default 3000)
 apps/storefront   @booking/storefront React Router 8 SSR, tenant by Host    5173
-apps/dashboard    @booking/dashboard  React Router 8 SSR, /admin /tenant /partner /affiliate   5174
+apps/dashboard    @booking/dashboard React Router 8 SSR, /admin /tenant /partner /affiliate   5174
 packages/contracts @booking/contracts zod schemas + inferred types (FE↔BE contract) → dist
 packages/ui       @booking/ui         shadcn + GenericForm + theme, raw TSX (no build)
 packages/api-client @booking/api-client typed server-side HTTP client (loaders/actions)
@@ -79,7 +79,8 @@ partner, catalog, listing, scheduling, booking, payments, promotions, finance, a
 | Install | `pnpm install` (CI/Docker: `--frozen-lockfile`) |
 | Everything, dev | `pnpm dev` (turbo, all apps) |
 | One app, dev | `pnpm --filter=@booking/{api,storefront,dashboard} dev` |
-| **Full check suite** | `pnpm turbo lint typecheck build` (there are no tests) |
+| **Full static check** | `pnpm check:no-tests && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
+| No-tests policy | `pnpm check:no-tests` |
 | Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
 | Format | `pnpm format` |
 | Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) |
@@ -90,8 +91,9 @@ partner, catalog, listing, scheduling, booking, payments, promotions, finance, a
 | RLS coverage check | `pnpm --filter=@booking/api check:rls` |
 
 > `--filter=api` also resolves (pnpm matches the directory). CI (`.github/workflows/ci.yml`, "Frontend
-> CI") runs the Storefront static security gate, then lints/typechecks/builds the **two frontends** +
-> `check:rls`. The API is not built in CI.
+> CI") runs the no-tests policy guard, Storefront security gate, contracts build, API typecheck,
+> frontend lint/typechecks/production builds, `check:rls`, and both frontend Docker builds. The API is
+> typechecked but is not run through a standalone production-build step in CI.
 
 ## Local run recipe
 
