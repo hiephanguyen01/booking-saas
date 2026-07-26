@@ -133,20 +133,19 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
           requiresPackage,
         )
       : false;
-  const quote =
-    selectionAvailable && mode
-      ? await fetchQuote(
-          request,
-          listingSlug,
-          new URLSearchParams({
-            mode,
-            from: selectionStart!,
-            to: selectionEnd!,
-            quantity,
-            ...(packageId ? { packageId } : {}),
-          }),
-        )
-      : null;
+  const quote = selectionAvailable && mode
+    ? await fetchQuote(
+        request,
+        listingSlug,
+        new URLSearchParams({
+          mode,
+          from: selectionStart!,
+          to: selectionEnd!,
+          quantity,
+          ...(packageId ? { packageId } : {}),
+        }),
+      )
+    : null;
 
   return {
     listing,
