@@ -8,6 +8,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "check:no-tests": "node scripts/architecture/check-no-tests.mjs",
     "check:storefront-security": "node scripts/architecture/check-storefront-security.mjs",
     "format": "prettier --write ."
   },
