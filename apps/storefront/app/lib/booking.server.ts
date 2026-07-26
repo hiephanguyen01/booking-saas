@@ -3,29 +3,49 @@ import type {
   AutoCampaignResponse,
   AvailabilityMode,
   AvailabilityResponse,
+  BookingAccessResponse,
   BookingOtpResponse,
   BookingResponse,
   CancelBookingResponse,
   CheckoutResponse,
   CreateBookingInput,
+  CreateBookingResponse,
+  CustomerPaymentMethod,
   PaymentStatusResponse,
   PublicPaymentOptions,
-  CustomerPaymentMethod,
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
   autoCampaignResponseSchema,
   availabilityResponseSchema,
+  bookingAccessResponseSchema,
   bookingOtpResponseSchema,
   bookingResponseSchema,
   cancelBookingResponseSchema,
   checkoutResponseSchema,
+  createBookingResponseSchema,
   paymentStatusResponseSchema,
   publicPaymentOptionsSchema,
   validatePromoResponseSchema,
 } from '@booking/contracts';
 import { optionalAuthPost, publicGetData } from './api.server';
 import { storefrontEnv } from './env.server';
+
+interface BookingAccessHeaders {
+  accessGrant?: string;
+  otp?: string;
+}
+
+interface CheckoutAccessHeaders extends BookingAccessHeaders {
+  bookingCode?: string;
+}
+
+function accessHeaders(access: BookingAccessHeaders = {}): Record<string, string> {
+  return {
+    ...(access.accessGrant ? { 'x-booking-access-grant': access.accessGrant } : {}),
+    ...(access.otp ? { 'x-booking-otp': access.otp } : {}),
+  };
+}
 
 /**
  * Server-only booking BFF (§20): the storefront never calls the API from the
@@ -73,10 +93,10 @@ export function createBooking(
   request: Request,
   input: CreateBookingInput,
   idempotencyKey: string,
-): Promise<ApiResult<BookingResponse>> {
+): Promise<ApiResult<CreateBookingResponse>> {
   return optionalAuthPost(request, '/public/bookings', input, {
     headers: { 'idempotency-key': idempotencyKey },
-    schema: bookingResponseSchema,
+    schema: createBookingResponseSchema,
   });
 }
 
@@ -84,6 +104,7 @@ export function checkoutBooking(
   request: Request,
   bookingId: string,
   paymentMethod: CustomerPaymentMethod | undefined,
+  access: CheckoutAccessHeaders = {},
 ): Promise<ApiResult<CheckoutResponse>> {
   // Retry flows may load tenant payment options dynamically. Never send an
   // invalid `{ paymentMethod: undefined }` request when no option is configured.
@@ -101,7 +122,13 @@ export function checkoutBooking(
     request,
     `/public/bookings/${encodeURIComponent(bookingId)}/checkout`,
     { paymentMethod },
-    { schema: checkoutResponseSchema },
+    {
+      headers: {
+        ...(access.bookingCode ? { 'x-booking-code': access.bookingCode } : {}),
+        ...accessHeaders(access),
+      },
+      schema: checkoutResponseSchema,
+    },
   );
 }
 
@@ -114,13 +141,10 @@ export function fetchPaymentOptions(request: Request): Promise<PublicPaymentOpti
 export function fetchBookingByCode(
   request: Request,
   code: string,
-  otp?: string,
+  access: BookingAccessHeaders = {},
 ): Promise<BookingResponse | null> {
-  // SECURITY_EXCEPTION API-DEP-01: the current API only accepts this credential
-  // on GET. The browser now POSTs it to the BFF and it remains server-side; SF-05
-  // removes this final upstream URL use when the API exposes an opaque grant.
-  const qs = otp ? `?otp=${encodeURIComponent(otp)}` : '';
-  return publicGetData(request, `/public/bookings/${encodeURIComponent(code)}${qs}`, {
+  return publicGetData(request, `/public/bookings/${encodeURIComponent(code)}`, {
+    headers: accessHeaders(access),
     schema: bookingResponseSchema,
     allowNotFound: true,
   });
@@ -138,12 +162,27 @@ export function requestBookingOtp(
   );
 }
 
+export function verifyBookingAccess(
+  request: Request,
+  code: string,
+  otp: string,
+): Promise<ApiResult<BookingAccessResponse>> {
+  return optionalAuthPost(
+    request,
+    `/public/bookings/${encodeURIComponent(code)}/verify-access`,
+    { otp },
+    { schema: bookingAccessResponseSchema },
+  );
+}
+
 export function cancelBooking(
   request: Request,
   code: string,
-  body: { reason?: string; otp?: string },
+  body: { reason?: string },
+  access: BookingAccessHeaders = {},
 ): Promise<ApiResult<CancelBookingResponse>> {
   return optionalAuthPost(request, `/public/bookings/${encodeURIComponent(code)}/cancel`, body, {
+    headers: accessHeaders(access),
     schema: cancelBookingResponseSchema,
   });
 }
@@ -153,20 +192,26 @@ export function cancelBooking(
 export function fetchPaymentStatus(
   request: Request,
   code: string,
+  access: BookingAccessHeaders = {},
 ): Promise<PaymentStatusResponse | null> {
   return publicGetData(request, `/public/bookings/${encodeURIComponent(code)}/payment-status`, {
+    headers: accessHeaders(access),
     schema: paymentStatusResponseSchema,
     allowNotFound: true,
   });
 }
 
 /** Dev-only mock payment (gated behind `ALLOW_MOCK_PAYMENTS` on the API). */
-export function mockPay(request: Request, code: string): Promise<ApiResult<BookingResponse>> {
+export function mockPay(
+  request: Request,
+  code: string,
+  access: BookingAccessHeaders = {},
+): Promise<ApiResult<BookingResponse>> {
   return optionalAuthPost(
     request,
     `/public/bookings/${encodeURIComponent(code)}/mock-pay`,
     {},
-    { schema: bookingResponseSchema },
+    { headers: accessHeaders(access), schema: bookingResponseSchema },
   );
 }
 

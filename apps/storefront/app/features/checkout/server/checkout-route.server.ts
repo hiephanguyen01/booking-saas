@@ -148,6 +148,7 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   }
 
   const tenant = getCurrentStorefrontTenant();
+  const auth = getOptionalAuth();
   const refCode = (await readRefCode(request, tenant.id)) ?? undefined;
   const parsed = createBookingInputSchema.safeParse({
     listingId,
@@ -201,25 +202,40 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   }
 
   const booking = created.data;
+  const accessGrant = booking.accessGrant ?? undefined;
   const headers = new Headers();
   headers.append('Set-Cookie', await appendRecentCookie(request, booking.code));
   headers.append(
     'Set-Cookie',
-    await getCheckoutFlowService().create(request, {
-      bookingId: booking.id,
-      bookingCode: booking.code,
-      listingSlug: String(form.get('listingSlug') ?? ''),
-      locale,
-      maskedEmail: maskCheckoutEmail(guest.data.email),
-      paymentMethod: paymentMethod.data,
-    }),
+    await getCheckoutFlowService().create(
+      request,
+      {
+        bookingId: booking.id,
+        bookingCode: booking.code,
+        listingSlug: String(form.get('listingSlug') ?? ''),
+        locale,
+        maskedEmail: maskCheckoutEmail(guest.data.email),
+        paymentMethod: paymentMethod.data,
+      },
+      accessGrant,
+    ),
   );
+
+  // Fail closed when an anonymous booking was created but the API could not
+  // persist its access grant. The recent-code cookie lets the customer recover
+  // through the OTP lookup flow without making an unauthorized payment call.
+  if (!auth && !accessGrant) {
+    return redirect(storefrontPaths.bookings(locale), { headers });
+  }
 
   if (booking.status !== 'pending_payment') {
     return redirect(storefrontPaths.booking(locale, booking.code), { headers });
   }
 
-  const checkout = await checkoutBooking(request, booking.id, paymentMethod.data);
+  const checkout = await checkoutBooking(request, booking.id, paymentMethod.data, {
+    bookingCode: booking.code,
+    accessGrant,
+  });
   if (!checkout.ok) {
     return data(
       {
