@@ -11,6 +11,10 @@ import {
   mockPaymentsEnabled,
 } from '../../../lib/booking.server';
 import { getCheckoutFlowService } from '../../../lib/checkout-flow.server';
+import {
+  formRequestFailureStatus,
+  readFormRequestBody,
+} from '../../../lib/form-request.server';
 import { errorStatus } from '../../../lib/http-status';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { optionalData, rethrowCriticalDataError } from '../../../lib/optional-data.server';
@@ -19,6 +23,8 @@ import {
   allowedPaymentRedirect,
   isMockPaymentRedirect,
 } from '../../../lib/payment-redirect.server';
+
+const BOOKING_DETAIL_MAX_FORM_BYTES = 16 * 1024;
 
 export async function loadBookingDetail(request: Request, code: string) {
   const [status, flow] = await Promise.all([
@@ -49,7 +55,14 @@ export async function loadBookingDetail(request: Request, code: string) {
 }
 
 export async function handleBookingDetailAction(request: Request, code: string, locale: Locale) {
-  const form = await request.formData();
+  const formBody = await readFormRequestBody(request, BOOKING_DETAIL_MAX_FORM_BYTES);
+  if (!formBody.ok) {
+    return data(
+      { ok: false, error: formBody.code },
+      { status: formRequestFailureStatus(formBody.code) },
+    );
+  }
+  const form = formBody.value;
   const intent = String(form.get('intent') ?? '');
 
   if (intent === 'verify-access') {

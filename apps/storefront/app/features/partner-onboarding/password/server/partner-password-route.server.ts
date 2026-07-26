@@ -10,10 +10,12 @@ import { requireLocale } from '../../../../lib/i18n.server';
 import { suppressStorefrontSessionCommit } from '../../../../lib/request-context.server';
 import { createUserSession } from '../../../../lib/session.server';
 import {
+  failedPartnerFormData,
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
   partnerFormFields,
   partnerStepPath,
+  readPartnerFormData,
   requirePartnerPhase,
   requirePartnerPhaseOnly,
 } from '../../server/partner-onboarding-shared.server';
@@ -37,7 +39,9 @@ export function loadPartnerPasswordRoute(request: Request, localeParam?: string)
 export async function submitPartnerPasswordRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   const flow = await requirePartnerPhase(request, 'partner_registration_password', locale);
-  const form = partnerFormFields(await request.formData());
+  const formBody = await readPartnerFormData(request);
+  if (!formBody.ok) return failedPartnerFormData(formBody);
+  const form = partnerFormFields(formBody.value);
 
   if (form.password !== form.confirmPassword) {
     return invalidPartnerOnboarding({ confirmPassword: ['passwordMismatch'] });

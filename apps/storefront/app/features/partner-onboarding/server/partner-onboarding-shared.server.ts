@@ -6,6 +6,13 @@ import {
   type AuthFlowPhase,
   type AuthFlowView,
 } from '../../../lib/auth-flow.server';
+import {
+  formRequestFailureStatus,
+  readFormRequestBody,
+  type FormRequestBody,
+} from '../../../lib/form-request.server';
+
+const PARTNER_MAX_FORM_BYTES = 16 * 1024;
 
 export interface PartnerOnboardingActionData {
   error?: string;
@@ -18,6 +25,13 @@ export const partnerStepPath = (locale: Locale, step: string) =>
   `${partnerStartPath(locale)}/${step}`;
 
 export const partnerFormFields = (form: FormData) => Object.fromEntries(form.entries());
+export const readPartnerFormData = (request: Request) =>
+  readFormRequestBody(request, PARTNER_MAX_FORM_BYTES);
+export const failedPartnerFormData = (result: Extract<FormRequestBody, { ok: false }>) =>
+  failedPartnerOnboarding({
+    status: formRequestFailureStatus(result.code),
+    code: result.code,
+  });
 
 export function invalidPartnerOnboarding(
   fieldErrors: Record<string, string[] | undefined>,

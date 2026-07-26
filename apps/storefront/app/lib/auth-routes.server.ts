@@ -15,12 +15,18 @@ import { data, redirect } from 'react-router';
 import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
 import { backendLogin, backendLogout, publicPost } from './api.server';
 import { getOptionalAuth } from './auth.server';
+import {
+  formRequestFailureStatus,
+  readFormRequestBody,
+  type FormRequestBody,
+} from './form-request.server';
 import { requireLocale } from './i18n.server';
 import { suppressStorefrontSessionCommit } from './request-context.server';
 import { safeRedirectPath } from './safe-redirect';
 import { createUserSession, destroyUserSession } from './session.server';
 import type { AuthActionData } from './auth-types';
 
+const AUTH_MAX_FORM_BYTES = 16 * 1024;
 const fields = (form: FormData) => Object.fromEntries(form.entries());
 const invalid = (fieldErrors: Record<string, string[] | undefined>) =>
   data<AuthActionData>(
@@ -38,11 +44,17 @@ const failed = (result: { status: number; code?: string; error?: string }) =>
     { error: result.code ?? result.error ?? 'UNKNOWN' },
     { status: result.status >= 400 && result.status < 600 ? result.status : 500 },
   );
+const readAuthForm = (request: Request) => readFormRequestBody(request, AUTH_MAX_FORM_BYTES);
+const failedAuthForm = (result: Extract<FormRequestBody, { ok: false }>) =>
+  failed({ status: formRequestFailureStatus(result.code), code: result.code });
 
 export async function startRegistrationAction(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
+  const formBody = await readAuthForm(request);
+  if (!formBody.ok) return failedAuthForm(formBody);
+
   const parsed = registrationStartInputSchema.safeParse({
-    ...fields(await request.formData()),
+    ...fields(formBody.value),
     locale,
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
@@ -66,8 +78,11 @@ export async function startRegistrationAction(request: Request, localeParam?: st
 
 export async function startResetAction(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
+  const formBody = await readAuthForm(request);
+  if (!formBody.ok) return failedAuthForm(formBody);
+
   const parsed = passwordResetStartInputSchema.safeParse({
-    ...fields(await request.formData()),
+    ...fields(formBody.value),
     locale,
   });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
@@ -138,7 +153,10 @@ export async function verifyAction(
   const start =
     purpose === 'registration' ? `/${locale}/auth/register` : `/${locale}/auth/forgot-password`;
   const flow = await requireFlowPhase(request, expected, start);
-  const form = await request.formData();
+  const formBody = await readAuthForm(request);
+  if (!formBody.ok) return failedAuthForm(formBody);
+  const form = formBody.value;
+
   if (form.get('intent') === 'resend') {
     if (flow.resendAfterSec > 0) {
       return data<AuthActionData>(
@@ -196,7 +214,10 @@ export async function completePasswordAction(
   const start =
     purpose === 'registration' ? `/${locale}/auth/register` : `/${locale}/auth/forgot-password`;
   const flow = await requireFlowPhase(request, expected, start);
-  const form = fields(await request.formData());
+  const formBody = await readAuthForm(request);
+  if (!formBody.ok) return failedAuthForm(formBody);
+  const form = fields(formBody.value);
+
   if (form.password !== form.confirmPassword) {
     return invalid({ confirmPassword: ['PASSWORD_MISMATCH'] });
   }
@@ -224,8 +245,9 @@ export async function completePasswordAction(
 
 export async function loginAction(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
-  const form = await request.formData();
-  const parsed = loginInputSchema.safeParse(fields(form));
+  const formBody = await readAuthForm(request);
+  if (!formBody.ok) return failedAuthForm(formBody);
+  const parsed = loginInputSchema.safeParse(fields(formBody.value));
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await backendLogin(request, parsed.data);
   if (!result.ok || !result.tokens || !result.user) return failed(result);
