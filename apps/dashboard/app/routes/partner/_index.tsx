@@ -26,6 +26,7 @@ import { MiniBarChart, type BarDatum } from '~/features/partner/components/mini-
 import { BookingStatusBadge } from '~/components/status-badge';
 import { formatTime, formatVnd, dayKey, formatDayLabel } from '~/lib/format';
 import { addDays, parseDay, startOfDayUtc, todayString, toDayString } from '~/lib/calendar-dates';
+import { useLiveClock } from '~/hooks/use-live-clock';
 
 const ACTIVE: BookingStatus[] = ['pending_approval', 'pending_payment', 'confirmed'];
 
@@ -35,7 +36,8 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, membership, can } = await requirePartner(request);
-  const today = todayString();
+  const overviewNow = Date.now();
+  const today = todayString(new Date(overviewNow));
   const from = startOfDayUtc(today);
   const to = startOfDayUtc(toDayString(addDays(parseDay(today), 30)));
 
@@ -67,7 +69,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     bookings,
     publishedCount: listings.filter((l) => l.status === 'published').length,
     hasListingsScope: can('partner.listings.read'),
-    today,
+    overviewNow,
     profileStatus: profile ? profile.status : null,
     verificationStatus: profile ? profile.verificationStatus : null,
     reviewNote: profile ? profile.identityInfo.reviewNote : null,
@@ -81,12 +83,14 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
     bookings,
     publishedCount,
     hasListingsScope,
-    today,
+    overviewNow,
     profileStatus,
     verificationStatus,
     reviewNote,
   } = loaderData;
-  const nowIso = new Date().toISOString();
+  const now = useLiveClock(overviewNow);
+  const nowIso = new Date(now).toISOString();
+  const today = todayString(new Date(now));
 
   const upcoming = useMemo(
     () =>
