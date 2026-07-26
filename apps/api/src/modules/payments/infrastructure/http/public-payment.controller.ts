@@ -1,4 +1,10 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import {
+  uuidSchema,
+  type CheckoutResponse,
+  type PaymentStatusResponse,
+  type PublicPaymentOptions,
+} from '@booking/contracts';
+import { Body, Controller, Get, Headers, Param, Post, Req } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -7,16 +13,15 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import {
-  uuidSchema,
-  type CheckoutResponse,
-  type PaymentStatusResponse,
-  type PublicPaymentOptions,
-} from '@booking/contracts';
 import { MissingHost } from '../../../../shared/http/request-boundary-errors';
-import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { UuidParam } from '../../../../shared/openapi/decorators';
+import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
+import { ResolveBookingAccessUseCase } from '../../../booking/application/use-cases/resolve-booking-access.use-case';
+import { BookingAccessDenied } from '../../../booking/domain/errors/booking-domain-errors';
+import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { OptionalPrincipal } from '../../../identity-access/infrastructure/http/decorators/optional-principal.decorator';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
+import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { CheckoutUseCase } from '../../application/use-cases/checkout.use-case';
 import { GetPaymentStatusUseCase } from '../../application/use-cases/get-payment-status.use-case';
 import { GetPublicPaymentOptionsUseCase } from '../../application/use-cases/get-public-payment-options.use-case';
@@ -35,6 +40,8 @@ export class PublicPaymentController {
     private readonly checkout: CheckoutUseCase,
     private readonly paymentStatus: GetPaymentStatusUseCase,
     private readonly paymentOptions: GetPublicPaymentOptionsUseCase,
+    private readonly resolveBookingAccess: ResolveBookingAccessUseCase,
+    private readonly resolveTenant: ResolveTenantByHostUseCase,
   ) {}
 
   @Public()
@@ -47,24 +54,52 @@ export class PublicPaymentController {
 
   @Public()
   @Post('bookings/:id/checkout')
-  @ApiOperation({ summary: 'Start checkout for a booking and get the gateway payment URL' })
+  @ApiOperation({ summary: 'Start checkout for an accessible booking' })
   @UuidParam()
   @ApiCreatedResponse({ type: CheckoutResponseDto })
   async startCheckout(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() input: StartCheckoutDto,
     @Req() req: Request,
+    @OptionalPrincipal() principal?: SessionPrincipal,
+    @Headers('x-booking-code') bookingCode?: string,
+    @Headers('x-booking-access-grant') accessGrant?: string,
+    @Headers('x-booking-otp') otp?: string,
   ): Promise<CheckoutResponse> {
-    return this.checkout.execute(hostOf(req), id, input.paymentMethod);
+    if (!bookingCode) throw new BookingAccessDenied();
+
+    const host = hostOf(req);
+    const tenant = await this.resolveTenant.execute(host);
+    const booking = await this.resolveBookingAccess.execute(tenant.id, bookingCode, {
+      accessGrant,
+      otp,
+      sessionUserId: principal?.userId,
+    });
+    if (booking.id !== id) throw new BookingAccessDenied();
+
+    return this.checkout.execute(host, id, input.paymentMethod);
   }
 
   @Public()
   @Get('bookings/:code/payment-status')
-  @ApiOperation({ summary: 'Get the payment status for a booking by code' })
+  @ApiOperation({ summary: 'Get payment status for an accessible booking' })
   @ApiParam({ name: 'code', type: 'string' })
   @ApiOkResponse({ type: PaymentStatusResponseDto })
-  async status(@Param('code') code: string, @Req() req: Request): Promise<PaymentStatusResponse> {
-    return this.paymentStatus.execute(hostOf(req), code);
+  async status(
+    @Param('code') code: string,
+    @Req() req: Request,
+    @OptionalPrincipal() principal?: SessionPrincipal,
+    @Headers('x-booking-access-grant') accessGrant?: string,
+    @Headers('x-booking-otp') otp?: string,
+  ): Promise<PaymentStatusResponse> {
+    const host = hostOf(req);
+    const tenant = await this.resolveTenant.execute(host);
+    await this.resolveBookingAccess.execute(tenant.id, code, {
+      accessGrant,
+      otp,
+      sessionUserId: principal?.userId,
+    });
+    return this.paymentStatus.execute(host, code);
   }
 }
 

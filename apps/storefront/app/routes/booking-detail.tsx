@@ -16,7 +16,8 @@ export function meta() {
 }
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  return loadBookingDetail(request, params.code);
+  const locale = params.locale === 'en' ? 'en' : 'vi';
+  return loadBookingDetail(request, params.code, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
