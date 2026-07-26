@@ -25,8 +25,7 @@ export interface PartnerActionableBooking {
 export const NO_SHOW_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 /** A confirmed booking currently inside the backend's 48h no-show window. */
-export function isNoShowEligible(booking: PartnerActionableBooking): boolean {
-  const now = Date.now();
+export function isNoShowEligible(booking: PartnerActionableBooking, now: number): boolean {
   const end = new Date(booking.endUtc).getTime();
   return (
     booking.status === 'confirmed' &&
@@ -37,12 +36,17 @@ export function isNoShowEligible(booking: PartnerActionableBooking): boolean {
 
 /** Every action a partner can take on a booking, in display order. */
 export type PartnerBookingActionKind =
-  'approve' | 'reject' | 'complete' | 'pick-up' | 'return' | 'no-show' | 'cancel';
+  | 'approve'
+  | 'reject'
+  | 'complete'
+  | 'pick-up'
+  | 'return'
+  | 'no-show'
+  | 'cancel';
 
 /**
  * The actions available for one booking, derived from its status/fulfillment
- * state and the caller's permissions (§8.2 / §9.4). Pure — the component maps
- * the result to buttons, the rules stay testable without React.
+ * state, permissions, and an explicitly supplied clock (§8.2 / §9.4).
  */
 export function availablePartnerBookingActions(
   booking: PartnerActionableBooking,
@@ -51,6 +55,7 @@ export function availablePartnerBookingActions(
     canManage,
     canWrite,
   }: { canApprove: boolean; canManage: boolean; canWrite: boolean },
+  now: number,
 ): PartnerBookingActionKind[] {
   const actions: PartnerBookingActionKind[] = [];
   const isInventory = booking.bookingMode === 'inventory';
@@ -61,13 +66,13 @@ export function availablePartnerBookingActions(
   if (booking.status === 'confirmed' && canManage) {
     if (isInventory && !booking.pickedUpAt) actions.push('pick-up');
     if (isInventory && booking.pickedUpAt && !booking.returnedAt) actions.push('return');
-    if (isNoShowEligible(booking)) actions.push('no-show');
+    if (isNoShowEligible(booking, now)) actions.push('no-show');
   }
   if (
     booking.status === 'confirmed' &&
     booking.bookingMode !== 'inventory' &&
     canWrite &&
-    Date.now() >= new Date(booking.endUtc).getTime()
+    now >= new Date(booking.endUtc).getTime()
   ) {
     actions.unshift('complete');
   }

@@ -50,6 +50,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     canWrite: can('partner.bookings.write'),
     loadError: feed.ok ? null : (feed.error ?? 'Không tải được danh sách lượt đặt.'),
     filters: { ...filters, status },
+    actionNow: Date.now(),
   };
 }
 
@@ -59,7 +60,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps) {
-  const { bookings, canApprove, canManage, canWrite, loadError, filters } = loaderData;
+  const { bookings, canApprove, canManage, canWrite, loadError, filters, actionNow } = loaderData;
   const [searchParams] = useSearchParams();
   const { pageSize, filterHref } = readListParams(searchParams);
   const statusValue = filters.status || 'all';
@@ -140,6 +141,7 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
             canApprove={canApprove}
             canManage={canManage}
             canWrite={canWrite}
+            initialNow={actionNow}
             emptyLabel="-"
           />
         ) : null,
