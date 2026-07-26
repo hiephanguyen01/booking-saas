@@ -1,6 +1,7 @@
 import { customerPaymentMethodSchema } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
+import { getOptionalAuth } from '../../../lib/auth.server';
 import {
   cancelBooking,
   checkoutBooking,
@@ -27,12 +28,28 @@ import {
 
 const BOOKING_DETAIL_MAX_FORM_BYTES = 16 * 1024;
 
-export async function loadBookingDetail(request: Request, code: string) {
-  const flow = await getCheckoutFlowService().readForCode(request, code);
-  const status = await fetchPaymentStatus(request, code, {
-    accessGrant: flow?.accessGrant,
-    otp: flow?.legacyOtp,
-  });
+export async function loadBookingDetail(request: Request, code: string, locale: Locale) {
+  const flowService = getCheckoutFlowService();
+  const flow = await flowService.readForCode(request, code);
+  const auth = getOptionalAuth();
+  if (!auth && !flow?.accessGrant && !flow?.legacyOtp) {
+    throw redirect(storefrontPaths.bookings(locale));
+  }
+
+  let status;
+  try {
+    status = await fetchPaymentStatus(request, code, {
+      accessGrant: flow?.accessGrant,
+      otp: flow?.legacyOtp,
+    });
+  } catch (error) {
+    if (!auth && error instanceof Response && (error.status === 401 || error.status === 403)) {
+      throw redirect(storefrontPaths.bookings(locale), {
+        headers: flow ? { 'Set-Cookie': await flowService.destroy(request, code) } : undefined,
+      });
+    }
+    throw error;
+  }
 
   if (!status) throw new Response('Booking not found', { status: 404 });
 
@@ -47,7 +64,7 @@ export async function loadBookingDetail(request: Request, code: string) {
   };
   if (status.paymentStatus === 'succeeded' && flow) {
     return data(payload, {
-      headers: { 'Set-Cookie': await getCheckoutFlowService().destroy(request, code) },
+      headers: { 'Set-Cookie': await flowService.destroy(request, code) },
     });
   }
   return payload;
