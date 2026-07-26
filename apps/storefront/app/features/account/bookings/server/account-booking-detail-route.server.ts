@@ -134,7 +134,9 @@ export async function handleAccountBookingDetailAction(
   }
 
   const options = await fetchPaymentOptions(request);
-  const result = await checkoutBooking(request, booking.id, options.methods[0]);
+  const result = await checkoutBooking(request, booking.id, options.methods[0], {
+    bookingCode: booking.code,
+  });
   const destination = result.data?.destination;
   if (
     result.ok &&
