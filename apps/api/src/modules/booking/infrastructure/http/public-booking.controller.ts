@@ -38,7 +38,6 @@ import { toCancelResponse, toCustomerBookingResponse } from '../../application/b
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
 import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
-import { GetBookingByCodeUseCase } from '../../application/use-cases/get-booking-by-code.use-case';
 import { ListMyBookingsUseCase } from '../../application/use-cases/list-my-bookings.use-case';
 import { RequestBookingOtpUseCase } from '../../application/use-cases/request-booking-otp.use-case';
 import { ResolveBookingAccessUseCase } from '../../application/use-cases/resolve-booking-access.use-case';
@@ -74,7 +73,6 @@ export class PublicBookingController {
     private readonly confirmBooking: ConfirmBookingUseCase,
     private readonly cancelBooking: CancelBookingUseCase,
     private readonly listMyBookings: ListMyBookingsUseCase,
-    private readonly getBookingByCode: GetBookingByCodeUseCase,
     private readonly requestBookingOtp: RequestBookingOtpUseCase,
     private readonly resolveBookingAccess: ResolveBookingAccessUseCase,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
@@ -209,19 +207,29 @@ export class PublicBookingController {
     return toCancelResponse(result);
   }
 
-  /** Dev-only payment simulation (§11 mock); Task 1.9 replaces it with a signed webhook. */
+  /** Dev-only payment simulation (§11 mock); still requires customer booking access. */
   @Public()
   @Post('bookings/:code/mock-pay')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Dev-only: simulate a successful payment for a booking' })
+  @ApiOperation({ summary: 'Dev-only: simulate a successful payment for an accessible booking' })
   @ApiParam({ name: 'code', type: 'string' })
   @ApiOkResponse({ type: BookingResponseDto })
-  async mockPay(@Param('code') code: string, @Req() req: Request): Promise<BookingResponse> {
+  async mockPay(
+    @Param('code') code: string,
+    @Req() req: Request,
+    @OptionalPrincipal() principal?: SessionPrincipal,
+    @Headers('x-booking-access-grant') accessGrant?: string,
+    @Headers('x-booking-otp') otp?: string,
+  ): Promise<BookingResponse> {
     if (!MOCK_PAY_ENABLED) {
       throw new HiddenRouteNotFound();
     }
     const tenant = await this.resolveTenant.execute(hostOf(req));
-    const booking = await this.getBookingByCode.execute(tenant.id, code);
+    const booking = await this.resolveBookingAccess.execute(tenant.id, code, {
+      accessGrant,
+      otp,
+      sessionUserId: principal?.userId,
+    });
     return toCustomerBookingResponse(await this.confirmBooking.execute(tenant.id, booking.id));
   }
 
