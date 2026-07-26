@@ -60,7 +60,7 @@ export async function presignAndPut(
       (await safeMessage(presignRes)) ?? `Không thể tạo liên kết tải lên (${presignRes.status})`,
     )
   }
-  const grant = (await presignRes.json()) as PresignGrant
+  const grant = await readPresignGrant(presignRes)
 
   // 2) PUT the bytes directly to storage — the URL is pre-signed, so no auth here.
   const putRes = await fetch(grant.uploadUrl, {
@@ -97,8 +97,7 @@ export async function presignAndPutReviewMedia(
       (await safeMessage(presignRes)) ?? `Không thể tạo liên kết tải lên (${presignRes.status})`,
     )
   }
-  const grant = (await presignRes.json()) as PresignGrant
-  if (!grant.uploadUrl || !grant.key) throw new Error("Liên kết tải lên không hợp lệ")
+  const grant = await readPresignGrant(presignRes)
 
   const putRes = await fetch(grant.uploadUrl, {
     method: "PUT",
@@ -108,6 +107,37 @@ export async function presignAndPutReviewMedia(
   })
   if (!putRes.ok) throw new Error(`Tải tệp lên thất bại (${putRes.status})`)
   return { key: grant.key }
+}
+
+async function readPresignGrant(res: Response): Promise<PresignGrant> {
+  let value: unknown
+  try {
+    value = await res.json()
+  } catch {
+    throw new Error("Phản hồi liên kết tải lên không hợp lệ")
+  }
+
+  if (!value || typeof value !== "object") {
+    throw new Error("Phản hồi liên kết tải lên không hợp lệ")
+  }
+
+  const grant = value as Record<string, unknown>
+  if (
+    !isNonEmptyString(grant.uploadUrl) ||
+    !isNonEmptyString(grant.key) ||
+    !isNonEmptyString(grant.publicUrl) ||
+    typeof grant.expiresInSec !== "number" ||
+    !Number.isFinite(grant.expiresInSec) ||
+    grant.expiresInSec <= 0
+  ) {
+    throw new Error("Phản hồi liên kết tải lên không hợp lệ")
+  }
+
+  return grant as unknown as PresignGrant
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0
 }
 
 async function safeMessage(res: Response): Promise<string | undefined> {
