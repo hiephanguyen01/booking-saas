@@ -2,10 +2,12 @@ import { favoriteToggleResponseSchema, toggleFavoriteInputSchema } from '@bookin
 import { data } from 'react-router';
 import { apiPost } from '../lib/api.server';
 import { getOptionalAuth } from '../lib/auth.server';
+import { formRequestFailureStatus, readFormRequestBody } from '../lib/form-request.server';
 import { errorStatus } from '../lib/http-status';
 import type { Route } from './+types/favorites-toggle';
 
 const CLIENT_MUTATION_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const MAX_FAVORITE_FORM_BYTES = 8 * 1024;
 
 /**
  * Resource route (action only) that persists a heart toggle. The client only
@@ -14,7 +16,15 @@ const CLIENT_MUTATION_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
  * fetcher. `intent` (add|remove) is honoured idempotently by the backend.
  */
 export async function action({ request }: Route.ActionArgs) {
-  const form = await request.formData();
+  const body = await readFormRequestBody(request, MAX_FAVORITE_FORM_BYTES);
+  if (!body.ok) {
+    return data(
+      { ok: false as const, error: 'invalid', clientMutationId: null },
+      { status: formRequestFailureStatus(body.code) },
+    );
+  }
+
+  const form = body.value;
   const rawMutationId = form.get('clientMutationId');
   const clientMutationId =
     typeof rawMutationId === 'string' && CLIENT_MUTATION_ID_RE.test(rawMutationId)
