@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { useMediaViewerLabels } from '../lib/use-media-viewer-labels';
 import { RatingStars } from './rating-stars';
+import { ReviewTime } from './review-time';
 import { SectionCard } from './section-card';
 import { usePublicReviewsSectionController } from './use-public-reviews-section-controller';
 
@@ -117,7 +118,11 @@ function ReviewItem({ review, locale }: { review: ReviewResponse; locale: 'vi' |
             <RatingStars rating={review.rating} className="mt-1" />
           </div>
         </div>
-        <ReviewTime value={review.createdAt} locale={locale} />
+        <ReviewTime
+          value={review.createdAt}
+          locale={locale}
+          className="shrink-0 pt-0.5 text-xs leading-4 text-muted-foreground"
+        />
       </div>
 
       <p className="text-sm leading-5 text-foreground/85">{review.content}</p>
@@ -139,7 +144,11 @@ function ReviewItem({ review, locale }: { review: ReviewResponse; locale: 'vi' |
               <p className="min-w-0 truncate text-sm leading-5 font-semibold text-foreground">
                 {review.reply.partnerName}
               </p>
-              <ReviewTime value={review.reply.createdAt} locale={locale} />
+              <ReviewTime
+                value={review.reply.createdAt}
+                locale={locale}
+                className="shrink-0 pt-0.5 text-xs leading-4 text-muted-foreground"
+              />
             </div>
             <p className="mt-2 text-sm leading-5 text-foreground/85">{review.reply.content}</p>
           </div>
@@ -157,45 +166,6 @@ function ReviewAvatar({ name, className }: { name: string; className: string }) 
       </AvatarFallback>
     </Avatar>
   );
-}
-
-function ReviewTime({ value, locale }: { value: string; locale: 'vi' | 'en' }) {
-  return (
-    <time
-      className="shrink-0 pt-0.5 text-xs leading-4 text-muted-foreground"
-      dateTime={value}
-      suppressHydrationWarning
-      title={new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
-        dateStyle: 'long',
-      }).format(new Date(value))}
-    >
-      {formatRelativeTime(value, locale)}
-    </time>
-  );
-}
-
-function formatRelativeTime(value: string, locale: 'vi' | 'en'): string {
-  const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000);
-  const formatter = new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
-    numeric: 'always',
-  });
-  const divisions = [
-    { amount: 60, unit: 'second' },
-    { amount: 60, unit: 'minute' },
-    { amount: 24, unit: 'hour' },
-    { amount: 7, unit: 'day' },
-    { amount: 4.345, unit: 'week' },
-    { amount: 12, unit: 'month' },
-    { amount: Number.POSITIVE_INFINITY, unit: 'year' },
-  ] as const;
-  let duration = seconds;
-  for (const division of divisions) {
-    if (Math.abs(duration) < division.amount) {
-      return formatter.format(Math.round(duration), division.unit);
-    }
-    duration /= division.amount;
-  }
-  return formatter.format(Math.round(duration), 'year');
 }
 
 function initials(name: string): string {
