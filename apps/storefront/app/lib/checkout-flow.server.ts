@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import type { CustomerPaymentMethod } from '@booking/contracts';
+import {
+  bookingAccessGrantSchema,
+  type CustomerPaymentMethod,
+} from '@booking/contracts';
 import { createCookie } from 'react-router';
-import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
 import { storefrontEnv } from './env.server';
+import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
 
 const TTL_SECONDS = 30 * 60;
+const MAX_ACTIVE_FLOWS = 5;
 const PREFIX = 'bookify:storefront:checkout-flow:';
 
 export interface CheckoutFlowRecord {
@@ -16,12 +20,34 @@ export interface CheckoutFlowRecord {
   maskedEmail?: string;
   /** Provider-neutral method selected for the initial payment attempt. */
   paymentMethod?: CustomerPaymentMethod;
-  /** Guest access credential; Redis-only and never serialized into a URL or loader payload. */
+}
+
+interface StoredCheckoutFlowRecord extends CheckoutFlowRecord {
+  /** Backward compatibility for flows created before access grants were introduced. */
   otp?: string;
 }
 
+interface CheckoutFlowCookieEntry {
+  id: string;
+  bookingCode: string;
+  /** Opaque API bearer grant; signed + HttpOnly and never returned in loader data. */
+  accessGrant?: string;
+}
+
+export interface CheckoutFlowRead {
+  id: string;
+  accessGrant?: string;
+  legacyOtp?: string;
+  record: CheckoutFlowRecord | null;
+}
+
 export function maskCheckoutEmail(email: string): string {
-  const [localPart = '', domain = ''] = email.split('@');
+  const normalized = email.trim();
+  const separator = normalized.lastIndexOf('@');
+  if (separator <= 0 || separator === normalized.length - 1) return '***';
+
+  const localPart = normalized.slice(0, separator);
+  const domain = normalized.slice(separator + 1);
   const visibleLength = Math.min(2, localPart.length);
   const visible = localPart.slice(0, visibleLength);
   const hidden = '*'.repeat(Math.max(3, localPart.length - visibleLength));
@@ -38,35 +64,149 @@ export function createCheckoutFlowService(store: RedisJsonStore = storefrontRedi
     maxAge: TTL_SECONDS,
   });
 
-  async function idFrom(request: Request): Promise<string | null> {
-    const id: unknown = await cookie.parse(request.headers.get('Cookie'));
-    return typeof id === 'string' && id ? id : null;
+  async function entriesFrom(request: Request): Promise<CheckoutFlowCookieEntry[]> {
+    let parsed: unknown;
+    try {
+      parsed = await cookie.parse(request.headers.get('Cookie'));
+    } catch {
+      return [];
+    }
+
+    if (typeof parsed === 'string' && parsed) {
+      return [{ id: parsed, bookingCode: '' }];
+    }
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .flatMap((value): CheckoutFlowCookieEntry[] => {
+        if (!value || typeof value !== 'object') return [];
+        const candidate = value as Partial<CheckoutFlowCookieEntry>;
+        if (typeof candidate.id !== 'string' || !candidate.id || candidate.id.length > 128) {
+          return [];
+        }
+        if (typeof candidate.bookingCode !== 'string' || candidate.bookingCode.length > 32) {
+          return [];
+        }
+        const accessGrant = bookingAccessGrantSchema.safeParse(candidate.accessGrant);
+        return [
+          {
+            id: candidate.id,
+            bookingCode: candidate.bookingCode.trim().toUpperCase(),
+            ...(accessGrant.success ? { accessGrant: accessGrant.data } : {}),
+          },
+        ];
+      })
+      .slice(0, MAX_ACTIVE_FLOWS);
+  }
+
+  async function readRecord(id: string): Promise<StoredCheckoutFlowRecord | null> {
+    try {
+      return await store.get<StoredCheckoutFlowRecord>(`${PREFIX}${id}`);
+    } catch {
+      // Access authorization lives in the signed cookie; Redis only enriches UI/retry metadata.
+      return null;
+    }
+  }
+
+  async function writeRecord(id: string, record: CheckoutFlowRecord): Promise<void> {
+    try {
+      await store.set(`${PREFIX}${id}`, record, TTL_SECONDS);
+    } catch {
+      // Do not fail a booking already created by the API because optional UI metadata is unavailable.
+    }
+  }
+
+  function withoutLegacyOtp(record: StoredCheckoutFlowRecord): CheckoutFlowRecord {
+    const safeRecord = { ...record };
+    delete safeRecord.otp;
+    return safeRecord;
+  }
+
+  async function entryMatchesCode(
+    entry: CheckoutFlowCookieEntry,
+    normalizedCode: string,
+  ): Promise<boolean> {
+    if (entry.bookingCode) return entry.bookingCode === normalizedCode;
+    const record = await readRecord(entry.id);
+    return record?.bookingCode.trim().toUpperCase() === normalizedCode;
   }
 
   return {
-    async readForCode(
+    async readForCode(request: Request, bookingCode: string): Promise<CheckoutFlowRead | null> {
+      const normalizedCode = bookingCode.trim().toUpperCase();
+      const entries = await entriesFrom(request);
+      const direct = entries.find((entry) => entry.bookingCode === normalizedCode);
+      if (direct) {
+        const stored = await readRecord(direct.id);
+        return {
+          id: direct.id,
+          accessGrant: direct.accessGrant,
+          legacyOtp: stored?.otp,
+          record:
+            stored?.bookingCode.trim().toUpperCase() === normalizedCode
+              ? withoutLegacyOtp(stored)
+              : null,
+        };
+      }
+
+      for (const entry of entries.filter((candidate) => !candidate.bookingCode)) {
+        const stored = await readRecord(entry.id);
+        if (stored?.bookingCode.trim().toUpperCase() === normalizedCode) {
+          return {
+            id: entry.id,
+            accessGrant: entry.accessGrant,
+            legacyOtp: stored.otp,
+            record: withoutLegacyOtp(stored),
+          };
+        }
+      }
+      return null;
+    },
+
+    async create(
       request: Request,
-      bookingCode: string,
-    ): Promise<{ id: string; record: CheckoutFlowRecord } | null> {
-      const id = await idFrom(request);
-      if (!id) return null;
-      const record = await store.get<CheckoutFlowRecord>(`${PREFIX}${id}`);
-      if (!record || record.bookingCode !== bookingCode) return null;
-      return { id, record };
-    },
-
-    async create(request: Request, record: CheckoutFlowRecord): Promise<string> {
-      const previous = await idFrom(request);
-      if (previous) await store.delete(`${PREFIX}${previous}`);
+      record: CheckoutFlowRecord,
+      accessGrant?: string,
+    ): Promise<string> {
+      const normalizedRecord = {
+        ...record,
+        bookingCode: record.bookingCode.trim().toUpperCase(),
+      };
+      const existing = await entriesFrom(request);
       const id = randomUUID();
-      await store.set(`${PREFIX}${id}`, record, TTL_SECONDS);
-      return cookie.serialize(id);
+      await writeRecord(id, normalizedRecord);
+
+      const grant = bookingAccessGrantSchema.safeParse(accessGrant);
+      const nextEntry: CheckoutFlowCookieEntry = {
+        id,
+        bookingCode: normalizedRecord.bookingCode,
+        ...(grant.success ? { accessGrant: grant.data } : {}),
+      };
+      const candidates = [
+        nextEntry,
+        ...existing.filter((entry) => entry.bookingCode !== normalizedRecord.bookingCode),
+      ];
+      const retained = candidates.slice(0, MAX_ACTIVE_FLOWS);
+      const retainedIds = new Set(retained.map((entry) => entry.id));
+      const evicted = existing.filter((entry) => !retainedIds.has(entry.id));
+      await Promise.allSettled(evicted.map((entry) => store.delete(`${PREFIX}${entry.id}`)));
+
+      return cookie.serialize(retained);
     },
 
-    async destroy(request: Request): Promise<string> {
-      const id = await idFrom(request);
-      if (id) await store.delete(`${PREFIX}${id}`);
-      return cookie.serialize('', { expires: new Date(0), maxAge: 0 });
+    async destroy(request: Request, bookingCode?: string): Promise<string> {
+      const entries = await entriesFrom(request);
+      const normalizedCode = bookingCode?.trim().toUpperCase();
+      const matches = normalizedCode
+        ? await Promise.all(entries.map((entry) => entryMatchesCode(entry, normalizedCode)))
+        : entries.map(() => true);
+      const removed = entries.filter((_, index) => matches[index]);
+      const retained = entries.filter((_, index) => !matches[index]);
+      await Promise.allSettled(removed.map((entry) => store.delete(`${PREFIX}${entry.id}`)));
+
+      return retained.length
+        ? cookie.serialize(retained)
+        : cookie.serialize('', { expires: new Date(0), maxAge: 0 });
     },
   };
 }
