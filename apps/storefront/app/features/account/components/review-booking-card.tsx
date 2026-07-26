@@ -4,6 +4,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { CalendarDays, Star } from 'lucide-react';
 import { Link } from 'react-router';
+import { ReviewTime } from '../../../components/review-time';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { storefrontPaths } from '../../../lib/locale-paths';
 import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
@@ -85,13 +86,12 @@ export function ReviewBookingCard({
                 <Stars rating={review.rating} />
               </div>
             </div>
-            <time
-              dateTime={review.createdAt}
+            <ReviewTime
+              value={review.createdAt}
+              locale={locale}
+              variant="day"
               className="shrink-0 text-xs text-muted-foreground"
-              suppressHydrationWarning
-            >
-              {formatRelativeTime(review.createdAt, locale)}
-            </time>
+            />
           </div>
 
           <p className="text-sm leading-6 text-foreground/85">{review.content}</p>
@@ -117,9 +117,12 @@ export function ReviewBookingCard({
                   <p className="text-sm font-semibold">
                     {t('reviews.partnerReply', { name: review.reply.partnerName })}
                   </p>
-                  <time className="text-xs text-muted-foreground" dateTime={review.reply.createdAt}>
-                    {formatRelativeTime(review.reply.createdAt, locale)}
-                  </time>
+                  <ReviewTime
+                    value={review.reply.createdAt}
+                    locale={locale}
+                    variant="day"
+                    className="text-xs text-muted-foreground"
+                  />
                 </div>
                 <p className="mt-2 text-sm leading-6 text-foreground/80">{review.reply.content}</p>
               </div>
@@ -166,14 +169,6 @@ function formatTime(value: string, locale: 'vi' | 'en') {
     hour12: false,
     timeZone: 'Asia/Ho_Chi_Minh',
   }).format(new Date(value));
-}
-
-function formatRelativeTime(value: string, locale: 'vi' | 'en') {
-  const days = Math.round((new Date(value).getTime() - Date.now()) / 86_400_000);
-  if (Math.abs(days) < 1) return locale === 'en' ? 'Today' : 'Hôm nay';
-  return new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
-    numeric: 'auto',
-  }).format(days, 'day');
 }
 
 function initials(name: string) {

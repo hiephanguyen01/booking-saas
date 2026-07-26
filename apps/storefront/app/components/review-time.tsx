@@ -1,0 +1,80 @@
+import { useEffect, useState } from 'react';
+import { cn } from '@booking/ui/lib/utils';
+
+const MARKET_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+
+type ReviewTimeVariant = 'day' | 'precise';
+
+export function ReviewTime({
+  value,
+  locale,
+  variant = 'precise',
+  className,
+}: {
+  value: string;
+  locale: 'vi' | 'en';
+  variant?: ReviewTimeVariant;
+  className?: string;
+}) {
+  const absolute = formatAbsoluteDate(value, locale);
+  const [relative, setRelative] = useState<string | null>(null);
+
+  useEffect(() => {
+    const update = (): void => setRelative(formatRelativeTime(value, locale, variant, Date.now()));
+    update();
+    const timer = setInterval(update, 60_000);
+    return () => clearInterval(timer);
+  }, [locale, value, variant]);
+
+  return (
+    <time className={cn(className)} dateTime={value} title={absolute}>
+      {relative ?? absolute}
+    </time>
+  );
+}
+
+function formatAbsoluteDate(value: string, locale: 'vi' | 'en'): string {
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+    dateStyle: 'long',
+    timeZone: MARKET_TIME_ZONE,
+  }).format(new Date(value));
+}
+
+function formatRelativeTime(
+  value: string,
+  locale: 'vi' | 'en',
+  variant: ReviewTimeVariant,
+  now: number,
+): string {
+  const timestamp = new Date(value).getTime();
+  if (variant === 'day') {
+    const days = Math.round((timestamp - now) / 86_400_000);
+    if (Math.abs(days) < 1) return locale === 'en' ? 'Today' : 'Hôm nay';
+    return new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+      numeric: 'auto',
+    }).format(days, 'day');
+  }
+
+  let duration = Math.round((timestamp - now) / 1000);
+  const formatter = new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+    numeric: 'always',
+  });
+  const divisions = [
+    { amount: 60, unit: 'second' },
+    { amount: 60, unit: 'minute' },
+    { amount: 24, unit: 'hour' },
+    { amount: 7, unit: 'day' },
+    { amount: 4.345, unit: 'week' },
+    { amount: 12, unit: 'month' },
+    { amount: Number.POSITIVE_INFINITY, unit: 'year' },
+  ] as const;
+
+  for (const division of divisions) {
+    if (Math.abs(duration) < division.amount) {
+      return formatter.format(Math.round(duration), division.unit);
+    }
+    duration /= division.amount;
+  }
+
+  return formatter.format(Math.round(duration), 'year');
+}
