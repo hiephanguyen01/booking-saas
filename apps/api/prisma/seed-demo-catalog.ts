@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
-type BookingMode = 'hourly' | 'daily' | 'inventory' | 'appointment';
+type BookingMode = 'hourly' | 'daily' | 'inventory';
 
 type LocationFixture = {
   key: string;
@@ -531,9 +531,9 @@ const CATALOG: CatalogDefinition[] = [
     icon: 'Users',
     structure: 'standalone',
     itemLabel: 'lịch hẹn',
-    allowedModes: ['appointment'],
-    defaultModes: ['appointment'],
-    unitLabel: 'buổi',
+    allowedModes: ['hourly'],
+    defaultModes: ['hourly'],
+    unitLabel: 'giờ',
     partner: 'service',
     bufferBefore: 30,
     bufferAfter: 60,
@@ -585,9 +585,12 @@ const CATALOG: CatalogDefinition[] = [
       ],
     }),
     modeConfig: (index) => ({
-      appointment: {
-        basePrice: String(900_000 + index * 50_000),
-        durationMinutes: index % 2 === 0 ? 120 : 180,
+      hourly: {
+        basePrice: String(450_000 + index * 25_000),
+        packages: [],
+        minDuration: 2,
+        maxDuration: 8,
+        granularity: 60,
         leadTimeMin: 360,
       },
     }),
@@ -678,10 +681,7 @@ export async function seedDemoCatalog(input: {
       });
 
       if (definition.slug === 'studio' && index === 0) primaryStudio = listing;
-      if (
-        definition.allowedModes.includes('hourly') ||
-        definition.allowedModes.includes('appointment')
-      ) {
+      if (definition.allowedModes.includes('hourly')) {
         await ensureWeeklyRules(prisma, tenantId, listing.id);
       }
     }
@@ -843,7 +843,7 @@ function searchConfigFor(definition: CatalogDefinition): Prisma.InputJsonValue {
       attributeFacets: [{ key: 'costumeStyle', control: 'checkbox' }],
     },
     model: {
-      schedule: 'none',
+      schedule: 'hourly',
       showGuests: false,
       systemFacets: ['price', 'location'],
       attributeFacets: [{ key: 'experienceLevel', control: 'checkbox' }],

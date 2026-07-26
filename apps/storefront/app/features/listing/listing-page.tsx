@@ -38,7 +38,9 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   }
 
   const location = formatListingLocation(listing, 'full');
+  const supportsOnlineBooking = mode !== null;
   const usesStudioBookingDialog =
+    supportsOnlineBooking &&
     listing.listingTypeSlug === 'studio' &&
     listing.bookingModes.some((item) => item === 'hourly' || item === 'daily');
   const preferredStudioMode = mode === 'daily' ? 'daily' : 'hourly';
@@ -97,14 +99,16 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
             ) : (
               <>
                 <ProviderCard trust={listing.trust} />
-                <BookingPanel
-                  listing={listing}
-                  mode={mode}
-                  availability={availability}
-                  quote={quote}
-                  initialStart={selectionStart}
-                  initialEnd={selectionEnd}
-                />
+                {supportsOnlineBooking ? (
+                  <BookingPanel
+                    listing={listing}
+                    mode={mode}
+                    availability={availability}
+                    quote={quote}
+                    initialStart={selectionStart}
+                    initialEnd={selectionEnd}
+                  />
+                ) : null}
               </>
             )}
           </aside>

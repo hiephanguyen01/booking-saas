@@ -42,7 +42,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
   const today = todayInTz(DEFAULT_TZ);
   let availabilityPromise: ReturnType<typeof fetchAvailability> | null = null;
 
-  if (requiresPackage && !packageId) {
+  if (!mode || (requiresPackage && !packageId)) {
     availabilityPromise = null;
   } else if (mode === 'hourly') {
     const day = validDateOr(searchParams.get('day') ?? searchParams.get('date'), today);
@@ -120,7 +120,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
   }
 
   const selectionAvailable =
-    selectionStart && selectionEnd
+    mode && selectionStart && selectionEnd
       ? isSelectionAvailable(
           availability,
           mode,
@@ -131,7 +131,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
           requiresPackage,
         )
       : false;
-  const quote = selectionAvailable
+  const quote = selectionAvailable && mode
     ? await fetchQuote(
         request,
         listingSlug,
@@ -160,7 +160,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
 function pickMode(
   requested: string | null,
   listing: PublicListingDetailResponse,
-): AvailabilityMode {
+): AvailabilityMode | null {
   const enabled = listing.bookingModes.filter((mode): mode is AvailabilityMode =>
     (BOOKABLE_MODES as string[]).includes(mode),
   );
@@ -169,7 +169,7 @@ function pickMode(
     return requested as AvailabilityMode;
   }
 
-  return enabled[0] ?? 'hourly';
+  return enabled[0] ?? null;
 }
 
 function validDateOr(value: string | null, fallback: string, offsetDays = 0): string {
