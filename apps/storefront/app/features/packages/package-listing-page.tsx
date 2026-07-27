@@ -30,7 +30,7 @@ export function PackageListingPage({
 }: {
   loaderData: Route.ComponentProps['loaderData'];
 }) {
-  const { listing, locations, auxiliaryData } = loaderData;
+  const { listing, locations, auxiliaryData, bookingToday } = loaderData;
   const { listingTypes, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const packages = listingPackages(listing);
@@ -160,6 +160,7 @@ export function PackageListingPage({
         returnFocusRef={bookingTriggerRef}
         selectedPackage={selectedPackage}
         listing={listing}
+        today={bookingToday}
       />
     </div>
   );
