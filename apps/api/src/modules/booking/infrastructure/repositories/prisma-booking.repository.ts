@@ -285,6 +285,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         listingTypeId: string;
         listingTypeName: string;
         resourceId: string;
+        resourceTimezone: string;
         bookingMode: string;
         startUtc: Date;
         endUtc: Date;
@@ -315,6 +316,7 @@ export class PrismaBookingRepository implements IBookingRepository {
              l.listing_type_id AS "listingTypeId",
              lt.name AS "listingTypeName",
              b.resource_id AS "resourceId",
+             r.timezone AS "resourceTimezone",
              b.booking_mode::text AS "bookingMode",
              lower(b.timeslot) AS "startUtc",
              upper(b.timeslot) AS "endUtc",
@@ -338,6 +340,7 @@ export class PrismaBookingRepository implements IBookingRepository {
       FROM bookings b
       JOIN listings l ON l.id = b.listing_id
       JOIN listing_types lt ON lt.id = l.listing_type_id
+      JOIN resources r ON r.id = b.resource_id
       JOIN users u ON u.id = b.customer_id
       WHERE ${Prisma.join(conds, ' AND ')}
       ORDER BY lower(b.timeslot) ASC`);
