@@ -8,14 +8,16 @@ import {
 } from '@aws-sdk/client-s3';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { s3ConfigFromEnv } from '../src/shared/storage/s3-storage.service';
+import { s3ConfigFromEnv } from '../src/modules/storage/infrastructure/services/s3-storage.service';
 
 /**
- * One-time dev bootstrap for object storage: create the bucket and make it
- * publicly readable so presigned uploads are viewable on the storefront.
- * Idempotent — safe to re-run. Reads S3_* from the workspace-root `.env` (or
- * docker-compose defaults). PRODUCTION note: do NOT use a public bucket policy there — serve
- * via a CDN or signed GET URLs instead.
+ * One-time bootstrap for object storage. It creates the bucket when the provider
+ * supports that operation, configures public reads for local S3-compatible
+ * storage, and uploads the default storefront assets.
+ *
+ * Cloudflare R2 does not implement PutBucketPolicy. Public reads there are
+ * configured by connecting S3_PUBLIC_URL as an R2 custom domain, so this script
+ * deliberately skips the bucket-policy call for R2 endpoints.
  */
 async function main(): Promise<void> {
   const cfg = s3ConfigFromEnv();
@@ -34,24 +36,33 @@ async function main(): Promise<void> {
     console.log(`created bucket "${cfg.bucket}"`);
   }
 
-  await s3.send(
-    new PutBucketPolicyCommand({
-      Bucket: cfg.bucket,
-      Policy: JSON.stringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Sid: 'PublicReadObjects',
-            Effect: 'Allow',
-            Principal: '*',
-            Action: ['s3:GetObject'],
-            Resource: [`arn:aws:s3:::${cfg.bucket}/*`],
-          },
-        ],
+  const endpointHostname = new URL(cfg.endpoint).hostname;
+  const isCloudflareR2 = endpointHostname.endsWith('.r2.cloudflarestorage.com');
+
+  if (isCloudflareR2) {
+    console.log(
+      `skipped bucket policy for Cloudflare R2; public reads use the custom domain ${cfg.publicUrl}`,
+    );
+  } else {
+    await s3.send(
+      new PutBucketPolicyCommand({
+        Bucket: cfg.bucket,
+        Policy: JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Sid: 'PublicReadObjects',
+              Effect: 'Allow',
+              Principal: '*',
+              Action: ['s3:GetObject'],
+              Resource: [`arn:aws:s3:::${cfg.bucket}/*`],
+            },
+          ],
+        }),
       }),
-    }),
-  );
-  console.log(`applied public-read policy to "${cfg.bucket}" (dev only)`);
+    );
+    console.log(`applied public-read policy to "${cfg.bucket}"`);
+  }
 
   const defaultAssets = [
     {

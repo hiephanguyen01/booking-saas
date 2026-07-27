@@ -25,6 +25,9 @@ docker compose --env-file .env.stg \
   -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d
 ```
 
+The Deploy workflow selects this overlay automatically when `environment=stg`. The overlay file
+must be present beside `docker-compose.deploy.yml` on the server. Production never selects it.
+
 Production omits the overlay and points at managed instances. Application config is identical in both
 — only the connection strings differ, which is the point: staging still exercises the same images,
 the same migration path and the same nginx routing.
@@ -69,11 +72,24 @@ Both frontends reach the API over the compose network (`INTERNAL_API_URL=http://
 public URL — that is the "frontends never fetch the backend from the browser" rule (`AGENTS.md`)
 holding at the infrastructure level too.
 
+### Staging TLS without Cloudflare Zero Trust
+
+Staging publishes the compose nginx only on `127.0.0.1:8080`. A host-installed nginx owns public
+ports 80/443, terminates a Let's Encrypt wildcard certificate for `*.stg.bookingos.vn`, and proxies
+to the compose nginx. Cloudflare is authoritative DNS but the staging wildcard A record is **DNS
+only**, so browsers connect directly to EC2 and do not depend on Cloudflare's paid multi-level edge
+certificates.
+
+The host config is [`docker/nginx/staging-host.conf`](../docker/nginx/staging-host.conf). Certificate
+issuance and renewal use Certbot's Cloudflare DNS plugin; see
+[`deployment-runbook.md`](./deployment-runbook.md).
+
 ## First deploy
 
 ```bash
 cp .env.deploy.example .env.stg     # then fill every CHANGE_ME
-docker compose --env-file .env.stg -f docker-compose.deploy.yml up -d --build
+docker compose --env-file .env.stg \
+  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d --build
 ```
 
 Compose **fails fast** on a missing secret (`${VAR:?...}`) rather than starting with a dev default.
@@ -83,7 +99,8 @@ back to a value published in this repo, so the compose file is what enforces it.
 Then seed the tenants (settings only — no demo partners/listings):
 
 ```bash
-docker compose --env-file .env.stg -f docker-compose.deploy.yml run --rm \
+docker compose --env-file .env.stg \
+  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml run --rm \
   -e SEED_SCOPE=tenants -e SEED_OWNER_PASSWORD='…' \
   api node ./node_modules/ts-node/dist/bin.js --transpile-only prisma/seed.ts
 ```
@@ -91,12 +108,18 @@ docker compose --env-file .env.stg -f docker-compose.deploy.yml run --rm \
 See [`AGENTS.md` → Seed scopes](../AGENTS.md). Staging may instead seed the full demo data by omitting
 `SEED_SCOPE`; production never should.
 
-Finally create the storage bucket once:
+Finally bootstrap the storage bucket and default assets once:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.deploy.yml run --rm \
+docker compose --env-file .env.stg \
+  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml run --rm \
   api node ./node_modules/ts-node/dist/bin.js --transpile-only scripts/bootstrap-storage.ts
 ```
+
+For Cloudflare R2, create the bucket and connect its public custom domain in the Cloudflare
+Dashboard first. The bootstrap script detects the R2 endpoint and skips `PutBucketPolicy` (which R2
+does not implement), then uploads the default assets. Other S3-compatible development stores still
+receive the public-read bucket policy.
 
 ## Migrations
 

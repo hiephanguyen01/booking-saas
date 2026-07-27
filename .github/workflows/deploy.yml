@@ -114,9 +114,19 @@ jobs:
 
             OWNER_LC=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
             ENV_FILE=".env.${ENVIRONMENT}"
-            COMPOSE="docker compose --env-file ${ENV_FILE} -f docker-compose.deploy.yml"
+            if [ "$ENVIRONMENT" = "stg" ]; then
+              COMPOSE="docker compose --env-file ${ENV_FILE} -f docker-compose.deploy.yml -f docker-compose.stg-data.yml"
+            else
+              COMPOSE="docker compose --env-file ${ENV_FILE} -f docker-compose.deploy.yml"
+            fi
 
             test -f "$ENV_FILE" || { echo "::error::${ENV_FILE} missing on the server"; exit 1; }
+            if [ "$ENVIRONMENT" = "stg" ]; then
+              test -f docker-compose.stg-data.yml || {
+                echo "::error::docker-compose.stg-data.yml missing on the staging server"
+                exit 1
+              }
+            fi
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
 
