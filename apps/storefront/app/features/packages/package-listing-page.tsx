@@ -51,6 +51,7 @@ export function PackageListingPage({
         listingTypes={listingTypes}
         currentType={listing.listingTypeSlug}
         locations={locations}
+        today={bookingToday}
       />
 
       <main className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-6 xl:px-0">
