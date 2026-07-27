@@ -1,0 +1,96 @@
+# Staging-only overlay: run Postgres and Redis as containers on the same box.
+#
+#   docker compose --env-file .env.stg \
+#     -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d
+#
+# Production does NOT use this file — it points at managed instances through
+# docker-compose.deploy.yml alone. Keeping the split at the compose layer means
+# the application config is identical in both; only the connection strings differ.
+#
+# Measured footprint on a 2 GB box: Postgres ~65 MB, Redis capped at 256 MB, the
+# four app containers ~380 MB. Comfortable, but this is staging-shaped: one EBS
+# volume, no replica, no managed backups (see the pg_dump note below).
+#
+# Because Postgres here runs as a real superuser, the RLS migration can create
+# `app_admin ... BYPASSRLS` unaided — the managed-Postgres check in
+# docs/deployment-runbook.md §0 does not apply to this overlay.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-bookingos}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bookingos}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    # Never published to the host: only the compose network reaches it.
+    expose: ['5432']
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '5' }
+    security_opt: ['no-new-privileges:true']
+
+  redis:
+    image: redis:7
+    # `noeviction` is REQUIRED, not a preference: Redis holds BullMQ's job and
+    # scheduler state as well as sessions. Any `allkeys-*` policy would quietly
+    # evict queue keys under pressure and the outbox relay, booking scheduler,
+    # reminder and settlement-release workers would stop firing with no error.
+    # Hitting the cap fails writes loudly instead, which is the recoverable side.
+    command:
+      [
+        'redis-server',
+        '--maxmemory',
+        '${REDIS_MAXMEMORY:-256mb}',
+        '--maxmemory-policy',
+        'noeviction',
+        '--appendonly',
+        'yes',
+      ]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    expose: ['6379']
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '5' }
+    security_opt: ['no-new-privileges:true']
+
+  # Migrations must wait for Postgres to accept connections; everything else
+  # already waits on migrate/api.
+  migrate:
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  storefront:
+    depends_on:
+      redis: { condition: service_healthy }
+      api: { condition: service_healthy }
+
+  dashboard:
+    depends_on:
+      redis: { condition: service_healthy }
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  redisdata:
