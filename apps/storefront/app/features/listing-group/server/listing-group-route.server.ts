@@ -25,7 +25,8 @@ export async function handleListingGroupAction(request: Request, groupSlug: stri
 export async function loadListingGroupRoute(request: Request, url: URL, groupSlug: string) {
   const group = await fetchListingGroup(request, groupSlug);
   if (!group) throw new Response('Listing group not found', { status: 404 });
-  const bookingToday = todayInTz(DEFAULT_TZ);
+  const requestNow = new Date();
+  const fallbackToday = todayInTz(DEFAULT_TZ, requestNow);
 
   const relatedSearch = new URLSearchParams({
     type: group.listingTypeSlug,
@@ -36,7 +37,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     loadAdministrativeProvinces(request),
     loadPublicReviews(request, url.searchParams, 'group', groupSlug),
   ]);
-  const state = parseSearchState(url.searchParams, bookingToday);
+  const state = parseSearchState(url.searchParams, fallbackToday);
   const fixedPackages = group.bookingSelection === 'fixed_packages';
   const hasAvailabilityFilter = fixedPackages
     ? state.hasDateSelection
@@ -48,10 +49,12 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     async (child) => {
       const detail = await safe(fetchListing(request, child.slug));
       if (!detail) return null;
+      const bookingToday = todayInTz(detail.timezone, requestNow);
       if (!hasAvailabilityFilter) {
         return {
           child,
           detail,
+          bookingToday,
           browsing: true as const,
           availability: null,
           available: null,
@@ -96,6 +99,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
           return {
             child,
             detail,
+            bookingToday,
             browsing: false as const,
             availability: cheapest?.availability ?? null,
             available: Boolean(cheapest),
@@ -115,7 +119,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         const slots =
           availability?.mode === 'hourly' ? availability.days.flatMap((day) => day.slots) : [];
         const openSlots = slots.filter((slot) => slot.available);
-        const timezone = availability?.timezone ?? 'Asia/Ho_Chi_Minh';
+        const timezone = availability?.timezone ?? detail.timezone;
         const requestedStart = state.hasTimeSelection
           ? zonedToUtcIso(state.date, state.startTime, timezone)
           : null;
@@ -156,6 +160,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         return {
           child,
           detail,
+          bookingToday,
           browsing: false as const,
           availability,
           available: state.hasTimeSelection ? Boolean(requestedSlot && quote) : openSlots.length > 0,
@@ -195,6 +200,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         return {
           child,
           detail,
+          bookingToday,
           browsing: false as const,
           availability: cheapest?.availability ?? null,
           available: Boolean(cheapest),
@@ -223,7 +229,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         nights >= minNights &&
         nights <= maxNights &&
         rangeDates(state.from, state.to).every((date) => open.has(date));
-      const timezone = availability?.timezone ?? 'Asia/Ho_Chi_Minh';
+      const timezone = availability?.timezone ?? detail.timezone;
       const checkinTime = validTime(daily.checkinTime, '14:00');
       const checkoutTime = validTime(daily.checkoutTime, '12:00');
       const roomStart = zonedToUtcIso(state.from, checkinTime, timezone);
@@ -240,6 +246,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
       return {
         child,
         detail,
+        bookingToday,
         browsing: false as const,
         availability,
         available: Boolean(available && quote),
@@ -253,6 +260,8 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
   const roomOptions = options.filter(
     (option): option is NonNullable<typeof option> => option !== null,
   );
+  const bookingToday = roomOptions[0]?.bookingToday ?? fallbackToday;
+  const renderedState = parseSearchState(url.searchParams, bookingToday);
   const locations = provinces.map((province) => ({
     value: province.code,
     label: province.name,
@@ -268,7 +277,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     .slice(0, 4);
   return {
     group,
-    state,
+    state: renderedState,
     bookingToday,
     hasAvailabilityFilter,
     roomOptions,
