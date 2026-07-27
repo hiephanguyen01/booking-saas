@@ -36,7 +36,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     loadAdministrativeProvinces(request),
     loadPublicReviews(request, url.searchParams, 'group', groupSlug),
   ]);
-  const state = parseSearchState(url.searchParams);
+  const state = parseSearchState(url.searchParams, bookingToday);
   const fixedPackages = group.bookingSelection === 'fixed_packages';
   const hasAvailabilityFilter = fixedPackages
     ? state.hasDateSelection
