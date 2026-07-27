@@ -140,7 +140,6 @@ export function RoomAction({
   date: string;
   state: RoomAvailabilityState;
   slots: HourlySlot[];
-  today: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
