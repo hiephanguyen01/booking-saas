@@ -109,23 +109,66 @@ docker compose up -d                                   # postgres, redis, mailpi
 cp .env.example .env                                   # the only env file; every app/CLI reads this root file
 pnpm install
 pnpm --filter=@booking/api prisma:deploy               # schema + RLS policies + db roles
-pnpm --filter=@booking/api seed                        # 39 permissions, 7 roles, admin, demo tenant "StudioHub"
+pnpm --filter=@booking/api seed                        # permissions, roles, admin, 2 demo tenants
 pnpm --filter=@booking/api storage:init                # MinIO bucket + public-read policy
 pnpm dev                                               # api :3000, storefront :5173, dashboard :5174
 ```
 
-- **Storefront** (`localhost:5173`) resolves the seeded StudioHub tenant (seed maps `localhost`/`127.0.0.1`).
+- **Storefront** (`localhost:5173`) resolves **BookingStudio** (seed maps `localhost`/`127.0.0.1`).
 - **Dashboard** (`localhost:5174`) — log in with a seeded user below.
 - **OTP emails** (registration / password reset) land in **Mailpit** at `localhost:8025`.
+
+**Two demo tenants**, one seed for both environments — every tenant registers its staging host
+*and* its `.localhost` host, so no `SEED_ENV` switch is needed:
+
+| Tenant | Vertical | Staging | Local | Catalog |
+| --- | --- | --- | --- | --- |
+| **BookingStudio** | studio | `bookingstudio.stg.bookingos.vn` | `bookingstudio.localhost`, `localhost`, `127.0.0.1` | 6 types, 121 listings |
+| **BookingStad** | sport | `bookingstad.stg.bookingos.vn` | `bookingstad.localhost` | 5 court types (bóng đá, bóng rổ, tennis, cầu lông, pickleball), 40 courts |
+
+BookingStad's subscription is a **trial expiring in 5 days** on purpose — it is what fills the admin
+board's "expiring soon" queue. `trial` is a billable status, so every partner/booking flow still works.
 
 Seeded logins (override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`):
 
 | Who | Email | Password |
 | --- | --- | --- |
 | Platform admin | `admin@bookingos.local` | `admin-dev-password` |
-| Tenant owner | `owner@studiohub.vn` | `demo-password` |
-| Partner | `giang@giangstudio.vn` | `demo-password` |
-| Customer | `customer@studiohub.vn` | `demo-password` |
+| BookingStudio owner | `owner@bookingstudio.vn` | `demo-password` |
+| BookingStudio partner | `giang@giangstudio.vn` | `demo-password` |
+| BookingStudio customer | `customer@bookingstudio.vn` | `demo-password` |
+| BookingStad owner | `owner@bookingstad.vn` | `demo-password` |
+| BookingStad partner | `hoang@sanhoanggia.vn` | `demo-password` |
+
+> Renaming the tenant changed its slug, so seeding **over an existing dev database fails** on
+> duplicate booking codes. Reset first: `pnpm --filter=@booking/api exec prisma migrate reset`.
+
+### Seed scopes
+
+`SEED_SCOPE` picks how much is seeded. Both scopes are idempotent.
+
+| Scope | Command | Seeds |
+| --- | --- | --- |
+| **production** | `SEED_SCOPE=tenants SEED_OWNER_PASSWORD=… pnpm --filter=@booking/api seed` | Permissions, roles, admin, plans, and both tenants' **settings**: domains, theme, subscription, owner, cancellation policy, commission rules, listing types + categories. **No partners, listings, bookings or promotions.** |
+| **dev / staging** (default) | `pnpm --filter=@booking/api seed` | The above **plus** partners, 161 listings, bookings, promotions, affiliate and the platform-health fixtures. |
+
+`SEED_OWNER_PASSWORD` is **required** in `tenants` scope — the seed refuses rather than create a real
+tenant owner with the shared demo password. Dev falls back to `demo-password`.
+
+```
+prisma/
+  seed.ts                        entry — reads SEED_SCOPE, wires the rest
+  seed/
+    client.ts   scope.ts   shared.ts   platform.ts   plans.ts
+    administrative-divisions.ts
+    catalog/    studio-catalog.ts   sport-catalog.ts     type defs + upsert helpers
+    tenants/    booking-studio.ts   booking-stad.ts      SETTINGS (production)
+    demo/       studio-demo.ts      sport-demo.ts        partners, listings, fixtures
+```
+
+Each `catalog/*` file exports its type/category seeder (`seed*CatalogTypes`, used by `tenants/`) and
+its listing generator (used by `demo/`) from the same definition array, so the attribute schema can
+never drift between what production configures and what the demo fills in.
 
 ## Deeper docs
 

@@ -1,8 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
-type BookingMode = 'hourly' | 'daily' | 'inventory';
+export type BookingMode = 'hourly' | 'daily' | 'inventory';
 
-type LocationFixture = {
+export type LocationFixture = {
   key: string;
   shortName: string;
   provinceCode: string;
@@ -12,7 +12,7 @@ type LocationFixture = {
   address: string;
 };
 
-type CatalogDefinition = {
+export type CatalogDefinition = {
   name: string;
   slug: string;
   icon: string;
@@ -24,6 +24,12 @@ type CatalogDefinition = {
   bookingSelection?: 'flexible_duration' | 'fixed_packages';
   requiresIdentityVerification?: boolean;
   attributeSchema: Prisma.InputJsonValue;
+  /**
+   * Storefront search facets. The studio catalog's configs are keyed by slug in
+   * `searchConfigFor`; catalogs defined elsewhere (e.g. the sport courts) pass
+   * theirs here instead of extending that map.
+   */
+  searchConfig?: Prisma.InputJsonValue;
   partner: 'service' | 'inventory';
   title: (index: number, location: LocationFixture) => string;
   description: (index: number, location: LocationFixture) => string;
@@ -36,7 +42,7 @@ type CatalogDefinition = {
   depositPercent: number;
 };
 
-const LOCATIONS: LocationFixture[] = [
+export const LOCATIONS: LocationFixture[] = [
   {
     key: 'ho-chi-minh',
     shortName: 'Hồ Chí Minh',
@@ -319,7 +325,13 @@ const CATALOG: CatalogDefinition[] = [
         options: MAKEUP_STYLES,
         icon: 'Sparkles',
       },
-      { key: 'hairStyling', label: 'Kèm làm tóc', type: 'boolean', filterable: true, icon: 'Scissors' },
+      {
+        key: 'hairStyling',
+        label: 'Kèm làm tóc',
+        type: 'boolean',
+        filterable: true,
+        icon: 'Scissors',
+      },
       { key: 'touchUpHours', label: 'Số giờ dặm lại', type: 'number', icon: 'Clock' },
       { key: 'products', label: 'Mỹ phẩm sử dụng', type: 'list', icon: 'Sparkles' },
       { key: 'includes', label: 'Quy trình', type: 'list', icon: 'Check' },
@@ -558,7 +570,13 @@ const CATALOG: CatalogDefinition[] = [
         icon: 'Trophy',
       },
       { key: 'languages', label: 'Ngôn ngữ', type: 'text', filterable: true, icon: 'BookOpen' },
-      { key: 'travelReady', label: 'Có thể đi tỉnh', type: 'boolean', filterable: true, icon: 'Plane' },
+      {
+        key: 'travelReady',
+        label: 'Có thể đi tỉnh',
+        type: 'boolean',
+        filterable: true,
+        icon: 'Plane',
+      },
       { key: 'measurements', label: 'Số đo', type: 'text', icon: 'Ruler' },
       { key: 'portfolio', label: 'Kinh nghiệm nổi bật', type: 'list', icon: 'Star' },
       { key: 'services', label: 'Nhận chụp', type: 'list', icon: 'Camera' },
@@ -578,11 +596,7 @@ const CATALOG: CatalogDefinition[] = [
         'Kinh nghiệm quay TVC và ảnh quảng cáo',
         'Chụp ảnh cưới và ảnh gia đình',
       ],
-      services: [
-        'Chụp lookbook thời trang',
-        'Quảng cáo sản phẩm, TVC',
-        'Ảnh lifestyle và sự kiện',
-      ],
+      services: ['Chụp lookbook thời trang', 'Quảng cáo sản phẩm, TVC', 'Ảnh lifestyle và sự kiện'],
     }),
     modeConfig: (index) => ({
       hourly: {
@@ -598,17 +612,24 @@ const CATALOG: CatalogDefinition[] = [
   },
 ];
 
-export async function seedDemoCatalog(input: {
-  prisma: PrismaClient;
-  tenantId: string;
-  servicePartnerId: string;
-  inventoryPartnerId: string;
-  cancellationPolicyId: string;
-}) {
-  const { prisma, tenantId } = input;
-  const listingTypes = new Map<string, Awaited<ReturnType<typeof upsertListingType>>>();
-  const categories = new Map<string, Awaited<ReturnType<typeof upsertCategory>>>();
+export type CatalogTypes = {
+  listingTypes: Map<string, Awaited<ReturnType<typeof upsertListingType>>>;
+  categories: Map<string, Awaited<ReturnType<typeof upsertCategory>>>;
+};
 
+/**
+ * Listing types + categories only — the tenant's CATALOG CONFIGURATION.
+ *
+ * Split from the listing generator below because production seeds the config
+ * (partners cannot publish without a type to publish into) but never the demo
+ * listings. See `seed/tenants/*` for the callers.
+ */
+export async function seedStudioCatalogTypes(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<CatalogTypes> {
+  const listingTypes: CatalogTypes['listingTypes'] = new Map();
+  const categories: CatalogTypes['categories'] = new Map();
   for (const [sortIndex, definition] of CATALOG.entries()) {
     listingTypes.set(
       definition.slug,
@@ -619,6 +640,20 @@ export async function seedDemoCatalog(input: {
       await upsertCategory(prisma, tenantId, definition.name, definition.slug),
     );
   }
+  return { listingTypes, categories };
+}
+
+/** The 121 demo listings + studio groups. Dev/staging only. */
+export async function seedDemoCatalog(input: {
+  prisma: PrismaClient;
+  tenantId: string;
+  servicePartnerId: string;
+  inventoryPartnerId: string;
+  cancellationPolicyId: string;
+  types: CatalogTypes;
+}) {
+  const { prisma, tenantId } = input;
+  const { listingTypes, categories } = input.types;
 
   const desiredListingSlugs = new Set<string>();
   const desiredGroupSlugs = new Set<string>();
@@ -759,7 +794,7 @@ export async function removeLegacySeedListing(
   });
 }
 
-async function upsertListingType(
+export async function upsertListingType(
   prisma: PrismaClient,
   tenantId: string,
   definition: CatalogDefinition,
@@ -850,6 +885,7 @@ function searchConfigFor(definition: CatalogDefinition): Prisma.InputJsonValue {
     },
   };
   return (
+    definition.searchConfig ??
     configured[definition.slug] ?? {
       schedule: 'none',
       showGuests: false,
@@ -859,7 +895,12 @@ function searchConfigFor(definition: CatalogDefinition): Prisma.InputJsonValue {
   );
 }
 
-async function upsertCategory(prisma: PrismaClient, tenantId: string, name: string, slug: string) {
+export async function upsertCategory(
+  prisma: PrismaClient,
+  tenantId: string,
+  name: string,
+  slug: string,
+) {
   return prisma.category.upsert({
     where: { tenantId_slug: { tenantId, slug } },
     update: { name },
@@ -912,7 +953,7 @@ async function upsertStudioGroup(
   });
 }
 
-async function upsertListing(
+export async function upsertListing(
   prisma: PrismaClient,
   input: {
     tenantId: string;
@@ -998,7 +1039,7 @@ async function upsertListing(
   });
 }
 
-async function ensureWeeklyRules(
+export async function ensureWeeklyRules(
   prisma: PrismaClient,
   tenantId: string,
   listingId: string,
@@ -1072,7 +1113,7 @@ async function cleanupLegacyStudioHubCatalog(
   });
 }
 
-function photosFor(kind: string, index: number): string[] {
+export function photosFor(kind: string, index: number): string[] {
   return Array.from(
     { length: 10 },
     (_, photoIndex) =>
@@ -1089,7 +1130,7 @@ function packageUuid(kind: 'photography' | 'makeup', index: number, variant: num
   return `00000000-0000-4000-8000-${tail}`;
 }
 
-function cycle<T>(items: readonly T[], index: number): T {
+export function cycle<T>(items: readonly T[], index: number): T {
   const value = items[index % items.length];
   if (value === undefined) throw new Error('Seed fixture collection must not be empty');
   return value;
