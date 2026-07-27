@@ -1,5 +1,5 @@
 import type {
-  PublicListingDetailResponse,
+  PublicListingDetailWithTimezoneResponse,
   PublicListingResponse,
   PublicListingTypeResponse,
   PublicListingGroupDetailResponse,
@@ -8,7 +8,7 @@ import type {
 } from '@booking/contracts';
 import {
   publicCatalogSearchResponseSchema,
-  publicListingDetailResponseSchema,
+  publicListingDetailWithTimezoneResponseSchema,
   publicListingGroupDetailResponseSchema,
   publicListingTypeResponseSchema,
   quoteResponseSchema,
@@ -130,9 +130,9 @@ export function searchListings(
 export function fetchListing(
   request: Request,
   slug: string,
-): Promise<PublicListingDetailResponse | null> {
+): Promise<PublicListingDetailWithTimezoneResponse | null> {
   return publicGetData(request, `/public/listings/${encodeURIComponent(slug)}`, {
-    schema: publicListingDetailResponseSchema,
+    schema: publicListingDetailWithTimezoneResponseSchema,
     allowNotFound: true,
   });
 }
