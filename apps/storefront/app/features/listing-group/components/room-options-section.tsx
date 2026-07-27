@@ -27,6 +27,7 @@ export function RoomOptionsSection({
   groupSlug,
   mode,
   date,
+  today,
   hideUnavailableByDefault,
 }: {
   roomOptions: RoomOption[];
@@ -34,6 +35,7 @@ export function RoomOptionsSection({
   groupSlug: string;
   mode: BookingMode;
   date: string;
+  today: string;
   hideUnavailableByDefault: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
@@ -117,6 +119,7 @@ export function RoomOptionsSection({
                     groupSlug={groupSlug}
                     mode={mode}
                     date={date}
+                    today={today}
                     slots={slotsByRoom.get(option.child.id) ?? []}
                     onOpenMedia={openRoomMedia}
                   />
@@ -133,6 +136,7 @@ export function RoomOptionsSection({
                 groupSlug={groupSlug}
                 mode={mode}
                 date={date}
+                today={today}
                 slots={slotsByRoom.get(option.child.id) ?? []}
                 onOpenMedia={openRoomMedia}
               />
@@ -180,11 +184,21 @@ interface RoomProps {
   groupSlug: string;
   mode: BookingMode;
   date: string;
+  today: string;
   slots: HourlySlot[];
   onOpenMedia: (roomId: string, index: number, trigger: HTMLButtonElement) => void;
 }
 
-function RoomRow({ option, attributeSchema, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
+function RoomRow({
+  option,
+  attributeSchema,
+  groupSlug,
+  mode,
+  date,
+  today,
+  slots,
+  onOpenMedia,
+}: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <tr className="border-t border-border align-top">
@@ -207,6 +221,7 @@ function RoomRow({ option, attributeSchema, groupSlug, mode, date, slots, onOpen
           groupSlug={groupSlug}
           mode={mode}
           date={date}
+          today={today}
           state={state}
           slots={slots}
         />
@@ -216,7 +231,16 @@ function RoomRow({ option, attributeSchema, groupSlug, mode, date, slots, onOpen
   );
 }
 
-function RoomCard({ option, attributeSchema, groupSlug, mode, date, slots, onOpenMedia }: RoomProps) {
+function RoomCard({
+  option,
+  attributeSchema,
+  groupSlug,
+  mode,
+  date,
+  today,
+  slots,
+  onOpenMedia,
+}: RoomProps) {
   const state = roomAvailabilityState(option);
   return (
     <article className="overflow-hidden rounded-lg border border-border bg-card">
@@ -236,6 +260,7 @@ function RoomCard({ option, attributeSchema, groupSlug, mode, date, slots, onOpe
           groupSlug={groupSlug}
           mode={mode}
           date={date}
+          today={today}
           state={state}
           slots={slots}
         />
