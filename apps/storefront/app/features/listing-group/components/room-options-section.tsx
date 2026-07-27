@@ -27,6 +27,7 @@ export function RoomOptionsSection({
   groupSlug,
   mode,
   date,
+  today,
   hideUnavailableByDefault,
 }: {
   roomOptions: RoomOption[];
@@ -34,6 +35,7 @@ export function RoomOptionsSection({
   groupSlug: string;
   mode: BookingMode;
   date: string;
+  today: string;
   hideUnavailableByDefault: boolean;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
@@ -117,6 +119,7 @@ export function RoomOptionsSection({
                     groupSlug={groupSlug}
                     mode={mode}
                     date={date}
+                    today={today}
                     slots={slotsByRoom.get(option.child.id) ?? []}
                     onOpenMedia={openRoomMedia}
                   />
@@ -133,6 +136,7 @@ export function RoomOptionsSection({
                 groupSlug={groupSlug}
                 mode={mode}
                 date={date}
+                today={today}
                 slots={slotsByRoom.get(option.child.id) ?? []}
                 onOpenMedia={openRoomMedia}
               />
@@ -180,6 +184,7 @@ interface RoomProps {
   groupSlug: string;
   mode: BookingMode;
   date: string;
+  today: string;
   slots: HourlySlot[];
   onOpenMedia: (roomId: string, index: number, trigger: HTMLButtonElement) => void;
 }
@@ -190,6 +195,7 @@ function RoomRow({
   groupSlug,
   mode,
   date,
+  today,
   slots,
   onOpenMedia,
 }: RoomProps) {
@@ -215,6 +221,7 @@ function RoomRow({
           groupSlug={groupSlug}
           mode={mode}
           date={date}
+          today={today}
           state={state}
           slots={slots}
         />
@@ -230,6 +237,7 @@ function RoomCard({
   groupSlug,
   mode,
   date,
+  today,
   slots,
   onOpenMedia,
 }: RoomProps) {
@@ -252,6 +260,7 @@ function RoomCard({
           groupSlug={groupSlug}
           mode={mode}
           date={date}
+          today={today}
           state={state}
           slots={slots}
         />
