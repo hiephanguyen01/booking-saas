@@ -370,6 +370,8 @@ export const partnerCalendarBookingResponseSchema = z.object({
   listingTypeId: z.string(),
   listingTypeName: z.string(),
   resourceId: z.string(),
+  /** IANA timezone used by non-calendar booking surfaces for resource-local display. */
+  resourceTimezone: z.string(),
   bookingMode: z.string(),
   startUtc: z.string(),
   endUtc: z.string(),
