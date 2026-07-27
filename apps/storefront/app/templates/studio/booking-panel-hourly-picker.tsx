@@ -16,6 +16,7 @@ export function HourlyPicker({
   sp,
   setSp,
   tz,
+  today,
   selectedStart,
   selectedEnd,
   fixedPackage,
@@ -24,6 +25,7 @@ export function HourlyPicker({
   sp: URLSearchParams;
   setSp: SetSearchParams;
   tz: string;
+  today: string;
   selectedStart: string | null;
   selectedEnd: string | null;
   fixedPackage: boolean;
@@ -47,7 +49,6 @@ export function HourlyPicker({
     setCalendarOpen,
     setOnlyAvailable,
     slotsHaveUnavailable,
-    today,
     visibleSlots,
   } = useBookingPanelHourlyPickerController({
     availability,
@@ -56,6 +57,7 @@ export function HourlyPicker({
     selectedStart,
     setSp,
     sp,
+    today,
     tz,
   });
 

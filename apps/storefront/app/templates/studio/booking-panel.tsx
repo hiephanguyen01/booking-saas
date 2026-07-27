@@ -102,6 +102,7 @@ export function BookingPanel({
             sp={searchParams}
             setSp={setSearchParams}
             tz={timezone}
+            today={initialToday}
             selectedStart={start}
             selectedEnd={end}
             fixedPackage={fixedPackages}

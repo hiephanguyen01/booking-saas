@@ -30,7 +30,7 @@ export function PackageListingPage({
 }: {
   loaderData: Route.ComponentProps['loaderData'];
 }) {
-  const { listing, locations, auxiliaryData } = loaderData;
+  const { listing, locations, auxiliaryData, bookingToday } = loaderData;
   const { listingTypes, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const packages = listingPackages(listing);
@@ -51,6 +51,7 @@ export function PackageListingPage({
         listingTypes={listingTypes}
         currentType={listing.listingTypeSlug}
         locations={locations}
+        today={bookingToday}
       />
 
       <main className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-6 xl:px-0">
@@ -160,6 +161,7 @@ export function PackageListingPage({
         returnFocusRef={bookingTriggerRef}
         selectedPackage={selectedPackage}
         listing={listing}
+        today={bookingToday}
       />
     </div>
   );

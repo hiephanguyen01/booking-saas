@@ -23,6 +23,7 @@ export function RoomBookingDialogSteps({
   listingTitle,
   listingPhotos,
   date,
+  today,
   from,
   to,
   availability,
@@ -51,6 +52,7 @@ export function RoomBookingDialogSteps({
   listingTitle: string;
   listingPhotos: string[];
   date: string | null;
+  today: string;
   from: string | null;
   to: string | null;
   availability: AvailabilityResponse | null;
@@ -93,6 +95,7 @@ export function RoomBookingDialogSteps({
     listingTitle,
     listingPhotos,
     date,
+    today,
     from,
     to,
     availability,

@@ -59,6 +59,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
         listingTypes={listingTypes}
         currentType={listing.listingTypeSlug}
         locations={locations}
+        today={bookingToday}
       />
       <div className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-4 xl:px-0">
         <SectionCard>
@@ -101,7 +102,11 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
             {usesStudioBookingDialog ? (
               <>
-                <StudioBookingCard listing={listing} preferredMode={preferredStudioMode} />
+                <StudioBookingCard
+                  listing={listing}
+                  preferredMode={preferredStudioMode}
+                  today={bookingToday}
+                />
                 <ProviderCard trust={listing.trust} />
               </>
             ) : (

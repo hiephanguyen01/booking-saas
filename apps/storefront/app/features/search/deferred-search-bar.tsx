@@ -15,10 +15,12 @@ export function DeferredSearchBar({
   listingTypes,
   currentType,
   locations,
+  today,
 }: {
   listingTypes: PublicListingTypeResponse[];
   currentType: string;
   locations: Promise<LocationOption[]>;
+  today: string;
 }) {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation(NsI18n.Common);
@@ -30,7 +32,7 @@ export function DeferredSearchBar({
             key={searchParams.toString()}
             listingTypes={listingTypes}
             currentType={currentType}
-            initialState={parseSearchState(searchParams)}
+            initialState={parseSearchState(searchParams, today)}
             locations={resolvedLocations}
             variant="bar"
           />

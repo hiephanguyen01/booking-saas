@@ -9,7 +9,6 @@ import {
   addDays,
   dateLabelInTz,
   localToDateOnly,
-  todayInTz,
   zonedToUtcIso,
 } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
@@ -28,10 +27,12 @@ export function useListingBookingDialogController({
   listing,
   groupSlug,
   preferredMode,
+  today,
 }: {
   listing: PublicListingDetailResponse;
   groupSlug?: string;
   preferredMode: ListingBookingMode;
+  today: string;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
@@ -51,7 +52,6 @@ export function useListingBookingDialogController({
   const dailyCheckoutTime = dailyConfig.checkoutTime ?? '12:00';
   const packageOptions = (selectedMode: ListingBookingMode) =>
     packagesForMode(listing.modeConfig, selectedMode);
-  const today = todayInTz(DEFAULT_TZ);
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mode, setMode] = useState<ListingBookingMode>(initialMode);
@@ -188,8 +188,7 @@ export function useListingBookingDialogController({
     currentData?.selectionStart &&
     currentData.selectionEnd &&
     (mode === 'daily' ||
-      (interval?.start === currentData.selectionStart &&
-        interval.end === currentData.selectionEnd)),
+      (interval?.start === currentData.selectionStart && interval.end === currentData.selectionEnd)),
   );
   const hasCompleteSelection = mode === 'hourly' ? Boolean(interval) : Boolean(from && to);
   const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';
