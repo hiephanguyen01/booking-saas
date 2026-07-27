@@ -133,6 +133,7 @@ function toCore(b: BookingRecord) {
         : {},
     resourceId: b.resourceId,
     resourceName: b.resourceName,
+    resourceTimezone: b.resourceTimezone,
     partnerId: b.partnerId,
     partnerName: b.partnerName,
     bookingMode: b.bookingMode,

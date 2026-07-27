@@ -33,6 +33,7 @@ export interface BookingRecord {
   partnerName: string;
   resourceId: string;
   resourceName: string;
+  resourceTimezone: string;
   customerId: string;
   customer: BookingCustomerRecord;
   code: string;
@@ -58,7 +59,7 @@ export interface BookingRecord {
   additionalCharges: unknown;
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
-  /** Promotion applied at checkout (Task 1.11) — all null when no code was used. */
+  /** Promotion applied at checkout (Task 1.11) — all null when no code used. */
   promotionId: string | null;
   promoCode: string | null;
   promotionSnapshot: unknown;
@@ -143,7 +144,7 @@ export interface InsertBookingData {
   cancellationPolicySnapshot: unknown;
   pricingSnapshot: unknown;
   customerNote: string | null;
-  /** Promotion applied at checkout (Task 1.11) — all null when no code was used. */
+  /** Promotion applied at checkout (Task 1.11) — all null when no code used. */
   promotionId?: string | null;
   promoCode?: string | null;
   promotionSnapshot?: unknown;

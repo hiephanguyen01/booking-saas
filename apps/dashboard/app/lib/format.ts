@@ -8,10 +8,9 @@ import { TZ } from '~/constants/time';
  * Load-bearing rules this module enforces (CLAUDE.md §2.1 rule 4 + §6):
  * - **Money is bigint VND.** `formatVnd` parses digit strings with `BigInt`,
  *   never `Number(...)`, so a 17-digit đồng amount never loses precision.
- * - **Time is always rendered in the VN market timezone (`TZ`).** Every date/
- *   time helper pins `timeZone: TZ`, so the server and the browser format the
- *   same instant to the same wall-clock day — no SSR/CSR hydration mismatch and
- *   no "wrong day" from a server running in UTC.
+ * - **Time is timezone-pinned.** General dashboard timestamps use the VN market
+ *   timezone (`TZ`); resource-local booking timestamps may pass their explicit
+ *   IANA timezone so server and browser still render the same wall-clock value.
  * - Null/invalid dates render as an em dash (`—`); blank money renders `0 ₫`.
  */
 
@@ -19,12 +18,12 @@ import { TZ } from '~/constants/time';
 
 const fmtCache = new Map<string, Intl.DateTimeFormat>();
 
-/** Cached `Intl.DateTimeFormat`, always pinned to `TZ` (vi-VN, 24h). */
-function fmt(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  const key = JSON.stringify(opts);
+/** Cached `Intl.DateTimeFormat`, pinned to an explicit zone (vi-VN, 24h). */
+function fmt(opts: Intl.DateTimeFormatOptions, timeZone: string = TZ): Intl.DateTimeFormat {
+  const key = `${timeZone}:${JSON.stringify(opts)}`;
   let f = fmtCache.get(key);
   if (!f) {
-    f = new Intl.DateTimeFormat('vi-VN', { timeZone: TZ, hourCycle: 'h23', ...opts });
+    f = new Intl.DateTimeFormat('vi-VN', { timeZone, hourCycle: 'h23', ...opts });
     fmtCache.set(key, f);
   }
   return f;
@@ -43,17 +42,23 @@ export function formatDate(iso: string | null | undefined): string {
   return d ? fmt({ day: '2-digit', month: '2-digit', year: 'numeric' }).format(d) : '—';
 }
 
-/** `16/07/2026 14:30` in TZ. Nullish/invalid → `—`. */
-export function formatDateTime(iso: string | null | undefined): string {
+/** `16/07/2026 14:30` in the selected timezone. Nullish/invalid → `—`. */
+export function formatDateTime(
+  iso: string | null | undefined,
+  timeZone: string = TZ,
+): string {
   const d = toValidDate(iso);
   return d
-    ? fmt({
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(d)
+    ? fmt(
+        {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        },
+        timeZone,
+      ).format(d)
     : '—';
 }
 

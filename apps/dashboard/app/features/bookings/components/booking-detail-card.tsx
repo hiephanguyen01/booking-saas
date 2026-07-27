@@ -60,7 +60,12 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
   const { booking, listingHref, history, historyFailed, actions, footer } = props;
   const isInventory = booking.bookingMode === 'inventory';
   const isPending = PENDING_BOOKING_STATUSES.includes(booking.status);
-  const duration = describeDuration(booking.startUtc, booking.endUtc, booking.bookingMode);
+  const duration = describeDuration(
+    booking.startUtc,
+    booking.endUtc,
+    booking.bookingMode,
+    booking.resourceTimezone,
+  );
   const tiers = booking.cancellationPolicySnapshot ?? [];
 
   // The union narrows only on the intact props object, so every audience-only
@@ -136,8 +141,14 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
               }
             />
             <DetailField label="Thời lượng" value={duration ?? undefined} omitWhenEmpty />
-            <DetailField label="Bắt đầu" value={<DateTimeValue iso={booking.startUtc} />} />
-            <DetailField label="Kết thúc" value={<DateTimeValue iso={booking.endUtc} />} />
+            <DetailField
+              label="Bắt đầu"
+              value={<DateTimeValue iso={booking.startUtc} timeZone={booking.resourceTimezone} />}
+            />
+            <DetailField
+              label="Kết thúc"
+              value={<DateTimeValue iso={booking.endUtc} timeZone={booking.resourceTimezone} />}
+            />
             <DetailField label="Số khách" value={String(booking.guestCount)} />
             {isInventory ? <DetailField label="Số lượng" value={String(booking.quantity)} /> : null}
           </DetailGrid>
@@ -167,13 +178,17 @@ export function BookingDetailCard(props: BookingDetailCardProps): React.JSX.Elem
                 <DetailField
                   label="Đã giao"
                   value={
-                    booking.pickedUpAt ? <DateTimeValue iso={booking.pickedUpAt} /> : undefined
+                    booking.pickedUpAt ? (
+                      <DateTimeValue iso={booking.pickedUpAt} timeZone={booking.resourceTimezone} />
+                    ) : undefined
                   }
                 />
                 <DetailField
                   label="Đã nhận trả"
                   value={
-                    booking.returnedAt ? <DateTimeValue iso={booking.returnedAt} /> : undefined
+                    booking.returnedAt ? (
+                      <DateTimeValue iso={booking.returnedAt} timeZone={booking.resourceTimezone} />
+                    ) : undefined
                   }
                 />
                 {booking.damageAmount !== '0' ? (

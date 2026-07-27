@@ -219,6 +219,8 @@ const bookingCoreSchema = z.object({
   listingAttributes: z.record(z.unknown()),
   resourceId: z.string(),
   resourceName: z.string(),
+  /** IANA timezone used to display the booking's resource-local date and time. */
+  resourceTimezone: z.string(),
   partnerId: z.string(),
   partnerName: z.string(),
   bookingMode: z.string(),
