@@ -12,6 +12,7 @@ export interface BookingPaymentState {
   paymentFailed: boolean;
   isSuccess: boolean;
   isPending: boolean;
+  shouldPoll: boolean;
 }
 
 /** `PaymentStatusResponse.bookingStatus` is wire-typed as a plain string (§11.2). */
@@ -26,21 +27,24 @@ export function deriveBookingPaymentState(
 ): BookingPaymentState {
   const bookingStatus = normalizeBookingStatus(status.bookingStatus);
   const paymentOutcome = searchParams.get('payment');
-  const paymentFailed =
-    paymentOutcome === 'cancel' ||
-    paymentOutcome === 'error' ||
-    // Backward compatibility for checkout links created before the SePay redirect normalization.
-    searchParams.get('cancelled') === '1' ||
+  const isSuccess =
+    status.paymentStatus === 'succeeded' ||
+    (bookingStatus !== null && SUCCESS.has(bookingStatus));
+  const serverFailed =
     status.paymentStatus === 'failed' ||
     status.paymentStatus === 'expired' ||
     bookingStatus === 'expired' ||
     bookingStatus === 'rejected';
-  const isSuccess =
-    !paymentFailed &&
-    (status.paymentStatus === 'succeeded' ||
-      (bookingStatus !== null && SUCCESS.has(bookingStatus)));
+  const redirectFailed =
+    paymentOutcome === 'cancel' ||
+    paymentOutcome === 'error' ||
+    // Backward compatibility for checkout links created before the SePay redirect normalization.
+    searchParams.get('cancelled') === '1';
+  const paymentFailed = !isSuccess && (serverFailed || redirectFailed);
   const isPending =
     !paymentFailed && !isSuccess && bookingStatus !== null && PENDING.has(bookingStatus);
+  const shouldPoll =
+    !isSuccess && !serverFailed && bookingStatus !== null && PENDING.has(bookingStatus);
 
-  return { bookingStatus, paymentFailed, isSuccess, isPending };
+  return { bookingStatus, paymentFailed, isSuccess, isPending, shouldPoll };
 }
