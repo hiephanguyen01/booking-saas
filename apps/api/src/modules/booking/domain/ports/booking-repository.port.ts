@@ -92,6 +92,7 @@ export interface PartnerCalendarBooking {
   listingTypeId: string;
   listingTypeName: string;
   resourceId: string;
+  resourceTimezone: string;
   bookingMode: string;
   startUtc: Date;
   endUtc: Date;
