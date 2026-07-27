@@ -236,7 +236,8 @@ export default function PartnerOverview({ loaderData }: Route.ComponentProps) {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{b.listingTitle}</p>
                       <p className="text-xs tabular-nums text-muted-foreground">
-                        {formatDayLabel(parseDay(dayKey(b.startUtc)))} · {formatTime(b.startUtc)}
+                        {formatDayLabel(new Date(b.startUtc), b.resourceTimezone)} ·{' '}
+                        {formatTime(b.startUtc, b.resourceTimezone)}
                       </p>
                     </div>
                     <BookingStatusBadge status={b.status} />
