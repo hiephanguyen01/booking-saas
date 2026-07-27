@@ -41,7 +41,7 @@
   "name": "@booking/api",
   "private": true,
   "scripts": {
-    "build": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && tsc -p tsconfig.build.json",
+    "build": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && tsc -p tsconfig.build.json && tsc -p tsconfig.operations.json",
     "start": "node dist/main.js",
     "lint": "eslint src",
     "typecheck": "node --env-file-if-exists=../../.env ./node_modules/prisma/build/index.js generate && tsc --noEmit",

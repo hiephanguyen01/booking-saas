@@ -150,7 +150,7 @@ Seeded logins (override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`):
 
 | Scope | Command | Seeds |
 | --- | --- | --- |
-| **production** | `SEED_SCOPE=tenants SEED_OWNER_PASSWORD=… pnpm --filter=@booking/api seed` | Permissions, roles, admin, plans, and both tenants' **settings**: domains, theme, subscription, owner, cancellation policy, commission rules, listing types + categories. **No partners, listings, bookings or promotions.** |
+| **production** | `SEED_SCOPE=tenants SEED_ADMIN_EMAIL=… SEED_ADMIN_PASSWORD=… SEED_OWNER_PASSWORD=… pnpm --filter=@booking/api seed` | Permissions, roles, admin, plans, and both tenants' **settings**: domains, theme, subscription, owner, cancellation policy, commission rules, listing types + categories. **No partners, listings, bookings or promotions.** |
 | **dev / staging** (default) | `pnpm --filter=@booking/api seed` | The above **plus** partners, 161 listings, bookings, promotions, affiliate and the platform-health fixtures. |
 
 `SEED_OWNER_PASSWORD` is **required** in `tenants` scope — the seed refuses rather than create a real
