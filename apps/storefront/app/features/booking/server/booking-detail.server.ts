@@ -58,7 +58,7 @@ export async function loadBookingDetail(request: Request, code: string, locale: 
     loadedAt: Date.now(),
     status,
     mockEnabled: mockPaymentsEnabled(),
-    canRetry: Boolean(flow && status.bookingStatus !== 'expired'),
+    canRetry: Boolean(flow && status.bookingStatus === 'pending_payment'),
     listingSlug: flow?.record?.listingSlug ?? null,
     maskedEmail: flow?.record?.maskedEmail ?? null,
   };
