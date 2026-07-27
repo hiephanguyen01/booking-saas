@@ -13,7 +13,7 @@ import { canOffsetDateOnly, isValidDateOnly } from '../../../lib/date-only';
 import { datesInDailyRange, normalizeDailyRange } from '../../../lib/daily-range';
 import { optionalData } from '../../../lib/optional-data.server';
 import { loadPublicReviews } from '../../../lib/public-reviews.server';
-import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from '../../../lib/time';
+import { addDays, todayInTz, zonedToUtcIso } from '../../../lib/time';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
@@ -40,7 +40,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
   const mode = pickMode(searchParams.get('mode'), listing);
   const packageId = searchParams.get('packageId') ?? undefined;
   const requiresPackage = listing.bookingSelection === 'fixed_packages';
-  const today = todayInTz(DEFAULT_TZ, requestNow);
+  const today = todayInTz(listing.timezone, requestNow);
   let availabilityPromise: ReturnType<typeof fetchAvailability> | null = null;
 
   if (!mode || (requiresPackage && !packageId)) {
@@ -98,7 +98,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
   );
 
   const availability = availabilityPromise ? await availabilityPromise : null;
-  const bookingToday = todayInTz(availability?.timezone ?? DEFAULT_TZ, requestNow);
+  const bookingToday = todayInTz(availability?.timezone ?? listing.timezone, requestNow);
 
   let selectionStart = searchParams.get('start');
   let selectionEnd = searchParams.get('end');
