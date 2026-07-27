@@ -11,7 +11,7 @@ import { fetchListing, fetchListingGroup, fetchListings, fetchQuote } from '../.
 import { mapWithConcurrency } from '../../../lib/concurrency.server';
 import { optionalData } from '../../../lib/optional-data.server';
 import { loadPublicReviews } from '../../../lib/public-reviews.server';
-import { addDays, nightsBetween, zonedToUtcIso } from '../../../lib/time';
+import { addDays, DEFAULT_TZ, nightsBetween, todayInTz, zonedToUtcIso } from '../../../lib/time';
 
 const LISTING_DETAIL_CONCURRENCY = 4;
 const PACKAGE_AVAILABILITY_CONCURRENCY = 3;
@@ -25,6 +25,7 @@ export async function handleListingGroupAction(request: Request, groupSlug: stri
 export async function loadListingGroupRoute(request: Request, url: URL, groupSlug: string) {
   const group = await fetchListingGroup(request, groupSlug);
   if (!group) throw new Response('Listing group not found', { status: 404 });
+  const bookingToday = todayInTz(DEFAULT_TZ);
 
   const relatedSearch = new URLSearchParams({
     type: group.listingTypeSlug,
@@ -268,6 +269,7 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
   return {
     group,
     state,
+    bookingToday,
     hasAvailabilityFilter,
     roomOptions,
     locations,
