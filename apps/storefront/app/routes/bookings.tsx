@@ -18,7 +18,7 @@ import { errorStatus } from '../lib/http-status';
 import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 import { readRecentCodes } from '../lib/recent.server';
-import { dateLabelInTz, DEFAULT_TZ, timeInTz } from '../lib/time';
+import { dateLabelInTz, timeInTz } from '../lib/time';
 import { useLocale } from '../lib/use-locale';
 import type { Route } from './+types/bookings';
 
@@ -123,8 +123,8 @@ export default function Bookings({ loaderData, actionData }: Route.ComponentProp
                     <span>
                       <span className="block font-mono text-sm font-semibold">{booking.code}</span>
                       <span className="text-xs text-muted-foreground">
-                        {dateLabelInTz(booking.startUtc, DEFAULT_TZ, locale)},{' '}
-                        {timeInTz(booking.startUtc, DEFAULT_TZ)}
+                        {dateLabelInTz(booking.startUtc, booking.resourceTimezone, locale)},{' '}
+                        {timeInTz(booking.startUtc, booking.resourceTimezone)}
                       </span>
                     </span>
                     <span className="shrink-0 rounded-sm bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">

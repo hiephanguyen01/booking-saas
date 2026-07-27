@@ -33,6 +33,7 @@ interface Row {
   partnerName: string;
   resourceId: string;
   resourceName: string;
+  resourceTimezone: string;
   customerId: string;
   customerFullName: string;
   customerPhone: string | null;
@@ -95,7 +96,8 @@ const SELECT = Prisma.sql`
          ) AS "listingImageUrl",
          l.attributes AS "listingAttributes",
          b.partner_id AS "partnerId", p.name AS "partnerName",
-         b.resource_id AS "resourceId", r.name AS "resourceName", b.customer_id AS "customerId",
+         b.resource_id AS "resourceId", r.name AS "resourceName",
+         r.timezone AS "resourceTimezone", b.customer_id AS "customerId",
          u.full_name AS "customerFullName", u.phone AS "customerPhone", u.email::text AS "customerEmail",
          b.code, b.idempotency_key AS "idempotencyKey",
          b.booking_mode::text AS "bookingMode", b.status::text AS "status",

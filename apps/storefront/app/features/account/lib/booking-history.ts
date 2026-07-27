@@ -12,6 +12,7 @@ import {
   cancellationPolicyLines as sharedCancellationPolicyLines,
   type CancellationPolicyLine,
 } from '../../../lib/cancellation-policy';
+import { dateOnlyInTz, nightsBetween } from '../../../lib/time';
 
 export { cancellationCutoffParts, type CancellationPolicyLine };
 
@@ -39,6 +40,7 @@ export interface AccountBookingViewModel {
   listingDescription: string | null;
   imageUrl: string | null;
   resourceName: string;
+  resourceTimezone: string;
   startUtc: string;
   endUtc: string;
   dateLabel: string;
@@ -137,57 +139,38 @@ export function cancellationPolicyLines(
 }
 
 function durationLabel(booking: BookingResponse, locale: Locale): string {
-  const start = Date.parse(booking.startUtc);
-  const end = Date.parse(booking.endUtc);
-  const hours = Math.max(1, Math.round((end - start) / 3_600_000));
   if (booking.bookingMode === 'daily') {
-    const days = Math.max(1, Math.ceil(hours / 24));
+    const from = dateOnlyInTz(booking.startUtc, booking.resourceTimezone);
+    const to = dateOnlyInTz(booking.endUtc, booking.resourceTimezone);
+    const days = Math.max(1, nightsBetween(from, to));
     return locale === 'en' ? `${days} ${days === 1 ? 'day' : 'days'}` : `${days} ngày`;
   }
   if (booking.bookingMode === 'inventory') {
     return locale === 'en' ? `${booking.quantity} items` : `${booking.quantity} sản phẩm`;
   }
+  const start = Date.parse(booking.startUtc);
+  const end = Date.parse(booking.endUtc);
+  const hours = Math.max(1, Math.round((end - start) / 3_600_000));
   return locale === 'en' ? `${hours} ${hours === 1 ? 'hour' : 'hours'}` : `${hours} giờ`;
 }
 
-const DATE_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
-  en: new Intl.DateTimeFormat('en-US', {
+function dateLabel(value: string, locale: Locale, timezone: string): string {
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-  vi: new Intl.DateTimeFormat('vi-VN', {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-};
-
-const TIME_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
-  en: new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-  vi: new Intl.DateTimeFormat('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-};
-
-function dateLabel(value: string, locale: Locale): string {
-  return DATE_FORMATTERS[locale].format(new Date(value));
+    timeZone: timezone,
+  }).format(new Date(value));
 }
 
-function timeLabel(startUtc: string, endUtc: string, locale: Locale): string {
-  const formatter = TIME_FORMATTERS[locale];
+function timeLabel(startUtc: string, endUtc: string, locale: Locale, timezone: string): string {
+  const formatter = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone,
+  });
   return `${formatter.format(new Date(startUtc))} - ${formatter.format(new Date(endUtc))}`;
 }
 
@@ -216,10 +199,16 @@ export function toAccountBookingViewModel(
     listingDescription: booking.listingDescription,
     imageUrl: booking.listingImageUrl,
     resourceName: booking.resourceName,
+    resourceTimezone: booking.resourceTimezone,
     startUtc: booking.startUtc,
     endUtc: booking.endUtc,
-    dateLabel: dateLabel(booking.startUtc, locale),
-    timeLabel: timeLabel(booking.startUtc, booking.endUtc, locale),
+    dateLabel: dateLabel(booking.startUtc, locale, booking.resourceTimezone),
+    timeLabel: timeLabel(
+      booking.startUtc,
+      booking.endUtc,
+      locale,
+      booking.resourceTimezone,
+    ),
     durationLabel: durationLabel(booking, locale),
     customer: booking.customer,
     customerNote: booking.customerNote,
