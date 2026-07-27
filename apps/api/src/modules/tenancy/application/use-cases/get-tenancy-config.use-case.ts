@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { TenancyConfigResponse } from '@booking/contracts';
-import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config';
+import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config.port';
 
 /**
  * Exposes the platform tenancy config — the base domain tenant subdomains are

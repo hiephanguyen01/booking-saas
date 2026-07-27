@@ -1,8 +1,8 @@
 import { Global, Module } from '@nestjs/common';
-import { STORAGE_PORT } from './storage.port';
-import { S3StorageService, s3ConfigFromEnv } from './s3-storage.service';
-import { CreatePresignedUploadUseCase } from './application/create-presigned-upload.use-case';
-import { UploadController } from './http/upload.controller';
+import { STORAGE_PORT } from '../../domain/ports/storage.port';
+import { S3StorageService, s3ConfigFromEnv } from '../services/s3-storage.service';
+import { CreatePresignedUploadUseCase } from '../../application/use-cases/create-presigned-upload.use-case';
+import { UploadController } from './upload.controller';
 
 /**
  * Object storage (§4.2). Global so any module can inject STORAGE_PORT to presign

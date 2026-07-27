@@ -14,7 +14,7 @@ import {
   NOTIFICATION_READER,
   type INotificationReader,
 } from '../../domain/ports/notification-reader.port';
-import { DedupeKey } from '../../domain/value-objects/dedupe-key';
+import { DedupeKey } from '../../domain/value-objects/dedupe-key.value-object';
 import { deliverNotification } from '../deliver-notification';
 
 /**

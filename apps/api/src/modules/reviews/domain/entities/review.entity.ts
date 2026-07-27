@@ -1,5 +1,5 @@
-import { Rating } from '../value-objects/rating';
-import { ReviewContent } from '../value-objects/review-content';
+import { Rating } from '../value-objects/rating.value-object';
+import { ReviewContent } from '../value-objects/review-content.value-object';
 import { ReviewReplyNotAccepted } from '../errors/review-errors';
 
 /**

@@ -53,10 +53,8 @@ import { TenantListingGroupController } from './tenant-listing-group.controller'
 import { TenantListingController } from './tenant-listing.controller';
 import { TenantListingModerationController } from './tenant-listing-moderation.controller';
 import { PartnerListingModerationController } from './partner-listing-moderation.controller';
-import {
-  TenantListingGroupModerationController,
-  PartnerListingGroupModerationController,
-} from './listing-group-moderation.controller';
+import { TenantListingGroupModerationController } from './tenant-listing-group-moderation.controller';
+import { PartnerListingGroupModerationController } from './partner-listing-group-moderation.controller';
 import { TenantResourceController } from './tenant-resource.controller';
 import { TenantPricingRuleController } from './tenant-pricing-rule.controller';
 import { PartnerPricingRuleController } from './partner-pricing-rule.controller';

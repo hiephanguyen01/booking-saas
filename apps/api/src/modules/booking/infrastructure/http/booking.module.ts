@@ -40,7 +40,7 @@ import { BookingSchedulerWorker } from '../booking-scheduler.worker';
 import { RedisBookingAccessGrantStore } from '../redis-booking-access-grant.store';
 import { RedisHoldStore } from '../redis-hold.store';
 import { RedisOtpStore } from '../redis-otp.store';
-import { PrismaBookingAvailabilityReader } from '../repositories/prisma-booking-availability-reader';
+import { PrismaBookingAvailabilityReader } from '../repositories/prisma-booking-availability.reader';
 import { PrismaBookingPartnerReader } from '../repositories/prisma-booking-partner.reader';
 import { PrismaBookingRepository } from '../repositories/prisma-booking.repository';
 import { PartnerBookingController } from './partner-booking.controller';

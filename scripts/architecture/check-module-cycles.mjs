@@ -94,4 +94,9 @@ if (cycles.size > 0) {
   process.exit(1);
 }
 
-console.log(`Module cycle check passed — ${graph.size} modules, import graph is acyclic.`);
+// Count directories, not graph nodes: a module with no cross-module import at all
+// is still a module, and reporting only the connected ones understates coverage.
+const moduleCount = readdirSync(MODULES).filter((entry) =>
+  statSync(join(MODULES, entry)).isDirectory(),
+).length;
+console.log(`Module cycle check passed — ${moduleCount} modules, import graph is acyclic.`);

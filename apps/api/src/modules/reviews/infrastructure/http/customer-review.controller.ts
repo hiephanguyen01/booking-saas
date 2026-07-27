@@ -19,7 +19,7 @@ import {
   ReviewResponseDto,
   ReviewMediaPresignDto,
 } from './dto/review.dto';
-import { PresignUploadResponseDto } from '../../../../shared/storage/http/dto/upload.dto';
+import { PresignUploadResponseDto } from '../../../storage/infrastructure/http/dto/upload.dto';
 
 @ApiTags('customer-reviews')
 @Controller('customer/reviews')

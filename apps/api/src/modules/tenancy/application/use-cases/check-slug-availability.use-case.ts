@@ -9,7 +9,7 @@ import {
   TENANT_DOMAIN_REPOSITORY,
   type ITenantDomainRepository,
 } from '../../domain/ports/tenant-domain-repository.port';
-import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config';
+import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config.port';
 
 /**
  * Pre-flight for the create-tenant form: is this slug usable?

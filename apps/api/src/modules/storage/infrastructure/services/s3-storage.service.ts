@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import type { CreateUploadInput, PresignedUpload, StoragePort } from './storage.port';
+import type { CreateUploadInput, PresignedUpload, StoragePort } from '../../domain/ports/storage.port';
 
 export interface S3StorageConfig {
   endpoint: string;

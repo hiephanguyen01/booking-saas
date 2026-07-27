@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { CreateReviewInput } from '@booking/contracts';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
-import { STORAGE_PORT, type StoragePort } from '../../../../shared/storage/storage.port';
+import { STORAGE_PORT, type StoragePort } from '../../../storage/domain/ports/storage.port';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { Review } from '../../domain/entities/review.entity';
 import {

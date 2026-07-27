@@ -1,5 +1,5 @@
 import type { NotificationTemplateId } from '../notification-plan';
-import type { DedupeKey } from '../value-objects/dedupe-key';
+import type { DedupeKey } from '../value-objects/dedupe-key.value-object';
 
 /**
  * NotificationDelivery aggregate root (§17) — one attempted delivery of one template

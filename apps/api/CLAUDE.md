@@ -14,17 +14,36 @@ No service classes in the application layer. When tempted to write one, use the 
 - **A technical capability** (crypto, external API, cache) → a **port in `domain/ports/` + adapter in
   `infrastructure/`**, bound in the module.
 - The only allowed `*.service.ts` are cross-cutting infra in `src/shared/*` (PrismaService,
-  TenantDbService, OutboxService, RedisService, S3StorageService…) and port-implementing adapters in
-  `infrastructure/` (e.g. `permission-resolver.service.ts`).
+  TenantDbService, TenantContextService, OutboxService…) and port-implementing adapters in
+  `infrastructure/services/` (e.g. `permission-resolver.service.ts`, `s3-storage.service.ts`). There
+  is no `RedisService` — `shared/redis` provides the raw ioredis client under the `REDIS` token.
 
 **One use-case = one file** — one exported `@Injectable XxxUseCase`, single public `execute()`.
 Controllers inject **use-cases only** (plus mappers/pipes and, exceptionally, `TenantContextService`).
 Response mapping lives in `application/<module>.mapper.ts` — never inline in a controller/use-case.
 
 Module shape (copy `modules/partner/` or `modules/booking/`):
-`domain/{entities, ports}` · `application/{use-cases, <module>.mapper.ts}` ·
-`infrastructure/{repositories, http/{controllers split by audience, dto, <module>.module.ts}}`.
-Controllers are split by audience: `public-` / `tenant-` / `partner-` / `admin-`.
+`domain/{entities, errors, ports, value-objects}` · `application/{use-cases, <module>.mapper.ts}` ·
+`infrastructure/{repositories, services, http/{controllers split by audience, dto, <module>.module.ts}}`.
+
+**One file = one class = one audience.** A controller file holds exactly one `@Controller`, and its
+name carries the audience prefix — `public-` / `tenant-` / `partner-` / `admin-` / `platform-` /
+`customer-` / `affiliate-` — matching the class name (`tenant-listing.controller.ts` →
+`TenantListingController`). Two audiences means two files.
+
+The suffix says what the file IS, and it is separated by a **dot**, not a hyphen:
+
+| Folder | Suffix | Example |
+| --- | --- | --- |
+| `domain/entities/` | `.entity.ts` | `partner.entity.ts` |
+| `domain/value-objects/` | `.value-object.ts` | `rating.value-object.ts` |
+| `domain/ports/` | `.port.ts` | `tenancy-config.port.ts` |
+| `domain/errors/` | `-errors.ts` | `partner-errors.ts` |
+| `application/use-cases/` | `.use-case.ts` | `get-partner.use-case.ts` |
+| `application/` | `.mapper.ts`, `-http-errors.ts` | `partner.mapper.ts` |
+| `infrastructure/repositories/` | role: `.repository.ts` · `.reader.ts` · `.store.ts` · `.lookup.ts` … | `prisma-busy.reader.ts` |
+| `infrastructure/http/` | `.controller.ts`, `.module.ts`, `.pipe.ts` | `tenant-listing.controller.ts` |
+| `infrastructure/http/dto/` | `.dto.ts` | `listing.dto.ts` |
 
 ## Entity and error policy
 

@@ -42,9 +42,11 @@ packages/auth     @booking/auth       permission helpers (hasScope/hasPermission
 packages/i18n     @booking/i18n        i18next locales (storefront only; dashboard is Vietnamese-hardcoded)
 ```
 
-The API's internals: 13 bounded contexts under `apps/api/src/modules/*` (identity-access, tenancy,
+The API's internals: 17 bounded contexts under `apps/api/src/modules/*` (identity-access, tenancy,
 partner, catalog, listing, scheduling, booking, payments, promotions, finance, affiliate, notification,
-**administrative-division**) + 11 cross-cutting concerns under `apps/api/src/shared/*`. Details in
+administrative-division, reviews, content-reports, favorites, storage) + 13 cross-cutting concerns
+under `apps/api/src/shared/*` (audit, domain, health, http, money, openapi, outbox, pagination,
+prisma, redis, tenant-context, time, validation). Details in
 [`docs/architecture.md`](./docs/architecture.md); each app/package has its own `CLAUDE.md` with local rules.
 
 ## Load-bearing always / never (violating these breaks tenancy or security)

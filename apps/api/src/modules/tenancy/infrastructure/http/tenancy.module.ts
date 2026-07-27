@@ -10,7 +10,7 @@ import { TENANT_DOMAIN_REPOSITORY } from '../../domain/ports/tenant-domain-repos
 import { TENANT_CACHE } from '../../domain/ports/tenant-cache.port';
 import { DNS_VERIFIER } from '../../domain/ports/dns-verifier.port';
 import { DOMAIN_VERIFICATION_QUEUE } from '../../domain/ports/domain-verification-queue.port';
-import { TENANCY_CONFIG } from '../../domain/ports/tenancy-config';
+import { TENANCY_CONFIG } from '../../domain/ports/tenancy-config.port';
 import { PrismaTenantRepository } from '../repositories/prisma-tenant.repository';
 import { PrismaPlanRepository } from '../repositories/prisma-plan.repository';
 import { PrismaSubscriptionRepository } from '../repositories/prisma-subscription.repository';

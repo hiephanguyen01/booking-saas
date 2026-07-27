@@ -64,7 +64,7 @@ function toResponse(user: UserRecord, tokens: SessionTokens): AuthSessionRespons
 
 @ApiTags('auth')
 @Controller('auth')
-export class AuthController {
+export class PublicAuthController {
   constructor(
     private readonly registerUseCase: RegisterUseCase,
     private readonly loginUseCase: LoginUseCase,

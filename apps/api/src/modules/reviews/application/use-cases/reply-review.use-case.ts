@@ -4,7 +4,7 @@ import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { Review } from '../../domain/entities/review.entity';
 import { ReviewReplyNotAccepted } from '../../domain/errors/review-errors';
-import { ReviewContent } from '../../domain/value-objects/review-content';
+import { ReviewContent } from '../../domain/value-objects/review-content.value-object';
 import {
   REVIEW_REPOSITORY,
   type IReviewRepository,

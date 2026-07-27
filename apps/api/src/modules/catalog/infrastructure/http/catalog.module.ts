@@ -7,7 +7,7 @@ import { LISTING_TYPE_REPOSITORY } from '../../domain/ports/listing-type-reposit
 import { LISTING_READ_REPOSITORY } from '../../domain/ports/listing-read-repository.port';
 import { PrismaListingTypeRepository } from '../repositories/prisma-listing-type.repository';
 import { PrismaListingReadRepository } from '../repositories/prisma-listing-read.repository';
-import { RedisHoldReader } from '../repositories/redis-hold-reader';
+import { RedisHoldReader } from '../repositories/redis-hold.reader';
 import { CreateListingTypeUseCase } from '../../application/use-cases/create-listing-type.use-case';
 import { ListListingTypesUseCase } from '../../application/use-cases/list-listing-types.use-case';
 import { GetListingTypeUseCase } from '../../application/use-cases/get-listing-type.use-case';

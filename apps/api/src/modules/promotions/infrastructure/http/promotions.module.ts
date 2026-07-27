@@ -10,8 +10,8 @@ import { PROMO_REDEMPTION_REPOSITORY } from '../../domain/ports/promo-redemption
 import { PROMO_CONTEXT_LOOKUP } from '../../domain/ports/promo-context-lookup.port';
 import { PrismaPromotionRepository } from '../repositories/prisma-promotion.repository';
 import { PrismaPromoRedemptionRepository } from '../repositories/prisma-promo-redemption.repository';
-import { PrismaPromoContextLookup } from '../repositories/prisma-promo-context-lookup';
-import { PrismaPromoAgreementRecorder } from '../repositories/prisma-promo-agreement-recorder';
+import { PrismaPromoContextLookup } from '../repositories/prisma-promo-context.lookup';
+import { PrismaPromoAgreementRecorder } from '../repositories/prisma-promo-agreement.recorder';
 import { PreparePromotionUseCase } from '../../application/use-cases/prepare-promotion.use-case';
 import { ReservePromotionUseCase } from '../../application/use-cases/reserve-promotion.use-case';
 import { MarkPromotionAppliedUseCase } from '../../application/use-cases/mark-promotion-applied.use-case';

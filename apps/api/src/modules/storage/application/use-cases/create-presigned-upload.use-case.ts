@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { STORAGE_PORT, type PresignedUpload, type StoragePort } from '../storage.port';
+import { STORAGE_PORT, type PresignedUpload, type StoragePort } from '../../domain/ports/storage.port';
 
 /** Input for minting an upload grant — `target` is the logical folder (§4.2). */
 export interface CreatePresignedUploadCommand {

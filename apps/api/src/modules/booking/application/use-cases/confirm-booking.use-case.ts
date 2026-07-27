@@ -5,7 +5,7 @@ import {
 } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ReservePromotionUseCase } from '../../../promotions/application/use-cases/reserve-promotion.use-case';
-import { PromoRejectionError } from '../../../promotions/domain/errors/promo-rejection.error';
+import { PromoRejectionError } from '../../../promotions/domain/errors/promo-rejection-errors';
 import {
   BOOKING_REPOSITORY,
   type BookingRecord,

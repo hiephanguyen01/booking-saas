@@ -14,8 +14,8 @@ import {
 } from '../../domain/ports/availability-cache.port';
 import { PrismaAvailabilityRuleRepository } from '../repositories/prisma-availability-rule.repository';
 import { PrismaAvailabilityExceptionRepository } from '../repositories/prisma-availability-exception.repository';
-import { PrismaBusyReader } from '../repositories/prisma-busy-reader';
-import { RedisHoldReader } from '../repositories/redis-hold-reader';
+import { PrismaBusyReader } from '../repositories/prisma-busy.reader';
+import { RedisHoldReader } from '../repositories/redis-hold.reader';
 import { RedisAvailabilityCache } from '../redis-availability-cache';
 import { GetAvailabilityUseCase } from '../../application/use-cases/get-availability.use-case';
 import { ListAvailabilityRulesUseCase } from '../../application/use-cases/list-availability-rules.use-case';

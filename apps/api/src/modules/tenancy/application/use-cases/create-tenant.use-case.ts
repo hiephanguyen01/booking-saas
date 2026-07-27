@@ -14,7 +14,7 @@ import {
   type DomainRecord,
 } from '../../domain/ports/tenant-domain-repository.port';
 import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache.port';
-import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config';
+import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config.port';
 
 /**
  * Platform admin creates a tenant (§21 Phase 1 — manual, no self-serve). The

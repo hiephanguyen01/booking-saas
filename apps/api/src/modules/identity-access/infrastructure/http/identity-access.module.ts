@@ -30,13 +30,13 @@ import { PrismaSessionStore } from '../services/prisma-session.store';
 import { RedisAuthChallengeStore } from '../services/redis-auth-challenge.store';
 import { SmtpAuthEmailSender } from '../services/smtp-auth-email.sender';
 import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
-import { AuthController } from './auth.controller';
+import { PublicAuthController } from './public-auth.controller';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 
 @Module({
   imports: [NotificationModule],
-  controllers: [AuthController],
+  controllers: [PublicAuthController],
   providers: [
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },

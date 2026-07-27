@@ -4,7 +4,7 @@ import {
   STORAGE_PORT,
   type PresignedUpload,
   type StoragePort,
-} from '../../../../shared/storage/storage.port';
+} from '../../../storage/domain/ports/storage.port';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import {
   REVIEW_REPOSITORY,

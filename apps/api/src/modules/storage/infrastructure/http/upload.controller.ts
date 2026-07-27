@@ -2,9 +2,9 @@ import { type PresignUploadResponse } from '@booking/contracts';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AuthenticatedOnly } from '../../../modules/identity-access/infrastructure/http/decorators/authenticated-only.decorator';
-import { Public } from '../../../modules/identity-access/infrastructure/http/decorators/public.decorator';
-import { CreatePresignedUploadUseCase } from '../application/create-presigned-upload.use-case';
+import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
+import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
+import { CreatePresignedUploadUseCase } from '../../application/use-cases/create-presigned-upload.use-case';
 import { PresignUploadDto, PresignUploadResponseDto } from './dto/upload.dto';
 
 /**
