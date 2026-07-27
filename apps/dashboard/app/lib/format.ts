@@ -36,10 +36,15 @@ function toValidDate(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** `16/07/2026` in TZ. Nullish/invalid → `—`. */
-export function formatDate(iso: string | null | undefined): string {
+/** `16/07/2026` in the selected timezone. Nullish/invalid → `—`. */
+export function formatDate(
+  iso: string | null | undefined,
+  timeZone: string = TZ,
+): string {
   const d = toValidDate(iso);
-  return d ? fmt({ day: '2-digit', month: '2-digit', year: 'numeric' }).format(d) : '—';
+  return d
+    ? fmt({ day: '2-digit', month: '2-digit', year: 'numeric' }, timeZone).format(d)
+    : '—';
 }
 
 /** `16/07/2026 14:30` in the selected timezone. Nullish/invalid → `—`. */
@@ -62,10 +67,13 @@ export function formatDateTime(
     : '—';
 }
 
-/** `14:30` in TZ. Nullish/invalid → `—`. */
-export function formatTime(iso: string | null | undefined): string {
+/** `14:30` in the selected timezone. Nullish/invalid → `—`. */
+export function formatTime(
+  iso: string | null | undefined,
+  timeZone: string = TZ,
+): string {
   const d = toValidDate(iso);
-  return d ? fmt({ hour: '2-digit', minute: '2-digit' }).format(d) : '—';
+  return d ? fmt({ hour: '2-digit', minute: '2-digit' }, timeZone).format(d) : '—';
 }
 
 /** `16/07` in TZ (day/month only — for tight chart axes). Nullish/invalid → `—`. */
