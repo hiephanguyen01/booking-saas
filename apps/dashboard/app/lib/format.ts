@@ -99,9 +99,9 @@ export function minutesOfDay(iso: string): number {
   return h * 60 + m;
 }
 
-/** Short calendar-day label, e.g. `T2, 08/07` — for a Date anchored to a day. */
-export function formatDayLabel(date: Date): string {
-  return fmt({ weekday: 'short', day: '2-digit', month: '2-digit' }).format(date);
+/** Short calendar-day label, e.g. `T2, 08/07`, in the selected timezone. */
+export function formatDayLabel(date: Date, timeZone: string = TZ): string {
+  return fmt({ weekday: 'short', day: '2-digit', month: '2-digit' }, timeZone).format(date);
 }
 
 /**
