@@ -1,7 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { z } from 'zod';
+import administrativeDivisions from '../data/vn-administrative-divisions-2025.json';
 
 const provinceSchema = z.object({
   code: z.string().regex(/^\d{2}$/),
@@ -49,8 +48,7 @@ async function inBatches<T>(
 
 /** Seed the production-required, global administrative catalog idempotently. */
 export async function seedAdministrativeDivisions(prisma: PrismaClient): Promise<void> {
-  const fixturePath = path.join(__dirname, '..', 'data', 'vn-administrative-divisions-2025.json');
-  const fixture = fixtureSchema.parse(JSON.parse(readFileSync(fixturePath, 'utf8')) as unknown);
+  const fixture = fixtureSchema.parse(administrativeDivisions as unknown);
   const provinceCodes = new Set(fixture.provinces.map((province) => province.code));
 
   unique(
