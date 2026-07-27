@@ -36,7 +36,7 @@ export function CancelBookingDialog({
 }: {
   booking: Pick<
     AccountBookingViewModel,
-    'code' | 'startUtc' | 'depositAmount' | 'cancellationTiers'
+    'code' | 'startUtc' | 'depositAmount' | 'cancellationTiers' | 'resourceTimezone'
   >;
   locale: Locale;
   open: boolean;
