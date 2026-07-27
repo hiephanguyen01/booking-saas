@@ -10,6 +10,7 @@ import type {
   TenantRecord,
   UpdateTenantData,
 } from '../../domain/ports/tenant-repository.port';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 type PrismaTenant = Prisma.TenantGetPayload<Record<string, never>>;
 
@@ -69,12 +70,13 @@ export class PrismaTenantRepository implements ITenantRepository {
           }
         : {}),
     };
+    const { skip, take } = pageOffset(params);
     const [items, total] = await Promise.all([
       this.prisma.admin.tenant.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
+        skip,
+        take,
       }),
       this.prisma.admin.tenant.count({ where }),
     ]);

@@ -10,6 +10,7 @@ import type {
   SettlementRecord,
   SettlementSummary,
 } from '../../domain/ports/settlement-repository.port';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 type EnrichedRow = BookingSettlement & {
   booking?: {
@@ -67,13 +68,35 @@ function toRecord(row: EnrichedRow): SettlementRecord {
     row.partnerPayable > payoutPendingAmount + paidAmount
       ? row.partnerPayable - payoutPendingAmount - paidAmount
       : 0n;
+  // Listed field by field on purpose: `...row` used to carry the whole Prisma row
+  // — including the nested `booking` / `tenant` / `partner` relation objects —
+  // into the record, so a persistence-only key was one careless mapper edit away
+  // from becoming a wire contract.
   return {
-    ...row,
-    bookingCode: row.booking?.code ?? null,
+    id: row.id,
+    tenantId: row.tenantId,
     tenantName: row.tenant?.name ?? null,
+    bookingId: row.bookingId,
+    paymentId: row.paymentId,
+    partnerId: row.partnerId,
+    status: row.status,
+    kind: row.kind,
+    bookingCode: row.booking?.code ?? null,
     listingTitle: row.booking?.listing.title ?? null,
     customerName: row.booking?.customer.fullName ?? null,
     partnerName: row.partner?.name ?? null,
+    onlineHeldAmount: row.onlineHeldAmount,
+    onsiteCollectedAmount: row.onsiteCollectedAmount,
+    securityDepositHeld: row.securityDepositHeld,
+    tenantCommissionGross: row.tenantCommissionGross,
+    tenantNetEarning: row.tenantNetEarning,
+    partnerGrossEarning: row.partnerGrossEarning,
+    partnerPayable: row.partnerPayable,
+    platformFee: row.platformFee,
+    affiliateCommission: row.affiliateCommission,
+    refundedAmount: row.refundedAmount,
+    retainedAmount: row.retainedAmount,
+    refundId: row.refundId,
     payoutPendingAmount,
     paidAmount,
     remainingPayableAmount,
@@ -81,6 +104,12 @@ function toRecord(row: EnrichedRow): SettlementRecord {
     latestPayoutStatus: latest?.status ?? null,
     latestPayoutReference: evidence?.reference ?? null,
     latestPayoutPaidAt: latest?.paidAt ?? null,
+    completedAt: row.completedAt,
+    disputeUntil: row.disputeUntil,
+    releasedAt: row.releasedAt,
+    releaseJournalId: row.releaseJournalId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -287,13 +316,14 @@ export class PrismaSettlementRepository implements ISettlementRepository {
       status: filters.status,
       partnerId: filters.partnerId,
     };
+    const { skip, take } = pageOffset({ page, pageSize });
     const [items, total] = await Promise.all([
       tx.bookingSettlement.findMany({
         where,
         include: ENRICH_INCLUDE,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip,
+        take,
       }),
       tx.bookingSettlement.count({ where }),
     ]);
@@ -319,13 +349,14 @@ export class PrismaSettlementRepository implements ISettlementRepository {
       status: filters.status,
       partnerId: filters.partnerId,
     };
+    const { skip, take } = pageOffset({ page, pageSize });
     const [items, total] = await Promise.all([
       this.prisma.admin.bookingSettlement.findMany({
         where,
         include: ENRICH_INCLUDE,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip,
+        take,
       }),
       this.prisma.admin.bookingSettlement.count({ where }),
     ]);

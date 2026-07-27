@@ -7,9 +7,7 @@ import {
   type IPublicPartnerRepository,
 } from '../../domain/ports/public-partner-repository.port';
 import { PublicPartnerNotFound } from '../../domain/errors/partner-errors';
-
-const CONTACT_PATTERN =
-  /(?:\+?84|0)[\d\s._-]{8,13}\d|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|\bzalo\b|\b(?:https?:\/\/|www\.)\S+/i;
+import { toPublicPartnerProfileResponse } from '../partner.mapper';
 
 @Injectable()
 export class GetPublicPartnerProfileUseCase {
@@ -25,25 +23,6 @@ export class GetPublicPartnerProfileUseCase {
       this.partners.findProfile(tx, slug),
     );
     if (!partner) throw new PublicPartnerNotFound();
-    return {
-      id: partner.id,
-      name: partner.name,
-      slug: partner.slug,
-      description:
-        partner.description && !CONTACT_PATTERN.test(partner.description)
-          ? partner.description
-          : null,
-      logoUrl: partner.logoUrl,
-      partnerType: partner.partnerType,
-      identityVerified: partner.verifiedAt !== null,
-      activeSince: partner.createdAt.toISOString(),
-      stats: {
-        publishedOfferings: partner.publishedOfferings,
-        completedBookings: partner.completedBookings,
-        ratingAvg: partner.ratingAvg,
-        reviewCount: partner.reviewCount,
-      },
-      listingTypes: partner.listingTypes,
-    };
+    return toPublicPartnerProfileResponse(partner);
   }
 }

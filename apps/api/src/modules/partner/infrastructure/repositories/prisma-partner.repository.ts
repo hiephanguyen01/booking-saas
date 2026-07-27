@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Partner as PrismaPartnerRow, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import { toStatusCounts, type RepoPageWithCounts } from '../../../../shared/pagination/pagination';
+import { toStatusCounts, type RepoPageWithCounts, pageOffset } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   PartnerBusinessInfoIntent,
@@ -159,12 +159,13 @@ export class PrismaPartnerRepository implements IPartnerRepository, IPartnerRead
       ...baseWhere,
       ...(filter.status ? { status: filter.status } : {}),
     };
+    const { skip, take } = pageOffset(filter);
     const [items, total, countRows] = await Promise.all([
       tx.partner.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (filter.page - 1) * filter.pageSize,
-        take: filter.pageSize,
+        skip,
+        take,
         include: partnerInclude,
       }),
       tx.partner.count({ where }),

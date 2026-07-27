@@ -22,6 +22,7 @@ import type {
   ReviewState,
 } from '../../domain/entities/review.entity';
 import { ReviewAlreadyExists, ReviewReplyAlreadyExists } from '../../domain/errors/review-errors';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 export const REVIEW_INCLUDE = Prisma.validator<Prisma.ReviewInclude>()({
   booking: { select: { code: true, settlement: { select: { completedAt: true } } } },
@@ -165,13 +166,14 @@ async function listPage(
   pageSize: number,
   orderBy: Prisma.ReviewOrderByWithRelationInput = { createdAt: 'desc' },
 ): Promise<ReviewPage> {
+  const { skip, take } = pageOffset({ page, pageSize });
   const [rows, total, aggregate] = await Promise.all([
     tx.review.findMany({
       where,
       include: REVIEW_INCLUDE,
       orderBy,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip,
+      take,
     }),
     tx.review.count({ where }),
     summary(tx, where),
@@ -356,8 +358,10 @@ export class PrismaReviewRepository implements IReviewRepository {
       const bTime = 'status' in b ? b.serviceCompletedAt : b.createdAt;
       return (bTime?.getTime() ?? 0) - (aTime?.getTime() ?? 0);
     });
-    const start = (query.page - 1) * query.pageSize;
-    return { items: combined.slice(start, start + query.pageSize), total: combined.length };
+    // Paged in memory: the two halves come from different queries and are merged
+    // by time, so the window can only be applied after the merge.
+    const { skip, take } = pageOffset(query);
+    return { items: combined.slice(skip, skip + take), total: combined.length };
   }
 
   async listPublic(tx: PrismaTx, query: PublicReviewsQuery): Promise<ReviewPage | null> {

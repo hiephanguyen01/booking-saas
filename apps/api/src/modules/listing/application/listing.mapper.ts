@@ -4,8 +4,10 @@ import type {
   ListingResponse,
   PricingRuleResponse,
   PublicListingDetailResponse,
+  PublicListingGroupDetailResponse,
   ResourceResponse,
 } from '@booking/contracts';
+import type { ListingTypeRecord } from '../../catalog/domain/ports/listing-type-repository.port';
 import { computeGroupStats } from '../domain/group-stats';
 import type { CancellationPolicyRecord } from '../domain/ports/cancellation-policy-repository.port';
 import type { ListingGroupRecord } from '../domain/ports/listing-group-repository.port';
@@ -13,6 +15,7 @@ import type { ListingRecord, PublicListingRecord } from '../domain/ports/listing
 import type { ResourceRecord } from '../domain/ports/resource-repository.port';
 import type { PricingRuleRecord } from '../domain/ports/pricing-rule-repository.port';
 import { publicModeConfig } from '../../../shared/domain/pricing/package-config';
+import { lowestBasePrice } from '../../../shared/domain/pricing/base-prices';
 
 /**
  * A cancellation policy for the partner management screen. `defaultPolicyId` is the
@@ -172,5 +175,64 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
       completedBookings: l.completedBookings,
       avgApprovalResponseSeconds: l.avgApprovalResponseSeconds,
     },
+  };
+}
+
+/**
+ * The public post (listing_group) detail page (§7.3).
+ *
+ * `listingType` is nullable because the group only carries `listingTypeId`; the
+ * fallbacks below are what the page renders if that row ever goes missing rather
+ * than 500-ing on a detail page. Only PUBLISHED children are exposed — a group
+ * can legitimately hold drafts, and a draft must never reach the storefront.
+ */
+export function toPublicListingGroupDetailResponse(
+  group: ListingGroupRecord,
+  children: readonly ListingRecord[],
+  listingType: ListingTypeRecord | null,
+): PublicListingGroupDetailResponse {
+  const partner = group.partnerPublic;
+  return {
+    id: group.id,
+    title: group.title,
+    slug: group.slug,
+    description: group.description,
+    provinceCode: group.provinceCode,
+    provinceName: group.provinceName,
+    wardCode: group.wardCode,
+    wardName: group.wardName,
+    address: group.address,
+    workingArea: group.workingArea,
+    amenities: group.amenities,
+    photos: group.photos,
+    listingTypeSlug: listingType?.slug ?? '',
+    attributeSchema: listingType?.attributeSchema ?? [],
+    bookingSelection: listingType?.bookingSelection ?? 'flexible_duration',
+    itemLabel: listingType?.itemLabel?.trim() || 'hạng mục',
+    ratingAvg: group.ratingAvg,
+    reviewCount: group.reviewCount,
+    trust: {
+      identityVerified: partner.verifiedAt !== null,
+      partnerActiveSince: partner.createdAt.toISOString(),
+      partnerName: partner.name,
+      partnerSlug: partner.slug,
+      partnerLogoUrl: partner.logoUrl,
+      completedBookings: group.bookingCount,
+      avgApprovalResponseSeconds: null,
+    },
+    listings: children
+      .filter((listing) => listing.status === 'published')
+      .map((listing) => ({
+        id: listing.id,
+        title: listing.title,
+        slug: listing.slug,
+        description: listing.description,
+        photos: listing.photos,
+        attributes: listing.attributes,
+        bookingModes: listing.bookingModes,
+        priceFrom: lowestBasePrice(listing),
+        ratingAvg: listing.ratingAvg,
+        reviewCount: listing.reviewCount,
+      })),
   };
 }

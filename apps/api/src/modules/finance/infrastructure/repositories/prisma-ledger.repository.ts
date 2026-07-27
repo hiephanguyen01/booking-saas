@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { RepoPage } from '../../../../shared/pagination/pagination';
+import { pageOffset, type RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   ILedgerRepository,
   LedgerEntryRecord,
@@ -205,12 +205,13 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     filters: LedgerFilters,
   ): Promise<RepoPage<LedgerEntryView>> {
     const where = viewConditions(filters);
+    const { skip, take } = pageOffset({ page, pageSize });
     const [rows, counted] = await Promise.all([
       tx.$queryRaw<ViewRow[]>(Prisma.sql`
         ${VIEW_SELECT}
         ${where}
         ORDER BY le.created_at DESC, le.id DESC
-        LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`),
+        LIMIT ${take} OFFSET ${skip}`),
       // Counted through the same joins + WHERE so the total always matches the
       // filtered page (a plain count() would report the unfiltered total).
       tx.$queryRaw<{ total: bigint }[]>(Prisma.sql`

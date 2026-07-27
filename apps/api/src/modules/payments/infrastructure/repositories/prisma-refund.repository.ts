@@ -16,6 +16,7 @@ import type {
   RefundRecoveryRecord,
   MissingRefundRecord,
 } from '../../domain/ports/refund-repository.port';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 type Row = Prisma.RefundGetPayload<Record<string, never>>;
 
@@ -125,13 +126,14 @@ export class PrismaRefundRepository implements IRefundRepository {
     query: RefundHistoryQuery,
   ): Promise<RepoPage<RefundHistoryRecord>> {
     const where: Prisma.RefundWhereInput = { status: query.status };
+    const { skip, take } = pageOffset(query);
     const [rows, total] = await Promise.all([
       tx.refund.findMany({
         where,
         include: { booking: { select: { code: true } } },
         orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip,
+        take,
       }),
       tx.refund.count({ where }),
     ]);

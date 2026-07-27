@@ -11,8 +11,6 @@ import {
   Get,
   Headers,
   HttpCode,
-  Inject,
-  Logger,
   Param,
   Post,
   Query,
@@ -34,19 +32,15 @@ import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/d
 import { OptionalPrincipal } from '../../../identity-access/infrastructure/http/decorators/optional-principal.decorator';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
+import { BookingAccessGrantUnavailable } from '../../application/booking-access-http-errors';
 import { toCancelResponse, toCustomerBookingResponse } from '../../application/booking.mapper';
 import { CancelBookingUseCase } from '../../application/use-cases/cancel-booking.use-case';
 import { ConfirmBookingUseCase } from '../../application/use-cases/confirm-booking.use-case';
 import { CreateBookingUseCase } from '../../application/use-cases/create-booking.use-case';
 import { ListMyBookingsUseCase } from '../../application/use-cases/list-my-bookings.use-case';
 import { RequestBookingOtpUseCase } from '../../application/use-cases/request-booking-otp.use-case';
+import { IssueBookingAccessGrantUseCase } from '../../application/use-cases/issue-booking-access-grant.use-case';
 import { ResolveBookingAccessUseCase } from '../../application/use-cases/resolve-booking-access.use-case';
-import {
-  BOOKING_ACCESS_GRANT_STORE,
-  type IBookingAccessGrantStore,
-  type IssuedBookingAccessGrant,
-} from '../../domain/ports/booking-access-grant-store.port';
-import type { BookingRecord } from '../../domain/ports/booking-repository.port';
 import {
   BookingAccessResponseDto,
   BookingOtpResponseDto,
@@ -66,7 +60,6 @@ const MOCK_PAY_ENABLED = process.env.ALLOW_MOCK_PAYMENTS === 'true';
 @ApiTags('public-bookings')
 @Controller('public')
 export class PublicBookingController {
-  private readonly logger = new Logger(PublicBookingController.name);
 
   constructor(
     private readonly createBooking: CreateBookingUseCase,
@@ -76,8 +69,7 @@ export class PublicBookingController {
     private readonly requestBookingOtp: RequestBookingOtpUseCase,
     private readonly resolveBookingAccess: ResolveBookingAccessUseCase,
     private readonly resolveTenant: ResolveTenantByHostUseCase,
-    @Inject(BOOKING_ACCESS_GRANT_STORE)
-    private readonly accessGrants: IBookingAccessGrantStore,
+    private readonly issueAccessGrant: IssueBookingAccessGrantUseCase,
   ) {}
 
   @Public()
@@ -100,7 +92,10 @@ export class PublicBookingController {
       return { ...response, accessGrant: null, accessGrantExpiresInSec: null };
     }
 
-    const issued = await this.tryIssueAccessGrant(booking);
+    const issued = await this.issueAccessGrant.execute(
+      { tenantId: booking.tenantId, bookingId: booking.id, bookingCode: booking.code },
+      { optional: true },
+    );
     return {
       ...response,
       accessGrant: issued?.token ?? null,
@@ -145,11 +140,14 @@ export class PublicBookingController {
   ): Promise<BookingAccessResponse> {
     const tenant = await this.resolveTenant.execute(hostOf(req));
     const booking = await this.resolveBookingAccess.execute(tenant.id, code, { otp: body.otp });
-    const issued = await this.accessGrants.issue({
+    const issued = await this.issueAccessGrant.execute({
       tenantId: tenant.id,
       bookingId: booking.id,
       bookingCode: booking.code,
     });
+    // Unreachable unless the store adapter breaks its port contract: without
+    // `optional` the use-case propagates instead of returning null.
+    if (!issued) throw new BookingAccessGrantUnavailable();
     return {
       booking: toCustomerBookingResponse(booking),
       accessGrant: issued.token,
@@ -231,21 +229,6 @@ export class PublicBookingController {
       sessionUserId: principal?.userId,
     });
     return toCustomerBookingResponse(await this.confirmBooking.execute(tenant.id, booking.id));
-  }
-
-  private async tryIssueAccessGrant(
-    booking: BookingRecord,
-  ): Promise<IssuedBookingAccessGrant | null> {
-    try {
-      return await this.accessGrants.issue({
-        tenantId: booking.tenantId,
-        bookingId: booking.id,
-        bookingCode: booking.code,
-      });
-    } catch {
-      this.logger.warn(`booking access grant unavailable for booking ${booking.id}`);
-      return null;
-    }
   }
 }
 

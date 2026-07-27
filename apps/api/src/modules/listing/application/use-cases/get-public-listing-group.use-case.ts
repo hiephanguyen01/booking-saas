@@ -14,8 +14,8 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../domain/ports/listing-repository.port';
-import { lowestBasePrice } from '../../../../shared/domain/pricing/base-prices';
 import { ListingGroupNotFound } from '../../domain/errors/listing-group-errors';
+import { toPublicListingGroupDetailResponse } from '../listing.mapper';
 
 @Injectable()
 export class GetPublicListingGroupUseCase {
@@ -36,51 +36,8 @@ export class GetPublicListingGroupUseCase {
         this.listings.list(tx, { groupId: group.id, partnerId: group.partnerId }),
         this.listingTypes.findById(tx, group.listingTypeId),
       ]);
-      const partner = group.partnerPublic;
-      if (partner.status !== 'approved') return null;
-      return {
-        id: group.id,
-        title: group.title,
-        slug: group.slug,
-        description: group.description,
-        provinceCode: group.provinceCode,
-        provinceName: group.provinceName,
-        wardCode: group.wardCode,
-        wardName: group.wardName,
-        address: group.address,
-        workingArea: group.workingArea,
-        amenities: group.amenities,
-        photos: group.photos,
-        listingTypeSlug: listingType?.slug ?? '',
-        attributeSchema: listingType?.attributeSchema ?? [],
-        bookingSelection: listingType?.bookingSelection ?? 'flexible_duration',
-        itemLabel: listingType?.itemLabel?.trim() || 'hạng mục',
-        ratingAvg: group.ratingAvg,
-        reviewCount: group.reviewCount,
-        trust: {
-          identityVerified: partner.verifiedAt !== null,
-          partnerActiveSince: partner.createdAt.toISOString(),
-          partnerName: partner.name,
-          partnerSlug: partner.slug,
-          partnerLogoUrl: partner.logoUrl,
-          completedBookings: group.bookingCount,
-          avgApprovalResponseSeconds: null,
-        },
-        listings: children
-          .filter((listing) => listing.status === 'published')
-          .map((listing) => ({
-            id: listing.id,
-            title: listing.title,
-            slug: listing.slug,
-            description: listing.description,
-            photos: listing.photos,
-            attributes: listing.attributes,
-            bookingModes: listing.bookingModes,
-            priceFrom: lowestBasePrice(listing),
-            ratingAvg: listing.ratingAvg,
-            reviewCount: listing.reviewCount,
-          })),
-      } satisfies PublicListingGroupDetailResponse;
+      if (group.partnerPublic.status !== 'approved') return null;
+      return toPublicListingGroupDetailResponse(group, children, listingType);
     });
     if (!result) throw new ListingGroupNotFound();
     return result;

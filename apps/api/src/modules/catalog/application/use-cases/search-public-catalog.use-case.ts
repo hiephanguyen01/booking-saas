@@ -13,6 +13,7 @@ import {
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { addMinutes, zonedTimeToUtc } from '../../../../shared/time/time';
 import { toVnd } from '../../../../shared/money/money';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { computeQuote } from '../../../../shared/domain/pricing/quote-calculator';
 import { activePackages } from '../../../../shared/domain/pricing/package-config';
@@ -157,12 +158,14 @@ export class SearchPublicCatalogUseCase {
       const total = sorted.length;
       const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
       const page = Math.min(query.page, totalPages);
-      const start = (page - 1) * query.pageSize;
+      // Paged in memory: availability + price are evaluated per candidate after
+      // the DB query, so the window can only be applied once ranking is done.
+      const { skip, take } = pageOffset({ page, pageSize: query.pageSize });
 
       return {
         type: toPublicListingTypeResponse(type),
         applied: { ...query, mode, page },
-        items: sorted.slice(start, start + query.pageSize),
+        items: sorted.slice(skip, skip + take),
         facets: this.facets(type, facetRows),
         sortOptions: ['relevance', 'bookings-desc', 'price-asc'],
         pagination: { page, pageSize: query.pageSize, total, totalPages },

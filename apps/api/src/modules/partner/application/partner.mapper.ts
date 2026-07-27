@@ -8,8 +8,10 @@ import {
   type PartnerContactInfoResponse,
   type PartnerIdentityInfoResponse,
   type PartnerResponse,
+  type PublicPartnerProfileResponse,
 } from '@booking/contracts';
 import type { PartnerRecord } from '../domain/ports/partner-reader.port';
+import type { PublicPartnerRecord } from '../domain/ports/public-partner-repository.port';
 import type { ZodSchema } from 'zod';
 
 /**
@@ -91,5 +93,37 @@ export function toPartnerResponse(p: PartnerRecord): PartnerResponse {
     owner: p.owner ? { email: p.owner.email, phone: p.owner.phone } : null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Anti-disintermediation (§5): a public partner profile must not carry a way to
+ * take the booking off-platform. The free-text `description` is partner-authored,
+ * so a phone number, email, Zalo handle or URL anywhere in it drops the WHOLE
+ * field rather than trying to redact in place — a partial scrub leaks whatever
+ * the pattern missed, and an empty bio is the safer failure.
+ */
+const CONTACT_PATTERN =
+  /(?:\+?84|0)[\d\s._-]{8,13}\d|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|\bzalo\b|\b(?:https?:\/\/|www\.)\S+/i;
+
+export function toPublicPartnerProfileResponse(
+  p: PublicPartnerRecord,
+): PublicPartnerProfileResponse {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    description: p.description && !CONTACT_PATTERN.test(p.description) ? p.description : null,
+    logoUrl: p.logoUrl,
+    partnerType: p.partnerType,
+    identityVerified: p.verifiedAt !== null,
+    activeSince: p.createdAt.toISOString(),
+    stats: {
+      publishedOfferings: p.publishedOfferings,
+      completedBookings: p.completedBookings,
+      ratingAvg: p.ratingAvg,
+      reviewCount: p.reviewCount,
+    },
+    listingTypes: p.listingTypes,
   };
 }

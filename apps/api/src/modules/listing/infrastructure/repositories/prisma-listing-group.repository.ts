@@ -17,6 +17,7 @@ import type {
   ListingGroupContentPatch,
   NewListingGroup,
 } from '../../domain/entities/listing-group.entity';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 /**
  * The child fields the post's aggregates are computed from (see
@@ -149,13 +150,14 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
       ...(filter.partnerId ? { partnerId: filter.partnerId } : {}),
       ...(filter.q ? { title: { contains: filter.q, mode: 'insensitive' } } : {}),
     };
+    const { skip, take } = pageOffset(page);
     const [items, total] = await Promise.all([
       tx.listingGroup.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         include: GROUP_INCLUDE,
-        skip: (page.page - 1) * page.pageSize,
-        take: page.pageSize,
+        skip,
+        take,
       }),
       tx.listingGroup.count({ where }),
     ]);

@@ -8,6 +8,7 @@ import type {
   SettlementDisputeListFilters,
   SettlementDisputeRecord,
 } from '../../domain/ports/settlement-dispute-repository.port';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 const INCLUDE = Prisma.validator<Prisma.SettlementDisputeInclude>()({
   tenant: { select: { name: true } },
@@ -30,10 +31,19 @@ const INCLUDE = Prisma.validator<Prisma.SettlementDisputeInclude>()({
 
 type Row = Prisma.SettlementDisputeGetPayload<{ include: typeof INCLUDE }>;
 
+// Listed field by field on purpose: `...row` used to carry the whole Prisma row —
+// including the nested `tenant` / `booking` / `settlement` relation objects — into
+// the record, so a persistence-only key was one careless mapper edit away from
+// becoming a wire contract.
 function toRecord(row: Row): SettlementDisputeRecord {
   return {
-    ...row,
+    id: row.id,
+    tenantId: row.tenantId,
     tenantName: row.tenant.name,
+    settlementId: row.settlementId,
+    bookingId: row.bookingId,
+    openedByUserId: row.openedByUserId,
+    openedByRole: row.openedByRole,
     bookingCode: row.booking.code,
     listingTitle: row.booking.listing.title,
     customerName: row.booking.customer.fullName,
@@ -44,9 +54,21 @@ function toRecord(row: Row): SettlementDisputeRecord {
         ? row.settlement.onlineHeldAmount - row.settlement.refundedAmount
         : 0n,
     disputeUntil: row.settlement.disputeUntil,
+    reason: row.reason,
     evidence: Array.isArray(row.evidence)
       ? row.evidence.filter((item): item is string => typeof item === 'string')
       : [],
+    partnerResponse: row.partnerResponse,
+    partnerRespondedBy: row.partnerRespondedBy,
+    partnerRespondedAt: row.partnerRespondedAt,
+    status: row.status,
+    resolution: row.resolution,
+    resolutionNote: row.resolutionNote,
+    refundAmount: row.refundAmount,
+    resolvedBy: row.resolvedBy,
+    resolvedAt: row.resolvedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -164,13 +186,14 @@ export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepo
           ]
         : undefined,
     };
+    const { skip, take } = pageOffset({ page, pageSize });
     const [rows, total] = await Promise.all([
       tx.settlementDispute.findMany({
         where,
         include: INCLUDE,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip,
+        take,
       }),
       tx.settlementDispute.count({ where }),
     ]);
@@ -201,13 +224,14 @@ export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepo
           ]
         : undefined,
     };
+    const { skip, take } = pageOffset({ page, pageSize });
     const [rows, total] = await Promise.all([
       this.prisma.admin.settlementDispute.findMany({
         where,
         include: INCLUDE,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip,
+        take,
       }),
       this.prisma.admin.settlementDispute.count({ where }),
     ]);

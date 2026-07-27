@@ -9,7 +9,7 @@ import type {
   ModerationActor,
   PublishStatus,
 } from '@booking/contracts';
-import { toStatusCounts, type RepoPageWithCounts } from '../../../../shared/pagination/pagination';
+import { toStatusCounts, type RepoPageWithCounts, pageOffset } from '../../../../shared/pagination/pagination';
 import { resolveEffectivePolicy } from '../../domain/cancellation-policy-fallback';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
@@ -250,13 +250,14 @@ export class PrismaListingRepository implements IListingRepository {
       ...baseWhere,
       ...(filter.status ? { status: filter.status } : {}),
     };
+    const { skip, take } = pageOffset(page);
     const [items, total, countRows] = await Promise.all([
       tx.listing.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         include: LISTING_INCLUDE,
-        skip: (page.page - 1) * page.pageSize,
-        take: page.pageSize,
+        skip,
+        take,
       }),
       tx.listing.count({ where }),
       tx.listing.groupBy({ by: ['status'], where: baseWhere, _count: true }),

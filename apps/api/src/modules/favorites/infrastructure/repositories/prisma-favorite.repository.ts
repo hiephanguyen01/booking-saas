@@ -18,6 +18,7 @@ import type {
   FavoriteSummaryTargetRecord,
   IFavoriteReader,
 } from '../../domain/ports/favorite-reader.port';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 /**
  * Lowest configured base price on a listing (VND đồng digit string).
@@ -220,13 +221,14 @@ export class PrismaFavoriteRepository implements IFavoriteRepository, IFavoriteR
     customerId: string,
     query: { page: number; pageSize: number },
   ): Promise<CustomerFavoritePage> {
+    const { skip, take } = pageOffset(query);
     const [rows, total] = await Promise.all([
       tx.favorite.findMany({
         where: { customerId },
         include: CARD_INCLUDE,
         orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip,
+        take,
       }),
       tx.favorite.count({ where: { customerId } }),
     ]);
@@ -272,12 +274,13 @@ export class PrismaFavoriteRepository implements IFavoriteRepository, IFavoriteR
           : {};
     const where: Prisma.FavoriteWhereInput = { AND: [baseWhere, targetWhereFilter] };
 
+    const { skip, take } = pageOffset(query);
     const [rows, total, countAll, countListing, countGroup] = await Promise.all([
       tx.favorite.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip,
+        take,
         include: {
           customer: { select: { fullName: true } },
           listing: { select: { title: true, slug: true } },

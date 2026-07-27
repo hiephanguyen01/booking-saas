@@ -19,6 +19,7 @@ import type {
   ContentReportRecord,
   IContentReportReader,
 } from '../../domain/ports/content-report-reader.port';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 const select = {
   id: true,
@@ -172,13 +173,14 @@ export class PrismaContentReportRepository
       ...(query.status !== 'all' ? { status: query.status } : {}),
     };
     const statuses: ContentReportStatus[] = ['open', 'reviewing', 'resolved', 'dismissed'];
+    const { skip, take } = pageOffset(query);
     const [rows, total, all, ...statusCounts] = await Promise.all([
       tx.contentReport.findMany({
         where,
         select,
         orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip,
+        take,
       }),
       tx.contentReport.count({ where }),
       tx.contentReport.count({ where: baseWhere }),

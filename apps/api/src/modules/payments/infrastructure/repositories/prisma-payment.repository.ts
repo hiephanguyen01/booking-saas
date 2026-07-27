@@ -17,6 +17,7 @@ import type {
   PaymentRecord,
   PaymentRef,
 } from '../../domain/ports/payment-repository.port';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 type Row = Prisma.PaymentGetPayload<Record<string, never>>;
 
@@ -238,13 +239,14 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     query: PaymentHistoryQuery,
   ): Promise<RepoPage<PaymentHistoryRecord>> {
     const where = this.historyWhere(query, tenantId);
+    const { skip, take } = pageOffset(query);
     const [rows, total] = await Promise.all([
       tx.payment.findMany({
         where,
         include: { booking: { select: { code: true } } },
         orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip,
+        take,
       }),
       tx.payment.count({ where }),
     ]);
@@ -261,6 +263,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     query: PaymentHistoryQuery,
   ): Promise<RepoPage<PaymentHistoryRecord>> {
     const where = this.historyWhere(query);
+    const { skip, take } = pageOffset(query);
     const [rows, total] = await Promise.all([
       this.prisma.admin.payment.findMany({
         where,
@@ -269,8 +272,8 @@ export class PrismaPaymentRepository implements IPaymentRepository {
           tenant: { select: { name: true } },
         },
         orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip,
+        take,
       }),
       this.prisma.admin.payment.count({ where }),
     ]);

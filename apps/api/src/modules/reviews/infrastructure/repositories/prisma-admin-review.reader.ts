@@ -7,6 +7,7 @@ import type {
   IAdminReviewReader,
 } from '../../domain/ports/admin-review-reader.port';
 import { REVIEW_INCLUDE, toReviewRecord } from './prisma-review.repository';
+import { pageOffset } from '../../../../shared/pagination/pagination';
 
 @Injectable()
 export class PrismaAdminReviewReader implements IAdminReviewReader {
@@ -42,13 +43,14 @@ export class PrismaAdminReviewReader implements IAdminReviewReader {
           }
         : {}),
     };
+    const { skip, take } = pageOffset(query);
     const [rows, total, aggregate, unansweredCount, grouped] = await Promise.all([
       this.prisma.admin.review.findMany({
         where,
         include: { ...REVIEW_INCLUDE, tenant: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
+        skip,
+        take,
       }),
       this.prisma.admin.review.count({ where }),
       this.prisma.admin.review.aggregate({ where, _avg: { rating: true }, _count: true }),

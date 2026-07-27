@@ -27,6 +27,7 @@ import { PartnerBookingStatsUseCase } from '../../application/use-cases/partner-
 import { PartnerCalendarUseCase } from '../../application/use-cases/partner-calendar.use-case';
 import { RejectBookingUseCase } from '../../application/use-cases/reject-booking.use-case';
 import { RequestBookingOtpUseCase } from '../../application/use-cases/request-booking-otp.use-case';
+import { IssueBookingAccessGrantUseCase } from '../../application/use-cases/issue-booking-access-grant.use-case';
 import { ResolveBookingAccessUseCase } from '../../application/use-cases/resolve-booking-access.use-case';
 import { UpdatePartnerNoteUseCase } from '../../application/use-cases/update-partner-note.use-case';
 import { BOOKING_ACCESS_GRANT_STORE } from '../../domain/ports/booking-access-grant-store.port';
@@ -78,6 +79,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     ListMyBookingsUseCase,
     GetBookingByCodeUseCase,
     RequestBookingOtpUseCase,
+    IssueBookingAccessGrantUseCase,
     ResolveBookingAccessUseCase,
     PartnerCalendarUseCase,
     ListTenantBookingsUseCase,

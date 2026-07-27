@@ -119,12 +119,17 @@ export class PrismaListingReadRepository implements IListingReadRepository {
       ratingAvg: l.ratingAvg === null ? null : l.ratingAvg.toNumber(),
       reviewCount: l.reviewCount,
       availabilityRules: l.availabilityRules,
+      // Listed field by field: `...r` carried every pricing_rules column (tenant_id,
+      // listing_id, timestamps…) into a record the public search response is built
+      // from — persistence keys must not ride along by default.
       pricingRules: l.pricingRules.map((r) => ({
-        ...r,
+        id: r.id,
         bookingMode: r.bookingMode as BookingMode,
+        ruleType: r.ruleType,
         params: (r.params ?? {}) as Record<string, unknown>,
         price: r.price.toString(),
         salePrice: r.salePrice?.toString() ?? null,
+        priority: r.priority,
       })),
       availabilityExceptions: l.resource.availabilityExceptions.map((e) => ({
         date: e.date.toISOString().slice(0, 10),
