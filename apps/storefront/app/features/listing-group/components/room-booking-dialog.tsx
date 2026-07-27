@@ -60,7 +60,13 @@ export function ListingBookingDialog({
       <CalendarDays aria-hidden="true" /> {triggerLabel}
     </Button>
   );
-  const body = <RoomBookingDialogSteps {...stepsProps} onOpenPackageMedia={openPackageMedia} />;
+  const body = (
+    <RoomBookingDialogSteps
+      {...stepsProps}
+      today={today}
+      onOpenPackageMedia={openPackageMedia}
+    />
+  );
   const footer = <BookingDialogFooter {...footerProps} />;
 
   return (
