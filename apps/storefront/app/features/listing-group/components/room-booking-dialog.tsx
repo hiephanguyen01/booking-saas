@@ -19,10 +19,12 @@ export function ListingBookingDialog({
   listing,
   groupSlug,
   preferredMode,
+  today,
 }: {
   listing: PublicListingDetailResponse;
   groupSlug?: string;
   preferredMode: ListingBookingMode;
+  today: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const viewerLabels = useMediaViewerLabels();
@@ -32,6 +34,7 @@ export function ListingBookingDialog({
     listing,
     groupSlug,
     preferredMode,
+    today,
   });
   const selectedPackage = stepsProps.selectedPackage;
   const galleryPhotos = selectedPackage?.photos.length ? selectedPackage.photos : listing.photos;
@@ -103,16 +106,19 @@ export function RoomBookingDialog({
   option,
   groupSlug,
   preferredMode,
+  today,
 }: {
   option: RoomOption;
   groupSlug: string;
   preferredMode: BookingMode;
+  today: string;
 }) {
   return (
     <ListingBookingDialog
       listing={option.detail}
       groupSlug={groupSlug}
       preferredMode={preferredMode === 'daily' ? 'daily' : 'hourly'}
+      today={today}
     />
   );
 }
