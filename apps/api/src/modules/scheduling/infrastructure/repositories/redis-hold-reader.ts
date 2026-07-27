@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { REDIS } from '../../../../shared/redis/redis.module';
-import type { Interval } from '../../domain/availability/interval';
+import type { Interval } from '../../../../shared/domain/availability/interval';
 import type { IHoldReader } from '../../domain/ports/hold-reader.port';
 
 /**

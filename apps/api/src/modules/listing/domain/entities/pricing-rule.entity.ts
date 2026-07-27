@@ -1,5 +1,5 @@
 import type { BookingMode, BookingSelection } from '@booking/contracts';
-import type { RuleType } from '../pricing/quote-calculator';
+import type { RuleType } from '../../../../shared/domain/pricing/quote-calculator';
 import { ModeNotEnabled, PackagePricingFixed } from '../errors/pricing-rule-errors';
 
 /**

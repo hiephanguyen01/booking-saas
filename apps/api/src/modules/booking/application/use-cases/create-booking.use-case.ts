@@ -13,8 +13,8 @@ import { priceQuote } from '../../../listing/application/pricing';
 import { PreparePromotionUseCase } from '../../../promotions/application/use-cases/prepare-promotion.use-case';
 import { ReservePromotionUseCase } from '../../../promotions/application/use-cases/reserve-promotion.use-case';
 import { ResolveCommissionUseCase } from '../../../finance/application/use-cases/resolve-commission.use-case';
-import { computeCommissionSplit } from '../../../finance/domain/commission-split';
-import { snapshotToRates } from '../../../finance/domain/commission-snapshot';
+import { computeCommissionSplit } from '../../../../shared/domain/commission/commission-split';
+import { snapshotToRates } from '../../../../shared/domain/commission/commission-snapshot';
 import { ResolveAttributionUseCase } from '../../../affiliate/application/use-cases/resolve-attribution.use-case';
 import { applyCustomRate } from '../../../affiliate/domain/affiliate-rate';
 import {

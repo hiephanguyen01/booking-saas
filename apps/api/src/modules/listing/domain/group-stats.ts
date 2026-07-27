@@ -7,15 +7,16 @@
  * (`review-checklist.ts`: a photo, a description, a price for every enabled
  * mode) so "3/5 ready" on the list and the per-item checklist can never disagree.
  */
-import { toVnd } from '../../../shared/money/money';
+import { basePrices, type PricedListingFacts } from '../../../shared/domain/pricing/base-prices';
 
-/** The slice of a child listing these aggregates read. */
-export interface ListingStatsFacts {
+/**
+ * The slice of a child listing these aggregates read: what prices it (shared
+ * with catalog and favorites via `PricedListingFacts`) plus the two fields only
+ * the reviewer checklist cares about.
+ */
+export interface ListingStatsFacts extends PricedListingFacts {
   description: string | null;
   photos: readonly string[];
-  bookingModes: readonly string[];
-  bookingSelection: 'flexible_duration' | 'fixed_packages';
-  modeConfig: Record<string, unknown>;
 }
 
 export interface ListingGroupStats {
@@ -23,35 +24,6 @@ export interface ListingGroupStats {
   readyListingCount: number;
   /** Lowest configured base price in VND đồng as a digit string; null if none. */
   priceFrom: string | null;
-}
-
-/**
- * Every configured base price on a listing, as bigint VND đồng. A malformed value
- * is skipped rather than silently becoming `NaN`/`0` and inventing a price.
- */
-export function basePrices(listing: ListingStatsFacts): bigint[] {
-  const prices: bigint[] = [];
-  for (const mode of listing.bookingModes) {
-    const value = listing.modeConfig[mode];
-    if (!value || typeof value !== 'object') continue;
-    const config = value as Record<string, unknown>;
-    if (listing.bookingSelection === 'fixed_packages') {
-      const packages = Array.isArray(config.packages) ? config.packages : [];
-      for (const item of packages) {
-        if (!item || typeof item !== 'object') continue;
-        const row = item as Record<string, unknown>;
-        if (row.isActive !== true) continue;
-        const price = toVnd(row.price);
-        if (price !== null && price > 0n) prices.push(price);
-      }
-      continue;
-    }
-    for (const key of ['basePrice', 'basePricePerNight']) {
-      const price = toVnd(config[key]);
-      if (price !== null && price > 0n) prices.push(price);
-    }
-  }
-  return prices;
 }
 
 /** A listing that would pass the reviewer's checklist: photo + description + a price per mode. */

@@ -58,9 +58,16 @@ partner, catalog, listing, scheduling, booking, payments, promotions, finance, a
 - **Every protected endpoint declares `@RequirePermissions('scope.resource.action')`** (or `@Public()`
   / `@AuthenticatedOnly()`). The global guard is **deny-by-default**: an undeclared route is 403.
 - **Auth is opaque session cookies, not JWT** (`sid`/`rid`, SHA-256-hashed, rotated) — see [ADR 0001](./docs/decisions/0001-opaque-sessions-over-jwt.md).
-- **Modules never import each other's code** — they communicate via the **outbox**: producer
-  `OutboxService.emit(tx, {eventType, payload})` inside its `forTenant` tx; consumer
-  `OutboxHandlerRegistry.register(eventType, handler)`. See [ADR 0003](./docs/decisions/0003-outbox-for-inter-module.md).
+- **A module's write-path side effects cross module lines via the outbox, never a direct call**:
+  producer `OutboxService.emit(tx, {eventType, payload})` inside its `forTenant` tx; consumer
+  `OutboxHandlerRegistry.register(eventType, handler)`. This is what keeps a state change and its
+  side effects atomic. What is **allowed**: importing another module's guards/decorators/Nest module
+  (auth and tenancy are de-facto framework here), and injecting another module's use-case or
+  repository **port** for a synchronous read. What is **forbidden**: reaching into another module's
+  `infrastructure/`, a `domain/` layer importing another module's `application/`, and **any cycle in
+  the module graph** (`pnpm check:module-cycles`). Logic two contexts genuinely share moves to
+  `apps/api/src/shared/domain/*` — that is where the pricing, availability and commission kernels
+  live. See [ADR 0003](./docs/decisions/0003-outbox-for-inter-module.md).
 - **Money is `bigint` VND** (đồng, never a float); **commission/platform rates are integer percent 0–100**;
   **time is `timestamptz` UTC**. Helpers in `apps/api/src/shared/{money,time}`.
 - **Frontends never fetch the backend from the browser.** All authenticated data goes through RR
@@ -76,8 +83,9 @@ partner, catalog, listing, scheduling, booking, payments, promotions, finance, a
 | Install | `pnpm install` (CI/Docker: `--frozen-lockfile`) |
 | Everything, dev | `pnpm dev` (turbo, all apps) |
 | One app, dev | `pnpm --filter=@booking/{api,storefront,dashboard} dev` |
-| **Full static check** | `pnpm check:no-tests && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
+| **Full static check** | `pnpm check:no-tests && pnpm check:module-cycles && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
 | No-tests policy | `pnpm check:no-tests` |
+| Module-cycle guard | `pnpm check:module-cycles` |
 | Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
 | Format | `pnpm format` |
 | Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) |

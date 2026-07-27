@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { Interval } from '../../domain/availability/interval';
+import type { Interval } from '../../../../shared/domain/availability/interval';
 import type { IBusyReader } from '../../domain/ports/busy-reader.port';
 
 interface RangeRow {

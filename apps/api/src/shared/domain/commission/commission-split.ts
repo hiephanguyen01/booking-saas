@@ -1,4 +1,4 @@
-import { percentOfBps, type Vnd } from '../../../shared/money/money';
+import { percentOfBps, type Vnd } from '../../money/money';
 
 /**
  * Pure commission maths (TONG-QUAN.md §3.3 / §12.4 / §13.1). No framework or

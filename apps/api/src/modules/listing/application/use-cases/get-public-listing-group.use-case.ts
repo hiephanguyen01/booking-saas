@@ -13,17 +13,9 @@ import {
 import {
   LISTING_REPOSITORY,
   type IListingRepository,
-  type ListingRecord,
 } from '../../domain/ports/listing-repository.port';
-import { basePrices } from '../../domain/group-stats';
+import { lowestBasePrice } from '../../../../shared/domain/pricing/base-prices';
 import { ListingGroupNotFound } from '../../domain/errors/listing-group-errors';
-
-function listingPriceFrom(listing: ListingRecord): string | null {
-  const prices = basePrices(listing);
-  return prices.length
-    ? prices.reduce((left, right) => (right < left ? right : left)).toString()
-    : null;
-}
 
 @Injectable()
 export class GetPublicListingGroupUseCase {
@@ -84,7 +76,7 @@ export class GetPublicListingGroupUseCase {
             photos: listing.photos,
             attributes: listing.attributes,
             bookingModes: listing.bookingModes,
-            priceFrom: listingPriceFrom(listing),
+            priceFrom: lowestBasePrice(listing),
             ratingAvg: listing.ratingAvg,
             reviewCount: listing.reviewCount,
           })),

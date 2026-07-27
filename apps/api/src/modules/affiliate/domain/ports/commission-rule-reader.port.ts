@@ -1,5 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { RateType } from '../../../finance/domain/commission-split';
+import type { RateType } from '../../../../shared/domain/commission/commission-split';
 
 export const COMMISSION_RULE_READER = Symbol('COMMISSION_RULE_READER');
 

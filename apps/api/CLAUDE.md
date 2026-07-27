@@ -94,7 +94,16 @@ tenant context for RLS. Permission keys + system roles are a fixed catalog in
 never created via UI. After any role-assignment change call `PermissionResolverService.invalidate(userId)`
 (one arg) to clear the Redis cache.
 
-## Inter-module communication — outbox only
+## Inter-module communication — outbox for side effects
+
+**Write-path side effects only.** Never call another module to *cause* a state change; emit an event
+so the change and its effects commit together. Synchronous **reads** across modules are fine through
+the other module's use-case or repository port, as are guards/decorators/Nest modules from
+`identity-access` and `tenancy`. Two things are hard-enforced: `domain/` may not import another
+module's `application/` (eslint), and the module import graph must stay acyclic
+(`pnpm check:module-cycles`, in CI). Logic two contexts genuinely share is not an import — move it to
+`src/shared/domain/*`, alongside the existing `pricing/`, `availability/`, `commission/` and `errors/`
+kernels. Full boundary table in [ADR 0003](../../docs/decisions/0003-outbox-for-inter-module.md).
 
 Producer: `OutboxService.emit(tx, { tenantId?, eventType, payload })` inside its `forTenant` tx.
 Consumer: `OutboxHandlerRegistry.register(eventType, handler)` (in the module's `onModuleInit`). The

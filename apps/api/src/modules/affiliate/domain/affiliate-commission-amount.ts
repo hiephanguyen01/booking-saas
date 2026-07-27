@@ -1,6 +1,6 @@
 import type { Vnd } from '../../../shared/money/money';
-import { computeCommissionSplit } from '../../finance/domain/commission-split';
-import { snapshotToRates, type CommissionSnapshot } from '../../finance/domain/commission-snapshot';
+import { computeCommissionSplit } from '../../../shared/domain/commission/commission-split';
+import { snapshotToRates, type CommissionSnapshot } from '../../../shared/domain/commission/commission-snapshot';
 
 /**
  * The affiliate commission for a booking, replayed from the SAME frozen

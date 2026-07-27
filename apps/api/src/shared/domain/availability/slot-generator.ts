@@ -1,4 +1,4 @@
-import { addMinutes } from '../../../../shared/time/time';
+import { addMinutes } from '../../time/time';
 import { contains, overlapsAny, type Interval } from './interval';
 
 /** A generated hourly slot (a `(start, duration)` pair) with its availability + price. */

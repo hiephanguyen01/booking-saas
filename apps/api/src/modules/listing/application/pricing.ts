@@ -3,7 +3,7 @@ import {
   computeQuoteResponse,
   PricingError,
   type QuoteInput,
-} from '../domain/pricing/quote-calculator';
+} from '../../../shared/domain/pricing/quote-calculator';
 import { ListingPricingRejected } from '../domain/errors/pricing-rule-errors';
 
 /**

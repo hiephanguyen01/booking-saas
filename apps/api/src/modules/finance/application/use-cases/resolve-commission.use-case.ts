@@ -11,7 +11,7 @@ import { selectCommissionRule } from '../../domain/commission-rule-precedence';
 import {
   defaultCommissionSnapshot,
   type CommissionSnapshot,
-} from '../../domain/commission-snapshot';
+} from '../../../../shared/domain/commission/commission-snapshot';
 
 export interface ResolveCommissionTarget {
   partnerId: string;

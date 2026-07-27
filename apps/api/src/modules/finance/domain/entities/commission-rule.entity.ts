@@ -1,5 +1,5 @@
 import type { CreateCommissionRuleInput, UpdateCommissionRuleInput } from '@booking/contracts';
-import { violatesTenantShareFloor } from '../commission-rate-guard';
+import { violatesTenantShareFloor } from '../../../../shared/domain/commission/commission-rate-guard';
 import {
   CommissionExceedsPartnerDeposit,
   CommissionRatesNegativeTenant,

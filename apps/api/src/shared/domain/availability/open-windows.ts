@@ -1,4 +1,4 @@
-import { zonedTimeToUtc } from '../../../../shared/time/time';
+import { zonedTimeToUtc } from '../../time/time';
 import { parseDate, weekdayOf } from './date-util';
 import type { Interval } from './interval';
 

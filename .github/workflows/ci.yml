@@ -24,6 +24,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:no-tests
+      - run: pnpm check:module-cycles
       - run: pnpm --filter=@booking/storefront security
       - run: pnpm --filter=@booking/contracts build
       - name: API typecheck

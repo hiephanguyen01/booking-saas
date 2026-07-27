@@ -1,4 +1,4 @@
-import type { RateType } from './commission-split';
+import type { RateType } from '../../../shared/domain/commission/commission-split';
 
 /**
  * Commission-rule precedence (TONG-QUAN.md §3.2): the most specific effective

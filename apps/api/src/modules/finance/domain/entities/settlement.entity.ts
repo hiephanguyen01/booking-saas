@@ -1,5 +1,5 @@
-import { computeCommissionSplit } from '../commission-split';
-import { snapshotToRates, type CommissionSnapshot } from '../commission-snapshot';
+import { computeCommissionSplit } from '../../../../shared/domain/commission/commission-split';
+import { snapshotToRates, type CommissionSnapshot } from '../../../../shared/domain/commission/commission-snapshot';
 import {
   SettlementJournalExists,
   SettlementOnsiteAmountMismatch,

@@ -2,7 +2,7 @@ import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service'
 import {
   defaultCommissionSnapshot,
   type CommissionSnapshot,
-} from '../domain/commission-snapshot';
+} from '../../../shared/domain/commission/commission-snapshot';
 
 /** The finance-relevant slice of a booking that the journal use-cases replay from. */
 export interface BookingFinanceView {

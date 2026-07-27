@@ -1,5 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { Interval } from '../availability/interval';
+import type { Interval } from '../../../../shared/domain/availability/interval';
 
 export const BUSY_READER = Symbol('BUSY_READER');
 

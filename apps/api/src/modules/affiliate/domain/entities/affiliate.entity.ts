@@ -1,5 +1,5 @@
-import type { RateType } from '../../../finance/domain/commission-split';
-import { violatesTenantShareFloor } from '../../../finance/domain/commission-rate-guard';
+import type { RateType } from '../../../../shared/domain/commission/commission-split';
+import { violatesTenantShareFloor } from '../../../../shared/domain/commission/commission-rate-guard';
 import {
   AffiliateTenantShareFloorViolated,
   TenantInactive,

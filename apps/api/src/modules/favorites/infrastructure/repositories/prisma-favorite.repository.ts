@@ -6,7 +6,7 @@ import type {
   TenantFavoritesQuery,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { basePrices } from '../../../listing/domain/group-stats';
+import { lowestBasePrice } from '../../../../shared/domain/pricing/base-prices';
 import type { FavoritableTarget, NewFavorite } from '../../domain/entities/favorite.entity';
 import type { IFavoriteRepository } from '../../domain/ports/favorite-repository.port';
 import type {
@@ -22,27 +22,23 @@ import type {
 /**
  * Lowest configured base price on a listing (VND đồng digit string).
  *
- * Delegates to the listing module's `basePrices` so a favorite card shows the
- * SAME "from" price as the catalog and the post page. The previous local copy
- * walked every `mode_config` key looking only for `basePrice`/`basePricePerNight`,
- * so a `fixed_packages` listing (whose prices live in `packages[].price`) showed
- * no price at all on the favorites list.
+ * Uses the shared pricing kernel so a favorite card shows the SAME "from" price
+ * as the catalog and the post page. The previous local copy walked every
+ * `mode_config` key looking only for `basePrice`/`basePricePerNight`, so a
+ * `fixed_packages` listing (whose prices live in `packages[].price`) showed no
+ * price at all on the favorites list.
  */
 function priceFromListing(l: {
   bookingModes: string[];
   modeConfig: Prisma.JsonValue;
   listingType: { bookingSelection: string };
 }): string | null {
-  const prices = basePrices({
-    description: null,
-    photos: [],
+  return lowestBasePrice({
     bookingModes: l.bookingModes,
     bookingSelection:
       l.listingType.bookingSelection === 'fixed_packages' ? 'fixed_packages' : 'flexible_duration',
     modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
   });
-  if (prices.length === 0) return null;
-  return prices.reduce((a, b) => (b < a ? b : a)).toString();
 }
 
 function toStrings(value: unknown): unknown[] {

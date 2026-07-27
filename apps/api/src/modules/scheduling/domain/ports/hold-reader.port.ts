@@ -1,4 +1,4 @@
-import type { Interval } from '../availability/interval';
+import type { Interval } from '../../../../shared/domain/availability/interval';
 
 export const HOLD_READER = Symbol('HOLD_READER');
 

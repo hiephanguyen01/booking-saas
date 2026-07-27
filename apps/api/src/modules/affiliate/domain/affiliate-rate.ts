@@ -1,5 +1,5 @@
-import type { RateType } from '../../finance/domain/commission-split';
-import type { CommissionSnapshot } from '../../finance/domain/commission-snapshot';
+import type { RateType } from '../../../shared/domain/commission/commission-split';
+import type { CommissionSnapshot } from '../../../shared/domain/commission/commission-snapshot';
 
 /**
  * Resolving the rate an affiliate is actually paid at (§15.2 priority:

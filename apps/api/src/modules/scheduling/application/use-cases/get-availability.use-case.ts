@@ -29,12 +29,12 @@ import {
 } from '../../domain/ports/availability-exception-repository.port';
 import { BUSY_READER, type IBusyReader } from '../../domain/ports/busy-reader.port';
 import { HOLD_READER, type IHoldReader } from '../../domain/ports/hold-reader.port';
-import { eachDate, parseDate, weekdayOf } from '../../domain/availability/date-util';
-import { openWindowsForDate, type DateException } from '../../domain/availability/open-windows';
-import { applyLiveHolds, generateHourlySlots } from '../../domain/availability/slot-generator';
-import { computeDay } from '../../domain/availability/day-availability';
-import type { Interval } from '../../domain/availability/interval';
-import { overlapsAny } from '../../domain/availability/interval';
+import { eachDate, parseDate, weekdayOf } from '../../../../shared/domain/availability/date-util';
+import { openWindowsForDate, type DateException } from '../../../../shared/domain/availability/open-windows';
+import { applyLiveHolds, generateHourlySlots } from '../../../../shared/domain/availability/slot-generator';
+import { computeDay } from '../../../../shared/domain/availability/day-availability';
+import type { Interval } from '../../../../shared/domain/availability/interval';
+import { overlapsAny } from '../../../../shared/domain/availability/interval';
 import {
   AVAILABILITY_CACHE,
   type CachedSlot,
@@ -43,7 +43,7 @@ import {
 import {
   findActivePackage,
   ListingModeConfigError,
-} from '../../../listing/domain/pricing/package-config';
+} from '../../../../shared/domain/pricing/package-config';
 import { ListingNotFound } from '../../../../shared/domain/errors/listing-not-found';
 import { ModeNotEnabled } from '../../../../shared/domain/errors/mode-not-enabled';
 import { ListingPricingRejected } from '../../../listing/domain/errors/pricing-rule-errors';

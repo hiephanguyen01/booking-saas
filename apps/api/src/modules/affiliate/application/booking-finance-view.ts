@@ -1,5 +1,5 @@
 import type { PrismaTx } from '../../../shared/tenant-context/tenant-db.service';
-import { defaultCommissionSnapshot, type CommissionSnapshot } from '../../finance/domain/commission-snapshot';
+import { defaultCommissionSnapshot, type CommissionSnapshot } from '../../../shared/domain/commission/commission-snapshot';
 import {
   normalizeAffiliateAdditionalCharges,
   resolveAffiliateFundedBy,

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { RuleType } from '../../domain/pricing/quote-calculator';
+import type { RuleType } from '../../../../shared/domain/pricing/quote-calculator';
 import type {
   IPricingRuleRepository,
   PricingRuleRecord,

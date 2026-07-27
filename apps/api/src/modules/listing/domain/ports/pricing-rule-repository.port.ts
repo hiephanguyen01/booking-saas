@@ -1,6 +1,6 @@
 import type { BookingMode } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import type { RuleType } from '../pricing/quote-calculator';
+import type { RuleType } from '../../../../shared/domain/pricing/quote-calculator';
 import type { NewPricingRule } from '../entities/pricing-rule.entity';
 
 export const PRICING_RULE_REPOSITORY = Symbol('PRICING_RULE_REPOSITORY');

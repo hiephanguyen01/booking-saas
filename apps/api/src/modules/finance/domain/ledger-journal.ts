@@ -1,5 +1,5 @@
 import type { Vnd } from '../../../shared/money/money';
-import type { CommissionSplit } from './commission-split';
+import type { CommissionSplit } from '../../../shared/domain/commission/commission-split';
 
 /**
  * Pure double-entry journal builder (TONG-QUAN.md §13.2). Every builder returns a

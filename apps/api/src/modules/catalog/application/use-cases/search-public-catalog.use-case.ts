@@ -14,15 +14,15 @@ import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.ser
 import { addMinutes, zonedTimeToUtc } from '../../../../shared/time/time';
 import { toVnd } from '../../../../shared/money/money';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
-import { computeQuote } from '../../../listing/domain/pricing/quote-calculator';
-import { activePackages } from '../../../listing/domain/pricing/package-config';
-import { parseDate, weekdayOf } from '../../../scheduling/domain/availability/date-util';
+import { computeQuote } from '../../../../shared/domain/pricing/quote-calculator';
+import { activePackages } from '../../../../shared/domain/pricing/package-config';
+import { parseDate, weekdayOf } from '../../../../shared/domain/availability/date-util';
 import {
   contains,
   overlapsAny,
   type Interval,
-} from '../../../scheduling/domain/availability/interval';
-import { openWindowsForDate } from '../../../scheduling/domain/availability/open-windows';
+} from '../../../../shared/domain/availability/interval';
+import { openWindowsForDate } from '../../../../shared/domain/availability/open-windows';
 import { toPublicListingTypeResponse } from '../catalog.mapper';
 import { HOLD_READER, type IHoldReader } from '../../domain/ports/hold-reader.port';
 import {

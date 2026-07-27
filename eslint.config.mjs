@@ -45,4 +45,30 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // A module's domain layer is its innermost ring: it may read `@booking/contracts`,
+    // `shared/*` and its own module, but never another module's use-cases. Logic two
+    // contexts genuinely share belongs in `shared/domain/*` (ADR 0003). The acyclic
+    // half of that rule is enforced by `pnpm check:module-cycles`.
+    files: ['apps/api/src/modules/*/domain/**'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/infrastructure/**', '**/infrastructure'],
+              message:
+                'application/domain không được import infrastructure — chỉ đi qua port (ADR 0006).',
+            },
+            {
+              group: ['../../*/application/**', '../../../*/application/**'],
+              message:
+                'domain không được import application của module khác — dùng chung thì đưa vào shared/domain/ (ADR 0003).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

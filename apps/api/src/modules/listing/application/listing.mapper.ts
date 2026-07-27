@@ -12,7 +12,7 @@ import type { ListingGroupRecord } from '../domain/ports/listing-group-repositor
 import type { ListingRecord, PublicListingRecord } from '../domain/ports/listing-repository.port';
 import type { ResourceRecord } from '../domain/ports/resource-repository.port';
 import type { PricingRuleRecord } from '../domain/ports/pricing-rule-repository.port';
-import { publicModeConfig } from '../domain/pricing/package-config';
+import { publicModeConfig } from '../../../shared/domain/pricing/package-config';
 
 /**
  * A cancellation policy for the partner management screen. `defaultPolicyId` is the

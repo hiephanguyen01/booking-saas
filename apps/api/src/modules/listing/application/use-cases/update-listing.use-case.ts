@@ -25,7 +25,7 @@ import { AssertListingDepositCoverageUseCase } from './assert-listing-deposit-co
 import {
   ListingModeConfigError,
   validateAndNormalizeModeConfig,
-} from '../../domain/pricing/package-config';
+} from '../../../../shared/domain/pricing/package-config';
 import { Listing } from '../../domain/entities/listing.entity';
 import {
   InvalidListingAdministrativeDivision,

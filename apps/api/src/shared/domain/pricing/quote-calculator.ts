@@ -5,8 +5,8 @@ import type {
   QuoteResponse,
   SelectedPackage,
 } from '@booking/contracts';
-import { percentOfBps, vnd, type Vnd } from '../../../../shared/money/money';
-import { wallClockInZone } from '../../../../shared/time/time';
+import { percentOfBps, vnd, type Vnd } from '../../money/money';
+import { wallClockInZone } from '../../time/time';
 import { findActivePackage, ListingModeConfigError } from './package-config';
 
 /**
