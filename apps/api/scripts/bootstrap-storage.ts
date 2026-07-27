@@ -64,6 +64,31 @@ async function main(): Promise<void> {
     console.log(`applied public-read policy to "${cfg.bucket}"`);
   }
 
+  if (isCloudflareR2) {
+    console.log(
+      `skipped bucket policy for Cloudflare R2; public reads use the custom domain ${cfg.publicUrl}`,
+    );
+  } else {
+    await s3.send(
+      new PutBucketPolicyCommand({
+        Bucket: cfg.bucket,
+        Policy: JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Sid: 'PublicReadObjects',
+              Effect: 'Allow',
+              Principal: '*',
+              Action: ['s3:GetObject'],
+              Resource: [`arn:aws:s3:::${cfg.bucket}/*`],
+            },
+          ],
+        }),
+      }),
+    );
+    console.log(`applied public-read policy to "${cfg.bucket}"`);
+  }
+
   const storefrontAssets = resolve(process.cwd(), '../storefront/public/booking-studio');
   const defaultAssets = [
     {
