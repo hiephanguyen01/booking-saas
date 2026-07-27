@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Locale } from '../../lib/i18n';
-import { dateLabelInTz, dateOnlyToLocal, DEFAULT_TZ, localToDateOnly } from '../../lib/time';
+import {
+  dateLabelInTz,
+  dateOnlyToLocal,
+  DEFAULT_TZ,
+  localToDateOnly,
+  todayInTz,
+} from '../../lib/time';
 import type { DateRange } from './search-form-types';
 import type { SearchMode } from './search-state';
 
@@ -30,9 +36,16 @@ export function useSearchDatePickerController({
   const [calendarToday, setCalendarToday] = useState<Date>();
 
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    setCalendarToday(today);
+    const update = (): void => {
+      const today = todayInTz(DEFAULT_TZ);
+      setCalendarToday((current) =>
+        current && localToDateOnly(current) === today ? current : dateOnlyToLocal(today),
+      );
+    };
+
+    update();
+    const timer = window.setInterval(update, 60_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const formatters = useMemo(() => {
