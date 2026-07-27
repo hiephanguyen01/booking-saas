@@ -208,3 +208,4 @@ export type AdminReviewResponse = z.infer<typeof adminReviewResponseSchema>;
 export const adminReviewListResponseSchema = reviewListResponseSchema.extend({
   items: z.array(adminReviewResponseSchema),
 });
+export type AdminReviewListResponse = z.infer<typeof adminReviewListResponseSchema>;
