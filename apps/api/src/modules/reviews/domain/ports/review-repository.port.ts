@@ -50,8 +50,11 @@ export interface ReviewRecord {
   serviceCompletedAt: Date | null;
   bookingStartsAt: Date | null;
   bookingEndsAt: Date | null;
-  resourceTimezone: string;
   createdAt: Date;
+}
+
+export interface CustomerReviewedRecord extends ReviewRecord {
+  resourceTimezone: string;
 }
 
 export interface PendingReviewRecord {
@@ -84,7 +87,7 @@ export interface ReviewPage {
 }
 
 export interface CustomerReviewPage {
-  items: Array<ReviewRecord | PendingReviewRecord>;
+  items: Array<CustomerReviewedRecord | PendingReviewRecord>;
   total: number;
 }
 
