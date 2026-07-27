@@ -38,43 +38,47 @@ export function cancellationPolicyLines(params: {
     });
 }
 
-const CUTOFF_TIME_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
-  en: new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-  vi: new Intl.DateTimeFormat('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-};
+interface CutoffFormatters {
+  time: Intl.DateTimeFormat;
+  date: Intl.DateTimeFormat;
+}
 
-const CUTOFF_DATE_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
-  en: new Intl.DateTimeFormat('en-US', {
-    day: 'numeric',
-    month: 'numeric',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-  vi: new Intl.DateTimeFormat('vi-VN', {
-    day: 'numeric',
-    month: 'numeric',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }),
-};
+const CUTOFF_FORMATTERS = new Map<string, CutoffFormatters>();
 
-/** `{ time, day, month }` for a cancellation cutoff, in the fixed `Asia/Ho_Chi_Minh` zone. */
+function cutoffFormatters(locale: Locale, timeZone: string): CutoffFormatters {
+  const key = `${locale}:${timeZone}`;
+  const cached = CUTOFF_FORMATTERS.get(key);
+  if (cached) return cached;
+
+  const localeCode = locale === 'en' ? 'en-US' : 'vi-VN';
+  const formatters = {
+    time: new Intl.DateTimeFormat(localeCode, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone,
+    }),
+    date: new Intl.DateTimeFormat(localeCode, {
+      day: 'numeric',
+      month: 'numeric',
+      timeZone,
+    }),
+  };
+  CUTOFF_FORMATTERS.set(key, formatters);
+  return formatters;
+}
+
+/** `{ time, day, month }` for a cancellation cutoff in the booking resource timezone. */
 export function cancellationCutoffParts(
   cutoffUtc: string,
   locale: Locale,
+  timeZone: string,
 ): { time: string; day: number; month: number } {
   const date = new Date(cutoffUtc);
-  const parts = CUTOFF_DATE_FORMATTERS[locale].formatToParts(date);
+  const formatters = cutoffFormatters(locale, timeZone);
+  const parts = formatters.date.formatToParts(date);
   return {
-    time: CUTOFF_TIME_FORMATTERS[locale].format(date),
+    time: formatters.time.format(date),
     day: Number(parts.find((part) => part.type === 'day')?.value ?? 0),
     month: Number(parts.find((part) => part.type === 'month')?.value ?? 0),
   };

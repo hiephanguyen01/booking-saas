@@ -75,7 +75,10 @@ export function CancellationPolicyList({
   booking,
   locale,
 }: {
-  booking: Pick<AccountBookingViewModel, 'startUtc' | 'depositAmount' | 'cancellationTiers'>;
+  booking: Pick<
+    AccountBookingViewModel,
+    'startUtc' | 'depositAmount' | 'cancellationTiers' | 'resourceTimezone'
+  >;
   locale: Locale;
 }) {
   const { t } = useTranslation(NsI18n.Account);
@@ -85,7 +88,11 @@ export function CancellationPolicyList({
   return (
     <div className="space-y-1 text-xs text-muted-foreground">
       {lines.map((line, index) => {
-        const { time, day, month } = cancellationCutoffParts(line.cutoffUtc, locale);
+        const { time, day, month } = cancellationCutoffParts(
+          line.cutoffUtc,
+          locale,
+          booking.resourceTimezone,
+        );
         const date = t('bookings.policy.cutoffDate', { time, day, month });
         const isFree = line.feePercent <= 0;
         const text = isFree
