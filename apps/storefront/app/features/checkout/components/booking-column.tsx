@@ -1,5 +1,5 @@
 import type {
-  PublicListingDetailResponse,
+  PublicListingDetailWithTimezoneResponse,
   QuoteResponse,
   ValidatePromoResponse,
 } from '@booking/contracts';
@@ -12,13 +12,7 @@ import {
   type CancellationPolicyLine,
 } from '../../../lib/cancellation-policy';
 import { NsI18n, type ScopedI18n, useTranslation } from '../../../lib/i18n';
-import {
-  dateLabelInTz,
-  dateOnlyInTz,
-  DEFAULT_TZ,
-  nightsBetween,
-  timeInTz,
-} from '../../../lib/time';
+import { dateLabelInTz, dateOnlyInTz, nightsBetween, timeInTz } from '../../../lib/time';
 import { formatListingLocation } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
 import type { checkoutAmounts } from '../checkout-presentation';
@@ -38,7 +32,7 @@ export function BookingColumn({
   quote,
   amounts,
 }: {
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   mode: string;
   start: string;
   end: string;
@@ -54,11 +48,25 @@ export function BookingColumn({
   const { t: tListing } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
   const address = formatListingLocation(listing, 'full');
-  const scheduleBadges = buildScheduleBadges(mode, start, end, qty, locale, tListing);
+  const scheduleBadges = buildScheduleBadges(
+    mode,
+    start,
+    end,
+    qty,
+    locale,
+    listing.timezone,
+    tListing,
+  );
   const slotCount = mode === 'hourly' ? Math.max(1, scheduleBadges.length) : 1;
   const dayCount =
     mode === 'daily'
-      ? Math.max(1, nightsBetween(dateOnlyInTz(start, DEFAULT_TZ), dateOnlyInTz(end, DEFAULT_TZ)))
+      ? Math.max(
+          1,
+          nightsBetween(
+            dateOnlyInTz(start, listing.timezone),
+            dateOnlyInTz(end, listing.timezone),
+          ),
+        )
       : 1;
   const packagePhotos = quote.selectedPackage?.photos ?? [];
   const coverPhoto = packagePhotos[0] ?? listing.photos[0];
@@ -97,7 +105,7 @@ export function BookingColumn({
           <h3 className="text-sm leading-5 font-medium text-foreground">{listing.title}</h3>
           <p className="mt-3 flex items-center gap-1 text-xs leading-4 font-medium text-foreground">
             <CalendarDays className="size-4 shrink-0" strokeWidth={1.6} aria-hidden="true" />
-            {dateLabelInTz(start, DEFAULT_TZ, locale)}
+            {dateLabelInTz(start, listing.timezone, locale)}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {scheduleBadges.map((label) => (
@@ -114,8 +122,10 @@ export function BookingColumn({
           <p className="text-sm font-semibold">{quote.selectedPackage.name}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {'durationMinutes' in quote.selectedPackage
-              ? `${quote.selectedPackage.durationMinutes} phút`
-              : `${quote.selectedPackage.durationDays} ngày`}
+              ? tListing('packages.durationMinutes', {
+                  count: quote.selectedPackage.durationMinutes,
+                })
+              : tListing('packages.durationDays', { count: quote.selectedPackage.durationDays })}
             {quote.selectedPackage.description ? ` · ${quote.selectedPackage.description}` : ''}
           </p>
           {packagePhotos.length > 1 ? (
@@ -143,7 +153,11 @@ export function BookingColumn({
             </p>
           ) : (
             policyLines.map((line, index) => {
-              const { time, day, month } = cancellationCutoffParts(line.cutoffUtc, locale);
+              const { time, day, month } = cancellationCutoffParts(
+                line.cutoffUtc,
+                locale,
+                listing.timezone,
+              );
               const date = t('policy.cutoffDate', { time, day, month });
               const isFree = line.feePercent <= 0;
               const text = isFree
@@ -194,24 +208,27 @@ function buildScheduleBadges(
   end: string,
   qty: string,
   locale: 'vi' | 'en',
+  timeZone: string,
   tListing: ScopedI18n<NsI18n.Listing>['t'],
 ): string[] {
-  if (mode !== 'hourly') return [scheduleLabel(mode, start, end, qty, locale, tListing)];
+  if (mode !== 'hourly') {
+    return [scheduleLabel(mode, start, end, qty, locale, timeZone, tListing)];
+  }
   const startMs = Date.parse(start);
   const endMs = Date.parse(end);
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
-    return [scheduleLabel(mode, start, end, qty, locale, tListing)];
+    return [scheduleLabel(mode, start, end, qty, locale, timeZone, tListing)];
   }
   const durationHours = Math.max(1, Math.round((endMs - startMs) / 3_600_000));
   if (durationHours > 6 || (endMs - startMs) % 3_600_000 !== 0) {
     return [
-      `${timeInTz(start, DEFAULT_TZ)} - ${timeInTz(end, DEFAULT_TZ)} (${tListing('hours', { count: durationHours })})`,
+      `${timeInTz(start, timeZone)} - ${timeInTz(end, timeZone)} (${tListing('hours', { count: durationHours })})`,
     ];
   }
   return Array.from({ length: durationHours }, (_, index) => {
     const slotStart = new Date(startMs + index * 3_600_000).toISOString();
     const slotEnd = new Date(startMs + (index + 1) * 3_600_000).toISOString();
-    return `${timeInTz(slotStart, DEFAULT_TZ)} - ${timeInTz(slotEnd, DEFAULT_TZ)} (${tListing('hours', { count: 1 })})`;
+    return `${timeInTz(slotStart, timeZone)} - ${timeInTz(slotEnd, timeZone)} (${tListing('hours', { count: 1 })})`;
   });
 }
 
@@ -221,13 +238,14 @@ function scheduleLabel(
   end: string,
   qty: string,
   locale: 'vi' | 'en',
+  timeZone: string,
   tListing: ScopedI18n<NsI18n.Listing>['t'],
 ): string {
   if (mode === 'daily') {
-    return `${dateLabelInTz(start, DEFAULT_TZ, locale)} → ${dateLabelInTz(end, DEFAULT_TZ, locale)}`;
+    return `${dateLabelInTz(start, timeZone, locale)} → ${dateLabelInTz(end, timeZone, locale)}`;
   }
   if (mode === 'inventory') {
-    return `${dateLabelInTz(start, DEFAULT_TZ, locale)} → ${dateLabelInTz(end, DEFAULT_TZ, locale)} · ${tListing('quantity')}: ${qty}`;
+    return `${dateLabelInTz(start, timeZone, locale)} → ${dateLabelInTz(end, timeZone, locale)} · ${tListing('quantity')}: ${qty}`;
   }
-  return `${dateLabelInTz(start, DEFAULT_TZ, locale)} · ${timeInTz(start, DEFAULT_TZ)}–${timeInTz(end, DEFAULT_TZ)}`;
+  return `${dateLabelInTz(start, timeZone, locale)} · ${timeInTz(start, timeZone)}–${timeInTz(end, timeZone)}`;
 }
