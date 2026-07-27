@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { pageOffset } from '../../../../shared/pagination/pagination';
+import { pageOffset, type RepoPage } from '../../../../shared/pagination/pagination';
 import type { PromoTimeWindow } from '../../domain/promotion-discount';
 import type {
   IPromotionRepository,
@@ -122,7 +122,7 @@ export class PrismaPromotionRepository implements IPromotionRepository {
   async list(
     tx: PrismaTx,
     params: PromotionListFilter,
-  ): Promise<{ items: PromotionRecord[]; total: number }> {
+  ): Promise<RepoPage<PromotionRecord>> {
     const where = listWhere(params);
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([
@@ -136,7 +136,7 @@ export class PrismaPromotionRepository implements IPromotionRepository {
     tx: PrismaTx,
     partnerId: string,
     params: PromotionListFilter,
-  ): Promise<{ items: PromotionRecord[]; total: number }> {
+  ): Promise<RepoPage<PromotionRecord>> {
     const where: Prisma.PromotionWhereInput = { createdByPartnerId: partnerId, ...listWhere(params) };
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([

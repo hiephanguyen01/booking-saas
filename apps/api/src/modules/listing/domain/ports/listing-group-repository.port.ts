@@ -5,6 +5,7 @@ import type {
   PublishStatus,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { ModerationUpdate } from './listing-repository.port';
 import type { ListingGroupContentPatch, NewListingGroup } from '../entities/listing-group.entity';
 
@@ -70,7 +71,7 @@ export interface IListingGroupRepository {
     tx: PrismaTx,
     filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingGroupRecord[]; total: number }>;
+  ): Promise<RepoPage<ListingGroupRecord>>;
   update(
     tx: PrismaTx,
     id: string,

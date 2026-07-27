@@ -10,6 +10,7 @@ import type {
   PublishStatus,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import type { ListingContentPatch, NewListing } from '../entities/listing.entity';
 
 export const LISTING_REPOSITORY = Symbol('LISTING_REPOSITORY');
@@ -124,7 +125,7 @@ export interface IListingRepository {
     tx: PrismaTx,
     filter: ListingFilter,
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }>;
+  ): Promise<RepoPageWithCounts<ListingRecord>>;
   update(
     tx: PrismaTx,
     id: string,

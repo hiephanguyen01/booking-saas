@@ -6,7 +6,7 @@ import type {
   IPayoutRepository,
   PayoutRecord,
 } from '../../domain/ports/payout-repository.port';
-import { pageOffset } from '../../../../shared/pagination/pagination';
+import { pageOffset, type RepoPage } from '../../../../shared/pagination/pagination';
 
 type Row = Prisma.PayoutGetPayload<Record<string, never>>;
 
@@ -64,7 +64,7 @@ export class PrismaPayoutRepository implements IPayoutRepository {
   async list(
     tx: PrismaTx,
     params: { page: number; pageSize: number },
-  ): Promise<{ items: PayoutRecord[]; total: number }> {
+  ): Promise<RepoPage<PayoutRecord>> {
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([
       tx.payout.findMany({ orderBy: { createdAt: 'desc' }, skip, take }),
@@ -78,7 +78,7 @@ export class PrismaPayoutRepository implements IPayoutRepository {
     payeeType: PayoutRecord['payeeType'],
     payeeId: string,
     params: { page: number; pageSize: number },
-  ): Promise<{ items: PayoutRecord[]; total: number }> {
+  ): Promise<RepoPage<PayoutRecord>> {
     const where: Prisma.PayoutWhereInput = { payeeType, payeeId };
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([

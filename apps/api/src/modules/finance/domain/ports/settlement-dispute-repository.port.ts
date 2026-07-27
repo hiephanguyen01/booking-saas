@@ -1,5 +1,6 @@
 import type { SettlementDisputeResolution, SettlementDisputeStatus } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 
 export const SETTLEMENT_DISPUTE_REPOSITORY = Symbol('SETTLEMENT_DISPUTE_REPOSITORY');
 
@@ -84,10 +85,10 @@ export interface ISettlementDisputeRepository {
     page: number,
     pageSize: number,
     filters?: SettlementDisputeListFilters,
-  ): Promise<{ items: SettlementDisputeRecord[]; total: number }>;
+  ): Promise<RepoPage<SettlementDisputeRecord>>;
   listPlatform(
     page: number,
     pageSize: number,
     filters: SettlementDisputeListFilters & { tenantId?: string },
-  ): Promise<{ items: SettlementDisputeRecord[]; total: number }>;
+  ): Promise<RepoPage<SettlementDisputeRecord>>;
 }

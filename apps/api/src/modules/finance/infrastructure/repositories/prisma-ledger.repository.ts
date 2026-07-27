@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   ILedgerRepository,
   LedgerEntryRecord,
@@ -202,7 +203,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     page: number,
     pageSize: number,
     filters: LedgerFilters,
-  ): Promise<{ items: LedgerEntryView[]; total: number }> {
+  ): Promise<RepoPage<LedgerEntryView>> {
     const where = viewConditions(filters);
     const [rows, counted] = await Promise.all([
       tx.$queryRaw<ViewRow[]>(Prisma.sql`

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ListAffiliatesQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import { resolveEffectiveAffiliateRate, type EffectiveAffiliateRate } from '../../domain/affiliate-rate';
 import {
   AFFILIATE_READER,
@@ -52,7 +53,7 @@ export class ListTenantAffiliatesUseCase {
   async execute(
     tenantId: string,
     query: ListAffiliatesQuery,
-  ): Promise<{ items: TenantAffiliateRow[]; total: number; counts: Record<string, number> }> {
+  ): Promise<RepoPageWithCounts<TenantAffiliateRow>> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       // One rule read for the whole page — the baseline is per tenant, not per row.
       const [{ items: affiliates, total, counts }, rule] = await Promise.all([

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import {
   BOOKING_REPOSITORY,
   type BookingRecord,
@@ -18,7 +19,7 @@ export class ListTenantBookingsUseCase {
   execute(
     tenantId: string,
     filters: TenantBookingFilters,
-  ): Promise<{ items: BookingRecord[]; total: number }> {
+  ): Promise<RepoPage<BookingRecord>> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.bookings.listByTenant(tx, filters));
   }
 }

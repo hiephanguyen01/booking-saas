@@ -1,4 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { JournalLeg, LedgerEntryType, OwnerType } from '../ledger-journal';
 
 export const LEDGER_REPOSITORY = Symbol('LEDGER_REPOSITORY');
@@ -95,7 +96,7 @@ export interface ILedgerRepository {
     page: number,
     pageSize: number,
     filters: LedgerFilters,
-  ): Promise<{ items: LedgerEntryView[]; total: number }>;
+  ): Promise<RepoPage<LedgerEntryView>>;
   /**
    * Payable that has cleared the holding period (§7.7), evaluated against the DB
    * transaction clock. Payout/clawback always count so a recent payout still

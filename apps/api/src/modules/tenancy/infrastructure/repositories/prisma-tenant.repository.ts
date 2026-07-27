@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   CreateTenantData,
   ITenantRepository,
@@ -54,7 +55,7 @@ export class PrismaTenantRepository implements ITenantRepository {
     return t ? toRecord(t) : null;
   }
 
-  async list(params: ListTenantsParams): Promise<{ items: TenantRecord[]; total: number }> {
+  async list(params: ListTenantsParams): Promise<RepoPage<TenantRecord>> {
     const where: Prisma.TenantWhereInput = {
       ...(params.status ? { status: params.status } : {}),
       ...(params.vertical ? { vertical: params.vertical } : {}),

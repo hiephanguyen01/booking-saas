@@ -4,6 +4,7 @@ import type {
   TenantSettlementDisputesQuery,
 } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import {
   SETTLEMENT_DISPUTE_REPOSITORY,
   type ISettlementDisputeRepository,
@@ -22,7 +23,7 @@ export class ListSettlementDisputesUseCase {
     tenantId: string,
     query: PartnerSettlementDisputesQuery | TenantSettlementDisputesQuery,
     partnerId?: string,
-  ): Promise<{ items: SettlementDisputeRecord[]; total: number }> {
+  ): Promise<RepoPage<SettlementDisputeRecord>> {
     return this.tenantDb.forTenant(tenantId, (tx) =>
       this.disputes.list(tx, query.page, query.pageSize, {
         partnerId: partnerId ?? ('partnerId' in query ? query.partnerId : undefined),

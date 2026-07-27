@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   ISettlementDisputeRepository,
   SettlementDisputeListFilters,
@@ -144,7 +145,7 @@ export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepo
     page: number,
     pageSize: number,
     filters: SettlementDisputeListFilters = {},
-  ): Promise<{ items: SettlementDisputeRecord[]; total: number }> {
+  ): Promise<RepoPage<SettlementDisputeRecord>> {
     const where: Prisma.SettlementDisputeWhereInput = {
       status: filters.status,
       partnerResponse:
@@ -180,7 +181,7 @@ export class PrismaSettlementDisputeRepository implements ISettlementDisputeRepo
     page: number,
     pageSize: number,
     filters: SettlementDisputeListFilters & { tenantId?: string },
-  ): Promise<{ items: SettlementDisputeRecord[]; total: number }> {
+  ): Promise<RepoPage<SettlementDisputeRecord>> {
     const where: Prisma.SettlementDisputeWhereInput = {
       tenantId: filters.tenantId,
       status: filters.status,

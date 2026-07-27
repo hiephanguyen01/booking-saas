@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
-import { pageOffset } from '../../../../shared/pagination/pagination';
+import { pageOffset, type RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   BookingRecord,
   BookingStatusHistoryRecord,
@@ -354,7 +354,7 @@ export class PrismaBookingRepository implements IBookingRepository {
   async listByTenant(
     tx: PrismaTx,
     filters: TenantBookingFilters,
-  ): Promise<{ items: BookingRecord[]; total: number }> {
+  ): Promise<RepoPage<BookingRecord>> {
     const conds: Prisma.Sql[] = [];
     if (filters.status) conds.push(Prisma.sql`b.status = ${filters.status}::booking_status`);
     if (filters.partnerId) conds.push(Prisma.sql`b.partner_id = ${filters.partnerId}::uuid`);

@@ -5,7 +5,6 @@ import {
   PAYOUT_POLICY_STORE,
   type IPayoutPolicyStore,
 } from '../../domain/ports/payout-policy-store.port';
-export { PayoutPolicy } from '../../domain/value-objects/payout-policy.value-object';
 
 /** Read and normalize the tenant's payout/dispute policy from `tenants.settings`. */
 @Injectable()

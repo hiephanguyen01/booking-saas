@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ListAffiliateLinksQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import {
   REFERRAL_LINK_READER,
   type IReferralLinkReader,
@@ -19,7 +20,7 @@ export class ListAffiliateLinksUseCase {
     tenantId: string,
     affiliateId: string,
     query: ListAffiliateLinksQuery,
-  ): Promise<{ items: ReferralLinkRecord[]; total: number }> {
+  ): Promise<RepoPage<ReferralLinkRecord>> {
     return this.tenantDb.forTenant(tenantId, (tx) =>
       this.links.listByAffiliatePaginated(tx, affiliateId, query),
     );

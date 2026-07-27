@@ -1,4 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import type {
   AffiliateState,
   AffiliateStatus,
@@ -43,11 +44,7 @@ export interface IAffiliateReader {
   list(
     tx: PrismaTx,
     filter: ListAffiliatesFilter,
-  ): Promise<{
-    items: AffiliateWithUser[];
-    total: number;
-    counts: Record<string, number>;
-  }>;
+  ): Promise<RepoPageWithCounts<AffiliateWithUser>>;
   /**
    * Cross-tenant resolution via the BYPASSRLS admin pool. This is strictly a
    * read projection and must remain filtered to the authenticated `userId`.

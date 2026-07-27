@@ -7,6 +7,7 @@ import type {
   PublishStatus,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   IListingGroupRepository,
   ListingGroupRecord,
@@ -143,7 +144,7 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
     tx: PrismaTx,
     filter: { partnerId?: string; q?: string },
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingGroupRecord[]; total: number }> {
+  ): Promise<RepoPage<ListingGroupRecord>> {
     const where: Prisma.ListingGroupWhereInput = {
       ...(filter.partnerId ? { partnerId: filter.partnerId } : {}),
       ...(filter.q ? { title: { contains: filter.q, mode: 'insensitive' } } : {}),

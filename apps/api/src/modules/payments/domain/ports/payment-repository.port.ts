@@ -1,6 +1,7 @@
 import type { PaymentHistoryQuery, CheckoutDestination } from '@booking/contracts';
 import type { PaymentKind, PaymentStatus } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { GatewayKey } from './payment-gateway.port';
 
 export const PAYMENT_REPOSITORY = Symbol('PAYMENT_REPOSITORY');
@@ -112,8 +113,8 @@ export interface IPaymentRepository {
     tx: PrismaTx,
     tenantId: string,
     query: PaymentHistoryQuery,
-  ): Promise<{ items: PaymentHistoryRecord[]; total: number }>;
+  ): Promise<RepoPage<PaymentHistoryRecord>>;
   listPlatform(
     query: PaymentHistoryQuery,
-  ): Promise<{ items: PaymentHistoryRecord[]; total: number }>;
+  ): Promise<RepoPage<PaymentHistoryRecord>>;
 }

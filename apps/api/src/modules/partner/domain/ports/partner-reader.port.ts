@@ -1,6 +1,7 @@
 import type { PartnerStatus, PartnerType, PartnerVerificationStatus } from '@booking/contracts';
 
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 
 export const PARTNER_READER = Symbol('PARTNER_READER');
 
@@ -56,11 +57,7 @@ export interface IPartnerReader {
   list(
     tx: PrismaTx,
     filter: ListPartnersFilter,
-  ): Promise<{
-    items: PartnerRecord[];
-    total: number;
-    counts: Record<string, number>;
-  }>;
+  ): Promise<RepoPageWithCounts<PartnerRecord>>;
 
   tenantIdOfPartner(partnerId: string): Promise<string | null>;
 }

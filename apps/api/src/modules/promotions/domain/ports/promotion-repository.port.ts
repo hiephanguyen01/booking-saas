@@ -1,4 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { PromotionSpec } from '../promotion-discount';
 import type { NewPromotion, PromotionPatch } from '../entities/promotion.entity';
 
@@ -30,13 +31,13 @@ export interface IPromotionRepository {
   update(tx: PrismaTx, id: string, patch: PromotionPatch): Promise<PromotionRecord>;
   findById(tx: PrismaTx, id: string): Promise<PromotionRecord | null>;
   findByCode(tx: PrismaTx, code: string): Promise<PromotionRecord | null>;
-  list(tx: PrismaTx, params: PromotionListFilter): Promise<{ items: PromotionRecord[]; total: number }>;
+  list(tx: PrismaTx, params: PromotionListFilter): Promise<RepoPage<PromotionRecord>>;
   /** Promotions created by a given partner (their own codes, §12.2 Phase 2). */
   listByPartner(
     tx: PrismaTx,
     partnerId: string,
     params: PromotionListFilter,
-  ): Promise<{ items: PromotionRecord[]; total: number }>;
+  ): Promise<RepoPage<PromotionRecord>>;
   /** Active, code-less auto-applied campaigns for the tenant (§12.1 Phase 2). */
   listActiveAutoCampaigns(tx: PrismaTx): Promise<PromotionRecord[]>;
   /** Tenant-created partner-funded promos awaiting this partner's opt-in (§12.2). */

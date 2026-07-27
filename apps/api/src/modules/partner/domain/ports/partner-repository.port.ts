@@ -12,7 +12,11 @@ import type {
 } from '../entities/partner.entity';
 import type { PartnerRecord } from './partner-reader.port';
 
-export type { ListPartnersFilter, PartnerOwnerRecord, PartnerRecord } from './partner-reader.port';
+// Re-exported because the write-path use-cases type their `execute()` return as
+// `PartnerRecord` and import it alongside `IPartnerRepository`/`PARTNER_REPOSITORY`
+// from this port. `ListPartnersFilter`/`PartnerOwnerRecord` are NOT re-exported —
+// their only consumers import them straight from `partner-reader.port`.
+export type { PartnerRecord };
 
 export const PARTNER_REPOSITORY = Symbol('PARTNER_REPOSITORY');
 

@@ -5,6 +5,7 @@ import type {
   TenantContentReportsQuery,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 
 export const CONTENT_REPORT_READER = Symbol('CONTENT_REPORT_READER');
 
@@ -28,11 +29,7 @@ export interface ContentReportRecord {
   updatedAt: Date;
 }
 
-export interface ContentReportPage {
-  items: ContentReportRecord[];
-  total: number;
-  counts: Record<string, number>;
-}
+export type ContentReportPage = RepoPageWithCounts<ContentReportRecord>;
 
 export interface IContentReportReader {
   list(tx: PrismaTx, query: TenantContentReportsQuery): Promise<ContentReportPage>;

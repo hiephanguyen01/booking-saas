@@ -7,6 +7,7 @@ import {
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   CreateRefundData,
   IRefundRepository,
@@ -122,7 +123,7 @@ export class PrismaRefundRepository implements IRefundRepository {
   async list(
     tx: PrismaTx,
     query: RefundHistoryQuery,
-  ): Promise<{ items: RefundHistoryRecord[]; total: number }> {
+  ): Promise<RepoPage<RefundHistoryRecord>> {
     const where: Prisma.RefundWhereInput = { status: query.status };
     const [rows, total] = await Promise.all([
       tx.refund.findMany({

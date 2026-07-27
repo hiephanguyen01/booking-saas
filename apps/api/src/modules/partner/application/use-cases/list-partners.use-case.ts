@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ListPartnersQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import {
   PARTNER_READER,
   type IPartnerReader,
@@ -18,7 +19,7 @@ export class ListPartnersUseCase {
   async execute(
     tenantId: string,
     query: ListPartnersQuery,
-  ): Promise<{ items: PartnerRecord[]; total: number; counts: Record<string, number> }> {
+  ): Promise<RepoPageWithCounts<PartnerRecord>> {
     return this.tenantDb.forTenant(tenantId, (tx) =>
       this.partners.list(tx, {
         status: query.status,

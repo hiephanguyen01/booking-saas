@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { LedgerQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import {
   LEDGER_REPOSITORY,
   type ILedgerRepository,
@@ -19,7 +20,7 @@ export class ListTenantLedgerUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  execute(tenantId: string, query: LedgerQuery): Promise<{ items: LedgerEntryView[]; total: number }> {
+  execute(tenantId: string, query: LedgerQuery): Promise<RepoPage<LedgerEntryView>> {
     return this.tenantDb.forTenant(tenantId, (tx) =>
       this.ledger.listEntries(tx, query.page, query.pageSize, {
         bookingId: query.bookingId,

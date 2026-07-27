@@ -1,5 +1,6 @@
 import type { SettlementKind, SettlementStatus } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 
 export const SETTLEMENT_REPOSITORY = Symbol('SETTLEMENT_REPOSITORY');
 
@@ -118,12 +119,12 @@ export interface ISettlementRepository {
     page: number,
     pageSize: number,
     filters: SettlementListFilters,
-  ): Promise<{ items: SettlementRecord[]; total: number }>;
+  ): Promise<RepoPage<SettlementRecord>>;
   listPlatform(
     page: number,
     pageSize: number,
     filters: SettlementListFilters,
-  ): Promise<{ items: SettlementRecord[]; total: number }>;
+  ): Promise<RepoPage<SettlementRecord>>;
   summarize(tx: PrismaTx, partnerId?: string): Promise<SettlementSummary>;
   findDue(limit: number): Promise<Array<{ id: string; tenantId: string }>>;
 }

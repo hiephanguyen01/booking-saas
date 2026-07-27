@@ -1,4 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 
 export const TENANT_REPOSITORY = Symbol('TENANT_REPOSITORY');
 
@@ -62,7 +63,7 @@ export interface ITenantRepository {
   runInTransaction<T>(fn: (tx: PrismaTx) => Promise<T>): Promise<T>;
   findById(id: string): Promise<TenantRecord | null>;
   findBySlug(slug: string): Promise<TenantRecord | null>;
-  list(params: ListTenantsParams): Promise<{ items: TenantRecord[]; total: number }>;
+  list(params: ListTenantsParams): Promise<RepoPage<TenantRecord>>;
   update(id: string, data: UpdateTenantData): Promise<TenantRecord>;
   /** True when `policyId` is a tenant-level (partner_id null) cancellation policy of this tenant. */
   isTenantLevelPolicy(tenantId: string, policyId: string): Promise<boolean>;

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ListPromotionsQuery } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import {
   PROMOTION_REPOSITORY,
   type IPromotionRepository,
@@ -18,7 +19,7 @@ export class ListPromotionsUseCase {
   async execute(
     tenantId: string,
     query: ListPromotionsQuery,
-  ): Promise<{ items: PromotionRecord[]; total: number }> {
+  ): Promise<RepoPage<PromotionRecord>> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.promotions.list(tx, query));
   }
 }

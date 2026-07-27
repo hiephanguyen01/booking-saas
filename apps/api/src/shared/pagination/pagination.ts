@@ -9,6 +9,29 @@
  */
 import type { Paginated } from '@booking/contracts';
 
+/**
+ * A repository's un-mapped page: the rows for the requested window plus the
+ * total matching the same WHERE clause. Deliberately NOT `Paginated<T>` — that
+ * is the wire envelope (it carries `page`/`pageSize` and holds mapped DTOs);
+ * this is the pre-mapping repository/port result that `toPaginated()` consumes.
+ * Rows may still hold `bigint` money, so never send a `RepoPage` over the wire.
+ */
+export type RepoPage<T> = { items: T[]; total: number };
+
+/**
+ * The `{ [status]: count, all }` chip map produced by {@link toStatusCounts}.
+ * Keys are status strings, so it stays an open record rather than a per-module
+ * enum map — each module's statuses differ.
+ */
+export type StatusCounts = Record<string, number>;
+
+/**
+ * A `RepoPage` for a list that also renders `<StatusFilterTabs>`. The counts are
+ * computed over the WHERE clause WITHOUT the active status filter, so they do
+ * not describe `items` — see {@link toStatusCounts}.
+ */
+export type RepoPageWithCounts<T> = RepoPage<T> & { counts: StatusCounts };
+
 /** `{ page, pageSize }` → Prisma `{ skip, take }`. Page is 1-based. */
 export function pageOffset(query: { page: number; pageSize: number }): {
   skip: number;
@@ -24,7 +47,7 @@ export function pageOffset(query: { page: number; pageSize: number }): {
  */
 export function toPaginated<TItem, TOut>(
   query: { page: number; pageSize: number },
-  result: { items: TItem[]; total: number },
+  result: RepoPage<TItem>,
   map: (item: TItem) => TOut,
 ): Paginated<TOut> {
   return {
@@ -43,8 +66,8 @@ export function toPaginated<TItem, TOut>(
  */
 export function toStatusCounts(
   rows: ReadonlyArray<{ status: string; _count: number }>,
-): Record<string, number> {
-  const counts: Record<string, number> = {};
+): StatusCounts {
+  const counts: StatusCounts = {};
   let all = 0;
   for (const row of rows) {
     counts[row.status] = row._count;

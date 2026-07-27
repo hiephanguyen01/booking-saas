@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PaginationQuery } from '@booking/contracts';
 import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -27,7 +28,7 @@ export class ListSubscriptionsUseCase {
   async execute(
     tenantId: string,
     query: PaginationQuery,
-  ): Promise<{ items: SubscriptionHistoryRecord[]; total: number }> {
+  ): Promise<RepoPage<SubscriptionHistoryRecord>> {
     // Distinguish "tenant does not exist" (404) from "tenant never subscribed" (empty page).
     if (!(await this.tenants.findById(tenantId))) {
       throw new TenantNotFound();

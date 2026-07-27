@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import { pageOffset } from '../../../../shared/pagination/pagination';
+import { pageOffset, type RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   AssignSubscriptionData,
   ISubscriptionRepository,
@@ -48,7 +48,7 @@ export class PrismaSubscriptionRepository implements ISubscriptionRepository {
   async listByTenant(
     tenantId: string,
     params: { page: number; pageSize: number },
-  ): Promise<{ items: SubscriptionHistoryRecord[]; total: number }> {
+  ): Promise<RepoPage<SubscriptionHistoryRecord>> {
     // Platform/admin read scoped by the :id tenant path param — this is the
     // BYPASSRLS admin pool (no `forTenant`), so the tenantId filter is explicit.
     const where: Prisma.TenantSubscriptionWhereInput = { tenantId };

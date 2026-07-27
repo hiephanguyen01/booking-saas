@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import {
   LISTING_REPOSITORY,
   type IListingRepository,
@@ -23,7 +24,7 @@ export class ListListingsUseCase {
     tenantId: string,
     filter: ListingFilter,
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }> {
+  ): Promise<RepoPageWithCounts<ListingRecord>> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.listings.listPage(tx, filter, page));
   }
 }

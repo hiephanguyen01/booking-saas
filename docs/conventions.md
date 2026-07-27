@@ -194,6 +194,21 @@ do not hand-roll a `<Form method="get">` with `<Input>`/`<NativeSelect>` per pag
 Status that reads best as a tab row with count chips keeps `<StatusFilterTabs>` (it lives beside the
 toolbar, not inside the spec). No column sorting yet — lists keep their default ordering.
 
+### The two page shapes — `RepoPage` vs `Paginated`
+
+Keep these straight; they are not interchangeable:
+
+| Type | Where | Holds |
+| --- | --- | --- |
+| `RepoPage<T>` / `RepoPageWithCounts<T>` (`shared/pagination/pagination.ts`) | repository → port → use-case | **Un-mapped rows**, possibly with `bigint` money. `{ items, total }` (+ `counts: StatusCounts`) |
+| `Paginated<T>` (`@booking/contracts`) | controller → wire | **Mapped DTOs**. Adds `page`/`pageSize`; money already stringified |
+
+A list port declares `Promise<RepoPage<XxxRecord>>` — **never** re-inline `{ items: X[]; total: number }`,
+which used to be repeated at 63 call-sites. `toPaginated(query, repoPage, map)` converts one to the
+other; that mapper is the only place money becomes a string. `RepoPageWithCounts` is for lists that
+render `<StatusFilterTabs>` — its `counts` are computed over the WHERE clause *without* the active
+status filter, so they intentionally do not describe `items`.
+
 ## Error envelope
 
 There is **no RFC-7807 filter**. The de-facto contract is a NestJS `HttpException` body extended with an

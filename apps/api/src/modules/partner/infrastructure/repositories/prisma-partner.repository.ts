@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Partner as PrismaPartnerRow, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import { toStatusCounts } from '../../../../shared/pagination/pagination';
+import { toStatusCounts, type RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   PartnerBusinessInfoIntent,
@@ -143,7 +143,7 @@ export class PrismaPartnerRepository implements IPartnerRepository, IPartnerRead
   async list(
     tx: PrismaTx,
     filter: ListPartnersFilter,
-  ): Promise<{ items: PartnerRecord[]; total: number; counts: Record<string, number> }> {
+  ): Promise<RepoPageWithCounts<PartnerRecord>> {
     // `baseWhere` carries every filter EXCEPT status, so each status tab's count
     // reflects the search box while ignoring the active tab. `items`/`total` use
     // the full `where` (status included) — filtered identically or the pager lies.

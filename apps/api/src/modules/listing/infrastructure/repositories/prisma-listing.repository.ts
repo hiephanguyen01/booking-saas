@@ -10,7 +10,7 @@ import type {
   ModerationActor,
   PublishStatus,
 } from '@booking/contracts';
-import { toStatusCounts } from '../../../../shared/pagination/pagination';
+import { toStatusCounts, type RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   IListingRepository,
@@ -253,7 +253,7 @@ export class PrismaListingRepository implements IListingRepository {
     tx: PrismaTx,
     filter: ListingFilter,
     page: { page: number; pageSize: number },
-  ): Promise<{ items: ListingRecord[]; total: number; counts: Record<string, number> }> {
+  ): Promise<RepoPageWithCounts<ListingRecord>> {
     // `baseWhere` carries every filter EXCEPT status, so each status tab's count
     // reflects the group/search scope while ignoring the active tab. `items`/`total`
     // use the full `where` (status included) — filtered identically or the pager lies.

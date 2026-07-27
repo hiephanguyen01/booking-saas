@@ -206,8 +206,11 @@ const TEMPLATES: Record<NotificationTemplateId, Record<Locale, Copy>> = {
 function interpolate(template: string, data: TemplateData): string {
   return template
     .replace(/\{(\w+)\}/g, (_match, key: string) => {
-      const value = (data as unknown as Record<string, unknown>)[key];
-      return value === undefined || value === null ? '' : String(value);
+      // `keyof` keeps the lookup typed as `string | number | undefined`; the old
+      // `as unknown as Record<string, unknown>` erased it. `== null` (loose) still
+      // absorbs both null and undefined, so an unknown `{placeholder}` renders ''.
+      const value = data[key as keyof TemplateData];
+      return value == null ? '' : String(value);
     })
     .replace(/\s+/g, ' ')
     .trim();

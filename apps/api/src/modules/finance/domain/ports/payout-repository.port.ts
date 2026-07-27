@@ -1,4 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 
 export const PAYOUT_REPOSITORY = Symbol('PAYOUT_REPOSITORY');
 
@@ -36,14 +37,14 @@ export interface IPayoutRepository {
   list(
     tx: PrismaTx,
     params: { page: number; pageSize: number },
-  ): Promise<{ items: PayoutRecord[]; total: number }>;
+  ): Promise<RepoPage<PayoutRecord>>;
   /** Every payout run addressed to one payee, newest first — the payee's own history. */
   listForPayee(
     tx: PrismaTx,
     payeeType: PayoutPayeeType,
     payeeId: string,
     params: { page: number; pageSize: number },
-  ): Promise<{ items: PayoutRecord[]; total: number }>;
+  ): Promise<RepoPage<PayoutRecord>>;
   claimForPayment(tx: PrismaTx, id: string): Promise<PayoutRecord | null>;
   markPaid(tx: PrismaTx, id: string, evidence: { reference: string; evidenceKey?: string }): Promise<PayoutRecord | null>;
   markFailed(tx: PrismaTx, id: string, reason: string | null): Promise<PayoutRecord | null>;

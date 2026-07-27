@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ListTenantsQuery } from '@booking/contracts';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,
@@ -10,7 +11,7 @@ import {
 export class ListTenantsUseCase {
   constructor(@Inject(TENANT_REPOSITORY) private readonly tenants: ITenantRepository) {}
 
-  async execute(query: ListTenantsQuery): Promise<{ items: TenantRecord[]; total: number }> {
+  async execute(query: ListTenantsQuery): Promise<RepoPage<TenantRecord>> {
     return this.tenants.list({
       page: query.page,
       pageSize: query.pageSize,

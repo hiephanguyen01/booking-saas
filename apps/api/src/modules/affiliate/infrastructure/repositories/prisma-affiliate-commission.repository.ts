@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { pageOffset } from '../../../../shared/pagination/pagination';
+import { pageOffset, type RepoPage } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   AffiliateCommissionState,
@@ -136,7 +136,7 @@ export class PrismaAffiliateCommissionRepository
     tx: PrismaTx,
     affiliateId: string,
     params: AffiliateCommissionListFilter,
-  ): Promise<{ items: AffiliateCommissionWithBooking[]; total: number }> {
+  ): Promise<RepoPage<AffiliateCommissionWithBooking>> {
     const where = listWhere(affiliateId, params);
     const { skip, take } = pageOffset(params);
     const [rows, total] = await Promise.all([

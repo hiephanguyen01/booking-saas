@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
-import { pageOffset, toStatusCounts } from '../../../../shared/pagination/pagination';
+import { pageOffset, toStatusCounts, type RepoPageWithCounts } from '../../../../shared/pagination/pagination';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   AffiliateCustomRateIntent,
@@ -105,7 +105,7 @@ export class PrismaAffiliateRepository
   async list(
     tx: PrismaTx,
     filter: ListAffiliatesFilter,
-  ): Promise<{ items: AffiliateWithUser[]; total: number; counts: Record<string, number> }> {
+  ): Promise<RepoPageWithCounts<AffiliateWithUser>> {
     // `counts` are computed over every membership (the tenant scope RLS already
     // applies), NOT the active `status` filter — so each filter-tab chip shows its
     // own total. The page itself is narrowed by `where`.

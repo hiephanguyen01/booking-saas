@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, type BookingSettlement } from '@prisma/client';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   ISettlementRepository,
   ReleaseAmounts,
@@ -281,7 +282,7 @@ export class PrismaSettlementRepository implements ISettlementRepository {
     page: number,
     pageSize: number,
     filters: SettlementListFilters,
-  ): Promise<{ items: SettlementRecord[]; total: number }> {
+  ): Promise<RepoPage<SettlementRecord>> {
     const where: Prisma.BookingSettlementWhereInput = {
       status: filters.status,
       partnerId: filters.partnerId,
@@ -313,7 +314,7 @@ export class PrismaSettlementRepository implements ISettlementRepository {
     page: number,
     pageSize: number,
     filters: SettlementListFilters,
-  ): Promise<{ items: SettlementRecord[]; total: number }> {
+  ): Promise<RepoPage<SettlementRecord>> {
     const where: Prisma.BookingSettlementWhereInput = {
       status: filters.status,
       partnerId: filters.partnerId,

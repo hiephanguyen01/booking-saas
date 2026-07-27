@@ -9,7 +9,8 @@ import {
   type IPayoutRepository,
   type PayoutPayeeType,
 } from '../../domain/ports/payout-repository.port';
-import { GetPayoutPolicyUseCase, type PayoutPolicy } from './get-payout-policy.use-case';
+import type { PayoutPolicy } from '../../domain/value-objects/payout-policy.value-object';
+import { GetPayoutPolicyUseCase } from './get-payout-policy.use-case';
 
 /** Mirrors the exact error codes `CreatePayoutUseCase` rejects with. */
 export type PayableIneligibleReason = 'NOTHING_TO_PAY' | 'BELOW_MINIMUM';

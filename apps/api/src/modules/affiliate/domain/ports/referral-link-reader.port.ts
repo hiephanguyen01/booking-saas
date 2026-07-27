@@ -1,4 +1,5 @@
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type {
   ReferralLinkState,
   ReferralTarget,
@@ -35,7 +36,7 @@ export interface IReferralLinkReader {
     tx: PrismaTx,
     affiliateId: string,
     params: ReferralLinkListFilter,
-  ): Promise<{ items: ReferralLinkRecord[]; total: number }>;
+  ): Promise<RepoPage<ReferralLinkRecord>>;
   /** Total clicks across an affiliate's links (stats). */
   totalClicksForAffiliate(
     tx: PrismaTx,

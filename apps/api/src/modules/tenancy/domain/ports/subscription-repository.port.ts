@@ -1,4 +1,5 @@
 import type { SubscriptionState } from '../subscription-status';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 
 export const SUBSCRIPTION_REPOSITORY = Symbol('SUBSCRIPTION_REPOSITORY');
 
@@ -35,5 +36,5 @@ export interface ISubscriptionRepository {
   listByTenant(
     tenantId: string,
     params: { page: number; pageSize: number },
-  ): Promise<{ items: SubscriptionHistoryRecord[]; total: number }>;
+  ): Promise<RepoPage<SubscriptionHistoryRecord>>;
 }

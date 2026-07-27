@@ -1,6 +1,7 @@
 import type { RefundExecutionMode, RefundStatus } from '@prisma/client';
 import type { ConfirmManualRefundInput, RefundEvidence, RefundHistoryQuery } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 
 export const REFUND_REPOSITORY = Symbol('REFUND_REPOSITORY');
 
@@ -76,7 +77,7 @@ export interface IRefundRepository {
   list(
     tx: PrismaTx,
     query: RefundHistoryQuery,
-  ): Promise<{ items: RefundHistoryRecord[]; total: number }>;
+  ): Promise<RepoPage<RefundHistoryRecord>>;
   findSucceededNeedingRecovery(limit: number): Promise<RefundRecoveryRecord[]>;
   findBookingsMissingRefund(limit: number): Promise<MissingRefundRecord[]>;
 }

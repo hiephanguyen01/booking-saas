@@ -7,6 +7,7 @@ import {
 } from '@booking/contracts';
 import { PrismaService } from '../../../../shared/prisma/prisma.service';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { GatewayKey } from '../../domain/ports/payment-gateway.port';
 import type {
   CreatePaymentData,
@@ -235,7 +236,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
     tx: PrismaTx,
     tenantId: string,
     query: PaymentHistoryQuery,
-  ): Promise<{ items: PaymentHistoryRecord[]; total: number }> {
+  ): Promise<RepoPage<PaymentHistoryRecord>> {
     const where = this.historyWhere(query, tenantId);
     const [rows, total] = await Promise.all([
       tx.payment.findMany({
@@ -258,7 +259,7 @@ export class PrismaPaymentRepository implements IPaymentRepository {
 
   async listPlatform(
     query: PaymentHistoryQuery,
-  ): Promise<{ items: PaymentHistoryRecord[]; total: number }> {
+  ): Promise<RepoPage<PaymentHistoryRecord>> {
     const where = this.historyWhere(query);
     const [rows, total] = await Promise.all([
       this.prisma.admin.payment.findMany({

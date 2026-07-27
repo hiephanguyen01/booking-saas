@@ -1,5 +1,6 @@
 import type { BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { TransitionActor } from '../booking-state-machine';
 
 export const BOOKING_REPOSITORY = Symbol('BOOKING_REPOSITORY');
@@ -246,7 +247,7 @@ export interface IBookingRepository {
   listByTenant(
     tx: PrismaTx,
     filters: TenantBookingFilters,
-  ): Promise<{ items: BookingRecord[]; total: number }>;
+  ): Promise<RepoPage<BookingRecord>>;
   /** Full transition audit trail for one booking, oldest first (§8.2). */
   listStatusHistory(tx: PrismaTx, bookingId: string): Promise<BookingStatusHistoryRecord[]>;
   /** Set/clear the partner's private note (§8.2). `null` clears it. */
