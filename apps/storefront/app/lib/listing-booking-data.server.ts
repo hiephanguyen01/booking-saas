@@ -3,7 +3,7 @@ import {
   bookingDateRangeSchema,
   timeOfDaySchema,
   type AvailabilityMode,
-  type PublicListingDetailResponse,
+  type PublicListingDetailWithTimezoneResponse,
 } from '@booking/contracts';
 import { data } from 'react-router';
 import { fetchAvailability } from './booking.server';
@@ -12,7 +12,7 @@ import { canOffsetDateOnly, isValidDateOnly } from './date-only';
 import { datesInDailyRange, eligibleDailyRange } from './daily-range';
 import { rethrowCriticalDataError } from './optional-data.server';
 import { selectedPackageForListing } from './package-options';
-import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from './time';
+import { addDays, todayInTz, zonedToUtcIso } from './time';
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
 
@@ -22,7 +22,7 @@ export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availabil
  */
 export async function loadListingBookingData(
   request: Request,
-  listing: PublicListingDetailResponse,
+  listing: PublicListingDetailWithTimezoneResponse,
   url: URL,
 ) {
   try {
@@ -43,7 +43,7 @@ export async function loadListingBookingData(
     }
     const packageId = selectedPackage?.id;
 
-    const timezone = DEFAULT_TZ;
+    const timezone = listing.timezone;
     if (mode === 'hourly') {
       const requestedDate = url.searchParams.get('date');
       const dateValue =
