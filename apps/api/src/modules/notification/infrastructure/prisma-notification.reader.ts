@@ -47,7 +47,9 @@ export class PrismaNotificationReader implements INotificationReader {
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.id = ${bookingId}::uuid`);
     const row = rows[0];
-    if (!row) return null;
+    // A notification must never invent a booking time. Legacy/corrupt rows may
+    // still have a null range because Prisma models the unsupported range as nullable.
+    if (!row?.start_utc) return null;
 
     const customer = await this.loadUser(tx, row.customer_id);
     const partnerRecipients = await this.loadPartnerMembers(tx, row.partner_id);
@@ -58,7 +60,7 @@ export class PrismaNotificationReader implements INotificationReader {
       listingTitle: row.listing_title,
       tenantName: row.tenant_name,
       partnerName: row.partner_name,
-      startUtc: row.start_utc ?? new Date(),
+      startUtc: row.start_utc,
       timezone: row.timezone,
       finalAmount: row.final_amount,
       customer,
