@@ -101,7 +101,11 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
             {usesStudioBookingDialog ? (
               <>
-                <StudioBookingCard listing={listing} preferredMode={preferredStudioMode} />
+                <StudioBookingCard
+                  listing={listing}
+                  preferredMode={preferredStudioMode}
+                  today={bookingToday}
+                />
                 <ProviderCard trust={listing.trust} />
               </>
             ) : (
