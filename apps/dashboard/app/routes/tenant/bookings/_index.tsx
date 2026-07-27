@@ -137,7 +137,7 @@ function TenantBookingsPage({ status, bookings, total, stats, partnerNames, filt
     },
     { header: 'Đối tác', cell: (b) => <span className="text-sm">{partnerNames[b.partnerId] ?? '—'}</span>, className: 'hidden md:table-cell', headClassName: 'hidden md:table-cell' },
     { header: 'Hình thức', cell: (b) => <span className="text-sm text-muted-foreground">{BOOKING_MODE_LABEL[b.bookingMode as BookingMode] ?? b.bookingMode}</span>, className: 'hidden sm:table-cell', headClassName: 'hidden sm:table-cell' },
-    { header: 'Bắt đầu', cell: (b) => <span className="text-sm text-muted-foreground">{formatDateTime(b.startUtc)}</span>, className: 'hidden lg:table-cell', headClassName: 'hidden lg:table-cell' },
+    { header: 'Bắt đầu', cell: (b) => <span className="text-sm text-muted-foreground">{formatDateTime(b.startUtc, b.resourceTimezone)}</span>, className: 'hidden lg:table-cell', headClassName: 'hidden lg:table-cell' },
     { header: 'Trạng thái', cell: (b) => <BookingStatusBadge status={b.status} /> },
     {
       header: 'Giá trị',
@@ -230,4 +230,3 @@ function RateCell({ value, count }: { value: number; count: number }) {
     </span>
   );
 }
-
