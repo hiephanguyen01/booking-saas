@@ -24,7 +24,12 @@ export function ReviewBookingCard({
 }) {
   const { t } = useTranslation(NsI18n.Account);
   const viewerLabels = useMediaViewerLabels();
-  const dateRange = formatBookingRange(review.bookingStartsAt, review.bookingEndsAt, locale);
+  const dateRange = formatBookingRange(
+    review.bookingStartsAt,
+    review.bookingEndsAt,
+    locale,
+    review.resourceTimezone,
+  );
 
   return (
     <AccountPanel className="overflow-hidden border border-border/50 shadow-[0_4px_16px_rgba(16,24,40,0.04)]">
@@ -59,7 +64,8 @@ export function ReviewBookingCard({
           </p>
           {review.bookingStartsAt && review.bookingEndsAt ? (
             <span className="inline-flex rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
-              {formatTime(review.bookingStartsAt, locale)} – {formatTime(review.bookingEndsAt, locale)}
+              {formatTime(review.bookingStartsAt, locale, review.resourceTimezone)} –{' '}
+              {formatTime(review.bookingEndsAt, locale, review.resourceTimezone)}
             </span>
           ) : null}
         </div>
@@ -149,25 +155,30 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-function formatBookingRange(start: string | null, end: string | null, locale: 'vi' | 'en') {
+function formatBookingRange(
+  start: string | null,
+  end: string | null,
+  locale: 'vi' | 'en',
+  timeZone: string,
+) {
   if (!start && !end) return null;
   const formatter = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    timeZone: 'Asia/Ho_Chi_Minh',
+    timeZone,
   });
   if (start && end) return `${formatter.format(new Date(start))} – ${formatter.format(new Date(end))}`;
   return formatter.format(new Date(start ?? end ?? ''));
 }
 
-function formatTime(value: string, locale: 'vi' | 'en') {
+function formatTime(value: string, locale: 'vi' | 'en', timeZone: string) {
   return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-    timeZone: 'Asia/Ho_Chi_Minh',
+    timeZone,
   }).format(new Date(value));
 }
 

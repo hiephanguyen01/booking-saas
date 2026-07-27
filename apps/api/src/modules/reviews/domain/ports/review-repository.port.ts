@@ -53,6 +53,10 @@ export interface ReviewRecord {
   createdAt: Date;
 }
 
+export interface CustomerReviewedRecord extends ReviewRecord {
+  resourceTimezone: string;
+}
+
 export interface PendingReviewRecord {
   status: 'pending';
   bookingId: string;
@@ -66,6 +70,7 @@ export interface PendingReviewRecord {
   serviceCompletedAt: Date | null;
   bookingStartsAt: Date | null;
   bookingEndsAt: Date | null;
+  resourceTimezone: string;
 }
 
 export interface ReviewSummaryRecord {
@@ -82,7 +87,7 @@ export interface ReviewPage {
 }
 
 export interface CustomerReviewPage {
-  items: Array<ReviewRecord | PendingReviewRecord>;
+  items: Array<CustomerReviewedRecord | PendingReviewRecord>;
   total: number;
 }
 

@@ -60,6 +60,7 @@ function toPendingResponse(item: PendingReviewRecord): CustomerReviewItem {
     serviceCompletedAt: item.serviceCompletedAt?.toISOString() ?? null,
     bookingStartsAt: item.bookingStartsAt?.toISOString() ?? null,
     bookingEndsAt: item.bookingEndsAt?.toISOString() ?? null,
+    resourceTimezone: item.resourceTimezone,
   };
 }
 
@@ -93,6 +94,7 @@ export function toCustomerReviewListResponse(
             status: 'reviewed' as const,
             bookingStartsAt: item.bookingStartsAt?.toISOString() ?? null,
             bookingEndsAt: item.bookingEndsAt?.toISOString() ?? null,
+            resourceTimezone: item.resourceTimezone,
           },
     ),
     page: query.page,

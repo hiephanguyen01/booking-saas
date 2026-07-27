@@ -117,12 +117,14 @@ export const pendingReviewResponseSchema = z.object({
   serviceCompletedAt: z.string().nullable(),
   bookingStartsAt: z.string().nullable(),
   bookingEndsAt: z.string().nullable(),
+  resourceTimezone: z.string(),
 });
 
 export const completedReviewResponseSchema = reviewResponseSchema.extend({
   status: z.literal('reviewed'),
   bookingStartsAt: z.string().nullable(),
   bookingEndsAt: z.string().nullable(),
+  resourceTimezone: z.string(),
 });
 
 export const customerReviewItemSchema = z.discriminatedUnion('status', [

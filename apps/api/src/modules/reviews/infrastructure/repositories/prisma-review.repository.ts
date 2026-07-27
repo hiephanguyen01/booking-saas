@@ -91,6 +91,7 @@ interface BookingTimeRow {
   id: string;
   startsAt: Date | null;
   endsAt: Date | null;
+  resourceTimezone: string;
 }
 
 async function bookingTimes(
@@ -100,11 +101,19 @@ async function bookingTimes(
   if (bookingIds.length === 0) return new Map();
   const bookingIdValues = Prisma.join(bookingIds.map((id) => Prisma.sql`${id}::uuid`));
   const rows = await tx.$queryRaw<BookingTimeRow[]>(Prisma.sql`
-    SELECT id, lower(timeslot) AS "startsAt", upper(timeslot) AS "endsAt"
-    FROM bookings
-    WHERE id IN (${bookingIdValues})
+    SELECT b.id, lower(b.timeslot) AS "startsAt", upper(b.timeslot) AS "endsAt",
+           r.timezone AS "resourceTimezone"
+    FROM bookings b
+    JOIN resources r ON r.id = b.resource_id
+    WHERE b.id IN (${bookingIdValues})
   `);
   return new Map(rows.map((row) => [row.id, row]));
+}
+
+function requiredBookingTime(times: Map<string, BookingTimeRow>, bookingId: string): BookingTimeRow {
+  const time = times.get(bookingId);
+  if (!time) throw new Error(`booking time row missing for review booking ${bookingId}`);
+  return time;
 }
 
 function reviewWhere(
@@ -327,17 +336,19 @@ export class PrismaReviewRepository implements IReviewRepository {
       ...pendingRows.map((row) => row.id),
     ]);
     const reviewed = reviewRows.map((row) => {
-      const time = times.get(row.bookingId);
+      const time = requiredBookingTime(times, row.bookingId);
       return {
         ...toReviewRecord(row),
-        bookingStartsAt: time?.startsAt ?? null,
-        bookingEndsAt: time?.endsAt ?? null,
+        bookingStartsAt: time.startsAt,
+        bookingEndsAt: time.endsAt,
+        resourceTimezone: time.resourceTimezone,
       };
     });
     const pending: PendingReviewRecord[] = pendingRows.map((row) => {
       const photos = Array.isArray(row.listing.photos)
         ? row.listing.photos.filter((item): item is string => typeof item === 'string')
         : [];
+      const time = requiredBookingTime(times, row.id);
       return {
         status: 'pending',
         bookingId: row.id,
@@ -349,8 +360,9 @@ export class PrismaReviewRepository implements IReviewRepository {
         groupTitle: row.listing.group?.title ?? null,
         partnerName: row.partner.name,
         serviceCompletedAt: row.settlement?.completedAt ?? row.updatedAt,
-        bookingStartsAt: times.get(row.id)?.startsAt ?? null,
-        bookingEndsAt: times.get(row.id)?.endsAt ?? null,
+        bookingStartsAt: time.startsAt,
+        bookingEndsAt: time.endsAt,
+        resourceTimezone: time.resourceTimezone,
       };
     });
     const combined = [...pending, ...reviewed].sort((a, b) => {
