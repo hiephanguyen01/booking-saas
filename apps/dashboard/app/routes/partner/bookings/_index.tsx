@@ -107,9 +107,10 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
       header: 'Thời gian',
       cell: (b) => (
         <div className="whitespace-nowrap text-sm">
-          <p>{formatDate(b.startUtc)}</p>
+          <p>{formatDate(b.startUtc, b.resourceTimezone)}</p>
           <p className="text-xs tabular-nums text-muted-foreground">
-            {formatTime(b.startUtc)} - {formatTime(b.endUtc)}
+            {formatTime(b.startUtc, b.resourceTimezone)} -{' '}
+            {formatTime(b.endUtc, b.resourceTimezone)}
           </p>
         </div>
       ),
