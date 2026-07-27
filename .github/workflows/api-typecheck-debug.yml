@@ -1,0 +1,30 @@
+name: API Typecheck Debug
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture API typecheck errors
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          git init repo >/dev/null
+          cd repo
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "${GITHUB_SHA}" >/dev/null 2>&1
+          git checkout --detach FETCH_HEAD >/dev/null 2>&1
+          corepack enable
+          corepack prepare pnpm@10.13.1 --activate >/dev/null 2>&1
+          pnpm install --frozen-lockfile --reporter=silent >/dev/null 2>&1
+          pnpm --filter=@booking/contracts build >/dev/null 2>&1
+          pnpm --filter=@booking/api typecheck > /tmp/typecheck.log 2>&1
+          status=$?
+          tail -n 80 /tmp/typecheck.log
+          exit $status
