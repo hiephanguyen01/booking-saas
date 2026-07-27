@@ -10,9 +10,11 @@ import {
 export function StudioBookingCard({
   listing,
   preferredMode,
+  today,
 }: {
   listing: PublicListingDetailResponse;
   preferredMode: ListingBookingMode;
+  today: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const price = minimumConfiguredPrice(listing.modeConfig);
@@ -35,7 +37,7 @@ export function StudioBookingCard({
       </p>
       <p className="mt-1 text-xs text-muted-foreground">{unit}</p>
       <div className="mt-5">
-        <ListingBookingDialog listing={listing} preferredMode={preferredMode} />
+        <ListingBookingDialog listing={listing} preferredMode={preferredMode} today={today} />
       </div>
     </div>
   );
