@@ -31,7 +31,7 @@ export function useBookingDetailController({
   const paymentState = deriveBookingPaymentState(status, searchParams);
 
   useAdaptivePaymentPolling({
-    enabled: paymentState.isPending,
+    enabled: paymentState.shouldPoll,
     href: `/${locale}/bookings/${encodeURIComponent(code)}/payment-status`,
     load: paymentFetcher.load,
     state: paymentFetcher.state,
