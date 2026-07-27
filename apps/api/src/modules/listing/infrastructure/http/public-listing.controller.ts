@@ -1,5 +1,5 @@
 import {
-  type PublicListingDetailResponse,
+  type PublicListingDetailWithTimezoneResponse,
   type PublicListingGroupDetailResponse,
   type QuoteResponse,
 } from '@booking/contracts';
@@ -50,7 +50,7 @@ export class PublicListingController {
     @Param('slug') slug: string,
     @Headers('x-forwarded-host') forwardedHost?: string,
     @Headers('host') host?: string,
-  ): Promise<PublicListingDetailResponse> {
+  ): Promise<PublicListingDetailWithTimezoneResponse> {
     return toPublicListingDetailResponse(
       await this.getListing.execute(resolveHost(forwardedHost, host), slug),
     );
