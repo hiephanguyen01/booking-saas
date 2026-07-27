@@ -7,6 +7,7 @@
  * (`review-checklist.ts`: a photo, a description, a price for every enabled
  * mode) so "3/5 ready" on the list and the per-item checklist can never disagree.
  */
+import { toVnd } from '../../../shared/money/money';
 
 /** The slice of a child listing these aggregates read. */
 export interface ListingStatsFacts {
@@ -22,23 +23,6 @@ export interface ListingGroupStats {
   readyListingCount: number;
   /** Lowest configured base price in VND đồng as a digit string; null if none. */
   priceFrom: string | null;
-}
-
-/**
- * One `mode_config` price → bigint VND đồng, or null if it isn't a usable amount.
- *
- * The canonical wire form is a digit STRING (§7.3 — money never travels as a JS
- * number), parsed with `BigInt`, never `Number()`: `Number()` on a big VND string
- * silently loses precision past 2^53. A number IS still accepted because
- * `prisma/seed.ts` writes `basePrice: 300_000` straight to the jsonb column,
- * bypassing the contract — so real rows hold both shapes and a string-only parser
- * would blank out every seeded listing's price. It must be an exact integer:
- * `BigInt(3.5)` throws, and a float was never a valid VND amount anyway.
- */
-export function toVnd(raw: unknown): bigint | null {
-  if (typeof raw === 'string') return /^\d+$/.test(raw) ? BigInt(raw) : null;
-  if (typeof raw === 'number') return Number.isSafeInteger(raw) && raw >= 0 ? BigInt(raw) : null;
-  return null;
 }
 
 /**

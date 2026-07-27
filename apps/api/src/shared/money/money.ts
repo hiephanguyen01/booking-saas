@@ -19,6 +19,28 @@ export function vnd(amount: number | string | bigint): Vnd {
   return BigInt(amount.trim());
 }
 
+/**
+ * The lenient counterpart of {@link vnd}: one untrusted jsonb value → VND đồng,
+ * or `null` when it isn't a usable amount. Use it for `mode_config` prices and
+ * other stored JSON; use `vnd()` where a bad value is a programming error.
+ *
+ * The canonical wire form is a digit STRING (§7.3 — money never travels as a JS
+ * number), parsed with `BigInt`, never `Number()`: `Number()` on a big VND
+ * string silently loses precision past 2^53. A number IS still accepted because
+ * `prisma/seed.ts` writes `basePrice: 300_000` straight to the jsonb column,
+ * bypassing the contract — so real rows hold both shapes and a string-only
+ * parser would blank out every seeded listing's price. It must be an exact
+ * integer: `BigInt(3.5)` throws, and a float was never a valid VND amount.
+ *
+ * A malformed value is skipped rather than silently becoming `NaN`/`0` and
+ * inventing a price.
+ */
+export function toVnd(raw: unknown): Vnd | null {
+  if (typeof raw === 'string') return /^\d+$/.test(raw) ? BigInt(raw) : null;
+  if (typeof raw === 'number') return Number.isSafeInteger(raw) && raw >= 0 ? BigInt(raw) : null;
+  return null;
+}
+
 /** percent in basis points (12% = 1200 bps), rounded half up. */
 export function percentOfBps(amount: Vnd, bps: number): Vnd {
   if (!Number.isSafeInteger(bps) || bps < 0) {

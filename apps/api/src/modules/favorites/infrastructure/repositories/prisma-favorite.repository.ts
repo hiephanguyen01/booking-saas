@@ -6,6 +6,7 @@ import type {
   TenantFavoritesQuery,
 } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import { basePrices } from '../../../listing/domain/group-stats';
 import type { FavoritableTarget, NewFavorite } from '../../domain/entities/favorite.entity';
 import type { IFavoriteRepository } from '../../domain/ports/favorite-repository.port';
 import type {
@@ -18,26 +19,28 @@ import type {
   IFavoriteReader,
 } from '../../domain/ports/favorite-reader.port';
 
-/** VND đồng from a mode_config price value — accepts digit string OR seeded integer. */
-function toVnd(raw: unknown): bigint | null {
-  if (typeof raw === 'string') return /^\d+$/.test(raw) ? BigInt(raw) : null;
-  if (typeof raw === 'number') return Number.isSafeInteger(raw) && raw >= 0 ? BigInt(raw) : null;
-  return null;
-}
-
-/** Lowest configured base price across a listing's booking modes (VND đồng digit string). */
-function priceFromModeConfig(modeConfig: unknown): string | null {
-  if (!modeConfig || typeof modeConfig !== 'object') return null;
-  const prices: bigint[] = [];
-  for (const cfg of Object.values(modeConfig as Record<string, unknown>)) {
-    if (cfg && typeof cfg === 'object') {
-      const c = cfg as Record<string, unknown>;
-      for (const key of ['basePrice', 'basePricePerNight']) {
-        const price = toVnd(c[key]);
-        if (price !== null && price > 0n) prices.push(price);
-      }
-    }
-  }
+/**
+ * Lowest configured base price on a listing (VND đồng digit string).
+ *
+ * Delegates to the listing module's `basePrices` so a favorite card shows the
+ * SAME "from" price as the catalog and the post page. The previous local copy
+ * walked every `mode_config` key looking only for `basePrice`/`basePricePerNight`,
+ * so a `fixed_packages` listing (whose prices live in `packages[].price`) showed
+ * no price at all on the favorites list.
+ */
+function priceFromListing(l: {
+  bookingModes: string[];
+  modeConfig: Prisma.JsonValue;
+  listingType: { bookingSelection: string };
+}): string | null {
+  const prices = basePrices({
+    description: null,
+    photos: [],
+    bookingModes: l.bookingModes,
+    bookingSelection:
+      l.listingType.bookingSelection === 'fixed_packages' ? 'fixed_packages' : 'flexible_duration',
+    modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
+  });
   if (prices.length === 0) return null;
   return prices.reduce((a, b) => (b < a ? b : a)).toString();
 }
@@ -61,6 +64,9 @@ const CARD_INCLUDE = Prisma.validator<Prisma.FavoriteInclude>()({
       photos: true,
       attributes: true,
       modeConfig: true,
+      // `basePrices` reads packages for a fixed_packages listing and only the
+      // enabled modes for a flexible one; `bookingSelection` lives on the type.
+      bookingModes: true,
       ratingAvg: true,
       reviewCount: true,
       provinceCode: true,
@@ -68,7 +74,7 @@ const CARD_INCLUDE = Prisma.validator<Prisma.FavoriteInclude>()({
       wardCode: true,
       wardName: true,
       address: true,
-      listingType: { select: { slug: true } },
+      listingType: { select: { slug: true, bookingSelection: true } },
     },
   },
   group: {
@@ -85,7 +91,14 @@ const CARD_INCLUDE = Prisma.validator<Prisma.FavoriteInclude>()({
       wardName: true,
       address: true,
       listingType: { select: { slug: true, itemLabel: true } },
-      listings: { where: { status: 'published' }, select: { modeConfig: true } },
+      listings: {
+        where: { status: 'published' },
+        select: {
+          modeConfig: true,
+          bookingModes: true,
+          listingType: { select: { bookingSelection: true } },
+        },
+      },
     },
   },
 });
@@ -103,7 +116,7 @@ function toCard(row: CardRow): FavoriteCardRecord | null {
       listingTypeSlug: l.listingType.slug,
       attributes: (l.attributes ?? {}) as Record<string, unknown>,
       photos: toStrings(l.photos),
-      priceFrom: priceFromModeConfig(l.modeConfig),
+      priceFrom: priceFromListing(l),
       itemLabel: null,
       ratingAvg: l.ratingAvg === null ? null : l.ratingAvg.toNumber(),
       reviewCount: l.reviewCount,
@@ -117,7 +130,7 @@ function toCard(row: CardRow): FavoriteCardRecord | null {
   if (row.group) {
     const g = row.group;
     const groupPrices = g.listings
-      .map((child) => priceFromModeConfig(child.modeConfig))
+      .map((child) => priceFromListing(child))
       .filter((p): p is string => p !== null)
       .map((p) => BigInt(p));
     const priceFrom =

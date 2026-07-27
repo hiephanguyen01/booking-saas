@@ -4,7 +4,7 @@ import type { AddDomainInput } from '@booking/contracts';
 import { TenantNotFound } from '../../../../shared/domain/errors/tenant-not-found';
 import { DomainTaken } from '../../domain/errors/tenancy-errors';
 import { TenantDomain } from '../../domain/entities/tenant-domain.entity';
-import { normalizeHostname } from '../../domain/hostname';
+import { normalizeHostname } from '../../../../shared/http/hostname';
 import {
   TENANT_REPOSITORY,
   type ITenantRepository,

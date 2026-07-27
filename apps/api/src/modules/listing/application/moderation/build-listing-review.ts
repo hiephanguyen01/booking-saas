@@ -1,6 +1,6 @@
 import type { BookingMode, ListingReviewResponse } from '@booking/contracts';
 import type { ListingRecord } from '../../domain/ports/listing-repository.port';
-import { toVnd } from '../../domain/group-stats';
+import { toVnd } from '../../../../shared/money/money';
 import { photoScanFields, scanForContactInfo } from '../../domain/moderation/contact-scan';
 import { buildReviewChecklist, checklistPassed } from '../../domain/moderation/review-checklist';
 

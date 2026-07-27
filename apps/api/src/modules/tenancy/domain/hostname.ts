@@ -4,13 +4,8 @@
  * domain proves ownership via a TXT record.
  */
 
-/** Strip scheme, path, port and a trailing dot; lowercase. */
-export function normalizeHostname(raw: string): string {
-  const withoutScheme = raw.trim().toLowerCase().replace(/^https?:\/\//, '');
-  const [hostPort = ''] = withoutScheme.split('/');
-  const [host = ''] = hostPort.split(':');
-  return host.replace(/\.$/, '');
-}
+// `normalizeHostname` now lives in `shared/http/hostname.ts` — every module that
+// resolves a tenant from the Host header shares that one parser.
 
 export function buildDefaultSubdomain(slug: string, baseDomain: string): string {
   return `${slug}.${baseDomain}`;

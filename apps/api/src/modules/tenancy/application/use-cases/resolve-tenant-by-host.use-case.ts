@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PublicTenantResponse } from '@booking/contracts';
-import { normalizeHostname } from '../../domain/hostname';
+import { normalizeHostname } from '../../../../shared/http/hostname';
 import { evaluateSubscription } from '../../domain/subscription-status';
 import {
   TENANT_REPOSITORY,

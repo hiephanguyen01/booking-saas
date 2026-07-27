@@ -12,6 +12,7 @@ import {
 } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { addMinutes, zonedTimeToUtc } from '../../../../shared/time/time';
+import { toVnd } from '../../../../shared/money/money';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
 import { computeQuote } from '../../../listing/domain/pricing/quote-calculator';
 import { activePackages } from '../../../listing/domain/pricing/package-config';
@@ -738,12 +739,7 @@ function configuredRawPrice(listing: PublicListingRecord): EvaluatedListing | nu
     const raw =
       (config as Record<string, unknown>).basePrice ??
       (config as Record<string, unknown>).basePricePerNight;
-    const price =
-      typeof raw === 'string' && /^\d+$/.test(raw)
-        ? BigInt(raw)
-        : typeof raw === 'number' && Number.isSafeInteger(raw) && raw >= 0
-          ? BigInt(raw)
-          : null;
+    const price = toVnd(raw);
     return price === null ? [] : [{ mode, price }];
   });
   if (!prices.length) return null;

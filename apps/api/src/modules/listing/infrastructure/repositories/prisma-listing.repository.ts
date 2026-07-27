@@ -4,13 +4,13 @@ import type {
   AttributeField,
   BookingMode,
   BookingSelection,
-  CancellationPolicySource,
   CancellationPolicySummary,
   CancellationTier,
   ModerationActor,
   PublishStatus,
 } from '@booking/contracts';
 import { toStatusCounts, type RepoPageWithCounts } from '../../../../shared/pagination/pagination';
+import { resolveEffectivePolicy } from '../../domain/cancellation-policy-fallback';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   IListingRepository,
@@ -47,18 +47,6 @@ function toPolicySummary(
   return p
     ? { id: p.id, name: p.name, rules: (p.rules ?? []) as unknown as CancellationTier[] }
     : null;
-}
-
-/** Fallback chain (§11.3): the listing's own policy, else the partner default, else the tenant default. */
-function resolveEffectivePolicy(
-  own: CancellationPolicySummary | null,
-  partnerDefault: CancellationPolicySummary | null,
-  tenantDefault: CancellationPolicySummary | null,
-): { policy: CancellationPolicySummary | null; source: CancellationPolicySource | null } {
-  if (own) return { policy: own, source: 'listing' };
-  if (partnerDefault) return { policy: partnerDefault, source: 'partner' };
-  if (tenantDefault) return { policy: tenantDefault, source: 'tenant' };
-  return { policy: null, source: null };
 }
 
 function toRecord(l: Row): ListingRecord {
