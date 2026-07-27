@@ -22,6 +22,7 @@ export function toPartnerCalendarResponse(
     listingTypeId: b.listingTypeId,
     listingTypeName: b.listingTypeName,
     resourceId: b.resourceId,
+    resourceTimezone: b.resourceTimezone,
     bookingMode: b.bookingMode,
     startUtc: b.startUtc.toISOString(),
     endUtc: b.endUtc.toISOString(),
