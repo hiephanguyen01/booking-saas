@@ -8,7 +8,7 @@ import { PageHeader } from '~/components/page-header';
 import { ListingTypeForm } from '~/features/tenant/components/listing-type-form';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Sửa loại dịch vụ · Tenant · Bookify' }];
+  return [{ title: 'Sửa loại dịch vụ · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

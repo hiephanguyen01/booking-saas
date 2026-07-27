@@ -2,7 +2,7 @@
 
 ## Goal
 
-Ship a complete trust-and-resolution slice across Bookify without duplicating the settlement logic that already exists:
+Ship a complete trust-and-resolution slice across BookingOS without duplicating the settlement logic that already exists:
 
 - replace the Storefront customer review mock with real booking-backed reviews and ratings;
 - expose trustworthy rating aggregates on public listing/group surfaces and search;

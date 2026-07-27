@@ -30,7 +30,7 @@ import { readString } from '~/lib/records';
 import { PARTNER_TYPE_LABEL } from '~/constants/partner';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Hồ sơ đối tác · Đối tác · Bookify' }];
+  return [{ title: 'Hồ sơ đối tác · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

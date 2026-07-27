@@ -28,7 +28,7 @@ import { readListParams } from '~/lib/pagination';
 import type { FilterSpec } from '~/lib/list-filters';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tiền đang giữ · Tài chính · Tenant · Bookify' }];
+  return [{ title: 'Tiền đang giữ · Tài chính · Tenant · BookingOS' }];
 }
 
 function parseStatus(raw: string | null): SettlementStatusDto | '' {

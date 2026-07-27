@@ -11,7 +11,7 @@ import { useAccountLayoutController } from './use-account-layout-controller';
 export type { AccountOutletContext } from './use-account-layout-controller';
 
 export function meta() {
-  return [{ title: 'Account | Bookify' }, { name: 'robots', content: 'noindex' }];
+  return [{ title: 'Account | BookingOS' }, { name: 'robots', content: 'noindex' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

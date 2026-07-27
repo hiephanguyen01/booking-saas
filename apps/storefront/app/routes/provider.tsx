@@ -8,7 +8,7 @@ export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   if (!profile) return [{ title: 'Provider' }];
   return [
     { title: profile.name },
-    { name: 'description', content: profile.description ?? `${profile.name} trên Bookify` },
+    { name: 'description', content: profile.description ?? `${profile.name} trên BookingOS` },
     { property: 'og:title', content: profile.name },
     { property: 'og:type', content: 'profile' },
     ...(profile.logoUrl ? [{ property: 'og:image', content: profile.logoUrl }] : []),

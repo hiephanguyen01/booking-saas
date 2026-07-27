@@ -29,7 +29,7 @@ import { CreatePayoutDialog } from '~/features/tenant/components/finance/create-
 import { PayoutsTable } from '~/features/tenant/components/finance/payouts-table';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tài chính · Tenant · Bookify' }];
+  return [{ title: 'Tài chính · Tenant · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

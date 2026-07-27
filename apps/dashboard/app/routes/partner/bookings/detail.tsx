@@ -22,7 +22,7 @@ import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
 import { PartnerBookingSettlementCard } from '~/features/bookings/components/partner-booking-settlement-card';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chi tiết lượt đặt · Đối tác · Bookify' }];
+  return [{ title: 'Chi tiết lượt đặt · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

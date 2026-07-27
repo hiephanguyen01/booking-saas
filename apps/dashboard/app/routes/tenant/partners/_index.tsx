@@ -21,7 +21,7 @@ import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Đối tác · Tenant · Bookify' }];
+  return [{ title: 'Đối tác · Tenant · BookingOS' }];
 }
 
 const STATUS_VALUES: PartnerStatus[] = ['pending', 'approved', 'suspended'];

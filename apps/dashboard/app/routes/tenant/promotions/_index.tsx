@@ -21,7 +21,7 @@ import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Khuyến mãi · Tenant · Bookify' }];
+  return [{ title: 'Khuyến mãi · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

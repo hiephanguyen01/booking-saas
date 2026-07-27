@@ -14,7 +14,7 @@ import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tạo tenant · Bookify Admin' }];
+  return [{ title: 'Tạo tenant · BookingOS Admin' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

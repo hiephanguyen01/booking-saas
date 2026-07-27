@@ -29,7 +29,7 @@ import { RecentBookingsCard } from '~/features/tenant/components/overview/recent
 import { SubscriptionStatusCard } from '~/features/tenant/components/overview/subscription-status-card';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tổng quan · Tenant · Bookify' }];
+  return [{ title: 'Tổng quan · Tenant · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

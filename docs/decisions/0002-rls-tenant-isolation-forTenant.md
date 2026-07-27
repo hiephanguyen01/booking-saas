@@ -4,7 +4,7 @@
 
 ## Context
 
-Bookify is multi-tenant; a bug that leaks one tenant's data into another is the worst failure mode.
+BookingOS is multi-tenant; a bug that leaks one tenant's data into another is the worst failure mode.
 Relying on every query carrying a correct `where tenant_id = …` is one forgotten clause away from a
 breach.
 

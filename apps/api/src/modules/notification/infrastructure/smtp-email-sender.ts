@@ -12,7 +12,7 @@ import type { EmailMessage, IEmailSender } from '../domain/ports/email-sender.po
 export class SmtpEmailSender implements IEmailSender {
   private readonly logger = new Logger(SmtpEmailSender.name);
   private transporter: Transporter | null = null;
-  private readonly from = process.env.EMAIL_FROM ?? 'no-reply@bookify.vn';
+  private readonly from = process.env.EMAIL_FROM ?? 'no-reply@bookingos.vn';
 
   async send(message: EmailMessage): Promise<void> {
     const transporter = this.getTransporter();

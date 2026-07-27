@@ -12,7 +12,7 @@ information — the reference screenshots show a photography package with cards 
 (post-production), *Ưu đãi khác* (offers), *Không bao gồm* (not included). Each card
 is **an icon + a title + either a single value or a bullet list of values**.
 
-Bookify already lets tenants define custom attributes per listing type
+BookingOS already lets tenants define custom attributes per listing type
 (`ListingType.attributeSchema`) and expose them as storefront search facets
 (`ListingType.searchConfig`). Three things are missing:
 

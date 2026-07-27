@@ -1,4 +1,4 @@
-# AGENTS.md — Bookify: Booking SaaS + Marketplace
+# AGENTS.md — BookingOS: Booking SaaS + Marketplace
 
 Shared, tool-agnostic context for every AI agent (Claude Code, Codex, Cursor, Gemini CLI, …).
 Claude Code reads this via `@AGENTS.md` from `CLAUDE.md`; other tools read it directly.
@@ -8,7 +8,7 @@ Claude Code reads this via `@AGENTS.md` from `CLAUDE.md`; other tools read it di
 > ticket-by-ticket plan is [`tasks/`](./tasks/). When a doc and the code disagree, **the code wins** —
 > and please fix the doc. Deep docs live in [`docs/`](./docs/); read the one that matches your task.
 
-## What Bookify is
+## What BookingOS is
 
 A multi-tenant **Booking-Platform-as-a-Service + marketplace** for Vietnam. Each business (**tenant**)
 gets a branded booking storefront; **partners** list bookable resources inside a tenant; **customers**
@@ -122,7 +122,7 @@ Seeded logins (override via `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`):
 
 | Who | Email | Password |
 | --- | --- | --- |
-| Platform admin | `admin@bookify.local` | `admin-dev-password` |
+| Platform admin | `admin@bookingos.local` | `admin-dev-password` |
 | Tenant owner | `owner@studiohub.vn` | `demo-password` |
 | Partner | `giang@giangstudio.vn` | `demo-password` |
 | Customer | `customer@studiohub.vn` | `demo-password` |

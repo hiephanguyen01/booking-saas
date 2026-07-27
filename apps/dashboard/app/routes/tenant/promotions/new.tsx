@@ -15,7 +15,7 @@ import {
 import { loadTenantScopeOptions } from '~/features/promotions/server/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tạo khuyến mãi · Tenant · Bookify' }];
+  return [{ title: 'Tạo khuyến mãi · Tenant · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

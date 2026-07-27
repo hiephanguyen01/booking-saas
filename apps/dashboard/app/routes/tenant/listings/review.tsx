@@ -21,7 +21,7 @@ import { ListingPolicyCard } from '~/features/tenant/components/listing-review/l
 import { ListingAttributesCard } from '~/features/tenant/components/listing-review/listing-attributes-card';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Kiểm duyệt tin đăng · Tenant · Bookify' }];
+  return [{ title: 'Kiểm duyệt tin đăng · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

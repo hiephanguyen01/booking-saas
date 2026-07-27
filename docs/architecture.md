@@ -1,6 +1,6 @@
 # Architecture
 
-System-at-a-glance for Bookify. For *what* the product does see [`../TONG-QUAN.md`](../TONG-QUAN.md);
+System-at-a-glance for BookingOS. For *what* the product does see [`../TONG-QUAN.md`](../TONG-QUAN.md);
 for *how we build* see [`../AGENTS.md`](../AGENTS.md) and [`conventions.md`](./conventions.md).
 
 ## Processes

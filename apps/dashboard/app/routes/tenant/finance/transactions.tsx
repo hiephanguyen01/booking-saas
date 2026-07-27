@@ -17,7 +17,7 @@ import { readListFilters } from '~/lib/list-filters';
 import { RefundsPanel } from '~/features/payments/components/refunds-panel';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Giao dịch · Tài chính · Tenant · Bookify' }];
+  return [{ title: 'Giao dịch · Tài chính · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

@@ -17,7 +17,7 @@ import { PageHeader } from '~/components/page-header';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Gói dịch vụ · Bookify Admin' }];
+  return [{ title: 'Gói dịch vụ · BookingOS Admin' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

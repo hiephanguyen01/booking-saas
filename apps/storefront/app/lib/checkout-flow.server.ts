@@ -9,7 +9,7 @@ import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server'
 
 const TTL_SECONDS = 30 * 60;
 const MAX_ACTIVE_FLOWS = 5;
-const PREFIX = 'bookify:storefront:checkout-flow:';
+const PREFIX = 'bookingos:storefront:checkout-flow:';
 
 export interface CheckoutFlowRecord {
   bookingId: string;

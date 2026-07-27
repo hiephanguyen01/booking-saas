@@ -7,7 +7,7 @@ Platform admin can create a tenant, assign a plan, and map domains; limits and e
 
 ## Scope
 - [ ] Tenant CRUD (platform admin creates tenants manually — self-serve signup is Phase 3)
-- [ ] `tenant_domains`: default subdomain (`*.bookify.vn`) + custom domain with verification flow (token, DNS check job, `verified_at`); Host→tenant resolution with Redis cache (60s)
+- [ ] `tenant_domains`: default subdomain (`*.bookingos.vn`) + custom domain with verification flow (token, DNS check job, `verified_at`); Host→tenant resolution with Redis cache (60s)
 - [ ] Plans + manual subscription assignment; `subscription_plans.limits` jsonb
 - [ ] `PlanLimitGuard` before create use cases; `maxBookingsPerMonth` is a soft limit (never blocks end-customer checkout — warn tenant instead)
 - [ ] Expired subscription → storefront "suspended" page, dashboard read-only

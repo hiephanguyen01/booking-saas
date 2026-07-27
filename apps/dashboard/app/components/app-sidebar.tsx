@@ -44,7 +44,7 @@ export function AppSidebar({ info }: { info: SessionInfoResponse }) {
             )}
           </div>
           <div className="grid leading-tight">
-            <span className="truncate text-sm font-semibold">{workspaceName || 'Bookify'}</span>
+            <span className="truncate text-sm font-semibold">{workspaceName || 'BookingOS'}</span>
             <span className="truncate text-xs text-muted-foreground">
               {membership?.scope === 'partner'
                 ? membership.tenantName || 'Partner Dashboard'

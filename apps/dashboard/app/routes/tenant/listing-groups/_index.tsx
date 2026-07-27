@@ -29,7 +29,7 @@ const LISTING_GROUP_FILTER_SPEC: FilterSpec = [
 ];
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tin đăng nhiều hạng mục · Tenant · Bookify' }];
+  return [{ title: 'Tin đăng nhiều hạng mục · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

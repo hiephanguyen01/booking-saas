@@ -64,7 +64,7 @@ const DISPUTE_FILTER_SPEC: FilterSpec = [
 ];
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tranh chấp · Tài chính · Tenant · Bookify' }];
+  return [{ title: 'Tranh chấp · Tài chính · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

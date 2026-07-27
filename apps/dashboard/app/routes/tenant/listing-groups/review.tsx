@@ -34,7 +34,7 @@ function contactFieldLabel(field: string): string {
 }
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Kiểm duyệt tin đăng nhiều hạng mục · Tenant · Bookify' }];
+  return [{ title: 'Kiểm duyệt tin đăng nhiều hạng mục · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

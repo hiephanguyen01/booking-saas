@@ -16,7 +16,7 @@ import { readListParams } from '~/lib/pagination';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Cộng tác viên · Tenant · Bookify' }];
+  return [{ title: 'Cộng tác viên · Tenant · BookingOS' }];
 }
 
 const STATUS_VALUES: AffiliateStatusDto[] = ['pending', 'approved', 'suspended'];

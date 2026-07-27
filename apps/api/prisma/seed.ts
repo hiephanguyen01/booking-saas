@@ -45,7 +45,7 @@ async function main() {
     });
   }
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@bookify.local';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@bookingos.local';
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'admin-dev-password';
   const superAdminRole = await prisma.role.findFirstOrThrow({
     where: { name: 'Super Admin', scopeLevel: 'platform', isSystem: true },
@@ -105,7 +105,7 @@ async function seedDemo(): Promise<void> {
     );
   };
   const tenantCreatedAt = daysAgo(45);
-  const storagePublicUrl = (process.env.S3_PUBLIC_URL ?? 'http://localhost:9000/bookify').replace(
+  const storagePublicUrl = (process.env.S3_PUBLIC_URL ?? 'http://localhost:9000/bookingos').replace(
     /\/$/,
     '',
   );
@@ -202,7 +202,7 @@ async function seedDemo(): Promise<void> {
     },
   });
   for (const [hostname, isPrimary] of [
-    ['studiohub.bookify.vn', true],
+    ['studiohub.bookingos.vn', true],
     ['studiohub.vn', false],
     // Local dev hosts so the storefront resolves on localhost and subdomains.
     ['studiohub.localhost', false],
@@ -826,7 +826,7 @@ async function seedDemo(): Promise<void> {
   // the journey must be clickable on two tenants with different themes/domains).
   // `aperture.localhost` resolves to loopback in every browser.
   for (const [hostname, isPrimary] of [
-    ['aperture.bookify.vn', true],
+    ['aperture.bookingos.vn', true],
     ['aperture.localhost', false],
   ] as const) {
     await prisma.tenantDomain.upsert({

@@ -6,7 +6,7 @@ import { NsI18n, useTranslation } from '../lib/i18n';
 import { storefrontPaths } from '../lib/locale-paths';
 
 export function meta() {
-  return [{ title: 'Community | Bookify' }];
+  return [{ title: 'Community | BookingOS' }];
 }
 export default function CommunityPage() {
   const { locale, currentUser } = useOutletContext<StorefrontContext>();

@@ -8,7 +8,7 @@ import { readListParams } from '~/lib/pagination';
 import { readListFilters } from '~/lib/list-filters';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Giao dịch · Bookify Admin' }];
+  return [{ title: 'Giao dịch · BookingOS Admin' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

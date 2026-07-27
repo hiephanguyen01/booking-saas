@@ -15,7 +15,7 @@ import {
 import { loadPartnerScopeOptions } from '~/features/promotions/server/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tạo khuyến mãi · Đối tác · Bookify' }];
+  return [{ title: 'Tạo khuyến mãi · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

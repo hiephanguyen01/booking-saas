@@ -14,7 +14,7 @@ import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Đối tác nội bộ mới · Tenant · Bookify' }];
+  return [{ title: 'Đối tác nội bộ mới · Tenant · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

@@ -47,7 +47,7 @@ import { TenantStatusBadge } from '~/components/status-badge';
 import { readListParams } from '~/lib/pagination';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
-  return [{ title: `${loaderData?.tenant?.name ?? 'Tenant'} · Bookify Admin` }];
+  return [{ title: `${loaderData?.tenant?.name ?? 'Tenant'} · BookingOS Admin` }];
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {

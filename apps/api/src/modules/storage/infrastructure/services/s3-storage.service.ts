@@ -36,10 +36,10 @@ export function s3ConfigFromEnv(): S3StorageConfig {
     region: process.env.S3_REGION ?? 'us-east-1',
     accessKey: process.env.S3_ACCESS_KEY ?? 'minio',
     secretKey: process.env.S3_SECRET_KEY ?? 'minio12345',
-    bucket: process.env.S3_BUCKET ?? 'bookify',
+    bucket: process.env.S3_BUCKET ?? 'bookingos',
     publicUrl:
       process.env.S3_PUBLIC_URL ??
-      `${process.env.S3_ENDPOINT ?? 'http://localhost:9000'}/${process.env.S3_BUCKET ?? 'bookify'}`,
+      `${process.env.S3_ENDPOINT ?? 'http://localhost:9000'}/${process.env.S3_BUCKET ?? 'bookingos'}`,
     forcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') !== 'false',
     presignExpiresSec: Number(process.env.S3_PRESIGN_EXPIRES_SEC ?? '300'),
   };

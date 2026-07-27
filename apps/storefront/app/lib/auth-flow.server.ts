@@ -4,7 +4,7 @@ import { storefrontRedisStore } from './redis-store.server';
 import { storefrontEnv } from './env.server';
 
 const FLOW_TTL_SECONDS = 30 * 60;
-const PREFIX = 'bookify:storefront:auth-flow:';
+const PREFIX = 'bookingos:storefront:auth-flow:';
 
 export type AuthFlowPhase =
   | 'registration_verify'

@@ -20,7 +20,7 @@ pnpm --filter=@booking/api seed          # permission catalog, system roles, dev
 pnpm --filter=@booking/api start:dev     # API on :3000
 ```
 
-Dev admin: `admin@bookify.local` / `admin-dev-password` (override via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
+Dev admin: `admin@bookingos.local` / `admin-dev-password` (override via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
 
 ## Frontend apps
 

@@ -23,7 +23,7 @@ import { dayKey } from '~/lib/format';
 import { addDays, mondayOf, parseDay, startOfDayUtc, todayString, toDayString, weekDays } from '~/lib/calendar-dates';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Lịch tổng · Đối tác · Bookify' }];
+  return [{ title: 'Lịch tổng · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

@@ -39,7 +39,7 @@ import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { ListingCalendarPricing } from '~/features/partner/components/listing-calendar-pricing';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chi tiết tin đăng · Đối tác · Bookify' }];
+  return [{ title: 'Chi tiết tin đăng · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, params, url }: Route.LoaderArgs) {

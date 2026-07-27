@@ -13,7 +13,7 @@ import { ACCESS_COOKIE } from '../../modules/identity-access/infrastructure/http
  */
 export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
-    .setTitle('Bookify API')
+    .setTitle('BookingOS API')
     .setDescription('Booking SaaS + marketplace API. Schemas are generated from the shared zod contracts.')
     .setVersion('0.0.1')
     // Two ways to authenticate: the session cookie (browser BFF) or a bearer access token.

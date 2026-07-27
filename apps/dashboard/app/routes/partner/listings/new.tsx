@@ -21,7 +21,7 @@ import { PageHeader } from '~/components/page-header';
 import { ListingForm } from '~/features/partner/components/listing-form';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tin đăng mới · Đối tác · Bookify' }];
+  return [{ title: 'Tin đăng mới · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

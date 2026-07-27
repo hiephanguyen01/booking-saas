@@ -3,7 +3,7 @@
 ## Goal
 
 Redesign the authenticated storefront booking history and booking detail views to match the visual
-hierarchy of Figma nodes `272:35576` and `820:24381`, while preserving Bookify's existing data,
+hierarchy of Figma nodes `272:35576` and `820:24381`, while preserving BookingOS's existing data,
 actions, tenant theme, bilingual UI, and responsive behavior.
 
 ## Scope

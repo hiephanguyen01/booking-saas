@@ -18,7 +18,7 @@ import { runPartnerBookingAction } from '~/features/bookings/server/partner-book
 import { PartnerBookingActions } from '~/features/bookings/components/partner-booking-actions';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Lượt đặt · Đối tác · Bookify' }];
+  return [{ title: 'Lượt đặt · Đối tác · BookingOS' }];
 }
 
 // URL-driven status options (no client-side filtering). `all` clears the param.

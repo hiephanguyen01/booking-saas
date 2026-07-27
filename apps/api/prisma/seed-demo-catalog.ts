@@ -1076,7 +1076,7 @@ function photosFor(kind: string, index: number): string[] {
   return Array.from(
     { length: 10 },
     (_, photoIndex) =>
-      `https://picsum.photos/seed/bookify-${kind}-${String(index).padStart(2, '0')}-${String(photoIndex + 1).padStart(2, '0')}/1600/1200`,
+      `https://picsum.photos/seed/bookingos-${kind}-${String(index).padStart(2, '0')}-${String(photoIndex + 1).padStart(2, '0')}/1600/1200`,
   );
 }
 

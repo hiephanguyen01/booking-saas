@@ -9,7 +9,7 @@ import { readListFilters } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Giám sát đánh giá · Bookify Admin' }];
+  return [{ title: 'Giám sát đánh giá · BookingOS Admin' }];
 }
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requirePlatform(request, 'platform.reviews.read');

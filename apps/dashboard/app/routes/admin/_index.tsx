@@ -14,7 +14,7 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tổng quan nền tảng · Bookify Admin' }];
+  return [{ title: 'Tổng quan nền tảng · BookingOS Admin' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

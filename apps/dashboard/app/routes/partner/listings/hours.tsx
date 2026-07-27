@@ -32,7 +32,7 @@ import {
 } from '~/features/partner/lib/listing-hours';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Giờ mở cửa · Đối tác · Bookify' }];
+  return [{ title: 'Giờ mở cửa · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

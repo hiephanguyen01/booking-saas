@@ -6,7 +6,7 @@ import {
 import type { Route } from './+types/booking-detail';
 
 export function meta() {
-  return [{ title: 'Booking history | Bookify' }, { name: 'robots', content: 'noindex' }];
+  return [{ title: 'Booking history | BookingOS' }, { name: 'robots', content: 'noindex' }];
 }
 
 export function loader({ request, params }: Route.LoaderArgs) {

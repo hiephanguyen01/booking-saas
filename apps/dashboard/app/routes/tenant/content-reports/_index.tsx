@@ -8,7 +8,7 @@ import { readListFilters } from '~/lib/list-filters';
 import { readListParams } from '~/lib/pagination';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Báo cáo nội dung · Tenant · Bookify' }];
+  return [{ title: 'Báo cáo nội dung · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

@@ -36,7 +36,7 @@ origin thật của `order_url` (đang đoán `sbgateway.zalopay.vn`/`gateway.za
 
 ## 1. Mục tiêu & phạm vi
 
-Tích hợp cổng thanh toán **MoMo** (ví điện tử VN) vào Bookify với **hoàn tiền tự động về ví MoMo** khi huỷ booking.
+Tích hợp cổng thanh toán **MoMo** (ví điện tử VN) vào BookingOS với **hoàn tiền tự động về ví MoMo** khi huỷ booking.
 
 MoMo là **gateway "thật" đầu tiên có `refund().supported === true`** — nghĩa là nó khớp đúng khe mà pipeline auto-refund hiện có (`ExecuteRefundUseCase`) đã chừa sẵn cho SePay/PayOS (2 cổng này trả `supported:false` → refund rơi vào `manual_required`, tenant chuyển khoản tay). Với MoMo, refund chạy tự động end-to-end **mà không cần use-case refund mới**.
 

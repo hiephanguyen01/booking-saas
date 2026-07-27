@@ -20,7 +20,7 @@ import { AffiliateProfilePanel } from '~/features/tenant/components/affiliates/a
 import { AffiliateStatusActions } from '~/features/tenant/components/affiliates/affiliate-status-actions';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Cộng tác viên · Chi tiết · Bookify' }];
+  return [{ title: 'Cộng tác viên · Chi tiết · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

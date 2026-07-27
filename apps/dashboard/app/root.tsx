@@ -22,7 +22,7 @@ import './app.css';
 export const middleware: Route.MiddlewareFunction[] = [dashboardAuthMiddleware];
 
 export function meta() {
-  return [{ title: 'Bookify Dashboard' }];
+  return [{ title: 'BookingOS Dashboard' }];
 }
 
 /**

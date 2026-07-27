@@ -35,7 +35,7 @@ import { FUNDED_BY_LABELS } from '~/constants/promotion';
 import { loadTenantScopeOptions } from '~/features/promotions/server/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chi tiết khuyến mãi · Tenant · Bookify' }];
+  return [{ title: 'Chi tiết khuyến mãi · Tenant · BookingOS' }];
 }
 
 

@@ -5,7 +5,7 @@ live in [`../TONG-QUAN.md`](../TONG-QUAN.md); this is the quick reference.
 
 ## Actors
 
-- **Platform** — the operator of Bookify. Earns a subscription fee per tenant + a per-booking commission.
+- **Platform** — the operator of BookingOS. Earns a subscription fee per tenant + a per-booking commission.
 - **Tenant** — a business customer; gets a branded storefront on its own domain(s). The unit of RLS
   isolation.
 - **Partner** — a supplier inside a tenant that lists bookable resources (e.g. a studio owner). Applies,

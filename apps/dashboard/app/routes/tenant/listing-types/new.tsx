@@ -8,7 +8,7 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
 import type { Route } from './+types/new';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Loại dịch vụ mới · Tenant · Bookify' }];
+  return [{ title: 'Loại dịch vụ mới · Tenant · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

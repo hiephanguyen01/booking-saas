@@ -74,7 +74,7 @@ export function createMemoryDashboardSessionStore(): DashboardSessionStore {
 
 export function createRedisDashboardSessionStore({
   getClient,
-  prefix = 'bookify:dashboard:session:',
+  prefix = 'bookingos:dashboard:session:',
 }: RedisDashboardSessionStoreOptions): DashboardSessionStore {
   const keyFor = (id: string) => `${prefix}${id}`;
 

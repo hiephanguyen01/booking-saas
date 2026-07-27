@@ -269,10 +269,10 @@ export const viAccount = {
   terms: {
     title: 'ĐIỀU KHOẢN SỬ DỤNG',
     intro:
-      'Các điều khoản và điều kiện sau đây quy định việc truy cập và sử dụng nền tảng Bookify. Bằng việc tiếp tục sử dụng dịch vụ, bạn xác nhận đã đọc và đồng ý với các nội dung này.',
+      'Các điều khoản và điều kiện sau đây quy định việc truy cập và sử dụng nền tảng BookingOS. Bằng việc tiếp tục sử dụng dịch vụ, bạn xác nhận đã đọc và đồng ý với các nội dung này.',
     definitionTitle: '1. ĐỊNH NGHĨA',
     definition:
-      '“Bookify”, “chúng tôi” hoặc “của chúng tôi” là nền tảng cung cấp dịch vụ tìm kiếm, đặt chỗ và thanh toán cho các sản phẩm, không gian và dịch vụ do đối tác cung cấp.',
+      '“BookingOS”, “chúng tôi” hoặc “của chúng tôi” là nền tảng cung cấp dịch vụ tìm kiếm, đặt chỗ và thanh toán cho các sản phẩm, không gian và dịch vụ do đối tác cung cấp.',
     bookingTitle: '2. ĐƠN ĐẶT CHỖ VÀ THANH TOÁN',
     booking:
       'Thông tin về giá, tình trạng khả dụng, chính sách hủy và các điều kiện đi kèm được hiển thị tại thời điểm đặt chỗ. Khách hàng có trách nhiệm kiểm tra chính xác thông tin trước khi xác nhận.',
@@ -283,7 +283,7 @@ export const viAccount = {
   security: {
     title: 'AN TOÀN VÀ BẢO MẬT',
     intro:
-      'Bookify coi an toàn tài khoản và dữ liệu cá nhân là một phần cốt lõi của trải nghiệm đặt chỗ.',
+      'BookingOS coi an toàn tài khoản và dữ liệu cá nhân là một phần cốt lõi của trải nghiệm đặt chỗ.',
     accountTitle: '1. BẢO VỆ TÀI KHOẢN',
     account:
       'Không chia sẻ mật khẩu hoặc mã xác minh. Hãy đăng xuất khỏi thiết bị dùng chung và liên hệ hỗ trợ ngay khi phát hiện hoạt động bất thường.',
@@ -306,7 +306,7 @@ export const viAccount = {
     a3: 'Sau khi đơn hoàn tất, lời mời đánh giá sẽ xuất hiện trong mục Đánh giá.',
   },
   community: {
-    eyebrow: 'BOOKIFY COMMUNITY',
+    eyebrow: 'BOOKINGOS COMMUNITY',
     title: 'Cùng nhau tạo nên những khoảnh khắc đáng nhớ',
     description:
       'Không gian cộng đồng đang được hoàn thiện. Hãy quay lại sớm để khám phá câu chuyện, cảm hứng và các studio nổi bật.',

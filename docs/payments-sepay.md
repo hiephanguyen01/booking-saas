@@ -1,6 +1,6 @@
 # SePay payment gateway
 
-Bookify uses SePay Payment Gateway for tenant-owned VietQR bank-transfer checkout. The integration is
+BookingOS uses SePay Payment Gateway for tenant-owned VietQR bank-transfer checkout. The integration is
 an adapter inside the existing payments bounded context; booking code never imports `sepay-pg-node`.
 PayOS/mock compatibility remains, but the dashboard config and production storefront flow currently
 expose SePay only.
@@ -13,7 +13,7 @@ expose SePay only.
    - **Merchant ID**: identifies the SePay Payment Gateway merchant.
    - **Merchant Secret Key**: signs checkout fields, authenticates Payment Gateway API calls and
      verifies the Payment Gateway IPN `X-Secret-Key` header.
-4. Bookify encrypts the credentials as one AES-GCM blob in `tenant_gateway_configs`. The API only
+4. BookingOS encrypts the credentials as one AES-GCM blob in `tenant_gateway_configs`. The API only
    returns environment, active state and Merchant ID; it never returns the secret.
 
 Do not put a tenant Merchant ID or Merchant Secret Key in source code, seed data or `.env.example`.
@@ -21,9 +21,9 @@ Rotate any credential pasted into an issue, chat, log or committed file.
 
 ## Environment variables
 
-Provider credentials are deliberately **not** process environment variables. Bookify serves many
+Provider credentials are deliberately **not** process environment variables. BookingOS serves many
 tenants in one API process, while every tenant owns a separate SePay account. Tenant owners enter the
-Merchant ID and Merchant Secret Key in Dashboard; Bookify stores the encrypted credential in
+Merchant ID and Merchant Secret Key in Dashboard; BookingOS stores the encrypted credential in
 `tenant_gateway_configs` under tenant RLS. The same rule applies to PayOS credentials. Vì vậy không
 có `SEPAY_MERCHANT_ID`, `SEPAY_SECRET_KEY`, `PAYOS_CLIENT_ID` hay `PAYOS_API_KEY` dùng chung trong
 `.env`.
@@ -47,7 +47,7 @@ replicas.
 
 ## Payment Gateway IPN configuration
 
-Bookify checkout uses **SePay Payment Gateway**, so payment confirmation must be configured in the
+BookingOS checkout uses **SePay Payment Gateway**, so payment confirmation must be configured in the
 merchant's Payment Gateway IPN screen—not in the separate Webhooks screen for bank balance changes.
 
 In the SePay merchant console, open **Cổng thanh toán → Cấu hình → IPN** and configure:
@@ -73,7 +73,7 @@ X-Secret-Key: <Merchant Secret Key for the selected environment>
 Content-Type: application/json
 ```
 
-Bookify resolves the tenant from `order.order_invoice_number` using the admin pool, enters the
+BookingOS resolves the tenant from `order.order_invoice_number` using the admin pool, enters the
 tenant's RLS transaction, loads that tenant's Merchant Secret Key, compares `X-Secret-Key` in constant
 time, validates VND amount/status and atomically transitions the payment. Duplicate IPNs return HTTP
 200 without confirming the booking twice.
@@ -83,7 +83,7 @@ time, validates VND amount/status and atomically transitions the payment. Duplic
 The SePay screen offering `API Key`, `HMAC-SHA256`, `OAuth 2.0` and no authentication belongs to the
 separate bank-transaction Webhooks product. A Live bank webhook is triggered by a real transaction in
 a linked bank account; its Test mode is triggered by **Mô phỏng giao dịch**. Marking a Payment Gateway
-Sandbox order paid does not create that bank-transaction webhook log. Bookify does not use that
+Sandbox order paid does not create that bank-transaction webhook log. BookingOS does not use that
 HMAC/WH Secret flow for its current `sepay-pg-node` checkout.
 
 ## Checkout flow
@@ -111,9 +111,9 @@ already-succeeded payment and replays `refund.completed` when a successful refun
 SePay refunds are currently reported as unsupported, so cancellation/dispute refunds follow this
 manual workflow:
 
-1. Bookify creates one refund row for `(booking, reason)` with `manual_required`.
+1. BookingOS creates one refund row for `(booking, reason)` with `manual_required`.
 2. Tenant opens **Tài chính → Giao dịch → Hoàn tiền khách hàng**.
-3. Tenant transfers exactly the displayed amount outside Bookify.
+3. Tenant transfers exactly the displayed amount outside BookingOS.
 4. Tenant enters the bank reference and optional evidence key/note.
 5. `POST /tenant/payments/refunds/:id/confirm` atomically marks it succeeded and emits
    `refund.completed`; only then do Booking and Settlement show refunded.
@@ -122,7 +122,7 @@ Customer cancellation persists `bookings.refund_due_amount` before the outbox ev
 lost and no refund row exists, reconciliation emits `refund.recovery_requested` with that exact
 amount; it never recalculates an old cancellation policy using the current time.
 
-For `no_show`, Bookify does not refund service money by default, but it creates a separate
+For `no_show`, BookingOS does not refund service money by default, but it creates a separate
 `security_deposit` refund for the full security deposit. Reconciliation also recreates this refund
 intent when the original no-show event did not produce a refund row. Security-deposit confirmation
 does not mark the service booking or settlement refunded.
@@ -136,7 +136,7 @@ does not mark the service booking or settlement refunded.
 - Platform: `/admin/transactions` → `GET /platform/payments`, protected by
   `platform.finance.read` and the admin pool.
 
-Both screens paginate and filter Bookify's normalized `payments` rows. They do not expose raw IPN
+Both screens paginate and filter BookingOS's normalized `payments` rows. They do not expose raw IPN
 payloads, card data or credentials.
 
 ## Verification (no test files)

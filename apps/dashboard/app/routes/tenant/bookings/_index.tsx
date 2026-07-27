@@ -35,7 +35,7 @@ interface PartnerStat {
 }
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Đặt chỗ · Tenant · Bookify' }];
+  return [{ title: 'Đặt chỗ · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

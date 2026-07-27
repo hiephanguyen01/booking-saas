@@ -24,8 +24,8 @@ Customer trả phần thanh toán online cho Tenant
 - `BookingSettlement.status` phản ánh quyền sử dụng nội bộ: tiền vẫn đang bị giữ, chưa được ghi nhận
   thành doanh thu/công nợ có thể payout.
 
-Bookify không phải ví điện tử và không tự giữ tiền trong tài khoản nền tảng. SePay chuyển tiền vào tài
-khoản merchant của chính Tenant. “Giữ” ở đây là khóa nghiệp vụ/kế toán trong Bookify; Tenant có trách
+BookingOS không phải ví điện tử và không tự giữ tiền trong tài khoản nền tảng. SePay chuyển tiền vào tài
+khoản merchant của chính Tenant. “Giữ” ở đây là khóa nghiệp vụ/kế toán trong BookingOS; Tenant có trách
 nhiệm không sử dụng phần phải trả Partner trước khi settlement được release.
 
 ## 2. Ví dụ chuẩn 1.000.000 ₫

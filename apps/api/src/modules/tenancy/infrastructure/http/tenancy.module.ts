@@ -79,7 +79,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     { provide: DOMAIN_VERIFICATION_QUEUE, useExisting: DomainVerificationWorker },
     {
       provide: TENANCY_CONFIG,
-      useValue: { baseDomain: process.env.PLATFORM_BASE_DOMAIN ?? 'bookify.vn' },
+      useValue: { baseDomain: process.env.PLATFORM_BASE_DOMAIN ?? 'bookingos.vn' },
     },
     CreateTenantUseCase,
     ListTenantsUseCase,

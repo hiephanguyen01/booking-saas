@@ -35,7 +35,7 @@ import { Label } from '@booking/ui/components/ui/label';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Doanh thu · Đối tác · Bookify' }];
+  return [{ title: 'Doanh thu · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

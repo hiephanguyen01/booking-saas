@@ -21,7 +21,7 @@ import { readListParams } from '~/lib/pagination';
 import { readListFilters, type FilterSpec } from '~/lib/list-filters';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Giám sát khiếu nại · Bookify Admin' }];
+  return [{ title: 'Giám sát khiếu nại · BookingOS Admin' }];
 }
 
 const DISPUTE_FILTER_SPEC: FilterSpec = [

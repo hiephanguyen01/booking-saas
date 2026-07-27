@@ -59,7 +59,7 @@ const SETTINGS_TAB_BY_FORM: Record<string, string> = {
 };
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Cài đặt cửa hàng | Bookify' }];
+  return [{ title: 'Cài đặt cửa hàng | BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

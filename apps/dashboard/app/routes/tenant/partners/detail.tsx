@@ -28,7 +28,7 @@ import { PartnerModerationActions } from '~/features/tenant/components/partners/
 import { PartnerPayoutCard } from '~/features/tenant/components/partners/partner-payout-card';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chi tiết đối tác · Tenant · Bookify' }];
+  return [{ title: 'Chi tiết đối tác · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

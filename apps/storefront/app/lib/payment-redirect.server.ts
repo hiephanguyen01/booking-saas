@@ -4,7 +4,7 @@ import type { CheckoutDestination } from '@booking/contracts';
 /**
  * The local mock gateway returns a non-navigable `mock://pay/...` marker rather
  * than an external checkout page. It is only recognized in non-production so
- * callers can route back to Bookify's internal payment-status screen.
+ * callers can route back to BookingOS's internal payment-status screen.
  */
 export function isMockPaymentRedirect(value: unknown): boolean {
   if (storefrontEnv.production || !storefrontEnv.allowMockPayments || typeof value !== 'string') {

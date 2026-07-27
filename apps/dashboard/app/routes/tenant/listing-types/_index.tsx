@@ -20,7 +20,7 @@ const LISTING_TYPE_FILTER_SPEC: FilterSpec = [
 ];
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Loại dịch vụ · Tenant · Bookify' }];
+  return [{ title: 'Loại dịch vụ · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

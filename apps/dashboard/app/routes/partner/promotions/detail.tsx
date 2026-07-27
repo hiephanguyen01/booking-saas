@@ -28,7 +28,7 @@ import { EndPromotionDialog } from '~/features/promotions/components/end-promoti
 import { loadPartnerScopeOptions } from '~/features/promotions/server/scope-options.server';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chi tiết khuyến mãi · Đối tác · Bookify' }];
+  return [{ title: 'Chi tiết khuyến mãi · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

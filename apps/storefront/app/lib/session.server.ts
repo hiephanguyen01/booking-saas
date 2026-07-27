@@ -10,7 +10,7 @@ import { storefrontEnv } from './env.server';
 import { safeRedirectPath } from './safe-redirect';
 
 const TTL_SECONDS = 60 * 60 * 24 * 30;
-const PREFIX = 'bookify:storefront:session:';
+const PREFIX = 'bookingos:storefront:session:';
 
 export interface StorefrontSessionData {
   accessToken: string;

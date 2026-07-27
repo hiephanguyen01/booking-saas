@@ -14,7 +14,7 @@ import { readListFilters } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Đánh giá khách hàng · Partner · Bookify' }];
+  return [{ title: 'Đánh giá khách hàng · Partner · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

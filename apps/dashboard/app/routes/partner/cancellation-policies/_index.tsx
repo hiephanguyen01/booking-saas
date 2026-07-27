@@ -12,7 +12,7 @@ import { CancellationTiers } from '~/components/cancellation-tiers';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chính sách huỷ · Đối tác · Bookify' }];
+  return [{ title: 'Chính sách huỷ · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

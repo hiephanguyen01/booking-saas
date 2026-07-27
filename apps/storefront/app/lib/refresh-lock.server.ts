@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-const REFRESH_LOCK_PREFIX = 'bookify:storefront:session-refresh-lock:';
+const REFRESH_LOCK_PREFIX = 'bookingos:storefront:session-refresh-lock:';
 const DEFAULT_REFRESH_LOCK_TTL_MS = 35_000;
 const DEFAULT_REFRESH_LOCK_RETRY_MS = 250;
 

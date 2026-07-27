@@ -28,7 +28,7 @@ const reasonLabels: Record<ContentReportReason, string> = {
 };
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chi tiết báo cáo · Tenant · Bookify' }];
+  return [{ title: 'Chi tiết báo cáo · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

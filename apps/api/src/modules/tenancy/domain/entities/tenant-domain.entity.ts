@@ -12,7 +12,7 @@ import {
  * Owns:
  *   - provisioning: the platform-owned `<slug>.<baseDomain>` subdomain is trusted, so
  *     it is born verified with no token ({@link TenantDomain.provisionDefaultSubdomain});
- *     a custom domain is born unverified with a `bookify-verify=…` TXT token
+ *     a custom domain is born unverified with a `bookingos-verify=…` TXT token
  *     ({@link TenantDomain.requestCustomDomain});
  *   - the verification gate ({@link TenantDomain.assertVerifiable}) and the
  *     already-verified short-circuit ({@link TenantDomain.isVerified});

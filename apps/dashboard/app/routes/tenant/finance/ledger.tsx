@@ -24,7 +24,7 @@ import { PaginationBar } from '~/components/pagination-bar';
 import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Sổ cái · Tài chính · Tenant · Bookify' }];
+  return [{ title: 'Sổ cái · Tài chính · Tenant · BookingOS' }];
 }
 
 const LEDGER_FILTER_SPEC: FilterSpec = [

@@ -18,7 +18,7 @@ import { PaginationBar } from '~/components/pagination-bar';
 import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tenant · Bookify Admin' }];
+  return [{ title: 'Tenant · BookingOS Admin' }];
 }
 
 const STATUS_VALUES: TenantStatus[] = ['active', 'suspended', 'expired'];

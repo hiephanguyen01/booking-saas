@@ -9,7 +9,7 @@ import { dashboardPaths } from '~/constants/paths';
 import type { Route } from './+types/new';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chính sách huỷ mới · Đối tác · Bookify' }];
+  return [{ title: 'Chính sách huỷ mới · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

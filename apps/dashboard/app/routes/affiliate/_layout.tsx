@@ -7,7 +7,7 @@ import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { affiliateTabs } from './nav';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Cộng tác viên · Bookify' }];
+  return [{ title: 'Cộng tác viên · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

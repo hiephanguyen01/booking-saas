@@ -20,7 +20,7 @@ import { readListParams } from '~/lib/pagination';
 import { readListFilters, type FilterSpec } from '~/lib/list-filters';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Đối soát giữ tiền · Bookify Admin' }];
+  return [{ title: 'Đối soát giữ tiền · BookingOS Admin' }];
 }
 
 const SETTLEMENT_FILTER_SPEC: FilterSpec = [

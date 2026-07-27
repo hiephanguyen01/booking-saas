@@ -31,7 +31,7 @@ import { useLiveClock } from '~/hooks/use-live-clock';
 const ACTIVE: BookingStatus[] = ['pending_approval', 'pending_payment', 'confirmed'];
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tổng quan · Đối tác · Bookify' }];
+  return [{ title: 'Tổng quan · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

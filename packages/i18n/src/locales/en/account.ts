@@ -272,10 +272,10 @@ export const enAccount = {
   terms: {
     title: 'TERMS OF USE',
     intro:
-      'These terms govern access to and use of the Bookify platform. By continuing to use the service, you confirm that you have read and accepted them.',
+      'These terms govern access to and use of the BookingOS platform. By continuing to use the service, you confirm that you have read and accepted them.',
     definitionTitle: '1. DEFINITIONS',
     definition:
-      '“Bookify”, “we”, or “our” means the platform providing discovery, booking, and payment services for products, spaces, and services offered by partners.',
+      '“BookingOS”, “we”, or “our” means the platform providing discovery, booking, and payment services for products, spaces, and services offered by partners.',
     bookingTitle: '2. BOOKINGS AND PAYMENTS',
     booking:
       'Prices, availability, cancellation policies, and related conditions are displayed at booking time. Customers are responsible for checking the information before confirming.',
@@ -286,7 +286,7 @@ export const enAccount = {
   security: {
     title: 'SAFETY & SECURITY',
     intro:
-      'Bookify treats account safety and personal data as a core part of the booking experience.',
+      'BookingOS treats account safety and personal data as a core part of the booking experience.',
     accountTitle: '1. PROTECT YOUR ACCOUNT',
     account:
       'Never share passwords or verification codes. Sign out of shared devices and contact support immediately if you notice unusual activity.',
@@ -309,7 +309,7 @@ export const enAccount = {
     a3: 'After a booking is completed, an invitation appears in Reviews.',
   },
   community: {
-    eyebrow: 'BOOKIFY COMMUNITY',
+    eyebrow: 'BOOKINGOS COMMUNITY',
     title: 'Create memorable moments together',
     description:
       'Our community space is taking shape. Check back soon for stories, inspiration, and standout studios.',

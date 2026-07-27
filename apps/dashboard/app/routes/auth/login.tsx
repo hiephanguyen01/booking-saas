@@ -10,7 +10,7 @@ import { createUserSession } from '~/lib/session.server';
 import { defaultDashboardPath } from '~/lib/workspace';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Đăng nhập · Bookify Dashboard' }];
+  return [{ title: 'Đăng nhập · BookingOS Dashboard' }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -72,7 +72,7 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
             <CalendarCheck2 aria-hidden="true" className="size-5 text-[#83d5a8]" strokeWidth={1.8} />
           </span>
           <div>
-            <p className="text-lg font-semibold tracking-[-0.02em]">Bookify</p>
+            <p className="text-lg font-semibold tracking-[-0.02em]">BookingOS</p>
             <p className="text-xs font-medium text-white/55">Workspace</p>
           </div>
         </div>
@@ -114,7 +114,7 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
           <span className="flex size-9 items-center justify-center rounded-lg bg-[#173f30] text-[#a4e0bd]">
             <CalendarCheck2 aria-hidden="true" className="size-[18px]" strokeWidth={1.8} />
           </span>
-          <span className="font-semibold tracking-[-0.02em]">Bookify</span>
+          <span className="font-semibold tracking-[-0.02em]">BookingOS</span>
         </div>
 
         <div className="mx-auto flex w-full max-w-[430px] flex-1 items-center py-12 sm:py-16">
@@ -150,7 +150,7 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
         </div>
 
         <div className="mx-auto flex w-full max-w-[430px] items-center justify-between border-t border-[#dfe5e1] pt-5 text-xs text-[#718078] dark:border-white/10 dark:text-[#8f9d95]">
-          <span>Bookify Dashboard</span>
+          <span>BookingOS Dashboard</span>
           <span className="flex items-center gap-1.5">
             Dành cho đội ngũ vận hành
             <ArrowRight aria-hidden="true" className="size-3.5" />

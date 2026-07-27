@@ -31,7 +31,7 @@ import { dashboardPaths } from '~/constants/paths';
 import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tin đăng · Tenant · Bookify' }];
+  return [{ title: 'Tin đăng · Tenant · BookingOS' }];
 }
 
 const STATUS_VALUES: PublishStatus[] = ['draft', 'pending_review', 'published', 'archived'];

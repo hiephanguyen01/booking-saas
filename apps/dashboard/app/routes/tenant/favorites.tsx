@@ -9,7 +9,7 @@ import { readListFilters } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Yêu thích · Tenant · Bookify' }];
+  return [{ title: 'Yêu thích · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

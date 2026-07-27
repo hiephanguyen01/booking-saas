@@ -46,7 +46,7 @@ function ListingStatusStrip({ listing }: { listing: ListingResponse }) {
 }
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Sửa tin đăng · Đối tác · Bookify' }];
+  return [{ title: 'Sửa tin đăng · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

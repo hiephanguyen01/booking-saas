@@ -109,7 +109,7 @@ Configuration: tenant takes 15% from the partner; platform fee 2% (on the total 
 ### 3.4. Physical Money Flow (Phase 1–2)
 
 - Customer pays via SePay → money lands in **the tenant's own account** (each tenant configures its own merchant credentials).
-- Bookify records the payment as **held by the tenant**. After Partner completes the service, the
+- BookingOS records the payment as **held by the tenant**. After Partner completes the service, the
   system waits through the tenant-configured dispute period; only then does it record ledger entries:
   the tenant **owes** the partner/affiliate and **owes** the platform fee.
 - The tenant pays out (payout) to partners/affiliates on a cycle (manual, marked in the system, with uploaded evidence). The platform issues a monthly fee reconciliation statement to the tenant.
@@ -126,7 +126,7 @@ Detailed custody, split and recovery rules: [`docs/settlement-flow.md`](./docs/s
 ```
                     ┌──────────────────────────────────────────────┐
    Customer ──────▶ │  apps/storefront (React Router 7, SSR)        │
-   (by tenant       │  studiohub.vn / stayvn.com / *.bookify.vn     │
+   (by tenant       │  studiohub.vn / stayvn.com / *.bookingos.vn     │
     domain)         └───────────────────────┬──────────────────────┘
                                             │ HTTP (REST, packages/shared)
    Tenant/Partner/  ┌──────────────────────▼──────────────────────┐
@@ -308,7 +308,7 @@ modules/<context>/
 
 ### 6.1. Tenant Resolution
 
-- **Storefront**: by `Host` header. The `tenant_domains` table maps `hostname → tenant_id`. Supports both a default subdomain (`studiohub.bookify.vn`) and a custom domain (`studiohub.vn`). RR7's root loader resolves the tenant and puts it into context; cached in Redis for 60s.
+- **Storefront**: by `Host` header. The `tenant_domains` table maps `hostname → tenant_id`. Supports both a default subdomain (`studiohub.bookingos.vn`) and a custom domain (`studiohub.vn`). RR7's root loader resolves the tenant and puts it into context; cached in Redis for 60s.
 - **Dashboard & API**: the tenant is taken from **the login session** (which tenant the user belongs to) — the tenant_id sent by the client is never trusted. The platform admin has no tenant context (uses a connection that bypasses RLS, see 6.3).
 
 ### 6.2. RLS Design

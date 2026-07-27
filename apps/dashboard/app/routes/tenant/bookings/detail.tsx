@@ -36,7 +36,7 @@ import { toTimelineEntries } from '~/features/bookings/lib/booking-history';
 import { BookingSettlementCard } from '~/features/bookings/components/booking-settlement-card';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Chi tiết đặt chỗ · Tenant · Bookify' }];
+  return [{ title: 'Chi tiết đặt chỗ · Tenant · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {

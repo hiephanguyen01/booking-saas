@@ -28,7 +28,7 @@ import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Khuyến mãi · Đối tác · Bookify' }];
+  return [{ title: 'Khuyến mãi · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {

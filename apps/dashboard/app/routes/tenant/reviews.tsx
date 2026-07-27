@@ -9,7 +9,7 @@ import { readListFilters } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Đánh giá · Tenant · Bookify' }];
+  return [{ title: 'Đánh giá · Tenant · BookingOS' }];
 }
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.reviews.read');

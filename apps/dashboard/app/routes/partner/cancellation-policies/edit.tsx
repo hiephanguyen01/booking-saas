@@ -12,7 +12,7 @@ import { CancellationPolicyForm } from '~/features/cancellation-policies/compone
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Sửa chính sách huỷ · Đối tác · Bookify' }];
+  return [{ title: 'Sửa chính sách huỷ · Đối tác · BookingOS' }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
