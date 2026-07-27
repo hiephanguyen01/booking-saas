@@ -10,6 +10,7 @@ import { usePackageBookingDialogStepsController } from './use-package-booking-di
 export function PackageBookingDialogSteps({
   date,
   timezone,
+  today,
   availabilityPending,
   hasAvailability,
   availabilityError,
@@ -26,6 +27,7 @@ export function PackageBookingDialogSteps({
 }: {
   date: string | null;
   timezone: string;
+  today: string;
   availabilityPending: boolean;
   hasAvailability: boolean;
   availabilityError: boolean;
@@ -45,6 +47,7 @@ export function PackageBookingDialogSteps({
     usePackageBookingDialogStepsController({
       date,
       timezone,
+      today,
       slots,
       selectedSlots,
       onSelectDate,

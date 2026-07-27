@@ -13,12 +13,14 @@ export function PackageBookingDialog({
   returnFocusRef,
   selectedPackage,
   listing,
+  today,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
   selectedPackage: PublicPackageOption | null;
   listing: PublicListingDetailResponse;
+  today: string;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const controller = usePackageBookingDialogController({
@@ -32,6 +34,7 @@ export function PackageBookingDialog({
     <PackageBookingDialogSteps
       date={controller.date}
       timezone={controller.timezone}
+      today={today}
       availabilityPending={controller.availabilityPending}
       hasAvailability={controller.hasAvailability}
       availabilityError={controller.availabilityError}
