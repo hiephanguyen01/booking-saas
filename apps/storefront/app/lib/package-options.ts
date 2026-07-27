@@ -5,9 +5,9 @@ export interface PublicPackageOption {
   name: string;
   description?: string;
   photos: string[];
+  mode: 'hourly' | 'daily';
   duration: number;
   price: string;
-  durationLabel: 'phút' | 'ngày';
 }
 
 export function packagesForMode(
@@ -35,9 +35,9 @@ export function packagesForMode(
         photos: Array.isArray(row.photos)
           ? row.photos.filter((photo): photo is string => typeof photo === 'string')
           : [],
+        mode,
         duration,
         price: row.price,
-        durationLabel: mode === 'hourly' ? ('phút' as const) : ('ngày' as const),
       },
     ];
   });

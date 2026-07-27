@@ -64,7 +64,9 @@ export function FixedDailyPicker({
           />
         </PopoverContent>
       </Popover>
-      <p className="text-xs text-muted-foreground">Thời gian của gói: {durationDays} ngày.</p>
+      <p className="text-xs text-muted-foreground">
+        {t('duration')}: {t('packages.durationDays', { count: durationDays })}.
+      </p>
     </div>
   );
 }

@@ -109,6 +109,8 @@ export const viListing = {
     colPrice: 'Giá áp dụng',
     colChoice: 'Lựa chọn của bạn',
     packageDuration: 'Thời lượng {count} giờ',
+    durationMinutes: '{count} phút',
+    durationDays: '{count} ngày',
     photographyStyle: 'Phong cách: {value}',
     photographyStyleLabel: 'Phong cách chụp',
     postProduction: 'Hậu kì',
