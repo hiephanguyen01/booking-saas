@@ -1,0 +1,157 @@
+name: Deploy
+
+# Manual only. The BRANCH is the ref you pick in the "Use workflow from" dropdown
+# (or `gh workflow run --ref`), so it is not repeated as an input.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [stg, prod]
+        required: true
+        default: stg
+      app:
+        description: Which app to deploy
+        type: choice
+        options: [all, api, storefront, dashboard]
+        required: true
+        default: all
+      run_migrations:
+        description: Run `prisma migrate deploy` before starting (api / all only)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+# One deploy per environment at a time. Never cancel a running one — it may be
+# mid-migration.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    strategy:
+      fail-fast: true
+      matrix:
+        app: ${{ inputs.app == 'all' && fromJSON('["api","storefront","dashboard"]') || fromJSON(format('["{0}"]', inputs.app)) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        run: |
+          echo "tag=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      # The deploy targets t3 (x86), which is also what GitHub's runners are, so
+      # this builds NATIVELY — no QEMU step, and none wanted: emulated builds of
+      # this repo are both far slower and observably flakier (turbo has failed
+      # mid-build under emulation).
+      #
+      # Moving to a Graviton box means `linux/arm64` here plus a
+      # `docker/setup-qemu-action` step — unless the runner is ARM too, in which
+      # case it stays native and only `platforms` changes.
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          platforms: linux/amd64
+          push: true
+          # Immutable sha tag is what the server pins to; the moving env tag is
+          # only for humans reading `docker images`.
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}/bookingos-${{ matrix.app }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}/bookingos-${{ matrix.app }}:${{ inputs.environment }}
+          # Scope carries the arch: switching platforms must not reuse the other
+          # architecture's layers.
+          cache-from: type=gha,scope=${{ matrix.app }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}-amd64
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # `prod` should carry required reviewers in Settings → Environments, which is
+    # what turns this into an approval gate. `stg` runs straight through.
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          APP: ${{ inputs.app }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ needs.build.outputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+          MIGRATE: ${{ inputs.run_migrations }}
+          # GITHUB_TOKEN is only valid inside the runner, so the box pulls with a
+          # separate read:packages PAT.
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: APP,ENVIRONMENT,TAG,OWNER,MIGRATE,GHCR_TOKEN
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+
+            OWNER_LC=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+            ENV_FILE=".env.${ENVIRONMENT}"
+            COMPOSE="docker compose --env-file ${ENV_FILE} -f docker-compose.deploy.yml"
+
+            test -f "$ENV_FILE" || { echo "::error::${ENV_FILE} missing on the server"; exit 1; }
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
+
+            # Pin the env file to this exact digest-stable tag, so a later manual
+            # `up -d` on the box runs the SAME image this deploy shipped.
+            pin() {
+              local var="$1" app="$2"
+              local image="ghcr.io/${OWNER_LC}/bookingos-${app}:${TAG}"
+              if grep -q "^${var}=" "$ENV_FILE"; then
+                sed -i "s|^${var}=.*|${var}=${image}|" "$ENV_FILE"
+              else
+                echo "${var}=${image}" >> "$ENV_FILE"
+              fi
+            }
+            case "$APP" in
+              all)        pin API_IMAGE api; pin STOREFRONT_IMAGE storefront; pin DASHBOARD_IMAGE dashboard ;;
+              api)        pin API_IMAGE api ;;
+              storefront) pin STOREFRONT_IMAGE storefront ;;
+              dashboard)  pin DASHBOARD_IMAGE dashboard ;;
+            esac
+
+            $COMPOSE pull
+
+            # Run migrations explicitly rather than leaning on depends_on: an
+            # already-exited migrate container counts as "completed", so compose
+            # would skip it and start the API against an un-migrated schema.
+            if [ "$MIGRATE" = "true" ] && { [ "$APP" = "all" ] || [ "$APP" = "api" ]; }; then
+              $COMPOSE run --rm migrate
+            fi
+
+            if [ "$APP" = "all" ]; then $COMPOSE up -d; else $COMPOSE up -d "$APP"; fi
+
+            $COMPOSE ps
+
+      - name: Explain a failed deploy
+        if: failure()
+        run: |
+          echo "::warning::Deploy failed. The env file on the server may already be pinned to ${{ needs.build.outputs.tag }} while the old containers keep running. Re-run this workflow, or roll back by pinning the previous tag and running 'docker compose ... up -d' on the box."

@@ -49,6 +49,14 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
+          file: apps/api/Dockerfile
+          push: false
+          tags: bookingos-api:ci
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
           file: apps/storefront/Dockerfile
           push: false
           tags: booking-storefront:ci
