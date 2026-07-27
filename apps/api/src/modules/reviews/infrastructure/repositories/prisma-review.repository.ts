@@ -25,7 +25,13 @@ import { ReviewAlreadyExists, ReviewReplyAlreadyExists } from '../../domain/erro
 import { pageOffset } from '../../../../shared/pagination/pagination';
 
 export const REVIEW_INCLUDE = Prisma.validator<Prisma.ReviewInclude>()({
-  booking: { select: { code: true, settlement: { select: { completedAt: true } } } },
+  booking: {
+    select: {
+      code: true,
+      settlement: { select: { completedAt: true } },
+      resource: { select: { timezone: true } },
+    },
+  },
   listing: { select: { title: true, slug: true, photos: true } },
   group: { select: { title: true, slug: true } },
   partner: { select: { name: true } },
@@ -70,6 +76,7 @@ export function toReviewRecord(row: Row): ReviewRecord {
     serviceCompletedAt: row.booking.settlement?.completedAt ?? null,
     bookingStartsAt: null,
     bookingEndsAt: null,
+    resourceTimezone: row.booking.resource.timezone,
     createdAt: row.createdAt,
   };
 }
@@ -316,6 +323,7 @@ export class PrismaReviewRepository implements IReviewRepository {
                 },
               },
               partner: { select: { name: true } },
+              resource: { select: { timezone: true } },
               settlement: { select: { completedAt: true } },
               updatedAt: true,
             },
@@ -351,6 +359,7 @@ export class PrismaReviewRepository implements IReviewRepository {
         serviceCompletedAt: row.settlement?.completedAt ?? row.updatedAt,
         bookingStartsAt: times.get(row.id)?.startsAt ?? null,
         bookingEndsAt: times.get(row.id)?.endsAt ?? null,
+        resourceTimezone: row.resource.timezone,
       };
     });
     const combined = [...pending, ...reviewed].sort((a, b) => {
