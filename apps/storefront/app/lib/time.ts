@@ -59,8 +59,8 @@ export function dateLabelInTz(utcIsoOrDate: string, tz: string, locale: string):
   }).format(new Date(utcIsoOrDate));
 }
 
-/** Today's `YYYY-MM-DD` in `tz`. */
-export function todayInTz(tz: string): string {
+/** Today's `YYYY-MM-DD` in `tz`, optionally anchored to a supplied instant. */
+export function todayInTz(tz: string, at = new Date()): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
       timeZone: tz,
@@ -68,7 +68,7 @@ export function todayInTz(tz: string): string {
       month: '2-digit',
       day: '2-digit',
     })
-      .formatToParts(new Date())
+      .formatToParts(at)
       .map((p) => [p.type, p.value]),
   );
   return `${parts.year}-${parts.month}-${parts.day}`;

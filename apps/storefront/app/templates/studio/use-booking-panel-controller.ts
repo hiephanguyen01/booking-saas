@@ -20,6 +20,7 @@ export function useBookingPanelController({
   quote,
   initialStart,
   initialEnd,
+  initialToday,
 }: {
   listing: PublicListingDetailResponse;
   mode: AvailabilityMode;
@@ -27,6 +28,7 @@ export function useBookingPanelController({
   quote: QuoteResponse | null;
   initialStart?: string | null;
   initialEnd?: string | null;
+  initialToday: string;
 }) {
   const locale = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,7 +42,7 @@ export function useBookingPanelController({
   const selectedPackage = packages.find((item) => item.id === packageId) ?? null;
   const inventory =
     mode === 'inventory'
-      ? getInventorySelection(searchParams, listing.modeConfig, timezone)
+      ? getInventorySelection(searchParams, listing.modeConfig, timezone, initialToday)
       : null;
   const start = inventory
     ? inventory.start

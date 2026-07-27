@@ -23,8 +23,16 @@ import { DeferredSearchBar } from '../search/deferred-search-bar';
 import { StudioBookingCard } from './components/studio-booking-card';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
-  const { listing, mode, availability, quote, locations, selectionStart, selectionEnd } =
-    loaderData;
+  const {
+    listing,
+    mode,
+    availability,
+    quote,
+    locations,
+    selectionStart,
+    selectionEnd,
+    bookingToday,
+  } = loaderData;
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const { listingTypes } = useOutletContext<StorefrontContext>();
@@ -107,6 +115,7 @@ export function ListingPage({ loaderData, params }: Route.ComponentProps) {
                     quote={quote}
                     initialStart={selectionStart}
                     initialEnd={selectionEnd}
+                    initialToday={bookingToday}
                   />
                 ) : null}
               </>

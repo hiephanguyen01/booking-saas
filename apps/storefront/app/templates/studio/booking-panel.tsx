@@ -26,6 +26,7 @@ interface PanelProps {
   quote: QuoteResponse | null;
   initialStart?: string | null;
   initialEnd?: string | null;
+  initialToday: string;
 }
 
 /**
@@ -41,6 +42,7 @@ export function BookingPanel({
   quote,
   initialStart,
   initialEnd,
+  initialToday,
 }: PanelProps) {
   const { t } = useTranslation(NsI18n.Listing);
   const {
@@ -68,6 +70,7 @@ export function BookingPanel({
     quote,
     initialStart,
     initialEnd,
+    initialToday,
   });
 
   return (
@@ -129,6 +132,7 @@ export function BookingPanel({
             sp={searchParams}
             setSp={setSearchParams}
             tz={timezone}
+            today={initialToday}
           />
         ) : null}
 

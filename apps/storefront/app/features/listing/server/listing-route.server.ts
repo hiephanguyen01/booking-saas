@@ -36,10 +36,11 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
     throw new Response('Listing not found', { status: 404 });
   }
 
+  const requestNow = new Date();
   const mode = pickMode(searchParams.get('mode'), listing);
   const packageId = searchParams.get('packageId') ?? undefined;
   const requiresPackage = listing.bookingSelection === 'fixed_packages';
-  const today = todayInTz(DEFAULT_TZ);
+  const today = todayInTz(DEFAULT_TZ, requestNow);
   let availabilityPromise: ReturnType<typeof fetchAvailability> | null = null;
 
   if (!mode || (requiresPackage && !packageId)) {
@@ -97,6 +98,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
   );
 
   const availability = availabilityPromise ? await availabilityPromise : null;
+  const bookingToday = todayInTz(availability?.timezone ?? DEFAULT_TZ, requestNow);
 
   let selectionStart = searchParams.get('start');
   let selectionEnd = searchParams.get('end');
@@ -153,6 +155,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
     locations,
     selectionStart,
     selectionEnd,
+    bookingToday,
     auxiliaryData,
   };
 }
