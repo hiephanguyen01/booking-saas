@@ -26,19 +26,19 @@ export function deriveBookingPaymentState(
 ): BookingPaymentState {
   const bookingStatus = normalizeBookingStatus(status.bookingStatus);
   const paymentOutcome = searchParams.get('payment');
-  const paymentFailed =
-    paymentOutcome === 'cancel' ||
-    paymentOutcome === 'error' ||
-    // Backward compatibility for checkout links created before the SePay redirect normalization.
-    searchParams.get('cancelled') === '1' ||
-    status.paymentStatus === 'failed' ||
-    status.paymentStatus === 'expired' ||
-    bookingStatus === 'expired' ||
-    bookingStatus === 'rejected';
   const isSuccess =
-    !paymentFailed &&
-    (status.paymentStatus === 'succeeded' ||
-      (bookingStatus !== null && SUCCESS.has(bookingStatus)));
+    status.paymentStatus === 'succeeded' ||
+    (bookingStatus !== null && SUCCESS.has(bookingStatus));
+  const paymentFailed =
+    !isSuccess &&
+    (paymentOutcome === 'cancel' ||
+      paymentOutcome === 'error' ||
+      // Backward compatibility for checkout links created before the SePay redirect normalization.
+      searchParams.get('cancelled') === '1' ||
+      status.paymentStatus === 'failed' ||
+      status.paymentStatus === 'expired' ||
+      bookingStatus === 'expired' ||
+      bookingStatus === 'rejected');
   const isPending =
     !paymentFailed && !isSuccess && bookingStatus !== null && PENDING.has(bookingStatus);
 
