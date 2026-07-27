@@ -1,4 +1,4 @@
-import type { PublicListingDetailResponse } from '@booking/contracts';
+import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import type { RefObject } from 'react';
 import { BookingDialogFooter } from '../../components/booking-dialog-footer';
 import { NsI18n, useTranslation } from '../../lib/i18n';
@@ -19,7 +19,7 @@ export function PackageBookingDialog({
   onOpenChange: (open: boolean) => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
   selectedPackage: PublicPackageOption | null;
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   today: string;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
