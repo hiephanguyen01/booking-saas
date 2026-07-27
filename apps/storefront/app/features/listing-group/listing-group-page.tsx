@@ -27,7 +27,7 @@ import { minimumRoomPrice } from './room-attributes';
  * aggregates. Promotions remain absent until a truthful public contract exists.
  */
 export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData }) {
-  const { group, state, roomOptions, locations, relatedListings, bookingToday } = loaderData;
+  const { group, state, roomOptions, locations, relatedListings } = loaderData;
   const { listingTypes } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
@@ -124,7 +124,6 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           groupSlug={group.slug}
           mode={state.mode}
           date={state.date}
-          today={bookingToday}
           hideUnavailableByDefault={state.hasTimeSelection || state.hasDailyRange}
         />
 

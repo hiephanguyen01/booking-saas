@@ -3,7 +3,7 @@ import type {
   ListingGroupResponse,
   ListingResponse,
   PricingRuleResponse,
-  PublicListingDetailResponse,
+  PublicListingDetailWithTimezoneResponse,
   PublicListingGroupDetailResponse,
   ResourceResponse,
 } from '@booking/contracts';
@@ -141,7 +141,9 @@ export function toPricingRuleResponse(p: PricingRuleRecord): PricingRuleResponse
   };
 }
 
-export function toPublicListingDetailResponse(l: PublicListingRecord): PublicListingDetailResponse {
+export function toPublicListingDetailResponse(
+  l: PublicListingRecord,
+): PublicListingDetailWithTimezoneResponse {
   return {
     id: l.id,
     title: l.title,
@@ -160,6 +162,7 @@ export function toPublicListingDetailResponse(l: PublicListingRecord): PublicLis
     modeConfig: publicModeConfig(l.modeConfig),
     depositPercent: l.depositPercent,
     listingTypeSlug: l.listingTypeSlug,
+    timezone: l.resourceTimezone,
     group: l.group,
     cancellationPolicy: l.cancellationPolicy,
     effectiveCancellationPolicy: l.effectiveCancellationPolicy,

@@ -49,14 +49,18 @@ export function timeInTz(utcIso: string, tz: string): string {
   }).format(new Date(utcIso));
 }
 
-/** e.g. "T4, 20 thg 7" — a short date label in `tz`. */
+/** e.g. "T4, 20 thg 7" — a short date label for a UTC instant or literal date. */
 export function dateLabelInTz(utcIsoOrDate: string, tz: string, locale: string): string {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(utcIsoOrDate);
+  const value = dateOnly
+    ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
+    : new Date(utcIsoOrDate);
   return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
-    timeZone: tz,
+    timeZone: dateOnly ? 'UTC' : tz,
     weekday: 'short',
     day: '2-digit',
     month: 'short',
-  }).format(new Date(utcIsoOrDate));
+  }).format(value);
 }
 
 /** Today's `YYYY-MM-DD` in `tz`, optionally anchored to a supplied instant. */

@@ -1,4 +1,4 @@
-import type { PublicListingDetailResponse } from '@booking/contracts';
+import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import { minimumConfiguredPrice } from '../../../lib/booking-presentation';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { formatVnd } from '../../../lib/ui';
@@ -12,7 +12,7 @@ export function StudioBookingCard({
   preferredMode,
   today,
 }: {
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   preferredMode: ListingBookingMode;
   today: string;
 }) {
