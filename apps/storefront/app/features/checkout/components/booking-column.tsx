@@ -57,7 +57,7 @@ export function BookingColumn({
     listing.timezone,
     tListing,
   );
-  const slotCount = mode === 'hourly' ? Math.max(1, scheduleBadges.length) : 1;
+  const slotCount = mode === 'hourly' ? hourlySlotCount(start, end) : 1;
   const dayCount =
     mode === 'daily'
       ? Math.max(
@@ -202,6 +202,13 @@ export function BookingColumn({
   );
 }
 
+function hourlySlotCount(start: string, end: string): number {
+  const startMs = Date.parse(start);
+  const endMs = Date.parse(end);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return 1;
+  return Math.max(1, Math.round((endMs - startMs) / 3_600_000));
+}
+
 function buildScheduleBadges(
   mode: string,
   start: string,
@@ -219,7 +226,7 @@ function buildScheduleBadges(
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
     return [scheduleLabel(mode, start, end, qty, locale, timeZone, tListing)];
   }
-  const durationHours = Math.max(1, Math.round((endMs - startMs) / 3_600_000));
+  const durationHours = hourlySlotCount(start, end);
   if (durationHours > 6 || (endMs - startMs) % 3_600_000 !== 0) {
     return [
       `${timeInTz(start, timeZone)} - ${timeInTz(end, timeZone)} (${tListing('hours', { count: durationHours })})`,
