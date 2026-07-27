@@ -6,6 +6,7 @@ export * from './contracts/partner';
 export * from './contracts/listing-type';
 export * from './contracts/catalog-search';
 export * from './contracts/listing';
+export * from './contracts/public-listing';
 export * from './contracts/availability';
 export * from './contracts/booking';
 export * from './contracts/booking-access';

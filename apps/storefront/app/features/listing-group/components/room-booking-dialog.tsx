@@ -1,4 +1,4 @@
-import type { PublicListingDetailResponse } from '@booking/contracts';
+import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import type { MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
@@ -21,7 +21,7 @@ export function ListingBookingDialog({
   preferredMode,
   today,
 }: {
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   groupSlug?: string;
   preferredMode: ListingBookingMode;
   today: string;

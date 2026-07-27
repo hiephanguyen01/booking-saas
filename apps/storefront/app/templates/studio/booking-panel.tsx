@@ -1,7 +1,7 @@
 import type {
   AvailabilityMode,
   AvailabilityResponse,
-  PublicListingDetailResponse,
+  PublicListingDetailWithTimezoneResponse,
   QuoteResponse,
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
@@ -20,7 +20,7 @@ import {
 import { useBookingPanelController } from './use-booking-panel-controller';
 
 interface PanelProps {
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   mode: AvailabilityMode;
   availability: AvailabilityResponse | null;
   quote: QuoteResponse | null;

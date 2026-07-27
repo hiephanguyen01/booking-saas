@@ -1,13 +1,13 @@
 import type {
   AvailabilityResponse,
   HourlySlot,
-  PublicListingDetailResponse,
+  PublicListingDetailWithTimezoneResponse,
 } from '@booking/contracts';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useFetcher } from 'react-router';
 import { NsI18n, useTranslation } from '../../lib/i18n';
 import type { PublicPackageOption } from '../../lib/package-options';
-import { DEFAULT_TZ, dateLabelInTz } from '../../lib/time';
+import { dateLabelInTz } from '../../lib/time';
 import { useLocale } from '../../lib/use-locale';
 import type { loader as bookingDataLoader } from '../../routes/listing-booking-data';
 import { checkoutHref, slotInterval } from '../listing-group/listing-group-utils';
@@ -20,7 +20,7 @@ export function usePackageBookingDialogController({
   onOpenChange,
   returnFocusRef,
 }: {
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   selectedPackage: PublicPackageOption | null;
   onOpenChange: (open: boolean) => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
@@ -105,6 +105,7 @@ export function usePackageBookingDialogController({
   }, [currentData]);
 
   const availability = currentData?.availability ?? cachedAvailability;
+  const timezone = availability?.timezone ?? listing.timezone;
   const slots = useMemo(
     () => (availability?.mode === 'hourly' ? availability.days.flatMap((day) => day.slots) : []),
     [availability],
@@ -143,9 +144,9 @@ export function usePackageBookingDialogController({
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-        timeZone: availability?.timezone ?? DEFAULT_TZ,
+        timeZone: timezone,
       }),
-    [availability?.timezone, locale],
+    [locale, timezone],
   );
   const numberFormatter = useMemo(
     () => new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'vi-VN', { maximumFractionDigits: 1 }),
@@ -154,8 +155,8 @@ export function usePackageBookingDialogController({
   const selectionSummary = useMemo(() => {
     if (!date || !interval) return null;
     const duration = (Date.parse(interval.end) - Date.parse(interval.start)) / (60 * 60 * 1000);
-    return `${dateLabelInTz(date, DEFAULT_TZ, locale)} · ${timeFormatter.format(new Date(interval.start))}–${timeFormatter.format(new Date(interval.end))} · ${t('hours', { count: numberFormatter.format(duration) })}`;
-  }, [date, interval, locale, numberFormatter, t, timeFormatter]);
+    return `${dateLabelInTz(date, timezone, locale)} · ${timeFormatter.format(new Date(interval.start))}–${timeFormatter.format(new Date(interval.end))} · ${t('hours', { count: numberFormatter.format(duration) })}`;
+  }, [date, interval, locale, numberFormatter, t, timeFormatter, timezone]);
 
   function retryAvailability(): void {
     if (date) load({ date }, 'availability');
@@ -167,7 +168,7 @@ export function usePackageBookingDialogController({
 
   return {
     date,
-    timezone: availability?.timezone ?? DEFAULT_TZ,
+    timezone,
     availabilityPending,
     hasAvailability: Boolean(availability),
     availabilityError,
