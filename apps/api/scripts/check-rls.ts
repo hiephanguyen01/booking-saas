@@ -1,6 +1,6 @@
 /**
- * Static RLS coverage check (TONG-QUAN.md §6.4) — replaces the old
- * test/rls-coverage.integration.spec.ts, removed with the no-tests policy.
+ * Static RLS coverage check (TONG-QUAN.md §6.4) — replaces the integration test
+ * that used to cover this, removed with the no-tests policy (ADR 0005).
  *
  * Every Prisma model carrying a `tenant_id` column must have, somewhere in
  * prisma/migrations/, both:

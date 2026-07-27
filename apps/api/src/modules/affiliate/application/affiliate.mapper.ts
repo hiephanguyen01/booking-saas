@@ -104,8 +104,6 @@ export function toAffiliateListItem(
     pendingCommission: totals.pending.toString(),
     confirmedCommission: totals.confirmed.toString(),
     paidCommission: totals.paid.toString(),
-    // Deprecated: kept only until the tenant pages read the split above.
-    totalEarned: (totals.confirmed + totals.paid).toString(),
     createdAt: a.createdAt.toISOString(),
   };
 }

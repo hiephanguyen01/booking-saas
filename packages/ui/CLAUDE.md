@@ -2,7 +2,7 @@
 
 Local rules for the shared UI. Root context: [`../../AGENTS.md`](../../AGENTS.md).
 
-## No build, subpath exports, one barrel
+## No build, subpath exports only
 
 Ships **raw `.tsx`/`.ts` source** — no build step (`build` is an echo). Each consuming app compiles it,
 so every app must set `ssr: { noExternal: ['@booking/ui'] }` in `vite.config.ts`. Import via subpaths:
@@ -14,8 +14,9 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 import { cn } from '@booking/ui/lib/utils';
 ```
 
-Exports (`package.json`): `.` (a `src/index.ts` barrel exporting `cn`), `./globals.css`, `./lib/*`,
-`./components/*` (`.tsx`), `./components/form/types`, `./hooks/*`. A new plain-`.ts` component needs an
+Exports (`package.json`): `./globals.css`, `./lib/*`, `./components/*` (`.tsx`),
+`./components/form/types`, `./hooks/*`. There is **no `.` entry** — the unused `src/index.ts` barrel
+was deleted on 2026-07-27; always import via a subpath. A new plain-`.ts` component needs an
 explicit `exports` entry (`.tsx` is already covered). `react`/`react-dom`/`react-router` are
 peerDependencies (apps own the versions); Radix/cva/cmdk/lucide/react-hook-form etc. are regular deps
 here — apps must not redeclare them.
@@ -24,7 +25,7 @@ here — apps must not redeclare them.
 
 Theme tokens live in `src/styles/globals.css` (apps `@import '@booking/ui/globals.css'`). There is **no**
 `tailwind-preset.ts` and **no** per-app `tailwind.config.ts` / `components.json` in the apps (Tailwind
-v4 via `@tailwindcss/vite`; shared base at `packages/config/tailwind/base.css`). Style with **shadcn
+v4 via `@tailwindcss/vite`; `globals.css` is the only shared base). Style with **shadcn
 semantic tokens only** (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`,
 `text-primary`/`bg-primary`, `ring-ring`, `destructive`) — never `text-gray-*`/`bg-white`/hardcoded
 palette on a themed surface (narrow exceptions: text/scrims over a photo, universal status green).
@@ -56,5 +57,11 @@ Never re-introduce a per-call-site height/radius/text-size on a form control: ra
 and `text-base md:text-sm` keeps mobile text at 16px so iOS Safari doesn't zoom on focus. A height on an
 `Input`/`Select`/`Textarea`/`InputGroup` in app code is a defect; use `data-[size=sm]` for compact cases.
 
-> Note: `src/index.ts` (the `.` barrel) is currently unused by apps — see
-> [`../../docs/deprecated-artifacts.md`](../../docs/deprecated-artifacts.md). Import via subpaths.
+## Unused primitives
+
+17 vendored shadcn primitives currently have **zero importers** — `aspect-ratio`, `bubble`,
+`button-group`, `combobox`, `context-menu`, `direction`, `hover-card`, `item`, `kbd`, `marker`,
+`menubar`, `message`, `message-scroller`, `navigation-menu`, `resizable`, `scroll-area`, `slider`.
+They are kept on purpose as ready-to-use registry copies; don't treat them as dead code, but do check
+whether one already covers your need before adding a new component. Deleting them would also orphan
+the `@base-ui/react`, `@shadcn/react`, and `react-resizable-panels` dependencies.

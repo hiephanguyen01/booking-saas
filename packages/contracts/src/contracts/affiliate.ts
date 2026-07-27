@@ -245,13 +245,6 @@ export const affiliateListItemSchema = z.object({
   confirmedCommission: z.string(),
   /** Commission already settled through a payout. */
   paidCommission: z.string(),
-  /**
-   * confirmed + paid, VND đồng digit string.
-   * @deprecated Conflates money owed with money already paid — read
-   * `confirmedCommission` / `paidCommission` instead. Kept until the tenant
-   * affiliate pages move to the split.
-   */
-  totalEarned: z.string(),
   createdAt: z.string(),
 });
 export type AffiliateListItem = z.infer<typeof affiliateListItemSchema>;

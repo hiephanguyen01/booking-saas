@@ -38,11 +38,8 @@ apps/dashboard    @booking/dashboard React Router 8 SSR, /admin /tenant /partner
 packages/contracts @booking/contracts zod schemas + inferred types (FE↔BE contract) → dist
 packages/ui       @booking/ui         shadcn + GenericForm + theme, raw TSX (no build)
 packages/api-client @booking/api-client typed server-side HTTP client (loaders/actions)
-packages/auth     @booking/auth       permission helpers (token.ts is dead — see deprecated-artifacts)
+packages/auth     @booking/auth       permission helpers (hasScope/hasPermission/defaultAreaFor)
 packages/i18n     @booking/i18n        i18next locales (storefront only; dashboard is Vietnamese-hardcoded)
-packages/query    @booking/query       TanStack Query provider — ZERO consumers (deprecated)
-packages/config   @booking/config      shared tsconfig/eslint/prettier presets — ZERO consumers
-packages/shared   (dead: dist-only, no package.json — deprecated)
 ```
 
 The API's internals: 13 bounded contexts under `apps/api/src/modules/*` (identity-access, tenancy,

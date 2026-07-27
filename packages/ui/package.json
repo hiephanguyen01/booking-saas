@@ -7,7 +7,6 @@
     "**/*.css"
   ],
   "exports": {
-    ".": "./src/index.ts",
     "./globals.css": "./src/styles/globals.css",
     "./lib/*": "./src/lib/*.ts",
     "./components/form/types": "./src/components/form/types.ts",

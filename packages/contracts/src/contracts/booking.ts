@@ -72,15 +72,10 @@ export type CancelBookingInput = z.infer<typeof cancelBookingInputSchema>;
 
 /**
  * Generic optional-reason body shared by the partner reject / no-show / cancel
- * endpoints (§8.2). Replaces the old `markNoShowInputSchema` (kept as an alias
- * for backward compatibility) — the shape is identical.
+ * endpoints (§8.2).
  */
 export const reasonInputSchema = z.object({ reason: z.string().max(500).optional() });
 export type ReasonInput = z.infer<typeof reasonInputSchema>;
-
-/** @deprecated Use {@link reasonInputSchema}. Retained so existing importers keep compiling. */
-export const markNoShowInputSchema = reasonInputSchema;
-export type MarkNoShowInput = ReasonInput;
 
 /**
  * Guest upgrade-to-account (§8.6): a passwordless guest-checkout user sets a

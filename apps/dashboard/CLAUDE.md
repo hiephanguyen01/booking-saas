@@ -46,8 +46,9 @@ BFF pattern: `app/lib/api.server.ts` re-exports `apiGet`/`apiPost`/`apiPatch`/`a
 authenticates every request into an AsyncLocalStorage context that `requireTenant`/area guards read.
 Sessions are Redis-backed; the cookie holds only a signed id. **Never fetch the backend from the
 browser** — all data goes through loaders/actions. (The one prior browser-side react-query fetch was
-removed on 2026-07-17; there is no `@tanstack/react-query`, `@booking/query`, or direct `axios`
-dependency any more. Don't reintroduce them — filter/paginate via the URL + a loader re-run.)
+removed on 2026-07-17; there is no `@tanstack/react-query` or direct `axios` dependency any more, and
+the `@booking/query` package itself was deleted on 2026-07-27. Don't reintroduce them —
+filter/paginate via the URL + a loader re-run.)
 
 Forms use `GenericForm` with a `@booking/contracts` zod schema (see
 [`../../docs/conventions.md`](../../docs/conventions.md) → Forms). UI is Vietnamese-hardcoded.

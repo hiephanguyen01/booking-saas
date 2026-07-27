@@ -5,7 +5,6 @@ export function toContentReportResponse(record: ContentReportRecord): ContentRep
   return {
     id: record.id,
     target: record.target,
-    targetType: record.target,
     targetId: record.targetId,
     targetTitle: record.targetTitle,
     targetSlug: record.targetSlug,
