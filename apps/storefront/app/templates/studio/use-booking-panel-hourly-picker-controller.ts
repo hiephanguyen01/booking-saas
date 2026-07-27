@@ -7,13 +7,7 @@ import {
   toggleContiguousSlot,
 } from '../../features/listing-group/listing-group-utils';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import {
-  dateLabelInTz,
-  dateOnlyToLocal,
-  localToDateOnly,
-  timeInTz,
-  todayInTz,
-} from '../../lib/time';
+import { dateLabelInTz, dateOnlyToLocal, localToDateOnly, timeInTz } from '../../lib/time';
 import { useLocale } from '../../lib/use-locale';
 import type { SetSearchParams } from './booking-panel-types';
 
@@ -24,6 +18,7 @@ export function useBookingPanelHourlyPickerController({
   selectedStart,
   setSp,
   sp,
+  today,
   tz,
 }: {
   availability: AvailabilityResponse | null;
@@ -32,11 +27,11 @@ export function useBookingPanelHourlyPickerController({
   selectedStart: string | null;
   setSp: SetSearchParams;
   sp: URLSearchParams;
+  today: string;
   tz: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
-  const today = todayInTz(tz);
   const selectedDayValue = sp.get('day') || sp.get('date');
   const availabilityDay = selectedDayValue ?? today;
   const durationSlots: HourlySlot[] =
@@ -176,7 +171,6 @@ export function useBookingPanelHourlyPickerController({
     setCalendarOpen,
     setOnlyAvailable,
     slotsHaveUnavailable: slots.some((slot) => !slot.available),
-    today,
     visibleSlots,
   };
 }
