@@ -64,32 +64,30 @@ async function main(): Promise<void> {
     console.log(`applied public-read policy to "${cfg.bucket}"`);
   }
 
+  const storefrontAssets = resolve(process.cwd(), '../storefront/public/booking-studio');
   const defaultAssets = [
     {
       label: 'logo',
       key: 'defaults/booking-studio/logo.png',
-      path: resolve(__dirname, '../../storefront/public/booking-studio/logo.png'),
+      path: resolve(storefrontAssets, 'logo.png'),
       contentType: 'image/png',
     },
     {
       label: 'app icon',
       key: 'defaults/booking-studio/app-icon.png',
-      path: resolve(__dirname, '../../storefront/public/booking-studio/app-icon.png'),
+      path: resolve(storefrontAssets, 'app-icon.png'),
       contentType: 'image/png',
     },
     {
       label: 'background',
       key: 'defaults/booking-studio/background.png',
-      path: resolve(__dirname, '../../storefront/public/booking-studio/hero.png'),
+      path: resolve(storefrontAssets, 'hero.png'),
       contentType: 'image/png',
     },
     ...[1, 2, 3, 4].map((index) => ({
       label: `carousel image ${index}`,
       key: `defaults/booking-studio/carousel/${String(index).padStart(2, '0')}.jpg`,
-      path: resolve(
-        __dirname,
-        `../../storefront/public/booking-studio/carousel/${String(index).padStart(2, '0')}.jpg`,
-      ),
+      path: resolve(storefrontAssets, `carousel/${String(index).padStart(2, '0')}.jpg`),
       contentType: 'image/jpeg',
     })),
   ] as const;

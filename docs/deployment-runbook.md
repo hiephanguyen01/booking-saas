@@ -792,18 +792,30 @@ nginx
 
 ### 12.2. Seed tenant settings
 
-Dùng password thật, không dùng demo password cho staging public:
+Dùng email vận hành và hai password thật khác nhau; không để seed rơi về platform admin
+`admin@bookingos.local` / `admin-dev-password` hoặc owner demo password trên staging public.
+Nhập password ẩn để chúng không nằm trong shell history:
 
 ```bash
+read -rp 'Platform admin email: ' SEED_ADMIN_EMAIL
+read -rsp 'Platform admin password: ' SEED_ADMIN_PASSWORD
+echo
+read -rsp 'Tenant owner password: ' SEED_OWNER_PASSWORD
+echo
+export SEED_ADMIN_EMAIL SEED_ADMIN_PASSWORD SEED_OWNER_PASSWORD
+
 docker compose \
   --env-file .env.stg \
   -f docker-compose.deploy.yml \
   -f docker-compose.stg-data.yml \
   run --rm \
   -e SEED_SCOPE=tenants \
-  -e SEED_OWNER_PASSWORD='REPLACE_WITH_REAL_OWNER_PASSWORD' \
-  api node ./node_modules/ts-node/dist/bin.js \
-  --transpile-only prisma/seed.ts
+  -e SEED_ADMIN_EMAIL \
+  -e SEED_ADMIN_PASSWORD \
+  -e SEED_OWNER_PASSWORD \
+  api node dist/operations/prisma/seed.js
+
+unset SEED_ADMIN_EMAIL SEED_ADMIN_PASSWORD SEED_OWNER_PASSWORD
 ```
 
 Seed này tạo platform settings, plans, permissions, hai tenant, domain, theme, subscription, owner,
@@ -818,8 +830,7 @@ docker compose \
   -f docker-compose.deploy.yml \
   -f docker-compose.stg-data.yml \
   run --rm \
-  api node ./node_modules/ts-node/dist/bin.js \
-  --transpile-only scripts/bootstrap-storage.ts
+  api node dist/operations/scripts/bootstrap-storage.js
 ```
 
 Với R2, script bỏ qua `PutBucketPolicy` và upload các default assets qua S3-compatible API. Public

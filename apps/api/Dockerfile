@@ -50,6 +50,10 @@ ENV NODE_ENV=production
 RUN apk add --no-cache openssl
 COPY --from=production-dependencies --chown=node:node /app /app
 COPY --from=builder --chown=node:node /app/apps/api/dist /app/apps/api/dist
+# The storage bootstrap uploads the same default tenant assets bundled by the
+# storefront. turbo prune for @booking/api intentionally excludes the storefront,
+# so copy this small asset directory explicitly into the runtime image.
+COPY --from=pruner --chown=node:node /app/apps/storefront/public/booking-studio /app/apps/storefront/public/booking-studio
 USER node
 WORKDIR /app/apps/api
 EXPOSE 3000

@@ -101,8 +101,9 @@ Then seed the tenants (settings only — no demo partners/listings):
 ```bash
 docker compose --env-file .env.stg \
   -f docker-compose.deploy.yml -f docker-compose.stg-data.yml run --rm \
-  -e SEED_SCOPE=tenants -e SEED_OWNER_PASSWORD='…' \
-  api node ./node_modules/ts-node/dist/bin.js --transpile-only prisma/seed.ts
+  -e SEED_SCOPE=tenants \
+  -e SEED_ADMIN_EMAIL='…' -e SEED_ADMIN_PASSWORD='…' -e SEED_OWNER_PASSWORD='…' \
+  api node dist/operations/prisma/seed.js
 ```
 
 See [`AGENTS.md` → Seed scopes](../AGENTS.md). Staging may instead seed the full demo data by omitting
@@ -113,7 +114,7 @@ Finally bootstrap the storage bucket and default assets once:
 ```bash
 docker compose --env-file .env.stg \
   -f docker-compose.deploy.yml -f docker-compose.stg-data.yml run --rm \
-  api node ./node_modules/ts-node/dist/bin.js --transpile-only scripts/bootstrap-storage.ts
+  api node dist/operations/scripts/bootstrap-storage.js
 ```
 
 For Cloudflare R2, create the bucket and connect its public custom domain in the Cloudflare
