@@ -1,16 +1,13 @@
-import type { HourlySlot, PublicListingDetailResponse } from '@booking/contracts';
+import type {
+  HourlySlot,
+  PublicListingDetailWithTimezoneResponse,
+} from '@booking/contracts';
 import { useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { normalizeDailyRange } from '../../../lib/daily-range';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import { packagesForMode } from '../../../lib/package-options';
-import {
-  DEFAULT_TZ,
-  addDays,
-  dateLabelInTz,
-  localToDateOnly,
-  zonedToUtcIso,
-} from '../../../lib/time';
+import { addDays, dateLabelInTz, localToDateOnly, zonedToUtcIso } from '../../../lib/time';
 import { useLocale } from '../../../lib/use-locale';
 import type { loader as bookingDataLoader } from '../../../routes/listing-group-booking-data';
 import {
@@ -29,7 +26,7 @@ export function useListingBookingDialogController({
   preferredMode,
   today,
 }: {
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   groupSlug?: string;
   preferredMode: ListingBookingMode;
   today: string;
@@ -278,17 +275,17 @@ export function useListingBookingDialogController({
     }
   }
 
+  const bookingTimezone = availability?.timezone ?? listing.timezone;
   const timeFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-        timeZone: availability?.timezone ?? DEFAULT_TZ,
+        timeZone: bookingTimezone,
       }),
-    [availability?.timezone, locale],
+    [bookingTimezone, locale],
   );
-  const bookingTimezone = availability?.timezone ?? DEFAULT_TZ;
   const bookingDateTimeFormatter = useMemo(() => {
     const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
     const weekday = new Intl.DateTimeFormat(tag, {
@@ -301,7 +298,7 @@ export function useListingBookingDialogController({
       hourCycle: 'h23',
       timeZone: bookingTimezone,
     });
-    const date = new Intl.DateTimeFormat(tag, {
+    const dateFormatter = new Intl.DateTimeFormat(tag, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -309,7 +306,7 @@ export function useListingBookingDialogController({
     });
 
     return (value: string): string =>
-      `${weekday.format(new Date(value))}, ${time.format(new Date(value))} ${date.format(new Date(value))}`;
+      `${weekday.format(new Date(value))}, ${time.format(new Date(value))} ${dateFormatter.format(new Date(value))}`;
   }, [bookingTimezone, locale]);
   const numberFormatter = useMemo(
     () => new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'vi-VN', { maximumFractionDigits: 1 }),
@@ -318,7 +315,7 @@ export function useListingBookingDialogController({
   const selectionSummary = useMemo(() => {
     if (mode === 'hourly' && date && interval) {
       const duration = (Date.parse(interval.end) - Date.parse(interval.start)) / (60 * 60 * 1000);
-      return `${dateLabelInTz(date, DEFAULT_TZ, locale)} · ${timeFormatter.format(new Date(interval.start))}–${timeFormatter.format(new Date(interval.end))} · ${t('hours', { count: numberFormatter.format(duration) })}`;
+      return `${dateLabelInTz(date, bookingTimezone, locale)} · ${timeFormatter.format(new Date(interval.start))}–${timeFormatter.format(new Date(interval.end))} · ${t('hours', { count: numberFormatter.format(duration) })}`;
     }
     if (mode === 'daily' && from && to) {
       const effectiveTo = normalizeDailyRange(from, to)?.to ?? to;
