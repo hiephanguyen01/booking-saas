@@ -16,7 +16,7 @@ import {
   moderationReasonInputSchema,
   pricingRuleInputSchema,
   pricingRuleResponseSchema,
-  publicListingDetailResponseSchema,
+  publicListingDetailWithTimezoneResponseSchema,
   publicListingGroupDetailResponseSchema,
   publishListingInputSchema,
   quoteQuerySchema,
@@ -56,7 +56,7 @@ export class ListingResponseDto extends createZodDto(listingResponseSchema) {}
 export class ResourceResponseDto extends createZodDto(resourceResponseSchema) {}
 export class PricingRuleResponseDto extends createZodDto(pricingRuleResponseSchema) {}
 export class PublicListingDetailResponseDto extends createZodDto(
-  publicListingDetailResponseSchema,
+  publicListingDetailWithTimezoneResponseSchema,
 ) {}
 export class PublicListingGroupDetailResponseDto extends createZodDto(
   publicListingGroupDetailResponseSchema,
