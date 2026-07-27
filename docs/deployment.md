@@ -15,6 +15,36 @@ env file and the hostnames in it: if staging runs a different topology it stops 
 `docker-compose.yml` at the repo root is **local dev only** (Postgres, Redis, Mailpit, MinIO). It is
 never used to deploy.
 
+### Staging runs its own data services
+
+Staging adds an overlay that brings Postgres and Redis up **as containers on the same box**, so no
+managed instances are needed there:
+
+```bash
+docker compose --env-file .env.stg \
+  -f docker-compose.deploy.yml -f docker-compose.stg-data.yml up -d
+```
+
+Production omits the overlay and points at managed instances. Application config is identical in both
+— only the connection strings differ, which is the point: staging still exercises the same images,
+the same migration path and the same nginx routing.
+
+Measured with the overlay (all six containers, idle): **~380 MB**, of which Postgres ~37 MB and Redis
+~12 MB. That fits a 2 GB box with room to spare.
+
+Two things the overlay buys you beyond cost:
+
+- Postgres runs as a **real superuser**, so the RLS migration creates `app_admin … BYPASSRLS`
+  unaided — the managed-Postgres check in [`deployment-runbook.md`](./deployment-runbook.md) §0 does
+  not apply to staging.
+- Redis is pinned to `maxmemory-policy noeviction`. That is required, not tuning: Redis holds BullMQ's
+  job and scheduler state, and any `allkeys-*` policy would silently evict queue keys under pressure,
+  stopping the outbox relay and the three sweeper workers with no error. Hitting the cap fails writes
+  loudly instead.
+
+What you give up: one EBS volume, no replica, and **no managed backups**. Take a `pg_dump` on a
+schedule if staging data matters to you.
+
 ## Topology
 
 ```
