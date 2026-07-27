@@ -1,13 +1,13 @@
 import type {
   AvailabilityMode,
   AvailabilityResponse,
-  PublicListingDetailResponse,
+  PublicListingDetailWithTimezoneResponse,
   QuoteResponse,
 } from '@booking/contracts';
 import { useSearchParams } from 'react-router';
 import { storefrontPaths } from '../../lib/locale-paths';
 import { packagesForMode } from '../../lib/package-options';
-import { DEFAULT_TZ, nightsBetween } from '../../lib/time';
+import { nightsBetween } from '../../lib/time';
 import { useLocale } from '../../lib/use-locale';
 import { getInventorySelection } from './booking-panel-inventory-picker';
 
@@ -22,7 +22,7 @@ export function useBookingPanelController({
   initialEnd,
   initialToday,
 }: {
-  listing: PublicListingDetailResponse;
+  listing: PublicListingDetailWithTimezoneResponse;
   mode: AvailabilityMode;
   availability: AvailabilityResponse | null;
   quote: QuoteResponse | null;
@@ -32,7 +32,7 @@ export function useBookingPanelController({
 }) {
   const locale = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
-  const timezone = availability?.timezone ?? DEFAULT_TZ;
+  const timezone = availability?.timezone ?? listing.timezone;
   const modes = listing.bookingModes.filter((item): item is AvailabilityMode =>
     (BOOKABLE_MODES as string[]).includes(item),
   );
