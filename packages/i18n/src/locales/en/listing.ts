@@ -112,6 +112,8 @@ export const enListing = {
     colPrice: 'Price',
     colChoice: 'Your choice',
     packageDuration: '{count} hours',
+    durationMinutes: '{count} minutes',
+    durationDays: '{count} days',
     photographyStyle: 'Style: {value}',
     photographyStyleLabel: 'Photography style',
     postProduction: 'Post-production',

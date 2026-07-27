@@ -132,34 +132,38 @@ export function RoomBookingDialogSteps({
 
       {fixedPackages ? (
         <div className="mb-5 space-y-2">
-          <h3 className="text-sm font-semibold">Chọn gói dịch vụ</h3>
+          <h3 className="text-sm font-semibold">{t('packages.selectPackage')}</h3>
           <div className="grid gap-2">
-            {packageModels.map(({ item, photo, selected, priceLabel }) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectPackage(item.id)}
-                className={cn(
-                  'rounded-lg border p-3 text-left',
-                  selected && 'border-primary bg-primary/5',
-                )}
-              >
-                <span className="flex items-center gap-3">
-                  {photo ? (
-                    <img src={photo} alt="" className="size-12 rounded-md object-cover" />
-                  ) : null}
-                  <span className="min-w-0 flex-1">
-                    <span className="flex justify-between gap-3 text-sm font-medium">
-                      <span>{item.name}</span>
-                      <span>{priceLabel}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {item.duration} {item.durationLabel}
+            {packageModels.map(({ item, photo, selected, priceLabel }) => {
+              const durationLabel =
+                item.mode === 'hourly'
+                  ? t('packages.durationMinutes', { count: item.duration })
+                  : t('packages.durationDays', { count: item.duration });
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelectPackage(item.id)}
+                  className={cn(
+                    'rounded-lg border p-3 text-left',
+                    selected && 'border-primary bg-primary/5',
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    {photo ? (
+                      <img src={photo} alt="" className="size-12 rounded-md object-cover" />
+                    ) : null}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex justify-between gap-3 text-sm font-medium">
+                        <span>{item.name}</span>
+                        <span>{priceLabel}</span>
+                      </span>
+                      <span className="text-xs text-muted-foreground">{durationLabel}</span>
                     </span>
                   </span>
-                </span>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
           {selectedPackageGallery ? (
             <RoomPhotoStrip

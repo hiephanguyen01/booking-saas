@@ -23,41 +23,49 @@ export function PackagePicker({
   fallbackPhoto?: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation(NsI18n.Listing);
+
   return (
     <div className="space-y-2">
-      <PickerLabel>Chọn gói dịch vụ</PickerLabel>
+      <PickerLabel>{t('packages.selectPackage')}</PickerLabel>
       <div className="grid gap-2">
-        {packages.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => onSelect(item.id)}
-            className={cn(
-              'rounded-lg border p-3 text-left transition-colors',
-              selectedId === item.id ? 'border-primary bg-primary/5' : 'hover:border-primary/50',
-            )}
-          >
-            <span className="flex items-center gap-3">
-              {(item.photos[0] ?? fallbackPhoto) ? (
-                <img
-                  src={item.photos[0] ?? fallbackPhoto}
-                  alt=""
-                  className="size-14 shrink-0 rounded-md object-cover"
-                />
-              ) : null}
-              <span className="min-w-0 flex-1">
-                <span className="flex justify-between gap-3 font-medium">
-                  <span>{item.name}</span>
-                  <span>{formatVnd(item.price)}</span>
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {item.duration} {item.durationLabel}
-                  {item.description ? ` · ${item.description}` : ''}
+        {packages.map((item) => {
+          const durationLabel =
+            item.mode === 'hourly'
+              ? t('packages.durationMinutes', { count: item.duration })
+              : t('packages.durationDays', { count: item.duration });
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className={cn(
+                'rounded-lg border p-3 text-left transition-colors',
+                selectedId === item.id ? 'border-primary bg-primary/5' : 'hover:border-primary/50',
+              )}
+            >
+              <span className="flex items-center gap-3">
+                {(item.photos[0] ?? fallbackPhoto) ? (
+                  <img
+                    src={item.photos[0] ?? fallbackPhoto}
+                    alt=""
+                    className="size-14 shrink-0 rounded-md object-cover"
+                  />
+                ) : null}
+                <span className="min-w-0 flex-1">
+                  <span className="flex justify-between gap-3 font-medium">
+                    <span>{item.name}</span>
+                    <span>{formatVnd(item.price)}</span>
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {durationLabel}
+                    {item.description ? ` · ${item.description}` : ''}
+                  </span>
                 </span>
               </span>
-            </span>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
