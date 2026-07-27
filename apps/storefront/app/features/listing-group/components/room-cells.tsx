@@ -133,7 +133,6 @@ export function RoomAction({
   date,
   state,
   slots,
-  today,
 }: {
   option: RoomOption;
   groupSlug: string;
@@ -141,7 +140,6 @@ export function RoomAction({
   date: string;
   state: RoomAvailabilityState;
   slots: HourlySlot[];
-  today: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const locale = useLocale();
@@ -152,7 +150,7 @@ export function RoomAction({
         option={option}
         groupSlug={groupSlug}
         preferredMode={mode}
-        today={today}
+        today={option.bookingToday}
       />
     );
   }
