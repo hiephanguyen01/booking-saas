@@ -1,18 +1,30 @@
 import { z } from 'zod';
 
+/**
+ * An empty env var means "not set".
+ *
+ * Deployment systems cannot omit a key conditionally — Docker Compose renders
+ * `${SESSION_SECRET_PREVIOUS:-}` as a present-but-empty variable, and k8s/CI
+ * behave the same. Without this, a blank `SESSION_SECRET_PREVIOUS=` in a deploy
+ * env file fails `.min(32)` and the storefront refuses to boot, even though the
+ * operator meant "I am not rotating right now".
+ */
+const optional = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
+
 const rawEnvironmentSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    BACKEND_URL: z.string().url().optional(),
-    REDIS_URL: z.string().url().optional(),
-    DASHBOARD_URL: z.string().url().optional(),
-    SESSION_SECRET_CURRENT: z.string().min(32).optional(),
-    SESSION_SECRET_PREVIOUS: z.string().min(32).optional(),
-    SESSION_SECRET: z.string().min(32).optional(),
-    SESSION_COOKIE_SECURE: z.enum(['true', 'false']).optional(),
-    ALLOW_MOCK_PAYMENTS: z.enum(['true', 'false']).optional(),
-    PAYMENT_REDIRECT_ORIGINS: z.string().optional(),
-    STORAGE_UPLOAD_ORIGINS: z.string().optional(),
+    BACKEND_URL: optional(z.string().url()),
+    REDIS_URL: optional(z.string().url()),
+    DASHBOARD_URL: optional(z.string().url()),
+    SESSION_SECRET_CURRENT: optional(z.string().min(32)),
+    SESSION_SECRET_PREVIOUS: optional(z.string().min(32)),
+    SESSION_SECRET: optional(z.string().min(32)),
+    SESSION_COOKIE_SECURE: optional(z.enum(['true', 'false'])),
+    ALLOW_MOCK_PAYMENTS: optional(z.enum(['true', 'false'])),
+    PAYMENT_REDIRECT_ORIGINS: optional(z.string()),
+    STORAGE_UPLOAD_ORIGINS: optional(z.string()),
   })
   .passthrough();
 
@@ -95,9 +107,7 @@ if (production && currentSecret === 'dev-session-secret-change-me-min-32-chars-l
   invalidEnvironment('SESSION_SECRET_CURRENT cannot use the documented development value');
 }
 
-const secureCookies = raw.SESSION_COOKIE_SECURE
-  ? raw.SESSION_COOKIE_SECURE === 'true'
-  : production;
+const secureCookies = raw.SESSION_COOKIE_SECURE ? raw.SESSION_COOKIE_SECURE === 'true' : production;
 if (production && !secureCookies) {
   invalidEnvironment('SESSION_COOKIE_SECURE cannot be false in production');
 }

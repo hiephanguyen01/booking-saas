@@ -90,7 +90,8 @@ prisma, redis, tenant-context, time, validation). Details in
 | Module-cycle guard | `pnpm check:module-cycles` |
 | Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
 | Format | `pnpm format` |
-| Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) |
+| Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) — **dev only** |
+| Deploy stg / prod | `docker compose --env-file .env.{stg,prod} -f docker-compose.deploy.yml up -d` — see [`docs/deployment.md`](./docs/deployment.md) |
 | Migrate DB | `pnpm --filter=@booking/api prisma:deploy` |
 | Regenerate Prisma client | `pnpm --filter=@booking/api prisma:generate` |
 | Seed demo data | `pnpm --filter=@booking/api seed` |
@@ -176,6 +177,7 @@ never drift between what production configures and what the demo fills in.
 - [`docs/data-model.md`](./docs/data-model.md) — models, RLS/GiST/ledger invariants, money & rate units
 - [`docs/conventions.md`](./docs/conventions.md) — backend & frontend conventions, errors, migrations, i18n
 - [`docs/glossary.md`](./docs/glossary.md) — domain terminology
+- [`docs/deployment.md`](./docs/deployment.md) — staging & production containers, migrations, releases, scaling
 - [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services)
 - [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
 - Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)

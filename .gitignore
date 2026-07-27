@@ -4,6 +4,13 @@ dist/
 *.log
 .env
 .env.local
+# Deployment env files hold real secrets (DB passwords, PAYMENTS_ENC_KEY, SMTP).
+# Only the *.example templates are tracked.
+.env.stg
+.env.prod
+.env.*.local
+!.env.example
+!.env.deploy.example
 .DS_Store
 .react-router/
 build/

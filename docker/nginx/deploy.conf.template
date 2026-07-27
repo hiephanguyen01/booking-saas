@@ -1,0 +1,42 @@
+# Rendered by the nginx image's envsubst entrypoint from ${DASHBOARD_HOST} and
+# ${API_HOST} (see docker-compose.deploy.yml). TLS terminates in front of this.
+
+upstream storefront_upstream { server storefront:3000; keepalive 32; }
+upstream dashboard_upstream  { server dashboard:3000;  keepalive 32; }
+upstream api_upstream        { server api:3000;        keepalive 32; }
+
+# Uploads go browser → storage directly via a presigned URL, so nothing large
+# passes through here except the presign request itself.
+client_max_body_size 2m;
+
+proxy_http_version 1.1;
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+proxy_set_header Connection        '';
+proxy_buffering off;
+
+server {
+  listen 80;
+  server_name ${DASHBOARD_HOST};
+  location / { proxy_pass http://dashboard_upstream; }
+}
+
+server {
+  listen 80;
+  server_name ${API_HOST};
+  location / { proxy_pass http://api_upstream; }
+}
+
+# DEFAULT SERVER — deliberately last and catch-all.
+#
+# The storefront resolves its tenant from the Host header against
+# `tenant_domains`, so a brand-new custom domain must reach it WITHOUT an nginx
+# change. Naming hosts here instead would mean every tenant onboarding needs a
+# deploy.
+server {
+  listen 80 default_server;
+  server_name _;
+  location / { proxy_pass http://storefront_upstream; }
+}

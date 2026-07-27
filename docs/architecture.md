@@ -129,9 +129,14 @@ local suite.
 
 ## Deployment status
 
-**No production deployment exists yet — this is dev-only.** The repo contains frontend Dockerfiles
-(`apps/{storefront,dashboard}/Dockerfile`, multi-stage with `turbo prune … --docker`), a
-`docker-compose.frontend.yml` (storefront + dashboard behind `nginx:1.27-alpine` on :8080, routing by
-Host), and `docker/nginx/default.conf`. There is **no API Dockerfile**, no registry push, and no
-Vercel/Fly/Render config. Treat the frontend compose stack as a not-yet-wired starting point, not a
-live topology.
+All three apps are containerised: `apps/{api,storefront,dashboard}/Dockerfile`, multi-stage with
+`turbo prune … --docker`. **`docker-compose.deploy.yml` runs staging and production from one file** —
+they differ only by env file (`.env.stg` / `.env.prod`, template in `.env.deploy.example`) and the
+hostnames in it. A one-shot `migrate` service applies `prisma migrate deploy` from the API image
+before `api` starts; `nginx:1.27-alpine` routes by Host with the storefront as the **default server**
+so tenant custom domains work without an nginx change. Postgres, Redis and S3 are managed services
+outside the compose file. CI builds all three images (no registry push wired yet).
+
+Full runbook — first deploy, seeding, releases, rollback, scaling: [`deployment.md`](./deployment.md).
+
+`docker-compose.yml` at the repo root remains **local dev only** (Postgres, Redis, Mailpit, MinIO).

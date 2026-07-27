@@ -1,0 +1,177 @@
+# BookingOS — container deployment for staging and production.
+#
+#   staging:     docker compose --env-file .env.stg  -f docker-compose.deploy.yml up -d
+#   production:  docker compose --env-file .env.prod -f docker-compose.deploy.yml up -d
+#
+# ONE compose file for both. The environments differ only by their env file and
+# the hostnames in it — running the same topology in staging is the whole point
+# of staging. See docs/deployment.md.
+#
+# Postgres and Redis are NOT in here: staging and production use managed
+# instances. `docker-compose.yml` (dev only) still provides them locally.
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: '10m', max-file: '5' }
+
+x-node-healthcheck: &node-healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 30s
+
+services:
+  # One-shot: applies pending migrations, then exits 0. Everything else waits for
+  # it. Built from the SAME image as the API so schema and code can never be on
+  # different commits.
+  migrate:
+    image: ${API_IMAGE:-bookingos/api:local}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ['node', './node_modules/prisma/build/index.js', 'migrate', 'deploy']
+    working_dir: /app/apps/api
+    environment:
+      MIGRATE_DATABASE_URL: ${MIGRATE_DATABASE_URL:?MIGRATE_DATABASE_URL is required}
+    restart: 'no'
+    logging: *logging
+    security_opt: ['no-new-privileges:true']
+
+  api:
+    image: ${API_IMAGE:-bookingos/api:local}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      ADMIN_DATABASE_URL: ${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL is required}
+      MIGRATE_DATABASE_URL: ${MIGRATE_DATABASE_URL:?MIGRATE_DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      PLATFORM_BASE_DOMAIN: ${PLATFORM_BASE_DOMAIN:?PLATFORM_BASE_DOMAIN is required}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL is required}
+      # Master key for tenant gateway credentials. There is no boot guard for
+      # this in the API — omit it and every stored secret is encrypted with the
+      # key published in the repo.
+      PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY is required}
+      PAYMENT_STALE_SEC: ${PAYMENT_STALE_SEC:-600}
+      ALLOW_MOCK_PAYMENTS: ${ALLOW_MOCK_PAYMENTS:-false}
+      S3_ENDPOINT: ${S3_ENDPOINT:?S3_ENDPOINT is required}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:?S3_PUBLIC_URL is required}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_PRESIGN_EXPIRES_SEC: ${S3_PRESIGN_EXPIRES_SEC:-300}
+      EMAIL_FROM: ${EMAIL_FROM:?EMAIL_FROM is required}
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST is required}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+    healthcheck:
+      # /health/ready checks Postgres AND Redis, so nginx never receives traffic
+      # for an API that cannot serve it.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      <<: *node-healthcheck
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ['no-new-privileges:true']
+
+  storefront:
+    image: ${STOREFRONT_IMAGE:-bookingos/storefront:local}
+    build:
+      context: .
+      dockerfile: apps/storefront/Dockerfile
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      # Server-to-server, inside the compose network — never the public URL.
+      BACKEND_URL: ${INTERNAL_API_URL:-http://api:3000}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      DASHBOARD_URL: ${DASHBOARD_URL:?DASHBOARD_URL is required}
+      SESSION_SECRET_CURRENT: ${SESSION_SECRET_CURRENT:?SESSION_SECRET_CURRENT is required}
+      SESSION_SECRET_PREVIOUS: ${SESSION_SECRET_PREVIOUS:-}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      ALLOW_MOCK_PAYMENTS: ${ALLOW_MOCK_PAYMENTS:-false}
+      PAYMENT_REDIRECT_ORIGINS: ${PAYMENT_REDIRECT_ORIGINS:?PAYMENT_REDIRECT_ORIGINS is required}
+      STORAGE_UPLOAD_ORIGINS: ${STORAGE_UPLOAD_ORIGINS:?STORAGE_UPLOAD_ORIGINS is required}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      <<: *node-healthcheck
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ['no-new-privileges:true']
+
+  dashboard:
+    image: ${DASHBOARD_IMAGE:-bookingos/dashboard:local}
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      BACKEND_URL: ${INTERNAL_API_URL:-http://api:3000}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      STOREFRONT_URL: ${STOREFRONT_URL:?STOREFRONT_URL is required}
+      SESSION_SECRET_CURRENT: ${SESSION_SECRET_CURRENT:?SESSION_SECRET_CURRENT is required}
+      SESSION_SECRET_PREVIOUS: ${SESSION_SECRET_PREVIOUS:-}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      <<: *node-healthcheck
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ['no-new-privileges:true']
+
+  # Terminates HTTP and routes by Host. TLS is expected to be terminated in front
+  # of this (cloud LB / Cloudflare); it forwards X-Forwarded-Proto so the apps
+  # still emit secure cookies and absolute https URLs.
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      storefront: { condition: service_healthy }
+      dashboard: { condition: service_healthy }
+      api: { condition: service_healthy }
+    environment:
+      # Storefront is the DEFAULT server: it serves every tenant domain by Host,
+      # so it must catch hostnames nginx has never heard of (§6.1).
+      DASHBOARD_HOST: ${DASHBOARD_HOST:?DASHBOARD_HOST is required}
+      API_HOST: ${API_HOST:?API_HOST is required}
+    volumes:
+      - ./docker/nginx/deploy.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - '${HTTP_PORT:-80}:80'
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ['no-new-privileges:true']
