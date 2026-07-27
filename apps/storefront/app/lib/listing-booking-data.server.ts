@@ -11,6 +11,7 @@ import { fetchQuote } from './catalog.server';
 import { canOffsetDateOnly, isValidDateOnly } from './date-only';
 import { datesInDailyRange, eligibleDailyRange } from './daily-range';
 import { rethrowCriticalDataError } from './optional-data.server';
+import { selectedPackageForListing } from './package-options';
 import { addDays, DEFAULT_TZ, todayInTz, zonedToUtcIso } from './time';
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
@@ -31,10 +32,16 @@ export async function loadListingBookingData(
     if (!mode || !listing.bookingModes.includes(mode)) {
       return bookingDataError('invalid-request', 400);
     }
-    const packageId = url.searchParams.get('packageId') ?? undefined;
-    if (listing.bookingSelection === 'fixed_packages' && !packageId) {
+
+    const requestedPackageId = url.searchParams.get('packageId');
+    const selectedPackage = selectedPackageForListing(listing, mode, requestedPackageId);
+    if (
+      (listing.bookingSelection === 'fixed_packages' && !selectedPackage) ||
+      (listing.bookingSelection !== 'fixed_packages' && requestedPackageId !== null)
+    ) {
       return bookingDataError('invalid-request', 400);
     }
+    const packageId = selectedPackage?.id;
 
     const timezone = DEFAULT_TZ;
     if (mode === 'hourly') {
@@ -100,13 +107,7 @@ export async function loadListingBookingData(
       ...(packageId ? { packageId } : {}),
     });
     const config = (listing.modeConfig.daily ?? {}) as Record<string, unknown>;
-    const selectedPackage = Array.isArray(config.packages)
-      ? (config.packages.find(
-          (item) =>
-            item && typeof item === 'object' && (item as Record<string, unknown>).id === packageId,
-        ) as Record<string, unknown> | undefined)
-      : undefined;
-    const durationDays = finiteNumber(selectedPackage?.durationDays, 0);
+    const durationDays = selectedPackage?.duration ?? 0;
     const fixedPackageRange =
       listing.bookingSelection === 'fixed_packages' &&
       durationDays > 0 &&
