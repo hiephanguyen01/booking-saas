@@ -50,6 +50,7 @@ export interface ReviewRecord {
   serviceCompletedAt: Date | null;
   bookingStartsAt: Date | null;
   bookingEndsAt: Date | null;
+  resourceTimezone: string;
   createdAt: Date;
 }
 
@@ -66,6 +67,7 @@ export interface PendingReviewRecord {
   serviceCompletedAt: Date | null;
   bookingStartsAt: Date | null;
   bookingEndsAt: Date | null;
+  resourceTimezone: string;
 }
 
 export interface ReviewSummaryRecord {
