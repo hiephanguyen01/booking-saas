@@ -2,7 +2,7 @@ import type { AvailabilityResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { NsI18n, useTranslation } from '../../lib/i18n';
-import { addDays, todayInTz, zonedToUtcIso } from '../../lib/time';
+import { addDays, zonedToUtcIso } from '../../lib/time';
 import { PickerLabel } from './booking-panel-presentation';
 import type { SetSearchParams } from './booking-panel-types';
 
@@ -33,9 +33,10 @@ export function getInventorySelection(
   sp: URLSearchParams,
   modeConfig: Record<string, unknown>,
   tz: string,
+  today: string,
 ): InventorySelection {
   const unit = ((modeConfig.inventory ?? {}) as { unit?: 'hour' | 'day' }).unit ?? 'day';
-  const from = (sp.get('from') || todayInTz(tz)).slice(0, 10);
+  const from = (sp.get('from') || today).slice(0, 10);
   const to = (sp.get('to') || addDays(from, 1)).slice(0, 10);
   const parsedQty = Number(sp.get('qty') || sp.get('quantity') || '1');
   const qty = Number.isFinite(parsedQty) && parsedQty >= 1 ? Math.floor(parsedQty) : 1;
@@ -48,15 +49,16 @@ export function InventoryPicker({
   sp,
   setSp,
   tz,
+  today,
 }: {
   availability: AvailabilityResponse | null;
   selection: InventorySelection;
   sp: URLSearchParams;
   setSp: SetSearchParams;
   tz: string;
+  today: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const today = todayInTz(tz);
   const remaining = availability?.mode === 'inventory' ? availability.inventory.remaining : 0;
   const { from: fromDate, to: toDate, qty, unit } = selection;
 
