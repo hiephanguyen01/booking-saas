@@ -2,13 +2,7 @@ import type { AvailabilityResponse, HourlySlot } from '@booking/contracts';
 import { useMemo } from 'react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { PublicPackageOption } from '../../../lib/package-options';
-import {
-  DEFAULT_TZ,
-  dateLabelInTz,
-  dateOnlyToLocal,
-  localToDateOnly,
-  todayInTz,
-} from '../../../lib/time';
+import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '../../../lib/time';
 import { formatVnd } from '../../../lib/ui';
 import { useLocale } from '../../../lib/use-locale';
 
@@ -20,6 +14,7 @@ export function useRoomBookingDialogStepsController({
   listingTitle,
   listingPhotos,
   date,
+  today,
   from,
   to,
   availability,
@@ -35,6 +30,7 @@ export function useRoomBookingDialogStepsController({
   listingTitle: string;
   listingPhotos: string[];
   date: string | null;
+  today: string;
   from: string | null;
   to: string | null;
   availability: AvailabilityResponse | null;
@@ -45,7 +41,6 @@ export function useRoomBookingDialogStepsController({
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
-  const today = todayInTz(DEFAULT_TZ);
   const todayDate = dateOnlyToLocal(today);
   const openDates = useMemo(
     () =>
