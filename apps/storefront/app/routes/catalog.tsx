@@ -1,7 +1,7 @@
 import type { Route } from './+types/catalog';
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
-import { CatalogPage } from '~/features/catalog/catalog-page';
-import { buildCatalogMeta } from '~/features/catalog/catalog-meta';
+import { CatalogPage } from '~/features/catalog/components/catalog-page';
+import { buildCatalogMeta } from '~/features/catalog/lib/catalog-meta';
 import { loadCatalogRoute } from '~/features/catalog/server/catalog-route.server';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 

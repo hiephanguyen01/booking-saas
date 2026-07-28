@@ -18,11 +18,11 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router';
 import { CatalogResultSkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { Route } from '../../routes/+types/catalog';
+import type { Route } from '../../../routes/+types/catalog';
 import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
 import { SearchForm } from '~/features/search/components/search-form';
-import { CatalogPagination } from './components/catalog-pagination';
-import { FilterPanel } from './components/filter-panel';
+import { CatalogPagination } from './catalog-pagination';
+import { FilterPanel } from './filter-panel';
 import { type CatalogSortItem, useCatalogPageController } from './use-catalog-page-controller';
 
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
