@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { cn } from '@booking/ui/lib/utils';
 
 const MARKET_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+const DAY_MS = 86_400_000;
+const MARKET_DAY_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: MARKET_TIME_ZONE,
+});
 
 type ReviewTimeVariant = 'day' | 'precise';
 
@@ -48,8 +55,8 @@ function formatRelativeTime(
 ): string {
   const timestamp = new Date(value).getTime();
   if (variant === 'day') {
-    const days = Math.round((timestamp - now) / 86_400_000);
-    if (Math.abs(days) < 1) return locale === 'en' ? 'Today' : 'Hôm nay';
+    const days = marketCalendarDay(timestamp) - marketCalendarDay(now);
+    if (days === 0) return locale === 'en' ? 'Today' : 'Hôm nay';
     return new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
       numeric: 'auto',
     }).format(days, 'day');
@@ -77,4 +84,12 @@ function formatRelativeTime(
   }
 
   return formatter.format(Math.round(duration), 'year');
+}
+
+function marketCalendarDay(timestamp: number): number {
+  const parts = MARKET_DAY_FORMATTER.formatToParts(timestamp);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const day = Number(parts.find((part) => part.type === 'day')?.value);
+  return Date.UTC(year, month - 1, day) / DAY_MS;
 }
