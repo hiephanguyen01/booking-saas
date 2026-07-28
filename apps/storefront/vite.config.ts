@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [tailwindcss(), reactRouter()],
+    resolve: {
+      alias: { '~': fileURLToPath(new URL('./app', import.meta.url)) },
+    },
     server: { host, port },
     preview: { port },
     // @booking/ui ships raw TSX and is compiled by the consuming app.
