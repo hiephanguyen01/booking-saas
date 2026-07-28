@@ -1,6 +1,6 @@
 import { useOutletContext } from 'react-router';
 import { AuthFrame, SuccessState } from '~/features/auth/components';
-import { requireFlowPhaseOnly } from '~/lib/auth-routes.server';
+import { requireFlowPhaseOnly } from '~/features/auth/server/auth-routes.server';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/forgot-password-success';

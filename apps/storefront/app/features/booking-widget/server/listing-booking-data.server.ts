@@ -6,13 +6,13 @@ import {
   type PublicListingDetailWithTimezoneResponse,
 } from '@booking/contracts';
 import { data } from 'react-router';
-import { fetchAvailability } from './booking.server';
-import { fetchQuote } from './catalog.server';
-import { canOffsetDateOnly, isValidDateOnly } from './date-only';
-import { datesInDailyRange, eligibleDailyRange } from './daily-range';
-import { rethrowCriticalDataError } from './optional-data.server';
-import { selectedPackageForListing } from './package-options';
-import { addDays, todayInTz, zonedToUtcIso } from './time';
+import { fetchAvailability } from '~/lib/booking.server';
+import { fetchQuote } from '~/lib/catalog.server';
+import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
+import { datesInDailyRange, eligibleDailyRange } from '~/lib/daily-range';
+import { rethrowCriticalDataError } from '~/lib/optional-data.server';
+import { selectedPackageForListing } from '~/lib/package-options';
+import { addDays, todayInTz, zonedToUtcIso } from '~/lib/time';
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
 

@@ -1,7 +1,7 @@
 import { Link, useActionData, useOutletContext } from 'react-router';
 import type { Route } from './+types/login';
 import { AuthFrame, SocialButtons, StartForm } from '~/features/auth/components';
-import { loginAction } from '~/lib/auth-routes.server';
+import { loginAction } from '~/features/auth/server/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';

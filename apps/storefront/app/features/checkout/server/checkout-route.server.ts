@@ -19,7 +19,7 @@ import {
   buildCheckoutIdempotencyKey,
   createCheckoutAttemptId,
   parseCheckoutAttemptId,
-} from '~/lib/checkout-idempotency.server';
+} from '~/features/checkout/server/checkout-idempotency.server';
 import { getCheckoutFlowService, maskCheckoutEmail } from '~/lib/checkout-flow.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
 import { errorStatus } from '~/lib/http-status';

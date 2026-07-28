@@ -1,6 +1,6 @@
 import { Link, useActionData, useOutletContext } from 'react-router';
 import { AuthFrame, StartForm } from '~/features/auth/components';
-import { startResetAction } from '~/lib/auth-routes.server';
+import { startResetAction } from '~/features/auth/server/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';

@@ -12,19 +12,19 @@ import {
   type AuthOtpVerifiedResponse,
 } from '@booking/contracts';
 import { data, redirect } from 'react-router';
-import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from './auth-flow.server';
-import { backendLogin, backendLogout, publicPost } from './api.server';
-import { getOptionalAuth } from './auth.server';
+import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from '~/lib/auth-flow.server';
+import { backendLogin, backendLogout, publicPost } from '~/lib/api.server';
+import { getOptionalAuth } from '~/lib/auth.server';
 import {
   formRequestFailureStatus,
   readFormRequestBody,
   type FormRequestBody,
-} from './form-request.server';
-import { requireLocale } from './i18n.server';
-import { suppressStorefrontSessionCommit } from './request-context.server';
-import { safeRedirectPath } from './safe-redirect';
-import { createUserSession, destroyUserSession } from './session.server';
-import type { AuthActionData } from './auth-types';
+} from '~/lib/form-request.server';
+import { requireLocale } from '~/lib/i18n.server';
+import { suppressStorefrontSessionCommit } from '~/lib/request-context.server';
+import { safeRedirectPath } from '~/lib/safe-redirect';
+import { createUserSession, destroyUserSession } from '~/lib/session.server';
+import type { AuthActionData } from '~/lib/auth-types';
 
 const AUTH_MAX_FORM_BYTES = 16 * 1024;
 const fields = (form: FormData) => Object.fromEntries(form.entries());

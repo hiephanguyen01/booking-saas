@@ -1,7 +1,7 @@
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/register-success';
 import { AuthFrame, SuccessState } from '~/features/auth/components';
-import { requireFlowPhaseOnly } from '~/lib/auth-routes.server';
+import { requireFlowPhaseOnly } from '~/features/auth/server/auth-routes.server';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { StorefrontContext } from '~/root';
 export const meta = ({ params }: Route.MetaArgs) => [
