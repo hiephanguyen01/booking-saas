@@ -1,8 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–5 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
-của chủ dự án; Phase 6–13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–6 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
+của chủ dự án; Phase 7–13 chưa làm
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -19,8 +19,8 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 | # | Vấn đề | Phase | Xong? |
 | --- | --- | --- | --- |
 | 1 | 4 bucket chồng chéo, 20 import `+types` + các import ngược khác `features → routes`, 6 leak `templates → features`, 7 leak `layouts → features` | 2–5 | ✅ |
-| 2 | 3 implementation song song cho "chọn ngày → chọn slot → quote" (~2.6k LOC) | 6 | ❌ |
-| 3 | 2 dialog shell copy gần nguyên, khác nhau ở SSR/hydration | 6 | ❌ |
+| 2 | 3 implementation song song cho "chọn ngày → chọn slot → quote" (~2.6k LOC) | 6 | ✅ |
+| 3 | 2 dialog shell copy gần nguyên, khác nhau ở SSR/hydration | 6 | ✅ |
 | 4 | 3 page shell copy tay và đã drift | 7 | ❌ |
 | 5 | `routes/` không đồng nhất — `bookings.tsx` 236 dòng chứa cả UI | 8 | ❌ |
 | 6 | i18n bypass — 20 chuỗi hardcode dù có sẵn 10 namespace | 9 | ❌ |
@@ -37,7 +37,7 @@ Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-leve
 
 ---
 
-## 2. Đã làm gì (Phase 1–5)
+## 2. Đã làm gì (Phase 1–6)
 
 Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
 loader/action contract hay URL.
@@ -126,6 +126,20 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
 - Thêm `pnpm check:frontend-structure`. Bucket/feature/server placement đều xanh; LOC gate storefront
   chỉ đỏ `routes/bookings.tsx` (236 dòng), đúng nợ Phase 8. Script **chưa nối CI**.
 
+### Phase 6 — gộp booking engine
+
+- **6.1 (`33a3ed6a`)** — hai shell về một `booking-dialog-shell.tsx`. Listing giữ CSS branch. Riêng
+  controlled packages phải chọn duy nhất Dialog hoặc Drawer bằng JS: cả hai content đều portal vào
+  `body`, nên mount song song với cùng `open` tạo 2 overlay + 2 focus trap; chủ dự án đã duyệt ngoại lệ
+  sau khi xem bằng chứng runtime.
+- **6.2 (`7c96aa1d`)** — controller listing/packages về một
+  `use-booking-dialog-controller.ts`; giữ cache availability, tách availability/quote error, hỗ trợ
+  controlled open và return focus. Ba flow hourly/daily/package giữ nguyên checkout URL.
+- **6.3 (`7aee924f`)** — steps/controller/slot-picker/slot-selection về `booking-widget`; hai primitive
+  media đa-feature lên top-level `components`; pure package detail helper lên `app/lib`. Không còn
+  runtime import ngược từ `booking-widget` sang `listing-group` hoặc `packages`. Steps lớn được tách
+  thành section component nội bộ sau cảnh báo React Doctor.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -134,20 +148,22 @@ Lần xác minh gần nhất ngày 2026-07-28:
 
 ```bash
 PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
-  pnpm turbo typecheck build --filter=@booking/storefront... \
-    --filter=@booking/dashboard... --force                  # 14/14 successful
-pnpm --filter=@booking/storefront lint                      # 0 error, 3 warning đã ghi nhận
-pnpm --filter=@booking/dashboard lint                       # clean
-pnpm --filter=@booking/ui lint                              # clean
-pnpm --filter=@booking/storefront security                  # passed
-pnpm check:no-tests                                         # passed
+  pnpm turbo lint typecheck build --filter=@booking/storefront...  # 15/15 successful
+pnpm --filter=@booking/storefront security                        # passed
+pnpm check:no-tests                                               # passed
 ```
 
 `.nvmrc` yêu cầu 22.22.0 nhưng máy hiện không cài đúng patch đó; Node 24.18.0 là bản đã dùng để verify.
 
-React Doctor scoped `--base HEAD` không thấy React source nào đổi trong Phase 5. Scan rộng branch so
-với `main` là 70/100 với 2 warning có sẵn từ phase trước (`account-primitives` dùng index key,
-`catalog-route.server` có `map().filter(Boolean)`); không sửa trong phase hàng rào này.
+React Doctor scoped `--base HEAD` sau Phase 6 scan 18 file, **không còn diagnostic**; tool hiển thị
+88/100. Lint storefront vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
+
+Browser verify desktop + mobile:
+
+- listing hourly: 13 slot, 1 dialog content + 1 overlay;
+- listing daily: range 29→30/07/2026 tạo checkout URL;
+- package hourly: 12 slot vẫn còn trong lúc/sau quote, checkout URL có `packageId`;
+- mobile package: 0 dialog content, 1 drawer content, 1 overlay, focus vào drawer title.
 
 Các bất biến cấu trúc, kiểm bằng tay ngày 2026-07-28 — **tất cả đều pass**:
 
@@ -201,8 +217,9 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
   đổi**; chỉ dev mất dữ liệu giả, đó là mục tiêu. Xoá `mock-data.server.ts`,
   `account-listings.server.ts`, toàn bộ UI chat của `/account/messages`;
   `MockDisabledState` → `FeatureUnavailableState`.
-- **Phase 6.1** — dialog shell dùng **CSS-branch** (`hidden lg:block`) làm chuẩn, không dùng JS `isDesktop`
-  (SSR-đúng, không nháy sau hydrate). Nếu chạy thử thấy dialog packages **đổi hình** thì dừng và hỏi.
+- **Phase 6.1** — listing shell dùng CSS branch. Controlled packages là ngoại lệ đã duyệt: chọn primitive
+  bằng JS vì Dialog/Drawer portal; mount cả hai với cùng `open` tạo 2 overlay + 2 focus trap. Runtime
+  desktop/mobile đã xác nhận mỗi breakpoint chỉ có đúng 1 content + 1 overlay.
 - **Task 3.4 bổ sung** — module BFF/domain shared vẫn phải có owner feature; `app/lib` chỉ giữ hạ tầng
   và shared request concern. Cross-feature import type/read là hợp lệ, không phải lý do để để domain
   module ở `app/lib`.
@@ -219,9 +236,9 @@ thư mục đó **không có trên máy**. Handoff này và plan trong `docs/sup
 
 ### Việc đầu tiên hôm sau
 
-Phase 6.1 — gộp hai booking dialog shell theo quyết định đã chốt: lấy CSS branch
-`hidden lg:block` làm chuẩn SSR. Copy/move nguyên DOM và className; chạy thử packages dialog ở desktop
-và mobile. Nếu khác hình, dừng và báo chủ dự án.
+Phase 7 — tạo `components/detail-page-layout.tsx` và `detail-price-card.tsx`, rồi đưa lần lượt listing,
+listing-group và packages sang shell chung. Giữ nguyên từng reviews strategy; chỉ ba thay đổi pixel ở
+packages đã được duyệt.
 
 ---
 
@@ -234,14 +251,14 @@ Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–5 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
-Phase 6–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 6.
+**Phase 1–6 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
+Phase 7–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 7.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + Phase 6.
+   đọc `## Global Constraints` + Phase 7.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
 Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
@@ -311,24 +328,27 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 
 - **Phase 3 bổ sung** — có `hooks/`; helper/type thuần ở `lib`; account group component theo trang;
   domain/BFF server rời `app/lib` về owner feature.
-- **Phase 6.1** — dialog shell dùng CSS-branch (`hidden lg:block`), không dùng JS `isDesktop`.
+- **Phase 6.1** — listing dùng CSS branch; controlled packages dùng JS chọn đúng một primitive vì
+  Dialog/Drawer portal. Ngoại lệ này đã duyệt và runtime xác nhận không có duplicate overlay/focus trap.
 - **Phase 7** — duyệt gộp 3 page shell, chấp nhận 3 thay đổi pixel ở trang packages:
   `bg-muted/40`→`/30`, `py-6`→`py-4`, `MapPin size-5`→`size-4`; landmark `<main>` cho cả 3.
 - **Phase 11.2** — duyệt gỡ sạch mock; UI production không đổi vì mock vốn tắt ở production.
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
-## Trạng thái Phase 5
+## Trạng thái Phase 5–6
 
 - Boundary ESLint đang bật cho cả hai frontend.
 - React Hooks lint: storefront 0 error / 3 warning đã ghi nhận; dashboard/UI sạch. Không tự sửa warning
   dependency array trong phase khác.
 - `pnpm check:frontend-structure` cố ý đỏ đúng `routes/bookings.tsx` cho tới Phase 8; chưa nối CI.
+- Booking shell/controller/steps/slot picker đã hợp nhất trong `features/booking-widget`; không dựng lại
+  implementation riêng trong `listing-group` hoặc `packages`.
 
 ## Việc đầu tiên
 
-Làm Phase 6.1: gộp dialog shell, lấy CSS branch `hidden lg:block` làm chuẩn. Giữ nguyên UI; chạy thử
-packages dialog ở desktop/mobile và dừng hỏi nếu khác hình.
+Làm Phase 7: gộp ba detail page shell và price card theo ba thay đổi pixel packages đã duyệt. Giữ
+nguyên reviews strategy của từng trang và verify cả listing, listing-group, packages.
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.

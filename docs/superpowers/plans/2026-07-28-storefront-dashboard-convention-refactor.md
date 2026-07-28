@@ -867,48 +867,48 @@ cái lớn (dòng 231-243) chính là toàn bộ logic toggle-1-slot của cái 
 > **UI: không đổi.** Bản gộp phải giữ nguyên `cachedAvailability` và error tách đôi (đây là hành vi tốt
 > hơn, và bỏ đi sẽ làm picker nháy → đổi UI). Bản listing sẽ *thêm* 2 thứ này, không bỏ gì.
 
-### Task 6.1: Gộp shell
+### Task 6.1: Gộp shell — **XONG (`33a3ed6a`)**
 
-- [ ] **Step 1: Tạo `features/booking-widget/components/booking-dialog-shell.tsx`** — lấy
+- [x] **Step 1: Tạo `features/booking-widget/components/booking-dialog-shell.tsx`** — lấy
 `RoomBookingDialogShell` làm gốc (nó có `trigger`, cái kia không), thêm prop tuỳ chọn
 `controlled?: { open: boolean; onOpenChange: (o: boolean) => void }`. **Giữ nguyên 100% className và
 cây DOM của `RoomBookingDialogShell`** (`h-[min(90dvh,48rem)]`, `sm:max-w-146`, `h-[92dvh]`,
 `absolute top-3 right-3 size-11`, `aria-label={t('group.closeSchedule')}`).
 
-  ⚠️ **`PackageBookingDialogShell` đang branch bằng JS (`isDesktop`), `RoomBookingDialogShell` bằng CSS
-  (`hidden lg:block`).** Chọn **CSS** làm chuẩn: nó là SSR-đúng (không nháy sau hydrate). Trang packages
-  vì thế đổi *cách mount*, không đổi *hình*. Nếu chạy thử thấy khác hình → dừng và báo.
+  **Kết quả runtime và ngoại lệ đã duyệt:** listing giữ CSS branch. Controlled packages không thể mount
+  đồng thời hai primitive bằng CSS vì `DialogContent`/`DrawerContent` portal vào `body`; cùng một
+  `open` tạo 2 overlay + 2 focus trap. Packages vì vậy dùng JS để chỉ mount đúng một primitive.
 
-- [ ] **Step 2: Trỏ `PackageBookingDialog` sang shell mới**, xoá
+- [x] **Step 2: Trỏ `PackageBookingDialog` sang shell mới**, xoá
 `package-booking-dialog-shell.tsx` + `use-package-booking-dialog-shell-controller.ts`.
 
-- [ ] **Step 3: Chạy app, mở dialog packages ở cả desktop và mobile width, đối chiếu với `git stash`
+- [x] **Step 3: Chạy app, mở dialog packages ở cả desktop và mobile width, đối chiếu với `git stash`
       bản cũ.** Verify + Commit.
 
-### Task 6.2: Gộp controller
+### Task 6.2: Gộp controller — **XONG (`7c96aa1d`)**
 
-- [ ] **Step 1:** Đưa `cachedAvailability` + tách `availabilityError`/`quoteError` vào
+- [x] **Step 1:** Đưa `cachedAvailability` + tách `availabilityError`/`quoteError` vào
 `useListingBookingDialogController`, đổi tên file →
 `features/booking-widget/hooks/use-booking-dialog-controller.ts`.
-- [ ] **Step 2:** Thêm prop `controlled` + `returnFocusRef` tuỳ chọn.
-- [ ] **Step 3:** `PackageBookingDialog` gọi controller chung với `mode: 'hourly'` cố định;
+- [x] **Step 2:** Thêm prop `controlled` + `returnFocusRef` tuỳ chọn.
+- [x] **Step 3:** `PackageBookingDialog` gọi controller chung với `mode: 'hourly'` cố định;
 xoá `use-package-booking-dialog-controller.ts`.
-- [ ] **Step 4:** Chạy thử **cả 3 luồng**: listing hourly, listing daily, packages. Verify + Commit.
+- [x] **Step 4:** Chạy thử **cả 3 luồng**: listing hourly, listing daily, packages. Verify + Commit.
 
-### Task 6.3: Gộp steps + slot picker
+### Task 6.3: Gộp steps + slot picker — **XONG (`7aee924f`)**
 
-- [ ] **Step 1:** `package-booking-dialog-steps.tsx` (162 dòng) là bản rút gọn của
+- [x] **Step 1:** `package-booking-dialog-steps.tsx` (162 dòng) là bản rút gọn của
 `room-booking-dialog-steps.tsx` (344 dòng) — đưa về một file
 `features/booking-widget/components/booking-dialog-steps.tsx`, phần daily/mode-switch render có điều kiện.
-- [ ] **Step 2:** Move `slot-picker.tsx` → `features/booking-widget/components/`.
-- [ ] **Step 3:** Move `listing-group-utils.ts` → `features/booking-widget/lib/slot-selection.ts`.
-- [ ] **Step 4: Nâng 2 file thành dùng chung.** Sau khi steps/dialog rời sang `booking-widget`, hai file
+- [x] **Step 2:** Move `slot-picker.tsx` → `features/booking-widget/components/`.
+- [x] **Step 3:** Move `listing-group-utils.ts` → `features/booking-widget/lib/slot-selection.ts`.
+- [x] **Step 4: Nâng 2 file thành dùng chung.** Sau khi steps/dialog rời sang `booking-widget`, hai file
       này bị dùng bởi 2 feature → theo luật `components/` = primitive đa-feature:
       - `features/packages/components/package-media-details.tsx` → `components/package-media-details.tsx`
         (dùng bởi `packages/{package-albums,package-table}` **và** `booking-widget/booking-dialog`)
       - `features/listing-group/components/room-photo-strip.tsx` → `components/room-photo-strip.tsx`
         (dùng bởi `listing-group/room-options-section` **và** `booking-widget/booking-dialog-steps`)
-- [ ] **Step 5: Xác nhận không còn import chéo feature**
+- [x] **Step 5: Xác nhận không còn import chéo feature**
 
 ```bash
 cd apps/storefront/app
@@ -918,7 +918,7 @@ grep -rn "~/features/" features --include="*.ts" --include="*.tsx" \
 Mọi dòng còn lại phải giải thích được (feature A dùng *type* của feature B là chấp nhận; dùng
 *component* của nhau thì component đó phải lên `components/`).
 
-- [ ] **Step 6:** Verify + Commit.
+- [x] **Step 6:** Verify + Commit.
 
 ---
 
@@ -1172,10 +1172,9 @@ pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure
 
 1. **Phase 7** — DUYỆT gộp page shell, chấp nhận 3 thay đổi pixel ở trang packages.
 2. **Phase 11.2** — DUYỆT gỡ sạch mock, đưa về trạng thái tiêu chuẩn (prod UI không đổi).
-3. **Phase 6.1** — chọn CSS-branch (`hidden lg:block`) làm chuẩn cho dialog shell.
-
-Điểm duy nhất còn phải báo lại: nếu Phase 6.1 chạy thử thấy dialog packages **đổi hình** (không chỉ đổi
-cách mount) thì dừng và hỏi.
+3. **Phase 6.1** — listing giữ CSS branch; controlled packages dùng JS chọn đúng một primitive vì
+   Dialog/Drawer portal. Ngoại lệ đã duyệt sau khi runtime chứng minh CSS mount song song tạo 2 overlay
+   + 2 focus trap.
 
 ## Thứ tự KHÔNG được đảo
 
