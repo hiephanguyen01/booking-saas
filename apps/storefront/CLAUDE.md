@@ -13,8 +13,8 @@ conventions shared with the dashboard: [`../../docs/conventions.md`](../../docs/
   contrast, is Vietnamese-hardcoded.
 - **Public + guest flows.** Most pages are public; authenticated bits (bookings, checkout) use a
   Redis-backed session; guest checkout authenticates by booking code + email OTP.
-- **Relative imports** are the storefront's convention (the `~/` alias is declared in tsconfig but code
-  uses relative paths). Match surrounding files; don't introduce `~/` here.
+- **`~/` alias** cho mọi import vượt cấp (`~/lib/i18n`, `~/components/section-card`), `./sibling` cho
+  cùng thư mục — giống hệt dashboard. Không dùng `../` nữa.
 
 ## Tenant theming (untrusted input — handle with care)
 
