@@ -1,8 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–11 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
-của chủ dự án; Phase 12–13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–12 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
+của chủ dự án; Phase 13 chưa làm
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -27,7 +27,7 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 | 7 | `params.locale === 'en' ? 'en' : 'vi'` lặp 27 lần / 18 file audit cũ, 19 file sau Phase 9 | 10 | ✅ |
 | 8 | Dead code: 1 component + controller, 39 i18n key mồ côi × 2 locale | 9 + 11 | ✅ |
 | 9 | Mock data trong production path (`/account/messages` 100% giả) | 11 | ✅ |
-| 10 | God file `platform-sections.tsx` 721 dòng | 12 | ❌ |
+| 10 | God file `platform-sections.tsx` 721 dòng | 12 | ✅ |
 | 11 | `features/` shape không đồng nhất | 3 | ✅ |
 | 12 | ESLint thiếu `eslint-plugin-react-hooks` | 5 | ✅ |
 
@@ -37,7 +37,7 @@ Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-leve
 
 ---
 
-## 2. Đã làm gì (Phase 1–11)
+## 2. Đã làm gì (Phase 1–12)
 
 Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
 loader/action contract hay URL.
@@ -205,6 +205,17 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
   chung ba flow, bị environment guard cấm trong production. Lệnh grep `mock|Mock` rộng trong plan cũ
   đã được thay bằng scan đúng tên presentation mock.
 
+### Phase 12 — tách platform landing god file (`aaef444f`)
+
+- Audit chính xác là **11 public section export + 5 helper private + 5 bảng content**, không phải 12
+  section export như số liệu cũ trong plan.
+- Năm bảng content chuyển nguyên value/order/type sang
+  `features/platform-landing/lib/platform-content.ts`.
+- 11 section chuyển nguyên khối sang 11 file trong `components/sections/`; `SchedulePreview`,
+  `TransformationList`, `CapabilityRow`, `DemoFigure`, `FooterGroup` vẫn private cạnh section owner.
+- `platform-sections.tsx` từ 721 dòng còn barrel 11 dòng; `platform-landing.tsx` không phải đổi import.
+- Không đổi JSX, className, copy, thứ tự render hay runtime contract.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -223,7 +234,12 @@ pnpm check:no-tests                                               # passed
 
 React Doctor Task 11.1 scan 4 file đạt **100/100**. Task 11.2 scan 7 file báo storefront **89/100**,
 `@booking/i18n` **100/100**, nhưng `diagnostics.json` rỗng nên không có regression actionable.
-Lint storefront vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
+Phase 12 scan đúng diff chưa commit so với `HEAD` đạt **100/100**, không có diagnostic. Lint storefront
+vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
+
+Runtime Phase 12: bật API + storefront dev, request `/vi` với host chưa map tenant trả HTTP 200,
+`<title>` platform đúng và SSR đủ `models`, `capabilities`, `workflow`, `demos`, `pricing`, `faq`,
+`consultation`.
 
 Browser verify desktop + mobile:
 
@@ -307,8 +323,9 @@ thư mục đó **không có trên máy**. Handoff này và plan trong `docs/sup
 
 ### Việc đầu tiên hôm sau
 
-Phase 12 Step 1 — chuyển nguyên năm bảng content constant của platform landing sang
-`features/platform-landing/lib/platform-content.ts`, không sửa value/order/type.
+Phase 13 Task 13.1 — viết lại phần cấu trúc trong `apps/storefront/CLAUDE.md` theo khung
+`apps/dashboard/CLAUDE.md` (“Folder architecture” + “Import discipline”), nhưng giữ rõ khác biệt
+storefront: multi-tenant theo `Host`, song ngữ `/:locale`, và tenant theme untrusted ở `lib/theme.ts`.
 
 ---
 
@@ -321,14 +338,14 @@ Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–11 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
-Phase 12–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 12.
+**Phase 1–12 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
+Phase 13 chưa làm.** Việc của bạn: làm tiếp từ Phase 13.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + Phase 12.
+   đọc `## Global Constraints` + Phase 13.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
 Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
@@ -408,7 +425,7 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
-## Trạng thái Phase 5–11
+## Trạng thái Phase 5–12
 
 - Boundary ESLint đang bật cho cả hai frontend.
 - React Hooks lint: storefront 0 error / 3 warning đã ghi nhận; dashboard/UI sạch. Không tự sửa warning
@@ -420,11 +437,13 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - Copy/meta/error-boundary trong scope Phase 9 đã dùng typed i18n; 39 key chết đã bị xoá ở cả `vi/en`.
 - 27 call site normalize locale đều dùng helper typed `localeParam`; fallback vẫn là `vi`.
 - Account presentation mock/demo scaffolding đã xoá; messages/recent chỉ còn production-state thật.
+- Platform landing god file đã tách thành 11 section file + 1 content module; barrel cũ giữ nguyên
+  public imports và không đổi JSX/className/copy.
 
 ## Việc đầu tiên
 
-Làm Phase 12 Step 1: chuyển nguyên năm bảng content constant khỏi `platform-sections.tsx` sang
-`features/platform-landing/lib/platform-content.ts`; không sửa value/order/type.
+Làm Phase 13 Task 13.1: viết lại phần cấu trúc trong `apps/storefront/CLAUDE.md` theo khung dashboard,
+ghi rõ ba khác biệt storefront (Host multi-tenant, `/:locale`, tenant theme untrusted).
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.

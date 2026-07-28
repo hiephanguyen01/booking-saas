@@ -1158,20 +1158,27 @@ messages và recent trở thành nhánh duy nhất. Turbo storefront 15/15, secu
 
 # Phase 12 — Tách god file (mục 10)
 
-`features/platform-landing/components/platform-sections.tsx` — 721 dòng, 12 section export + 5 helper
+`features/platform-landing/components/platform-sections.tsx` — 721 dòng, 11 public section export + 5 helper
 + 5 bảng const.
 
-- [ ] **Step 1: Move 5 bảng const** (`SERVICE_MODELS`, `BEFORE_ITEMS`, `AFTER_ITEMS`, `TRUST_ITEMS`,
+- [x] **Step 1: Move 5 bảng const** (`SERVICE_MODELS`, `BEFORE_ITEMS`, `AFTER_ITEMS`, `TRUST_ITEMS`,
       `FAQ_ITEMS`) → `features/platform-landing/lib/platform-content.ts`.
-- [ ] **Step 2: Tách một file / một section** trong `features/platform-landing/components/sections/`:
+- [x] **Step 2: Tách một file / một section** trong `features/platform-landing/components/sections/`:
       `platform-hero.tsx` (kèm `SchedulePreview`), `service-models-section.tsx`,
       `transformation-section.tsx` (kèm `TransformationList`), `capabilities-section.tsx` (kèm `CapabilityRow`),
       `workflow-section.tsx`, `demos-section.tsx` (kèm `DemoFigure`), `pricing-section.tsx`,
       `trust-section.tsx`, `faq-section.tsx`, `consultation-section.tsx`,
       `platform-footer.tsx` (kèm `FooterGroup`).
-- [ ] **Step 3: `platform-sections.tsx` trở thành barrel** `export * from './sections/…'` — bên gọi
+- [x] **Step 3: `platform-sections.tsx` trở thành barrel** `export * from './sections/…'` — bên gọi
       (`platform-landing.tsx`) không phải đổi.
-- [ ] **Step 4: Cắt-dán nguyên xi, không sửa JSX.** Verify + chạy landing ở host chưa map tenant + Commit.
+- [x] **Step 4: Cắt-dán nguyên xi, không sửa JSX.** Verify + chạy landing ở host chưa map tenant +
+      Commit (`aaef444f` — `refactor(storefront): split platform landing sections`).
+
+**Kết quả Phase 12:** barrel còn 11 dòng; 11 section công khai nằm trong 11 file owner, 5 helper vẫn
+private cạnh section sử dụng chúng, 5 bảng content ở `lib/platform-content.ts`. Không đổi consumer,
+JSX/className/copy/thứ tự render. Turbo storefront 15/15, security, structure và no-tests xanh; React
+Doctor trên diff so với `HEAD` đạt 100/100. Host chưa map tenant trả HTTP 200 và SSR đủ các section
+anchor chính.
 
 ---
 
