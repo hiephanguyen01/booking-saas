@@ -1,8 +1,30 @@
 import type { RootLoaderPayload } from './server/root-loader.server';
 
 export function buildRootMeta(loaderData: RootLoaderPayload | undefined) {
-  const tenant = loaderData?.tenant;
-  if (!tenant) return [{ title: 'Booking' }];
+  if (!loaderData) return [{ title: 'BookingOS' }];
+
+  if (loaderData.kind === 'platform') {
+    return [
+      { title: loaderData.seo.title },
+      { name: 'description', content: loaderData.seo.description },
+      { property: 'og:title', content: loaderData.seo.title },
+      { property: 'og:description', content: loaderData.seo.description },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'BookingOS' },
+      { property: 'og:url', content: loaderData.canonical },
+      { tagName: 'link', rel: 'canonical', href: loaderData.canonical },
+      { tagName: 'link', rel: 'alternate', hrefLang: 'vi', href: loaderData.alternates.vi },
+      { tagName: 'link', rel: 'alternate', hrefLang: 'en', href: loaderData.alternates.en },
+      {
+        tagName: 'link',
+        rel: 'alternate',
+        hrefLang: 'x-default',
+        href: loaderData.alternates.default,
+      },
+    ];
+  }
+
+  const tenant = loaderData.tenant;
 
   const title = tenant.themeConfig.seo?.title || tenant.name;
   const description = tenant.themeConfig.seo?.description || undefined;

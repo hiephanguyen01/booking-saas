@@ -6,7 +6,12 @@ import type { Route } from './+types/done';
 import { partnerMeta } from './shared';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
-  return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'done');
+  const rootData = matches[0].loaderData;
+  return partnerMeta(
+    rootData.kind === 'tenant' ? rootData.tenant.name : undefined,
+    params.locale,
+    'done',
+  );
 }
 
 export const loader = ({ request, params }: Route.LoaderArgs) =>

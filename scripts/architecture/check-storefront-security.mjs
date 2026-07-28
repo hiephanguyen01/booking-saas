@@ -54,12 +54,12 @@ for (const file of storefrontFiles) {
   if (path.endsWith('/lib/request-auth.server.ts')) {
     failures.push(`${path}: use request-context.server.ts; compatibility shims are forbidden`);
   }
-  const tenantResolutionCalls = source.match(/\bresolveTenant\s*\(/g) ?? [];
+  const tenantResolutionCalls = source.match(/\bresolveStorefront\s*\(/g) ?? [];
   if (path.endsWith('/lib/request-security.server.ts')) {
     tenantResolutionCallSites += tenantResolutionCalls.length;
   } else if (!path.endsWith('/lib/tenant.server.ts') && tenantResolutionCalls.length > 0) {
     failures.push(
-      `${path}: resolve tenant only in request-security.server.ts; use getCurrentStorefrontTenant()`,
+      `${path}: resolve storefront only in request-security.server.ts; use the request context`,
     );
   }
   for (const form of source.matchAll(/<Form\b[^>]*method=["']get["'][^>]*>[\s\S]*?<\/Form>/gi)) {
@@ -75,7 +75,7 @@ for (const file of storefrontFiles) {
 
 if (tenantResolutionCallSites !== 1) {
   failures.push(
-    `apps/storefront/app/lib/request-security.server.ts: expected exactly one resolveTenant() call, found ${tenantResolutionCallSites}`,
+    `apps/storefront/app/lib/request-security.server.ts: expected exactly one resolveStorefront() call, found ${tenantResolutionCallSites}`,
   );
 }
 

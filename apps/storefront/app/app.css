@@ -53,6 +53,108 @@ html {
   scroll-behavior: smooth;
 }
 
+.platform-landing {
+  --platform-ink: #0b302b;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+.platform-grid {
+  background-image:
+    linear-gradient(rgba(23, 104, 73, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 104, 73, 0.055) 1px, transparent 1px),
+    radial-gradient(circle at 78% 24%, rgba(185, 243, 107, 0.2), transparent 29%);
+  background-size:
+    48px 48px,
+    48px 48px,
+    auto;
+}
+
+.platform-orbit::before,
+.platform-orbit::after {
+  position: absolute;
+  content: '';
+  border-radius: 999px;
+  border: 1px solid rgba(23, 104, 73, 0.1);
+  inset: 14%;
+}
+
+.platform-orbit::after {
+  inset: 30%;
+}
+
+.platform-nav-link {
+  border-radius: 0.25rem;
+  color: #47615a;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: color 160ms ease;
+}
+
+.platform-nav-link:hover {
+  color: #0b302b;
+}
+
+.platform-nav-link:focus-visible {
+  outline: 2px solid #176849;
+  outline-offset: 5px;
+}
+
+.platform-status-dot {
+  animation: platform-pulse 2.2s ease-in-out infinite;
+}
+
+.platform-reveal {
+  animation: platform-rise 700ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.platform-delay-1 {
+  animation-delay: 80ms;
+}
+
+.platform-delay-2 {
+  animation-delay: 160ms;
+}
+
+.platform-delay-3 {
+  animation-delay: 240ms;
+}
+
+.platform-delay-4 {
+  animation-delay: 320ms;
+}
+
+@keyframes platform-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes platform-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(39, 165, 111, 0.24);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(39, 165, 111, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .platform-reveal,
+  .platform-status-dot {
+    animation: none;
+  }
+}
+
 body {
   font-family: var(
     --font-tenant,

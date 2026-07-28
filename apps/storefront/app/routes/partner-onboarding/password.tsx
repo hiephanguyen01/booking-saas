@@ -7,7 +7,12 @@ import type { Route } from './+types/password';
 import { partnerMeta } from './shared';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
-  return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'password');
+  const rootData = matches[0].loaderData;
+  return partnerMeta(
+    rootData.kind === 'tenant' ? rootData.tenant.name : undefined,
+    params.locale,
+    'password',
+  );
 }
 
 export function loader({ request, params }: Route.LoaderArgs) {

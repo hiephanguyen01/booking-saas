@@ -2,12 +2,14 @@ import { randomBytes } from 'node:crypto';
 import type { RouterContextProvider } from 'react-router';
 import { storefrontAuthMiddleware } from './auth-middleware.server';
 import { storefrontEnv } from './env.server';
+import { runWithStorefrontRequestContext } from './request-context.server';
 import { storefrontCspNonceContext } from './security-context.server';
 import { tenantUnavailableResponse } from './tenant-availability';
-import { resolveTenant } from './tenant.server';
+import { resolveStorefront } from './tenant.server';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
+const PLATFORM_DOCUMENT_PATHS = new Set(['/vi', '/en', '/robots.txt', '/sitemap.xml']);
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
 const PUBLIC_METADATA_CACHE_CONTROL =
   'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400';
@@ -54,6 +56,21 @@ function forbidden(): Response {
     { code: 'CROSS_ORIGIN_MUTATION', message: 'Cross-origin mutation rejected.' },
     { status: 403, headers: { 'Cache-Control': PRIVATE_CACHE_CONTROL } },
   );
+}
+
+function unknownHost(): Response {
+  return Response.json(
+    { code: 'UNKNOWN_HOST', message: 'No tenant is mapped to this host.' },
+    { status: 404, headers: { 'Cache-Control': PRIVATE_CACHE_CONTROL } },
+  );
+}
+
+function platformLocale(pathname: string): 'vi' | 'en' {
+  return pathname.split('/').filter(Boolean)[0] === 'en' ? 'en' : 'vi';
+}
+
+function platformRedirect(locale: 'vi' | 'en'): Response {
+  return new Response(null, { status: 302, headers: { Location: `/${locale}` } });
 }
 
 function createCspNonce(): string {
@@ -194,7 +211,28 @@ export async function storefrontRequestMiddleware(
 
   const rejected = csrfFailure(request);
   if (rejected) return withSecurityHeaders(rejected, request, cspNonce);
-  const tenant = await resolveTenant(request);
+  const resolution = await resolveStorefront(request);
+  if (resolution.kind === 'platform') {
+    const method = request.method.toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      return withSecurityHeaders(unknownHost(), request, cspNonce);
+    }
+
+    const url = new URL(request.url);
+    const locale = platformLocale(url.pathname);
+    const isLocalizedLanding = url.pathname === '/vi' || url.pathname === '/en';
+    if (!PLATFORM_DOCUMENT_PATHS.has(url.pathname) || (isLocalizedLanding && Boolean(url.search))) {
+      return withSecurityHeaders(platformRedirect(locale), request, cspNonce);
+    }
+
+    const response = await runWithStorefrontRequestContext(
+      { kind: 'platform', auth: null, suppressSessionCommit: false },
+      next,
+    );
+    return withSecurityHeaders(response, request, cspNonce);
+  }
+
+  const tenant = resolution.tenant;
   const unavailable = tenantUnavailableResponse(request, tenant);
   if (unavailable) {
     throw withSecurityHeaders(unavailable, request, cspNonce);

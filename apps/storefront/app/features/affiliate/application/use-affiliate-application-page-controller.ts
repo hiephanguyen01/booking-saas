@@ -70,7 +70,10 @@ export function useAffiliateApplicationPageController({
     dashboardLoginHref: `${loaderData.dashboardUrl}/auth/login`,
     fieldErrors: actionData?.fieldErrors ?? null,
     formFields,
-    logoUrl: loaderData.tenantLogoUrl ?? rootData?.tenant?.themeConfig.logoUrl ?? null,
+    logoUrl:
+      loaderData.tenantLogoUrl ??
+      (rootData?.kind === 'tenant' ? rootData.tenant.themeConfig.logoUrl : null) ??
+      null,
     serverError: errorCode
       ? t(
           APPLY_ERRORS[errorCode as keyof typeof APPLY_ERRORS] ??

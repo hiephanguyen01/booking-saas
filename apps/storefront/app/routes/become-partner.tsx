@@ -4,7 +4,12 @@ import type { Route } from './+types/become-partner';
 import { partnerMeta } from './partner-onboarding/shared';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
-  return partnerMeta(matches[0].loaderData.tenant.name, params.locale, 'start');
+  const rootData = matches[0].loaderData;
+  return partnerMeta(
+    rootData.kind === 'tenant' ? rootData.tenant.name : undefined,
+    params.locale,
+    'start',
+  );
 }
 
 export function action({ request, params }: Route.ActionArgs) {

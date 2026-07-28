@@ -8,11 +8,21 @@ export interface StorefrontAuthContext {
   info: SessionInfoResponse;
 }
 
-export interface StorefrontRequestContextState {
+export interface StorefrontTenantRequestContextState {
+  kind: 'tenant';
   tenant: StorefrontTenant;
   auth: StorefrontAuthContext | null;
   suppressSessionCommit: boolean;
 }
+
+export interface StorefrontPlatformRequestContextState {
+  kind: 'platform';
+  auth: null;
+  suppressSessionCommit: false;
+}
+
+export type StorefrontRequestContextState =
+  StorefrontTenantRequestContextState | StorefrontPlatformRequestContextState;
 
 const storage = new AsyncLocalStorage<StorefrontRequestContextState>();
 export const runWithStorefrontRequestContext = <T>(
@@ -21,13 +31,17 @@ export const runWithStorefrontRequestContext = <T>(
 ) => storage.run(state, callback);
 export const getCurrentStorefrontTenant = (): StorefrontTenant => {
   const state = storage.getStore();
-  if (!state) {
-    throw new Error('Storefront tenant accessed outside the request context');
+  if (!state || state.kind !== 'tenant') {
+    throw new Error('Storefront tenant accessed outside a tenant request context');
   }
   return state.tenant;
+};
+export const getOptionalStorefrontTenant = (): StorefrontTenant | null => {
+  const state = storage.getStore();
+  return state?.kind === 'tenant' ? state.tenant : null;
 };
 export const getCurrentStorefrontAuth = () => storage.getStore()?.auth ?? null;
 export const suppressStorefrontSessionCommit = () => {
   const state = storage.getStore();
-  if (state) state.suppressSessionCommit = true;
+  if (state?.kind === 'tenant') state.suppressSessionCommit = true;
 };

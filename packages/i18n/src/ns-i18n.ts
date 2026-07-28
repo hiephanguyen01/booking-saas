@@ -8,4 +8,5 @@ export enum NsI18n {
   Error = 'errors',
   Auth = 'auth',
   Account = 'account',
+  Platform = 'platform',
 }

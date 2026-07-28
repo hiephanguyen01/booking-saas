@@ -6,7 +6,8 @@ conventions shared with the dashboard: [`../../docs/conventions.md`](../../docs/
 ## What's different from the dashboard
 
 - **Multi-tenant by `Host` header.** The tenant is resolved per-request from the hostname via a backend
-  call in `app/lib/tenant.server.ts` (not from a login). One storefront serves every tenant's domain.
+  call in `app/lib/tenant.server.ts` (not from a login). One storefront serves every tenant's domain;
+  an unmapped host serves the BookingOS platform landing without creating a tenant session.
 - **Bilingual.** Every page nests under a `/:locale` (`vi` | `en`) layout backed by `@booking/i18n`;
   unlocalized legacy paths are kept as redirect route modules for inbound links. The dashboard, by
   contrast, is Vietnamese-hardcoded.

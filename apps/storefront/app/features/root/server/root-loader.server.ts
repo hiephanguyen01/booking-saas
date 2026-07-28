@@ -1,5 +1,5 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
-import type { Locale } from '@booking/i18n';
+import { createTranslator, type Locale } from '@booking/i18n';
 import { data } from 'react-router';
 import type { AccountMenuSummary } from '../../account/account-menu';
 import {
@@ -11,11 +11,13 @@ import {
 import { getOptionalAuth } from '../../../lib/auth.server';
 import { fetchListingTypes } from '../../../lib/catalog.server';
 import { resolveLocale } from '../../../lib/i18n.server';
-import { getCurrentStorefrontTenant } from '../../../lib/request-context.server';
+import { getOptionalStorefrontTenant } from '../../../lib/request-context.server';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from '../../../lib/seo';
+import { storefrontEnv } from '../../../lib/env.server';
 import type { StorefrontTenant } from '../../../lib/tenant.server';
 
-export interface RootLoaderPayload {
+export interface TenantRootLoaderPayload {
+  kind: 'tenant';
   tenant: StorefrontTenant;
   listingTypes: PublicListingTypeResponse[];
   locale: Locale;
@@ -26,16 +28,50 @@ export interface RootLoaderPayload {
   accountMenuSummary: AccountMenuSummary | null;
 }
 
+export interface PlatformRootLoaderPayload {
+  kind: 'platform';
+  locale: Locale;
+  canonical: string;
+  alternates: ReturnType<typeof localizedAlternates>;
+  cspNonce: string;
+  dashboardLoginUrl: string;
+  seo: {
+    title: string;
+    description: string;
+  };
+}
+
+export type RootLoaderPayload = TenantRootLoaderPayload | PlatformRootLoaderPayload;
+
 export async function loadStorefrontRoot(request: Request, routeUrl: URL, cspNonce: string) {
-  const tenant = getCurrentStorefrontTenant();
-  const locale = resolveLocale(request, tenant.defaultLocale);
+  const tenant = getOptionalStorefrontTenant();
+  const locale = resolveLocale(request, tenant?.defaultLocale ?? 'vi');
   const publicUrl = requestPublicUrl(request, routeUrl);
   const canonical = canonicalUrl(publicUrl);
   const alternates = localizedAlternates(publicUrl);
+
+  if (!tenant) {
+    const { t } = createTranslator(locale);
+    const payload: PlatformRootLoaderPayload = {
+      kind: 'platform',
+      locale,
+      canonical,
+      alternates,
+      cspNonce,
+      dashboardLoginUrl: `${storefrontEnv.dashboardUrl}/auth/login`,
+      seo: {
+        title: t('platform.seo.title'),
+        description: t('platform.seo.description'),
+      },
+    };
+    return payload;
+  }
+
   const storefrontAuth = getOptionalAuth();
   const currentUser = storefrontAuth?.info.user ?? null;
   const listingTypes = tenant.live ? await fetchListingTypes(request) : [];
-  const payload: RootLoaderPayload = {
+  const payload: TenantRootLoaderPayload = {
+    kind: 'tenant',
     tenant,
     listingTypes,
     locale,

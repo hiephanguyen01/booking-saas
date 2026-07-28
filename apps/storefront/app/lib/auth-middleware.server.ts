@@ -131,7 +131,7 @@ export async function storefrontAuthMiddleware(
   }
   if (!stored) {
     return runWithStorefrontRequestContext(
-      { tenant, auth: null, suppressSessionCommit: false },
+      { kind: 'tenant', tenant, auth: null, suppressSessionCommit: false },
       next,
     );
   }
@@ -143,6 +143,7 @@ export async function storefrontAuthMiddleware(
     // Keep this state object by reference: login/onboarding actions may mark it
     // while they replace the stale session cookie with a newly-created session.
     const state: StorefrontRequestContextState = {
+      kind: 'tenant',
       tenant,
       auth: null,
       suppressSessionCommit: false,
@@ -157,6 +158,7 @@ export async function storefrontAuthMiddleware(
     return response;
   }
   const state: StorefrontRequestContextState = {
+    kind: 'tenant',
     tenant,
     auth: { session: result.data, info: result.info },
     suppressSessionCommit: false,

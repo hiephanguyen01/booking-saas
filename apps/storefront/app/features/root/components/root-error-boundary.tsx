@@ -60,7 +60,7 @@ function RootErrorNotice({
   if (isNotFoundError(error)) {
     return (
       <div className="flex min-h-dvh flex-col bg-[#f9fafb] font-studio text-[#344054]">
-        {rootData?.tenant ? (
+        {rootData?.kind === 'tenant' ? (
           <>
             <TenantThemeStyle theme={rootData.tenant.themeConfig} nonce={rootData.cspNonce} />
             <header className="h-18 shrink-0">
@@ -147,8 +147,8 @@ function tenantUnavailableErrorData(error: unknown): TenantUnavailableErrorData 
 function isNotFoundError(error: unknown): boolean {
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      'status' in error &&
-      (error as { status?: unknown }).status === 404,
+    typeof error === 'object' &&
+    'status' in error &&
+    (error as { status?: unknown }).status === 404,
   );
 }

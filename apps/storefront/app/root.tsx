@@ -27,7 +27,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <StorefrontDocument
       locale={loaderData?.locale ?? localeFromPath(location.pathname)}
-      faviconUrl={loaderData?.tenant?.themeConfig.faviconUrl || null}
+      faviconUrl={
+        loaderData?.kind === 'tenant' ? loaderData.tenant.themeConfig.faviconUrl || null : null
+      }
     >
       {children}
     </StorefrontDocument>
