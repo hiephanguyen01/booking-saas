@@ -2,7 +2,7 @@ import type { AttributeField } from '@booking/contracts';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { RoomOption } from '~/features/listing-group/listing-group-types';
 import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
-import { AttributeSpecCards } from './attribute-spec-cards';
+import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 
 /**
  * The side panel shown next to a room photo in the media viewer — the room's title,

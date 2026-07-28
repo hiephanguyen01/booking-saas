@@ -17,7 +17,7 @@ import {
   type RoomAvailabilityState,
 } from '~/features/listing-group/listing-group-utils';
 import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
-import { AttributeSpecCards } from './attribute-spec-cards';
+import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 import { SlotPicker } from './slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';
 import { RoomPhotoStrip } from './room-photo-strip';

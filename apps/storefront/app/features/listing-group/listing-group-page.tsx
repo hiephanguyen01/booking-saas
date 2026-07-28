@@ -11,12 +11,12 @@ import { clockHoursBetween } from '~/lib/time';
 import type { StorefrontContext } from '~/root';
 import { SearchForm } from '~/features/search/search-form';
 import { AmenitiesSection } from './components/amenities-section';
-import { ExpandableDescription } from './components/expandable-description';
-import { HeaderActions } from './components/header-actions';
-import { ProviderCard } from './components/provider-card';
+import { ExpandableDescription } from '~/components/expandable-description';
+import { HeaderActions } from '~/components/header-actions';
+import { ProviderCard } from '~/components/provider-card';
 import { RelatedStudios } from './components/related-studios';
 import { RoomOptionsSection } from './components/room-options-section';
-import { StudioGallery } from './components/studio-gallery';
+import { StudioGallery } from '~/components/studio-gallery';
 import type { ListingGroupData } from './listing-group-types';
 import { minimumRoomPrice } from './room-attributes';
 
