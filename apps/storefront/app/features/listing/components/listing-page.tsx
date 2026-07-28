@@ -2,6 +2,7 @@ import type { PublicListingDetailResponse } from '@booking/contracts';
 import { MapPin, Users } from 'lucide-react';
 import { Suspense } from 'react';
 import { Await, Link, useOutletContext } from 'react-router';
+import { DetailPageLayout } from '~/components/detail-page-layout';
 import { ListingRatingSummary } from '~/components/listing-rating-summary';
 import { ReviewsSectionSkeleton } from '~/components/loading-skeletons';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
@@ -60,81 +61,75 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
   const preferredStudioMode = mode === 'daily' ? 'daily' : 'hourly';
 
   return (
-    <div className="font-studio overflow-x-clip bg-muted/30 pb-20 text-foreground">
-      <DeferredSearchBar
-        listingTypes={listingTypes}
-        currentType={listing.listingTypeSlug}
-        locations={locations}
-        today={bookingToday}
-      />
-      <div className="mx-auto flex max-w-292.5 flex-col gap-4 px-4 py-4 xl:px-0">
-        <SectionCard>
-          <ListingHeader
-            listing={listing}
-            location={location}
-            mapsHref={googleMapsHref(location)}
+    <DetailPageLayout
+      searchBar={
+        <DeferredSearchBar
+          listingTypes={listingTypes}
+          currentType={listing.listingTypeSlug}
+          locations={locations}
+          today={bookingToday}
+        />
+      }
+      header={
+        <ListingHeader listing={listing} location={location} mapsHref={googleMapsHref(location)} />
+      }
+      gallery={<StudioGallery photos={listing.photos} title={listing.title} />}
+      main={
+        <>
+          <SectionCard aria-labelledby="introduction-title">
+            <h2 id="introduction-title" className="text-base font-semibold">
+              {t('group.introduction')}
+            </h2>
+            <ExpandableDescription description={listing.description} />
+          </SectionCard>
+
+          <ListingDetails
+            attributes={listing.attributes}
+            attributeSchema={listing.attributeSchema}
           />
-          <StudioGallery photos={listing.photos} title={listing.title} />
-        </SectionCard>
-
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,870px)_284px]">
-          <div className="flex min-w-0 flex-col gap-4">
-            <SectionCard aria-labelledby="introduction-title">
-              <h2 id="introduction-title" className="text-base font-semibold">
-                {t('group.introduction')}
-              </h2>
-              <ExpandableDescription description={listing.description} />
-            </SectionCard>
-
-            <ListingDetails
-              attributes={listing.attributes}
-              attributeSchema={listing.attributeSchema}
-            />
-            <Suspense fallback={<ReviewsSectionSkeleton label={t('common:loading')} />}>
-              <Await resolve={loaderData.auxiliaryData}>
-                {({ reviews, reviewSummary, reviewRating, reviewLimit }) => (
-                  <PublicReviewsSection
-                    reviews={reviews}
-                    summary={reviewSummary}
-                    locale={locale}
-                    selectedRating={reviewRating}
-                    visibleLimit={reviewLimit}
-                  />
-                )}
-              </Await>
-            </Suspense>
-          </div>
-
-          <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
-            {usesStudioBookingDialog ? (
-              <>
-                <StudioBookingCard
-                  listing={listing}
-                  preferredMode={preferredStudioMode}
-                  today={bookingToday}
+          <Suspense fallback={<ReviewsSectionSkeleton label={t('common:loading')} />}>
+            <Await resolve={loaderData.auxiliaryData}>
+              {({ reviews, reviewSummary, reviewRating, reviewLimit }) => (
+                <PublicReviewsSection
+                  reviews={reviews}
+                  summary={reviewSummary}
+                  locale={locale}
+                  selectedRating={reviewRating}
+                  visibleLimit={reviewLimit}
                 />
-                <ProviderCard trust={listing.trust} />
-              </>
-            ) : (
-              <>
-                <ProviderCard trust={listing.trust} />
-                {supportsOnlineBooking ? (
-                  <BookingPanel
-                    listing={listing}
-                    mode={mode}
-                    availability={availability}
-                    quote={quote}
-                    initialStart={selectionStart}
-                    initialEnd={selectionEnd}
-                    initialToday={bookingToday}
-                  />
-                ) : null}
-              </>
-            )}
-          </aside>
-        </div>
-      </div>
-    </div>
+              )}
+            </Await>
+          </Suspense>
+        </>
+      }
+      aside={
+        usesStudioBookingDialog ? (
+          <>
+            <StudioBookingCard
+              listing={listing}
+              preferredMode={preferredStudioMode}
+              today={bookingToday}
+            />
+            <ProviderCard trust={listing.trust} />
+          </>
+        ) : (
+          <>
+            <ProviderCard trust={listing.trust} />
+            {supportsOnlineBooking ? (
+              <BookingPanel
+                listing={listing}
+                mode={mode}
+                availability={availability}
+                quote={quote}
+                initialStart={selectionStart}
+                initialEnd={selectionEnd}
+                initialToday={bookingToday}
+              />
+            ) : null}
+          </>
+        )
+      }
+    />
   );
 }
 
