@@ -143,7 +143,7 @@ workflow, then pick:
 | --- | --- |
 | **Branch** | the "Use workflow from" dropdown — it is the ref that gets built, so there is no separate input |
 | **Environment** | `stg` or `prod` |
-| **App** | `all`, `api`, `storefront` or `dashboard` |
+| **App** | `all`, `api`, `frontends`, `storefront` or `dashboard`; `frontends` deploys both SSR apps without rebuilding the API |
 | **Run migrations** | on by default; only applies to `api` / `all` |
 
 Or from the CLI:
@@ -157,8 +157,9 @@ What it does:
 
 1. Builds the selected app(s) for **linux/amd64** and pushes to GHCR, tagged `sha-<short>` plus a
    moving `stg`/`prod` tag.
-2. SSHes to the box, rewrites `API_IMAGE` / `STOREFRONT_IMAGE` / `DASHBOARD_IMAGE` in that
-   environment's env file to the immutable `sha-` tag, then `pull` + `up -d`.
+2. SSHes to the box, rewrites the selected `API_IMAGE` / `STOREFRONT_IMAGE` /
+   `DASHBOARD_IMAGE` variables in that environment's env file to the immutable `sha-` tag, then
+   pulls and restarts only the selected service(s).
 
 The env file is **pinned in place** on purpose: a later manual `docker compose up -d` on the server
 then runs the same image this deploy shipped, instead of silently drifting.

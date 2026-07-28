@@ -14,7 +14,7 @@ on:
       app:
         description: Which app to deploy
         type: choice
-        options: [all, api, storefront, dashboard]
+        options: [all, api, frontends, storefront, dashboard]
         required: true
         default: all
       run_migrations:
@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        app: ${{ inputs.app == 'all' && fromJSON('["api","storefront","dashboard"]') || fromJSON(format('["{0}"]', inputs.app)) }}
+        app: ${{ inputs.app == 'all' && fromJSON('["api","storefront","dashboard"]') || inputs.app == 'frontends' && fromJSON('["storefront","dashboard"]') || fromJSON(format('["{0}"]', inputs.app)) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -144,11 +144,20 @@ jobs:
             case "$APP" in
               all)        pin API_IMAGE api; pin STOREFRONT_IMAGE storefront; pin DASHBOARD_IMAGE dashboard ;;
               api)        pin API_IMAGE api ;;
+              frontends)  pin STOREFRONT_IMAGE storefront; pin DASHBOARD_IMAGE dashboard ;;
               storefront) pin STOREFRONT_IMAGE storefront ;;
               dashboard)  pin DASHBOARD_IMAGE dashboard ;;
             esac
 
-            $COMPOSE pull
+            # Pull only the images shipped by this run. Pulling the whole stack
+            # wastes registry traffic and checks unrelated services.
+            case "$APP" in
+              all)        $COMPOSE pull ;;
+              api)        $COMPOSE pull api ;;
+              frontends)  $COMPOSE pull storefront dashboard ;;
+              storefront) $COMPOSE pull storefront ;;
+              dashboard)  $COMPOSE pull dashboard ;;
+            esac
 
             # Run migrations explicitly rather than leaning on depends_on: an
             # already-exited migrate container counts as "completed", so compose
@@ -157,7 +166,11 @@ jobs:
               $COMPOSE run --rm migrate
             fi
 
-            if [ "$APP" = "all" ]; then $COMPOSE up -d; else $COMPOSE up -d "$APP"; fi
+            case "$APP" in
+              all)        $COMPOSE up -d ;;
+              frontends)  $COMPOSE up -d storefront dashboard ;;
+              *)          $COMPOSE up -d "$APP" ;;
+            esac
 
             $COMPOSE ps
 

@@ -124,10 +124,11 @@ There are **no tests** by owner decision; do not add test files, runners, script
 `pnpm turbo lint typecheck build`, `pnpm --filter=@booking/api check:rls`, and runtime smoke against
 local infrastructure.
 
-CI (`.github/workflows/ci.yml`, "Frontend CI") lints/typechecks/builds the two frontends, runs the
-Storefront static security gate and API RLS coverage check, then builds both frontend images with
-`push: false`. The API is not compiled/linted directly in CI, so backend changes require the full
-local suite.
+CI (`.github/workflows/ci.yml`, "Frontend CI") runs for pull requests into `main` (or manually). It
+lints/typechecks/builds the two frontends, typechecks the API, and runs the architecture, Storefront
+security and API RLS static guards. Turbo builds shared workspace dependencies once through the task
+graph. Docker images are not rebuilt in CI; the manual Deploy workflow builds and pushes only the
+selected app(s).
 
 ## Deployment status
 
@@ -137,7 +138,8 @@ they differ only by env file (`.env.stg` / `.env.prod`, template in `.env.deploy
 hostnames in it. A one-shot `migrate` service applies `prisma migrate deploy` from the API image
 before `api` starts; `nginx:1.27-alpine` routes by Host with the storefront as the **default server**
 so tenant custom domains work without an nginx change. Postgres, Redis and S3 are managed services
-outside the compose file. CI builds all three images (no registry push wired yet).
+outside the compose file. The manual Deploy workflow publishes selected images to GHCR and pins the
+server to immutable commit tags.
 
 Full runbook — first deploy, seeding, releases, rollback, scaling: [`deployment.md`](./deployment.md).
 
