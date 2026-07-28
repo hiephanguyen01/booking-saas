@@ -189,3 +189,116 @@ Xong 4.3 thì lệnh này phải rỗng — đó là điều kiện để sang P
 ```bash
 cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features components
 ```
+
+---
+
+## 6. Prompt bàn giao (dán nguyên văn cho agent tiếp theo)
+
+````text
+Tiếp tục một cuộc refactor đang dở trong monorepo tại `/Volumes/OVEN Duy/temp/booking-saas`.
+
+## Trạng thái
+
+Nhánh `refactor/storefront-dashboard-convention` (đã push origin), HEAD = `c1b5e657`.
+Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
+**Phase 1–3 đã xong và đã review. Phase 4–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 4.
+
+## Đọc trước khi gõ bất cứ thứ gì
+
+1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
+2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
+   đọc `## Global Constraints` + phase bạn sắp làm. Đừng đọc cả file mỗi lần.
+3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
+
+Nếu máy này còn thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/`
+thì đọc `progress.md` trong đó (ledger tiến độ) và dùng `task-4-brief.md` đã trích sẵn.
+Thư mục này git-ignored — máy khác sẽ không có, lúc đó handoff doc là nguồn duy nhất.
+
+## Luật cứng — vi phạm là hỏng việc
+
+1. **KHÔNG BAO GIỜ TẠO TEST.** ADR 0005. Không `*.spec.*`, không `*.test.*`, không vitest/jest/
+   playwright, không script `test`, không step test trong CI. Kể cả khi thấy "nên có test ở đây".
+2. **KHÔNG ĐỔI UI.** Không sửa className, không sửa cấu trúc DOM, không sửa chữ. Ngoại lệ DUY NHẤT
+   đã được chủ dự án duyệt: 3 thay đổi pixel ở trang packages trong Phase 7 (ghi rõ trong plan).
+3. **KHÔNG đổi schema, KHÔNG đụng `@booking/contracts`, KHÔNG đụng `apps/api`.**
+4. **KHÔNG đổi hành vi runtime** — loader/action contract, URL, thứ tự fetch giữ nguyên.
+5. **Mỗi task một commit nhỏ.** Không gộp nhiều feature vào một commit.
+
+## Lệnh verify — dùng SAI là bạn sẽ đuổi theo lỗi ma
+
+```bash
+nvm use    # .nvmrc = 22.22.0; shell mặc định là Node 20, React Router 8 sẽ bail
+pnpm turbo typecheck build --filter=@booking/storefront...   # DẤU ... CUỐI LÀ BẮT BUỘC
+pnpm --filter=@booking/storefront lint
+pnpm --filter=@booking/storefront security
+```
+
+⚠️ **`pnpm --filter=@booking/storefront typecheck` chạy MỘT MÌNH sẽ báo 17 lỗi GIẢ**
+(`NsI18n.Platform`, `PublicListingDetailWithTimezoneResponse`, `resourceTimezone`…). Nguyên nhân là
+`dist/` cũ của `@booking/contracts` + `@booking/i18n`, không phải lỗi code. Đừng "sửa" chúng.
+
+Chạy verify **sau mỗi commit**, không phải chỉ ở cuối.
+
+## 4 cái bẫy đã có người dẫm
+
+1. **`./+types/*` KHÔNG resolve qua alias `~/`** — chỉ qua thủ thuật `rootDirs` trong tsconfig, tức
+   bắt buộc là đường dẫn tương đối. Hiện còn 10 file dưới `features/` import `routes/+types/*` bằng
+   `../` — **cố ý, không phải nợ**. Phase 4 xoá sạch chúng. Khi move file, tự tính lại độ sâu `../`.
+2. **`pnpm format` trần reformat ~250 file NGOÀI storefront** (apps/api, dashboard, packages, cả
+   `.vscode/mcp.json`). Luôn dùng `pnpm exec prettier --write apps/storefront/app`.
+3. **`git mv` tự stage.** Làm nhiều `git mv` rồi commit từng nhóm thì `git commit` nuốt luôn nhóm sau.
+   Dùng `git commit -- <đường dẫn>` hoặc `git restore --staged` trước.
+4. **Alias `~/` cho mọi đường dẫn vượt cấp, `./sibling` giữ tương đối.** Sau mỗi lần move, lệnh này
+   phải rỗng: `cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*.tsx' | grep -v '+types'`
+
+## Quyết định chủ dự án đã chốt — ĐỪNG HỎI LẠI, ĐỪNG TỰ ĐỔI
+
+- **Phase 6.1** — dialog shell dùng CSS-branch (`hidden lg:block`) làm chuẩn, KHÔNG dùng JS `isDesktop`.
+- **Phase 7** — DUYỆT gộp 3 page shell, chấp nhận 3 thay đổi pixel ở trang packages:
+  `bg-muted/40`→`/30`, `py-6`→`py-4`, `MapPin size-5`→`size-4`. Landmark `<main>` cho cả 3 trang.
+- **Phase 11.2** — DUYỆT gỡ SẠCH mock. UI production không đổi (mock vốn tắt ở production).
+- **Task 3.4** — 31 file `lib/*.server.ts` ở lại `lib/` là CỐ Ý (hạ tầng hoặc ≥2 feature dùng).
+  Đừng kéo chúng vào feature: làm thế là tự chế ra đúng loại import chéo mà Phase 5 dựng rào để cấm.
+
+## Thứ tự KHÔNG được đảo
+
+Phase 4 (cắt `features→routes`) **phải trước** Phase 5 (bật rule ESLint). Bật rule khi còn 10 vi phạm
+thì lint đỏ hàng loạt và không phân biệt được lỗi mới với nợ cũ.
+`check:frontend-structure` chỉ nối vào CI ở **Phase 8**, vì bất biến "route ≤120 dòng" còn đỏ 3 chỗ
+cho tới lúc đó.
+
+## Bắt đầu thế nào
+
+**Bước 0 — xác nhận baseline chưa hỏng.** Chạy 3 lệnh verify ở trên + 3 lệnh dưới đây; TẤT CẢ phải
+sạch. Nếu có cái nào đỏ, DỪNG và báo người dùng — bạn đã nhận một cây code hỏng, đừng chồng thêm lên.
+
+```bash
+find apps/storefront/app/features -mindepth 2 -maxdepth 2 -type d | grep -vE '/(components|server|lib)$'
+find apps/storefront/app/features -name '*.server.ts' | grep -v '/server/'
+cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*.tsx' | grep -v '+types'
+```
+
+**Bước 1 — làm Phase 4**, 3 task, mỗi task một commit, verify giữa từng cái:
+- 4.1 bỏ `routes/+types` khỏi 10 file trong `features/`, thay bằng kiểu tự khai suy từ module server
+  của chính feature (plan có mẫu đầy đủ cho `catalog-page.tsx`).
+- 4.2 xoá shim `routes/partner-onboarding/shared.tsx`, trỏ thẳng vào feature.
+- 4.3 nuốt thân loader 2 route booking-data vào
+  `features/booking-widget/server/listing-booking-data.server.ts` (file đã nằm sẵn ở đó).
+
+Điều kiện xong Phase 4 — lệnh này phải rỗng:
+```bash
+cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features components
+```
+
+**Bước 2** — cập nhật ledger (nếu có) và tiếp Phase 5.
+
+## Khi bạn thấy plan có vẻ sai
+
+Plan này ĐÃ sai 2 lần và cả 2 lần đều được bắt bằng cách đối chiếu với ràng buộc cấu trúc, không phải
+bằng cách tin brief. Nếu bạn thấy một dòng trong plan mâu thuẫn với convention của dashboard hoặc với
+bất biến của `check:frontend-structure`: **DỪNG, trình bày cả hai bên cho người dùng, hỏi cái nào
+thắng.** Đừng tự chọn, đừng im lặng làm theo plan, đừng im lặng làm ngược plan.
+
+Tương tự: đừng mở rộng phạm vi. Nếu thấy thứ đáng sửa mà không nằm trong 13 phase, ghi lại và báo,
+đừng sửa luôn.
+````
