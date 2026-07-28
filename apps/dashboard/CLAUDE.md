@@ -37,7 +37,9 @@ Area features map to the four dashboard areas; **cross-area domain features** (`
 - `features/**` and `components/**` never import from `routes/**`.
 - Browser-reachable modules may only `import type` from `*.server` files (never a runtime import).
 - Route URLs come from `~/constants/paths` (`dashboardPaths.tenant.booking(id)` …), never string-built.
-- The dashboard uses the **`~/` alias** everywhere (unlike the storefront's relative imports).
+- New and changed code uses the **`~/` alias** across directory boundaries and `./sibling` within one
+  directory, matching the storefront. Existing dashboard `../` imports are migration debt, not a
+  precedent.
 
 ## Data & auth
 

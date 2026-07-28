@@ -3,21 +3,26 @@
 Local rules for the customer storefront. Root context: [`../../AGENTS.md`](../../AGENTS.md). Frontend
 conventions shared with the dashboard: [`../../docs/conventions.md`](../../docs/conventions.md).
 
-## Folder architecture
+## Folder architecture (enforced by `pnpm check:frontend-structure`)
 
 ```
 app/
   routes/                 ROUTE MODULES ONLY — group nested flows/resources by semantic name
-  features/<name>/
-    components/           feature UI
-    hooks/                feature-local controller hooks
-    server/               loader/action/BFF bodies
-    lib/                  pure helpers, constants and types
-  components/             cross-feature UI primitives
-  hooks/                  cross-feature hooks
+  features/<name>/        ALL non-route code — see the uniform convention below
+  components/             cross-feature UI primitives only
+  hooks/                  cross-feature hooks only
   constants/              paths and shared display constants
-  lib/                    infrastructure and shared request/pure helpers
+  lib/                    infrastructure + genuinely shared request/pure helpers
 ```
+
+**Every feature uses one uniform layout** — `features/<name>/{components, hooks, server, lib}`:
+
+- `components/` — `.tsx` feature UI. Account page components may be grouped one level deeper by page.
+- `hooks/` — feature-local controller hooks (`use-*`); never leave these in `components/`.
+- `server/` — `*.server.ts` loader/action/BFF bodies owned by the feature.
+- `lib/` — feature-local pure helpers, constants and types (no JSX, no server).
+
+Omit empty folders. A feature's second-level folders may only use these four names.
 
 A file referenced by `app/routes.ts` may expose React Router route-module exports only:
 `default`, `loader`, `clientLoader`, `action`, `clientAction`, `middleware`, `clientMiddleware`,
@@ -26,6 +31,17 @@ Keep these exports as thin adapters. Page UI, controller hooks, request handlers
 response builders and other support functions belong to the owning feature. `routes/` must not contain
 support modules imported by other routes. Dashboard area-local `routes.ts`/`nav.ts` files are deliberate
 route-config/navigation exceptions; storefront currently has no equivalent exception.
+
+## Import discipline
+
+- Only a **route module** may import its generated relative `./+types/*`; this path does not resolve
+  through `~/`.
+- `features/**`, `components/**`, `hooks/**`, and `constants/**` never import from `routes/**`.
+- Browser-reachable modules may only `import type` from `*.server` files (never a runtime import).
+- Route URLs come from `~/constants/paths` (`storefrontPaths.account.booking(code)` …), never
+  string-built.
+- Use the **`~/` alias** for every import that crosses a directory boundary; keep `./sibling` for files
+  in the same directory. Do not use `../`.
 
 ## What's different from the dashboard
 
@@ -37,12 +53,10 @@ route-config/navigation exceptions; storefront currently has no equivalent excep
   contrast, is Vietnamese-hardcoded.
 - **Public + guest flows.** Most pages are public; authenticated bits (bookings, checkout) use a
   Redis-backed session; guest checkout authenticates by booking code + email OTP.
-- **`~/` alias** cho mọi import vượt cấp (`~/lib/i18n`, `~/components/section-card`), `./sibling` cho
-  cùng thư mục — giống hệt dashboard. Không dùng `../` nữa.
 
 ## Tenant theming (untrusted input — handle with care)
 
-`app/theme/theme.ts` turns the tenant's `theme_config.colors` into a `:root{…}` block injected once at
+`app/lib/theme.ts` turns the tenant's `theme_config.colors` into a `:root{…}` block injected once at
 SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--primary`, `--ring`) so every
 `@booking/ui` component renders in the tenant brand. Rules:
 
