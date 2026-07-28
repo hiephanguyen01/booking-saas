@@ -19,7 +19,7 @@ import {
   useCheckoutFormController,
   type CheckoutContactFieldModel,
   type CheckoutPaymentMethodModel,
-} from './use-checkout-form-controller';
+} from '~/features/checkout/hooks/use-checkout-form-controller';
 
 export function CheckoutForm({
   listingId,

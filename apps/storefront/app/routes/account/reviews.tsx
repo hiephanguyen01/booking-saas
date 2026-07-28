@@ -1,4 +1,4 @@
-import { AccountReviewsPage } from '~/features/account/components/reviews-page';
+import { AccountReviewsPage } from '~/features/account/components/reviews/reviews-page';
 import {
   handleAccountReviewsAction,
   loadAccountReviewsRoute,

@@ -6,13 +6,14 @@ import { ListingCard } from '~/features/catalog/components/listing-card';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { storefrontPaths } from '~/constants/paths';
+import type { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import { useLocale } from '~/hooks/use-locale';
-import type { Route } from '../../../routes/+types/provider';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 
 export function ProviderProfilePage({
   loaderData,
 }: {
-  loaderData: Route.ComponentProps['loaderData'];
+  loaderData: ServerDataFrom<typeof loadProviderRoute>;
 }) {
   const { profile, listings, reviews, reviewSummary, reviewRating, reviewLimit, activeType } =
     loaderData;

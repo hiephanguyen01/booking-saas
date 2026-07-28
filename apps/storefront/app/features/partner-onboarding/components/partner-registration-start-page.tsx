@@ -1,14 +1,8 @@
 import { Form, useActionData, useOutletContext } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { StorefrontContext } from '~/root';
-import {
-  AuthSplit,
-  EmailField,
-  FormAlert,
-  FormHeading,
-  LoginPrompt,
-  PrimaryButton,
-} from '~/routes/partner-onboarding/shared';
+import { AuthSplit, FormHeading } from './partner-auth-layout';
+import { EmailField, FormAlert, LoginPrompt, PrimaryButton } from './partner-form-controls';
 import type { PartnerOnboardingActionData } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
 export function PartnerRegistrationStartPage() {

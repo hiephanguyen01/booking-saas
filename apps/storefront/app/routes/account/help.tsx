@@ -6,7 +6,7 @@ import {
 } from '@booking/ui/components/ui/accordion';
 import { Mail, MapPin, Phone } from 'lucide-react';
 import { useOutletContext } from 'react-router';
-import { AccountPanel, PageHeading } from '~/features/account/components/account-primitives';
+import { AccountPanel, PageHeading } from '~/features/account/components/shared/account-primitives';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { AccountOutletContext } from './layout';
 

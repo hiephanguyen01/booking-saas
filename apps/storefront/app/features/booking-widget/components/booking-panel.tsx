@@ -12,7 +12,7 @@ import { DailyPicker, FixedDailyPicker } from './booking-panel-daily-picker';
 import { HourlyPicker } from './booking-panel-hourly-picker';
 import { InventoryPicker } from './booking-panel-inventory-picker';
 import { Breakdown, ModeToggle, PackagePicker, QuoteHeader } from './booking-panel-presentation';
-import { useBookingPanelController } from './use-booking-panel-controller';
+import { useBookingPanelController } from '~/features/booking-widget/hooks/use-booking-panel-controller';
 
 interface PanelProps {
   listing: PublicListingDetailWithTimezoneResponse;

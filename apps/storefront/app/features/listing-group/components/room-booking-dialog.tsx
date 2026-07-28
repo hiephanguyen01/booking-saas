@@ -11,7 +11,7 @@ import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listi
 import { PackageMediaDetails } from '~/features/packages/components/package-media-details';
 import { RoomBookingDialogShell } from './room-booking-dialog-shell';
 import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';
-import { useListingBookingDialogController } from './use-listing-booking-dialog-controller';
+import { useListingBookingDialogController } from '~/features/listing-group/hooks/use-listing-booking-dialog-controller';
 
 export type { ListingBookingMode } from './room-booking-dialog-steps';
 

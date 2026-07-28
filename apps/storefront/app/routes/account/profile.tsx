@@ -1,4 +1,4 @@
-import { AccountProfilePage } from '~/features/account/components/profile-page';
+import { AccountProfilePage } from '~/features/account/components/profile/profile-page';
 import {
   handleAccountProfileAction,
   loadAccountProfileRoute,

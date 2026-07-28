@@ -6,7 +6,10 @@ import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { AuthFormError, AuthPasswordInput, AuthSubmitButton } from './auth-form-controls';
-import { useAuthStartFormController, type AuthStartMode } from './use-auth-start-form-controller';
+import {
+  useAuthStartFormController,
+  type AuthStartMode,
+} from '~/features/auth/hooks/use-auth-start-form-controller';
 
 export function StartForm({
   mode,

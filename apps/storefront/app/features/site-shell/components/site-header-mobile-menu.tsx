@@ -13,7 +13,7 @@ import { NavLink } from 'react-router';
 import type { AccountNavKey } from '~/features/account/lib/account-nav';
 import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
 import { SiteHeaderAccountAvatar, SiteHeaderLogoutForm } from './site-header-account-menu';
-import { useSiteHeaderMobileMenuController } from './use-site-header-mobile-menu-controller';
+import { useSiteHeaderMobileMenuController } from '~/features/site-shell/hooks/use-site-header-mobile-menu-controller';
 
 export function SiteHeaderMobileMenu({
   brand,

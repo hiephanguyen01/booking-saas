@@ -8,19 +8,24 @@ import {
 } from '@booking/ui/components/ui/input-otp';
 import { Mail } from 'lucide-react';
 import { useOutletContext } from 'react-router';
-import { useOtpFormController } from '~/features/auth/components/use-otp-form-controller';
+import { useOtpFormController } from '~/features/auth/hooks/use-otp-form-controller';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { StorefrontContext } from '~/root';
-import type { Route } from '../../../routes/partner-onboarding/+types/verify';
-import {
-  AuthSplit,
-  FormAlert,
-  FormHeading,
-  PrimaryButton,
-} from '~/routes/partner-onboarding/shared';
+import { AuthSplit, FormHeading } from './partner-auth-layout';
+import { FormAlert, PrimaryButton } from './partner-form-controls';
 import type { PartnerOnboardingActionData } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
+import type {
+  loadPartnerVerifyRoute,
+  submitPartnerVerifyRoute,
+} from '~/features/partner-onboarding/server/partner-verify-route.server';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 
-export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentProps) {
+export interface PartnerVerifyPageProps {
+  loaderData: ServerDataFrom<typeof loadPartnerVerifyRoute>;
+  actionData?: ServerDataFrom<typeof submitPartnerVerifyRoute>;
+}
+
+export function PartnerVerifyPage({ loaderData, actionData }: PartnerVerifyPageProps) {
   const verifyActionData = actionData as PartnerOnboardingActionData | undefined;
   const { tenant } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Auth);

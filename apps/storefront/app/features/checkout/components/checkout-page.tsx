@@ -1,12 +1,12 @@
-import type { Route } from '../../../routes/+types/checkout';
+import type { CheckoutPageControllerProps } from '~/features/checkout/hooks/use-checkout-page-controller';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { BookingColumn } from './booking-column';
 import { CheckoutForm } from './checkout-form';
 import { MemberBanner } from './member-banner';
 import { PaymentHandoff } from './payment-handoff';
-import { useCheckoutPageController } from './use-checkout-page-controller';
+import { useCheckoutPageController } from '~/features/checkout/hooks/use-checkout-page-controller';
 
-export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {
+export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerProps) {
   const {
     listing,
     mode,

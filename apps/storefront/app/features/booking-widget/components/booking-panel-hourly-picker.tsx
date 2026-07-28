@@ -8,8 +8,8 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import { dateOnlyToLocal, timeInTz } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
 import { PickerLabel } from './booking-panel-presentation';
-import type { SetSearchParams } from './booking-panel-types';
-import { useBookingPanelHourlyPickerController } from './use-booking-panel-hourly-picker-controller';
+import type { SetSearchParams } from '~/features/booking-widget/lib/booking-panel-types';
+import { useBookingPanelHourlyPickerController } from '~/features/booking-widget/hooks/use-booking-panel-hourly-picker-controller';
 
 export function HourlyPicker({
   availability,

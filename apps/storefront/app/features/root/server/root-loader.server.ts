@@ -7,9 +7,9 @@ import {
   refAttributionCookie,
   resolveVisitorId,
   trackReferral,
-} from '~/lib/affiliate.server';
+} from '~/features/affiliate/server/affiliate.server';
 import { getOptionalAuth } from '~/lib/auth.server';
-import { fetchListingTypes } from '~/lib/catalog.server';
+import { fetchListingTypes } from '~/features/catalog/server/catalog.server';
 import { resolveLocale } from '~/lib/i18n.server';
 import { getOptionalStorefrontTenant } from '~/lib/request-context.server';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from '~/lib/seo';

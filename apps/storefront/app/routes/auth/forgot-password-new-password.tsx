@@ -1,6 +1,7 @@
 import { useActionData, useOutletContext } from 'react-router';
 import type { Route } from './+types/forgot-password-new-password';
-import { AuthFrame, NewPasswordForm } from '~/features/auth/components';
+import { AuthFrame } from '~/features/auth/components/auth-frame';
+import { NewPasswordForm } from '~/features/auth/components/auth-new-password-form';
 import {
   completePasswordAction,
   requireFlowPhaseOnly,

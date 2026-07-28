@@ -12,10 +12,11 @@ import { CalendarDays, ChevronDown, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useLocale } from '~/hooks/use-locale';
-import { ModeToggle, modeHint } from './search-form-controls';
+import { ModeToggle } from './search-form-controls';
 import type { DateRange } from '~/features/search/lib/search-form-types';
+import { modeHint } from '~/features/search/lib/search-mode-hint';
 import type { SearchMode } from '~/features/search/lib/search-state';
-import { useSearchDatePickerController } from './use-search-date-picker-controller';
+import { useSearchDatePickerController } from '~/features/search/hooks/use-search-date-picker-controller';
 
 export function SearchDatePicker({
   mode,

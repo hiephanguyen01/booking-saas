@@ -5,11 +5,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { PickerLabel } from './booking-panel-presentation';
-import type { SetSearchParams } from './booking-panel-types';
+import type { SetSearchParams } from '~/features/booking-widget/lib/booking-panel-types';
 import {
   useDailyPickerController,
   useFixedDailyPickerController,
-} from './use-booking-panel-daily-picker-controller';
+} from '~/features/booking-widget/hooks/use-booking-panel-daily-picker-controller';
 
 export function FixedDailyPicker({
   availability,

@@ -1,5 +1,5 @@
 import type { PublicListingResponse } from '@booking/contracts';
-import { fetchListings } from '~/lib/catalog.server';
+import { fetchListings } from '~/features/catalog/server/catalog.server';
 
 type ListingFetcher = (
   request: Request,

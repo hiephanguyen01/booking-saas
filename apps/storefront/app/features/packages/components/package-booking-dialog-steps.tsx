@@ -5,7 +5,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw } from 'lucide-react';
 import { AvailabilitySkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { usePackageBookingDialogStepsController } from './use-package-booking-dialog-steps-controller';
+import { usePackageBookingDialogStepsController } from '~/features/packages/hooks/use-package-booking-dialog-steps-controller';
 
 export function PackageBookingDialogSteps({
   date,

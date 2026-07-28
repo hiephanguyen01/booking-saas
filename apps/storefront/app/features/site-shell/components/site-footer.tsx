@@ -4,7 +4,7 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontTenant } from '~/lib/tenant.server';
 import { useLocale } from '~/hooks/use-locale';
-import { SOCIAL_PROFILES, type SocialKey } from './site-footer-fallback';
+import { SOCIAL_PROFILES, type SocialKey } from '~/features/site-shell/lib/site-footer-fallback';
 import { TenantBrand } from './tenant-brand';
 
 export function SiteFooter({

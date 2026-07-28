@@ -11,8 +11,11 @@ import {
   mockPay,
   mockPaymentsEnabled,
   verifyBookingAccess,
-} from '~/lib/booking.server';
-import { getCheckoutFlowService, maskCheckoutEmail } from '~/lib/checkout-flow.server';
+} from '~/features/booking/server/booking.server';
+import {
+  getCheckoutFlowService,
+  maskCheckoutEmail,
+} from '~/features/checkout/server/checkout-flow.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
@@ -21,7 +24,7 @@ import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
   isMockPaymentRedirect,
-} from '~/lib/payment-redirect.server';
+} from '~/features/checkout/server/payment-redirect.server';
 
 const BOOKING_DETAIL_MAX_FORM_BYTES = 16 * 1024;
 

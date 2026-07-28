@@ -5,7 +5,7 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { PackageBookingDialogShell } from './package-booking-dialog-shell';
 import { PackageBookingDialogSteps } from './package-booking-dialog-steps';
-import { usePackageBookingDialogController } from './use-package-booking-dialog-controller';
+import { usePackageBookingDialogController } from '~/features/packages/hooks/use-package-booking-dialog-controller';
 
 export function PackageBookingDialog({
   open,

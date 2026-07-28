@@ -12,7 +12,7 @@ import { Spinner } from '@booking/ui/components/ui/spinner';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useNavigation } from 'react-router';
-import { isFormNavigationPending } from '~/features/auth/components/otp-submission-state';
+import { isFormNavigationPending } from '~/features/auth/lib/otp-submission-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { usePasswordVisibility } from '~/hooks/use-password-visibility';

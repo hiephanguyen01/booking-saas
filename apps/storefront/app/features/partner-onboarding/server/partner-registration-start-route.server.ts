@@ -1,7 +1,7 @@
 import { authChallengeResponseSchema, type AuthChallengeResponse } from '@booking/contracts';
 import { redirect } from 'react-router';
 import { publicPost } from '~/lib/api.server';
-import { authFlow } from '~/lib/auth-flow.server';
+import { authFlow } from '~/features/auth/server/auth-flow.server';
 import { getOptionalAuth } from '~/lib/auth.server';
 import { storefrontEnv } from '~/lib/env.server';
 import { requireLocale } from '~/lib/i18n.server';

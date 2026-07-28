@@ -26,7 +26,7 @@ import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import { type AccountNavKey, userInitials } from '~/features/account/lib/account-nav';
 import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { useSiteHeaderAccountMenuController } from './use-site-header-account-menu-controller';
+import { useSiteHeaderAccountMenuController } from '~/features/site-shell/hooks/use-site-header-account-menu-controller';
 
 type AccountMenuIcon = ComponentType<SVGProps<SVGSVGElement>>;
 

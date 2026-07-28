@@ -32,9 +32,12 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
 
 ## BFF & data
 
-Server-only `app/lib/*.server.ts` modules wrap `@booking/api-client`; loaders/actions call the backend
-server-to-server. **Never fetch the backend from the browser** and never import a `*.server.ts` into
-browser code. Forms use `GenericForm` with a zod schema from `@booking/contracts`
+Server-only domain/BFF modules live under `app/features/<name>/server/`; only cross-feature
+infrastructure and genuinely shared request helpers remain in `app/lib/*.server.ts`. Loaders/actions
+call the backend server-to-server. **Never fetch the backend from the browser** and never value-import
+a `*.server.ts` module into browser code (type-only imports are allowed). Feature-local hooks live in
+`features/<name>/hooks/`, not `components/`; feature-local pure helpers/types live in `lib/`. Forms use
+`GenericForm` with a zod schema from `@booking/contracts`
 (see [`../../docs/conventions.md`](../../docs/conventions.md) → Forms).
 
 Runtime environment reads are centralized in `app/lib/env.server.ts`. Production startup fails when

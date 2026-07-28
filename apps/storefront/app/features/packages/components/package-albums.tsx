@@ -9,7 +9,7 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { PackageMediaDetails } from './package-media-details';
-import { usePackageAlbumsController } from './use-package-albums-controller';
+import { usePackageAlbumsController } from '~/features/packages/hooks/use-package-albums-controller';
 
 export function PackageAlbums({
   packages,

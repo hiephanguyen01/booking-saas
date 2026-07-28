@@ -12,7 +12,12 @@ import {
   type AuthOtpVerifiedResponse,
 } from '@booking/contracts';
 import { data, redirect } from 'react-router';
-import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from '~/lib/auth-flow.server';
+import {
+  authFlow,
+  flowView,
+  type AuthFlowPhase,
+  type AuthFlowView,
+} from '~/features/auth/server/auth-flow.server';
 import { backendLogin, backendLogout, publicPost } from '~/lib/api.server';
 import { getOptionalAuth } from '~/lib/auth.server';
 import {

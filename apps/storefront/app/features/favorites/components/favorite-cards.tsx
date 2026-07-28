@@ -1,13 +1,13 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { ListingCard } from '~/features/catalog/components/listing-card';
-import type { ListingCardPresentation } from '~/features/catalog/components/listing-card.types';
+import type { ListingCardPresentation } from '~/features/catalog/lib/listing-card.types';
 import { SearchResultCard } from '~/features/catalog/components/search-result-card';
 import type {
   EnrichedSearchListing,
   StorefrontSearchState,
 } from '~/features/search/lib/search-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { useFavorite } from '~/features/favorites/components/favorites-context';
+import { useFavorite } from '~/features/favorites/hooks/use-favorite';
 
 /** ListingCard with a wired, persisted favorite heart (home / catalog / related / account). */
 export function FavoriteListingCard({

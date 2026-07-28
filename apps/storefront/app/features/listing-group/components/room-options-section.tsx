@@ -19,7 +19,7 @@ import { roomAvailabilityState } from '~/features/listing-group/lib/listing-grou
 import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
 import { RoomMediaDetails } from './room-media-details';
 import { RoomPhotoStrip } from './room-photo-strip';
-import { useRoomOptionsController } from './use-room-options-controller';
+import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
 
 export function RoomOptionsSection({
   roomOptions,

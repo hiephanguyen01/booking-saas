@@ -8,8 +8,9 @@ import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
+import type { loadListingRoute } from '~/features/listing/server/listing-route.server';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 import type { StorefrontContext } from '~/root';
-import type { Route } from '../../../routes/+types/listing';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
@@ -20,12 +21,12 @@ import { PackageBookingDialog } from './package-booking-dialog';
 import { listingPackages, minimumPackagePrice } from '~/features/packages/lib/package-data';
 import { PackageTable } from './package-table';
 import { RelatedListings } from './related-listings';
-import { usePackageBookingController } from './use-package-booking-controller';
+import { usePackageBookingController } from '~/features/packages/hooks/use-package-booking-controller';
 
 export function PackageListingPage({
   loaderData,
 }: {
-  loaderData: Route.ComponentProps['loaderData'];
+  loaderData: ServerDataFrom<typeof loadListingRoute>;
 }) {
   const { listing, locations, auxiliaryData, bookingToday } = loaderData;
   const { listingTypes, locale } = useOutletContext<StorefrontContext>();

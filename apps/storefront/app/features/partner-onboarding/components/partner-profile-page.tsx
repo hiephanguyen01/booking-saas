@@ -3,16 +3,18 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Field, FieldLabel } from '@booking/ui/components/ui/field';
 import { Form } from '@booking/ui/components/ui/form';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import type { Route } from '../../../routes/partner-onboarding/+types/profile';
-import { FormAlert } from '~/routes/partner-onboarding/shared';
+import { FormAlert } from './partner-form-controls';
 import {
   PARTNER_PROFILE_BANKS,
   PartnerDocumentPair,
   partnerProfileTextField,
 } from './partner-profile-fields';
-import { usePartnerProfilePageController } from './use-partner-profile-page-controller';
+import {
+  usePartnerProfilePageController,
+  type PartnerProfilePageControllerArgs,
+} from '~/features/partner-onboarding/hooks/use-partner-profile-page-controller';
 
-export function PartnerProfilePage({ loaderData, actionData }: Route.ComponentProps) {
+export function PartnerProfilePage({ loaderData, actionData }: PartnerProfilePageControllerArgs) {
   const {
     errorMessage,
     form,

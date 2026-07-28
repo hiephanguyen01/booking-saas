@@ -7,16 +7,11 @@ import { Info, Search, Users } from 'lucide-react';
 import { Form } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { SearchDatePicker } from './search-date-picker';
-import {
-  CategoryPicker,
-  LocationCombobox,
-  ModeToggle,
-  SearchField,
-  modeHint,
-} from './search-form-controls';
+import { CategoryPicker, LocationCombobox, ModeToggle, SearchField } from './search-form-controls';
 import type { LocationOption, SearchFormVariant } from '~/features/search/lib/search-form-types';
+import { modeHint } from '~/features/search/lib/search-mode-hint';
 import type { StorefrontSearchState } from '~/features/search/lib/search-state';
-import { useSearchFormController } from './use-search-form-controller';
+import { useSearchFormController } from '~/features/search/hooks/use-search-form-controller';
 
 export type { LocationOption } from '~/features/search/lib/search-form-types';
 

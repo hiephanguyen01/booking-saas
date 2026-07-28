@@ -6,19 +6,40 @@ import {
   type PublicListingDetailWithTimezoneResponse,
 } from '@booking/contracts';
 import { data } from 'react-router';
-import { fetchAvailability } from '~/lib/booking.server';
-import { fetchQuote } from '~/lib/catalog.server';
+import { fetchAvailability } from '~/features/booking/server/booking.server';
+import { fetchListing, fetchQuote } from '~/features/catalog/server/catalog.server';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
 import { datesInDailyRange, eligibleDailyRange } from '~/lib/daily-range';
 import { rethrowCriticalDataError } from '~/lib/optional-data.server';
 import { selectedPackageForListing } from '~/lib/package-options';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 import { addDays, todayInTz, zonedToUtcIso } from '~/lib/time';
 
 export type BookingDataError = 'invalid-request' | 'room-not-found' | 'availability-unavailable';
 
+export async function loadListingBookingDataRoute(
+  request: Request,
+  url: URL,
+  listingSlug: string,
+  groupSlug?: string,
+) {
+  try {
+    const listing = await fetchListing(request, listingSlug);
+    if (!listing || (groupSlug !== undefined && listing.group?.slug !== groupSlug)) {
+      return bookingDataError('room-not-found', 404);
+    }
+
+    return loadListingBookingData(request, listing, url);
+  } catch (error) {
+    rethrowCriticalDataError(error);
+    return bookingDataError('availability-unavailable', 502);
+  }
+}
+
+export type ListingBookingDataResult = ServerDataFrom<typeof loadListingBookingDataRoute>;
+
 /**
  * Resolves the availability and quote payload used by booking-data resource routes.
- * Callers are responsible for loading the listing and applying route-specific access checks.
  */
 export async function loadListingBookingData(
   request: Request,

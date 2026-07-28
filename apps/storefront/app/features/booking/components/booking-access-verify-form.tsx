@@ -6,7 +6,7 @@ import { Form, useNavigation } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { createSubmissionLock } from '~/lib/submission-lock';
-import { isBookingAccessNavigation } from './booking-access-navigation';
+import { isBookingAccessNavigation } from '~/features/booking/lib/booking-access-navigation';
 
 export function BookingAccessVerifyForm({
   code,

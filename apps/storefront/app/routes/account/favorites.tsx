@@ -1,4 +1,4 @@
-import { AccountFavoritesPage } from '~/features/account/components/account-favorites-page';
+import { AccountFavoritesPage } from '~/features/account/components/favorites/account-favorites-page';
 import { loadAccountFavoritesRoute } from '~/features/account/server/account-favorites-route.server';
 import type { Route } from './+types/favorites';
 

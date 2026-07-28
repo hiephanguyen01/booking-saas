@@ -32,7 +32,7 @@ import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import type { RoomOption } from '~/features/listing-group/lib/listing-group-types';
-import { useSlotPickerController } from './use-slot-picker-controller';
+import { useSlotPickerController } from '~/features/listing-group/hooks/use-slot-picker-controller';
 
 /** The hour picker: a dialog on desktop, a drawer on touch widths. */
 export function SlotPicker({

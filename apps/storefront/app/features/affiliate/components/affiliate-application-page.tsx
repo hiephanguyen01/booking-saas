@@ -2,8 +2,12 @@ import { affiliateRegistrationSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import { CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router';
-import type { Route } from '../../../routes/+types/become-affiliate';
-import { useAffiliateApplicationPageController } from './use-affiliate-application-page-controller';
+import { useAffiliateApplicationPageController } from '~/features/affiliate/hooks/use-affiliate-application-page-controller';
+import type {
+  loadAffiliateApplicationRoute,
+  submitAffiliateApplication,
+} from '~/features/affiliate/server/affiliate-application-route.server';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 
 function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantName: string }) {
   return (
@@ -22,7 +26,15 @@ function BrandHeader({ logoUrl, tenantName }: { logoUrl: string | null; tenantNa
   );
 }
 
-export function AffiliateApplicationPage({ loaderData, actionData }: Route.ComponentProps) {
+export interface AffiliateApplicationPageProps {
+  loaderData: ServerDataFrom<typeof loadAffiliateApplicationRoute>;
+  actionData?: ServerDataFrom<typeof submitAffiliateApplication>;
+}
+
+export function AffiliateApplicationPage({
+  loaderData,
+  actionData,
+}: AffiliateApplicationPageProps) {
   const {
     dashboardLoginHref,
     fieldErrors,

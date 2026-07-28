@@ -12,7 +12,7 @@ import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { clockHoursBetween } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
-import type { ListingFavoriteControl } from './listing-card.types';
+import type { ListingFavoriteControl } from '~/features/catalog/lib/listing-card.types';
 
 export function SearchResultCard({
   listing,

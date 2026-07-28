@@ -17,16 +17,9 @@ import { ListingTypeGlyph } from '~/components/listing-type-glyph';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { SearchMode } from '~/features/search/lib/search-state';
 import type { SearchFormVariant } from '~/features/search/lib/search-form-types';
-import { useLocationComboboxController } from './use-location-combobox-controller';
+import { useLocationComboboxController } from '~/features/search/hooks/use-location-combobox-controller';
 
 type ModeAppearance = 'pills' | 'tabs';
-type Translate = ReturnType<typeof useTranslation<typeof NsI18n.Common>>['t'];
-
-export function modeHint(mode: SearchMode, t: Translate): string {
-  if (mode === 'hourly') return t('home.bookHourlyHint');
-  if (mode === 'inventory') return t('home.inventoryHint');
-  return t('home.bookDailyHint');
-}
 
 export function LocationCombobox({
   initialValue,

@@ -9,7 +9,7 @@ import type {
 } from '~/features/root/server/root-loader.server';
 import { SuspendedNotice } from './suspended-notice';
 import { TenantThemeStyle } from './tenant-theme-style';
-import { useStorefrontAppShellController } from './use-storefront-app-shell-controller';
+import { useStorefrontAppShellController } from '~/features/root/hooks/use-storefront-app-shell-controller';
 
 export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPayload }) {
   return (

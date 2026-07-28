@@ -1,24 +1,13 @@
-import type { FavoriteRefsResponse, FavoriteTargetKind } from '@booking/contracts';
+import type { FavoriteRefsResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import {
+  FavoritesContext,
+  type FavoritesContextValue,
+} from '~/features/favorites/lib/favorites-context';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { LoginRequiredDialog } from './login-required-dialog';
-import { useFavoritesController } from './use-favorites-controller';
-
-interface FavoritesContextValue {
-  isAuthenticated: boolean;
-  locale: Locale;
-  has: (kind: FavoriteTargetKind, id: string) => boolean;
-  toggle: (kind: FavoriteTargetKind, id: string) => void;
-}
-
-const FavoritesContext = createContext<FavoritesContextValue | null>(null);
-
-function useFavoritesContext(): FavoritesContextValue {
-  const ctx = useContext(FavoritesContext);
-  if (!ctx) throw new Error('useFavorite must be used within a <FavoritesProvider>');
-  return ctx;
-}
+import { useFavoritesController } from '~/features/favorites/hooks/use-favorites-controller';
 
 /**
  * Owns favorite context and user-facing feedback for the whole tenant subtree.
@@ -60,13 +49,4 @@ export function FavoritesProvider({
       ) : null}
     </FavoritesContext.Provider>
   );
-}
-
-/** Heart state + toggle for one target. Optimistic + debounced (see provider). */
-export function useFavorite(
-  kind: FavoriteTargetKind,
-  id: string,
-): { selected: boolean; toggle: () => void } {
-  const { has, toggle } = useFavoritesContext();
-  return { selected: has(kind, id), toggle: () => toggle(kind, id) };
 }

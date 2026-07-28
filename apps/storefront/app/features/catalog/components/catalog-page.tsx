@@ -17,15 +17,24 @@ import {
 import { SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router';
 import { CatalogResultSkeleton } from '~/components/loading-skeletons';
+import type { loadCatalogRoute } from '~/features/catalog/server/catalog-route.server';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { Route } from '../../../routes/+types/catalog';
 import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
 import { SearchForm } from '~/features/search/components/search-form';
 import { CatalogPagination } from './catalog-pagination';
 import { FilterPanel } from './filter-panel';
-import { type CatalogSortItem, useCatalogPageController } from './use-catalog-page-controller';
+import {
+  type CatalogSortItem,
+  useCatalogPageController,
+} from '~/features/catalog/hooks/use-catalog-page-controller';
 
-export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
+export interface CatalogPageProps {
+  loaderData: ServerDataFrom<typeof loadCatalogRoute>;
+  params: { locale: string; typeSlug: string };
+}
+
+export function CatalogPage({ loaderData, params }: CatalogPageProps) {
   const { type, search, state } = loaderData;
   const { t } = useTranslation([NsI18n.Catalog, NsI18n.Common]);
   const { listingTypes, pending, booleanFacetKeys, searchFormKey, sortItems } =

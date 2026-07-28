@@ -1,5 +1,5 @@
 import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
-import { searchListings } from '~/lib/catalog.server';
+import { searchListings } from '~/features/catalog/server/catalog.server';
 import { parseSearchState, type StorefrontSearchState } from '~/features/search/lib/search-state';
 
 /** Search params that make this a filtered view rather than the canonical catalog page. */

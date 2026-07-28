@@ -8,7 +8,7 @@ import { AvailabilitySkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { RoomPhotoStrip } from './room-photo-strip';
-import { useRoomBookingDialogStepsController } from './use-room-booking-dialog-steps-controller';
+import { useRoomBookingDialogStepsController } from '~/features/listing-group/hooks/use-room-booking-dialog-steps-controller';
 
 export type ListingBookingMode = 'hourly' | 'daily';
 export type RoomBookingDateRange = { from: Date | undefined; to?: Date | undefined };

@@ -4,7 +4,7 @@ import {
   submitPartnerPasswordRoute,
 } from '~/features/partner-onboarding/server/partner-password-route.server';
 import type { Route } from './+types/password';
-import { partnerMeta } from './shared';
+import { partnerMeta } from '~/features/partner-onboarding/lib/partner-onboarding-meta';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
   const rootData = matches[0].loaderData;

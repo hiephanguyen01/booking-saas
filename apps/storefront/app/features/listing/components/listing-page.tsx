@@ -10,8 +10,9 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
+import type { loadListingRoute } from '~/features/listing/server/listing-route.server';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 import type { StorefrontContext } from '~/root';
-import type { Route } from '../../../routes/+types/listing';
 import { BookingPanel } from '~/features/booking-widget/components/booking-panel';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
@@ -22,7 +23,12 @@ import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attri
 import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
 import { StudioBookingCard } from './studio-booking-card';
 
-export function ListingPage({ loaderData, params }: Route.ComponentProps) {
+export interface ListingPageProps {
+  loaderData: ServerDataFrom<typeof loadListingRoute>;
+  params: { locale: string; listingSlug: string };
+}
+
+export function ListingPage({ loaderData, params }: ListingPageProps) {
   const {
     listing,
     mode,

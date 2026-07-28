@@ -1,4 +1,4 @@
-import { AccountBookingDetailPage } from '~/features/account/components/account-booking-detail-page';
+import { AccountBookingDetailPage } from '~/features/account/components/booking-detail/account-booking-detail-page';
 import {
   handleAccountBookingDetailAction,
   loadAccountBookingDetailRoute,

@@ -1,7 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–3 xong (29 commit), Phase 4–13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–4 xong; Phase 3 đã bổ sung theo review của chủ dự án;
+Phase 5–13 chưa làm
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -17,7 +18,7 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 
 | # | Vấn đề | Phase | Xong? |
 | --- | --- | --- | --- |
-| 1 | 4 bucket chồng chéo, 10 import ngược `features → routes`, 6 leak `templates → features`, 7 leak `layouts → features` | 2–5 | 🟡 cấu trúc xong, hàng rào chưa |
+| 1 | 4 bucket chồng chéo, 20 import `+types` + các import ngược khác `features → routes`, 6 leak `templates → features`, 7 leak `layouts → features` | 2–5 | 🟡 cấu trúc xong, hàng rào chưa |
 | 2 | 3 implementation song song cho "chọn ngày → chọn slot → quote" (~2.6k LOC) | 6 | ❌ |
 | 3 | 2 dialog shell copy gần nguyên, khác nhau ở SSR/hydration | 6 | ❌ |
 | 4 | 3 page shell copy tay và đã drift | 7 | ❌ |
@@ -32,10 +33,10 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 
 ---
 
-## 2. Đã làm gì (Phase 1–3)
+## 2. Đã làm gì (Phase 1–4)
 
-`322 files changed, 2402 insertions(+), 1319 deletions(-)` so với `main`. **Không một dòng UI nào đổi** —
-toàn bộ là di chuyển file + nối lại import.
+Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
+loader/action contract hay URL.
 
 ### Phase 1 — alias `~/` (`13a09517` → `6429154b`)
 
@@ -68,15 +69,16 @@ app/  routes/ features/ components/ constants/ hooks/ lib/
 `homeTemplateFor` cũ nhận `_vertical` rồi bỏ luôn tham số — giờ là `switch (vertical)` thật, hành vi
 không đổi (mọi vertical vẫn trả `StudioHome`) nhưng seam Phase 2/3 không còn nói dối.
 
-### Phase 3 — chuẩn hoá `features/<name>/{components,server,lib}` (`862e00ad` → `4390dcb1`)
+### Phase 3 — chuẩn hoá `features/<name>/{components,hooks,server,lib}` (`862e00ad` → hiện tại)
 
-21 feature, **mọi thư mục cấp 2 giờ chỉ là `components` / `server` / `lib`** — khớp dashboard 1:1.
+21 feature, **mọi thư mục cấp 2 giờ chỉ là `components` / `hooks` / `server` / `lib`**. `hooks/` là
+quyết định bổ sung của chủ dự án sau review: controller hook feature-local không được nằm trong
+`components/`.
 
 - `packages/` (14 file phẳng) và `search/` (9 file phẳng) → tách components/lib.
 - 13 feature còn lại, mỗi feature một commit. `platform-landing` vốn đã đúng — no-op.
 - Xoá `features/auth/auth-ui.tsx` (chỉ là `export * from './ui'`), `ui/` → `components/`.
-- **Task 3.4** — đưa `lib/*.server.ts` có đúng một chủ về feature. Phân loại bằng grep consumer thật, chỉ
-  **3/34** file di chuyển:
+- **Task 3.4 ban đầu** đưa 3 server module single-owner về feature:
 
   | File | Consumer | Về |
   | --- | --- | --- |
@@ -84,34 +86,56 @@ không đổi (mọi vertical vẫn trả `StudioHome`) nhưng seam Phase 2/3 kh
   | `checkout-idempotency.server.ts` | duy nhất `checkout-route.server.ts` | `features/checkout/server/` |
   | `listing-booking-data.server.ts` | duy nhất 2 route booking-data | `features/booking-widget/server/` |
 
-  **31 file ở lại `lib/`** vì hoặc là hạ tầng (dashboard cũng để `lib/`), hoặc ≥2 feature dùng — kéo chúng
-  vào một feature sẽ chế ra đúng loại import chéo mà Phase 5 dựng hàng rào để cấm. Nặng nhất:
-  `catalog.server` (**7 feature**), `booking.server` (5), `affiliate.server` / `payment-redirect.server` /
-  `public-reviews.server` (3).
-- **Task 3.5** — làm phẳng 11 thư mục sub-feature (`account/{bookings,favorites,messages,profile,recent,reviews}`,
-  `partner-onboarding/{done,password,profile,start,verify}`). Xem §4 để biết vì sao task này sinh ra muộn.
+  Review sau đó chốt lại ranh giới: shared **không đồng nghĩa hạ tầng**. Thêm 9 BFF/domain module đã rời
+  `app/lib` về owner feature: `affiliate`, `auth-flow`, `booking`, `catalog`, `checkout-flow`,
+  `partner`, `payment-redirect`, `public-reviews`, `recent`. `app/lib` hiện còn 22 `*.server.ts`, chỉ là
+  hạ tầng/shared request concern (API, session/auth context, Redis, env, request parsing/security,
+  tenant/i18n, administrative divisions).
+- **Task 3.5 ban đầu** làm phẳng sub-feature. Review của chủ dự án chỉ ra việc đó quá tay với account:
+  `account/components` nay được group lại theo trang (`booking-detail`, `bookings`, `favorites`,
+  `messages`, `profile`, `recent`, `reviews`, `legal`, `account-shell`, `account-flow`, `shared`).
+- **Task 3.6 bổ sung** — 48 hook feature-local nằm trong `features/*/hooks`; `components/` không còn file
+  `use-*` hay helper `.ts`. Helper/type thuần được đưa sang `lib/`; hai barrel `components/index.ts`
+  của `auth` và `partner-onboarding` đã xoá.
+
+### Phase 4 — cắt đứt `features → routes`
+
+- Audit thực tế có **20** feature file import `+types` (brief cũ chỉ đếm 10) và 3 import type qua
+  `routes/account/layout`; tất cả đã thay bằng props suy từ server function qua `ServerDataFrom`.
+- Xoá shim `routes/partner-onboarding/shared.tsx`; route và feature import trực tiếp component/lib owner.
+- Hai booking-data resource route và booking-payment-status route chỉ còn delegate sang feature server;
+  browser hook chỉ type-import result type từ `*.server.ts`.
+- Điều kiện Phase 4 hiện rỗng:
+
+  ```bash
+  cd apps/storefront/app
+  grep -rn "~/routes/\|routes/+types" features components
+  ```
 
 ---
 
 ## 3. Trạng thái xác minh
 
-Chạy sau **mỗi** commit, và lần cuối trên `4390dcb1`:
+Lần xác minh gần nhất ngày 2026-07-28:
 
 ```bash
-nvm use                                                    # .nvmrc = 22.22.0
-pnpm turbo typecheck build --filter=@booking/storefront...  # 10/10 successful
+PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
+  pnpm turbo typecheck build --filter=@booking/storefront... --force  # 10/10 successful
 pnpm --filter=@booking/storefront lint                      # clean
 pnpm --filter=@booking/storefront security                  # passed
 ```
 
-Ba bất biến cấu trúc, kiểm bằng tay ngày 2026-07-28 — **cả ba đều pass**:
+`.nvmrc` yêu cầu 22.22.0 nhưng máy hiện không cài đúng patch đó; Node 24.18.0 là bản đã dùng để verify.
+
+Các bất biến cấu trúc, kiểm bằng tay ngày 2026-07-28 — **tất cả đều pass**:
 
 ```bash
 find apps/storefront/app/features -mindepth 2 -maxdepth 2 -type d \
-  | grep -vE '/(components|server|lib)$'                         # rỗng
+  | grep -vE '/(components|hooks|server|lib)$'                   # rỗng
 find apps/storefront/app/features -name '*.server.ts' | grep -v '/server/'   # rỗng
 cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*.tsx' \
   | grep -v '+types'                                             # rỗng
+cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features components  # rỗng
 ```
 
 ---
@@ -122,20 +146,19 @@ cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*
    của `@booking/contracts` + `@booking/i18n` và báo **17 lỗi giả** (`NsI18n.Platform`,
    `PublicListingDetailWithTimezoneResponse`, `resourceTimezone`…). Luôn dùng
    `pnpm turbo typecheck build --filter=@booking/storefront...` — **dấu `...` cuối là bắt buộc**.
-2. **Shell mặc định Node v20.19.4**, `.nvmrc` = 22.22.0. React Router 8 in "Oops" rồi bail. `nvm use` trước
-   mọi lệnh pnpm.
+2. **PATH mặc định hiện trỏ Node v22.12.0**, thấp hơn yêu cầu 22.22.0 của React Router 8.
+   `.nvmrc` = 22.22.0 nhưng máy chưa có đúng bản đó; dùng Node 24.18.0 đã cài sẵn.
 3. **`./+types/*` KHÔNG resolve qua `~/`.** Nó chỉ resolve qua thủ thuật `rootDirs` trong tsconfig, tức
-   phải là đường dẫn tương đối. Hiện còn **10 file** dưới `features/` import `routes/+types/*` bằng `../`
-   — đó là ngoại lệ cố ý, không phải nợ. **Phase 4 xoá sạch chúng.** Khi move file, phải tự tính lại độ
-   sâu `../` cho mấy import này.
+   phải là đường dẫn tương đối. Đây là lý do Phase 4 không đổi chúng sang alias mà xoá toàn bộ dependency
+   `features → routes`; hiện chỉ route module được import `./+types/*`.
 4. **`pnpm format` trần reformat ~250 file ngoài storefront** (apps/api, dashboard, packages, cả
    `.vscode/mcp.json`). Luôn dùng `pnpm exec prettier --write apps/storefront/app`.
 5. **`git mv` tự stage.** Khi làm nhiều `git mv` rồi commit từng nhóm, `git commit` sẽ nuốt luôn nhóm sau.
    Dùng `git commit -- <đường dẫn>` hoặc `git restore --staged` trước khi commit.
-6. **Lỗi trong plan gốc, đã sửa:** Phase 3.3 ghi *"`features/account` — đã đúng"*. Sai — nó có đủ
-   `{components,server,lib}` **nhưng còn 6 thư mục con nữa**, `partner-onboarding` còn 5. Reviewer cho qua
-   vì tin dòng đó trong brief. Bắt được nhờ đối chiếu với bất biến của gate Phase 5.3. Bài học: **khi brief
-   và ràng buộc cấu trúc đá nhau, ràng buộc thắng** — và người quyết là chủ dự án, không phải reviewer.
+6. **Lỗi trong plan gốc, đã sửa hai lần:** plan từng coi `account` là đã đúng, rồi làm phẳng toàn bộ
+   component. Chủ dự án chốt shape cuối là `{components,hooks,server,lib}` và cho phép group component
+   theo trang bên trong `account/components`. Gate Phase 5 phải kiểm đúng shape này, không quay lại
+   flatten hook/helper vào `components`.
 
 ---
 
@@ -143,8 +166,7 @@ cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*
 
 ### Thứ tự KHÔNG được đảo
 
-- Phase 4 (cắt `features → routes`) **phải trước** Phase 5 (bật rule). Bật rule khi còn 10 vi phạm thì lint
-  đỏ hàng loạt, không phân biệt được lỗi mới với nợ cũ.
+- Phase 4 (cắt `features → routes`) đã hoàn tất trước Phase 5 đúng như yêu cầu; giờ mới được bật rule.
 - Phase 5 (hàng rào) nên trước 6–12, để mọi phase sau tự động được canh.
 - `check:frontend-structure` chỉ nối vào CI ở **Phase 8**, vì bất biến "route ≤ 120 dòng" còn đỏ 3 chỗ
   (`routes/bookings.tsx` 235 dòng, `community.tsx`, `account/help.tsx`) cho tới lúc đó.
@@ -159,60 +181,49 @@ cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*
   `MockDisabledState` → `FeatureUnavailableState`.
 - **Phase 6.1** — dialog shell dùng **CSS-branch** (`hidden lg:block`) làm chuẩn, không dùng JS `isDesktop`
   (SSR-đúng, không nháy sau hydrate). Nếu chạy thử thấy dialog packages **đổi hình** thì dừng và hỏi.
-- **Task 3.4** — không ép module server dùng chung xuống một feature (xem §2).
+- **Task 3.4 bổ sung** — module BFF/domain shared vẫn phải có owner feature; `app/lib` chỉ giữ hạ tầng
+  và shared request concern. Cross-feature import type/read là hợp lệ, không phải lý do để để domain
+  module ở `app/lib`.
 
 ### Quy trình đang dùng
 
-Đang chạy bằng skill `superpowers:subagent-driven-development`: mỗi phase một implementer subagent, một
-reviewer sau đó, ledger ghi tiến độ.
-
-- **Workspace:** `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` (git-ignored)
-  - `progress.md` — ledger, **đọc file này trước tiên** khi quay lại
-  - `task-N-brief.md` — brief đã trích cho từng phase
-  - `task-N-report.md` — report của implementer
-  - `review-*.diff` — review package
-- **Brief cho Phase 4 đã trích sẵn:** `task-4-brief.md`
-- Trích brief cho phase kế: lấy `## Global Constraints` + đoạn `# Phase N —` của file plan.
+Ledger git-ignored từng được ghi ở
+`.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/`, nhưng tại lần bàn giao này
+thư mục đó **không có trên máy**. Handoff này và plan trong `docs/superpowers/plans/` là nguồn duy nhất.
 
 ### Việc đầu tiên hôm sau
 
-Phase 4 — cắt đứt `features/ → routes/`, 3 task:
+Phase 5 — dựng hàng rào theo đúng thứ tự:
 
-1. **4.1** — bỏ `routes/+types` khỏi 10 file `features/`; thay bằng kiểu tự khai suy từ module server của
-   chính feature (plan có mẫu đầy đủ cho `catalog-page.tsx`).
-2. **4.2** — xoá shim `routes/partner-onboarding/shared.tsx` (`export *` ngược), trỏ thẳng vào feature.
-3. **4.3** — nuốt thân loader của 2 route booking-data vào
-   `features/booking-widget/server/listing-booking-data.server.ts` (file đã nằm sẵn ở đó từ Task 3.4).
-
-Xong 4.3 thì lệnh này phải rỗng — đó là điều kiện để sang Phase 5:
-
-```bash
-cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features components
-```
+1. Thêm ESLint boundary rule cho storefront và dashboard; feature/components/hooks/constants không
+   được import `routes`, chỉ route module được import `+types`.
+2. Bật `eslint-plugin-react-hooks`, sửa các vi phạm thật nếu có mà không đổi hành vi.
+3. Thêm `check:frontend-structure`; allowlist feature level 2 là
+   `components|hooks|server|lib`. Chưa nối route-length gate vào CI trước Phase 8.
 
 ---
 
 ## 6. Prompt bàn giao (dán nguyên văn cho agent tiếp theo)
 
 ````text
-Tiếp tục một cuộc refactor đang dở trong monorepo tại `/Volumes/OVEN Duy/temp/booking-saas`.
+Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 ## Trạng thái
 
-Nhánh `refactor/storefront-dashboard-convention` (đã push origin), HEAD = `c1b5e657`.
+Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–3 đã xong và đã review. Phase 4–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 4.
+**Phase 1–4 đã xong. Phase 3 đã được bổ sung theo review của chủ dự án. Phase 5–13 chưa làm.**
+Việc của bạn: làm tiếp từ Phase 5.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + phase bạn sắp làm. Đừng đọc cả file mỗi lần.
+   đọc `## Global Constraints` + Phase 5.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
-Nếu máy này còn thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/`
-thì đọc `progress.md` trong đó (ledger tiến độ) và dùng `task-4-brief.md` đã trích sẵn.
-Thư mục này git-ignored — máy khác sẽ không có, lúc đó handoff doc là nguồn duy nhất.
+Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
+máy. Nó git-ignored, nên handoff doc và plan là nguồn duy nhất.
 
 ## Luật cứng — vi phạm là hỏng việc
 
@@ -221,14 +232,13 @@ Thư mục này git-ignored — máy khác sẽ không có, lúc đó handoff do
 2. **KHÔNG ĐỔI UI.** Không sửa className, không sửa cấu trúc DOM, không sửa chữ. Ngoại lệ DUY NHẤT
    đã được chủ dự án duyệt: 3 thay đổi pixel ở trang packages trong Phase 7 (ghi rõ trong plan).
 3. **KHÔNG đổi schema, KHÔNG đụng `@booking/contracts`, KHÔNG đụng `apps/api`.**
-4. **KHÔNG đổi hành vi runtime** — loader/action contract, URL, thứ tự fetch giữ nguyên.
 5. **Mỗi task một commit nhỏ.** Không gộp nhiều feature vào một commit.
 
 ## Lệnh verify — dùng SAI là bạn sẽ đuổi theo lỗi ma
 
 ```bash
-nvm use    # .nvmrc = 22.22.0; shell mặc định là Node 20, React Router 8 sẽ bail
-pnpm turbo typecheck build --filter=@booking/storefront...   # DẤU ... CUỐI LÀ BẮT BUỘC
+PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
+  pnpm turbo typecheck build --filter=@booking/storefront... --force
 pnpm --filter=@booking/storefront lint
 pnpm --filter=@booking/storefront security
 ```
@@ -239,66 +249,60 @@ pnpm --filter=@booking/storefront security
 
 Chạy verify **sau mỗi commit**, không phải chỉ ở cuối.
 
-## 4 cái bẫy đã có người dẫm
+## 6 cái bẫy đã có người dẫm
 
-1. **`./+types/*` KHÔNG resolve qua alias `~/`** — chỉ qua thủ thuật `rootDirs` trong tsconfig, tức
-   bắt buộc là đường dẫn tương đối. Hiện còn 10 file dưới `features/` import `routes/+types/*` bằng
-   `../` — **cố ý, không phải nợ**. Phase 4 xoá sạch chúng. Khi move file, tự tính lại độ sâu `../`.
-2. **`pnpm format` trần reformat ~250 file NGOÀI storefront** (apps/api, dashboard, packages, cả
-   `.vscode/mcp.json`). Luôn dùng `pnpm exec prettier --write apps/storefront/app`.
-3. **`git mv` tự stage.** Làm nhiều `git mv` rồi commit từng nhóm thì `git commit` nuốt luôn nhóm sau.
-   Dùng `git commit -- <đường dẫn>` hoặc `git restore --staged` trước.
-4. **Alias `~/` cho mọi đường dẫn vượt cấp, `./sibling` giữ tương đối.** Sau mỗi lần move, lệnh này
-   phải rỗng: `cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*.tsx' | grep -v '+types'`
+1. Typecheck storefront standalone báo lỗi giả; dùng Turbo với dấu `...`.
+2. PATH mặc định là Node 22.12.0, thấp hơn yêu cầu 22.22.0; dùng Node 24.18.0 đã cài sẵn.
+3. **`./+types/*` KHÔNG resolve qua alias `~/`**. Phase 4 đã xoá sạch dependency này khỏi features;
+   chỉ route module được import `./+types/*`.
+4. **`pnpm format` trần reformat ~250 file ngoài storefront.** Chỉ dùng
+   `pnpm exec prettier --write apps/storefront/app`.
+5. **`git mv` tự stage.** Kiểm index trước mọi commit.
+6. Shape feature đã chốt là `{components,hooks,server,lib}`. Hook feature-local ở `hooks`, helper/type
+   thuần ở `lib`; component của các trang account được group theo tên trang.
 
-## Quyết định chủ dự án đã chốt — ĐỪNG HỎI LẠI, ĐỪNG TỰ ĐỔI
+## Trạng thái cấu trúc phải giữ
 
-- **Phase 6.1** — dialog shell dùng CSS-branch (`hidden lg:block`) làm chuẩn, KHÔNG dùng JS `isDesktop`.
-- **Phase 7** — DUYỆT gộp 3 page shell, chấp nhận 3 thay đổi pixel ở trang packages:
-  `bg-muted/40`→`/30`, `py-6`→`py-4`, `MapPin size-5`→`size-4`. Landmark `<main>` cho cả 3 trang.
-- **Phase 11.2** — DUYỆT gỡ SẠCH mock. UI production không đổi (mock vốn tắt ở production).
-- **Task 3.4** — 31 file `lib/*.server.ts` ở lại `lib/` là CỐ Ý (hạ tầng hoặc ≥2 feature dùng).
-  Đừng kéo chúng vào feature: làm thế là tự chế ra đúng loại import chéo mà Phase 5 dựng rào để cấm.
+- `features/*/components` không còn `use-*` hoặc helper `.ts`.
+- `account/components` được group theo trang.
+- BFF/domain server nằm trong `features/<owner>/server`; `app/lib` chỉ giữ hạ tầng/shared request concern.
+- Feature/components không còn import `routes` hoặc `routes/+types`.
+- Hai resource loader booking-data và loader payment status delegate sang feature server.
 
-## Thứ tự KHÔNG được đảo
-
-Phase 4 (cắt `features→routes`) **phải trước** Phase 5 (bật rule ESLint). Bật rule khi còn 10 vi phạm
-thì lint đỏ hàng loạt và không phân biệt được lỗi mới với nợ cũ.
-`check:frontend-structure` chỉ nối vào CI ở **Phase 8**, vì bất biến "route ≤120 dòng" còn đỏ 3 chỗ
-cho tới lúc đó.
-
-## Bắt đầu thế nào
-
-**Bước 0 — xác nhận baseline chưa hỏng.** Chạy 3 lệnh verify ở trên + 3 lệnh dưới đây; TẤT CẢ phải
-sạch. Nếu có cái nào đỏ, DỪNG và báo người dùng — bạn đã nhận một cây code hỏng, đừng chồng thêm lên.
+Các lệnh sau phải rỗng:
 
 ```bash
-find apps/storefront/app/features -mindepth 2 -maxdepth 2 -type d | grep -vE '/(components|server|lib)$'
+find apps/storefront/app/features -mindepth 2 -maxdepth 2 -type d \
+  | grep -vE '/(components|hooks|server|lib)$'
 find apps/storefront/app/features -name '*.server.ts' | grep -v '/server/'
+find apps/storefront/app/features -path '*/components/use-*'
+find apps/storefront/app/features -path '*/components/*.ts'
 cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*.tsx' | grep -v '+types'
-```
-
-**Bước 1 — làm Phase 4**, 3 task, mỗi task một commit, verify giữa từng cái:
-- 4.1 bỏ `routes/+types` khỏi 10 file trong `features/`, thay bằng kiểu tự khai suy từ module server
-  của chính feature (plan có mẫu đầy đủ cho `catalog-page.tsx`).
-- 4.2 xoá shim `routes/partner-onboarding/shared.tsx`, trỏ thẳng vào feature.
-- 4.3 nuốt thân loader 2 route booking-data vào
-  `features/booking-widget/server/listing-booking-data.server.ts` (file đã nằm sẵn ở đó).
-
-Điều kiện xong Phase 4 — lệnh này phải rỗng:
-```bash
 cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features components
 ```
 
-**Bước 2** — cập nhật ledger (nếu có) và tiếp Phase 5.
+## Quyết định chủ dự án đã chốt — đừng hỏi lại, đừng tự đổi
 
-## Khi bạn thấy plan có vẻ sai
+- **Phase 3 bổ sung** — có `hooks/`; helper/type thuần ở `lib`; account group component theo trang;
+  domain/BFF server rời `app/lib` về owner feature.
+- **Phase 6.1** — dialog shell dùng CSS-branch (`hidden lg:block`), không dùng JS `isDesktop`.
+- **Phase 7** — duyệt gộp 3 page shell, chấp nhận 3 thay đổi pixel ở trang packages:
+  `bg-muted/40`→`/30`, `py-6`→`py-4`, `MapPin size-5`→`size-4`; landmark `<main>` cho cả 3.
+- **Phase 11.2** — duyệt gỡ sạch mock; UI production không đổi vì mock vốn tắt ở production.
 
-Plan này ĐÃ sai 2 lần và cả 2 lần đều được bắt bằng cách đối chiếu với ràng buộc cấu trúc, không phải
-bằng cách tin brief. Nếu bạn thấy một dòng trong plan mâu thuẫn với convention của dashboard hoặc với
-bất biến của `check:frontend-structure`: **DỪNG, trình bày cả hai bên cho người dùng, hỏi cái nào
-thắng.** Đừng tự chọn, đừng im lặng làm theo plan, đừng im lặng làm ngược plan.
+## Việc đầu tiên
 
-Tương tự: đừng mở rộng phạm vi. Nếu thấy thứ đáng sửa mà không nằm trong 13 phase, ghi lại và báo,
-đừng sửa luôn.
+Làm Phase 5 theo thứ tự:
+
+1. Thêm boundary rule cho cả hai frontend. `features/components/hooks/constants` không import
+   `routes`; chỉ route module được import `+types`.
+2. Bật `eslint-plugin-react-hooks`, xử lý vi phạm thật mà không đổi runtime.
+3. Thêm `check:frontend-structure`, với allowlist feature level 2 là
+   `components|hooks|server|lib`.
+
+Phase 4 bắt buộc trước Phase 5 và đã hoàn tất. Không nối route-length gate vào CI trước Phase 8 vì
+còn route dài cần Phase 8 xử lý.
+
+Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
+vì làm theo dữ liệu audit cũ.
 ````

@@ -9,7 +9,7 @@ import { data, redirect } from 'react-router';
 import { z } from 'zod';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireAuth } from '~/lib/auth.server';
-import { checkoutBooking, fetchPaymentOptions } from '~/lib/booking.server';
+import { checkoutBooking, fetchPaymentOptions } from '~/features/booking/server/booking.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
@@ -17,7 +17,7 @@ import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
   isMockPaymentRedirect,
-} from '~/lib/payment-redirect.server';
+} from '~/features/checkout/server/payment-redirect.server';
 import { submitBookingCancellation } from '~/features/account/server/booking-cancellation.server';
 import { loadAccountBooking } from '~/features/account/server/booking-history.server';
 import { submitCustomerReview } from '~/features/account/server/customer-reviews.server';

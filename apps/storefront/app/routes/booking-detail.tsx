@@ -4,7 +4,7 @@ import {
   handleBookingDetailAction,
   loadBookingDetail,
 } from '~/features/booking/server/booking-detail.server';
-import { useBookingDetailController } from '~/features/booking/components/use-booking-detail-controller';
+import { useBookingDetailController } from '~/features/booking/hooks/use-booking-detail-controller';
 import { PaymentHandoff } from '~/features/checkout/components/payment-handoff';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';

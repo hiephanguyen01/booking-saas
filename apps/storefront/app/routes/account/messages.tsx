@@ -1,4 +1,4 @@
-import { AccountMessagesPage } from '~/features/account/components/account-messages-page';
+import { AccountMessagesPage } from '~/features/account/components/messages/account-messages-page';
 import { loadAccountMessagesRoute } from '~/features/account/server/account-messages-route.server';
 import type { Route } from './+types/messages';
 

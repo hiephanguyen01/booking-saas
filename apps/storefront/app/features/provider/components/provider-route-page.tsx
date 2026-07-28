@@ -1,10 +1,15 @@
 import { useOutletContext } from 'react-router';
+import type { loadProviderRoute } from '~/features/provider/server/provider-route.server';
+import type { ServerDataFrom } from '~/lib/react-router-data';
 import type { StorefrontContext } from '~/root';
 import { jsonLd } from '~/lib/seo';
-import type { Route } from '../../../routes/+types/provider';
 import { ProviderProfilePage } from './provider-profile-page';
 
-export function ProviderRoutePage({ loaderData }: Route.ComponentProps) {
+export function ProviderRoutePage({
+  loaderData,
+}: {
+  loaderData: ServerDataFrom<typeof loadProviderRoute>;
+}) {
   const { canonical, cspNonce } = useOutletContext<StorefrontContext>();
   const { profile } = loaderData;
   const structuredData = {

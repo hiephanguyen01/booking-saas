@@ -1,4 +1,4 @@
-import { AccountRecentPage } from '~/features/account/components/account-recent-page';
+import { AccountRecentPage } from '~/features/account/components/recent/account-recent-page';
 import { loadAccountRecentRoute } from '~/features/account/server/account-recent-route.server';
 import type { Route } from './+types/recent';
 

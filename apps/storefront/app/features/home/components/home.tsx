@@ -14,7 +14,7 @@ import { BrandCarousel } from './brand-carousel';
 import { StudioHero } from './hero';
 import { RecommendedSection } from './recommended-section';
 import { TopListingsSection } from './top-listings-section';
-import { useStudioHomeController } from './use-studio-home-controller';
+import { useStudioHomeController } from '~/features/home/hooks/use-studio-home-controller';
 
 /**
  * Studio-vertical home (§16.1): hero + search, a lead rail, and a flat

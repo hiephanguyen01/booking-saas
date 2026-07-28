@@ -3,7 +3,7 @@ import { useLoaderData } from 'react-router';
 import { loadPartnerDoneRoute } from '~/features/partner-onboarding/server/partner-done-route.server';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { Route } from './+types/done';
-import { partnerMeta } from './shared';
+import { partnerMeta } from '~/features/partner-onboarding/lib/partner-onboarding-meta';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
   const rootData = matches[0].loaderData;

@@ -1,4 +1,4 @@
-import { LegalPage } from '~/features/account/components/legal-page';
+import { LegalPage } from '~/features/account/components/legal/legal-page';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export default function TermsPage() {
