@@ -1,5 +1,5 @@
 import { useActionData, useOutletContext } from 'react-router';
-import { AuthFrame, NewPasswordForm } from '~/features/auth/auth-ui';
+import { AuthFrame, NewPasswordForm } from '~/features/auth/components';
 import { completePasswordAction, requireFlowPhaseOnly } from '~/lib/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '~/lib/i18n';

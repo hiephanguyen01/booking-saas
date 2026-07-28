@@ -1,5 +1,5 @@
 import { useOutletContext } from 'react-router';
-import { AuthFrame, SuccessState } from '~/features/auth/auth-ui';
+import { AuthFrame, SuccessState } from '~/features/auth/components';
 import { requireFlowPhaseOnly } from '~/lib/auth-routes.server';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { StorefrontContext } from '~/root';

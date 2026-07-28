@@ -8,7 +8,7 @@ import {
 } from '@booking/ui/components/ui/input-otp';
 import { Mail } from 'lucide-react';
 import { useOutletContext } from 'react-router';
-import { useOtpFormController } from '~/features/auth/ui/use-otp-form-controller';
+import { useOtpFormController } from '~/features/auth/components/use-otp-form-controller';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { StorefrontContext } from '~/root';
 import type { Route } from '../../../routes/partner-onboarding/+types/verify';
