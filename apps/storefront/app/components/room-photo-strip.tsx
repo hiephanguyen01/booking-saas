@@ -1,6 +1,7 @@
 import { ImageIcon } from 'lucide-react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 
+/** Compact gallery shared by listing and booking surfaces. */
 export function RoomPhotoStrip({
   photos,
   title,

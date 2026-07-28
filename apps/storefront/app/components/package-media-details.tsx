@@ -2,10 +2,11 @@ import type { PublicListingDetailResponse } from '@booking/contracts';
 import { Aperture, Clock3, FileImage, Images, WalletCards } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
+import { packageDetails, packageDurationHours } from '~/lib/package-details';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { formatVnd } from '~/lib/ui';
-import { packageDetails, packageDurationHours } from '~/features/packages/lib/package-data';
 
+/** Package metadata shared by package pages and booking dialogs. */
 export function PackageMediaDetails({
   item,
   listing,

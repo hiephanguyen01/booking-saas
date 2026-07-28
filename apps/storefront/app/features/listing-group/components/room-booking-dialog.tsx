@@ -5,15 +5,18 @@ import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { BookingDialogFooter } from '~/components/booking-dialog-footer';
+import { PackageMediaDetails } from '~/components/package-media-details';
+import {
+  BookingDialogSteps,
+  type ListingBookingMode,
+} from '~/features/booking-widget/components/booking-dialog-steps';
 import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
 import { useBookingDialogController } from '~/features/booking-widget/hooks/use-booking-dialog-controller';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
-import { PackageMediaDetails } from '~/features/packages/components/package-media-details';
-import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';
 
-export type { ListingBookingMode } from './room-booking-dialog-steps';
+export type { ListingBookingMode } from '~/features/booking-widget/components/booking-dialog-steps';
 
 export function ListingBookingDialog({
   listing,
@@ -61,7 +64,12 @@ export function ListingBookingDialog({
     </Button>
   );
   const body = (
-    <RoomBookingDialogSteps {...stepsProps} today={today} onOpenPackageMedia={openPackageMedia} />
+    <BookingDialogSteps
+      {...stepsProps}
+      today={today}
+      quotePending={footerProps.quotePending}
+      onOpenPackageMedia={openPackageMedia}
+    />
   );
   const footer = <BookingDialogFooter {...footerProps} />;
 

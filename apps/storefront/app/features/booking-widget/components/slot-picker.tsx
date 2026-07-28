@@ -31,8 +31,18 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
-import type { RoomOption } from '~/features/listing-group/lib/listing-group-types';
-import { useSlotPickerController } from '~/features/listing-group/hooks/use-slot-picker-controller';
+import { useSlotPickerController } from '~/features/booking-widget/hooks/use-slot-picker-controller';
+
+interface SlotPickerOption {
+  child: {
+    id: string;
+    slug: string;
+    title: string;
+  };
+  availability: { timezone: string } | null;
+  start: string | null;
+  end: string | null;
+}
 
 /** The hour picker: a dialog on desktop, a drawer on touch widths. */
 export function SlotPicker({
@@ -40,7 +50,7 @@ export function SlotPicker({
   slots,
   date,
 }: {
-  option: RoomOption;
+  option: SlotPickerOption;
   slots: HourlySlot[];
   date: string;
 }) {
@@ -90,7 +100,7 @@ function SlotPickerContent({
   slots,
   date,
 }: {
-  option: RoomOption;
+  option: SlotPickerOption;
   slots: HourlySlot[];
   date: string;
 }) {

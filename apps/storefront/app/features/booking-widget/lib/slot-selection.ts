@@ -70,7 +70,7 @@ export function slotInterval(slots: SlotRange[]): { start: string; end: string }
   return { start: ordered[0].startUtc, end: ordered[ordered.length - 1].endUtc };
 }
 
-/** Rebuild the atomic, gapless cells represented by a persisted `[start,end)` selection. */
+/** Rebuild the atomic, gapless booking cells represented by a persisted `[start,end)` selection. */
 export function contiguousSlotsForInterval(
   slots: HourlySlot[],
   startUtc: string,

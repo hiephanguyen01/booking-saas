@@ -1,7 +1,7 @@
 import type { HourlySlot } from '@booking/contracts';
 import { useMemo, useState } from 'react';
 import type { RoomOption } from '~/features/listing-group/lib/listing-group-types';
-import { atomicHourlySlots } from '~/features/listing-group/lib/listing-group-utils';
+import { atomicHourlySlots } from '~/features/booking-widget/lib/slot-selection';
 
 type SlotsByRoom = ReadonlyMap<string, HourlySlot[]>;
 

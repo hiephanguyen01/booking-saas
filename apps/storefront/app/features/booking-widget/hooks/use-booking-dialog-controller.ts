@@ -16,11 +16,11 @@ import {
   checkoutHref,
   slotInterval,
   toggleContiguousSlot,
-} from '~/features/listing-group/lib/listing-group-utils';
+} from '~/features/booking-widget/lib/slot-selection';
 import type {
   ListingBookingMode,
   RoomBookingDateRange,
-} from '~/features/listing-group/components/room-booking-dialog-steps';
+} from '~/features/booking-widget/components/booking-dialog-steps';
 
 type BookingRequestKind = 'availability' | 'quote';
 

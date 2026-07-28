@@ -1,11 +1,11 @@
 import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import type { RefObject } from 'react';
 import { BookingDialogFooter } from '~/components/booking-dialog-footer';
+import { BookingDialogSteps } from '~/features/booking-widget/components/booking-dialog-steps';
 import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
 import { useBookingDialogController } from '~/features/booking-widget/hooks/use-booking-dialog-controller';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
-import { PackageBookingDialogSteps } from './package-booking-dialog-steps';
 
 export function PackageBookingDialog({
   open,
@@ -33,23 +33,11 @@ export function PackageBookingDialog({
   });
 
   const body = (
-    <PackageBookingDialogSteps
-      date={stepsProps.date}
-      timezone={stepsProps.timezone}
+    <BookingDialogSteps
+      {...stepsProps}
       today={today}
-      availabilityPending={stepsProps.availabilityPending}
-      hasAvailability={stepsProps.hasAvailability}
-      availabilityError={stepsProps.availabilityError}
-      slots={stepsProps.slots}
-      selectedSlots={stepsProps.selectedSlots}
       quotePending={footerProps.quotePending}
-      quoteError={stepsProps.quoteError}
-      selectionUnavailable={stepsProps.selectionUnavailable}
-      onSelectDate={stepsProps.onSelectDate}
-      onChangeDate={stepsProps.onChangeDate}
-      onToggleSlot={stepsProps.onToggleSlot}
-      onRetryAvailability={stepsProps.onRetryHourly}
-      onRetryQuote={stepsProps.onRetryQuote}
+      packageFlow
     />
   );
   const footer = <BookingDialogFooter {...footerProps} />;

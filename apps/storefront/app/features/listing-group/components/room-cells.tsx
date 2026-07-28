@@ -15,12 +15,12 @@ import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listi
 import {
   checkoutHref,
   type RoomAvailabilityState,
-} from '~/features/listing-group/lib/listing-group-utils';
+} from '~/features/booking-widget/lib/slot-selection';
 import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
-import { SlotPicker } from './slot-picker';
+import { SlotPicker } from '~/features/booking-widget/components/slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';
-import { RoomPhotoStrip } from './room-photo-strip';
+import { RoomPhotoStrip } from '~/components/room-photo-strip';
 
 export function RoomDetails({
   option,

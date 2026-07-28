@@ -6,7 +6,7 @@ import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '~/l
 import { formatVnd } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 
-export function useRoomBookingDialogStepsController({
+export function useBookingDialogStepsController({
   mode,
   packageOptions,
   packageId,
@@ -22,6 +22,7 @@ export function useRoomBookingDialogStepsController({
   slots,
   selectedSlots,
   onSelectDate,
+  packageFlow,
 }: {
   mode: 'hourly' | 'daily';
   packageOptions: PublicPackageOption[];
@@ -38,6 +39,7 @@ export function useRoomBookingDialogStepsController({
   slots: HourlySlot[];
   selectedSlots: HourlySlot[];
   onSelectDate: (date: string) => void;
+  packageFlow: boolean;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
@@ -96,21 +98,28 @@ export function useRoomBookingDialogStepsController({
       }),
     [availability?.timezone, locale],
   );
-  const selectedSlotStarts = useMemo(
-    () => new Set(selectedSlots.map((slot) => slot.startUtc)),
-    [selectedSlots],
+  const selectedSlotKeys = useMemo(
+    () =>
+      new Set(
+        selectedSlots.map((slot) =>
+          packageFlow ? `${slot.startUtc}:${slot.endUtc}` : slot.startUtc,
+        ),
+      ),
+    [packageFlow, selectedSlots],
   );
   const slotModels = useMemo(
     () =>
       slots.map((slot) => ({
         key: `${slot.startUtc}:${slot.endUtc}`,
         slot,
-        selected: selectedSlotStarts.has(slot.startUtc),
+        selected: selectedSlotKeys.has(
+          packageFlow ? `${slot.startUtc}:${slot.endUtc}` : slot.startUtc,
+        ),
         startLabel: timeFormatter.format(new Date(slot.startUtc)),
         endLabel: timeFormatter.format(new Date(slot.endUtc)),
         priceLabel: slot.available ? formatVnd(slot.price) : t('group.unavailableSlot'),
       })),
-    [selectedSlotStarts, slots, t, timeFormatter],
+    [packageFlow, selectedSlotKeys, slots, t, timeFormatter],
   );
   const packageModels = useMemo(
     () =>
@@ -151,7 +160,7 @@ export function useRoomBookingDialogStepsController({
     dailySoldOut: availability?.mode === 'daily' && openDates.size === 0,
     defaultRangeMonth: dateOnlyToLocal(from ?? today),
     hourlyDateInstruction: date
-      ? `${dateLabelInTz(date, DEFAULT_TZ, locale)} · ${t('group.hourlyInstruction')}`
+      ? `${dateLabelInTz(date, DEFAULT_TZ, locale)} · ${t(packageFlow ? 'packages.hourlyInstruction' : 'group.hourlyInstruction')}`
       : null,
     isRangeDateDisabled,
     packageModels,
