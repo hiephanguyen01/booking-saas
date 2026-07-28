@@ -32,6 +32,7 @@ export const viBooking = {
     refunded: 'Đã hoàn tiền',
   },
   lookup: {
+    metaTitle: 'Tra cứu đặt chỗ',
     title: 'Tra cứu đặt chỗ',
     subtitle: 'Nhập mã đặt chỗ, chúng tôi sẽ gửi mã OTP tới email của bạn.',
     formTitle: 'Truy cập đặt chỗ',

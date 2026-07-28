@@ -14,6 +14,8 @@ export const enCatalog = {
   noReviews: 'No reviews yet',
   reviewCount: '{count} reviews',
   provider: {
+    metaTitle: 'Provider',
+    metaDescriptionFallback: '{name} on BookingOS',
     verified: 'Verified',
     activeSince: 'Active since {date}',
     publishedServices: 'published services',

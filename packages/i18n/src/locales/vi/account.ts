@@ -311,6 +311,7 @@ export const viAccount = {
     a3: 'Sau khi đơn hoàn tất, lời mời đánh giá sẽ xuất hiện trong mục Đánh giá.',
   },
   community: {
+    metaTitle: 'Cộng đồng | BookingOS',
     eyebrow: 'BOOKINGOS COMMUNITY',
     title: 'Cùng nhau tạo nên những khoảnh khắc đáng nhớ',
     description:

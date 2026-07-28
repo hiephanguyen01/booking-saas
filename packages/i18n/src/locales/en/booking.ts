@@ -35,6 +35,7 @@ export const enBooking = {
     refunded: 'Refunded',
   },
   lookup: {
+    metaTitle: 'Bookings',
     title: 'Find a booking',
     subtitle: 'Enter your booking code and we’ll email you a one-time code.',
     formTitle: 'Access your booking',

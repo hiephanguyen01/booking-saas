@@ -314,6 +314,7 @@ export const enAccount = {
     a3: 'After a booking is completed, an invitation appears in Reviews.',
   },
   community: {
+    metaTitle: 'Community | BookingOS',
     eyebrow: 'BOOKINGOS COMMUNITY',
     title: 'Create memorable moments together',
     description:

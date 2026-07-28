@@ -1,18 +1,11 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { ProviderRoutePage } from '~/features/provider/components/provider-route-page';
+import { buildProviderMeta } from '~/features/provider/lib/provider-meta';
 import { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import type { Route } from './+types/provider';
 
-export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
-  const profile = loaderData?.profile;
-  if (!profile) return [{ title: 'Provider' }];
-  return [
-    { title: profile.name },
-    { name: 'description', content: profile.description ?? `${profile.name} trên BookingOS` },
-    { property: 'og:title', content: profile.name },
-    { property: 'og:type', content: 'profile' },
-    ...(profile.logoUrl ? [{ property: 'og:image', content: profile.logoUrl }] : []),
-  ];
+export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
+  return buildProviderMeta(loaderData?.profile, params.locale === 'en' ? 'en' : 'vi');
 }
 
 export function loader({ request, params, url }: Route.LoaderArgs) {

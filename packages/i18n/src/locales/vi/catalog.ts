@@ -11,6 +11,8 @@ export const viCatalog = {
   noReviews: 'Chưa có đánh giá',
   reviewCount: '{count} đánh giá',
   provider: {
+    metaTitle: 'Nhà cung cấp',
+    metaDescriptionFallback: '{name} trên BookingOS',
     verified: 'Đã xác minh',
     activeSince: 'Hoạt động từ {date}',
     publishedServices: 'dịch vụ đang hoạt động',
