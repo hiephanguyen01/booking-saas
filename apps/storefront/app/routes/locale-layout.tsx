@@ -1,6 +1,6 @@
 import { favoriteRefsResponseSchema, type FavoriteRefsResponse } from '@booking/contracts';
 import { Outlet, useOutletContext } from 'react-router';
-import { FavoritesProvider } from '~/features/favorites/favorites-context';
+import { FavoritesProvider } from '~/features/favorites/components/favorites-context';
 import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/api.server';
 import { getOptionalAuth } from '~/lib/auth.server';
 import type { Route } from './+types/locale-layout';

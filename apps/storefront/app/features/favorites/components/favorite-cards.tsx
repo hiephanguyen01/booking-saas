@@ -7,7 +7,7 @@ import type {
   StorefrontSearchState,
 } from '~/features/search/lib/search-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { useFavorite } from '~/features/favorites/favorites-context';
+import { useFavorite } from '~/features/favorites/components/favorites-context';
 
 /** ListingCard with a wired, persisted favorite heart (home / catalog / related / account). */
 export function FavoriteListingCard({

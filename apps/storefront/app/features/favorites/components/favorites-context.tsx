@@ -2,7 +2,7 @@ import type { FavoriteRefsResponse, FavoriteTargetKind } from '@booking/contract
 import type { Locale } from '@booking/i18n';
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { LoginRequiredDialog } from './components/login-required-dialog';
+import { LoginRequiredDialog } from './login-required-dialog';
 import { useFavoritesController } from './use-favorites-controller';
 
 interface FavoritesContextValue {
