@@ -1,6 +1,6 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing-group';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
 import { ListingGroupPage } from '~/features/listing-group/components/listing-group-page';
 import { buildListingGroupMeta } from '~/features/listing-group/lib/listing-group-meta';
 import { buildListingGroupStructuredData } from '~/features/listing-group/lib/listing-group-structured-data';
@@ -54,6 +54,5 @@ export default function ListingGroupRoute({ loaderData, params }: Route.Componen
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel="Về trang chủ" />;
+  return <StorefrontRouteErrorBoundary error={error} locale={params.locale} />;
 }

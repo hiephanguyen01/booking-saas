@@ -1,6 +1,6 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
 import { buildListingMeta } from '~/features/listing/lib/listing-meta';
 import { buildListingStructuredData } from '~/features/listing/lib/listing-structured-data';
 import { ListingPage } from '~/features/listing/components/listing-page';
@@ -55,6 +55,5 @@ export default function ListingRoute(props: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel="Về trang chủ" />;
+  return <StorefrontRouteErrorBoundary error={error} locale={params.locale} />;
 }

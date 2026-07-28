@@ -1,4 +1,4 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
 import { BookingPaymentView } from '~/features/booking/components/booking-payment-view';
 import {
   handleBookingDetailAction,
@@ -6,9 +6,6 @@ import {
 } from '~/features/booking/server/booking-detail.server';
 import { useBookingDetailController } from '~/features/booking/hooks/use-booking-detail-controller';
 import { PaymentHandoff } from '~/features/checkout/components/payment-handoff';
-import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/constants/paths';
-import { useLocale } from '~/hooks/use-locale';
 import type { Route } from './+types/booking-detail';
 
 export function meta() {
@@ -38,14 +35,8 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
   return <BookingPaymentView {...viewProps} />;
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const locale = useLocale();
-  const { t } = useTranslation(NsI18n.Navigation);
+export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
   return (
-    <RouteErrorState
-      error={error}
-      homeHref={storefrontPaths.bookings(locale)}
-      homeLabel={t('lookup')}
-    />
+    <StorefrontRouteErrorBoundary error={error} locale={params.locale} destination="bookings" />
   );
 }

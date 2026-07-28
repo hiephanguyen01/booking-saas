@@ -1,4 +1,4 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
 import { ProviderRoutePage } from '~/features/provider/components/provider-route-page';
 import { buildProviderMeta } from '~/features/provider/lib/provider-meta';
 import { loadProviderRoute } from '~/features/provider/server/provider-route.server';
@@ -17,12 +17,5 @@ export default function ProviderRoute(props: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  return (
-    <RouteErrorState
-      error={error}
-      homeHref={`/${locale}`}
-      homeLabel={locale === 'en' ? 'Home' : 'Về trang chủ'}
-    />
-  );
+  return <StorefrontRouteErrorBoundary error={error} locale={params.locale} />;
 }
