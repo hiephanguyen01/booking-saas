@@ -519,6 +519,128 @@ Mỗi bước: move → rewrite → `pnpm format` → verify → commit
 
 ---
 
+### Task 3.4: Đưa `lib/*.server.ts` về đúng feature
+
+`app/lib/` đang có **34 file `.server.ts`**. Dashboard giữ trong `lib/` **chỉ hạ tầng**
+(`api.server`, `auth-middleware.server`, `session*.server`, `administrative-divisions.server`) và đẩy
+module server thuộc về một domain xuống `features/<name>/server/`.
+
+**Phân loại theo consumer thật** (đã `grep` toàn bộ cây, không phỏng đoán). Quy tắc: một module server
+có **đúng một feature** dùng thì thuộc về feature đó; **từ 2 feature trở lên** thì nó là hạ tầng/chia sẻ
+và phải ở lại `lib/` — kéo nó vào một feature sẽ chế tạo ra đúng loại import chéo feature mà Phase 5
+dựng hàng rào để cấm.
+
+**Di chuyển — 3 file, mỗi file đúng một chủ:**
+
+| File | Consumer thật | Đích |
+|---|---|---|
+| `lib/auth-routes.server.ts` (266 dòng) | 10 route dưới `routes/auth/` | `features/auth/server/auth-routes.server.ts` |
+| `lib/checkout-idempotency.server.ts` | `features/checkout/server/checkout-route.server.ts` (duy nhất) | `features/checkout/server/checkout-idempotency.server.ts` |
+| `lib/listing-booking-data.server.ts` | `routes/{listing,listing-group}-booking-data.tsx` (duy nhất) | `features/booking-widget/server/listing-booking-data.server.ts` |
+
+**Ở lại `lib/` — có lý do cụ thể cho từng cái:**
+
+- **Hạ tầng thuần** (dashboard cũng để ở `lib/`): `api.server`, `api-request.server`, `api-result.server`,
+  `api-read-cache.server`, `auth.server`, `auth-middleware.server`, `auth-session-snapshot.server`,
+  `session.server`, `redis-store.server`, `refresh-lock.server`, `env.server`, `request-context.server`,
+  `request-security.server`, `security-context.server`, `form-request.server`, `json-request.server`,
+  `optional-data.server`, `i18n.server`, `tenant.server`, `administrative-divisions.server`,
+  `upload-origin.server` (chỉ 2 route upload dùng, không có feature nào sở hữu).
+- **Từ 2 feature trở lên dùng** → chia sẻ, không thuộc feature nào:
+  `catalog.server` (7 feature), `booking.server` (5), `auth-flow.server` (auth + partner-onboarding),
+  `affiliate.server` (3), `payment-redirect.server` (3), `public-reviews.server` (3),
+  `checkout-flow.server` (2), `partner.server` (2), `recent.server` (2).
+- `concurrency.server` — `features/listing-group` **và** `lib/catalog.server.ts` dùng; một file hạ tầng
+  phụ thuộc nó nên nó là hạ tầng.
+
+- [ ] **Step 1: Move 3 file** (`git mv` + tạo `features/auth/server/`, `features/booking-widget/server/`)
+- [ ] **Step 2: Rewrite import của bên gọi**
+
+```bash
+cd apps/storefront
+grep -rl "~/lib/auth-routes.server" app | xargs sed -i '' \
+  "s|~/lib/auth-routes.server|~/features/auth/server/auth-routes.server|g"
+grep -rl "~/lib/checkout-idempotency.server" app | xargs sed -i '' \
+  "s|~/lib/checkout-idempotency.server|~/features/checkout/server/checkout-idempotency.server|g"
+grep -rl "~/lib/listing-booking-data.server" app | xargs sed -i '' \
+  "s|~/lib/listing-booking-data.server|~/features/booking-widget/server/listing-booking-data.server|g"
+```
+
+- [ ] **Step 3: Sửa import nội bộ của 3 file vừa move.** `auth-routes.server.ts` đang dùng
+      `./auth-flow.server` (sibling trong `lib/`) — sau khi move phải thành `~/lib/auth-flow.server`.
+      Kiểm cả 3 file cho pattern này.
+- [ ] **Step 4: Xác nhận** — `grep -rn "from '\.\./" app --include="*.ts" --include="*.tsx" | grep -v "+types"`
+      phải rỗng.
+- [ ] **Step 5: Verify + Commit** (`refactor(storefront): move single-owner server modules into features`)
+
+> Sau task này `lib/` còn **31 file `.server.ts`**, tất cả đều là hạ tầng hoặc dùng chung ≥2 feature.
+> `lib/` giữ **phẳng** (không chia `lib/api/`, `lib/auth/`…) vì dashboard phẳng — đây là convention đang bám theo.
+
+---
+
+### Task 3.5: Làm phẳng 11 thư mục sub-feature — **SỬA LỖI PLAN, CHỐT 2026-07-28**
+
+> Task 3.3 ghi *"`features/account/` — đã đúng"*. **Sai.** `account/` có đủ `{components,server,lib}`
+> nhưng còn **6 thư mục con** nữa, và `partner-onboarding/` còn **5**. Dashboard có **zero** nesting
+> ngoài `{components, server, lib}`; bất biến #2 của `check:frontend-structure` (Task 5.3) sẽ đỏ vì 11
+> thư mục này, bất biến #3 cũng đỏ vì `*.server.ts` đang ở độ sâu 3. Chủ dự án chọn **làm phẳng**.
+
+Chứng cứ cỡ file: feature lớn nhất của dashboard (`partner`, `tenant`) đều để **16 file phẳng** trong
+`components/`. Sau khi phẳng, `account/components/` ~20 file, `partner-onboarding/components/` ~8 —
+trong tầm.
+
+**Files:**
+- Move: 11 thư mục con → `components/` (UI + controller) và `server/` (`*.server.ts`) của feature cha
+- Delete: `features/account/{bookings,favorites,messages,profile,recent,reviews}/`,
+  `features/partner-onboarding/{done,password,profile,start,verify}/`
+
+- [ ] **Step 1: `features/account/`** — 6 thư mục con, không có va tên (mọi file đã mang tiền tố riêng):
+
+```bash
+cd apps/storefront/app/features/account
+for sub in bookings favorites messages profile recent reviews; do
+  find "$sub" -maxdepth 1 -type f \( -name '*.tsx' -o -name '*.ts' \) -exec git mv {} components/ \;
+  [ -d "$sub/server" ] && find "$sub/server" -type f -exec git mv {} server/ \;
+  rm -rf "$sub"
+done
+```
+Ngoại lệ: `reviews/review-filter.ts` là helper thuần (không JSX, không server) → `lib/review-filter.ts`,
+không phải `components/`. Kiểm nội dung rồi đặt cho đúng.
+
+- [ ] **Step 2: `features/partner-onboarding/`** — 5 thư mục con, tương tự:
+
+```bash
+cd apps/storefront/app/features/partner-onboarding
+for sub in done password profile start verify; do
+  find "$sub" -maxdepth 1 -type f \( -name '*.tsx' -o -name '*.ts' \) -exec git mv {} components/ \; 2>/dev/null
+  [ -d "$sub/server" ] && find "$sub/server" -type f -exec git mv {} server/ \;
+  rm -rf "$sub"
+done
+```
+`done/` chỉ có `server/partner-done-route.server.ts`.
+
+- [ ] **Step 3: Rewrite import của bên gọi.** Mọi `~/features/account/<sub>/…` và
+      `~/features/partner-onboarding/<sub>/…` phải thành `~/features/<feature>/{components,server,lib}/…`.
+      Bên gọi chính là 11 route module dưới `routes/account/` và `routes/partner-onboarding/`.
+
+- [ ] **Step 4: Sửa import nội bộ.** File từ `<sub>/server/` lên `server/` đổi độ sâu 1 cấp — bắt mọi
+      `./sibling` không còn resolve. File UI giữ nguyên độ sâu (cả `<sub>/x.tsx` lẫn `components/x.tsx`
+      đều cách `app/` 3 cấp) nên import `routes/+types/*` tương đối **không đổi** — xác nhận lại chứ
+      đừng sửa mù.
+
+- [ ] **Step 5: Xác nhận bất biến**
+
+```bash
+find apps/storefront/app/features -maxdepth 2 -type d | sed 's|.*/features/||' | grep '/' \
+  | grep -vE '/(components|server|lib)$' && echo "CON VI PHAM" || echo "OK: chi con components/server/lib"
+find apps/storefront/app/features -name '*.server.ts' | grep -v '/server/' && echo "SERVER SAI CHO" || echo "OK: server dung cho"
+cd apps/storefront/app && grep -rn "from '\.\./" . --include="*.ts" --include="*.tsx" | grep -v "+types"
+```
+
+- [ ] **Step 6: Verify + Commit** (`refactor(storefront): flatten account and partner-onboarding sub-features`)
+
+---
+
 # Phase 4 — Cắt đứt `features/ → routes/`
 
 Dashboard có **0** vi phạm; storefront có **10 file** import `routes/+types` + **4 file** import runtime
@@ -592,7 +714,10 @@ git rm apps/storefront/app/routes/partner-onboarding/shared.tsx
 `features/booking-widget/…` type fetcher bằng
 `import type { loader } from '~/routes/listing-booking-data'` — vẫn là features→routes.
 
-- [ ] **Step 1: Tạo `features/booking-widget/server/booking-data.server.ts`** chứa nguyên thân loader
+> Task 3.4 đã đưa `listing-booking-data.server.ts` vào `features/booking-widget/server/`. Task này chỉ
+> còn việc nuốt nốt thân loader của 2 route vào cùng thư mục đó.
+
+- [ ] **Step 1: Thêm vào `features/booking-widget/server/listing-booking-data.server.ts`** thân loader
 hiện có trong `routes/listing-booking-data.tsx` và `routes/listing-group-booking-data.tsx`
 (hai cái chỉ khác một dòng kiểm `listing.group?.slug !== params.groupSlug`), export:
 
