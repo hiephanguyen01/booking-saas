@@ -48,6 +48,7 @@ Gói `Studio Pro` trong seed đã bật `customDomain: true`, nên staging khôn
    Target lấy từ config platform, không hardcode trong frontend.
 3. **Xác minh: giữ TXT, thêm bước chẩn đoán "đã trỏ chưa".** TXT chống việc chiếm tên miền khi domain
    đổi chủ. Bước chẩn đoán chỉ resolve DNS tại thời điểm bấm, không thêm state.
+4. **CORS của R2: mở `AllowedOrigins: ["*"]` cho riêng PUT.** Xem § "CORS của R2" bên dưới.
 
 ## Kiến trúc
 
@@ -163,17 +164,46 @@ Mỗi use-case một file, một `execute()` công khai, controller → use-case
 - `features/admin/components/tenant-domains-card.tsx` nhận cùng thông tin để support chẩn đoán hộ
   tenant.
 
+## CORS của R2
+
+Khách upload ảnh hồ sơ partner và ảnh đánh giá đi thẳng từ trình duyệt lên R2 bằng presigned URL
+(`packages/ui/src/lib/upload.ts` → `fetch(uploadUrl, { method: 'PUT' })`), nên mỗi origin storefront
+phải nằm trong CORS của bucket. Hôm nay đó là JSON gõ tay trong Cloudflare dashboard liệt kê đúng ba
+origin (`docs/deployment-runbook.md` §8.3) — nghĩa là **mỗi tenant mới đều hỏng upload cho tới khi ops
+sửa tay**, kể cả tenant chỉ dùng subdomain. Custom domain chỉ làm lỗ hổng sẵn có này lộ ra.
+
+Cấu hình thay thế, đặt một lần trong Cloudflare:
+
+```json
+[{ "AllowedOrigins": ["*"], "AllowedMethods": ["PUT"],
+   "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
+```
+
+Lý do đây không phải nới lỏng bảo mật, ghi lại để lần audit sau khỏi phải suy luận lại: điều kiện duy
+nhất để ghi được object là chữ ký trong presigned URL. Muốn có chữ ký phải gọi `/uploads/presign` của
+BFF — route yêu cầu đăng nhập, cookie `httpOnly`, và `request-security.server.ts` chặn POST khác
+origin bằng kiểm tra `Origin` + `sec-fetch-site`. Ai đã cầm URL đã ký thì dùng `curl` cũng PUT được;
+CORS chưa bao giờ chặn request ngoài trình duyệt. Cấu hình trên cũng không bật credentials, nên không
+có cookie nào đi kèm request PUT.
+
+`STORAGE_UPLOAD_ORIGINS` là chuyện khác và **không** đổi: đó là danh sách origin *của R2* để đưa vào
+CSP `connect-src` của storefront, không phụ thuộc số tenant.
+
+Phương án sinh CORS tự động từ `tenant_domains` (outbox → `PutBucketCors`) đã cân nhắc và loại: nó
+cần thêm secret R2 quyền admin cho API và thêm một điểm hỏng, mà không làm hệ thống an toàn hơn cấu
+hình trên một cách thực chất.
+
 ## Ngoài phạm vi
 
 - `is_primary` vẫn chỉ là nhãn: tên miền phụ tiếp tục phục vụ song song, không redirect canonical về
   tên miền chính.
-- Sinh CORS của R2 từ `tenant_domains` (xem Rủi ro 1) — lần này chỉ ghi thành bước tay trong runbook.
 - Cảnh báo chủ động khi tên miền đã verified nhưng chưa trỏ. Chỉ có nút kiểm tra thủ công.
 
 ## Cutover trên EC2
 
 0. Tạo bản ghi A `connect.stg.bookingos.vn` → Elastic IP trên Cloudflare, để **DNS only**. Đây là
-   đích CNAME cho tên miền con của tenant.
+   đích CNAME cho tên miền con của tenant. Đồng thời thay CORS của bucket R2 bằng cấu hình wildcard ở
+   § "CORS của R2" (làm được ngay, độc lập với mọi bước sau).
 1. Deploy code mới trước — nginx host vẫn giữ 80/443, chưa ảnh hưởng gì. Nghiệm thu:
    `curl "http://127.0.0.1:8081/public/domains/tls-allowed?domain=bookingstudio.stg.bookingos.vn"`
    trả 200, domain lạ trả 404.
@@ -195,27 +225,22 @@ Mỗi use-case một file, một `execute()` công khai, controller → use-case
 | Hạ tầng | `docker/caddy/Caddyfile` (mới) · `docker/nginx/deploy.conf.template` (thêm listener 8081) · `docker-compose.deploy.yml` (publish `127.0.0.1:8081`, thêm hai env cho api) · `.env.deploy.example` |
 | API | `public-tenant.controller.ts` · `check-domain-tls-allowed.use-case.ts` (mới) · `check-domain-dns.use-case.ts` (mới) · `dns-verifier.port.ts` + adapter · `tenant-settings.controller.ts` · `admin-tenant.controller.ts` · `tenancy.mapper.ts` · `tenancy.module.ts` |
 | Contracts / UI | `contracts/tenancy.ts` · `features/tenant/{components/settings,server}` · `features/admin/components/tenant-domains-card.tsx` |
-| Docs | `docs/deployment.md` (topology + mục TLS) · `docs/deployment-runbook.md` (Phase 6 certbot → Caddy; mục "Tenant custom domain" viết lại thành quy trình thật) · `docker/nginx/staging-host.conf` giữ lại kèm ghi chú đường lùi |
+| Docs | `docs/deployment.md` (topology + mục TLS) · `docs/deployment-runbook.md` (Phase 6 certbot → Caddy; §8.3 CORS → wildcard PUT kèm lý do; mục "Tenant custom domain" viết lại thành quy trình thật) · `docker/nginx/staging-host.conf` giữ lại kèm ghi chú đường lùi |
 
 ## Rủi ro
 
-1. **CORS của R2 là việc tay còn sót.** Storefront cho khách upload thẳng browser → R2 bằng presigned
-   URL (`routes/uploads.presign.tsx`, `routes/uploads.reviews.presign.tsx`). Mỗi custom domain là một
-   origin mới nên phải thêm vào CORS của bucket, không thì partner onboarding và ảnh đánh giá từ tên
-   miền riêng sẽ fail trong khi trang vẫn xanh. Runbook phải ghi đây là bước bắt buộc khi tenant thêm
-   tên miền.
-2. **Thư mục certificate của Caddy** (`/var/lib/caddy/.local/share/caddy`) phải sống cùng systemd unit
+1. **Thư mục certificate của Caddy** (`/var/lib/caddy/.local/share/caddy`) phải sống cùng systemd unit
    chính thức. Xoá nhầm là xin lại toàn bộ certificate.
-3. **Rate limit Let's Encrypt**: 50 certificate mỗi tuần cho một registered domain — mọi
+2. **Rate limit Let's Encrypt**: 50 certificate mỗi tuần cho một registered domain — mọi
    `*.stg.bookingos.vn` tính chung vào `bookingos.vn`. Vài tenant thì thoải mái; khi test lặp thì trỏ
    `acme_ca` sang staging CA của Let's Encrypt.
-4. **Cloudflare phải giữ DNS only.** Bật Proxied là hỏng cả việc xin certificate lẫn hướng tenant trỏ
+3. **Cloudflare phải giữ DNS only.** Bật Proxied là hỏng cả việc xin certificate lẫn hướng tenant trỏ
    A về Elastic IP.
-5. Tên miền bị xoá vẫn còn certificate tới hạn — vô hại, storefront trả trang không tìm thấy tenant.
-6. Nếu tenant mở tên miền **trước** khi verify xong, negative cache 60 giây khiến `ask` trả 404 và
+4. Tên miền bị xoá vẫn còn certificate tới hạn — vô hại, storefront trả trang không tìm thấy tenant.
+5. Nếu tenant mở tên miền **trước** khi verify xong, negative cache 60 giây khiến `ask` trả 404 và
    Caddy backoff; đợi khoảng một phút rồi thử lại. Sau `markVerified` đã có `invalidateHost` nên
    đường thuận không bị trễ.
-7. Caddy là điểm chết duy nhất cho TLS, đúng như nginx hôm nay. Không làm rủi ro xấu đi, nhưng
+6. Caddy là điểm chết duy nhất cho TLS, đúng như nginx hôm nay. Không làm rủi ro xấu đi, nhưng
    staging vẫn là một máy.
 
 ## Nghiệm thu
