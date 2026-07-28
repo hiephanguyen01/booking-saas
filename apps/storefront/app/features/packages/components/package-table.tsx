@@ -17,7 +17,7 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { formatVnd } from '~/lib/ui';
-import { packageDurationHours, packageDetails } from './package-data';
+import { packageDurationHours, packageDetails } from '~/features/packages/lib/package-data';
 import { PackageMediaDetails } from './package-media-details';
 
 export function PackageTable({

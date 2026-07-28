@@ -8,7 +8,7 @@ import {
   handleListingAction,
   loadListingRoute,
 } from '~/features/listing/server/listing-route.server';
-import { PackageListingPage } from '~/features/packages/package-listing-page';
+import { PackageListingPage } from '~/features/packages/components/package-listing-page';
 import { jsonLd } from '~/lib/seo';
 import type { StorefrontContext } from '~/root';
 

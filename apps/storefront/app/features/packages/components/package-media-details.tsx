@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { formatVnd } from '~/lib/ui';
-import { packageDetails, packageDurationHours } from './package-data';
+import { packageDetails, packageDurationHours } from '~/features/packages/lib/package-data';
 
 export function PackageMediaDetails({
   item,
