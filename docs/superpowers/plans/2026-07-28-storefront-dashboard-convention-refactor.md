@@ -1050,7 +1050,7 @@ ErrorBoundary delegate về một component chung; 39 key chết đã rời cả
 
 # Phase 10 — `params.locale === 'en' ? 'en' : 'vi'` × 27 (mục 7)
 
-- [ ] **Step 1: Thêm vào `constants/paths.ts`**
+- [x] **Step 1 (`fdc017ad`): Thêm vào `constants/paths.ts`**
 
 ```ts
 export function localeParam(value: string | undefined): Locale {
@@ -1058,11 +1058,17 @@ export function localeParam(value: string | undefined): Locale {
 }
 ```
 
-- [ ] **Step 2: Thay 27 chỗ ở 18 file** bằng `localeParam(params.locale)`.
-      `lib/use-locale.ts`(→`hooks/`), `lib/tenant-availability.ts`, `lib/request-security.server.ts`,
-      `root.tsx` cũng dùng chung hàm này.
-- [ ] **Step 3: Xác nhận** — `grep -rn "=== 'en' ? 'en' : 'vi'" app` phải chỉ còn 1 hit (trong `localeParam`).
-- [ ] **Step 4: Verify + Commit**
+- [x] **Step 2 (`fdc017ad`): Thay 27 chỗ ở 19 file** bằng `localeParam(...)`.
+      Audit cũ có 18 file; `components/storefront-route-error-boundary.tsx` được thêm ở Phase 9 là
+      consumer thứ 19. `hooks/use-locale.ts`, `lib/tenant-availability.ts`,
+      `lib/request-security.server.ts`, `root.tsx` và account booking-detail page cũng dùng chung hàm.
+- [x] **Step 3: Xác nhận** — `grep -rn "=== 'en' ? 'en' : 'vi'" app` chỉ còn 1 hit trong
+      `localeParam`; toàn app có đúng 27 call site.
+- [x] **Step 4: Verify + Commit (`fdc017ad`)** — Turbo storefront 15/15, security,
+      `check:frontend-structure`, `check:no-tests` đều xanh; React Doctor 20 file đạt 100/100.
+
+**Kết quả Phase 10:** normalization locale có một source of truth typed, mọi input khác `en` vẫn
+fallback về `vi`; không đổi route params, URL, loader/action contract hay UI.
 
 ---
 
