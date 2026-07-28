@@ -1,5 +1,5 @@
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { PlatformConsultationForm } from '../platform-consultation-form';
+import { PlatformConsultationForm } from '~/features/platform-landing/components/platform-consultation-form';
 
 export function ConsultationSection() {
   const { t } = useTranslation(NsI18n.Platform);

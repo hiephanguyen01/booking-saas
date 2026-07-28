@@ -1,6 +1,6 @@
 import type { PlatformRootLoaderPayload } from '~/features/root/server/root-loader.server';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { PlatformBrand } from '../platform-header';
+import { PlatformBrand } from '~/features/platform-landing/components/platform-header';
 
 export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderPayload }) {
   const { t } = useTranslation(NsI18n.Platform);

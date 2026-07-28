@@ -1,5 +1,5 @@
+import { TRUST_ITEMS } from '~/features/platform-landing/lib/platform-content';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { TRUST_ITEMS } from '../../lib/platform-content';
 
 export function TrustSection() {
   const { t } = useTranslation(NsI18n.Platform);
