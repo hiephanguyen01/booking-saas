@@ -1,6 +1,8 @@
-import { loadAccountListingItems } from '~/features/account/server/account-listings.server';
+import type { AccountListingItem } from '~/features/account/lib/account-listing-item';
 
-export async function loadAccountRecentRoute(request: Request, locale: 'vi' | 'en') {
-  const items = await loadAccountListingItems(request);
-  return { locale, items };
+export function loadAccountRecentRoute(locale: 'vi' | 'en'): {
+  locale: 'vi' | 'en';
+  items: AccountListingItem[];
+} {
+  return { locale, items: [] };
 }

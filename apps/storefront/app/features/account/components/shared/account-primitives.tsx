@@ -1,5 +1,4 @@
 import { formatCurrency, type Locale } from '@booking/i18n';
-import { Badge } from '@booking/ui/components/ui/badge';
 import { Camera, Check, Construction } from 'lucide-react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import {
@@ -24,37 +23,14 @@ export function AccountPanel({
   );
 }
 
-export function PageHeading({
-  title,
-  demo = false,
-  action,
-}: {
-  title: string;
-  demo?: boolean;
-  action?: React.ReactNode;
-}) {
-  const { t } = useTranslation(NsI18n.Account);
+export function PageHeading({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
     <div className="flex min-h-13 flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold leading-7 text-foreground">{title}</h1>
-        {demo ? (
-          <Badge variant="secondary" className="font-medium">
-            {t('demo')}
-          </Badge>
-        ) : null}
       </div>
       {action}
     </div>
-  );
-}
-
-export function DemoNotice() {
-  const { t } = useTranslation(NsI18n.Account);
-  return (
-    <p className="mb-4 rounded-sm border border-primary/15 bg-primary/5 px-4 py-3 text-xs leading-5 text-muted-foreground">
-      {t('demoDescription')}
-    </p>
   );
 }
 
@@ -119,12 +95,12 @@ export function CancellationPolicyList({
   );
 }
 
-export function MockDisabledState() {
+export function FeatureUnavailableState() {
   const { t } = useTranslation(NsI18n.Account);
   return (
     <AccountPanel className="flex min-h-80 flex-col items-center justify-center gap-3 p-8 text-center">
       <Construction className="size-10 text-primary" />
-      <p className="text-sm text-muted-foreground">{t('mockDisabled')}</p>
+      <p className="text-sm text-muted-foreground">{t('featureUnavailable')}</p>
     </AccountPanel>
   );
 }

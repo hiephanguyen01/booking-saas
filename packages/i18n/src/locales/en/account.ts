@@ -3,8 +3,6 @@ import type { viAccount } from '../vi/account';
 
 export const enAccount = {
   title: 'My account',
-  demo: 'Demo data',
-  demoDescription: 'This data previews the interface and resets when the page reloads.',
   nav: {
     profile: 'Account information',
     bookings: 'Booking history',
@@ -164,9 +162,6 @@ export const enAccount = {
   },
   messages: {
     title: 'Messages',
-    search: 'Search conversations',
-    reply: 'Write a message...',
-    send: 'Send',
   },
   reviews: {
     title: 'My reviews',
@@ -288,5 +283,5 @@ export const enAccount = {
     backHome: 'Back to home',
     account: 'Open my account',
   },
-  mockDisabled: 'This feature is being completed.',
+  featureUnavailable: 'This feature is being completed.',
 } satisfies TranslationShape<typeof viAccount>;

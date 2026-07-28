@@ -1,7 +1,5 @@
 export const viAccount = {
   title: 'Tài khoản của tôi',
-  demo: 'Dữ liệu minh họa',
-  demoDescription: 'Dữ liệu này dùng để xem trước giao diện và sẽ được đặt lại khi tải lại trang.',
   nav: {
     profile: 'Thông tin tài khoản',
     bookings: 'Lịch sử đặt đơn',
@@ -161,9 +159,6 @@ export const viAccount = {
   },
   messages: {
     title: 'Tin nhắn',
-    search: 'Tìm cuộc trò chuyện',
-    reply: 'Nhập tin nhắn...',
-    send: 'Gửi',
   },
   reviews: {
     title: 'Đánh giá của tôi',
@@ -285,5 +280,5 @@ export const viAccount = {
     backHome: 'Về trang chủ',
     account: 'Mở tài khoản của tôi',
   },
-  mockDisabled: 'Tính năng đang được hoàn thiện.',
+  featureUnavailable: 'Tính năng đang được hoàn thiện.',
 } as const;
