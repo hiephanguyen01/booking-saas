@@ -5,11 +5,11 @@ import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { BookingDialogFooter } from '~/components/booking-dialog-footer';
+import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { PackageMediaDetails } from '~/features/packages/components/package-media-details';
-import { RoomBookingDialogShell } from './room-booking-dialog-shell';
 import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';
 import { useListingBookingDialogController } from '~/features/listing-group/hooks/use-listing-booking-dialog-controller';
 
@@ -67,7 +67,7 @@ export function ListingBookingDialog({
 
   return (
     <>
-      <RoomBookingDialogShell
+      <BookingDialogShell
         {...shellProps}
         onDesktopOpenChange={(open) => {
           shellProps.onDesktopOpenChange(open);

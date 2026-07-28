@@ -1,9 +1,9 @@
 import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import type { RefObject } from 'react';
 import { BookingDialogFooter } from '~/components/booking-dialog-footer';
+import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
-import { PackageBookingDialogShell } from './package-booking-dialog-shell';
 import { PackageBookingDialogSteps } from './package-booking-dialog-steps';
 import { usePackageBookingDialogController } from '~/features/packages/hooks/use-package-booking-dialog-controller';
 
@@ -67,9 +67,8 @@ export function PackageBookingDialog({
   );
 
   return (
-    <PackageBookingDialogShell
-      open={open}
-      onOpenChange={controller.changeOpen}
+    <BookingDialogShell
+      controlled={{ open, onOpenChange: controller.changeOpen }}
       title={t('packages.bookingTitle', {
         name: selectedPackage?.name ?? listing.title,
       })}
