@@ -85,9 +85,10 @@ prisma, redis, tenant-context, time, validation). Details in
 | Install | `pnpm install` (CI/Docker: `--frozen-lockfile`) |
 | Everything, dev | `pnpm dev` (turbo, all apps) |
 | One app, dev | `pnpm --filter=@booking/{api,storefront,dashboard} dev` |
-| **Full static check** | `pnpm check:no-tests && pnpm check:module-cycles && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
+| **Full static check** | `pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure && pnpm --filter=@booking/storefront security && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls` |
 | No-tests policy | `pnpm check:no-tests` |
 | Module-cycle guard | `pnpm check:module-cycles` |
+| Frontend structure guard | `pnpm check:frontend-structure` |
 | Lint / Typecheck / Build (all) | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
 | Format | `pnpm format` |
 | Local infra | `docker compose up -d` (postgres:16, redis:7, mailpit, minio) — **dev only** |
@@ -99,9 +100,10 @@ prisma, redis, tenant-context, time, validation). Details in
 | RLS coverage check | `pnpm --filter=@booking/api check:rls` |
 
 > `--filter=api` also resolves (pnpm matches the directory). CI (`.github/workflows/ci.yml`, "Frontend
-> CI") runs the no-tests policy guard, Storefront security gate, contracts build, API typecheck,
-> frontend lint/typechecks/production builds, `check:rls`, and both frontend Docker builds. The API is
-> typechecked but is not run through a standalone production-build step in CI.
+> CI") runs the no-tests policy guard, module-cycle and frontend-structure guards, Storefront security
+> gate, contracts build, API typecheck, frontend lint/typechecks/production builds, `check:rls`, and
+> both frontend Docker builds. The API is typechecked but is not run through a standalone
+> production-build step in CI.
 
 ## Local run recipe
 

@@ -8,8 +8,6 @@ import { storefrontPaths } from '~/constants/paths';
 import { useAccountLayoutController } from '~/features/account/hooks/use-account-layout-controller';
 import type { Route } from './+types/layout';
 
-export type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
-
 export function meta() {
   return [{ title: 'Account | BookingOS' }, { name: 'robots', content: 'noindex' }];
 }
