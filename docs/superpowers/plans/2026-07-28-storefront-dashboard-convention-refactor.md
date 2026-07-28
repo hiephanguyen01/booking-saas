@@ -631,7 +631,9 @@ done
 - [ ] **Step 5: Xác nhận bất biến**
 
 ```bash
-find apps/storefront/app/features -maxdepth 2 -type d | sed 's|.*/features/||' | grep '/' \
+# -mindepth 2 là bắt buộc: thiếu nó thì chính `features/` và `features/<name>/` cũng lọt vào kết quả
+# và tạo false positive.
+find apps/storefront/app/features -mindepth 2 -maxdepth 2 -type d \
   | grep -vE '/(components|server|lib)$' && echo "CON VI PHAM" || echo "OK: chi con components/server/lib"
 find apps/storefront/app/features -name '*.server.ts' | grep -v '/server/' && echo "SERVER SAI CHO" || echo "OK: server dung cho"
 cd apps/storefront/app && grep -rn "from '\.\./" . --include="*.ts" --include="*.tsx" | grep -v "+types"
