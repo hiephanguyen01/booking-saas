@@ -1,5 +1,9 @@
-import type { HourlySlot, PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
-import { useMemo, useState } from 'react';
+import type {
+  AvailabilityResponse,
+  HourlySlot,
+  PublicListingDetailWithTimezoneResponse,
+} from '@booking/contracts';
+import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useFetcher } from 'react-router';
 import { normalizeDailyRange } from '~/lib/daily-range';
 import { NsI18n, useTranslation } from '~/lib/i18n';
@@ -20,16 +24,25 @@ import type {
 
 type BookingRequestKind = 'availability' | 'quote';
 
-export function useListingBookingDialogController({
+export function useBookingDialogController({
   listing,
   groupSlug,
   preferredMode,
   today,
+  controlled,
+  controlledPackageId,
+  returnFocusRef,
 }: {
   listing: PublicListingDetailWithTimezoneResponse;
   groupSlug?: string;
   preferredMode: ListingBookingMode;
   today: string;
+  controlled?: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  };
+  controlledPackageId?: string | null;
+  returnFocusRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
@@ -52,14 +65,16 @@ export function useListingBookingDialogController({
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mode, setMode] = useState<ListingBookingMode>(initialMode);
-  const [packageId, setPackageId] = useState<string | null>(
+  const [internalPackageId, setInternalPackageId] = useState<string | null>(
     fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null,
   );
+  const packageId = controlled ? (controlledPackageId ?? null) : internalPackageId;
   const selectedPackage = packageOptions(mode).find((item) => item.id === packageId) ?? null;
   const [date, setDate] = useState<string | null>(null);
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<HourlySlot[]>([]);
+  const [cachedAvailability, setCachedAvailability] = useState<AvailabilityResponse | null>(null);
   const [selectionError, setSelectionError] = useState('');
   const [requestKind, setRequestKind] = useState<BookingRequestKind>('availability');
   const encodedListingSlug = encodeURIComponent(listing.slug);
@@ -79,6 +94,7 @@ export function useListingBookingDialogController({
     },
     kind: BookingRequestKind,
   ): void {
+    if (fixedPackages && !(next.packageId ?? packageId)) return;
     setRequestKind(kind);
     const params = new URLSearchParams({ mode: next.mode });
     if (next.packageId ?? packageId) params.set('packageId', (next.packageId ?? packageId)!);
@@ -94,11 +110,12 @@ export function useListingBookingDialogController({
 
   function reset(): void {
     setMode(initialMode);
-    setPackageId(fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null);
+    setInternalPackageId(fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null);
     setDate(null);
     setFrom(null);
     setTo(null);
     setSelectedSlots([]);
+    setCachedAvailability(null);
     setSelectionError('');
     setRequestKind('availability');
   }
@@ -128,26 +145,34 @@ export function useListingBookingDialogController({
     }
   }
 
+  function changeControlledOpen(next: boolean): void {
+    if (!next) reset();
+    controlled?.onOpenChange(next);
+    if (!next) requestAnimationFrame(() => returnFocusRef?.current?.focus());
+  }
+
   function switchMode(next: ListingBookingMode): void {
     if (next === mode) return;
     setMode(next);
     const nextPackageId = fixedPackages ? (packageOptions(next)[0]?.id ?? null) : null;
-    setPackageId(nextPackageId);
+    setInternalPackageId(nextPackageId);
     setDate(null);
     setFrom(null);
     setTo(null);
     setSelectedSlots([]);
+    setCachedAvailability(null);
     setSelectionError('');
     if (next === 'daily')
       load({ mode: next, from: today, packageId: nextPackageId }, 'availability');
   }
 
   function selectPackage(nextPackageId: string): void {
-    setPackageId(nextPackageId);
+    setInternalPackageId(nextPackageId);
     setDate(null);
     setFrom(null);
     setTo(null);
     setSelectedSlots([]);
+    setCachedAvailability(null);
     if (mode === 'daily') {
       load({ mode, from: today, packageId: nextPackageId }, 'availability');
     }
@@ -163,7 +188,7 @@ export function useListingBookingDialogController({
       : response.from === (from ?? today) && response.to === to)
       ? response
       : null;
-  const availability =
+  const responseAvailability =
     currentData?.availability ??
     (mode === 'daily' &&
     response?.ok &&
@@ -171,6 +196,10 @@ export function useListingBookingDialogController({
     response.packageId === packageId
       ? response.availability
       : null);
+  useEffect(() => {
+    if (responseAvailability) setCachedAvailability(responseAvailability);
+  }, [responseAvailability]);
+  const availability = responseAvailability ?? cachedAvailability;
   const slots = useMemo(
     () =>
       availability?.mode === 'hourly'
@@ -192,6 +221,8 @@ export function useListingBookingDialogController({
   const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';
   const quotePending = fetcher.state !== 'idle' && requestKind === 'quote';
   const requestError = fetcher.state === 'idle' && response && !response.ok;
+  const availabilityError = Boolean(requestError && requestKind === 'availability');
+  const quoteError = Boolean(requestError && requestKind === 'quote' && hasCompleteSelection);
   const selectionUnavailable = Boolean(
     hasCompleteSelection && fetcher.state === 'idle' && currentData && !currentData.quote,
   );
@@ -212,6 +243,7 @@ export function useListingBookingDialogController({
   function selectDate(nextDate: string): void {
     setDate(nextDate);
     setSelectedSlots([]);
+    setCachedAvailability(null);
     setSelectionError('');
     load({ mode: 'hourly', date: nextDate, packageId }, 'availability');
   }
@@ -219,6 +251,7 @@ export function useListingBookingDialogController({
   function changeDate(): void {
     setDate(null);
     setSelectedSlots([]);
+    setCachedAvailability(null);
     setSelectionError('');
   }
 
@@ -367,12 +400,16 @@ export function useListingBookingDialogController({
       from,
       to,
       availability,
+      timezone: bookingTimezone,
       availabilityPending,
+      hasAvailability: Boolean(availability),
+      availabilityError,
       requestError: Boolean(requestError),
       slots,
       selectedSlots,
       selectionError,
       selectionUnavailable,
+      quoteError,
       onSwitchMode: switchMode,
       onSelectPackage: selectPackage,
       onSelectDate: selectDate,
@@ -381,6 +418,20 @@ export function useListingBookingDialogController({
       onSelectRange: selectRange,
       onRetryHourly: () => {
         if (date) load({ mode, date }, 'availability');
+      },
+      onRetryQuote: () => {
+        if (mode === 'hourly' && date && interval) {
+          load(
+            {
+              mode,
+              date,
+              start: interval.start,
+              end: interval.end,
+              packageId,
+            },
+            'quote',
+          );
+        }
       },
       onRetryDaily: () =>
         load({ mode, from: from ?? today, to }, from && to ? 'quote' : 'availability'),
@@ -398,5 +449,6 @@ export function useListingBookingDialogController({
             : t('group.chooseDayToContinue')
           : t('group.chooseRangeToContinue'),
     },
+    changeControlledOpen,
   };
 }

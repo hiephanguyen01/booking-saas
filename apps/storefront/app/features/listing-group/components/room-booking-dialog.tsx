@@ -6,12 +6,12 @@ import { CalendarDays } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { BookingDialogFooter } from '~/components/booking-dialog-footer';
 import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
+import { useBookingDialogController } from '~/features/booking-widget/hooks/use-booking-dialog-controller';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { PackageMediaDetails } from '~/features/packages/components/package-media-details';
 import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';
-import { useListingBookingDialogController } from '~/features/listing-group/hooks/use-listing-booking-dialog-controller';
 
 export type { ListingBookingMode } from './room-booking-dialog-steps';
 
@@ -30,7 +30,7 @@ export function ListingBookingDialog({
   const viewerLabels = useMediaViewerLabels();
   const [activePackageMediaIndex, setActivePackageMediaIndex] = useState<number | null>(null);
   const mediaTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const { triggerLabel, shellProps, stepsProps, footerProps } = useListingBookingDialogController({
+  const { triggerLabel, shellProps, stepsProps, footerProps } = useBookingDialogController({
     listing,
     groupSlug,
     preferredMode,
