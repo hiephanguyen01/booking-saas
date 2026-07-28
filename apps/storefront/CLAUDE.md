@@ -3,22 +3,64 @@
 Local rules for the customer storefront. Root context: [`../../AGENTS.md`](../../AGENTS.md). Frontend
 conventions shared with the dashboard: [`../../docs/conventions.md`](../../docs/conventions.md).
 
+## Folder architecture (enforced by `pnpm check:frontend-structure`)
+
+```
+app/
+  routes/                 ROUTE MODULES ONLY — group nested flows/resources by semantic name
+  features/<name>/        ALL non-route code — see the uniform convention below
+  components/             cross-feature UI primitives only
+  hooks/                  cross-feature hooks only
+  constants/              paths and shared display constants
+  lib/                    genuinely shared pure helpers (no JSX)
+    server/               cross-feature server infrastructure/request helpers
+```
+
+**Every feature uses one uniform layout** — `features/<name>/{components, hooks, server, lib}`:
+
+- `components/` — `.tsx` feature UI. Account page components may be grouped one level deeper by page.
+- `hooks/` — feature-local controller hooks (`use-*`); never leave these in `components/`.
+- `server/` — `*.server.ts` loader/action/BFF bodies owned by the feature.
+- `lib/` — feature-local pure helpers, constants and types (no JSX, no server).
+
+Omit empty folders. A feature's second-level folders may only use these four names.
+
+A file referenced by `app/routes.ts` may expose React Router route-module exports only:
+`default`, `loader`, `clientLoader`, `action`, `clientAction`, `middleware`, `clientMiddleware`,
+`ErrorBoundary`, `HydrateFallback`, `headers`, `handle`, `links`, `meta`, and `shouldRevalidate`.
+Keep these exports as thin adapters. Page UI, controller hooks, request handlers, schemas, constants,
+response builders and other support functions belong to the owning feature. `routes/` must not contain
+support modules imported by other routes. Dashboard area-local `routes.ts`/`nav.ts` files are deliberate
+route-config/navigation exceptions; storefront currently has no equivalent exception.
+
+## Import discipline
+
+- Only a **route module** may import its generated relative `./+types/*`; this path does not resolve
+  through `~/`.
+- `features/**`, `components/**`, `hooks/**`, and `constants/**` never import from `routes/**`.
+- Browser-reachable modules may only `import type` from `*.server` files (never a runtime import).
+- Route URLs come from `~/constants/paths` (`storefrontPaths.account.booking(code)` …), never
+  string-built.
+- Use the **`~/` alias** for every import that crosses a directory boundary; keep `./sibling` for files
+  in the same directory. Do not use `../`.
+
 ## What's different from the dashboard
 
 - **Multi-tenant by `Host` header.** The tenant is resolved per-request from the hostname via a backend
-  call in `app/lib/tenant.server.ts` (not from a login). One storefront serves every tenant's domain;
-  an unmapped host serves the BookingOS platform landing without creating a tenant session.
+  call in `app/lib/server/tenant.server.ts` (not from a login). One storefront serves every tenant's
+  domain; an unmapped host serves the BookingOS platform landing without creating a tenant session.
+  A **single-label host (`localhost`) or bare IP** short-circuits to the platform landing with no
+  backend call at all — it can never be a tenant domain. Every multi-label host still goes through
+  resolution, because a tenant may map its own apex (`giangstudio.vn`), not just a subdomain.
 - **Bilingual.** Every page nests under a `/:locale` (`vi` | `en`) layout backed by `@booking/i18n`;
   unlocalized legacy paths are kept as redirect route modules for inbound links. The dashboard, by
   contrast, is Vietnamese-hardcoded.
 - **Public + guest flows.** Most pages are public; authenticated bits (bookings, checkout) use a
   Redis-backed session; guest checkout authenticates by booking code + email OTP.
-- **Relative imports** are the storefront's convention (the `~/` alias is declared in tsconfig but code
-  uses relative paths). Match surrounding files; don't introduce `~/` here.
 
 ## Tenant theming (untrusted input — handle with care)
 
-`app/theme/theme.ts` turns the tenant's `theme_config.colors` into a `:root{…}` block injected once at
+`app/lib/theme.ts` turns the tenant's `theme_config.colors` into a `:root{…}` block injected once at
 SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--primary`, `--ring`) so every
 `@booking/ui` component renders in the tenant brand. Rules:
 
@@ -30,17 +72,35 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
   tenant-driven (it's shadcn's neutral hover surface). Legacy `--sf-primary` / `--sf-accent` /
   `--sf-background` are still emitted for hand-rolled classNames — prefer semantic tokens for new work.
 
+### The platform landing is not a tenant surface
+
+`features/platform-landing` renders only for `kind: 'platform'` (unmapped host, `localhost`, bare IP),
+so `TenantThemeStyle` never mounts above it and **no tenant theme can reach it**. Its BookingOS brand
+(amber `#ffb020` on near-black) is fixed in the `.platform-landing` scope in `app/app.css`, which
+overrides the same shadcn **base** tokens — so its sections style themselves with ordinary semantic
+utilities (`bg-card`, `text-muted-foreground`, `bg-primary`, `ring-ring`) and never a literal color.
+`--platform-*` covers only the roles shadcn has no slot for (ink/muted steps, the amber text scale,
+status green, elevation). Dark bands opt in with `className="dark"` and read the flipped set in
+`.platform-landing .dark`; **every token a dark band uses must be restated there**, because
+`@booking/ui`'s `.dark` and `.platform-landing` have equal specificity and `.platform-landing` wins on
+source order. Do **not** move this brand into the global `:root` to make it "tenant-overridable": it
+would hand every un-themed tenant storefront BookingOS's amber, and there is no tenant here to override.
+
 ## BFF & data
 
-Server-only `app/lib/*.server.ts` modules wrap `@booking/api-client`; loaders/actions call the backend
-server-to-server. **Never fetch the backend from the browser** and never import a `*.server.ts` into
-browser code. Forms use `GenericForm` with a zod schema from `@booking/contracts`
+Server-only domain/BFF modules live under `app/features/<name>/server/`; only cross-feature
+infrastructure and genuinely shared request helpers remain in `app/lib/server/*.server.ts`.
+Loaders/actions call the backend server-to-server. **Never fetch the backend from the browser** and
+never value-import a `*.server.ts` module into browser code (type-only imports are allowed).
+Feature-local hooks live in `features/<name>/hooks/`, not `components/`; feature-local pure
+helpers/types live in `lib/`. Neither shared nor feature-local `lib/` contains JSX. Forms use
+`GenericForm` with a zod schema from `@booking/contracts`
 (see [`../../docs/conventions.md`](../../docs/conventions.md) → Forms).
 
-Runtime environment reads are centralized in `app/lib/env.server.ts`. Production startup fails when
-the API, Redis, session secret, dashboard URL or payment-origin allowlist is missing/unsafe. Unsafe
-HTTP methods pass through the root same-origin guard before auth; `/healthz` and `/readyz` are exact
-operational exceptions and must never resolve a tenant or session.
+Runtime environment reads are centralized in `app/lib/server/env.server.ts`. Production startup fails
+when the API, Redis, session secret, dashboard URL or payment-origin allowlist is missing/unsafe.
+Unsafe HTTP methods pass through the root same-origin guard before auth; `/healthz` and `/readyz` are
+exact operational exceptions and must never resolve a tenant or session.
 
 Image upload works: `app/routes/uploads.presign.tsx` is a same-origin presign proxy that replays the
 auth cookie to the backend `POST /uploads/presign`, then the browser PUTs bytes straight to MinIO/S3.

@@ -10,8 +10,8 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Heart } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
 
 /** Shown when a logged-out visitor clicks a heart. Login returns to the current page. */
 export function LoginRequiredDialog({

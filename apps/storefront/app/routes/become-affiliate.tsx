@@ -1,10 +1,10 @@
-import { AffiliateApplicationPage } from '../features/affiliate/application/affiliate-application-page';
+import { AffiliateApplicationPage } from '~/features/affiliate/components/affiliate-application-page';
 import {
   loadAffiliateApplicationRoute,
   submitAffiliateApplication,
-} from '../features/affiliate/application/server/affiliate-application-route.server';
+} from '~/features/affiliate/server/affiliate-application-route.server';
 import type { Route } from './+types/become-affiliate';
-import { partnerMeta } from './partner-onboarding/shared';
+import { partnerMeta } from '~/features/partner-onboarding/lib/partner-onboarding-meta';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
   const rootData = matches[0].loaderData;

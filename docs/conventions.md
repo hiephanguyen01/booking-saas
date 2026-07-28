@@ -10,12 +10,15 @@ per-app frontend rules in the app `CLAUDE.md` files. Hard rules are in [`../AGEN
   functions. `const` over `let`; never `var`. `consistent-type-imports` is enforced (import types with
   `import type`) — **except** in `apps/api/**`, where it's off because NestJS DI relies on
   `emitDecoratorMetadata`.
-- No barrel files inside feature modules (circular-dep risk). Allowed barrels: the package roots
-  `packages/{contracts,i18n,query,ui}/src/index.ts`.
+- Avoid broad barrel files inside feature modules (circular-dep risk). A narrow compatibility barrel is
+  allowed only when it preserves an established public import seam without introducing a cycle (for
+  example storefront `platform-sections.tsx`); do not add convenience barrels by default. Package
+  root barrels remain allowed.
 - Files kebab-case; classes/interfaces/React components PascalCase; interfaces prefixed `I`; port tokens
   `SCREAMING_SNAKE_CASE`; Prisma models PascalCase → snake_case tables; env vars `SCREAMING_SNAKE_CASE`.
-- Aliases: `~/` → `app/` (dashboard uses it everywhere; storefront prefers relative imports),
-  `@/` → `src/` (backend). Prettier: single quotes, trailing commas `all`, print width 100.
+- Aliases: `~/` → `app/` in both frontends; use it across directory boundaries and keep
+  `./sibling` within one directory. Do not introduce new `../` imports. `@/` → `src/` in the backend.
+  Prettier: single quotes, trailing commas `all`, print width 100.
 
 ## Backend (hexagonal)
 
@@ -118,11 +121,46 @@ credentials or internal implementation details.
 
 ## Frontend (React Router 8 framework mode)
 
+### Bố cục app frontend
+
+Both `apps/storefront` and `apps/dashboard` use the same six top-level buckets under `app/`:
+
+```text
+app/
+  routes/                 registered React Router modules
+  features/<name>/        all non-route code owned by a domain/flow
+  components/             UI primitives shared by multiple features/areas
+  hooks/                  hooks shared by multiple features/areas
+  constants/              paths and shared typed display constants
+  lib/                    genuinely shared helpers (no JSX)
+    server/               storefront cross-feature server infrastructure/request helpers
+```
+
+- A route file stays a thin adapter. Page UI and support declarations belong to its owner feature;
+  loader/action/BFF bodies belong in `features/<name>/server/`. Storefront `routes/` contains no
+  support modules; dashboard-only route config/navigation exceptions are documented in its
+  `CLAUDE.md`.
+- Feature code is split by role, not accumulated in a flat directory. Storefront permits only
+  `{components,hooks,server,lib}` at feature level; dashboard uses `{components,server,lib}` plus its
+  documented optional `constants.ts`. Omit empty folders. Account components may group one level
+  deeper by page. Storefront cross-feature server infrastructure lives in `app/lib/server/`; owned
+  BFF/domain modules live in the feature's `server/`. Shared and feature-local `lib/` contain no JSX.
+- Only route modules import generated relative `./+types/*`. Features, components, hooks, and
+  constants never import from `routes/`; browser-reachable code may only type-import from
+  `*.server.ts`.
+- Both apps use `~/` for cross-directory imports and `./sibling` within one directory. Route URLs come
+  from `~/constants/paths`, never ad-hoc string construction.
+- ESLint enforces route boundaries and React Hooks rules. `pnpm check:frontend-structure` enforces the
+  six buckets, storefront `lib/server/`, feature/server placement, JSX-free `lib/`, hook placement
+  outside `components/`, and storefront's semantic route-only constraints; it runs in CI and in the
+  repository full static check.
+
 - Each route exports `loader` (server data), `action` (server mutation), and a default component
   receiving `loaderData` / `actionData`. Protected routes resolve identity in a root `middleware` +
   area guards, not ad-hoc per route.
 - **BFF: never fetch the backend from the browser.** All authenticated data goes through
-  loaders/actions calling `@booking/api-client` (via each app's `app/lib/api.server.ts`:
+  loaders/actions calling `@booking/api-client` (via storefront
+  `app/lib/server/api.server.ts` and dashboard `app/lib/api.server.ts`:
   `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete` + `unwrapApiResult`/`requireData`/`unwrapList`).
   The session cookie is `httpOnly`. Browser-reachable modules may only `import type` from `*.server`
   files. See [ADR 0001](./decisions/0001-opaque-sessions-over-jwt.md).

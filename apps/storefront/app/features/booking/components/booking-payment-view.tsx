@@ -12,9 +12,9 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Form, Link } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { formatVnd } from '../../../lib/ui';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
+import { formatVnd } from '~/lib/ui';
 import { BookingSuccessView } from './booking-success-view';
 
 interface BookingPaymentViewProps {

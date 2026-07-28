@@ -6,35 +6,35 @@ import {
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
-import { readRefCode } from '../../../lib/affiliate.server';
-import { getOptionalAuth } from '../../../lib/auth.server';
+import { readRefCode } from '~/features/affiliate/server/affiliate.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import {
   checkoutBooking,
   createBooking,
   fetchPaymentOptions,
   validatePromo,
-} from '../../../lib/booking.server';
-import { fetchListing, fetchQuote } from '../../../lib/catalog.server';
+} from '~/features/booking/server/booking.server';
+import { fetchListing, fetchQuote } from '~/features/catalog/server/catalog.server';
 import {
   buildCheckoutIdempotencyKey,
   createCheckoutAttemptId,
   parseCheckoutAttemptId,
-} from '../../../lib/checkout-idempotency.server';
-import { getCheckoutFlowService, maskCheckoutEmail } from '../../../lib/checkout-flow.server';
+} from '~/features/checkout/server/checkout-idempotency.server';
 import {
-  formRequestFailureStatus,
-  readFormRequestBody,
-} from '../../../lib/form-request.server';
-import { errorStatus } from '../../../lib/http-status';
-import { createTranslator } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
+  getCheckoutFlowService,
+  maskCheckoutEmail,
+} from '~/features/checkout/server/checkout-flow.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
+import { errorStatus } from '~/lib/http-status';
+import { createTranslator } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
   isMockPaymentRedirect,
-} from '../../../lib/payment-redirect.server';
-import { appendRecentCookie } from '../../../lib/recent.server';
-import { getCurrentStorefrontTenant } from '../../../lib/request-context.server';
+} from '~/features/checkout/server/payment-redirect.server';
+import { appendRecentCookie } from '~/features/account/server/recent.server';
+import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 
 const CHECKOUT_MAX_FORM_BYTES = 64 * 1024;
 

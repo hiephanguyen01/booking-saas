@@ -1,18 +1,18 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
-import { RatingStars } from '../../../components/rating-stars';
+import { RatingStars } from '~/components/rating-stars';
 import {
   rangeDates,
   withSearchContext,
   type EnrichedSearchListing,
   type StorefrontSearchState,
-} from '../../search/search-state';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { formatListingLocation, formatVnd } from '../../../lib/ui';
-import { clockHoursBetween } from '../../../lib/time';
-import { useLocale } from '../../../lib/use-locale';
-import type { ListingFavoriteControl } from './listing-card.types';
+} from '~/features/search/lib/search-state';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
+import { formatListingLocation, formatVnd } from '~/lib/ui';
+import { clockHoursBetween } from '~/lib/time';
+import { useLocale } from '~/hooks/use-locale';
+import type { ListingFavoriteControl } from '~/features/catalog/lib/listing-card.types';
 
 export function SearchResultCard({
   listing,

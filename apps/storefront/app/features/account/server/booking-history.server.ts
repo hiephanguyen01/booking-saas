@@ -1,14 +1,14 @@
 import { bookingResponseSchema, type BookingResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { z } from 'zod';
-import { apiGet } from '../../../lib/api.server';
-import { fetchBookingByCode } from '../../../lib/booking.server';
+import { apiGet } from '~/lib/server/api.server';
+import { fetchBookingByCode } from '~/features/booking/server/booking.server';
 import {
   bookingMatchesFilter,
   type AccountBookingViewModel,
   type BookingHistoryFilter,
   toAccountBookingViewModel,
-} from '../lib/booking-history';
+} from '~/features/account/lib/booking-history';
 import { loadCustomerReviewsByBooking } from './customer-reviews.server';
 
 export async function loadAccountBookings(

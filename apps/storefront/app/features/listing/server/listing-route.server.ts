@@ -5,16 +5,16 @@ import {
   type AvailabilityMode,
   type PublicListingDetailResponse,
 } from '@booking/contracts';
-import { submitContentReport } from '../../content-reports/content-report.server';
-import { loadAdministrativeProvinces } from '../../../lib/administrative-divisions.server';
-import { fetchAvailability } from '../../../lib/booking.server';
-import { fetchListing, fetchListings, fetchQuote } from '../../../lib/catalog.server';
-import { canOffsetDateOnly, isValidDateOnly } from '../../../lib/date-only';
-import { datesInDailyRange, normalizeDailyRange } from '../../../lib/daily-range';
-import { optionalData } from '../../../lib/optional-data.server';
-import { selectedPackageForListing } from '../../../lib/package-options';
-import { loadPublicReviews } from '../../../lib/public-reviews.server';
-import { addDays, todayInTz, zonedToUtcIso } from '../../../lib/time';
+import { submitContentReport } from '~/features/content-reports/server/content-report.server';
+import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
+import { fetchAvailability } from '~/features/booking/server/booking.server';
+import { fetchListing, fetchListings, fetchQuote } from '~/features/catalog/server/catalog.server';
+import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
+import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
+import { optionalData } from '~/lib/server/optional-data.server';
+import { selectedPackageForListing } from '~/lib/package-options';
+import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
+import { addDays, todayInTz, zonedToUtcIso } from '~/lib/time';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];
 
@@ -46,8 +46,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
   const packageId = selectedPackage?.id;
   const requiresPackage = listing.bookingSelection === 'fixed_packages';
   const invalidPackage =
-    (requiresPackage && !selectedPackage) ||
-    (!requiresPackage && requestedPackageId !== null);
+    (requiresPackage && !selectedPackage) || (!requiresPackage && requestedPackageId !== null);
   const today = todayInTz(listing.timezone, requestNow);
   let availabilityPromise: ReturnType<typeof fetchAvailability> | null = null;
 
@@ -62,11 +61,7 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
       ...(packageId ? { packageId } : {}),
     });
   } else if (mode === 'daily') {
-    const anchor = validDateOr(
-      searchParams.get('from'),
-      today,
-      MAX_BOOKING_RANGE_DAYS - 1,
-    );
+    const anchor = validDateOr(searchParams.get('from'), today, MAX_BOOKING_RANGE_DAYS - 1);
     availabilityPromise = fetchAvailability(request, listingSlug, {
       mode,
       from: anchor,
@@ -141,19 +136,20 @@ export async function loadListingRoute(request: Request, url: URL, listingSlug: 
           requiresPackage,
         )
       : false;
-  const quote = selectionAvailable && mode
-    ? await fetchQuote(
-        request,
-        listingSlug,
-        new URLSearchParams({
-          mode,
-          from: selectionStart!,
-          to: selectionEnd!,
-          quantity,
-          ...(packageId ? { packageId } : {}),
-        }),
-      )
-    : null;
+  const quote =
+    selectionAvailable && mode
+      ? await fetchQuote(
+          request,
+          listingSlug,
+          new URLSearchParams({
+            mode,
+            from: selectionStart!,
+            to: selectionEnd!,
+            quantity,
+            ...(packageId ? { packageId } : {}),
+          }),
+        )
+      : null;
 
   return {
     listing,

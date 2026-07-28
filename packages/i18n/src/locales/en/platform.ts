@@ -29,8 +29,6 @@ export const enPlatform = {
     primaryCta: 'Book a consultation',
     secondaryCta: 'View real demos',
     visualAlt: 'Studio space used in the BookingStudio demo model',
-    visualCaption: 'A storefront that looks and feels like your business.',
-    visualMeta: 'Image from the BookingStudio demo model',
     schedule: {
       title: 'Sample operations schedule',
       status: 'Synced',
@@ -154,7 +152,6 @@ export const enPlatform = {
     title: 'Choose a plan that fits your scale.',
     description:
       'Official pricing is being finalized. We will recommend a configuration after understanding your operating model.',
-    pendingTitle: 'Get a recommendation for your operation',
     pendingDescription:
       'Tell us about locations, partners, services, and booking volume to receive a suitable plan without invented or hidden fees.',
     consultation: 'Book a consultation',
@@ -283,8 +280,6 @@ export const enPlatform = {
     tagline:
       'One platform for booking websites, schedules, partners, and finance for service businesses.',
     productTitle: 'Product',
-    solutionsTitle: 'Solutions',
-    supportTitle: 'Support',
     legalTitle: 'Legal',
     product: 'Platform capabilities',
     workflow: 'How it works',

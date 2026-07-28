@@ -8,8 +8,8 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { useHref, useLinkClickHandler, type To } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { useCatalogPaginationController } from './use-catalog-pagination-controller';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { useCatalogPaginationController } from '~/features/catalog/hooks/use-catalog-pagination-controller';
 
 /**
  * `PaginationLink` renders a bare `<a>`, so routing it through the router keeps

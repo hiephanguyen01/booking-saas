@@ -1,6 +1,6 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import { cn } from '@booking/ui/lib/utils';
-import { typeIcon } from '../lib/ui';
+import { typeIcon } from '~/lib/ui';
 import { LucideByName } from './lucide-by-name';
 
 /**
@@ -19,7 +19,12 @@ export function ListingTypeGlyph({
 }) {
   if (type.iconImageUrl) {
     return (
-      <img src={type.iconImageUrl} alt="" className={cn(className, 'object-contain')} aria-hidden="true" />
+      <img
+        src={type.iconImageUrl}
+        alt=""
+        className={cn(className, 'object-contain')}
+        aria-hidden="true"
+      />
     );
   }
   return <LucideByName name={type.icon} fallback={typeIcon(type.slug)} className={className} />;

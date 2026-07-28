@@ -1,16 +1,16 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing';
-import { buildListingMeta } from '../features/listing/listing-meta';
-import { buildListingStructuredData } from '../features/listing/listing-structured-data';
-import { ListingPage } from '../features/listing/listing-page';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { buildListingMeta } from '~/features/listing/lib/listing-meta';
+import { buildListingStructuredData } from '~/features/listing/lib/listing-structured-data';
+import { ListingPage } from '~/features/listing/components/listing-page';
 import {
   handleListingAction,
   loadListingRoute,
-} from '../features/listing/server/listing-route.server';
-import { PackageListingPage } from '../features/packages/package-listing-page';
-import { jsonLd } from '../lib/seo';
-import type { StorefrontContext } from '../root';
+} from '~/features/listing/server/listing-route.server';
+import { PackageListingPage } from '~/features/packages/components/package-listing-page';
+import { jsonLd } from '~/lib/seo';
+import type { StorefrontContext } from '~/root';
 
 export async function action({ request, params }: Route.ActionArgs) {
   return handleListingAction(request, params.listingSlug);
@@ -55,6 +55,5 @@ export default function ListingRoute(props: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel="Về trang chủ" />;
+  return <StorefrontRouteErrorBoundary error={error} locale={params.locale} />;
 }

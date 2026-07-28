@@ -1,11 +1,12 @@
 import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
-import { minimumConfiguredPrice } from '../../../lib/booking-presentation';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { formatVnd } from '../../../lib/ui';
+import { DetailPriceCard } from '~/components/detail-price-card';
+import { minimumConfiguredPrice } from '~/lib/booking-presentation';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { formatVnd } from '~/lib/ui';
 import {
   ListingBookingDialog,
   type ListingBookingMode,
-} from '../../listing-group/components/room-booking-dialog';
+} from '~/features/listing-group/components/room-booking-dialog';
 
 export function StudioBookingCard({
   listing,
@@ -28,7 +29,7 @@ export function StudioBookingCard({
         : t('perHour');
 
   return (
-    <div className="rounded-lg bg-card p-5 text-right text-card-foreground shadow-sm">
+    <DetailPriceCard>
       <p className="text-sm text-muted-foreground">
         {t('fromPriceShort')}{' '}
         <strong className="text-xl text-primary">
@@ -39,6 +40,6 @@ export function StudioBookingCard({
       <div className="mt-5">
         <ListingBookingDialog listing={listing} preferredMode={preferredMode} today={today} />
       </div>
-    </div>
+    </DetailPriceCard>
   );
 }

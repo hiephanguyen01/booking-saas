@@ -82,14 +82,12 @@ export async function seedBookingStudio(input: {
     },
   });
 
-  // Staging host is primary; the local hosts ride along so ONE seed serves both
-  // environments without an env switch (dev resolves on localhost, stg on the
-  // real subdomain).
+  // Staging host is primary; the `.localhost` host rides along so ONE seed serves
+  // both environments without an env switch. Bare `localhost`/`127.0.0.1` are
+  // deliberately NOT mapped — the storefront serves the platform landing there.
   for (const [hostname, isPrimary] of [
     ['bookingstudio.stg.bookingos.vn', true],
     ['bookingstudio.localhost', false],
-    ['localhost', false],
-    ['127.0.0.1', false],
   ] as const) {
     await prisma.tenantDomain.upsert({
       where: { hostname },

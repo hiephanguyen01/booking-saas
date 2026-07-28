@@ -1,9 +1,8 @@
 import type { Route } from './+types/catalog';
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
-import { CatalogPage } from '../features/catalog/catalog-page';
-import { buildCatalogMeta } from '../features/catalog/catalog-meta';
-import { loadCatalogRoute } from '../features/catalog/server/catalog-route.server';
-import { NsI18n, useTranslation } from '../lib/i18n';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { CatalogPage } from '~/features/catalog/components/catalog-page';
+import { buildCatalogMeta } from '~/features/catalog/lib/catalog-meta';
+import { loadCatalogRoute } from '~/features/catalog/server/catalog-route.server';
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
   return buildCatalogMeta(loaderData, params.typeSlug);
@@ -18,7 +17,5 @@ export default function CatalogRoute(props: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  const { t } = useTranslation(NsI18n.Error);
-  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel={t('home')} />;
+  return <StorefrontRouteErrorBoundary error={error} locale={params.locale} />;
 }

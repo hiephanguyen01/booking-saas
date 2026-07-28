@@ -1,17 +1,13 @@
 import type { ValidatePromoResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@booking/ui/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { ChevronRight, TicketPercent } from 'lucide-react';
 import { Form, Link } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { formatVnd } from '../../../lib/ui';
-import { useLocale } from '../../../lib/use-locale';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
+import { formatVnd } from '~/lib/ui';
+import { useLocale } from '~/hooks/use-locale';
 
 /** The query keys the promo form must carry through so the quote stays intact. */
 const CHECKOUT_KEYS = ['listing', 'mode', 'start', 'end', 'qty'] as const;

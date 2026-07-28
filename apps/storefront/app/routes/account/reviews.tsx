@@ -1,17 +1,18 @@
-import { AccountReviewsPage } from '../../features/account/reviews/reviews-page';
+import { localeParam } from '~/constants/paths';
+import { AccountReviewsPage } from '~/features/account/components/reviews/reviews-page';
 import {
   handleAccountReviewsAction,
   loadAccountReviewsRoute,
-} from '../../features/account/reviews/server/reviews-route.server';
+} from '~/features/account/server/reviews-route.server';
 import type { Route } from './+types/reviews';
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return loadAccountReviewsRoute(request, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return handleAccountReviewsAction(request, locale);
 }
 

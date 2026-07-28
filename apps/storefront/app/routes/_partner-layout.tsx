@@ -1,5 +1,5 @@
 import { Outlet, useOutletContext } from 'react-router';
-import type { StorefrontContext } from '../root';
+import type { StorefrontContext } from '~/root';
 
 /** Structural layout wrapper for partner-onboarding routes.
  *  The actual standalone appearance (no SiteHeader/SiteFooter) is handled in

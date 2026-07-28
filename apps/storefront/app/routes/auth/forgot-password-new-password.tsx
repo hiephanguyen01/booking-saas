@@ -1,10 +1,14 @@
 import { useActionData, useOutletContext } from 'react-router';
 import type { Route } from './+types/forgot-password-new-password';
-import { AuthFrame, NewPasswordForm } from '../../features/auth/auth-ui';
-import { completePasswordAction, requireFlowPhaseOnly } from '../../lib/auth-routes.server';
-import type { AuthActionData } from '../../lib/auth-types';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { StorefrontContext } from '../../root';
+import { AuthFrame } from '~/features/auth/components/auth-frame';
+import { NewPasswordForm } from '~/features/auth/components/auth-new-password-form';
+import {
+  completePasswordAction,
+  requireFlowPhaseOnly,
+} from '~/features/auth/server/auth-routes.server';
+import type { AuthActionData } from '~/lib/auth-types';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import type { StorefrontContext } from '~/root';
 export const meta = ({ params }: Route.MetaArgs) => [
   { title: params.locale === 'en' ? 'New password' : 'Mật khẩu mới' },
   { name: 'robots', content: 'noindex,nofollow' },

@@ -1,9 +1,13 @@
 import { useActionData, useOutletContext } from 'react-router';
-import { AuthFrame, NewPasswordForm } from '../../features/auth/auth-ui';
-import { completePasswordAction, requireFlowPhaseOnly } from '../../lib/auth-routes.server';
-import type { AuthActionData } from '../../lib/auth-types';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { StorefrontContext } from '../../root';
+import { AuthFrame } from '~/features/auth/components/auth-frame';
+import { NewPasswordForm } from '~/features/auth/components/auth-new-password-form';
+import {
+  completePasswordAction,
+  requireFlowPhaseOnly,
+} from '~/features/auth/server/auth-routes.server';
+import type { AuthActionData } from '~/lib/auth-types';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/register-password';
 export const meta = () => [
   { title: 'Create password' },

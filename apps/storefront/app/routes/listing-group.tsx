@@ -1,15 +1,16 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing-group';
-import { ListingGroupPage } from '../features/listing-group/listing-group-page';
-import { buildListingGroupMeta } from '../features/listing-group/listing-group-meta';
-import { buildListingGroupStructuredData } from '../features/listing-group/listing-group-structured-data';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { localeParam } from '~/constants/paths';
+import { ListingGroupPage } from '~/features/listing-group/components/listing-group-page';
+import { buildListingGroupMeta } from '~/features/listing-group/lib/listing-group-meta';
+import { buildListingGroupStructuredData } from '~/features/listing-group/lib/listing-group-structured-data';
 import {
   handleListingGroupAction,
   loadListingGroupRoute,
-} from '../features/listing-group/server/listing-group-route.server';
-import { jsonLd } from '../lib/seo';
-import type { StorefrontContext } from '../root';
+} from '~/features/listing-group/server/listing-group-route.server';
+import { jsonLd } from '~/lib/seo';
+import type { StorefrontContext } from '~/root';
 
 export function action({ request, params }: Route.ActionArgs) {
   return handleListingGroupAction(request, params.groupSlug);
@@ -27,8 +28,8 @@ export function shouldRevalidate({
     : defaultShouldRevalidate;
 }
 
-export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
-  return buildListingGroupMeta(loaderData?.group);
+export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
+  return buildListingGroupMeta(loaderData?.group, localeParam(params.locale));
 }
 
 export function loader({ request, params, url }: Route.LoaderArgs) {
@@ -38,7 +39,7 @@ export function loader({ request, params, url }: Route.LoaderArgs) {
 export default function ListingGroupRoute({ loaderData, params }: Route.ComponentProps) {
   const { group } = loaderData;
   const { tenant, canonical, cspNonce } = useOutletContext<StorefrontContext>();
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   const structuredData = buildListingGroupStructuredData({ tenant, canonical, locale, group });
 
   return (
@@ -54,6 +55,5 @@ export default function ListingGroupRoute({ loaderData, params }: Route.Componen
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  return <RouteErrorState error={error} homeHref={`/${locale}`} homeLabel="Về trang chủ" />;
+  return <StorefrontRouteErrorBoundary error={error} locale={params.locale} />;
 }

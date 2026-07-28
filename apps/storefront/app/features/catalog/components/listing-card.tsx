@@ -1,12 +1,15 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
-import { attributeSummary, formatListingLocation, formatVnd } from '../../../lib/ui';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { useLocale } from '../../../lib/use-locale';
-import type { ListingCardPresentation, ListingFavoriteControl } from './listing-card.types';
-import { RatingStars } from '../../../components/rating-stars';
+import { attributeSummary, formatListingLocation, formatVnd } from '~/lib/ui';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
+import { useLocale } from '~/hooks/use-locale';
+import type {
+  ListingCardPresentation,
+  ListingFavoriteControl,
+} from '~/features/catalog/lib/listing-card.types';
+import { RatingStars } from '~/components/rating-stars';
 
 /**
  * Image-forward listing card used on the home + catalog pages.

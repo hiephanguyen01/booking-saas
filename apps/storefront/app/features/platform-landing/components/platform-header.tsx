@@ -1,7 +1,7 @@
 import { Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 const NAV_ITEMS = [
   { href: '#capabilities', label: 'nav.product' },
@@ -39,7 +39,7 @@ export function PlatformHeader({
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header className="platform-header sticky top-0 z-40 border-b border-[#e4e6ea] bg-[rgba(244,245,247,.86)] backdrop-blur-xl">
+    <header className="platform-header sticky top-0 z-40 border-b border-border bg-background/86 backdrop-blur-xl">
       <div className="mx-auto flex h-18 w-full max-w-300 items-center gap-7 px-5 sm:px-6">
         <PlatformBrand label={t('brandLabel')} />
 
@@ -61,7 +61,7 @@ export function PlatformHeader({
           </Link>
           <a
             href={dashboardLoginUrl}
-            className="hidden min-h-11 items-center justify-center text-[15px] font-semibold text-[#40464f] transition hover:text-[#b27400] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-2 xl:inline-flex"
+            className="hidden min-h-11 items-center justify-center text-[15px] font-semibold text-(--platform-ink-soft) transition hover:text-(--platform-primary-ink) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 xl:inline-flex"
           >
             {t('nav.login')}
           </a>
@@ -89,20 +89,20 @@ export function PlatformHeader({
       {menuOpen ? (
         <div
           id="platform-mobile-menu"
-          className="border-t border-[#e4e6ea] bg-[#f4f5f7] px-5 pb-6 pt-4 shadow-[0_24px_60px_rgba(10,14,19,0.12)] sm:px-6 xl:hidden"
+          className="platform-sheet-shadow border-t border-border bg-background px-5 pb-6 pt-4 sm:px-6 xl:hidden"
         >
           <nav aria-label={t('nav.label')} className="mx-auto grid w-full max-w-300 gap-1">
             {NAV_ITEMS.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="flex min-h-12 items-center rounded-xl px-3 text-base font-semibold text-[#31363c] hover:bg-[#ffb020]/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300]"
+                className="flex min-h-12 items-center rounded-xl px-3 text-base font-semibold text-(--platform-ink-soft) hover:bg-primary/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={closeMenu}
               >
                 {t(item.label)}
               </a>
             ))}
-            <div className="mt-3 grid gap-2 border-t border-[#0a0e13]/8 pt-4 sm:grid-cols-3">
+            <div className="mt-3 grid gap-2 border-t border-foreground/8 pt-4 sm:grid-cols-3">
               <Link
                 to={`/${alternateLocale}`}
                 className="platform-secondary-button"
@@ -129,15 +129,15 @@ export function PlatformBrand({ label }: { label: string }) {
     <Link
       to="."
       aria-label={label}
-      className="inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-2"
+      className="inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <span
-        className="grid size-7.5 place-items-center rounded-[0.56rem] bg-[#0a0e13]"
+        className="grid size-7.5 place-items-center rounded-[0.56rem] bg-foreground"
         aria-hidden="true"
       >
-        <span className="size-3 rounded-sm bg-[#ffb020]" />
+        <span className="size-3 rounded-sm bg-primary" />
       </span>
-      <span className="text-[19px] font-extrabold tracking-[-0.02em] text-[#0a0e13]">
+      <span className="text-[19px] font-extrabold tracking-[-0.02em] text-foreground">
         BookingOS
       </span>
     </Link>

@@ -1,12 +1,11 @@
-import { favoriteRefsResponseSchema, type FavoriteRefsResponse } from '@booking/contracts';
+import { favoriteRefsResponseSchema } from '@booking/contracts';
 import { Outlet, useOutletContext } from 'react-router';
-import { FavoritesProvider } from '../features/favorites/favorites-context';
-import { apiGet, rethrowApiInfrastructureFailure } from '../lib/api.server';
-import { getOptionalAuth } from '../lib/auth.server';
+import { FavoritesProvider } from '~/features/favorites/components/favorites-context';
+import { EMPTY_FAVORITE_REFS, needsFavoriteRefs } from '~/features/favorites/lib/favorite-refs';
+import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/server/api.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import type { Route } from './+types/locale-layout';
-import type { StorefrontContext } from '../root';
-
-const EMPTY_REFS: FavoriteRefsResponse = { listingIds: [], groupIds: [] };
+import type { StorefrontContext } from '~/root';
 
 export async function loader({ params, request }: Route.LoaderArgs) {
   if (params.locale !== 'vi' && params.locale !== 'en') {
@@ -17,7 +16,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // Favorite refs are needed only on discovery surfaces that render heart
   // controls. Auth, checkout, booking and most account pages skip this request.
   const auth = getOptionalAuth();
-  let refs = EMPTY_REFS;
+  let refs = EMPTY_FAVORITE_REFS;
   if (auth && needsFavoriteRefs(new URL(request.url).pathname)) {
     const result = await apiGet(request, '/customer/favorites/refs', auth.session.accessToken, {
       schema: favoriteRefsResponseSchema,
@@ -39,16 +38,5 @@ export default function LocaleLayout({ loaderData }: Route.ComponentProps) {
     >
       <Outlet context={context} />
     </FavoritesProvider>
-  );
-}
-
-function needsFavoriteRefs(pathname: string): boolean {
-  if (pathname.endsWith('/booking-data')) return false;
-  const relative = pathname.replace(/^\/(?:vi|en)(?=\/|$)/, '') || '/';
-  return (
-    relative === '/' ||
-    /^\/(?:t|l|g|p)(?:\/|$)/.test(relative) ||
-    relative === '/community' ||
-    relative === '/account/favorites'
   );
 }

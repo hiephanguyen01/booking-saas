@@ -1,5 +1,5 @@
 import { Star } from 'lucide-react';
-import { NsI18n, useTranslation } from '../lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function ListingRatingSummary({
   ratingAvg,

@@ -1,10 +1,10 @@
-import { PartnerProfilePage } from '../../features/partner-onboarding/profile/partner-profile-page';
+import { PartnerProfilePage } from '~/features/partner-onboarding/components/partner-profile-page';
 import {
   loadPartnerProfileRoute,
   submitPartnerProfileRoute,
-} from '../../features/partner-onboarding/profile/server/partner-profile-route.server';
+} from '~/features/partner-onboarding/server/partner-profile-route.server';
 import type { Route } from './+types/profile';
-import { partnerMeta } from './shared';
+import { partnerMeta } from '~/features/partner-onboarding/lib/partner-onboarding-meta';
 
 export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors {
   const rootData = matches[0].loaderData;

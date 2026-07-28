@@ -8,9 +8,6 @@ export const enBooking = {
   bookingHistory: 'Booking history',
   chooseAnotherTime: 'Choose another time',
   cancel: 'Cancel booking',
-  cancelReason: 'Reason (optional)',
-  cancelConfirm: 'Confirm cancellation',
-  refundInfo: 'Refund: {amount} ({percent}%)',
   cancelled: 'Your booking has been cancelled.',
   success: {
     title: 'Booking successful',
@@ -35,6 +32,7 @@ export const enBooking = {
     refunded: 'Refunded',
   },
   lookup: {
+    metaTitle: 'Bookings',
     title: 'Find a booking',
     subtitle: 'Enter your booking code and we’ll email you a one-time code.',
     formTitle: 'Access your booking',

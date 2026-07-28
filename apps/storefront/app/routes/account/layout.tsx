@@ -1,14 +1,12 @@
 import { Outlet } from 'react-router';
-import { AccountContentSkeleton } from '../../components/loading-skeletons';
-import { AccountShell } from '../../features/account/components/account-shell';
-import { getAccountMenuSummary } from '../../features/account/server/account-menu.server';
-import { requireAuth } from '../../lib/auth.server';
-import { requireLocale } from '../../lib/i18n.server';
-import { storefrontPaths } from '../../lib/locale-paths';
+import { AccountContentSkeleton } from '~/components/loading-skeletons';
+import { AccountShell } from '~/features/account/components/account-shell/account-shell';
+import { getAccountMenuSummary } from '~/features/account/server/account-menu.server';
+import { requireAuth } from '~/lib/server/auth.server';
+import { requireLocale } from '~/lib/server/i18n.server';
+import { storefrontPaths } from '~/constants/paths';
+import { useAccountLayoutController } from '~/features/account/hooks/use-account-layout-controller';
 import type { Route } from './+types/layout';
-import { useAccountLayoutController } from './use-account-layout-controller';
-
-export type { AccountOutletContext } from './use-account-layout-controller';
 
 export function meta() {
   return [{ title: 'Account | BookingOS' }, { name: 'robots', content: 'noindex' }];

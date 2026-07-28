@@ -4,16 +4,19 @@ import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-m
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { BookingDialogFooter } from '../../../components/booking-dialog-footer';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
-import type { BookingMode, RoomOption } from '../listing-group-types';
-import { PackageMediaDetails } from '../../packages/package-media-details';
-import { RoomBookingDialogShell } from './room-booking-dialog-shell';
-import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';
-import { useListingBookingDialogController } from './use-listing-booking-dialog-controller';
+import { BookingDialogFooter } from '~/components/booking-dialog-footer';
+import { PackageMediaDetails } from '~/components/package-media-details';
+import {
+  BookingDialogSteps,
+  type ListingBookingMode,
+} from '~/features/booking-widget/components/booking-dialog-steps';
+import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
+import { useBookingDialogController } from '~/features/booking-widget/hooks/use-booking-dialog-controller';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
+import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 
-export type { ListingBookingMode } from './room-booking-dialog-steps';
+export type { ListingBookingMode } from '~/features/booking-widget/components/booking-dialog-steps';
 
 export function ListingBookingDialog({
   listing,
@@ -30,7 +33,7 @@ export function ListingBookingDialog({
   const viewerLabels = useMediaViewerLabels();
   const [activePackageMediaIndex, setActivePackageMediaIndex] = useState<number | null>(null);
   const mediaTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const { triggerLabel, shellProps, stepsProps, footerProps } = useListingBookingDialogController({
+  const { triggerLabel, shellProps, stepsProps, footerProps } = useBookingDialogController({
     listing,
     groupSlug,
     preferredMode,
@@ -61,9 +64,10 @@ export function ListingBookingDialog({
     </Button>
   );
   const body = (
-    <RoomBookingDialogSteps
+    <BookingDialogSteps
       {...stepsProps}
       today={today}
+      quotePending={footerProps.quotePending}
       onOpenPackageMedia={openPackageMedia}
     />
   );
@@ -71,7 +75,7 @@ export function ListingBookingDialog({
 
   return (
     <>
-      <RoomBookingDialogShell
+      <BookingDialogShell
         {...shellProps}
         onDesktopOpenChange={(open) => {
           shellProps.onDesktopOpenChange(open);

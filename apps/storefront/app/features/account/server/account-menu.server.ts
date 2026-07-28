@@ -1,6 +1,6 @@
 import { customerReviewListResponseSchema } from '@booking/contracts';
-import type { AccountMenuSummary } from '../account-menu';
-import { apiGet, rethrowApiInfrastructureFailure } from '../../../lib/api.server';
+import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
+import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/server/api.server';
 
 export async function getAccountMenuSummary(
   request: Request,

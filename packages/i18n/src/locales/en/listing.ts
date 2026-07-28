@@ -3,7 +3,6 @@ import type { viListing } from '../vi/listing';
 
 export const enListing = {
   notFound: '“{slug}” not found.',
-  providedBy: 'Offered by {name}',
   identityVerified: 'Identity verified',
   activeSince: 'Active since {date}',
   completedBookings: '{count} completed bookings',
@@ -66,7 +65,6 @@ export const enListing = {
   perItem: 'per item',
   perSession: 'per session',
   forSelectedDays: 'total for {count} days',
-  addToFavorites: 'Add to favorites',
   pickScheduleForPrice: 'Pick a schedule to see the price',
   subtotalEstimate: 'estimated total',
   mode: 'Booking type',
@@ -99,7 +97,6 @@ export const enListing = {
   minDuration: 'Minimum {count} hours',
   minNights: 'Minimum {count} nights',
   package: 'bundle',
-  descriptionTitle: 'About',
   packages: {
     albums: 'Albums',
     viewAlbum: 'View {name} album',
@@ -138,9 +135,9 @@ export const enListing = {
     viewPackagePhoto: 'View photo {index} of package {name}',
   },
   group: {
+    metaFallback: 'Listing',
     viewMap: 'View map',
     save: 'Save {title}',
-    saveComingSoon: 'Saving a studio is not available yet',
     moreOptions: 'More options',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
@@ -162,7 +159,6 @@ export const enListing = {
     viewRooms: 'View rooms',
     partnerFallback: 'Studio partner',
     viewProvider: 'View provider',
-    viewProviderComingSoon: 'The provider page is not available yet',
     roomTypes: 'Room type',
     availabilityOn: 'Availability on {date}',
     availabilityRange: 'Prices and availability for the dates you picked',
@@ -174,7 +170,6 @@ export const enListing = {
     noRoomsTitle: 'No matching rooms',
     noRoomsBody: 'Try another date or booking type in the search bar above.',
     roomInfoPending: 'Room details are being updated.',
-    viewRoomDescription: 'View description',
     viewRoomDetails: 'View details',
     area: 'Area: {value} m²',
     capacity: 'Capacity',

@@ -1,10 +1,12 @@
 import { Link, useActionData, useOutletContext } from 'react-router';
-import { AuthFrame, SocialButtons, StartForm } from '../../features/auth/auth-ui';
-import { startRegistrationAction } from '../../lib/auth-routes.server';
-import type { AuthActionData } from '../../lib/auth-types';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import { storefrontPaths } from '../../lib/locale-paths';
-import type { StorefrontContext } from '../../root';
+import { AuthFrame } from '~/features/auth/components/auth-frame';
+import { SocialButtons } from '~/features/auth/components/auth-social-buttons';
+import { StartForm } from '~/features/auth/components/auth-start-form';
+import { startRegistrationAction } from '~/features/auth/server/auth-routes.server';
+import type { AuthActionData } from '~/lib/auth-types';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
+import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/register';
 export const meta = ({ params }: Route.MetaArgs) => [
   { title: params.locale === 'en' ? 'Create account' : 'Đăng ký' },

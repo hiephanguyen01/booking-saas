@@ -1,15 +1,15 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import type { Route } from './+types/checkout';
-import { CheckoutPage } from '../features/checkout/checkout-page';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { localeParam } from '~/constants/paths';
+import { CheckoutPage } from '~/features/checkout/components/checkout-page';
 import {
   handleCheckoutAction,
   loadCheckout,
-} from '../features/checkout/server/checkout-route.server';
-import { createTranslator } from '../lib/i18n';
-import { storefrontPaths } from '../lib/locale-paths';
+} from '~/features/checkout/server/checkout-route.server';
+import { createTranslator } from '@booking/i18n';
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return [
     { title: createTranslator(locale).t('checkout.title') },
     { name: 'robots', content: 'noindex' },
@@ -17,12 +17,12 @@ export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
 }
 
 export function loader({ request, url, params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return loadCheckout(request, url, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return handleCheckoutAction(request, locale);
 }
 
@@ -31,9 +31,5 @@ export default function CheckoutRoute(props: Route.ComponentProps) {
 }
 
 export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
-  const homeLabel = createTranslator(locale).t('errors.home');
-  return (
-    <RouteErrorState error={error} homeHref={storefrontPaths.home(locale)} homeLabel={homeLabel} />
-  );
+  return <StorefrontRouteErrorBoundary error={error} locale={params.locale} />;
 }

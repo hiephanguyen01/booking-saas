@@ -26,8 +26,6 @@ export const viPlatform = {
     primaryCta: 'Đăng ký tư vấn',
     secondaryCta: 'Xem demo thực tế',
     visualAlt: 'Không gian studio được sử dụng trong mô hình demo BookingStudio',
-    visualCaption: 'Một storefront mang đúng thương hiệu của doanh nghiệp.',
-    visualMeta: 'Ảnh từ mô hình demo BookingStudio',
     schedule: {
       title: 'Lịch vận hành mẫu',
       status: 'Đồng bộ',
@@ -150,7 +148,6 @@ export const viPlatform = {
     title: 'Chọn gói phù hợp với quy mô của bạn.',
     description:
       'Bảng giá chính thức đang được hoàn thiện. Chúng tôi sẽ đề xuất cấu hình phù hợp sau khi hiểu mô hình của bạn.',
-    pendingTitle: 'Nhận đề xuất theo mô hình vận hành',
     pendingDescription:
       'Trao đổi về số cơ sở, đối tác, dịch vụ và lượng booking để nhận gói phù hợp, không có chi phí ẩn được tự động thêm.',
     consultation: 'Đăng ký tư vấn',
@@ -279,8 +276,6 @@ export const viPlatform = {
     tagline:
       'Nền tảng hợp nhất website đặt chỗ, lịch, đối tác và tài chính cho doanh nghiệp dịch vụ.',
     productTitle: 'Sản phẩm',
-    solutionsTitle: 'Giải pháp',
-    supportTitle: 'Hỗ trợ',
     legalTitle: 'Pháp lý',
     product: 'Năng lực nền tảng',
     workflow: 'Cách hoạt động',

@@ -1,6 +1,5 @@
 export const viListing = {
   notFound: 'Không tìm thấy “{slug}”.',
-  providedBy: 'Cung cấp bởi {name}',
   identityVerified: 'Đã xác minh danh tính',
   activeSince: 'Hoạt động từ {date}',
   completedBookings: '{count} lượt đặt hoàn tất',
@@ -63,7 +62,6 @@ export const viListing = {
   perItem: 'mỗi sản phẩm',
   perSession: 'mỗi buổi',
   forSelectedDays: 'tổng cho {count} ngày',
-  addToFavorites: 'Thêm vào yêu thích',
   pickScheduleForPrice: 'Chọn lịch để xem giá',
   subtotalEstimate: 'tổng tạm tính',
   mode: 'Hình thức',
@@ -96,7 +94,6 @@ export const viListing = {
   minDuration: 'Tối thiểu {count} giờ',
   minNights: 'Tối thiểu {count} đêm',
   package: 'gói',
-  descriptionTitle: 'Giới thiệu',
   packages: {
     albums: 'Album',
     viewAlbum: 'Xem album {name}',
@@ -136,9 +133,9 @@ export const viListing = {
   },
   /** The listing-group ("studio") page — a group of bookable child listings. */
   group: {
+    metaFallback: 'Bài đăng',
     viewMap: 'Xem bản đồ',
     save: 'Lưu {title}',
-    saveComingSoon: 'Tính năng lưu studio đang được phát triển',
     moreOptions: 'Mở thêm lựa chọn',
     copyLink: 'Sao chép liên kết',
     linkCopied: 'Đã sao chép',
@@ -160,7 +157,6 @@ export const viListing = {
     viewRooms: 'Xem phòng',
     partnerFallback: 'Đối tác studio',
     viewProvider: 'Xem nhà cung cấp',
-    viewProviderComingSoon: 'Trang nhà cung cấp đang được phát triển',
     roomTypes: 'Loại phòng',
     availabilityOn: 'Lịch trống ngày {date}',
     availabilityRange: 'Giá và lịch trống theo khoảng ngày bạn đã chọn',
@@ -172,7 +168,6 @@ export const viListing = {
     noRoomsTitle: 'Không có phòng phù hợp',
     noRoomsBody: 'Thử đổi ngày hoặc hình thức đặt ở thanh tìm kiếm phía trên.',
     roomInfoPending: 'Thông tin phòng đang được cập nhật.',
-    viewRoomDescription: 'Xem mô tả',
     viewRoomDetails: 'Xem chi tiết',
     area: 'Diện tích: {value} m²',
     capacity: 'Sức chứa',

@@ -1,17 +1,18 @@
-import { AccountProfilePage } from '../../features/account/profile/profile-page';
+import { localeParam } from '~/constants/paths';
+import { AccountProfilePage } from '~/features/account/components/profile/profile-page';
 import {
   handleAccountProfileAction,
   loadAccountProfileRoute,
-} from '../../features/account/profile/server/profile-route.server';
+} from '~/features/account/server/profile-route.server';
 import type { Route } from './+types/profile';
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return loadAccountProfileRoute(request, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return handleAccountProfileAction(request, locale);
 }
 

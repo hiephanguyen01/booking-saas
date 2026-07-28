@@ -1,8 +1,8 @@
 import type { AttributeField } from '@booking/contracts';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { RoomOption } from '../listing-group-types';
-import { roomCapacity, specCards } from '../room-attributes';
-import { AttributeSpecCards } from './attribute-spec-cards';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import type { RoomOption } from '~/features/listing-group/lib/listing-group-types';
+import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
+import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 
 /**
  * The side panel shown next to a room photo in the media viewer — the room's title,

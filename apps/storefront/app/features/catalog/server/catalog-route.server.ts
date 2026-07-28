@@ -1,6 +1,6 @@
-import { loadAdministrativeProvinces } from '../../../lib/administrative-divisions.server';
-import { searchListings } from '../../../lib/catalog.server';
-import { parseSearchState, type StorefrontSearchState } from '../../search/search-state';
+import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
+import { searchListings } from '~/features/catalog/server/catalog.server';
+import { parseSearchState, type StorefrontSearchState } from '~/features/search/lib/search-state';
 
 /** Search params that make this a filtered view rather than the canonical catalog page. */
 const FILTER_PARAMS = [
@@ -87,7 +87,10 @@ function catalogApiSearch(
   search.set('sort', state.sort);
   search.set('page', String(state.page));
 
-  for (const amenity of state.amenities.map((item) => item.trim()).filter(Boolean).slice(0, 30)) {
+  for (const amenity of state.amenities
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 30)) {
     search.append('amenities', amenity.slice(0, 120));
   }
 

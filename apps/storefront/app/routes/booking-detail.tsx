@@ -1,14 +1,12 @@
-import { RouteErrorState } from '@booking/ui/components/route-error-state';
-import { BookingPaymentView } from '../features/booking/components/booking-payment-view';
+import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { localeParam } from '~/constants/paths';
+import { BookingPaymentView } from '~/features/booking/components/booking-payment-view';
 import {
   handleBookingDetailAction,
   loadBookingDetail,
-} from '../features/booking/server/booking-detail.server';
-import { useBookingDetailController } from '../features/booking/use-booking-detail-controller';
-import { PaymentHandoff } from '../features/checkout/components/payment-handoff';
-import { NsI18n, useTranslation } from '../lib/i18n';
-import { storefrontPaths } from '../lib/locale-paths';
-import { useLocale } from '../lib/use-locale';
+} from '~/features/booking/server/booking-detail.server';
+import { useBookingDetailController } from '~/features/booking/hooks/use-booking-detail-controller';
+import { PaymentHandoff } from '~/features/checkout/components/payment-handoff';
 import type { Route } from './+types/booking-detail';
 
 export function meta() {
@@ -16,12 +14,12 @@ export function meta() {
 }
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return loadBookingDetail(request, params.code, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return handleBookingDetailAction(request, params.code, locale);
 }
 
@@ -38,14 +36,8 @@ export default function BookingDetail({ loaderData, actionData }: Route.Componen
   return <BookingPaymentView {...viewProps} />;
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const locale = useLocale();
-  const { t } = useTranslation(NsI18n.Navigation);
+export function ErrorBoundary({ error, params }: Route.ErrorBoundaryProps) {
   return (
-    <RouteErrorState
-      error={error}
-      homeHref={storefrontPaths.bookings(locale)}
-      homeLabel={t('lookup')}
-    />
+    <StorefrontRouteErrorBoundary error={error} locale={params.locale} destination="bookings" />
   );
 }

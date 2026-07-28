@@ -11,15 +11,15 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { Building2 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { SectionCard } from '../../../components/section-card';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
-import type { BookingMode, RoomOption } from '../listing-group-types';
-import { roomAvailabilityState } from '../listing-group-utils';
+import { SectionCard } from '~/components/section-card';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
+import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
+import { roomAvailabilityState } from '~/features/booking-widget/lib/slot-selection';
 import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
 import { RoomMediaDetails } from './room-media-details';
-import { RoomPhotoStrip } from './room-photo-strip';
-import { useRoomOptionsController } from './use-room-options-controller';
+import { RoomPhotoStrip } from '~/components/room-photo-strip';
+import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
 
 export function RoomOptionsSection({
   roomOptions,

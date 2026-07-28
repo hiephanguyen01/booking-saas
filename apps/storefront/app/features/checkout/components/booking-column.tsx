@@ -6,16 +6,13 @@ import type {
 import { formatCurrency } from '@booking/i18n';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
-import { SectionCard } from '../../../components/section-card';
-import {
-  cancellationCutoffParts,
-  type CancellationPolicyLine,
-} from '../../../lib/cancellation-policy';
-import { NsI18n, type ScopedI18n, useTranslation } from '../../../lib/i18n';
-import { dateLabelInTz, dateOnlyInTz, nightsBetween, timeInTz } from '../../../lib/time';
-import { formatListingLocation } from '../../../lib/ui';
-import { useLocale } from '../../../lib/use-locale';
-import type { checkoutAmounts } from '../checkout-presentation';
+import { SectionCard } from '~/components/section-card';
+import { cancellationCutoffParts, type CancellationPolicyLine } from '~/lib/cancellation-policy';
+import { NsI18n, type ScopedI18n, useTranslation } from '@booking/i18n';
+import { dateLabelInTz, dateOnlyInTz, nightsBetween, timeInTz } from '~/lib/time';
+import { formatListingLocation } from '~/lib/ui';
+import { useLocale } from '~/hooks/use-locale';
+import type { checkoutAmounts } from '~/features/checkout/lib/checkout-presentation';
 import { PricePanel } from './price-panel';
 import { PromoForm } from './promo-form';
 
@@ -62,10 +59,7 @@ export function BookingColumn({
     mode === 'daily'
       ? Math.max(
           1,
-          nightsBetween(
-            dateOnlyInTz(start, listing.timezone),
-            dateOnlyInTz(end, listing.timezone),
-          ),
+          nightsBetween(dateOnlyInTz(start, listing.timezone), dateOnlyInTz(end, listing.timezone)),
         )
       : 1;
   const packagePhotos = quote.selectedPackage?.photos ?? [];
