@@ -1,8 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–8 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
-của chủ dự án; Phase 9–13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–9 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
+của chủ dự án; Phase 10–13 chưa làm
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -23,7 +23,7 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 | 3 | 2 dialog shell copy gần nguyên, khác nhau ở SSR/hydration | 6 | ✅ |
 | 4 | 3 page shell copy tay và đã drift | 7 | ✅ |
 | 5 | `routes/` không đồng nhất — `bookings.tsx` 236 dòng chứa cả UI | 8 | ✅ |
-| 6 | i18n bypass — 20 chuỗi hardcode dù có sẵn 10 namespace | 9 | ❌ |
+| 6 | i18n bypass — 20 chuỗi hardcode dù có sẵn 10 namespace | 9 | ✅ |
 | 7 | `params.locale === 'en' ? 'en' : 'vi'` lặp 27 lần / 18 file | 10 | ❌ |
 | 8 | Dead code: 1 component + controller, 39 i18n key mồ côi × 2 locale | 11 | ❌ |
 | 9 | Mock data trong production path (`/account/messages` 100% giả) | 11 | ❌ |
@@ -37,7 +37,7 @@ Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-leve
 
 ---
 
-## 2. Đã làm gì (Phase 1–8)
+## 2. Đã làm gì (Phase 1–9)
 
 Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
 loader/action contract hay URL.
@@ -169,6 +169,20 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
   route→route import và route trên 120 dòng. Gate hiện xanh với **64/64** route module; route dài nhất
   60 dòng. Đã nối vào CI và full static check trong `AGENTS.md`.
 
+### Phase 9 — i18n
+
+- **9.1 (`7e1986a3`)** — 9 cặp copy Việt/Anh trong provider profile về typed key
+  `catalog.provider.*`; nội dung hiển thị giữ nguyên.
+- **9.2 (`6542f03b`)** — copy support còn lại trong booking history, review time, API failure,
+  tenant availability, listing-group meta và structured data về đúng namespace.
+- **9.3 (`89de1986`)** — meta của bookings, community và provider về feature `lib/*-meta.ts`; route chỉ
+  delegate và truyền locale.
+- **9.4 (`70079792`)** — 6 route ErrorBoundary dùng chung
+  `components/storefront-route-error-boundary.tsx`; nhãn home lấy từ i18n. Booking-detail vẫn quay về
+  trang tra cứu với `navigation.lookup`, không đổi URL/hành vi.
+- **9.5 (`58c75ba8`)** — xoá đúng 39 key mồ côi khỏi mỗi locale, tổng 78 entry; scan usage trước khi
+  xoá và typed translation shape đều xanh.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -185,9 +199,9 @@ pnpm check:no-tests                                               # passed
 
 `.nvmrc` yêu cầu 22.22.0 nhưng máy hiện không cài đúng patch đó; Node 24.18.0 là bản đã dùng để verify.
 
-React Doctor scoped `--base HEAD` sau commit cuối Phase 8 scan 1 file React, **100/100**, không
-diagnostic. Các lượt Task 8.3/8.4 cũng 100/100. Lint storefront vẫn 0 error / 3 warning hook đã ghi
-nhận từ Phase 5.
+React Doctor scoped toàn Phase 9 với `--base 12cfa45c` scan 34 file: storefront **90/100**,
+`@booking/i18n` **100/100**, `diagnostics.json` rỗng. Lượt scoped Task 9.4 scan 6 file đạt **100/100**.
+Lint storefront vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
 
 Browser verify desktop + mobile:
 
@@ -271,9 +285,8 @@ thư mục đó **không có trên máy**. Handoff này và plan trong `docs/sup
 
 ### Việc đầu tiên hôm sau
 
-Phase 9.1 — thay 9 cặp chuỗi Việt/Anh hardcode trong
-`features/provider/components/provider-profile-page.tsx` bằng i18n key, giữ nguyên từng chuỗi hiển thị
-và không đổi UI. Làm tiếp Phase 9 theo từng task/commit trong plan.
+Phase 10 Step 1 — thêm helper typed `localeParam(value)` vào `constants/paths.ts`, rồi thay dần 27
+ternary normalize locale theo từng task/commit trong plan. Giữ nguyên fallback `vi`.
 
 ---
 
@@ -286,14 +299,14 @@ Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–8 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
-Phase 9–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 9.
+**Phase 1–9 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
+Phase 10–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 10.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + Phase 9.
+   đọc `## Global Constraints` + Phase 10.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
 Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
@@ -373,7 +386,7 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
-## Trạng thái Phase 5–8
+## Trạng thái Phase 5–9
 
 - Boundary ESLint đang bật cho cả hai frontend.
 - React Hooks lint: storefront 0 error / 3 warning đã ghi nhận; dashboard/UI sạch. Không tự sửa warning
@@ -382,12 +395,12 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - Booking shell/controller/steps/slot picker đã hợp nhất trong `features/booking-widget`; không dựng lại
   implementation riêng trong `listing-group` hoặc `packages`.
 - Ba detail page đã dùng chung `DetailPageLayout` và `DetailPriceCard`.
+- Copy/meta/error-boundary trong scope Phase 9 đã dùng typed i18n; 39 key chết đã bị xoá ở cả `vi/en`.
 
 ## Việc đầu tiên
 
-Làm Phase 9.1: thay 9 cặp chuỗi Việt/Anh hardcode trong
-`features/provider/components/provider-profile-page.tsx` bằng i18n key, giữ nguyên từng chuỗi hiển thị
-và không đổi UI.
+Làm Phase 10 Step 1: thêm helper typed `localeParam(value)` vào `constants/paths.ts`, sau đó thay các
+ternary normalize locale theo đúng nhóm task trong plan; giữ nguyên fallback `vi`.
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.

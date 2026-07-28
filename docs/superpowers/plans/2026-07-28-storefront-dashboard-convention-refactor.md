@@ -1018,18 +1018,20 @@ commit. **Không sửa className, DOM, copy, request contract, URL hay thứ t�
 
 # Phase 9 — i18n (mục 6)
 
-- [ ] **Task 9.1: `features/provider/components/provider-profile-page.tsx`** — 9 chuỗi
+- [x] **Task 9.1 (`7e1986a3`): `features/provider/components/provider-profile-page.tsx`** — 9 chuỗi
       `en ? 'Verified' : 'Đã xác minh'` → key trong namespace `catalog` (hoặc ns mới `provider`).
       Chuỗi tiếng Việt/Anh giữ **nguyên văn** → không đổi UI.
-- [ ] **Task 9.2:** `features/account/lib/booking-history.ts` (3), `components/review-time.tsx`,
+- [x] **Task 9.2 (`6542f03b`):** `features/account/lib/booking-history.ts` (3), `components/review-time.tsx`,
       `lib/api-result.server.ts` (4 chuỗi lỗi), `lib/tenant-availability.ts`,
       `features/listing-group/lib/listing-group-meta.ts` (`'Bài đăng'`), 2 file structured-data (`'Trang chủ'`).
-- [ ] **Task 9.3: meta hardcode** — `routes/bookings.tsx` `'Bookings'`, `routes/community.tsx`
+- [x] **Task 9.3 (`89de1986`): meta hardcode** — `routes/bookings.tsx` `'Bookings'`, `routes/community.tsx`
       `'Community | BookingOS'`, `routes/provider.tsx` `'Provider'` + `` `${name} trên BookingOS` ``.
-- [ ] **Task 9.4: ErrorBoundary** — tạo `components/route-error-boundary.tsx` bọc `RouteErrorState`,
+- [x] **Task 9.4 (`70079792`): ErrorBoundary** — tạo
+      `components/storefront-route-error-boundary.tsx` bọc `RouteErrorState`,
       luôn lấy `homeLabel` từ `t('errors.home')`. Thay 6 chỗ lặp. Xoá hardcode `"Về trang chủ"`
-      (`routes/listing.tsx:59`) và ternary (`routes/provider.tsx:32`).
-- [ ] **Task 9.5: Xoá 39 key mồ côi × 2 locale = 78 entry.** Danh sách đã verify (0 hit trong storefront,
+      và ternary ở route provider. Riêng booking-detail giữ đích về trang tra cứu và dùng
+      `navigation.lookup`, không đổi hành vi.
+- [x] **Task 9.5 (`58c75ba8`): Xoá 39 key mồ côi × 2 locale = 78 entry.** Danh sách đã verify (0 hit trong storefront,
       dashboard, packages/ui):
       `common`: `becomePartner.{accountSection,partnerSection,licenseSection,slugHint,licenseNo,licenseDoc,district,addLicenseDoc,removeLicenseDoc}`, `currencyNote`, `home.{viewAll,heroTagline}`, `footer.{downloadApp,scrollToTop}` ·
       `errors`: `{localeNotFound,listingNotFound,catalogNotFound}` ·
@@ -1039,6 +1041,10 @@ commit. **Không sửa className, DOM, copy, request contract, URL hay thứ t�
       `account`: `profile.passwordHint`, `bookings.{timeAndDuration,orderBreakdown}`, `bookings.reviewSection.uploadOr`, `reviews.quickFilter` ·
       `platform`: `hero.{visualCaption,visualMeta}`, `pricing.pendingTitle`, `footer.{solutionsTitle,supportTitle}`
       Xoá cả `vi/` lẫn `en/`. Typecheck của `translation-shape.ts` sẽ bắt nếu lệch giữa 2 locale.
+
+**Kết quả Phase 9:** toàn bộ copy/meta/error-boundary trong scope dùng typed i18n; 6 route
+ErrorBoundary delegate về một component chung; 39 key chết đã rời cả hai locale. Full gate storefront
+15/15, security, structure và no-tests đều xanh.
 
 ---
 
