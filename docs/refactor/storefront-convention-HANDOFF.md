@@ -1,8 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–4 xong; Phase 3 đã bổ sung theo review của chủ dự án;
-Phase 5–13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–5 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
+của chủ dự án; Phase 6–13 chưa làm
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -18,18 +18,18 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 
 | # | Vấn đề | Phase | Xong? |
 | --- | --- | --- | --- |
-| 1 | 4 bucket chồng chéo, 20 import `+types` + các import ngược khác `features → routes`, 6 leak `templates → features`, 7 leak `layouts → features` | 2–5 | 🟡 cấu trúc xong, hàng rào chưa |
+| 1 | 4 bucket chồng chéo, 20 import `+types` + các import ngược khác `features → routes`, 6 leak `templates → features`, 7 leak `layouts → features` | 2–5 | ✅ |
 | 2 | 3 implementation song song cho "chọn ngày → chọn slot → quote" (~2.6k LOC) | 6 | ❌ |
 | 3 | 2 dialog shell copy gần nguyên, khác nhau ở SSR/hydration | 6 | ❌ |
 | 4 | 3 page shell copy tay và đã drift | 7 | ❌ |
-| 5 | `routes/` không đồng nhất — `bookings.tsx` 235 dòng chứa cả UI | 8 | ❌ |
+| 5 | `routes/` không đồng nhất — `bookings.tsx` 236 dòng chứa cả UI | 8 | ❌ |
 | 6 | i18n bypass — 20 chuỗi hardcode dù có sẵn 10 namespace | 9 | ❌ |
 | 7 | `params.locale === 'en' ? 'en' : 'vi'` lặp 27 lần / 18 file | 10 | ❌ |
 | 8 | Dead code: 1 component + controller, 39 i18n key mồ côi × 2 locale | 11 | ❌ |
 | 9 | Mock data trong production path (`/account/messages` 100% giả) | 11 | ❌ |
 | 10 | God file `platform-sections.tsx` 721 dòng | 12 | ❌ |
 | 11 | `features/` shape không đồng nhất | 3 | ✅ |
-| 12 | ESLint thiếu `eslint-plugin-react-hooks` | 5 | ❌ |
+| 12 | ESLint thiếu `eslint-plugin-react-hooks` | 5 | ✅ |
 
 Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-level support declaration,
 1 support module không phải route (`legacy/redirect.server.ts`) và 11 import route→route ngoài
@@ -37,7 +37,7 @@ Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-leve
 
 ---
 
-## 2. Đã làm gì (Phase 1–4)
+## 2. Đã làm gì (Phase 1–5)
 
 Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
 loader/action contract hay URL.
@@ -116,6 +116,16 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
   grep -rn "~/routes/\|routes/+types" features components
   ```
 
+### Phase 5 — hàng rào
+
+- ESLint chặn `features/components/hooks/constants → routes` và chặn `+types` ngoài route/root cho cả
+  storefront lẫn dashboard. Import giả qua stdin đã bị từ chối đúng kỳ vọng.
+- Cài `eslint-plugin-react-hooks@7.1.1`: `rules-of-hooks` là error,
+  `exhaustive-deps` là warning để không tự đổi runtime. Storefront hiện có 3 warning đã ghi nhận
+  (`days` ×2, `durationSlots` ×1); dashboard và `packages/ui` sạch.
+- Thêm `pnpm check:frontend-structure`. Bucket/feature/server placement đều xanh; LOC gate storefront
+  chỉ đỏ `routes/bookings.tsx` (236 dòng), đúng nợ Phase 8. Script **chưa nối CI**.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -124,12 +134,20 @@ Lần xác minh gần nhất ngày 2026-07-28:
 
 ```bash
 PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
-  pnpm turbo typecheck build --filter=@booking/storefront... --force  # 10/10 successful
-pnpm --filter=@booking/storefront lint                      # clean
+  pnpm turbo typecheck build --filter=@booking/storefront... \
+    --filter=@booking/dashboard... --force                  # 14/14 successful
+pnpm --filter=@booking/storefront lint                      # 0 error, 3 warning đã ghi nhận
+pnpm --filter=@booking/dashboard lint                       # clean
+pnpm --filter=@booking/ui lint                              # clean
 pnpm --filter=@booking/storefront security                  # passed
+pnpm check:no-tests                                         # passed
 ```
 
 `.nvmrc` yêu cầu 22.22.0 nhưng máy hiện không cài đúng patch đó; Node 24.18.0 là bản đã dùng để verify.
+
+React Doctor scoped `--base HEAD` không thấy React source nào đổi trong Phase 5. Scan rộng branch so
+với `main` là 70/100 với 2 warning có sẵn từ phase trước (`account-primitives` dùng index key,
+`catalog-route.server` có `map().filter(Boolean)`); không sửa trong phase hàng rào này.
 
 Các bất biến cấu trúc, kiểm bằng tay ngày 2026-07-28 — **tất cả đều pass**:
 
@@ -170,8 +188,8 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 
 ### Thứ tự KHÔNG được đảo
 
-- Phase 4 (cắt `features → routes`) đã hoàn tất trước Phase 5 đúng như yêu cầu; giờ mới được bật rule.
-- Phase 5 (hàng rào) nên trước 6–12, để mọi phase sau tự động được canh.
+- Phase 4 (cắt `features → routes`) đã hoàn tất trước Phase 5 đúng như yêu cầu.
+- Phase 5 (hàng rào) đã hoàn tất trước 6–12, mọi phase sau được boundary/lint canh.
 - `check:frontend-structure` chỉ nối vào CI ở **Phase 8**. LOC gate hiện bắt
   `routes/bookings.tsx`; Phase 8 còn mở rộng gate để bắt support declaration/module mà LOC không thấy.
 
@@ -201,14 +219,9 @@ thư mục đó **không có trên máy**. Handoff này và plan trong `docs/sup
 
 ### Việc đầu tiên hôm sau
 
-Phase 5 — dựng hàng rào theo đúng thứ tự:
-
-1. Thêm ESLint boundary rule cho storefront và dashboard; feature/components/hooks/constants không
-   được import `routes`, chỉ route module được import `+types`.
-2. Bật `eslint-plugin-react-hooks`, sửa các vi phạm thật nếu có mà không đổi hành vi.
-3. Thêm `check:frontend-structure`; allowlist feature level 2 là
-   `components|hooks|server|lib`. Phần gate route-only áp cho storefront; chưa nối vào CI trước
-   Phase 8 vì audit mở rộng vẫn còn nợ route.
+Phase 6.1 — gộp hai booking dialog shell theo quyết định đã chốt: lấy CSS branch
+`hidden lg:block` làm chuẩn SSR. Copy/move nguyên DOM và className; chạy thử packages dialog ở desktop
+và mobile. Nếu khác hình, dừng và báo chủ dự án.
 
 ---
 
@@ -221,14 +234,14 @@ Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–4 đã xong. Phase 3 đã được bổ sung theo review của chủ dự án. Phase 5–13 chưa làm.**
-Việc của bạn: làm tiếp từ Phase 5.
+**Phase 1–5 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
+Phase 6–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 6.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + Phase 5.
+   đọc `## Global Constraints` + Phase 6.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
 Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
@@ -241,14 +254,18 @@ máy. Nó git-ignored, nên handoff doc và plan là nguồn duy nhất.
 2. **KHÔNG ĐỔI UI.** Không sửa className, không sửa cấu trúc DOM, không sửa chữ. Ngoại lệ DUY NHẤT
    đã được chủ dự án duyệt: 3 thay đổi pixel ở trang packages trong Phase 7 (ghi rõ trong plan).
 3. **KHÔNG đổi schema, KHÔNG đụng `@booking/contracts`, KHÔNG đụng `apps/api`.**
+4. **KHÔNG đổi hành vi runtime** — loader/action contract, URL, thứ tự fetch giữ nguyên.
 5. **Mỗi task một commit nhỏ.** Không gộp nhiều feature vào một commit.
 
 ## Lệnh verify — dùng SAI là bạn sẽ đuổi theo lỗi ma
 
 ```bash
 PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
-  pnpm turbo typecheck build --filter=@booking/storefront... --force
+  pnpm turbo typecheck build --filter=@booking/storefront... \
+    --filter=@booking/dashboard... --force
 pnpm --filter=@booking/storefront lint
+pnpm --filter=@booking/dashboard lint
+pnpm --filter=@booking/ui lint
 pnpm --filter=@booking/storefront security
 ```
 
@@ -301,18 +318,17 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
+## Trạng thái Phase 5
+
+- Boundary ESLint đang bật cho cả hai frontend.
+- React Hooks lint: storefront 0 error / 3 warning đã ghi nhận; dashboard/UI sạch. Không tự sửa warning
+  dependency array trong phase khác.
+- `pnpm check:frontend-structure` cố ý đỏ đúng `routes/bookings.tsx` cho tới Phase 8; chưa nối CI.
+
 ## Việc đầu tiên
 
-Làm Phase 5 theo thứ tự:
-
-1. Thêm boundary rule cho cả hai frontend. `features/components/hooks/constants` không import
-   `routes`; chỉ route module được import `+types`.
-2. Bật `eslint-plugin-react-hooks`, xử lý vi phạm thật mà không đổi runtime.
-3. Thêm `check:frontend-structure`, với allowlist feature level 2 là
-   `components|hooks|server|lib`.
-
-Phase 4 bắt buộc trước Phase 5 và đã hoàn tất. Không nối route-only gate vào CI trước Phase 8; Phase 8
-đã được mở rộng theo audit 65 route file / 21 support declaration / 11 route→route import.
+Làm Phase 6.1: gộp dialog shell, lấy CSS branch `hidden lg:block` làm chuẩn. Giữ nguyên UI; chạy thử
+packages dialog ở desktop/mobile và dừng hỏi nếu khác hình.
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.

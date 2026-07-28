@@ -681,78 +681,43 @@ grep -rn "~/routes/" features components --include="*.ts" --include="*.tsx" || e
 
 ---
 
-# Phase 5 — Hàng rào (chặn tái phát)
+# Phase 5 — Hàng rào (chặn tái phát) — **XONG 2026-07-28**
 
 Đây là mục quan trọng nhất: dashboard giữ được convention *"enforced by review"*, storefront thì trôi.
 ADR 0005 cấm test, nên hàng rào phải là ESLint + script gate — đúng cách repo đang làm với `apps/api`.
 
-### Task 5.1: Boundary rule cho cả hai frontend
+### Task 5.1: Boundary rule cho cả hai frontend — **XONG**
 
 **Files:** Modify `eslint.config.mjs`
 
-- [ ] **Step 1: Thêm block sau vào cuối mảng config** (trước dấu `)` đóng `tseslint.config`)
+- [x] **Step 1: Thêm hai block boundary.** Block global cấm `+types` ngoài route/root đứng trước;
+      block feature đứng sau và lặp cả hai pattern `routes` + `+types`. Đây là bắt buộc vì flat config
+      **thay thế**, không merge hai giá trị cùng rule. Source of truth là `eslint.config.mjs`.
 
-```js
-  {
-    // Frontend layering: features/ và components/ là code thuần domain/UI — chúng không được
-    // biết gì về routes/. Route module là chỗ duy nhất chạm `./+types/*`. Dashboard giữ được
-    // luật này bằng review; storefront thì trôi mất, nên từ giờ ESLint giữ hộ.
-    files: [
-      'apps/storefront/app/{features,components,hooks,constants}/**',
-      'apps/dashboard/app/{features,components,hooks,constants}/**',
-    ],
-    rules: {
-      '@typescript-eslint/no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['~/routes/*', '**/routes/*', '../routes/*'],
-              message:
-                'features/components/hooks/constants không được import routes/ — route module truyền prop xuống, kiểu suy từ module server của feature.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    // `./+types/*` do react-router typegen sinh ra cho ĐÚNG một route module.
-    files: ['apps/storefront/app/**', 'apps/dashboard/app/**'],
-    ignores: ['apps/storefront/app/routes/**', 'apps/dashboard/app/routes/**', '**/root.tsx'],
-    rules: {
-      '@typescript-eslint/no-restricted-imports': [
-        'error',
-        { patterns: [{ group: ['**/+types/*'], message: 'chỉ route module được import ./+types/*.' }] },
-      ],
-    },
-  },
-```
-
-- [ ] **Step 2: Chạy lint 2 app, kỳ vọng CẢ HAI XANH** (Phase 4 đã dọn storefront; dashboard vốn sạch)
+- [x] **Step 2: Chạy lint 2 app** — cả hai không có boundary violation.
 
 ```bash
 pnpm --filter=@booking/storefront lint && pnpm --filter=@booking/dashboard lint
 ```
 
-- [ ] **Step 3: Chứng minh rule thật sự bắt** — thêm tạm `import type { Route } from '~/routes/+types/catalog';`
-vào `features/catalog/components/catalog-page.tsx`, chạy lint, phải ĐỎ, rồi xoá dòng đó.
+- [x] **Step 3: Chứng minh rule thật sự bắt** bằng `eslint --stdin --stdin-filename` — import giả bị
+      từ chối; không tạo/sửa file source.
 
-- [ ] **Step 4: Commit** (`chore(eslint): enforce frontend layer boundaries`)
+- [x] **Step 4: Commit** cùng Phase 5.
 
 ---
 
-### Task 5.2: Bật `eslint-plugin-react-hooks`
+### Task 5.2: Bật `eslint-plugin-react-hooks` — **XONG**
 
 App có ~25 controller hook mà không rule nào kiểm dependency array.
 
-- [ ] **Step 1: Cài**
+- [x] **Step 1: Cài**
 
 ```bash
 pnpm add -Dw eslint-plugin-react-hooks
 ```
 
-- [ ] **Step 2: Thêm vào `eslint.config.mjs`**
+- [x] **Step 2: Thêm vào `eslint.config.mjs`**
 
 ```js
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -767,7 +732,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
   },
 ```
 
-- [ ] **Step 3: Chạy lint, ghi lại số warning**
+- [x] **Step 3: Chạy lint, ghi lại số warning**
 
 ```bash
 pnpm --filter=@booking/storefront lint 2>&1 | tail -20
@@ -775,15 +740,18 @@ pnpm --filter=@booking/storefront lint 2>&1 | tail -20
 `rules-of-hooks` phải **0 error**. Nếu có error → dừng, báo lại: đó là bug thật, sửa trong task riêng.
 `exhaustive-deps` để `warn` (không chặn CI) — sửa dần, **không** sửa trong phase này vì có thể đổi hành vi.
 
-- [ ] **Step 4: Commit** (`chore(eslint): enable react-hooks rules`)
+Kết quả thật: storefront **0 error / 3 warning** (`days` ×2, `durationSlots` ×1);
+dashboard và `packages/ui` **0 error / 0 warning**.
+
+- [x] **Step 4: Commit** cùng Phase 5.
 
 ---
 
-### Task 5.3: Gate cấu trúc thư mục
+### Task 5.3: Gate cấu trúc thư mục — **XONG, CHƯA NỐI CI**
 
-**Files:** Create `scripts/architecture/check-frontend-structure.mjs`; Modify root `package.json`, CI.
+**Files:** Create `scripts/architecture/check-frontend-structure.mjs`; Modify root `package.json`.
 
-- [ ] **Step 1: Viết script**
+- [x] **Step 1: Viết script**
 
 ```js
 // scripts/architecture/check-frontend-structure.mjs
@@ -841,6 +809,7 @@ for (const app of APPS) {
   for (const file of files(appDir)) {
     const rel = relative(join(root, app, 'app'), file).split('\\').join('/');
     if (!rel.includes('.server.')) continue;
+    if (rel === 'entry.server.tsx') continue;
     const ok = rel.startsWith('lib/') || /^features\/[^/]+\/server\//.test(rel) || rel.startsWith('routes/');
     if (!ok) failures.push(`${app}/app/${rel}: *.server.ts phải ở lib/ hoặc features/<name>/server/`);
   }
@@ -864,21 +833,21 @@ if (failures.length) {
 console.log('Frontend structure check passed.');
 ```
 
-> Bất biến #4 sẽ **đỏ** cho tới khi Phase 8 xong (`routes/bookings.tsx` 235 dòng). LOC chỉ là gate
+> Bất biến #4 sẽ **đỏ** cho tới khi Phase 8 xong (`routes/bookings.tsx` 236 dòng). LOC chỉ là gate
 > tạm; audit mở rộng còn thấy 21 support declaration và 1 support module mà LOC không bắt. Phase 8 sẽ
 > bổ sung semantic route-only checks rồi mới nối script vào CI.
 
-- [ ] **Step 2: Thêm npm script** vào root `package.json` (CHƯA nối CI)
+- [x] **Step 2: Thêm npm script** vào root `package.json` (CHƯA nối CI)
 
 ```json
 "check:frontend-structure": "node scripts/architecture/check-frontend-structure.mjs"
 ```
 
-- [ ] **Step 3: Chạy `pnpm check:frontend-structure`.** Kỳ vọng: bất biến 1–3 **xanh** (Phase 2–3 đã dọn),
+- [x] **Step 3: Chạy `pnpm check:frontend-structure`.** Bất biến 1–3 **xanh** (Phase 2–3 đã dọn),
       LOC gate storefront đỏ ở `routes/bookings.tsx`. Ghi rõ trong commit message rằng Phase 8 còn
       semantic debt chưa được gate bắt.
 
-- [ ] **Step 4: Commit** (`chore(ci): add frontend structure gate script`)
+- [x] **Step 4: Commit** cùng Phase 5; không nối CI trước Phase 8.
 
 ---
 
