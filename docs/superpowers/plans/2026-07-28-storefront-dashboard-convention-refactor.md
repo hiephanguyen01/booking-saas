@@ -1074,7 +1074,7 @@ fallback về `vi`; không đổi route params, URL, loader/action contract hay 
 
 # Phase 11 — Dead code + mock data (mục 8 + 9)
 
-- [ ] **Task 11.1: Xoá `customer-settlement-dispute-panel`** — không file nào import.
+- [x] **Task 11.1 (`b6faf932`): Xoá `customer-settlement-dispute-panel`** — không file nào import.
 
 ```bash
 git rm apps/storefront/app/features/account/components/booking-detail/customer-settlement-dispute-panel.tsx \
@@ -1082,7 +1082,7 @@ git rm apps/storefront/app/features/account/components/booking-detail/customer-s
 ```
 Xoá kèm key `account.bookings.disputePanel.*` ở cả 2 locale.
 
-### Task 11.2: Gỡ sạch mock data — **ĐÃ CHỐT 2026-07-28: "remove mock đi, đưa về tiêu chuẩn"**
+### Task 11.2 (`ab73b222`): Gỡ sạch mock data — **ĐÃ CHỐT 2026-07-28: "remove mock đi, đưa về tiêu chuẩn"**
 
 > **UI production KHÔNG đổi.** `accountMocksEnabled()` = `!production`, nên prod xưa nay đã chạy đúng
 > nhánh không-mock. Task này biến nhánh đó thành nhánh **duy nhất**. Chỉ môi trường dev mất dữ liệu giả —
@@ -1090,17 +1090,17 @@ Xoá kèm key `account.bookings.disputePanel.*` ở cả 2 locale.
 
 **Files:**
 - Delete: `features/account/server/mock-data.server.ts`, `features/account/server/account-listings.server.ts`,
-  `features/account/messages/server/account-messages-route.server.ts`,
-  `features/account/messages/use-account-messages-page-controller.ts`
-- Modify: `features/account/messages/components/account-messages-page.tsx`,
-  `features/account/components/account-primitives.tsx`,
-  `features/account/recent/server/account-recent-route.server.ts`, `routes/account/messages.tsx`
+  `features/account/server/account-messages-route.server.ts`,
+  `features/account/hooks/use-account-messages-page-controller.ts`
+- Modify: `features/account/components/messages/account-messages-page.tsx`,
+  `features/account/components/shared/account-primitives.tsx`,
+  `features/account/server/account-recent-route.server.ts`, `routes/account/{messages,recent}.tsx`
 - Modify: `packages/i18n/src/locales/{vi,en}/account.ts`
 
-- [ ] **Step 1: Xoá `mock-data.server.ts`.** Chú ý `mockListings()` trong đó là **dead export** — không
+- [x] **Step 1: Xoá `mock-data.server.ts`.** Chú ý `mockListings()` trong đó là **dead export** — không
       file nào import. `mockConversations()` chỉ phục vụ messages. `accountMocksEnabled()` chỉ có 2 chỗ gọi.
 
-- [ ] **Step 2: `/account/messages` → trạng thái "chưa khả dụng" cố định.** Không có backend messages,
+- [x] **Step 2: `/account/messages` → trạng thái "chưa khả dụng" cố định.** Không có backend messages,
       nên toàn bộ UI chat (~110 dòng: danh sách hội thoại, khung tin nhắn, form gửi) là code không bao giờ
       render được trong prod. Giữ lại đúng phần prod đang hiển thị:
 
@@ -1122,26 +1122,37 @@ export function AccountMessagesPage() {
 Xoá `use-account-messages-page-controller.ts` và `account-messages-route.server.ts`;
 `routes/account/messages.tsx` bỏ `loader`, chỉ còn `export default`.
 
-- [ ] **Step 3: `account-primitives.tsx`** — đổi tên `MockDisabledState` → `FeatureUnavailableState`
+- [x] **Step 3: `account-primitives.tsx`** — đổi tên `MockDisabledState` → `FeatureUnavailableState`
       (**giữ nguyên 100% JSX/className**, chỉ đổi tên hàm); xoá `DemoNotice` và prop `demo` của
       `PageHeading` (cả hai chỉ mock mới dùng).
 
-- [ ] **Step 4: `/account/recent`** — `loadAccountListingItems` lấy listing thật từ `loadHomeCatalog` rồi
+- [x] **Step 4: `/account/recent`** — `loadAccountListingItems` lấy listing thật từ `loadHomeCatalog` rồi
       **bịa** `discountPercent: 20` qua `PRESENTATION_FIXTURES`. Xoá `account-listings.server.ts`;
       `loadAccountRecentRoute` trả `{ locale, items: [] }`. Trang đã sẵn nhánh rỗng
       (`visibleItems.length > 0 ? … : …`) nên không cần sửa UI.
 
-- [ ] **Step 5: i18n** — đổi key `account.mockDisabled` → `account.featureUnavailable` (**giữ nguyên
-      chuỗi**, cả `vi` lẫn `en`); xoá `account.demo` và `account.demoDescription`.
+- [x] **Step 5: i18n** — đổi key `account.mockDisabled` → `account.featureUnavailable` (**giữ nguyên
+      chuỗi**, cả `vi` lẫn `en`); xoá `account.demo`, `account.demoDescription` và ba key chat vừa
+      thành dead sau khi xoá UI: `messages.{search,reply,send}`.
 
-- [ ] **Step 6: Xác nhận sạch**
+- [x] **Step 6: Xác nhận sạch**
 
 ```bash
 cd apps/storefront/app
-grep -rn "mock\|Mock\|demoNotice\|DemoNotice" features/account && echo "CON SOT" || echo "OK: het mock"
+rg "accountMocksEnabled|mockConversations|mockListings|MockDisabledState|DemoNotice|PRESENTATION_FIXTURES" \
+  features/account
 ```
 
-- [ ] **Step 7: Verify + Commit** (`refactor(storefront): remove account mock data and demo scaffolding`)
+Lệnh `grep "mock|Mock"` rộng trong plan cũ báo dương tính giả ở `isMockPaymentRedirect`. Helper này
+là adapter dev-only cho payment gateway, được dùng bởi ba flow checkout/booking, bị cấm trong
+production và không liên quan presentation mock của account nên phải giữ.
+
+- [x] **Step 7: Verify + Commit (`ab73b222`)**
+      (`refactor(storefront): remove account mock data and demo scaffolding`)
+
+**Kết quả Phase 11:** xoá 608 dòng dead/mock scaffolding qua hai commit; production-state UI của
+messages và recent trở thành nhánh duy nhất. Turbo storefront 15/15, security, structure và no-tests
+đều xanh.
 
 ---
 
