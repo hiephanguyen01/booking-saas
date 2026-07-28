@@ -1,8 +1,8 @@
 import { BookingI18nProvider } from '@booking/i18n';
 import { Outlet } from 'react-router';
 import { PlatformLanding } from '~/features/platform-landing/components/platform-landing';
-import { SiteFooter } from '~/layouts/site-footer';
-import { SiteHeader } from '~/layouts/site-header';
+import { SiteFooter } from '~/features/site-shell/components/site-footer';
+import { SiteHeader } from '~/features/site-shell/components/site-header';
 import type {
   RootLoaderPayload,
   TenantRootLoaderPayload,
