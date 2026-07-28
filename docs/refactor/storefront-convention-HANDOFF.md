@@ -1,8 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–6 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
-của chủ dự án; Phase 7–13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–7 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
+của chủ dự án; Phase 8–13 chưa làm
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -21,7 +21,7 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 | 1 | 4 bucket chồng chéo, 20 import `+types` + các import ngược khác `features → routes`, 6 leak `templates → features`, 7 leak `layouts → features` | 2–5 | ✅ |
 | 2 | 3 implementation song song cho "chọn ngày → chọn slot → quote" (~2.6k LOC) | 6 | ✅ |
 | 3 | 2 dialog shell copy gần nguyên, khác nhau ở SSR/hydration | 6 | ✅ |
-| 4 | 3 page shell copy tay và đã drift | 7 | ❌ |
+| 4 | 3 page shell copy tay và đã drift | 7 | ✅ |
 | 5 | `routes/` không đồng nhất — `bookings.tsx` 236 dòng chứa cả UI | 8 | ❌ |
 | 6 | i18n bypass — 20 chuỗi hardcode dù có sẵn 10 namespace | 9 | ❌ |
 | 7 | `params.locale === 'en' ? 'en' : 'vi'` lặp 27 lần / 18 file | 10 | ❌ |
@@ -37,7 +37,7 @@ Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-leve
 
 ---
 
-## 2. Đã làm gì (Phase 1–6)
+## 2. Đã làm gì (Phase 1–7)
 
 Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
 loader/action contract hay URL.
@@ -140,6 +140,14 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
   runtime import ngược từ `booking-widget` sang `listing-group` hoặc `packages`. Steps lớn được tách
   thành section component nội bộ sau cảnh báo React Doctor.
 
+### Phase 7 — gộp detail page shell (`494ffcc0`)
+
+- Tạo `components/detail-page-layout.tsx` cho search/header/gallery/main/aside/footer và
+  `components/detail-price-card.tsx` cho price surface.
+- Listing, listing-group, packages cùng dùng một shell; landmark `<main>` thống nhất. Reviews vẫn defer
+  ở listing/packages và eager ở listing-group.
+- Chỉ packages đổi ba pixel đã duyệt: `bg-muted/40→/30`, `py-6→py-4`, `MapPin size-5→size-4`.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -155,8 +163,8 @@ pnpm check:no-tests                                               # passed
 
 `.nvmrc` yêu cầu 22.22.0 nhưng máy hiện không cài đúng patch đó; Node 24.18.0 là bản đã dùng để verify.
 
-React Doctor scoped `--base HEAD` sau Phase 6 scan 18 file, **không còn diagnostic**; tool hiển thị
-88/100. Lint storefront vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
+React Doctor scoped `--base HEAD` sau Phase 7 scan 6 file, **100/100**, không diagnostic. Lint
+storefront vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
 
 Browser verify desktop + mobile:
 
@@ -164,6 +172,8 @@ Browser verify desktop + mobile:
 - listing daily: range 29→30/07/2026 tạo checkout URL;
 - package hourly: 12 slot vẫn còn trong lúc/sau quote, checkout URL có `packageId`;
 - mobile package: 0 dialog content, 1 drawer content, 1 overlay, focus vào drawer title.
+- ba detail page Phase 7 đều render đúng header/gallery/main/aside/footer; packages dùng đúng
+  `bg-muted/30`, `py-4` và `MapPin size-4`.
 
 Các bất biến cấu trúc, kiểm bằng tay ngày 2026-07-28 — **tất cả đều pass**:
 
@@ -236,9 +246,10 @@ thư mục đó **không có trên máy**. Handoff này và plan trong `docs/sup
 
 ### Việc đầu tiên hôm sau
 
-Phase 7 — tạo `components/detail-page-layout.tsx` và `detail-price-card.tsx`, rồi đưa lần lượt listing,
-listing-group và packages sang shell chung. Giữ nguyên từng reviews strategy; chỉ ba thay đổi pixel ở
-packages đã được duyệt.
+Phase 8.1 — tách `routes/bookings.tsx`: UI về
+`features/booking/components/bookings-lookup-page.tsx`, loader/action về
+`features/booking/server/bookings-route.server.ts`; route chỉ còn delegate mỏng. Sau đó làm tiếp các
+task 8.2–8.6 theo đúng audit route đã ghi trong plan.
 
 ---
 
@@ -251,14 +262,14 @@ Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–6 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
-Phase 7–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 7.
+**Phase 1–7 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
+Phase 8–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 8.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + Phase 7.
+   đọc `## Global Constraints` + Phase 8.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
 Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
@@ -336,7 +347,7 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
-## Trạng thái Phase 5–6
+## Trạng thái Phase 5–7
 
 - Boundary ESLint đang bật cho cả hai frontend.
 - React Hooks lint: storefront 0 error / 3 warning đã ghi nhận; dashboard/UI sạch. Không tự sửa warning
@@ -344,11 +355,12 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - `pnpm check:frontend-structure` cố ý đỏ đúng `routes/bookings.tsx` cho tới Phase 8; chưa nối CI.
 - Booking shell/controller/steps/slot picker đã hợp nhất trong `features/booking-widget`; không dựng lại
   implementation riêng trong `listing-group` hoặc `packages`.
+- Ba detail page đã dùng chung `DetailPageLayout` và `DetailPriceCard`.
 
 ## Việc đầu tiên
 
-Làm Phase 7: gộp ba detail page shell và price card theo ba thay đổi pixel packages đã duyệt. Giữ
-nguyên reviews strategy của từng trang và verify cả listing, listing-group, packages.
+Làm Phase 8.1: tách UI và loader/action khỏi `routes/bookings.tsx`, giữ route module thành adapter
+mỏng. Sau đó tiếp tục audit list 8.2–8.6; chỉ nối structure gate vào CI khi toàn bộ Phase 8 đã xanh.
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.

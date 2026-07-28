@@ -922,7 +922,7 @@ Mọi dòng còn lại phải giải thích được (feature A dùng *type* c�
 
 ---
 
-# Phase 7 — Gộp page shell (mục 4) ⚠️ CÓ ĐỔI PIXEL — **ĐÃ DUYỆT 2026-07-28**
+# Phase 7 — Gộp page shell (mục 4) — **XONG (`494ffcc0`)**
 
 3 trang đã drift; gộp thì phải chọn một bản chuẩn:
 
@@ -936,7 +936,7 @@ Mọi dòng còn lại phải giải thích được (feature A dùng *type* c�
 
 - [x] **Step 0: Duyệt 3 thay đổi pixel ở trang packages** — chủ dự án đã đồng ý 2026-07-28 ("gộp lại đi
       để gọn code"). Tiến hành.
-- [ ] **Step 1: Tạo `components/detail-page-layout.tsx`**
+- [x] **Step 1: Tạo `components/detail-page-layout.tsx`**
 
 ```tsx
 export function DetailPageLayout({ searchBar, header, gallery, main, aside, footerSections }: {
@@ -959,10 +959,10 @@ export function DetailPageLayout({ searchBar, header, gallery, main, aside, foot
 }
 ```
 
-- [ ] **Step 2: Tạo `components/detail-price-card.tsx`** — price-card ở aside của listing-group và
+- [x] **Step 2: Tạo `components/detail-price-card.tsx`** — price-card ở aside của listing-group và
 packages đang giống hệt nhau (`rounded-lg bg-card p-5 text-right text-card-foreground shadow-sm`).
-- [ ] **Step 3: Sửa lần lượt 3 page dùng layout mới.** Verify + chạy app + so 3 trang với bản cũ.
-- [ ] **Step 4: Commit** (`refactor(storefront): extract shared detail page layout`)
+- [x] **Step 3: Sửa lần lượt 3 page dùng layout mới.** Verify + chạy app + so 3 trang với bản cũ.
+- [x] **Step 4: Commit** (`refactor(storefront): extract shared detail page layout`)
 
 ---
 
