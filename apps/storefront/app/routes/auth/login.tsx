@@ -4,7 +4,7 @@ import { AuthFrame, SocialButtons, StartForm } from '~/features/auth/auth-ui';
 import { loginAction } from '~/lib/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontContext } from '~/root';
 
 export const meta = ({ params }: Route.MetaArgs) => [

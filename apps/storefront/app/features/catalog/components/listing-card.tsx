@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
 import { attributeSummary, formatListingLocation, formatVnd } from '~/lib/ui';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { useLocale } from '~/lib/use-locale';
 import type { ListingCardPresentation, ListingFavoriteControl } from './listing-card.types';
 import { RatingStars } from '~/components/rating-stars';

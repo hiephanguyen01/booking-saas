@@ -4,7 +4,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3 } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
 import { AccountPanel, CancellationPolicyList, StudioThumbnail } from './account-primitives';
 import { BookingCardHeader } from './booking-card-header';

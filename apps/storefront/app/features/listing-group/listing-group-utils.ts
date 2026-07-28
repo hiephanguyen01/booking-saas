@@ -1,6 +1,6 @@
 import type { HourlySlot } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 type SlotRange = Pick<HourlySlot, 'startUtc' | 'endUtc'>;
 

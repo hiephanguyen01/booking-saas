@@ -1,4 +1,4 @@
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { Route } from './+types/booking-detail';
 import { redirectLegacy } from './redirect.server';
 export function loader({ request, params }: Route.LoaderArgs) {

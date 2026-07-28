@@ -4,7 +4,7 @@ import { requireAuth } from '~/lib/auth.server';
 import { cancelBooking } from '~/lib/booking.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
 import { errorStatus } from '~/lib/http-status';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { loadAccountBooking } from './booking-history.server';
 
 const cancellationSchema = z.object({

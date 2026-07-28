@@ -1,4 +1,4 @@
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 type ListingGroupStructuredDataInput = {
   tenant: { name: string };

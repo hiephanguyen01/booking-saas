@@ -4,7 +4,7 @@ import { Mail, UserRound } from 'lucide-react';
 import { Link } from 'react-router';
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { AuthFormError, AuthPasswordInput, AuthSubmitButton } from './auth-form-controls';
 import { useAuthStartFormController, type AuthStartMode } from './use-auth-start-form-controller';
 

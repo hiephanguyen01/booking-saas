@@ -1,6 +1,6 @@
 import { redirect } from 'react-router';
 import { requireLocale } from '~/lib/i18n.server';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { Route } from './+types/_index';
 
 export function loader({ params }: Route.LoaderArgs) {

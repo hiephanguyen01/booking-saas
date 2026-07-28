@@ -2,7 +2,7 @@ import type { FavoriteRefsResponse, FavoriteTargetKind } from '@booking/contract
 import type { Locale } from '@booking/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFetchers, useSubmit } from 'react-router';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 const DEBOUNCE_MS = 350;
 const ERROR_TOAST_MS = 4000;

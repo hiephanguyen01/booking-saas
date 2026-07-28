@@ -2,7 +2,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 export function SuccessState({
   mode,

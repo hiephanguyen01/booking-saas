@@ -6,7 +6,7 @@ import {
   loadCheckout,
 } from '~/features/checkout/server/checkout-route.server';
 import { createTranslator } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
   const locale = params.locale === 'en' ? 'en' : 'vi';

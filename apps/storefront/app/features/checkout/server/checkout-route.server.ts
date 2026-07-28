@@ -24,7 +24,7 @@ import { getCheckoutFlowService, maskCheckoutEmail } from '~/lib/checkout-flow.s
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { createTranslator } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,

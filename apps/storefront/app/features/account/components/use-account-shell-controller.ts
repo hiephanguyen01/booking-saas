@@ -1,6 +1,6 @@
 import type { Locale } from '@booking/i18n';
 import { useFetcher } from 'react-router';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { accountNavItems, type AccountNavKey } from '~/features/account/account-nav';
 import type { AccountMenuSummary } from '~/features/account/account-menu';
 

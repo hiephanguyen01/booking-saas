@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/
 import { ChevronRight, TicketPercent } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { formatVnd } from '~/lib/ui';
 import { useLocale } from '~/lib/use-locale';
 

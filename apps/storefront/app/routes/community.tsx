@@ -3,7 +3,7 @@ import { Camera, Sparkles, UsersRound } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router';
 import type { StorefrontContext } from '~/root';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 export function meta() {
   return [{ title: 'Community | BookingOS' }];

@@ -4,7 +4,7 @@ import { Input } from '@booking/ui/components/ui/input';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Form, useNavigation } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { createSubmissionLock } from '~/lib/submission-lock';
 import { isBookingAccessNavigation } from './booking-access-navigation';
 

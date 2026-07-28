@@ -1,4 +1,4 @@
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { Route } from './+types/provider';
 import { redirectLegacy } from './redirect.server';
 

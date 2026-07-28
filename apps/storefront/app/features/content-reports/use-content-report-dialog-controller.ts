@@ -1,6 +1,6 @@
 import type { ContentReportTarget } from '@booking/contracts';
 import { useActionData, useLocation, useOutletContext } from 'react-router';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontContext } from '~/root';
 
 type ReportActionData = {

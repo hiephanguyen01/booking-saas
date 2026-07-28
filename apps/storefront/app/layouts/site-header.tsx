@@ -4,7 +4,7 @@ import { Search } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import type { AccountMenuSummary } from '~/features/account/account-menu';
 import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontTenant } from '~/lib/tenant.server';
 import { TenantBrand } from './tenant-brand';
 import { SiteHeaderAccountMenu } from './site-header-account-menu';

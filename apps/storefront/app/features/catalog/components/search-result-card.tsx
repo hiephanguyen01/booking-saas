@@ -8,7 +8,7 @@ import {
   type StorefrontSearchState,
 } from '~/features/search/search-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { clockHoursBetween } from '~/lib/time';
 import { useLocale } from '~/lib/use-locale';

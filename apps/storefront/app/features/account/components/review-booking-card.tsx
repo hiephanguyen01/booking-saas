@@ -6,7 +6,7 @@ import { CalendarDays, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { ReviewTime } from '~/components/review-time';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
 import { AccountPanel } from './account-primitives';
 import { BookingCardHeader } from './booking-card-header';

@@ -1,4 +1,4 @@
-import { switchLocalePath } from './locale-paths';
+import { switchLocalePath } from '~/constants/paths';
 
 const trackingParameters = new Set([
   'utm_source',

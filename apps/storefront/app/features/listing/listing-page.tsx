@@ -7,7 +7,7 @@ import { ReviewsSectionSkeleton } from '~/components/loading-skeletons';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/lib/use-locale';
 import type { StorefrontContext } from '~/root';

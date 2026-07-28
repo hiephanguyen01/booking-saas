@@ -4,7 +4,7 @@ import { Link, useOutletContext } from 'react-router';
 import type { Route } from '../../../routes/account/+types/recent';
 import type { AccountOutletContext } from '~/routes/account/layout';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 import { AccountPanel } from '~/features/account/components/account-primitives';
 import { useAccountRecentController } from './use-account-recent-controller';

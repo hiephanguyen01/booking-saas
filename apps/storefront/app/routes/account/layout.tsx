@@ -4,7 +4,7 @@ import { AccountShell } from '~/features/account/components/account-shell';
 import { getAccountMenuSummary } from '~/features/account/server/account-menu.server';
 import { requireAuth } from '~/lib/auth.server';
 import { requireLocale } from '~/lib/i18n.server';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { Route } from './+types/layout';
 import { useAccountLayoutController } from './use-account-layout-controller';
 

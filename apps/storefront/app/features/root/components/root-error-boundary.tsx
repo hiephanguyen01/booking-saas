@@ -5,7 +5,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { isRouteErrorResponse, Link } from 'react-router';
 import { TenantBrand } from '~/layouts/tenant-brand';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import type { RootLoaderPayload } from '~/features/root/server/root-loader.server';
 import { SuspendedNotice } from './suspended-notice';
 import { TenantThemeStyle } from './tenant-theme-style';

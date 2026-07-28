@@ -1,7 +1,7 @@
 import { customerAccountSettingsInputSchema } from '@booking/contracts';
 import { data } from 'react-router';
 import { requireAuth } from '~/lib/auth.server';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 export type ProfileActionData = {
   saved: boolean;

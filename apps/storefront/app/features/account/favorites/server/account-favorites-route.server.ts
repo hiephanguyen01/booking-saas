@@ -1,7 +1,7 @@
 import { customerFavoriteListResponseSchema } from '@booking/contracts';
 import { apiGet } from '~/lib/api.server';
 import { requireAuth } from '~/lib/auth.server';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 export async function loadAccountFavoritesRoute(request: Request, locale: 'vi' | 'en') {
   const url = new URL(request.url);

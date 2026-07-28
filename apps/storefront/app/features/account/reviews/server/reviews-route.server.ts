@@ -1,7 +1,7 @@
 import { customerReviewListResponseSchema } from '@booking/contracts';
 import { apiGet } from '~/lib/api.server';
 import { requireAuth } from '~/lib/auth.server';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { submitCustomerReview } from '~/features/account/server/customer-reviews.server';
 import { parseAccountReviewFilter } from '~/features/account/reviews/review-filter';
 

@@ -25,7 +25,7 @@ import { Link, useFetcher } from 'react-router';
 import type { AccountMenuSummary } from '~/features/account/account-menu';
 import { type AccountNavKey, userInitials } from '~/features/account/account-nav';
 import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { useSiteHeaderAccountMenuController } from './use-site-header-account-menu-controller';
 
 type AccountMenuIcon = ComponentType<SVGProps<SVGSVGElement>>;

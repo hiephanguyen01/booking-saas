@@ -5,7 +5,7 @@ import type {
   QuoteResponse,
 } from '@booking/contracts';
 import { useSearchParams } from 'react-router';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { packagesForMode } from '~/lib/package-options';
 import { nightsBetween } from '~/lib/time';
 import { useLocale } from '~/lib/use-locale';

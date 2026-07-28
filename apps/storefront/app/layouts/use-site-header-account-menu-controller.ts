@@ -2,7 +2,7 @@ import type { Locale } from '@booking/i18n';
 import { useFetcher, useLocation } from 'react-router';
 import type { AccountMenuSummary } from '~/features/account/account-menu';
 import { accountNavItems, type AccountNavKey } from '~/features/account/account-nav';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 
 function formatBadgeCount(count: number | undefined): string | undefined {
   if (!count || count < 1) return undefined;

@@ -14,7 +14,7 @@ import {
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigation } from 'react-router';
 import { NsI18n, type ScopedI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { createSubmissionLock } from '~/lib/submission-lock';
 import { useLocale } from '~/lib/use-locale';
 import { isCheckoutNavigation } from './checkout-submission-state';

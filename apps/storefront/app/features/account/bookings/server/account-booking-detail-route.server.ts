@@ -12,7 +12,7 @@ import { requireAuth } from '~/lib/auth.server';
 import { checkoutBooking, fetchPaymentOptions } from '~/lib/booking.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
 import { errorStatus } from '~/lib/http-status';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,

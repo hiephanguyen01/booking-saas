@@ -14,7 +14,7 @@ import type { ReactNode } from 'react';
 import { Link, useNavigation } from 'react-router';
 import { isFormNavigationPending } from '~/features/auth/ui/otp-submission-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { usePasswordVisibility } from '~/lib/use-password-visibility';
 
 export function EmailField({ defaultValue, error }: { defaultValue?: string; error?: string }) {

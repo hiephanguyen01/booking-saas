@@ -2,7 +2,7 @@ import type { CustomerReviewItem } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { useState } from 'react';
 import { useLocation, useNavigation } from 'react-router';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { isReadNavigationMethod, useMinimumPending } from '~/lib/use-minimum-pending';
 import {
   parseBookingHistoryFilter,

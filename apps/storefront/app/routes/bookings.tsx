@@ -16,7 +16,7 @@ import { requestBookingOtp } from '~/lib/booking.server';
 import { storefrontEnv } from '~/lib/env.server';
 import { errorStatus } from '~/lib/http-status';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { storefrontPaths } from '~/lib/locale-paths';
+import { storefrontPaths } from '~/constants/paths';
 import { readRecentCodes } from '~/lib/recent.server';
 import { dateLabelInTz, timeInTz } from '~/lib/time';
 import { useLocale } from '~/lib/use-locale';
