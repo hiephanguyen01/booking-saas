@@ -2,8 +2,8 @@ import { useFetcher, useNavigation, useOutletContext, useSearchParams } from 're
 import { useLocale } from '~/hooks/use-locale';
 import type { StorefrontContext } from '~/root';
 import type { loader as paymentStatusLoader } from '~/routes/booking-payment-status';
-import type { Route } from '../../routes/+types/booking-detail';
-import { deriveBookingPaymentState } from './booking-payment-state';
+import type { Route } from '../../../routes/+types/booking-detail';
+import { deriveBookingPaymentState } from '~/features/booking/lib/booking-payment-state';
 import { useAdaptivePaymentPolling } from './use-adaptive-payment-polling';
 
 export function useBookingDetailController({
