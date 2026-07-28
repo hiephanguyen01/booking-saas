@@ -1,9 +1,9 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing';
-import { buildListingMeta } from '~/features/listing/listing-meta';
-import { buildListingStructuredData } from '~/features/listing/listing-structured-data';
-import { ListingPage } from '~/features/listing/listing-page';
+import { buildListingMeta } from '~/features/listing/lib/listing-meta';
+import { buildListingStructuredData } from '~/features/listing/lib/listing-structured-data';
+import { ListingPage } from '~/features/listing/components/listing-page';
 import {
   handleListingAction,
   loadListingRoute,

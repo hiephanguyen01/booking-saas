@@ -11,7 +11,7 @@ import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import type { StorefrontContext } from '~/root';
-import type { Route } from '../../routes/+types/listing';
+import type { Route } from '../../../routes/+types/listing';
 import { BookingPanel } from '~/features/booking-widget/components/booking-panel';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
@@ -20,7 +20,7 @@ import { StudioGallery } from '~/components/studio-gallery';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
 import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
-import { StudioBookingCard } from './components/studio-booking-card';
+import { StudioBookingCard } from './studio-booking-card';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
   const {
