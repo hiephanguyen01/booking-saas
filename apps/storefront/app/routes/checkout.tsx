@@ -1,6 +1,6 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import type { Route } from './+types/checkout';
-import { CheckoutPage } from '~/features/checkout/checkout-page';
+import { CheckoutPage } from '~/features/checkout/components/checkout-page';
 import {
   handleCheckoutAction,
   loadCheckout,

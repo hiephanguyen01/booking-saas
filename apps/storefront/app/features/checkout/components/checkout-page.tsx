@@ -1,9 +1,9 @@
-import type { Route } from '../../routes/+types/checkout';
+import type { Route } from '../../../routes/+types/checkout';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { BookingColumn } from './components/booking-column';
-import { CheckoutForm } from './components/checkout-form';
-import { MemberBanner } from './components/member-banner';
-import { PaymentHandoff } from './components/payment-handoff';
+import { BookingColumn } from './booking-column';
+import { CheckoutForm } from './checkout-form';
+import { MemberBanner } from './member-banner';
+import { PaymentHandoff } from './payment-handoff';
 import { useCheckoutPageController } from './use-checkout-page-controller';
 
 export function CheckoutPage({ loaderData, actionData }: Route.ComponentProps) {

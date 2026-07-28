@@ -1,10 +1,13 @@
 import { checkoutDestinationSchema } from '@booking/contracts';
 import { useLocation, useOutletContext, useSearchParams } from 'react-router';
-import type { Route } from '../../routes/+types/checkout';
+import type { Route } from '../../../routes/+types/checkout';
 import type { StorefrontContext } from '~/root';
 import { storefrontPaths } from '~/constants/paths';
 import { useLocale } from '~/hooks/use-locale';
-import { checkoutAmounts, checkoutCancellationLines } from './checkout-presentation';
+import {
+  checkoutAmounts,
+  checkoutCancellationLines,
+} from '~/features/checkout/lib/checkout-presentation';
 
 type CheckoutPageControllerProps = Pick<Route.ComponentProps, 'loaderData' | 'actionData'>;
 
