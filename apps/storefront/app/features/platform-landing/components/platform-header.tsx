@@ -4,8 +4,8 @@ import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 
 const NAV_ITEMS = [
-  { href: '#product', label: 'nav.product' },
-  { href: '#solutions', label: 'nav.solutions' },
+  { href: '#capabilities', label: 'nav.product' },
+  { href: '#models', label: 'nav.solutions' },
   { href: '#workflow', label: 'nav.workflow' },
   { href: '#pricing', label: 'nav.pricing' },
   { href: '#faq', label: 'nav.faq' },
@@ -39,11 +39,11 @@ export function PlatformHeader({
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header className="platform-header sticky top-0 z-40 border-b border-[#0a0e13]/8 bg-[#f7f5ef]/94 backdrop-blur-xl">
-      <div className="mx-auto flex h-18 w-full max-w-350 items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
+    <header className="platform-header sticky top-0 z-40 border-b border-[#e4e6ea] bg-[rgba(244,245,247,.86)] backdrop-blur-xl">
+      <div className="mx-auto flex h-18 w-full max-w-300 items-center gap-7 px-5 sm:px-6">
         <PlatformBrand label={t('brandLabel')} />
 
-        <nav aria-label={t('nav.label')} className="hidden items-center gap-5 xl:flex">
+        <nav aria-label={t('nav.label')} className="ml-2 hidden items-center gap-6 xl:flex">
           {NAV_ITEMS.map((item) => (
             <a key={item.href} className="platform-nav-link" href={item.href}>
               {t(item.label)}
@@ -51,21 +51,21 @@ export function PlatformHeader({
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-4">
           <Link
             to={`/${alternateLocale}`}
             aria-label={t('nav.language')}
-            className="platform-icon-button hidden sm:inline-flex"
+            className="platform-icon-button hidden xl:inline-flex"
           >
             {alternateLocale}
           </Link>
           <a
             href={dashboardLoginUrl}
-            className="hidden min-h-11 items-center justify-center px-3 text-sm font-bold text-[#0a0e13] transition hover:text-[#8a5600] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-2 md:inline-flex"
+            className="hidden min-h-11 items-center justify-center text-[15px] font-semibold text-[#40464f] transition hover:text-[#b27400] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-2 xl:inline-flex"
           >
             {t('nav.login')}
           </a>
-          <a href="#consultation" className="platform-primary-button hidden md:inline-flex">
+          <a href="#consultation" className="platform-header-cta hidden xl:inline-flex">
             {t('nav.consultation')}
           </a>
           <button
@@ -74,7 +74,7 @@ export function PlatformHeader({
             aria-expanded={menuOpen}
             aria-controls="platform-mobile-menu"
             aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
-            className="platform-icon-button xl:hidden"
+            className="platform-menu-button grid xl:hidden"
             onClick={() => setMenuOpen((open) => !open)}
           >
             {menuOpen ? (
@@ -89,14 +89,14 @@ export function PlatformHeader({
       {menuOpen ? (
         <div
           id="platform-mobile-menu"
-          className="border-t border-[#0a0e13]/8 bg-[#f7f5ef] px-5 pb-6 pt-4 shadow-[0_24px_60px_rgba(10,14,19,0.12)] sm:px-8 xl:hidden"
+          className="border-t border-[#e4e6ea] bg-[#f4f5f7] px-5 pb-6 pt-4 shadow-[0_24px_60px_rgba(10,14,19,0.12)] sm:px-6 xl:hidden"
         >
-          <nav aria-label={t('nav.label')} className="mx-auto grid w-full max-w-350 gap-1">
+          <nav aria-label={t('nav.label')} className="mx-auto grid w-full max-w-300 gap-1">
             {NAV_ITEMS.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="flex min-h-12 items-center rounded-xl px-3 text-base font-bold text-[#31363c] hover:bg-[#ffb020]/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300]"
+                className="flex min-h-12 items-center rounded-xl px-3 text-base font-semibold text-[#31363c] hover:bg-[#ffb020]/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300]"
                 onClick={closeMenu}
               >
                 {t(item.label)}
@@ -132,12 +132,14 @@ export function PlatformBrand({ label }: { label: string }) {
       className="inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-2"
     >
       <span
-        className="grid size-9 place-items-center rounded-[0.7rem] bg-[#0a0e13] text-[#ffb020]"
+        className="grid size-7.5 place-items-center rounded-[0.56rem] bg-[#0a0e13]"
         aria-hidden="true"
       >
-        <span className="text-sm font-extrabold tracking-[-0.05em]">B</span>
+        <span className="size-3 rounded-sm bg-[#ffb020]" />
       </span>
-      <span className="text-lg font-extrabold tracking-[-0.035em] text-[#0a0e13]">BookingOS</span>
+      <span className="text-[19px] font-extrabold tracking-[-0.02em] text-[#0a0e13]">
+        BookingOS
+      </span>
     </Link>
   );
 }

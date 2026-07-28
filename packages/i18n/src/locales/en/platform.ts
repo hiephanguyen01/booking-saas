@@ -48,7 +48,7 @@ export const enPlatform = {
     eyebrow: 'Flexible by design',
     title: 'One platform, many service models.',
     description:
-      'From hourly schedules to class capacity, BookingOS adapts to how businesses sell time and resources.',
+      'Any business with resources, schedules, or capacity that must be booked in advance can run on BookingOS.',
     studio: 'Studios',
     sport: 'Sports venues',
     class: 'Classes',
@@ -79,7 +79,7 @@ export const enPlatform = {
   },
   capabilities: {
     eyebrow: 'Core capabilities',
-    title: 'Every touchpoint works as one system.',
+    title: 'Four capabilities. One operating system.',
     description:
       'Each capability solves a clear job while data stays connected from discovery through reconciliation.',
     storefront: {
@@ -133,8 +133,7 @@ export const enPlatform = {
   demos: {
     eyebrow: 'Demo models',
     title: 'Two models, one operating system.',
-    description:
-      'BookingStudio and BookingStad show how one platform can adapt to very different ways of selling time.',
+    description: 'BookingOS demo models, not customers or case studies.',
     demoLabel: 'BookingOS demo model',
     illustrationLabel: 'Illustrative service-space image',
     studio: {
@@ -184,7 +183,7 @@ export const enPlatform = {
     eyebrow: 'Trust by architecture',
     title: 'Infrastructure designed for sensitive data and money.',
     description:
-      'Protection is built into the operating flow, not added later as a list of security claims.',
+      'Every business runs on the shared platform while its data and access boundaries remain separate.',
     isolation: {
       title: 'Business data stays isolated',
       description: 'Each tenant works only inside its own data boundary.',
@@ -242,10 +241,11 @@ export const enPlatform = {
     },
   },
   consultation: {
-    eyebrow: 'Start with your model',
-    title: 'Tell us about your booking operation.',
+    eyebrow: 'Book a consultation',
+    title: 'Ready to turn booking operations into a growth engine?',
     description:
-      'Share a few details so the BookingOS team can prepare a consultation around your needs.',
+      'Tell us about your booking model. The BookingOS team will recommend a suitable setup and rollout plan.',
+    formTitle: 'Tell us about your booking operation.',
     nameLabel: 'Full name',
     namePlaceholder: 'Minh Anh Nguyen',
     phoneLabel: 'Phone number',
@@ -280,7 +280,8 @@ export const enPlatform = {
     privacyNote: 'Your information is only used to discuss BookingOS once submission is connected.',
   },
   footer: {
-    tagline: 'Booking and operating infrastructure for Vietnamese service businesses.',
+    tagline:
+      'One platform for booking websites, schedules, partners, and finance for service businesses.',
     productTitle: 'Product',
     solutionsTitle: 'Solutions',
     supportTitle: 'Support',

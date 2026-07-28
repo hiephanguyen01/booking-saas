@@ -71,7 +71,7 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
 
   return (
     <form className="grid gap-5" noValidate onSubmit={handleSubmit}>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5">
         <FormField
           id={`${formId}-name`}
           name="name"
@@ -101,9 +101,9 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
           autoComplete="organization"
         />
         <div className="grid content-start gap-2">
-          <label htmlFor={`${formId}-service`} className="text-sm font-bold text-[#252a30]">
+          <label htmlFor={`${formId}-service`} className="text-sm font-semibold text-[#f4f5f7]">
             {t('consultation.serviceLabel')}{' '}
-            <span className="text-xs font-medium text-[#6b5b3c]">
+            <span className="text-xs font-medium text-[#ffb020]">
               ({t('consultation.required')})
             </span>
           </label>
@@ -136,14 +136,12 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 border-t border-[#0a0e13]/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-115 text-xs leading-5 text-[#676d72]">
-          {t('consultation.privacyNote')}
-        </p>
+      <div className="grid gap-4 border-t border-[#232a34] pt-5">
+        <p className="text-xs leading-5 text-[#9aa0a9]">{t('consultation.privacyNote')}</p>
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="platform-primary-button min-w-44 disabled:cursor-wait disabled:opacity-70"
+          className="platform-primary-button w-full disabled:cursor-wait disabled:opacity-70"
         >
           {status === 'submitting' ? (
             <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
@@ -180,9 +178,9 @@ function FormField({
 
   return (
     <div className="grid content-start gap-2">
-      <label htmlFor={id} className="text-sm font-bold text-[#252a30]">
+      <label htmlFor={id} className="text-sm font-semibold text-[#f4f5f7]">
         {label}{' '}
-        <span className="text-xs font-medium text-[#6b5b3c]">({t('consultation.required')})</span>
+        <span className="text-xs font-medium text-[#ffb020]">({t('consultation.required')})</span>
       </label>
       <input
         ref={inputRef}
@@ -229,8 +227,10 @@ function FormStatusMessage({ status }: { status: FormStatus }) {
       aria-live={success ? 'polite' : 'assertive'}
       className={`flex gap-3 rounded-xl border p-4 text-sm leading-6 ${
         success
-          ? 'border-[#21875a]/25 bg-[#eef9f3] text-[#185f41]'
-          : 'border-[#b87300]/25 bg-[#fff8e8] text-[#6d4600]'
+          ? 'border-[#1e4029] bg-[#0e2015] text-[#bfe9cc]'
+          : unavailable
+            ? 'border-[#4a3a12] bg-[#221a0a] text-[#e6d9be]'
+            : 'border-[#4a2020] bg-[#2a1414] text-[#f0c9c4]'
       }`}
     >
       {success ? (

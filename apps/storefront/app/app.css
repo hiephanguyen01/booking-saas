@@ -54,34 +54,22 @@ html {
 }
 
 .platform-landing {
+  --platform-surface: #f4f5f7;
+  --platform-panel: #ffffff;
   --platform-ink: #0a0e13;
+  --platform-muted: #4a515b;
+  --platform-line: #e4e6ea;
   --platform-accent: #ffb020;
   --platform-focus: #b87300;
+  min-height: 100dvh;
+  background: var(--platform-surface);
+  color: var(--platform-ink);
   font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 .platform-hero {
-  min-height: calc(100dvh - 4.5rem);
-  display: grid;
-  align-items: center;
-  background-image:
-    linear-gradient(rgb(10 14 19 / 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(10 14 19 / 0.035) 1px, transparent 1px);
-  background-size:
-    56px 56px,
-    56px 56px;
-}
-
-.platform-hero-shape {
-  background:
-    linear-gradient(
-      145deg,
-      transparent 6%,
-      rgb(255 176 32 / 0.13) 6%,
-      rgb(255 176 32 / 0.13) 44%,
-      transparent 44%
-    ),
-    radial-gradient(circle at 65% 40%, rgb(255 176 32 / 0.18), transparent 48%);
+  max-width: 75rem;
+  margin-inline: auto;
 }
 
 .platform-hero-copy {
@@ -93,19 +81,19 @@ html {
 }
 
 .platform-heading {
-  max-width: 17ch;
+  max-width: 22ch;
   color: var(--platform-ink);
-  font-size: clamp(2.25rem, 4.5vw, 4.5rem);
+  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
   font-weight: 800;
-  letter-spacing: -0.055em;
-  line-height: 1.02;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
 }
 
 .platform-description {
-  max-width: 62ch;
-  color: #565d63;
+  max-width: 52ch;
+  color: var(--platform-muted);
   font-size: 1rem;
-  line-height: 1.75;
+  line-height: 1.6;
 }
 
 .platform-nav-link {
@@ -114,8 +102,8 @@ html {
   align-items: center;
   border-radius: 0.5rem;
   color: #464d53;
-  font-size: 0.8125rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 500;
   white-space: nowrap;
   transition:
     color 160ms ease,
@@ -135,14 +123,14 @@ html {
 .platform-secondary-button,
 .platform-dark-button {
   display: inline-flex;
-  min-height: 3.25rem;
+  min-height: 3.375rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   border-radius: 999px;
-  padding: 0.75rem 1.5rem;
-  font-size: 0.875rem;
-  font-weight: 800;
+  padding: 0.875rem 1.625rem;
+  font-size: 1rem;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   transition:
@@ -153,37 +141,58 @@ html {
 }
 
 .platform-primary-button {
-  border: 1px solid #d98d00;
+  border: 0;
   background: var(--platform-accent);
   color: var(--platform-ink);
-  box-shadow: 0 12px 30px rgb(150 95 0 / 0.15);
+}
+
+.platform-header-cta {
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  min-height: 2.75rem;
+  background: var(--platform-accent);
+  color: var(--platform-ink);
+  padding: 0.6875rem 1.375rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .platform-primary-button:hover,
 .platform-secondary-button:hover,
-.platform-dark-button:hover {
+.platform-dark-button:hover,
+.platform-header-cta:hover {
   transform: translateY(-2px);
 }
 
-.platform-primary-button:hover {
-  background: #ffc04a;
+.platform-primary-button:hover,
+.platform-header-cta:hover {
+  background: #e89a00;
+  color: var(--platform-ink);
 }
 
 .platform-secondary-button {
   border: 1px solid rgb(10 14 19 / 0.18);
-  background: rgb(251 250 246 / 0.8);
+  background: #ffffff;
   color: var(--platform-ink);
 }
 
 .platform-secondary-button:hover {
   border-color: rgb(10 14 19 / 0.38);
-  background: #fbfaf6;
+  background: #ffffff;
 }
 
 .platform-dark-button {
   border: 1px solid var(--platform-ink);
   background: var(--platform-ink);
-  color: #f8f6ef;
+  color: #f4f5f7;
 }
 
 .platform-dark-button:hover {
@@ -192,14 +201,17 @@ html {
 
 .platform-primary-button:active,
 .platform-secondary-button:active,
-.platform-dark-button:active {
+.platform-dark-button:active,
+.platform-header-cta:active {
   transform: translateY(0) scale(0.98);
 }
 
 .platform-primary-button:focus-visible,
 .platform-secondary-button:focus-visible,
 .platform-dark-button:focus-visible,
-.platform-icon-button:focus-visible {
+.platform-icon-button:focus-visible,
+.platform-header-cta:focus-visible,
+.platform-menu-button:focus-visible {
   outline: 2px solid var(--platform-focus);
   outline-offset: 3px;
 }
@@ -210,7 +222,7 @@ html {
   align-items: center;
   justify-content: center;
   border: 1px solid rgb(10 14 19 / 0.14);
-  border-radius: 999px;
+  border-radius: 0.75rem;
   color: #333a40;
   font-size: 0.75rem;
   font-weight: 800;
@@ -218,6 +230,16 @@ html {
   transition:
     border-color 160ms ease,
     background-color 160ms ease;
+}
+
+.platform-menu-button {
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--platform-ink);
+  color: #f4f5f7;
 }
 
 .platform-icon-button:hover {
@@ -235,7 +257,7 @@ html {
   align-items: center;
   border-radius: 999px;
   background: var(--platform-ink);
-  color: #f8f6ef;
+  color: #f4f5f7;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 800;
@@ -250,12 +272,12 @@ html {
 .platform-form-control {
   width: 100%;
   min-height: 3rem;
-  border: 1px solid rgb(10 14 19 / 0.18);
-  border-radius: 0.75rem;
-  background: #fffefa;
-  color: var(--platform-ink);
-  padding: 0.75rem 0.875rem;
-  font-size: 0.9375rem;
+  border: 1px solid #2c333d;
+  border-radius: 0.6875rem;
+  background: #0a0e13;
+  color: #f4f5f7;
+  padding: 0.8125rem 0.875rem;
+  font-size: 1rem;
   outline: none;
   transition:
     border-color 160ms ease,
@@ -263,7 +285,7 @@ html {
 }
 
 .platform-form-control::placeholder {
-  color: #737980;
+  color: #7a808a;
 }
 
 .platform-form-control:focus-visible {
@@ -272,14 +294,14 @@ html {
 }
 
 .platform-form-control[aria-invalid='true'] {
-  border-color: #b42318;
+  border-color: #8a3a34;
 }
 
 .platform-field-error {
   display: flex;
   align-items: flex-start;
   gap: 0.375rem;
-  color: #9f2016;
+  color: #ff8a7a;
   font-size: 0.8125rem;
   line-height: 1.25rem;
 }
@@ -306,8 +328,8 @@ html {
 #pricing,
 #faq,
 #workflow,
-#product,
-#solutions,
+#capabilities,
+#models,
 #demos {
   scroll-margin-top: 6rem;
 }
@@ -344,16 +366,12 @@ html {
 
 @media (min-width: 640px) {
   .platform-description {
-    font-size: 1.125rem;
-    line-height: 1.75;
+    font-size: 1.0625rem;
+    line-height: 1.6;
   }
 }
 
 @media (max-width: 767px) {
-  .platform-hero {
-    min-height: auto;
-  }
-
   .platform-primary-button,
   .platform-secondary-button,
   .platform-dark-button {
@@ -372,7 +390,8 @@ html {
   .platform-faq-icon,
   .platform-primary-button,
   .platform-secondary-button,
-  .platform-dark-button {
+  .platform-dark-button,
+  .platform-header-cta {
     animation: none;
     transition: none;
   }

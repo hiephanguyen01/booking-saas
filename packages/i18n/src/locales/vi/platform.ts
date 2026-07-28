@@ -45,7 +45,7 @@ export const viPlatform = {
     eyebrow: 'Linh hoạt theo mô hình',
     title: 'Một nền tảng, nhiều mô hình dịch vụ.',
     description:
-      'Từ lịch theo giờ đến sức chứa lớp học, BookingOS thích ứng với cách doanh nghiệp thực sự bán thời gian và nguồn lực.',
+      'Bất kỳ doanh nghiệp nào có tài nguyên, lịch hoặc công suất cần đặt trước đều có thể vận hành trên BookingOS.',
     studio: 'Studio',
     sport: 'Sân thể thao',
     class: 'Lớp học',
@@ -76,7 +76,7 @@ export const viPlatform = {
   },
   capabilities: {
     eyebrow: 'Năng lực cốt lõi',
-    title: 'Mọi điểm chạm cùng làm việc như một hệ thống.',
+    title: 'Bốn năng lực làm nên một hệ vận hành.',
     description:
       'Mỗi phần giải quyết một việc rõ ràng, nhưng dữ liệu vẫn đi xuyên suốt từ lúc khách tìm kiếm đến khi đối soát.',
     storefront: {
@@ -129,8 +129,7 @@ export const viPlatform = {
   demos: {
     eyebrow: 'Mô hình demo',
     title: 'Hai mô hình, cùng một hệ vận hành.',
-    description:
-      'BookingStudio và BookingStad cho thấy một nền tảng có thể thích ứng với những cách bán lịch rất khác nhau.',
+    description: 'Mô hình demo BookingOS, không phải khách hàng hay case study.',
     demoLabel: 'Mô hình demo BookingOS',
     illustrationLabel: 'Hình minh họa không gian dịch vụ',
     studio: {
@@ -180,7 +179,7 @@ export const viPlatform = {
     eyebrow: 'Tin cậy từ kiến trúc',
     title: 'Hạ tầng được thiết kế cho dữ liệu và dòng tiền nhạy cảm.',
     description:
-      'Các lớp bảo vệ nằm trong luồng vận hành, không phải một danh sách tính năng được thêm sau.',
+      'Mỗi doanh nghiệp vận hành trên nền tảng chung nhưng dữ liệu và quyền truy cập luôn tách bạch.',
     isolation: {
       title: 'Dữ liệu doanh nghiệp được cách ly',
       description: 'Mỗi tenant chỉ làm việc trong phạm vi dữ liệu của mình.',
@@ -238,10 +237,11 @@ export const viPlatform = {
     },
   },
   consultation: {
-    eyebrow: 'Bắt đầu từ mô hình của bạn',
-    title: 'Trao đổi về mô hình đặt chỗ của bạn.',
+    eyebrow: 'Đăng ký tư vấn',
+    title: 'Sẵn sàng biến quy trình đặt chỗ thành động lực tăng trưởng?',
     description:
-      'Chia sẻ vài thông tin cơ bản để đội ngũ BookingOS chuẩn bị nội dung tư vấn phù hợp.',
+      'Trao đổi về mô hình đặt chỗ của bạn. Đội ngũ BookingOS sẽ đề xuất cấu hình và kế hoạch triển khai phù hợp.',
+    formTitle: 'Trao đổi về mô hình đặt chỗ của bạn.',
     nameLabel: 'Họ và tên',
     namePlaceholder: 'Nguyễn Minh Anh',
     phoneLabel: 'Số điện thoại',
@@ -276,7 +276,8 @@ export const viPlatform = {
     privacyNote: 'Thông tin chỉ được sử dụng để trao đổi về BookingOS khi kênh gửi được kết nối.',
   },
   footer: {
-    tagline: 'Hạ tầng đặt chỗ và vận hành cho doanh nghiệp dịch vụ Việt Nam.',
+    tagline:
+      'Nền tảng hợp nhất website đặt chỗ, lịch, đối tác và tài chính cho doanh nghiệp dịch vụ.',
     productTitle: 'Sản phẩm',
     solutionsTitle: 'Giải pháp',
     supportTitle: 'Hỗ trợ',

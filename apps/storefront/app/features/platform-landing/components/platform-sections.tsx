@@ -1,8 +1,5 @@
 import {
   ArrowDownRight,
-  ArrowRight,
-  BadgeCheck,
-  Boxes,
   CalendarCheck2,
   CalendarRange,
   Check,
@@ -18,8 +15,12 @@ import {
   Home,
   KeyRound,
   PackageOpen,
+  PlayCircle,
   ReceiptText,
+  Rocket,
+  SlidersHorizontal,
   Sparkles,
+  TrendingUp,
 } from 'lucide-react';
 import { NsI18n, useTranslation } from '../../../lib/i18n';
 import type { PlatformRootLoaderPayload } from '../../root/server/root-loader.server';
@@ -65,47 +66,39 @@ export function PlatformHero() {
   const { t } = useTranslation(NsI18n.Platform);
 
   return (
-    <section className="platform-hero relative isolate overflow-hidden px-5 pb-16 pt-12 sm:px-8 sm:pb-20 sm:pt-16 lg:px-10 lg:pb-22 lg:pt-18">
-      <div className="platform-hero-shape pointer-events-none absolute inset-y-0 right-0 -z-10 w-[58%]" />
-      <div className="mx-auto grid w-full max-w-350 items-center gap-12 lg:grid-cols-2 lg:gap-14">
-        <div className="platform-hero-copy max-w-176">
-          <h1 className="text-[clamp(3rem,5.2vw,4.65rem)] leading-[0.96] font-extrabold tracking-[-0.06em] text-[#0a0e13]">
+    <section className="platform-hero px-5 pb-18 pt-14 sm:px-6 sm:pt-16">
+      <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.95fr)] lg:gap-14">
+        <div className="platform-hero-copy">
+          <h1 className="max-w-[14ch] text-[clamp(2.375rem,5vw,3.75rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance text-[#0a0e13]">
             {t('hero.title')}
           </h1>
-          <p className="mt-7 max-w-145 text-base leading-7 text-[#565d63] sm:text-lg sm:leading-8">
+          <p className="mt-5 max-w-[52ch] text-base leading-[1.6] text-[#4a515b] sm:text-[19px]">
             {t('hero.description')}
           </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="#consultation" className="platform-primary-button group">
+          <div className="mt-8 flex flex-col gap-3.5 sm:flex-row">
+            <a href="#consultation" className="platform-primary-button">
               {t('hero.primaryCta')}
-              <ArrowRight
-                className="size-4 transition-transform group-hover:translate-x-1"
-                aria-hidden="true"
-              />
             </a>
             <a href="#demos" className="platform-secondary-button">
+              <PlayCircle className="size-5" aria-hidden="true" />
               {t('hero.secondaryCta')}
             </a>
           </div>
         </div>
 
-        <figure className="platform-hero-media relative lg:justify-self-end">
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-[#0a0e13]/10 bg-[#d9d4c8] shadow-[0_34px_90px_rgba(10,14,19,0.18)]">
+        <figure className="platform-hero-media relative pb-0 lg:pb-10">
+          <div className="relative overflow-hidden rounded-[1.25rem] border border-[#e4e6ea] bg-white shadow-[0_24px_60px_-28px_rgba(10,14,19,.4)]">
             <img
               src="/booking-studio/hero.png"
               width="1024"
-              height="685"
+              height="485"
               alt={t('hero.visualAlt')}
               fetchPriority="high"
               decoding="async"
-              className="aspect-[1.495/1] w-full object-cover"
+              className="aspect-4/3 w-full object-cover"
             />
           </div>
-          <SchedulePreview className="mt-3 lg:absolute lg:top-[56%] lg:-left-8 lg:mt-0 lg:w-[68%]" />
-          <figcaption className="mt-4 flex flex-col gap-1 border-l-2 border-[#ffb020] pl-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
-            <span className="text-sm font-bold text-[#252a30]">{t('hero.visualCaption')}</span>
-            <span className="text-xs text-[#686f75]">{t('hero.visualMeta')}</span>
-          </figcaption>
+          <SchedulePreview className="mt-3 lg:absolute lg:-bottom-0 lg:-left-10 lg:mt-0 lg:w-[56%]" />
         </figure>
       </div>
     </section>
@@ -117,7 +110,7 @@ function SchedulePreview({ className }: { className?: string }) {
 
   return (
     <aside
-      className={`overflow-hidden rounded-2xl border border-[#0a0e13]/12 bg-[#fffefa] shadow-[0_22px_60px_rgba(10,14,19,0.16)] ${className ?? ''}`}
+      className={`overflow-hidden rounded-2xl border border-[#e4e6ea] bg-white shadow-[0_20px_44px_-22px_rgba(10,14,19,.45)] ${className ?? ''}`}
       aria-label={t('hero.schedule.title')}
     >
       <div className="flex items-center justify-between border-b border-[#0a0e13]/10 px-4 py-3">
@@ -180,23 +173,22 @@ export function ServiceModelsSection() {
   const { t } = useTranslation(NsI18n.Platform);
 
   return (
-    <section id="solutions" className="platform-section scroll-mt-24 border-y border-[#0a0e13]/8">
-      <div className="mx-auto grid w-full max-w-350 gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.72fr_1.28fr] lg:px-10 lg:py-20">
-        <div className="platform-section-reveal max-w-135">
-          <SectionEyebrow>{t('models.eyebrow')}</SectionEyebrow>
-          <h2 className="platform-heading mt-4">{t('models.title')}</h2>
+    <section id="models" className="platform-section border-t border-[#e7e9ed] bg-[#fbfbfc]">
+      <div className="mx-auto grid w-full max-w-300 gap-10 px-5 py-18 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] lg:gap-13">
+        <div className="platform-section-reveal max-w-120">
+          <h2 className="platform-heading">{t('models.title')}</h2>
           <p className="platform-description mt-5">{t('models.description')}</p>
         </div>
-        <div className="grid content-start border-l border-t border-[#0a0e13]/10 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid content-start gap-px overflow-hidden rounded-[1.125rem] border border-[#e7e9ed] bg-[#e7e9ed] sm:grid-cols-2">
           {SERVICE_MODELS.map(({ key, icon: Icon }) => (
             <div
               key={key}
-              className="group flex min-h-30 items-center gap-4 border-b border-r border-[#0a0e13]/10 bg-[#fbfaf6] p-5 transition-colors hover:bg-[#ffb020]/10"
+              className="group flex min-h-32 flex-col items-start gap-3 bg-white p-6 transition-colors hover:bg-[#fffaf0]"
             >
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0a0e13] text-[#ffb020]">
+              <span className="grid size-10.5 shrink-0 place-items-center rounded-[0.6875rem] bg-[#fff4de] text-[#b27400]">
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <span className="text-sm font-extrabold leading-5 text-[#252a30]">
+              <span className="text-[17px] font-bold leading-6 text-[#252a30]">
                 {t(`models.${key}`)}
               </span>
             </div>
@@ -211,21 +203,23 @@ export function TransformationSection() {
   const { t } = useTranslation(NsI18n.Platform);
 
   return (
-    <section className="platform-section px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30">
-      <div className="mx-auto w-full max-w-350">
-        <div className="platform-section-reveal max-w-200">
+    <section className="platform-section px-5 py-18 sm:px-6 sm:py-22">
+      <div className="mx-auto w-full max-w-300">
+        <div className="platform-section-reveal mx-auto max-w-180 text-center">
           <h2 className="platform-heading">{t('transformation.title')}</h2>
-          <p className="platform-description mt-5">{t('transformation.description')}</p>
+          <p className="platform-description mx-auto mt-4">{t('transformation.description')}</p>
         </div>
 
-        <div className="mt-12 grid overflow-hidden rounded-[1.5rem] border border-[#0a0e13]/10 bg-[#fbfaf6] lg:grid-cols-[0.92fr_auto_1.08fr]">
+        <div className="mt-11 grid items-center gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5">
           <TransformationList
             title={t('transformation.beforeTitle')}
             items={BEFORE_ITEMS.map((key) => t(key))}
             muted
           />
-          <div className="grid place-items-center border-y border-[#0a0e13]/10 bg-[#ffb020] px-4 py-4 lg:border-x lg:border-y-0">
-            <ArrowDownRight className="size-6 text-[#0a0e13] lg:-rotate-45" aria-hidden="true" />
+          <div className="grid place-items-center py-1" aria-hidden="true">
+            <span className="grid size-12 place-items-center rounded-full bg-[#ffb020] text-[#0a0e13] shadow-[0_8px_20px_-8px_rgba(255,176,32,.8)]">
+              <ArrowDownRight className="size-5 lg:-rotate-45" />
+            </span>
           </div>
           <TransformationList
             title={t('transformation.afterTitle')}
@@ -247,18 +241,28 @@ function TransformationList({
   muted?: boolean;
 }) {
   return (
-    <div className={`p-6 sm:p-8 lg:p-10 ${muted ? 'bg-[#efede7]' : 'bg-[#fbfaf6]'}`}>
-      <h3 className="text-lg font-extrabold tracking-[-0.025em] text-[#0a0e13]">{title}</h3>
-      <ul className="mt-7 grid gap-4">
+    <div
+      className={`rounded-[1.25rem] p-7 sm:p-8 ${
+        muted
+          ? 'border border-[#e4e6ea] bg-white text-[#0a0e13]'
+          : 'bg-[#0a0e13] text-[#f4f5f7] shadow-[0_24px_54px_-30px_rgba(10,14,19,.6)]'
+      }`}
+    >
+      <h3
+        className={`text-[13px] font-bold tracking-[0.06em] uppercase ${muted ? 'text-[#8a909a]' : 'text-[#ffb020]'}`}
+      >
+        {title}
+      </h3>
+      <ul className="mt-5 grid gap-4">
         {items.map((item) => (
           <li
             key={item}
-            className="flex items-start gap-3 text-sm leading-6 text-[#50575d] sm:text-base"
+            className={`flex items-start gap-3 text-[15.5px] leading-6 ${muted ? 'text-[#4a515b]' : 'text-[#d7dae0]'}`}
           >
             {muted ? (
-              <span className="mt-3 h-px w-4 shrink-0 bg-[#767c81]" aria-hidden="true" />
+              <span className="mt-3 h-px w-4 shrink-0 bg-[#b9bec6]" aria-hidden="true" />
             ) : (
-              <Check className="mt-1 size-4 shrink-0 text-[#9a6200]" aria-hidden="true" />
+              <Check className="mt-1 size-4 shrink-0 text-[#ffb020]" aria-hidden="true" />
             )}
             {item}
           </li>
@@ -273,16 +277,15 @@ export function CapabilitiesSection() {
 
   return (
     <section
-      id="product"
-      className="platform-section scroll-mt-24 border-y border-[#0a0e13]/8 bg-[#efede7] px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30"
+      id="capabilities"
+      className="platform-section border-t border-[#e7e9ed] bg-[#fbfbfc] px-5 py-18 sm:px-6 sm:py-22"
     >
-      <div className="mx-auto grid w-full max-w-350 gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
-        <div className="platform-section-reveal h-fit max-w-135 lg:sticky lg:top-28">
+      <div className="mx-auto w-full max-w-300">
+        <div className="platform-section-reveal max-w-180">
           <h2 className="platform-heading">{t('capabilities.title')}</h2>
-          <p className="platform-description mt-5">{t('capabilities.description')}</p>
         </div>
 
-        <div className="grid gap-4">
+        <div className="mt-13 grid gap-7">
           <CapabilityRow
             icon={Globe2}
             title={t('capabilities.storefront.title')}
@@ -296,19 +299,26 @@ export function CapabilitiesSection() {
             title={t('capabilities.scheduling.title')}
             description={t('capabilities.scheduling.description')}
             detail={t('capabilities.scheduling.detail')}
+            image="/booking-studio/carousel/02.jpg"
+            imageAlt={t('hero.visualAlt')}
+            mediaFirst
           />
           <CapabilityRow
             icon={Handshake}
             title={t('capabilities.partners.title')}
             description={t('capabilities.partners.description')}
             detail={t('capabilities.partners.detail')}
-            wide
+            image="/booking-stad/platform-courts.png"
+            imageAlt={t('demos.sport.alt')}
+            dark
           />
           <CapabilityRow
             icon={CircleDollarSign}
             title={t('capabilities.finance.title')}
             description={t('capabilities.finance.description')}
             detail={t('capabilities.finance.detail')}
+            image="/booking-studio/carousel/03.jpg"
+            imageAlt={t('demos.studio.alt')}
           />
         </div>
       </div>
@@ -323,37 +333,54 @@ function CapabilityRow({
   detail,
   image,
   imageAlt,
-  wide = false,
+  mediaFirst = false,
+  dark = false,
 }: {
   icon: typeof Globe2;
   title: string;
   description: string;
   detail: string;
-  image?: string;
-  imageAlt?: string;
-  wide?: boolean;
+  image: string;
+  imageAlt: string;
+  mediaFirst?: boolean;
+  dark?: boolean;
 }) {
   return (
     <article
-      className={`platform-section-reveal overflow-hidden rounded-[1.5rem] border border-[#0a0e13]/10 bg-[#fbfaf6] ${
-        image ? 'grid md:grid-cols-[0.9fr_1.1fr]' : ''
-      } ${wide ? 'md:ml-12' : ''}`}
+      className={`platform-section-reveal grid items-center gap-8 overflow-hidden rounded-[1.375rem] p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:gap-11 lg:p-10 ${
+        dark ? 'bg-[#0a0e13] text-[#f4f5f7]' : 'border border-[#e4e6ea] bg-white text-[#0a0e13]'
+      }`}
     >
-      <div className="p-6 sm:p-8 lg:p-10">
-        <span className="grid size-11 place-items-center rounded-xl bg-[#ffb020] text-[#0a0e13]">
+      <div className={mediaFirst ? 'md:order-2' : undefined}>
+        <span
+          className={`grid size-11 place-items-center rounded-xl ${
+            dark ? 'bg-[#1b212b] text-[#ffb020]' : 'bg-[#fff4de] text-[#b27400]'
+          }`}
+        >
           <Icon className="size-5" aria-hidden="true" />
         </span>
-        <h3 className="mt-10 max-w-125 text-2xl leading-[1.08] font-extrabold tracking-[-0.04em] text-[#0a0e13] sm:text-3xl">
+        <h3 className="mt-5 max-w-125 text-2xl leading-[1.15] font-bold tracking-[-0.02em]">
           {title}
         </h3>
-        <p className="mt-4 max-w-135 text-sm leading-6 text-[#555c62] sm:text-base sm:leading-7">
+        <p
+          className={`mt-4 max-w-135 text-[15.5px] leading-6 ${dark ? 'text-[#c9cdd4]' : 'text-[#4a515b]'}`}
+        >
           {description}
         </p>
-        <p className="mt-8 border-l-2 border-[#ffb020] pl-4 text-sm leading-6 font-semibold text-[#343a40]">
+        <p
+          className={`mt-5 flex items-start gap-2 text-sm leading-6 font-semibold ${
+            dark ? 'text-[#f4f5f7]' : 'text-[#343a40]'
+          }`}
+        >
+          <Check className="mt-1 size-4 shrink-0 text-[#b27400]" aria-hidden="true" />
           {detail}
         </p>
       </div>
-      {image ? (
+      <div
+        className={`overflow-hidden rounded-[0.875rem] border ${
+          mediaFirst ? 'md:order-1' : ''
+        } ${dark ? 'border-[#2a313c] bg-[#141922]' : 'border-[#e4e6ea] bg-[#edeff2]'}`}
+      >
         <img
           src={image}
           width="1800"
@@ -361,46 +388,49 @@ function CapabilityRow({
           loading="lazy"
           decoding="async"
           alt={imageAlt}
-          className="h-full min-h-75 w-full object-cover"
+          className="aspect-[16/10] w-full object-cover"
         />
-      ) : null}
+      </div>
     </article>
   );
 }
 
 export function WorkflowSection() {
   const { t } = useTranslation(NsI18n.Platform);
-  const items = ['configure', 'publish', 'grow'] as const;
+  const items = [
+    { key: 'configure', icon: SlidersHorizontal },
+    { key: 'publish', icon: Rocket },
+    { key: 'grow', icon: TrendingUp },
+  ] as const;
 
   return (
-    <section
-      id="workflow"
-      className="platform-section scroll-mt-24 px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30"
-    >
-      <div className="mx-auto w-full max-w-350">
+    <section id="workflow" className="platform-section px-5 py-18 sm:px-6 sm:py-22">
+      <div className="mx-auto w-full max-w-300">
         <div className="platform-section-reveal max-w-180">
           <h2 className="platform-heading">{t('workflow.title')}</h2>
           <p className="platform-description mt-5">{t('workflow.description')}</p>
         </div>
-        <div className="mt-14 grid border-t border-[#0a0e13]/14 lg:grid-cols-3">
-          {items.map((key) => (
-            <article
+        <ol className="mt-12 grid gap-6 md:grid-cols-3">
+          {items.map(({ key, icon: Icon }) => (
+            <li
               key={key}
-              className="platform-section-reveal border-b border-[#0a0e13]/12 py-9 lg:border-r lg:px-8 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0"
+              className="platform-section-reveal rounded-[1.125rem] border border-[#e4e6ea] border-t-[3px] border-t-[#ffb020] bg-[#fbfbfc] p-7"
             >
-              <h3 className="text-3xl font-extrabold tracking-[-0.045em] text-[#0a0e13]">
+              <span className="grid size-11.5 place-items-center rounded-xl bg-[#0a0e13] text-[#ffb020]">
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+              <h3 className="mt-5 text-[21px] font-bold tracking-[-0.02em] text-[#0a0e13]">
                 {t(`workflow.${key}.title`)}
               </h3>
-              <p className="mt-5 text-sm leading-6 text-[#555c62] sm:text-base sm:leading-7">
+              <p className="mt-3 text-[15px] leading-6 text-[#4a515b]">
                 {t(`workflow.${key}.description`)}
               </p>
-              <p className="mt-8 flex items-start gap-2 text-sm leading-6 font-bold text-[#6f4900]">
-                <ArrowRight className="mt-1 size-4 shrink-0" aria-hidden="true" />
+              <p className="mt-5 text-sm leading-6 font-semibold text-[#6f4900]">
                 {t(`workflow.${key}.note`)}
               </p>
-            </article>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );
@@ -412,14 +442,14 @@ export function DemosSection() {
   return (
     <section
       id="demos"
-      className="platform-section scroll-mt-24 border-y border-[#0a0e13]/8 bg-[#efede7] px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30"
+      className="platform-section border-t border-[#e7e9ed] bg-[#fbfbfc] px-5 py-18 sm:px-6 sm:py-22"
     >
-      <div className="mx-auto w-full max-w-350">
+      <div className="mx-auto w-full max-w-300">
         <div className="platform-section-reveal max-w-190">
           <h2 className="platform-heading">{t('demos.title')}</h2>
           <p className="platform-description mt-5">{t('demos.description')}</p>
         </div>
-        <div className="mt-12 grid gap-5 lg:grid-cols-[1.12fr_0.88fr] lg:items-start">
+        <div className="mt-10 grid gap-6 md:grid-cols-2">
           <DemoFigure
             image="/booking-studio/carousel/01.jpg"
             width="1200"
@@ -428,7 +458,6 @@ export function DemosSection() {
             description={t('demos.studio.description')}
             alt={t('demos.studio.alt')}
             label={t('demos.demoLabel')}
-            landscape={false}
           />
           <DemoFigure
             image="/booking-stad/platform-courts.png"
@@ -438,7 +467,6 @@ export function DemosSection() {
             description={t('demos.sport.description')}
             alt={t('demos.sport.alt')}
             label={t('demos.illustrationLabel')}
-            landscape
           />
         </div>
       </div>
@@ -454,7 +482,6 @@ function DemoFigure({
   description,
   alt,
   label,
-  landscape,
 }: {
   image: string;
   width: string;
@@ -463,11 +490,10 @@ function DemoFigure({
   description: string;
   alt: string;
   label: string;
-  landscape: boolean;
 }) {
   return (
-    <figure className={`platform-section-reveal ${landscape ? 'lg:mt-24' : ''}`}>
-      <div className="overflow-hidden rounded-[1.5rem] border border-[#0a0e13]/10 bg-[#d8d5cd]">
+    <figure className="platform-section-reveal overflow-hidden rounded-[1.375rem] border border-[#e4e6ea] bg-white">
+      <div className="overflow-hidden border-b border-[#e4e6ea] bg-[#edeff2]">
         <img
           src={image}
           width={width}
@@ -475,17 +501,15 @@ function DemoFigure({
           loading="lazy"
           decoding="async"
           alt={alt}
-          className={`w-full object-cover ${landscape ? 'aspect-[1.55/1]' : 'aspect-[1.2/1]'}`}
+          className="aspect-[16/10] w-full object-cover"
         />
       </div>
-      <figcaption className="mt-5 grid gap-3 border-l-2 border-[#ffb020] pl-5 sm:grid-cols-[0.42fr_0.58fr]">
-        <div>
-          <p className="text-xs font-bold tracking-[0.08em] text-[#795100] uppercase">{label}</p>
-          <h3 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[#0a0e13]">
-            {title}
-          </h3>
-        </div>
-        <p className="text-sm leading-6 text-[#555c62]">{description}</p>
+      <figcaption className="p-7 sm:p-8">
+        <p className="inline-flex rounded-full bg-[#fff4de] px-3 py-1.5 text-xs font-bold tracking-[0.05em] text-[#b27400] uppercase">
+          {label}
+        </p>
+        <h3 className="mt-4 text-[22px] font-bold tracking-[-0.02em] text-[#0a0e13]">{title}</h3>
+        <p className="mt-2 text-[15.5px] leading-6 text-[#4a515b]">{description}</p>
       </figcaption>
     </figure>
   );
@@ -496,64 +520,42 @@ export function PricingSection() {
   const plans = ['one', 'two', 'three'] as const;
 
   return (
-    <section
-      id="pricing"
-      className="platform-section scroll-mt-24 px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30"
-    >
-      <div className="mx-auto w-full max-w-350">
-        <div className="platform-section-reveal max-w-190">
-          <SectionEyebrow>{t('pricing.eyebrow')}</SectionEyebrow>
-          <h2 className="platform-heading mt-4">{t('pricing.title')}</h2>
-          <p className="platform-description mt-5">{t('pricing.description')}</p>
+    <section id="pricing" className="platform-section px-5 py-18 sm:px-6 sm:py-22">
+      <div className="mx-auto w-full max-w-300">
+        <div className="platform-section-reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="platform-heading">{t('pricing.title')}</h2>
+            <p className="platform-description mt-4">{t('pricing.description')}</p>
+          </div>
         </div>
-        <div className="platform-section-reveal mt-12 overflow-hidden border border-[#0a0e13]/10 bg-[#fbfaf6]">
-          <div className="grid border-b border-[#0a0e13]/10 bg-[#ffb020]/12 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div className="flex items-start gap-4 p-6 sm:p-8">
-              <Boxes className="mt-1 size-6 shrink-0 text-[#8a5700]" aria-hidden="true" />
-              <div>
-                <h3 className="text-lg font-extrabold tracking-[-0.03em] text-[#0a0e13]">
-                  {t('pricing.pendingTitle')}
-                </h3>
-                <p className="mt-2 max-w-190 text-sm leading-6 text-[#555c62]">
-                  {t('pricing.pendingDescription')}
-                </p>
-              </div>
-            </div>
-            <div className="border-t border-[#0a0e13]/10 p-6 lg:border-l lg:border-t-0 lg:p-8">
-              <a href="#consultation" className="platform-dark-button group w-full lg:w-auto">
+        <div className="mt-11 grid items-stretch gap-6 md:grid-cols-3">
+          {plans.map((plan) => (
+            <article
+              key={plan}
+              className="platform-section-reveal flex flex-col rounded-[1.375rem] border border-[#e4e6ea] bg-white p-7 sm:p-8"
+            >
+              <h3 className="text-[19px] font-bold tracking-[-0.01em] text-[#0a0e13]">
+                {t(`pricing.plans.${plan}.name`)}
+              </h3>
+              <p className="mt-1.5 text-sm text-[#8a909a]">{t(`pricing.plans.${plan}.limits`)}</p>
+              <p className="mt-5 text-3xl font-extrabold tracking-[-0.02em] text-[#0a0e13]">
+                {t(`pricing.plans.${plan}.price`)}
+              </p>
+              <p className="mt-6 flex-1 border-t border-[#e4e6ea] pt-5 text-[15px] leading-6 text-[#4a515b]">
+                {t(`pricing.plans.${plan}.feature`)}
+              </p>
+              <a href="#consultation" className="platform-dark-button mt-7 w-full">
                 {t('pricing.consultation')}
-                <ArrowRight
-                  className="size-4 transition-transform group-hover:translate-x-1"
-                  aria-hidden="true"
-                />
               </a>
-            </div>
-          </div>
-          <div className="grid lg:grid-cols-3">
-            {plans.map((plan) => (
-              <article
-                key={plan}
-                className="border-b border-[#0a0e13]/10 p-7 last:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0"
-              >
-                <h3 className="text-xl font-extrabold text-[#0a0e13]">
-                  {t(`pricing.plans.${plan}.name`)}
-                </h3>
-                <p className="mt-5 text-3xl font-extrabold tracking-[-0.04em] text-[#0a0e13]">
-                  {t(`pricing.plans.${plan}.price`)}
-                </p>
-                <p className="mt-7 border-t border-[#0a0e13]/10 pt-5 text-sm leading-6 text-[#555c62]">
-                  {t(`pricing.plans.${plan}.limits`)}
-                </p>
-                <p className="mt-3 text-sm leading-6 text-[#555c62]">
-                  {t(`pricing.plans.${plan}.feature`)}
-                </p>
-                <a href="#consultation" className="platform-secondary-button mt-8 w-full">
-                  {t('pricing.consultation')}
-                </a>
-              </article>
-            ))}
-          </div>
+            </article>
+          ))}
         </div>
+        <p className="mt-7 text-[15px] text-[#6a707a]">
+          {t('pricing.pendingDescription')}{' '}
+          <a href="#consultation" className="font-semibold text-[#9a6200] hover:text-[#6f4900]">
+            {t('pricing.consultation')}
+          </a>
+        </p>
       </div>
     </section>
   );
@@ -563,27 +565,25 @@ export function TrustSection() {
   const { t } = useTranslation(NsI18n.Platform);
 
   return (
-    <section className="platform-section border-y border-[#0a0e13]/8 bg-[#fff4d8] px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30">
-      <div className="mx-auto w-full max-w-350">
-        <div className="platform-section-reveal grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
-          <div>
-            <h2 className="platform-heading">{t('trust.title')}</h2>
-          </div>
-          <p className="platform-description">{t('trust.description')}</p>
+    <section className="platform-section border-t border-[#e7e9ed] bg-[#fbfbfc] px-5 py-18 sm:px-6 sm:py-22">
+      <div className="mx-auto grid w-full max-w-300 gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:gap-13">
+        <div className="platform-section-reveal">
+          <h2 className="platform-heading">{t('trust.title')}</h2>
+          <p className="platform-description mt-5">{t('trust.description')}</p>
         </div>
-        <div className="mt-12 grid border-l border-t border-[#0a0e13]/12 sm:grid-cols-2 lg:grid-cols-5">
+        <ul className="platform-section-reveal grid content-start gap-4">
           {TRUST_ITEMS.map(({ key, icon: Icon }) => (
-            <article key={key} className="border-b border-r border-[#0a0e13]/12 bg-[#fff8e8] p-6">
-              <Icon className="size-5 text-[#8a5700]" aria-hidden="true" />
-              <h3 className="mt-10 text-base font-extrabold leading-6 text-[#0a0e13]">
-                {t(`trust.${key}.title`)}
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-[#5c5c55]">
-                {t(`trust.${key}.description`)}
-              </p>
-            </article>
+            <li key={key} className="flex items-start gap-3 text-[#2a303a]">
+              <Icon className="mt-0.5 size-5 shrink-0 text-[#b27400]" aria-hidden="true" />
+              <span>
+                <span className="block text-base font-semibold">{t(`trust.${key}.title`)}</span>
+                <span className="mt-1 block text-sm leading-6 text-[#5a616b]">
+                  {t(`trust.${key}.description`)}
+                </span>
+              </span>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );
@@ -593,23 +593,22 @@ export function FaqSection() {
   const { t } = useTranslation(NsI18n.Platform);
 
   return (
-    <section
-      id="faq"
-      className="platform-section scroll-mt-24 px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30"
-    >
-      <div className="mx-auto grid w-full max-w-350 gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
-        <div className="platform-section-reveal h-fit max-w-135 lg:sticky lg:top-28">
+    <section id="faq" className="platform-section px-5 py-18 sm:px-6 sm:py-22">
+      <div className="mx-auto w-full max-w-215">
+        <div className="platform-section-reveal">
           <h2 className="platform-heading">{t('faq.title')}</h2>
-          <p className="platform-description mt-5">{t('faq.description')}</p>
         </div>
-        <div className="border-t border-[#0a0e13]/14">
+        <div className="mt-10 border-t border-[#e4e6ea]">
           {FAQ_ITEMS.map((key) => (
-            <details key={key} className="platform-faq border-b border-[#0a0e13]/14">
-              <summary className="flex min-h-20 cursor-pointer list-none items-center justify-between gap-5 py-5 text-left text-base font-extrabold text-[#20252a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-4 sm:text-lg">
+            <details key={key} className="platform-faq border-b border-[#e4e6ea]">
+              <summary className="flex min-h-18 cursor-pointer list-none items-center justify-between gap-5 px-1 py-5 text-left text-base font-semibold text-[#0a0e13] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-4 sm:text-[17.5px]">
                 {t(`faq.${key}.question`)}
-                <ChevronDown className="platform-faq-icon size-5 shrink-0" aria-hidden="true" />
+                <ChevronDown
+                  className="platform-faq-icon size-5 shrink-0 text-[#b27400]"
+                  aria-hidden="true"
+                />
               </summary>
-              <p className="max-w-175 pb-7 pr-10 text-sm leading-7 text-[#555c62] sm:text-base">
+              <p className="max-w-[64ch] px-1 pb-6 pr-10 text-sm leading-[1.6] text-[#4a515b] sm:text-base">
                 {t(`faq.${key}.answer`)}
               </p>
             </details>
@@ -626,16 +625,22 @@ export function ConsultationSection() {
   return (
     <section
       id="consultation"
-      className="platform-section scroll-mt-24 border-t border-[#0a0e13]/8 bg-[#efede7] px-5 py-20 sm:px-8 sm:py-26 lg:px-10 lg:py-30"
+      className="platform-section border-t border-[#e7e9ed] bg-[#0a0e13] px-5 py-18 text-[#f4f5f7] sm:px-6 sm:py-22"
     >
-      <div className="mx-auto grid w-full max-w-350 gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
-        <div className="platform-section-reveal max-w-140">
-          <SectionEyebrow>{t('consultation.eyebrow')}</SectionEyebrow>
-          <h2 className="platform-heading mt-4">{t('consultation.title')}</h2>
-          <p className="platform-description mt-5">{t('consultation.description')}</p>
-          <BadgeCheck className="mt-10 size-10 text-[#9a6200]" aria-hidden="true" />
+      <div className="mx-auto grid w-full max-w-270 gap-12 lg:grid-cols-2 lg:gap-14">
+        <div className="platform-section-reveal max-w-130">
+          <p className="text-sm font-bold tracking-[0.05em] text-[#ffb020] uppercase">
+            {t('consultation.eyebrow')}
+          </p>
+          <h2 className="mt-4 max-w-[16ch] text-[clamp(1.75rem,3.4vw,2.625rem)] leading-[1.1] font-extrabold tracking-[-0.025em]">
+            {t('consultation.title')}
+          </h2>
+          <p className="mt-4 max-w-[46ch] text-[17px] leading-[1.6] text-[#c9cdd4]">
+            {t('consultation.description')}
+          </p>
         </div>
-        <div className="platform-section-reveal rounded-[1.5rem] border border-[#0a0e13]/10 bg-[#fbfaf6] p-6 shadow-[0_24px_70px_rgba(10,14,19,0.08)] sm:p-8 lg:p-10">
+        <div className="platform-section-reveal rounded-3xl border border-[#232a34] bg-[#12171f] p-6 sm:p-8">
+          <h3 className="mb-6 text-xl font-bold">{t('consultation.formTitle')}</h3>
           <PlatformConsultationForm />
         </div>
       </div>
@@ -648,43 +653,48 @@ export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderP
   const alternateLocale = loaderData.locale === 'vi' ? 'en' : 'vi';
 
   return (
-    <footer className="border-t border-[#0a0e13]/10 bg-[#e5e2da] px-5 py-12 sm:px-8 lg:px-10">
-      <div className="mx-auto grid w-full max-w-350 gap-12 lg:grid-cols-[1.1fr_1.9fr]">
+    <footer className="border-t border-[#e4e6ea] bg-[#fbfbfc] px-5 py-10 sm:px-6 sm:py-14">
+      <div className="mx-auto grid w-full max-w-300 gap-10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div>
           <PlatformBrand label={t('brandLabel')} />
-          <p className="mt-5 max-w-100 text-sm leading-6 text-[#555c62]">{t('footer.tagline')}</p>
+          <p className="mt-4 max-w-95 text-[15px] leading-6 text-[#6a707a]">
+            {t('footer.tagline')}
+          </p>
+          <div className="mt-5 flex gap-2">
+            <span className="rounded-full bg-[#0a0e13] px-3 py-1.5 text-sm font-semibold text-white">
+              {loaderData.locale === 'vi' ? 'Tiếng Việt' : 'English'}
+            </span>
+            <a
+              href={`/${alternateLocale}`}
+              className="rounded-full border border-[#d3d6dc] px-3 py-1.5 text-sm font-semibold text-[#4a515b] hover:border-[#0a0e13] hover:text-[#0a0e13]"
+            >
+              {alternateLocale === 'vi' ? 'Tiếng Việt' : 'English'}
+            </a>
+          </div>
         </div>
-        <div className="grid gap-8 sm:grid-cols-3">
-          <FooterGroup
-            title={t('footer.productTitle')}
-            links={[
-              [t('footer.product'), '#product'],
-              [t('footer.workflow'), '#workflow'],
-              [t('footer.pricing'), '#pricing'],
-            ]}
-          />
-          <FooterGroup
-            title={t('footer.solutionsTitle')}
-            links={[
-              [t('footer.demos'), '#demos'],
-              [t('footer.faq'), '#faq'],
-              [t('footer.consultation'), '#consultation'],
-            ]}
-          />
-          <FooterGroup
-            title={t('footer.supportTitle')}
-            links={[
-              [t('footer.login'), loaderData.dashboardLoginUrl],
-              [alternateLocale.toUpperCase(), `/${alternateLocale}`],
-            ]}
-          />
-        </div>
+        <FooterGroup
+          title={t('footer.productTitle')}
+          links={[
+            [t('footer.product'), '#capabilities'],
+            [t('nav.solutions'), '#models'],
+            [t('footer.workflow'), '#workflow'],
+            [t('footer.pricing'), '#pricing'],
+            [t('footer.faq'), '#faq'],
+            [t('footer.login'), loaderData.dashboardLoginUrl],
+          ]}
+        />
+        <nav aria-label={t('footer.legalTitle')}>
+          <h2 className="text-[13px] font-bold tracking-[0.05em] text-[#8a909a] uppercase">
+            {t('footer.legalTitle')}
+          </h2>
+          <ul className="mt-4 grid gap-3 text-[15px] text-[#9aa0a9]">
+            <li title={t('footer.legalUnavailable')}>{t('footer.terms')}</li>
+            <li title={t('footer.legalUnavailable')}>{t('footer.privacy')}</li>
+          </ul>
+        </nav>
       </div>
-      <div className="mx-auto mt-12 flex w-full max-w-350 flex-col gap-3 border-t border-[#0a0e13]/10 pt-6 text-xs leading-5 text-[#656b70] sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto mt-10 w-full max-w-300 border-t border-[#e4e6ea] pt-6 text-sm text-[#8a909a]">
         <p>© {t('footer.rights')}</p>
-        <p title={t('footer.legalUnavailable')}>
-          {t('footer.terms')} / {t('footer.privacy')}
-        </p>
       </div>
     </footer>
   );
@@ -693,13 +703,13 @@ export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderP
 function FooterGroup({ title, links }: { title: string; links: [string, string][] }) {
   return (
     <nav aria-label={title}>
-      <h2 className="text-sm font-extrabold text-[#20252a]">{title}</h2>
+      <h2 className="text-[13px] font-bold tracking-[0.05em] text-[#8a909a] uppercase">{title}</h2>
       <ul className="mt-4 grid gap-3">
         {links.map(([label, href]) => (
           <li key={`${label}-${href}`}>
             <a
               href={href}
-              className="text-sm text-[#555c62] transition hover:text-[#8a5600] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300]"
+              className="text-[15px] text-[#4a515b] transition hover:text-[#b27400] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300]"
             >
               {label}
             </a>
@@ -707,13 +717,5 @@ function FooterGroup({ title, links }: { title: string; links: [string, string][
         ))}
       </ul>
     </nav>
-  );
-}
-
-function SectionEyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[11px] font-extrabold tracking-[0.15em] text-[#795100] uppercase">
-      {children}
-    </p>
   );
 }
