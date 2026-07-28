@@ -8,9 +8,6 @@ export const enBooking = {
   bookingHistory: 'Booking history',
   chooseAnotherTime: 'Choose another time',
   cancel: 'Cancel booking',
-  cancelReason: 'Reason (optional)',
-  cancelConfirm: 'Confirm cancellation',
-  refundInfo: 'Refund: {amount} ({percent}%)',
   cancelled: 'Your booking has been cancelled.',
   success: {
     title: 'Booking successful',

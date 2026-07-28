@@ -5,9 +5,6 @@ export const viBooking = {
   bookingHistory: 'Lịch sử đặt đơn',
   chooseAnotherTime: 'Chọn giờ khác',
   cancel: 'Hủy đặt chỗ',
-  cancelReason: 'Lý do (tùy chọn)',
-  cancelConfirm: 'Xác nhận hủy',
-  refundInfo: 'Hoàn tiền: {amount} ({percent}%)',
   cancelled: 'Đặt chỗ đã được hủy.',
   success: {
     title: 'Đặt thành công',

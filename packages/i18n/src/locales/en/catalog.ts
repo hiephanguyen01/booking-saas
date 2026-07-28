@@ -4,12 +4,9 @@ import type { viCatalog } from '../vi/catalog';
 export const enCatalog = {
   resultsTitle: '{name} for you',
   resultsCount: '{count} results',
-  typeNotFound: 'No category “{slug}” found.',
-  loadingResults: 'Loading results',
   emptyTitle: 'No matching results',
   emptyDescription: 'Try other dates, another area, or remove a filter.',
   clearFilters: 'Clear filters',
-  matchingRooms: '{count} matching rooms',
   completedBookings: '{count} bookings',
   noReviews: 'No reviews yet',
   reviewCount: '{count} reviews',
