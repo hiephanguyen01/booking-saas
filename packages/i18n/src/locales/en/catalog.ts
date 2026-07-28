@@ -13,6 +13,17 @@ export const enCatalog = {
   completedBookings: '{count} bookings',
   noReviews: 'No reviews yet',
   reviewCount: '{count} reviews',
+  provider: {
+    verified: 'Verified',
+    activeSince: 'Active since {date}',
+    publishedServices: 'published services',
+    completedBookings: 'completed bookings',
+    reviews: '{count} reviews',
+    services: 'Services',
+    publishedOfferings: 'Published offerings from this provider',
+    serviceCategories: 'Service categories',
+    emptyCategory: 'No published services in this category.',
+  },
   sort: {
     label: 'Sort:',
     ariaLabel: 'Sort results',

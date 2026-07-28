@@ -10,6 +10,17 @@ export const viCatalog = {
   completedBookings: '{count} đã đặt',
   noReviews: 'Chưa có đánh giá',
   reviewCount: '{count} đánh giá',
+  provider: {
+    verified: 'Đã xác minh',
+    activeSince: 'Hoạt động từ {date}',
+    publishedServices: 'dịch vụ đang hoạt động',
+    completedBookings: 'lượt đặt hoàn tất',
+    reviews: '{count} đánh giá',
+    services: 'Dịch vụ',
+    publishedOfferings: 'Các bài đăng đang được công khai của nhà cung cấp',
+    serviceCategories: 'Danh mục dịch vụ',
+    emptyCategory: 'Chưa có dịch vụ công khai trong danh mục này.',
+  },
   sort: {
     label: 'Sắp xếp:',
     ariaLabel: 'Sắp xếp kết quả',

@@ -8,6 +8,7 @@ import { SectionCard } from '~/components/section-card';
 import { storefrontPaths } from '~/constants/paths';
 import type { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import { useLocale } from '~/hooks/use-locale';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
 export function ProviderProfilePage({
@@ -18,6 +19,7 @@ export function ProviderProfilePage({
   const { profile, listings, reviews, reviewSummary, reviewRating, reviewLimit, activeType } =
     loaderData;
   const locale = useLocale();
+  const { t } = useTranslation(NsI18n.Catalog);
   const en = locale === 'en';
   const activeSince = new Intl.DateTimeFormat(en ? 'en-US' : 'vi-VN', {
     month: 'long',
@@ -45,12 +47,12 @@ export function ProviderProfilePage({
                     {profile.identityVerified ? (
                       <Badge variant="secondary" className="gap-1">
                         <ShieldCheck className="size-3.5" />
-                        {en ? 'Verified' : 'Đã xác minh'}
+                        {t('provider.verified')}
                       </Badge>
                     ) : null}
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {en ? `Active since ${activeSince}` : `Hoạt động từ ${activeSince}`}
+                    {t('provider.activeSince', { date: activeSince })}
                   </p>
                 </div>
               </div>
@@ -64,21 +66,17 @@ export function ProviderProfilePage({
               <Stat
                 icon={BriefcaseBusiness}
                 value={profile.stats.publishedOfferings}
-                label={en ? 'published services' : 'dịch vụ đang hoạt động'}
+                label={t('provider.publishedServices')}
               />
               <Stat
                 icon={CalendarCheck}
                 value={profile.stats.completedBookings}
-                label={en ? 'completed bookings' : 'lượt đặt hoàn tất'}
+                label={t('provider.completedBookings')}
               />
               <Stat
                 icon={Star}
                 value={profile.stats.ratingAvg?.toFixed(1) ?? '—'}
-                label={
-                  en
-                    ? `${profile.stats.reviewCount} reviews`
-                    : `${profile.stats.reviewCount} đánh giá`
-                }
+                label={t('provider.reviews', { count: profile.stats.reviewCount })}
               />
             </div>
           </div>
@@ -87,17 +85,12 @@ export function ProviderProfilePage({
         <SectionCard>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">{en ? 'Services' : 'Dịch vụ'}</h2>
+              <h2 className="text-lg font-semibold">{t('provider.services')}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {en
-                  ? 'Published offerings from this provider'
-                  : 'Các bài đăng đang được công khai của nhà cung cấp'}
+                {t('provider.publishedOfferings')}
               </p>
             </div>
-            <nav
-              className="flex flex-wrap gap-2"
-              aria-label={en ? 'Service categories' : 'Danh mục dịch vụ'}
-            >
+            <nav className="flex flex-wrap gap-2" aria-label={t('provider.serviceCategories')}>
               {profile.listingTypes.map((type) => (
                 <Link
                   key={type.id}
@@ -119,9 +112,7 @@ export function ProviderProfilePage({
             </div>
           ) : (
             <div className="mt-6 rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-              {en
-                ? 'No published services in this category.'
-                : 'Chưa có dịch vụ công khai trong danh mục này.'}
+              {t('provider.emptyCategory')}
             </div>
           )}
         </SectionCard>
