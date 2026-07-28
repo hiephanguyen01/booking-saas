@@ -31,11 +31,10 @@ export function typeIcon(slug: string): LucideIcon {
  */
 export type PriceUnit = 'hour' | 'day' | 'item' | 'session' | 'package';
 
-/** VND đồng digit string → "1.200.000₫". */
+/** VND đồng digit string → "1.200.000₫", without converting money through a JS float. */
 export function formatVnd(amount: string | null | undefined): string | null {
-  if (amount == null) return null;
-  const n = Number(amount);
-  return Number.isFinite(n) ? `${n.toLocaleString('vi-VN')}₫` : null;
+  if (amount == null || !/^\d+$/.test(amount)) return null;
+  return `${BigInt(amount).toLocaleString('vi-VN')}₫`;
 }
 
 export function attributeSummary(attributes: Record<string, unknown>, max = 3): string {
