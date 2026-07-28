@@ -5,7 +5,7 @@ import {
   type AvailabilityMode,
   type PublicListingDetailResponse,
 } from '@booking/contracts';
-import { submitContentReport } from '~/features/content-reports/content-report.server';
+import { submitContentReport } from '~/features/content-reports/server/content-report.server';
 import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
 import { fetchAvailability } from '~/lib/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '~/lib/catalog.server';

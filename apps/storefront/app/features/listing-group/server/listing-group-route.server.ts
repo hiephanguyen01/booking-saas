@@ -1,5 +1,5 @@
 import { MAX_BOOKING_RANGE_DAYS, moneyStringSchema, timeOfDaySchema } from '@booking/contracts';
-import { submitContentReport } from '~/features/content-reports/content-report.server';
+import { submitContentReport } from '~/features/content-reports/server/content-report.server';
 import { parseSearchState, rangeDates } from '~/features/search/lib/search-state';
 import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
 import { fetchAvailability } from '~/lib/booking.server';
