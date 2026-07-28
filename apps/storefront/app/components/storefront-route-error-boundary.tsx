@@ -1,5 +1,5 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
-import { storefrontPaths } from '~/constants/paths';
+import { localeParam, storefrontPaths } from '~/constants/paths';
 import { createTranslator } from '~/lib/i18n';
 
 interface StorefrontRouteErrorBoundaryProps {
@@ -10,10 +10,10 @@ interface StorefrontRouteErrorBoundaryProps {
 
 export function StorefrontRouteErrorBoundary({
   error,
-  locale: localeParam,
+  locale: localeValue,
   destination = 'home',
 }: StorefrontRouteErrorBoundaryProps) {
-  const locale = localeParam === 'en' ? 'en' : 'vi';
+  const locale = localeParam(localeValue);
   const { t } = createTranslator(locale);
   const homeHref =
     destination === 'bookings' ? storefrontPaths.bookings(locale) : storefrontPaths.home(locale);

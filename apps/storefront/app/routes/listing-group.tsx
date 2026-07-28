@@ -1,6 +1,7 @@
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing-group';
 import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { localeParam } from '~/constants/paths';
 import { ListingGroupPage } from '~/features/listing-group/components/listing-group-page';
 import { buildListingGroupMeta } from '~/features/listing-group/lib/listing-group-meta';
 import { buildListingGroupStructuredData } from '~/features/listing-group/lib/listing-group-structured-data';
@@ -28,7 +29,7 @@ export function shouldRevalidate({
 }
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
-  return buildListingGroupMeta(loaderData?.group, params.locale === 'en' ? 'en' : 'vi');
+  return buildListingGroupMeta(loaderData?.group, localeParam(params.locale));
 }
 
 export function loader({ request, params, url }: Route.LoaderArgs) {
@@ -38,7 +39,7 @@ export function loader({ request, params, url }: Route.LoaderArgs) {
 export default function ListingGroupRoute({ loaderData, params }: Route.ComponentProps) {
   const { group } = loaderData;
   const { tenant, canonical, cspNonce } = useOutletContext<StorefrontContext>();
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   const structuredData = buildListingGroupStructuredData({ tenant, canonical, locale, group });
 
   return (

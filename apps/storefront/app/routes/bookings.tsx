@@ -1,3 +1,4 @@
+import { localeParam } from '~/constants/paths';
 import { BookingsLookupPage } from '~/features/booking/components/bookings-lookup-page';
 import { buildBookingsMeta } from '~/features/booking/lib/bookings-meta';
 import {
@@ -7,7 +8,7 @@ import {
 import type { Route } from './+types/bookings';
 
 export function meta({ params }: Route.MetaArgs) {
-  return buildBookingsMeta(params.locale === 'en' ? 'en' : 'vi');
+  return buildBookingsMeta(localeParam(params.locale));
 }
 
 export async function loader(args: Route.LoaderArgs) {

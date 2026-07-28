@@ -1,3 +1,4 @@
+import { localeParam } from '~/constants/paths';
 import { AccountProfilePage } from '~/features/account/components/profile/profile-page';
 import {
   handleAccountProfileAction,
@@ -6,12 +7,12 @@ import {
 import type { Route } from './+types/profile';
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return loadAccountProfileRoute(request, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return handleAccountProfileAction(request, locale);
 }
 

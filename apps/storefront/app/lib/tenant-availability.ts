@@ -1,4 +1,5 @@
-import { createTranslator, type Locale } from '@booking/i18n';
+import { createTranslator } from '@booking/i18n';
+import { localeParam } from '~/constants/paths';
 
 export const TENANT_UNAVAILABLE_STATUS = 423;
 
@@ -14,7 +15,7 @@ export function tenantUnavailableResponse(
   if (tenant.live) return null;
 
   const firstSegment = new URL(request.url).pathname.split('/').filter(Boolean)[0];
-  const locale: Locale = firstSegment === 'en' ? 'en' : 'vi';
+  const locale = localeParam(firstSegment);
   const message = createTranslator(locale).t('errors.tenantUnavailable');
 
   return Response.json(

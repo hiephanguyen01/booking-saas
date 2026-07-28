@@ -1,3 +1,4 @@
+import { localeParam } from '~/constants/paths';
 import { BookingDetailPanel } from '~/features/account/components/booking-detail/booking-detail-panel';
 import type {
   handleAccountBookingDetailAction,
@@ -19,7 +20,7 @@ export function AccountBookingDetailPage({
     return <PaymentHandoff destination={actionData.handoff} />;
   }
 
-  const locale = loaderData.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(loaderData.locale);
   return (
     <BookingDetailPanel
       booking={loaderData.booking}

@@ -1,4 +1,5 @@
 import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { localeParam } from '~/constants/paths';
 import { BookingPaymentView } from '~/features/booking/components/booking-payment-view';
 import {
   handleBookingDetailAction,
@@ -13,12 +14,12 @@ export function meta() {
 }
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return loadBookingDetail(request, params.code, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return handleBookingDetailAction(request, params.code, locale);
 }
 

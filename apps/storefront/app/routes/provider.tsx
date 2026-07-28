@@ -1,11 +1,12 @@
 import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { localeParam } from '~/constants/paths';
 import { ProviderRoutePage } from '~/features/provider/components/provider-route-page';
 import { buildProviderMeta } from '~/features/provider/lib/provider-meta';
 import { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import type { Route } from './+types/provider';
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
-  return buildProviderMeta(loaderData?.profile, params.locale === 'en' ? 'en' : 'vi');
+  return buildProviderMeta(loaderData?.profile, localeParam(params.locale));
 }
 
 export function loader({ request, params, url }: Route.LoaderArgs) {

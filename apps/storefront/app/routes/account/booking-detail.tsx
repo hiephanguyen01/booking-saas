@@ -1,3 +1,4 @@
+import { localeParam } from '~/constants/paths';
 import { AccountBookingDetailPage } from '~/features/account/components/booking-detail/account-booking-detail-page';
 import {
   handleAccountBookingDetailAction,
@@ -10,12 +11,12 @@ export function meta() {
 }
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return loadAccountBookingDetailRoute(request, params.code, locale);
 }
 
 export function action({ request, params }: Route.ActionArgs) {
-  const locale = params.locale === 'en' ? 'en' : 'vi';
+  const locale = localeParam(params.locale);
   return handleAccountBookingDetailAction(request, params.code, locale);
 }
 

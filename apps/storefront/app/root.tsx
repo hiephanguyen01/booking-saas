@@ -1,6 +1,7 @@
 import { useLocation, useRouteLoaderData } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
+import { localeParam } from './constants/paths';
 import { RootErrorBoundaryView } from './features/root/components/root-error-boundary';
 import { StorefrontAppShell } from './features/root/components/storefront-app-shell';
 import { StorefrontDocument } from './features/root/components/storefront-document';
@@ -48,5 +49,5 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 function localeFromPath(pathname: string): 'vi' | 'en' {
-  return pathname.split('/').filter(Boolean)[0] === 'en' ? 'en' : 'vi';
+  return localeParam(pathname.split('/').filter(Boolean)[0]);
 }

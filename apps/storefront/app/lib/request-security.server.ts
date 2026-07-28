@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { RouterContextProvider } from 'react-router';
+import { localeParam } from '~/constants/paths';
 import { storefrontAuthMiddleware } from './auth-middleware.server';
 import { storefrontEnv } from './env.server';
 import { runWithStorefrontRequestContext } from './request-context.server';
@@ -66,7 +67,7 @@ function unknownHost(): Response {
 }
 
 function platformLocale(pathname: string): 'vi' | 'en' {
-  return pathname.split('/').filter(Boolean)[0] === 'en' ? 'en' : 'vi';
+  return localeParam(pathname.split('/').filter(Boolean)[0]);
 }
 
 function platformRedirect(locale: 'vi' | 'en'): Response {

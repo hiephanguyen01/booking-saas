@@ -1,5 +1,9 @@
 import type { Locale } from '@booking/i18n';
 
+export function localeParam(value: string | undefined): Locale {
+  return value === 'en' ? 'en' : 'vi';
+}
+
 export function localeFromPath(pathname: string): Locale | null {
   const first = pathname.split('/').filter(Boolean)[0];
   return first === 'vi' || first === 'en' ? first : null;
