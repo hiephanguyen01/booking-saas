@@ -1,6 +1,6 @@
 import type { Route } from './+types/home';
 import { storefrontPaths } from '~/constants/paths';
-import { redirectLegacy } from './redirect.server';
+import { redirectLegacy } from '~/features/root/server/legacy-redirect.server';
 export function loader({ request }: Route.LoaderArgs) {
   return redirectLegacy(request, storefrontPaths.home);
 }
