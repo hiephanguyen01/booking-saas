@@ -5,7 +5,7 @@ import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-g
 import { CalendarDays, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { ReviewTime } from '~/components/review-time';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';

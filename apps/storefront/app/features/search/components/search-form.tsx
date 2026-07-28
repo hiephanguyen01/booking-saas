@@ -5,7 +5,7 @@ import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/nati
 import { cn } from '@booking/ui/lib/utils';
 import { Info, Search, Users } from 'lucide-react';
 import { Form } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { SearchDatePicker } from './search-date-picker';
 import { CategoryPicker, LocationCombobox, ModeToggle, SearchField } from './search-form-controls';
 import type { LocationOption, SearchFormVariant } from '~/features/search/lib/search-form-types';

@@ -1,7 +1,7 @@
 import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import { DetailPriceCard } from '~/components/detail-price-card';
 import { minimumConfiguredPrice } from '~/lib/booking-presentation';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
 import {
   ListingBookingDialog,

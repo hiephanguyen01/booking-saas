@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigation } from 'react-router';
-import { NsI18n, type ScopedI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, type ScopedI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { createSubmissionLock } from '~/lib/submission-lock';
 import { useLocale } from '~/hooks/use-locale';

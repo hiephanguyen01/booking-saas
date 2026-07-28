@@ -6,7 +6,7 @@ import {
   requireFlowPhaseOnly,
 } from '~/features/auth/server/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/register-password';
 export const meta = () => [

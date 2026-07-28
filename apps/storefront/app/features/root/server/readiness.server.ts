@@ -1,5 +1,5 @@
-import { storefrontEnv } from '~/lib/env.server';
-import { storefrontRedisStore } from '~/lib/redis-store.server';
+import { storefrontEnv } from '~/lib/server/env.server';
+import { storefrontRedisStore } from '~/lib/server/redis-store.server';
 
 const READY_TIMEOUT_MS = 2_000;
 

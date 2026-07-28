@@ -1,5 +1,5 @@
 import type { PlatformRootLoaderPayload } from '~/features/root/server/root-loader.server';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { PlatformBrand } from '~/features/platform-landing/components/platform-header';
 
 export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderPayload }) {

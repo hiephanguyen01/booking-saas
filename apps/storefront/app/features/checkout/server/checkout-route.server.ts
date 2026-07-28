@@ -7,7 +7,7 @@ import {
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { readRefCode } from '~/features/affiliate/server/affiliate.server';
-import { getOptionalAuth } from '~/lib/auth.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import {
   checkoutBooking,
   createBooking,
@@ -24,9 +24,9 @@ import {
   getCheckoutFlowService,
   maskCheckoutEmail,
 } from '~/features/checkout/server/checkout-flow.server';
-import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
-import { createTranslator } from '~/lib/i18n';
+import { createTranslator } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import {
   allowedPaymentFormPost,
@@ -34,7 +34,7 @@ import {
   isMockPaymentRedirect,
 } from '~/features/checkout/server/payment-redirect.server';
 import { appendRecentCookie } from '~/features/account/server/recent.server';
-import { getCurrentStorefrontTenant } from '~/lib/request-context.server';
+import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 
 const CHECKOUT_MAX_FORM_BYTES = 64 * 1024;
 

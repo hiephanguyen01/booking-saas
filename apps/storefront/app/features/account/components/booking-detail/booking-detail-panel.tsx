@@ -2,7 +2,7 @@ import type { CustomerBookingSettlementResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
 import { BookingDetailOverview } from './booking-detail-overview';
 import { ReviewDialog } from '~/features/account/components/reviews/review-dialog';

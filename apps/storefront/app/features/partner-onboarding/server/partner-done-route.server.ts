@@ -1,5 +1,5 @@
-import { storefrontEnv } from '~/lib/env.server';
-import { requireLocale } from '~/lib/i18n.server';
+import { storefrontEnv } from '~/lib/server/env.server';
+import { requireLocale } from '~/lib/server/i18n.server';
 import { requirePartnerPhase } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
 export async function loadPartnerDoneRoute(request: Request, localeParam?: string) {

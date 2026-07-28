@@ -7,7 +7,7 @@ import {
 } from '@booking/ui/components/ui/collapsible';
 import { Check, ChevronDown, Clock3, MapPin, Users } from 'lucide-react';
 import { PendingLink } from '~/components/pending-link';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { hoursBetween } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';

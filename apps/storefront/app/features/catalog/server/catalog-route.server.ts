@@ -1,4 +1,4 @@
-import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
+import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { searchListings } from '~/features/catalog/server/catalog.server';
 import { parseSearchState, type StorefrontSearchState } from '~/features/search/lib/search-state';
 

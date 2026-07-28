@@ -23,7 +23,9 @@ to the API server-to-server.
 
 ```
 Browser ──▶ RR8 loader/action (server)
-              │  app/lib/*.server.ts  →  @booking/api-client  (cookie sid/rid, zod-validated responses)
+              │  storefront app/lib/server/*.server.ts
+              │  dashboard  app/lib/*.server.ts       → @booking/api-client
+              │                                          (cookie sid/rid, zod-validated responses)
               ▼
            NestJS controller ──▶ use-case ──▶ repository-port ──▶ Prisma repository
                                      │

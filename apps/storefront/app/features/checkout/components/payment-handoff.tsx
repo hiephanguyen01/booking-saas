@@ -3,7 +3,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { createSubmissionLock } from '~/lib/submission-lock';
 
 type FormPostDestination = Extract<CheckoutDestination, { type: 'form_post' }>;

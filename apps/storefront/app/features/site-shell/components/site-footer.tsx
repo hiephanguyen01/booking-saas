@@ -1,8 +1,8 @@
 import { Link } from 'react-router';
 import { Facebook, Instagram, Mail, Music2, Phone, Youtube, type LucideIcon } from 'lucide-react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import type { StorefrontTenant } from '~/lib/tenant.server';
+import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { useLocale } from '~/hooks/use-locale';
 import { SOCIAL_PROFILES, type SocialKey } from '~/features/site-shell/lib/site-footer-fallback';
 import { TenantBrand } from './tenant-brand';

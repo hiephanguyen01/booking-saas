@@ -1,6 +1,6 @@
 import { Outlet, useOutletContext } from 'react-router';
 import { AccountFlowLayout } from '~/features/account/components/account-flow/account-flow-layout';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 
 export const handle = { standalone: true };

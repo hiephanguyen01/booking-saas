@@ -9,7 +9,7 @@
  */
 
 import { partnerResponseSchema, type PartnerApplyInput } from '@booking/contracts';
-import { apiPost, backendLogin, backendRegister } from '~/lib/api.server';
+import { apiPost, backendLogin, backendRegister } from '~/lib/server/api.server';
 
 export interface RegisterCredentials {
   email: string;

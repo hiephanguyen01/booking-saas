@@ -8,7 +8,7 @@ import { SectionCard } from '~/components/section-card';
 import { storefrontPaths } from '~/constants/paths';
 import type { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import { useLocale } from '~/hooks/use-locale';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
 export function ProviderProfilePage({

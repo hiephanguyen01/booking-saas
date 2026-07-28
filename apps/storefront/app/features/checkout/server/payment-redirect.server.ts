@@ -1,4 +1,4 @@
-import { storefrontEnv } from '~/lib/env.server';
+import { storefrontEnv } from '~/lib/server/env.server';
 import type { CheckoutDestination } from '@booking/contracts';
 
 /**

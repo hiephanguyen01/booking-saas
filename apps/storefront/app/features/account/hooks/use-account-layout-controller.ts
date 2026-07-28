@@ -3,8 +3,8 @@ import type { Locale } from '@booking/i18n';
 import { useLocation, useNavigation, useOutletContext } from 'react-router';
 import type { AccountContentSkeletonVariant } from '~/components/loading-skeletons';
 import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
-import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { StorefrontTenant } from '~/lib/tenant.server';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { isReadNavigationMethod, useMinimumPending } from '~/hooks/use-minimum-pending';
 import type { StorefrontContext } from '~/root';
 

@@ -1,4 +1,4 @@
-import type { StorefrontTenant } from '~/lib/tenant.server';
+import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { themeCss } from '~/lib/theme';
 
 /** Per-tenant brand tokens, injected once at SSR so every UI component re-tints. */

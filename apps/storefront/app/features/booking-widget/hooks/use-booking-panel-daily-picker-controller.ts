@@ -5,7 +5,7 @@ import type {
 } from '@booking/contracts';
 import { useMemo, useState } from 'react';
 import { eligibleDailyRange, normalizeDailyRange } from '~/lib/daily-range';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import {
   addDays,
   dateLabelInTz,

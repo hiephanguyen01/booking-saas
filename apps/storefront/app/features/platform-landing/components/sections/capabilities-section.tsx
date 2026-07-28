@@ -1,5 +1,5 @@
 import { CalendarRange, Check, CircleDollarSign, Globe2, Handshake } from 'lucide-react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function CapabilitiesSection() {
   const { t } = useTranslation(NsI18n.Platform);

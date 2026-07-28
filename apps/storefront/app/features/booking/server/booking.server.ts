@@ -28,8 +28,8 @@ import {
   publicPaymentOptionsSchema,
   validatePromoResponseSchema,
 } from '@booking/contracts';
-import { optionalAuthPost, publicGetData } from '~/lib/api.server';
-import { storefrontEnv } from '~/lib/env.server';
+import { optionalAuthPost, publicGetData } from '~/lib/server/api.server';
+import { storefrontEnv } from '~/lib/server/env.server';
 
 interface BookingAccessHeaders {
   accessGrant?: string;

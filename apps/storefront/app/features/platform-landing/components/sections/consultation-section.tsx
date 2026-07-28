@@ -1,4 +1,4 @@
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { PlatformConsultationForm } from '~/features/platform-landing/components/platform-consultation-form';
 
 export function ConsultationSection() {

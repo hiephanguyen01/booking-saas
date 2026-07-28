@@ -19,7 +19,7 @@ import { Link } from 'react-router';
 import { CatalogResultSkeleton } from '~/components/loading-skeletons';
 import type { loadCatalogRoute } from '~/features/catalog/server/catalog-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
 import { SearchForm } from '~/features/search/components/search-form';
 import { CatalogPagination } from './catalog-pagination';

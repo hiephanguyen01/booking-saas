@@ -7,7 +7,7 @@ import {
   type EnrichedSearchListing,
   type StorefrontSearchState,
 } from '~/features/search/lib/search-state';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { clockHoursBetween } from '~/lib/time';

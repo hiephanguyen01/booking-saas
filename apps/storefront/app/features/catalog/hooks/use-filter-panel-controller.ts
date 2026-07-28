@@ -1,6 +1,6 @@
 import type { PublicCatalogFacet } from '@booking/contracts';
 import { useSearchParams } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export interface FilterOption {
   value: string;

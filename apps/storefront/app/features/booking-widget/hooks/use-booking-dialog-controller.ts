@@ -6,7 +6,7 @@ import type {
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useFetcher } from 'react-router';
 import { normalizeDailyRange } from '~/lib/daily-range';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { packagesForMode } from '~/lib/package-options';
 import { addDays, dateLabelInTz, localToDateOnly, zonedToUtcIso } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';

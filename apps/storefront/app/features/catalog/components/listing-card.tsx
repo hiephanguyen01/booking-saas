@@ -2,7 +2,7 @@ import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicListingResponse } from '@booking/contracts';
 import { attributeSummary, formatListingLocation, formatVnd } from '~/lib/ui';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { useLocale } from '~/hooks/use-locale';
 import type {

@@ -1,8 +1,8 @@
 import { data } from 'react-router';
 import { z } from 'zod';
-import { requireAuth } from '~/lib/auth.server';
+import { requireAuth } from '~/lib/server/auth.server';
 import { cancelBooking } from '~/features/booking/server/booking.server';
-import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
 import { loadAccountBooking } from './booking-history.server';

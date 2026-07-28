@@ -10,7 +10,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { CalendarDays, ChevronDown, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useLocale } from '~/hooks/use-locale';
 import { ModeToggle } from './search-form-controls';
 import type { DateRange } from '~/features/search/lib/search-form-types';

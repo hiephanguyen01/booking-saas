@@ -1,5 +1,5 @@
 import type { AttributeField } from '@booking/contracts';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';

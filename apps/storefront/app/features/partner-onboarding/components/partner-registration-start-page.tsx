@@ -1,5 +1,5 @@
 import { Form, useActionData, useOutletContext } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 import { AuthSplit, FormHeading } from './partner-auth-layout';
 import { EmailField, FormAlert, LoginPrompt, PrimaryButton } from './partner-form-controls';

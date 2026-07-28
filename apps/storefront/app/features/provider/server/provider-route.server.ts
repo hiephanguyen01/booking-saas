@@ -1,5 +1,5 @@
 import { publicPartnerProfileResponseSchema } from '@booking/contracts';
-import { publicGetData } from '~/lib/api.server';
+import { publicGetData } from '~/lib/server/api.server';
 import { fetchListings } from '~/features/catalog/server/catalog.server';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
 

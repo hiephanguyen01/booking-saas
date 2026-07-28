@@ -1,8 +1,8 @@
 import { favoriteToggleResponseSchema, toggleFavoriteInputSchema } from '@booking/contracts';
 import { data } from 'react-router';
-import { apiPost } from '~/lib/api.server';
-import { getOptionalAuth } from '~/lib/auth.server';
-import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { apiPost } from '~/lib/server/api.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 
 const CLIENT_MUTATION_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;

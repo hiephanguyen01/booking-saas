@@ -7,7 +7,7 @@ import {
 import type { PublicListingResponse } from '@booking/contracts';
 import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
 import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 /** The home page's lead rail of listings. */
 export function TopListingsSection({

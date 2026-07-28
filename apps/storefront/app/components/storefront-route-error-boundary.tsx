@@ -1,6 +1,6 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { localeParam, storefrontPaths } from '~/constants/paths';
-import { createTranslator } from '~/lib/i18n';
+import { createTranslator } from '@booking/i18n';
 
 interface StorefrontRouteErrorBoundaryProps {
   error: unknown;

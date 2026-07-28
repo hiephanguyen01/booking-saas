@@ -12,7 +12,8 @@ app/
   components/             cross-feature UI primitives only
   hooks/                  cross-feature hooks only
   constants/              paths and shared display constants
-  lib/                    infrastructure + genuinely shared request/pure helpers
+  lib/                    genuinely shared pure helpers (no JSX)
+    server/               cross-feature server infrastructure/request helpers
 ```
 
 **Every feature uses one uniform layout** — `features/<name>/{components, hooks, server, lib}`:
@@ -46,7 +47,8 @@ route-config/navigation exceptions; storefront currently has no equivalent excep
 ## What's different from the dashboard
 
 - **Multi-tenant by `Host` header.** The tenant is resolved per-request from the hostname via a backend
-  call in `app/lib/tenant.server.ts` (not from a login). One storefront serves every tenant's domain;
+  call in `app/lib/server/tenant.server.ts` (not from a login). One storefront serves every tenant's
+  domain;
   an unmapped host serves the BookingOS platform landing without creating a tenant session.
 - **Bilingual.** Every page nests under a `/:locale` (`vi` | `en`) layout backed by `@booking/i18n`;
   unlocalized legacy paths are kept as redirect route modules for inbound links. The dashboard, by
@@ -71,17 +73,18 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
 ## BFF & data
 
 Server-only domain/BFF modules live under `app/features/<name>/server/`; only cross-feature
-infrastructure and genuinely shared request helpers remain in `app/lib/*.server.ts`. Loaders/actions
-call the backend server-to-server. **Never fetch the backend from the browser** and never value-import
-a `*.server.ts` module into browser code (type-only imports are allowed). Feature-local hooks live in
-`features/<name>/hooks/`, not `components/`; feature-local pure helpers/types live in `lib/`. Forms use
+infrastructure and genuinely shared request helpers remain in `app/lib/server/*.server.ts`.
+Loaders/actions call the backend server-to-server. **Never fetch the backend from the browser** and
+never value-import a `*.server.ts` module into browser code (type-only imports are allowed).
+Feature-local hooks live in `features/<name>/hooks/`, not `components/`; feature-local pure
+helpers/types live in `lib/`. Neither shared nor feature-local `lib/` contains JSX. Forms use
 `GenericForm` with a zod schema from `@booking/contracts`
 (see [`../../docs/conventions.md`](../../docs/conventions.md) → Forms).
 
-Runtime environment reads are centralized in `app/lib/env.server.ts`. Production startup fails when
-the API, Redis, session secret, dashboard URL or payment-origin allowlist is missing/unsafe. Unsafe
-HTTP methods pass through the root same-origin guard before auth; `/healthz` and `/readyz` are exact
-operational exceptions and must never resolve a tenant or session.
+Runtime environment reads are centralized in `app/lib/server/env.server.ts`. Production startup fails
+when the API, Redis, session secret, dashboard URL or payment-origin allowlist is missing/unsafe.
+Unsafe HTTP methods pass through the root same-origin guard before auth; `/healthz` and `/readyz` are
+exact operational exceptions and must never resolve a tenant or session.
 
 Image upload works: `app/routes/uploads.presign.tsx` is a same-origin presign proxy that replays the
 auth cookie to the backend `POST /uploads/presign`, then the browser PUTs bytes straight to MinIO/S3.

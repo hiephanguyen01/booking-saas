@@ -1,5 +1,5 @@
 import { LegalPage } from '~/features/account/components/legal/legal-page';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function TermsPage() {
   const { t } = useTranslation(NsI18n.Account);

@@ -7,7 +7,7 @@ import {
   requireFlowPhaseOnly,
 } from '~/features/auth/server/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 export const meta = ({ params }: Route.MetaArgs) => [
   { title: params.locale === 'en' ? 'New password' : 'Mật khẩu mới' },

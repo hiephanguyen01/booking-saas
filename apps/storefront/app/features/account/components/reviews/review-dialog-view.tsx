@@ -12,7 +12,7 @@ import { Textarea } from '@booking/ui/components/ui/textarea';
 import { cn } from '@booking/ui/lib/utils';
 import { ImagePlus, LoaderCircle, Star, Upload, X } from 'lucide-react';
 import { useRef, type DragEvent } from 'react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { SelectedReviewMedia } from '~/features/account/hooks/use-review-media';
 
 export function ReviewDialogView({

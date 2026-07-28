@@ -1,7 +1,7 @@
 import type { FavoriteTargetKind } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Heart } from 'lucide-react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useFavorite } from '~/features/favorites/hooks/use-favorite';
 
 /** Standalone favorite heart for detail pages (listing + group headers). */

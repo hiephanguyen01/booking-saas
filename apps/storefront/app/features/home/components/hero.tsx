@@ -1,7 +1,7 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import { SearchForm, type LocationOption } from '~/features/search/components/search-form';
-import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { StorefrontTenant } from '~/lib/tenant.server';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import type { StorefrontTenant } from '~/lib/server/tenant.server';
 
 /**
  * Studio-vertical hero. Copy + image come from `theme_config.hero` (§16.2) with

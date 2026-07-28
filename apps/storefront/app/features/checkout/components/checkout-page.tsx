@@ -1,5 +1,5 @@
 import type { CheckoutPageControllerProps } from '~/features/checkout/hooks/use-checkout-page-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { BookingColumn } from './booking-column';
 import { CheckoutForm } from './checkout-form';
 import { MemberBanner } from './member-banner';

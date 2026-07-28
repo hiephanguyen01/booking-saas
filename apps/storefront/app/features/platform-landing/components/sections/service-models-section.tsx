@@ -1,5 +1,5 @@
 import { SERVICE_MODELS } from '~/features/platform-landing/lib/platform-content';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function ServiceModelsSection() {
   const { t } = useTranslation(NsI18n.Platform);

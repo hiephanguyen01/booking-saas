@@ -6,7 +6,7 @@ import { DetailPriceCard } from '~/components/detail-price-card';
 import { ListingRatingSummary } from '~/components/listing-rating-summary';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import { clockHoursBetween } from '~/lib/time';

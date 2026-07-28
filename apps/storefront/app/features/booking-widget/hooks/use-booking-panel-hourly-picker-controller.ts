@@ -6,7 +6,7 @@ import {
   slotInterval,
   toggleContiguousSlot,
 } from '~/features/booking-widget/lib/slot-selection';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { dateLabelInTz, dateOnlyToLocal, localToDateOnly, timeInTz } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
 import type { SetSearchParams } from '~/features/booking-widget/lib/booking-panel-types';

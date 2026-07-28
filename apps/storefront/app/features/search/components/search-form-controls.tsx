@@ -14,7 +14,7 @@ import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ListingTypeGlyph } from '~/components/listing-type-glyph';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { SearchMode } from '~/features/search/lib/search-state';
 import type { SearchFormVariant } from '~/features/search/lib/search-form-types';
 import { useLocationComboboxController } from '~/features/search/hooks/use-location-combobox-controller';

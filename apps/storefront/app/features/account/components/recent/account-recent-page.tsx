@@ -2,7 +2,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Clock3 } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router';
 import type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';

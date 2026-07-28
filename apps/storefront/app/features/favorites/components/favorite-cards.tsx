@@ -6,7 +6,7 @@ import type {
   EnrichedSearchListing,
   StorefrontSearchState,
 } from '~/features/search/lib/search-state';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useFavorite } from '~/features/favorites/hooks/use-favorite';
 
 /** ListingCard with a wired, persisted favorite heart (home / catalog / related / account). */

@@ -8,13 +8,13 @@ import {
   resolveVisitorId,
   trackReferral,
 } from '~/features/affiliate/server/affiliate.server';
-import { getOptionalAuth } from '~/lib/auth.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import { fetchListingTypes } from '~/features/catalog/server/catalog.server';
-import { resolveLocale } from '~/lib/i18n.server';
-import { getOptionalStorefrontTenant } from '~/lib/request-context.server';
+import { resolveLocale } from '~/lib/server/i18n.server';
+import { getOptionalStorefrontTenant } from '~/lib/server/request-context.server';
 import { canonicalUrl, localizedAlternates, requestPublicUrl } from '~/lib/seo';
-import { storefrontEnv } from '~/lib/env.server';
-import type { StorefrontTenant } from '~/lib/tenant.server';
+import { storefrontEnv } from '~/lib/server/env.server';
+import type { StorefrontTenant } from '~/lib/server/tenant.server';
 
 export interface TenantRootLoaderPayload {
   kind: 'tenant';

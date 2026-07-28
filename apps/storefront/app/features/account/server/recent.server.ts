@@ -1,5 +1,5 @@
 import { createCookie } from 'react-router';
-import { storefrontEnv } from '~/lib/env.server';
+import { storefrontEnv } from '~/lib/server/env.server';
 
 /**
  * "My bookings" for guests without an account (§8.6): a signed, httpOnly cookie

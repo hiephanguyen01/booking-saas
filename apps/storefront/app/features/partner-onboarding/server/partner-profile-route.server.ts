@@ -1,12 +1,12 @@
 import { partnerOnboardingProfileSchema } from '@booking/contracts';
 import { redirect } from 'react-router';
-import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
+import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
-import { requireAuth } from '~/lib/auth.server';
-import { requireLocale } from '~/lib/i18n.server';
-import { readJsonRequestBody } from '~/lib/json-request.server';
+import { requireAuth } from '~/lib/server/auth.server';
+import { requireLocale } from '~/lib/server/i18n.server';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { applyAsPartner } from '~/features/partner-onboarding/server/partner.server';
-import { getCurrentStorefrontTenant } from '~/lib/request-context.server';
+import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 import { partnerApplyPayloadFor } from '~/features/partner-onboarding/server/partner-onboarding-domain';
 import {
   failedPartnerOnboarding,

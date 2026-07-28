@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigation, useSubmit } from 'react-router';
 import { z } from 'zod';
 import type { AuthActionData } from '~/lib/auth-types';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { AuthFormError, AuthPasswordInput, AuthSubmitButton } from './auth-form-controls';
 
 export function NewPasswordForm({

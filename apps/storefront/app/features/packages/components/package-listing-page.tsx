@@ -8,7 +8,7 @@ import { ListingRatingSummary } from '~/components/listing-rating-summary';
 import { RelatedListingsSkeleton, ReviewsSectionSkeleton } from '~/components/loading-skeletons';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import type { loadListingRoute } from '~/features/listing/server/listing-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';

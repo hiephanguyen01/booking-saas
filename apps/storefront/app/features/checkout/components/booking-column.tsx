@@ -8,7 +8,7 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
 import { SectionCard } from '~/components/section-card';
 import { cancellationCutoffParts, type CancellationPolicyLine } from '~/lib/cancellation-policy';
-import { NsI18n, type ScopedI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, type ScopedI18n, useTranslation } from '@booking/i18n';
 import { dateLabelInTz, dateOnlyInTz, nightsBetween, timeInTz } from '~/lib/time';
 import { formatListingLocation } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';

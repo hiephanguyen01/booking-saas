@@ -2,7 +2,7 @@ import {
   FeatureUnavailableState,
   PageHeading,
 } from '~/features/account/components/shared/account-primitives';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function AccountMessagesPage() {
   const { t } = useTranslation(NsI18n.Account);

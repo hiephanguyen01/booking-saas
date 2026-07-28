@@ -186,10 +186,18 @@ for (const app of apps) {
 
   for (const file of sourceFiles(appDirectory)) {
     const appRelativePath = relative(appDirectory, file).split('\\').join('/');
+    const isLibModule =
+      appRelativePath.startsWith('lib/') || /^features\/[^/]+\/lib\//.test(appRelativePath);
     const isSharedComponent = appRelativePath.startsWith('components/');
     const isStorefrontFeatureComponent =
       app === 'apps/storefront' && /^features\/[^/]+\/components\//.test(appRelativePath);
     const isComponentFile = isSharedComponent || isStorefrontFeatureComponent;
+
+    if (isLibModule && appRelativePath.endsWith('.tsx')) {
+      failures.push(
+        `${app}/app/${appRelativePath}: lib không chứa JSX; dùng .ts hoặc chuyển UI về components/`,
+      );
+    }
 
     if (isComponentFile) {
       if (/(^|\/)use-[^/]+\.tsx?$/.test(appRelativePath)) {
@@ -223,13 +231,18 @@ for (const app of apps) {
     if (!appRelativePath.includes('.server.')) continue;
     if (appRelativePath === 'entry.server.tsx') continue;
 
+    const sharedServerCorrectlyPlaced =
+      app === 'apps/storefront'
+        ? appRelativePath.startsWith('lib/server/')
+        : appRelativePath.startsWith('lib/');
     const correctlyPlaced =
-      appRelativePath.startsWith('lib/') ||
+      sharedServerCorrectlyPlaced ||
       /^features\/[^/]+\/server\//.test(appRelativePath) ||
       appRelativePath.startsWith('routes/');
     if (!correctlyPlaced) {
+      const sharedServerDirectory = app === 'apps/storefront' ? 'lib/server/' : 'lib/';
       failures.push(
-        `${app}/app/${appRelativePath}: *.server.ts phải ở lib/ hoặc features/<name>/server/`,
+        `${app}/app/${appRelativePath}: *.server.ts phải ở ${sharedServerDirectory} hoặc features/<name>/server/`,
       );
     }
   }

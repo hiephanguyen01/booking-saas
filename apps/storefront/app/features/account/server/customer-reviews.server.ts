@@ -5,9 +5,9 @@ import {
   type CustomerReviewItem,
 } from '@booking/contracts';
 import { data } from 'react-router';
-import { apiGet, apiPost } from '~/lib/api.server';
-import { requireAuth } from '~/lib/auth.server';
-import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { apiGet, apiPost } from '~/lib/server/api.server';
+import { requireAuth } from '~/lib/server/auth.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
 

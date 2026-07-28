@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { affiliateResponseSchema, trackReferralResponseSchema } from '@booking/contracts';
 import { createCookie } from 'react-router';
-import { apiPost, publicPost } from '~/lib/api.server';
-import { storefrontEnv } from '~/lib/env.server';
+import { apiPost, publicPost } from '~/lib/server/api.server';
+import { storefrontEnv } from '~/lib/server/env.server';
 
 /**
  * Server-only affiliate attribution (§15.1). The storefront reads `?ref=CODE`,

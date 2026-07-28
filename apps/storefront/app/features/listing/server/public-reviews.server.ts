@@ -4,8 +4,8 @@ import {
   type ReviewListResponse,
   type ReviewSummary,
 } from '@booking/contracts';
-import { publicGetData } from '~/lib/api.server';
-import { optionalData } from '~/lib/optional-data.server';
+import { publicGetData } from '~/lib/server/api.server';
+import { optionalData } from '~/lib/server/optional-data.server';
 import { DEFAULT_PUBLIC_REVIEW_LIMIT, PUBLIC_REVIEW_MAX_LIMIT } from '~/lib/public-reviews';
 
 export interface PublicReviewData {

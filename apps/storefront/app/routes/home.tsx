@@ -1,6 +1,6 @@
 import { TenantHome } from '~/features/home/components/tenant-home';
-import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
-import { getOptionalStorefrontTenant } from '~/lib/request-context.server';
+import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
+import { getOptionalStorefrontTenant } from '~/lib/server/request-context.server';
 import { loadHomeCatalog } from '~/features/home/server/home-data.server';
 import type { Route } from './+types/home';
 

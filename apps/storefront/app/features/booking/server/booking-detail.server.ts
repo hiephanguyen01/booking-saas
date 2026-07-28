@@ -1,7 +1,7 @@
 import { customerPaymentMethodSchema } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
-import { getOptionalAuth } from '~/lib/auth.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import {
   cancelBooking,
   checkoutBooking,
@@ -16,10 +16,10 @@ import {
   getCheckoutFlowService,
   maskCheckoutEmail,
 } from '~/features/checkout/server/checkout-flow.server';
-import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
 import { storefrontPaths } from '~/constants/paths';
-import { rethrowCriticalDataError } from '~/lib/optional-data.server';
+import { rethrowCriticalDataError } from '~/lib/server/optional-data.server';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,

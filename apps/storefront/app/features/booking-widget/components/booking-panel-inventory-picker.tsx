@@ -4,7 +4,7 @@ import { Input } from '@booking/ui/components/ui/input';
 import type { InventorySelection } from '~/features/booking-widget/lib/inventory-selection';
 import { inventoryWindow } from '~/features/booking-widget/lib/inventory-selection';
 import type { SetSearchParams } from '~/features/booking-widget/lib/booking-panel-types';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { addDays } from '~/lib/time';
 import { PickerLabel } from './booking-panel-presentation';
 

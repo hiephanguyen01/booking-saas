@@ -5,7 +5,7 @@ import {
 import { Expand, ImageIcon } from 'lucide-react';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { useStudioGalleryController } from '~/hooks/use-studio-gallery-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 const TILE_COUNT = 6;
 

@@ -27,8 +27,16 @@ function walk(directory) {
 
 const storefrontRoot = join(root, 'apps/storefront/app');
 const storefrontFiles = walk(storefrontRoot).filter((file) => sourceExtensions.has(extname(file)));
-const directFetchAllowlist = new Set(['apps/storefront/app/lib/readiness.server.ts']);
-const directFormDataAllowlist = new Set(['apps/storefront/app/lib/form-request.server.ts']);
+const apiServerPath = 'apps/storefront/app/lib/server/api.server.ts';
+const envServerPath = 'apps/storefront/app/lib/server/env.server.ts';
+const formRequestServerPath = 'apps/storefront/app/lib/server/form-request.server.ts';
+const requestSecurityServerPath =
+  'apps/storefront/app/features/root/server/request-security.server.ts';
+const tenantServerPath = 'apps/storefront/app/lib/server/tenant.server.ts';
+const directFetchAllowlist = new Set([
+  'apps/storefront/app/features/root/server/readiness.server.ts',
+]);
+const directFormDataAllowlist = new Set([formRequestServerPath]);
 let tenantResolutionCallSites = 0;
 
 for (const file of storefrontFiles) {
@@ -36,26 +44,24 @@ for (const file of storefrontFiles) {
   const source = readFileSync(file, 'utf8');
 
   if (/\bfetch\s*\(/.test(source) && !directFetchAllowlist.has(path)) {
-    failures.push(`${path}: direct fetch is forbidden; use apps/storefront/app/lib/api.server.ts`);
+    failures.push(`${path}: direct fetch is forbidden; use ${apiServerPath}`);
   }
   if (/\brequest\.formData\s*\(/.test(source) && !directFormDataAllowlist.has(path)) {
-    failures.push(
-      `${path}: direct formData parsing is forbidden; use apps/storefront/app/lib/form-request.server.ts`,
-    );
+    failures.push(`${path}: direct formData parsing is forbidden; use ${formRequestServerPath}`);
   }
-  if (source.includes('process.env') && !path.endsWith('/lib/env.server.ts')) {
+  if (source.includes('process.env') && path !== envServerPath) {
     failures.push(`${path}: read runtime environment through env.server.ts`);
   }
-  if (/http:\/\/localhost:(3000|5174)/.test(source) && !path.endsWith('/lib/env.server.ts')) {
+  if (/http:\/\/localhost:(3000|5174)/.test(source) && path !== envServerPath) {
     failures.push(`${path}: production-sensitive localhost fallback`);
   }
-  if (path.endsWith('/lib/request-auth.server.ts')) {
+  if (path.endsWith('/request-auth.server.ts')) {
     failures.push(`${path}: use request-context.server.ts; compatibility shims are forbidden`);
   }
   const tenantResolutionCalls = source.match(/\bresolveStorefront\s*\(/g) ?? [];
-  if (path.endsWith('/lib/request-security.server.ts')) {
+  if (path === requestSecurityServerPath) {
     tenantResolutionCallSites += tenantResolutionCalls.length;
-  } else if (!path.endsWith('/lib/tenant.server.ts') && tenantResolutionCalls.length > 0) {
+  } else if (path !== tenantServerPath && tenantResolutionCalls.length > 0) {
     failures.push(
       `${path}: resolve storefront only in request-security.server.ts; use the request context`,
     );
@@ -73,7 +79,7 @@ for (const file of storefrontFiles) {
 
 if (tenantResolutionCallSites !== 1) {
   failures.push(
-    `apps/storefront/app/lib/request-security.server.ts: expected exactly one resolveStorefront() call, found ${tenantResolutionCallSites}`,
+    `${requestSecurityServerPath}: expected exactly one resolveStorefront() call, found ${tenantResolutionCallSites}`,
   );
 }
 

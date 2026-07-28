@@ -7,8 +7,8 @@ import { StorefrontAppShell } from './features/root/components/storefront-app-sh
 import { StorefrontDocument } from './features/root/components/storefront-document';
 import { buildRootMeta } from './features/root/lib/root-meta';
 import { loadStorefrontRoot } from './features/root/server/root-loader.server';
-import { storefrontRequestMiddleware } from './lib/request-security.server';
-import { storefrontCspNonceContext } from './lib/security-context.server';
+import { storefrontRequestMiddleware } from '~/features/root/server/request-security.server';
+import { storefrontCspNonceContext } from '~/lib/server/security-context.server';
 
 export type { StorefrontContext } from './features/root/lib/storefront-context';
 

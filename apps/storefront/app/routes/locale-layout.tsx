@@ -2,8 +2,8 @@ import { favoriteRefsResponseSchema } from '@booking/contracts';
 import { Outlet, useOutletContext } from 'react-router';
 import { FavoritesProvider } from '~/features/favorites/components/favorites-context';
 import { EMPTY_FAVORITE_REFS, needsFavoriteRefs } from '~/features/favorites/lib/favorite-refs';
-import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/api.server';
-import { getOptionalAuth } from '~/lib/auth.server';
+import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/server/api.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import type { Route } from './+types/locale-layout';
 import type { StorefrontContext } from '~/root';
 

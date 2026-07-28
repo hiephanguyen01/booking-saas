@@ -5,7 +5,7 @@ import {
   FavoritesContext,
   type FavoritesContextValue,
 } from '~/features/favorites/lib/favorites-context';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { LoginRequiredDialog } from './login-required-dialog';
 import { useFavoritesController } from '~/features/favorites/hooks/use-favorites-controller';
 

@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch, type Path } from 'react-hook-form';
 import { useFetcher, useNavigation, useSubmit } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type {
   loadPartnerProfileRoute,
   submitPartnerProfileRoute,

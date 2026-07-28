@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@booking/ui/lib/utils';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 const MARKET_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const DAY_MS = 86_400_000;

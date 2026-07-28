@@ -2,7 +2,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { ReceiptText, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router';
 import { AccountResultsSkeleton } from '~/components/loading-skeletons';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { AccountPanel, PageHeading } from '~/features/account/components/shared/account-primitives';
 import { BookingHistoryCard } from '~/features/account/components/bookings/booking-history-card';

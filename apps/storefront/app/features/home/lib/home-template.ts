@@ -1,6 +1,6 @@
 import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
 import type { LocationOption } from '~/features/search/components/search-form';
-import type { StorefrontTenant } from '~/lib/tenant.server';
+import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { StudioHome } from '~/features/home/components/home';
 
 /**

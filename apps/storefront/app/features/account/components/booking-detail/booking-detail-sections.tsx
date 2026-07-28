@@ -3,7 +3,7 @@ import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Button } from '@booking/ui/components/ui/button';
 import { Info, Star } from 'lucide-react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import {
   bookingDetailState,

@@ -4,7 +4,7 @@ import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@booking/ui/components/ui/toggle-group';
 import { CalendarDays, ChevronDown } from 'lucide-react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { dateOnlyToLocal, timeInTz } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
 import { PickerLabel } from './booking-panel-presentation';

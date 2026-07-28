@@ -3,7 +3,7 @@ import { NavLink } from 'react-router';
 import type { StorefrontContext } from '~/root';
 import { SiteFooter } from '~/features/site-shell/components/site-footer';
 import { SiteHeader } from '~/features/site-shell/components/site-header';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { ListingTypeGlyph } from '~/components/listing-type-glyph';
 

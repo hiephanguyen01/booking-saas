@@ -10,7 +10,7 @@ import { fetchAvailability } from '~/features/booking/server/booking.server';
 import { fetchListing, fetchQuote } from '~/features/catalog/server/catalog.server';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
 import { datesInDailyRange, eligibleDailyRange } from '~/lib/daily-range';
-import { rethrowCriticalDataError } from '~/lib/optional-data.server';
+import { rethrowCriticalDataError } from '~/lib/server/optional-data.server';
 import { selectedPackageForListing } from '~/lib/package-options';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 import { addDays, todayInTz, zonedToUtcIso } from '~/lib/time';

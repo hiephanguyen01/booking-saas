@@ -1,4 +1,4 @@
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function PricingSection() {
   const { t } = useTranslation(NsI18n.Platform);

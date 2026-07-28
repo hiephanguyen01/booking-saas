@@ -8,8 +8,8 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { Camera } from 'lucide-react';
 import type { LocationOption } from '~/features/search/components/search-form';
-import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { StorefrontTenant } from '~/lib/tenant.server';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import type { StorefrontTenant } from '~/lib/server/tenant.server';
 import { BrandCarousel } from './brand-carousel';
 import { StudioHero } from './hero';
 import { RecommendedSection } from './recommended-section';

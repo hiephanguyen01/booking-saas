@@ -1,5 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { HomeLocationKey } from '~/features/home/lib/home-listing-presentation';
 
 /** Location filter tabs for the home recommendation catalog. */

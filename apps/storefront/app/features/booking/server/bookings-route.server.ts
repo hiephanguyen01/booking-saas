@@ -7,9 +7,9 @@ import { data } from 'react-router';
 import { z } from 'zod';
 import { readRecentCodes } from '~/features/account/server/recent.server';
 import { requestBookingOtp } from '~/features/booking/server/booking.server';
-import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/api.server';
-import { getOptionalAuth } from '~/lib/auth.server';
-import { storefrontEnv } from '~/lib/env.server';
+import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/server/api.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
+import { storefrontEnv } from '~/lib/server/env.server';
 import { errorStatus } from '~/lib/http-status';
 
 export async function loadBookingsRoute({ request }: { request: Request }) {

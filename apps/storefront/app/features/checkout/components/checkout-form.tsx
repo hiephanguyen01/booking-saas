@@ -13,7 +13,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { CircleAlert, type LucideIcon } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { SectionCard } from '~/components/section-card';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
 import {
   useCheckoutFormController,

@@ -1,7 +1,7 @@
 import { bookingResponseSchema, type BookingResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { z } from 'zod';
-import { apiGet } from '~/lib/api.server';
+import { apiGet } from '~/lib/server/api.server';
 import { fetchBookingByCode } from '~/features/booking/server/booking.server';
 import {
   bookingMatchesFilter,

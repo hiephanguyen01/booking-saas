@@ -9,7 +9,7 @@ import {
 import { Mail } from 'lucide-react';
 import { useOutletContext } from 'react-router';
 import { useOtpFormController } from '~/features/auth/hooks/use-otp-form-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 import { AuthSplit, FormHeading } from './partner-auth-layout';
 import { FormAlert, PrimaryButton } from './partner-form-controls';

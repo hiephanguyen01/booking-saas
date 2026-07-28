@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { bookingAccessGrantSchema, type CustomerPaymentMethod } from '@booking/contracts';
 import { createCookie } from 'react-router';
-import { storefrontEnv } from '~/lib/env.server';
-import { storefrontRedisStore, type RedisJsonStore } from '~/lib/redis-store.server';
+import { storefrontEnv } from '~/lib/server/env.server';
+import { storefrontRedisStore, type RedisJsonStore } from '~/lib/server/redis-store.server';
 
 const TTL_SECONDS = 30 * 60;
 const MAX_ACTIVE_FLOWS = 5;

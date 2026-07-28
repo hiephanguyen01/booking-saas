@@ -1,7 +1,7 @@
 import type { QuoteResponse, ValidatePromoResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
 import type { checkoutAmounts } from '~/features/checkout/lib/checkout-presentation';
 

@@ -1,6 +1,6 @@
 import { redirect } from 'react-router';
-import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
-import { isLocale, localeCookie } from '~/lib/i18n.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
+import { isLocale, localeCookie } from '~/lib/server/i18n.server';
 import { safeRedirectPath } from '~/lib/safe-redirect';
 
 const MAX_LOCALE_FORM_BYTES = 4 * 1024;

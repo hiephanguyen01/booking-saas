@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useNavigation } from 'react-router';
 import type { AuthActionData } from '~/lib/auth-types';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { usePasswordVisibility } from '~/hooks/use-password-visibility';
 
 function messageFor(

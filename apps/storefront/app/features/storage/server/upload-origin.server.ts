@@ -1,4 +1,4 @@
-import { storefrontEnv } from './env.server';
+import { storefrontEnv } from '~/lib/server/env.server';
 
 /**
  * Accept only presigned upload URLs whose origin is explicitly configured for

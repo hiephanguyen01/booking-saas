@@ -1,11 +1,11 @@
 import { authChallengeResponseSchema, type AuthChallengeResponse } from '@booking/contracts';
 import { redirect } from 'react-router';
-import { publicPost } from '~/lib/api.server';
+import { publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
-import { getOptionalAuth } from '~/lib/auth.server';
-import { storefrontEnv } from '~/lib/env.server';
-import { requireLocale } from '~/lib/i18n.server';
-import { getCurrentStorefrontTenant } from '~/lib/request-context.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
+import { storefrontEnv } from '~/lib/server/env.server';
+import { requireLocale } from '~/lib/server/i18n.server';
+import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 import {
   inferredPartnerName,
   partnerRegistrationEntry,

@@ -1,5 +1,5 @@
 import { listAdministrativeWardsQuerySchema } from '@booking/contracts';
-import { loadAdministrativeWards } from '~/lib/administrative-divisions.server';
+import { loadAdministrativeWards } from '~/lib/server/administrative-divisions.server';
 import type { Route } from './+types/administrative-wards';
 
 export async function loader({ request }: Route.LoaderArgs) {

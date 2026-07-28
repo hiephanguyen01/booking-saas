@@ -11,7 +11,7 @@ import { Copy, EllipsisVertical, Flag } from 'lucide-react';
 import { ContentReportDialog } from '~/features/content-reports/components/content-report-dialog';
 import { FavoriteHeartButton } from '~/features/favorites/components/favorite-heart-button';
 import { useHeaderActionsController } from '~/hooks/use-header-actions-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function HeaderActions({
   title,

@@ -1,6 +1,6 @@
 import { formatCurrency, type Locale } from '@booking/i18n';
 import { Camera, Check, Construction } from 'lucide-react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import {
   cancellationCutoffParts,
   cancellationPolicyLines,

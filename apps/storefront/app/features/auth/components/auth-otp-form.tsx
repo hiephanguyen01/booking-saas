@@ -6,7 +6,7 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@booking/ui/components/ui/input-otp';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { AuthFormError, AuthSubmitButton } from './auth-form-controls';
 import {
   useOtpFormController,

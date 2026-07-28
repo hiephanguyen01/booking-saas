@@ -7,7 +7,7 @@ import {
   type RefreshLockObservation,
 } from './refresh-lock.server';
 import { storefrontEnv } from './env.server';
-import { safeRedirectPath } from './safe-redirect';
+import { safeRedirectPath } from '~/lib/safe-redirect';
 
 const TTL_SECONDS = 60 * 60 * 24 * 30;
 const PREFIX = 'bookingos:storefront:session:';

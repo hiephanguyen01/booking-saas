@@ -11,7 +11,7 @@ import {
 } from '@booking/ui/components/ui/dialog';
 import { Flag, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useContentReportDialogController } from '~/features/content-reports/hooks/use-content-report-dialog-controller';
 
 export function ContentReportDialog({

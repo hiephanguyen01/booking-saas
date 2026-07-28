@@ -1,6 +1,6 @@
 import { customerFavoriteListResponseSchema } from '@booking/contracts';
-import { apiGet } from '~/lib/api.server';
-import { requireAuth } from '~/lib/auth.server';
+import { apiGet } from '~/lib/server/api.server';
+import { requireAuth } from '~/lib/server/auth.server';
 import { storefrontPaths } from '~/constants/paths';
 
 export async function loadAccountFavoritesRoute(request: Request, locale: 'vi' | 'en') {

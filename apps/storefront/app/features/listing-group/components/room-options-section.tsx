@@ -12,7 +12,7 @@ import {
 import { Building2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { SectionCard } from '~/components/section-card';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { roomAvailabilityState } from '~/features/booking-widget/lib/slot-selection';

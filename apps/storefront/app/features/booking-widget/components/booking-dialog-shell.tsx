@@ -19,7 +19,7 @@ import {
 } from '@booking/ui/components/ui/drawer';
 import { X } from 'lucide-react';
 import { useRef, type ReactElement, type ReactNode, type RefObject } from 'react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useBookingDialogShellController } from '~/features/booking-widget/hooks/use-booking-dialog-shell-controller';
 
 type BookingDialogShellBaseProps = {

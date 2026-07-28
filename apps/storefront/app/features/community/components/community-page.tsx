@@ -2,7 +2,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Camera, Sparkles, UsersRound } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 
 export function CommunityPage() {

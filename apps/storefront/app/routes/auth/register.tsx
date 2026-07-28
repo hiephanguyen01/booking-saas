@@ -4,7 +4,7 @@ import { SocialButtons } from '~/features/auth/components/auth-social-buttons';
 import { StartForm } from '~/features/auth/components/auth-start-form';
 import { startRegistrationAction } from '~/features/auth/server/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/register';

@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle2, LoaderCircle } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export interface ConsultationLead {
   name: string;

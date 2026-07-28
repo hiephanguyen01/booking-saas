@@ -2,7 +2,7 @@ import type { PublicListingTypeResponse } from '@booking/contracts';
 import { Suspense } from 'react';
 import { Await, useSearchParams } from 'react-router';
 import { SearchBarSkeleton } from '~/components/loading-skeletons';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { SearchForm, type LocationOption } from './search-form';
 import { parseSearchState } from '~/features/search/lib/search-state';
 

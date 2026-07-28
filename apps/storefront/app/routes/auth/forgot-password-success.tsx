@@ -2,7 +2,7 @@ import { useOutletContext } from 'react-router';
 import { AuthFrame } from '~/features/auth/components/auth-frame';
 import { SuccessState } from '~/features/auth/components/auth-success-state';
 import { requireFlowPhaseOnly } from '~/features/auth/server/auth-routes.server';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/forgot-password-success';
 export const meta = ({ params }: Route.MetaArgs) => [

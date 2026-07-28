@@ -18,17 +18,17 @@ import {
   type AuthFlowPhase,
   type AuthFlowView,
 } from '~/features/auth/server/auth-flow.server';
-import { backendLogin, backendLogout, publicPost } from '~/lib/api.server';
-import { getOptionalAuth } from '~/lib/auth.server';
+import { backendLogin, backendLogout, publicPost } from '~/lib/server/api.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import {
   formRequestFailureStatus,
   readFormRequestBody,
   type FormRequestBody,
-} from '~/lib/form-request.server';
-import { requireLocale } from '~/lib/i18n.server';
-import { suppressStorefrontSessionCommit } from '~/lib/request-context.server';
+} from '~/lib/server/form-request.server';
+import { requireLocale } from '~/lib/server/i18n.server';
+import { suppressStorefrontSessionCommit } from '~/lib/server/request-context.server';
 import { safeRedirectPath } from '~/lib/safe-redirect';
-import { createUserSession, destroyUserSession } from '~/lib/session.server';
+import { createUserSession, destroyUserSession } from '~/lib/server/session.server';
 import type { AuthActionData } from '~/lib/auth-types';
 
 const AUTH_MAX_FORM_BYTES = 16 * 1024;

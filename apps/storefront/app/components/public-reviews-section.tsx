@@ -6,7 +6,7 @@ import { ChevronDown, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { usePublicReviewsSectionController } from '~/hooks/use-public-reviews-section-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { RatingStars } from './rating-stars';
 import { ReviewTime } from './review-time';
 import { SectionCard } from './section-card';

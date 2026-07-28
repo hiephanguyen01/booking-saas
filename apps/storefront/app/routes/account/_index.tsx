@@ -1,5 +1,5 @@
 import { redirect } from 'react-router';
-import { requireLocale } from '~/lib/i18n.server';
+import { requireLocale } from '~/lib/server/i18n.server';
 import { storefrontPaths } from '~/constants/paths';
 import type { Route } from './+types/_index';
 

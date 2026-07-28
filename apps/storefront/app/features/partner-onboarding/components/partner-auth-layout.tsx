@@ -1,6 +1,6 @@
 import { cn } from '@booking/ui/lib/utils';
 import type { ReactNode } from 'react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function PromoPanel({ tenantName }: { tenantName: string }) {
   const { t } = useTranslation([NsI18n.Auth, NsI18n.Common]);

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createCookie } from 'react-router';
-import { storefrontEnv } from '~/lib/env.server';
-import { storefrontRedisStore } from '~/lib/redis-store.server';
+import { storefrontEnv } from '~/lib/server/env.server';
+import { storefrontRedisStore } from '~/lib/server/redis-store.server';
 
 const FLOW_TTL_SECONDS = 30 * 60;
 const PREFIX = 'bookingos:storefront:auth-flow:';

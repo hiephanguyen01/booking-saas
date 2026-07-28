@@ -12,7 +12,7 @@ import {
 } from '~/features/booking-widget/components/booking-dialog-steps';
 import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
 import { useBookingDialogController } from '~/features/booking-widget/hooks/use-booking-dialog-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 

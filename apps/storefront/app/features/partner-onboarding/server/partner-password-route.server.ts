@@ -4,11 +4,11 @@ import {
   type AuthFlowCompleteResponse,
 } from '@booking/contracts';
 import { z } from 'zod';
-import { backendLogin, publicPost } from '~/lib/api.server';
+import { backendLogin, publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
-import { requireLocale } from '~/lib/i18n.server';
-import { suppressStorefrontSessionCommit } from '~/lib/request-context.server';
-import { createUserSession } from '~/lib/session.server';
+import { requireLocale } from '~/lib/server/i18n.server';
+import { suppressStorefrontSessionCommit } from '~/lib/server/request-context.server';
+import { createUserSession } from '~/lib/server/session.server';
 import {
   failedPartnerFormData,
   failedPartnerOnboarding,

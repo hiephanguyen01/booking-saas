@@ -1,6 +1,6 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { SectionCard } from '~/components/section-card';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
 
 const MAX_RELATED = 4;

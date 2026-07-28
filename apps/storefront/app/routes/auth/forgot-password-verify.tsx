@@ -4,7 +4,7 @@ import { AuthFrame } from '~/features/auth/components/auth-frame';
 import { OtpForm } from '~/features/auth/components/auth-otp-form';
 import { requireFlowView, verifyAction } from '~/features/auth/server/auth-routes.server';
 import type { AuthActionData } from '~/lib/auth-types';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { StorefrontContext } from '~/root';
 export const meta = ({ params }: Route.MetaArgs) => [
   { title: params.locale === 'en' ? 'Verify reset code' : 'Xác thực mã đặt lại' },

@@ -10,7 +10,7 @@ import {
   formRequestFailureStatus,
   readFormRequestBody,
   type FormRequestBody,
-} from '~/lib/form-request.server';
+} from '~/lib/server/form-request.server';
 
 const PARTNER_MAX_FORM_BYTES = 16 * 1024;
 

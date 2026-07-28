@@ -1,6 +1,6 @@
 import { ArrowDownRight, Check } from 'lucide-react';
 import { AFTER_ITEMS, BEFORE_ITEMS } from '~/features/platform-landing/lib/platform-content';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function TransformationSection() {
   const { t } = useTranslation(NsI18n.Platform);

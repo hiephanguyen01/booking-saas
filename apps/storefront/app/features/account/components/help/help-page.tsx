@@ -8,7 +8,7 @@ import { Mail, MapPin, Phone } from 'lucide-react';
 import { useOutletContext } from 'react-router';
 import { AccountPanel, PageHeading } from '~/features/account/components/shared/account-primitives';
 import type { AccountOutletContext } from '~/features/account/hooks/use-account-layout-controller';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 export function HelpPage() {
   const { tenant } = useOutletContext<AccountOutletContext>();

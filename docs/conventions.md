@@ -132,7 +132,8 @@ app/
   components/             UI primitives shared by multiple features/areas
   hooks/                  hooks shared by multiple features/areas
   constants/              paths and shared typed display constants
-  lib/                    infrastructure and genuinely shared helpers
+  lib/                    genuinely shared helpers (no JSX)
+    server/               storefront cross-feature server infrastructure/request helpers
 ```
 
 - A route file stays a thin adapter. Page UI and support declarations belong to its owner feature;
@@ -142,21 +143,24 @@ app/
 - Feature code is split by role, not accumulated in a flat directory. Storefront permits only
   `{components,hooks,server,lib}` at feature level; dashboard uses `{components,server,lib}` plus its
   documented optional `constants.ts`. Omit empty folders. Account components may group one level
-  deeper by page.
+  deeper by page. Storefront cross-feature server infrastructure lives in `app/lib/server/`; owned
+  BFF/domain modules live in the feature's `server/`. Shared and feature-local `lib/` contain no JSX.
 - Only route modules import generated relative `./+types/*`. Features, components, hooks, and
   constants never import from `routes/`; browser-reachable code may only type-import from
   `*.server.ts`.
 - Both apps use `~/` for cross-directory imports and `./sibling` within one directory. Route URLs come
   from `~/constants/paths`, never ad-hoc string construction.
 - ESLint enforces route boundaries and React Hooks rules. `pnpm check:frontend-structure` enforces the
-  six buckets, feature/server placement, hook placement outside `components/`, and storefront's
-  semantic route-only constraints; it runs in CI and in the repository full static check.
+  six buckets, storefront `lib/server/`, feature/server placement, JSX-free `lib/`, hook placement
+  outside `components/`, and storefront's semantic route-only constraints; it runs in CI and in the
+  repository full static check.
 
 - Each route exports `loader` (server data), `action` (server mutation), and a default component
   receiving `loaderData` / `actionData`. Protected routes resolve identity in a root `middleware` +
   area guards, not ad-hoc per route.
 - **BFF: never fetch the backend from the browser.** All authenticated data goes through
-  loaders/actions calling `@booking/api-client` (via each app's `app/lib/api.server.ts`:
+  loaders/actions calling `@booking/api-client` (via storefront
+  `app/lib/server/api.server.ts` and dashboard `app/lib/api.server.ts`:
   `apiGet`/`apiPost`/`apiPatch`/`apiPut`/`apiDelete` + `unwrapApiResult`/`requireData`/`unwrapList`).
   The session cookie is `httpOnly`. Browser-reachable modules may only `import type` from `*.server`
   files. See [ADR 0001](./decisions/0001-opaque-sessions-over-jwt.md).

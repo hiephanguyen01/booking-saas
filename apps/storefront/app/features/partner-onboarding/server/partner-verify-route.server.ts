@@ -6,9 +6,9 @@ import {
   type AuthOtpVerifiedResponse,
 } from '@booking/contracts';
 import { data, redirect } from 'react-router';
-import { publicPost } from '~/lib/api.server';
+import { publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
-import { requireLocale } from '~/lib/i18n.server';
+import { requireLocale } from '~/lib/server/i18n.server';
 import {
   failedPartnerFormData,
   failedPartnerOnboarding,

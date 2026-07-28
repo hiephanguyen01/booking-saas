@@ -2,7 +2,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { ChevronLeft, ChevronRight, MessageSquareText } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { AccountResultsSkeleton } from '~/components/loading-skeletons';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { AccountPanel, PageHeading } from '~/features/account/components/shared/account-primitives';
 import { ReviewBookingCard } from '~/features/account/components/reviews/review-booking-card';
 import { ReviewDialog } from '~/features/account/components/reviews/review-dialog';

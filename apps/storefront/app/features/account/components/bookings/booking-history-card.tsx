@@ -3,7 +3,7 @@ import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays, Clock3 } from 'lucide-react';
 import { Link } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
 import {

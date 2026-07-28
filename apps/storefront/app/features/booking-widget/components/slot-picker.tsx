@@ -27,7 +27,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown, Clock3, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { PendingLink } from '~/components/pending-link';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';

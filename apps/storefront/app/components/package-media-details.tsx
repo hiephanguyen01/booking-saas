@@ -1,7 +1,7 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import { Aperture, Clock3, FileImage, Images, WalletCards } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { packageDetails, packageDurationHours } from '~/lib/package-details';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { formatVnd } from '~/lib/ui';

@@ -3,9 +3,9 @@ import {
   presignUploadResponseSchema,
   type PresignUploadResponse,
 } from '@booking/contracts';
-import { apiFailureStatus, publicPost } from '~/lib/api.server';
-import { readJsonRequestBody } from '~/lib/json-request.server';
-import { allowedStorageUploadUrl } from '~/lib/upload-origin.server';
+import { apiFailureStatus, publicPost } from '~/lib/server/api.server';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
+import { allowedStorageUploadUrl } from '~/features/storage/server/upload-origin.server';
 import { uploadRouteJson } from './upload-route-response.server';
 
 const MAX_PRESIGN_REQUEST_BYTES = 16 * 1024;

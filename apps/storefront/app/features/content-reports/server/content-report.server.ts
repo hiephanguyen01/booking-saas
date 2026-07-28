@@ -4,8 +4,8 @@ import {
   type ContentReportTarget,
 } from '@booking/contracts';
 import { data } from 'react-router';
-import { apiPost } from '~/lib/api.server';
-import { getOptionalAuth } from '~/lib/auth.server';
+import { apiPost } from '~/lib/server/api.server';
+import { getOptionalAuth } from '~/lib/server/auth.server';
 import { errorStatus } from '~/lib/http-status';
 
 export async function submitContentReport(

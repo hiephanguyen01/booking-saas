@@ -1,6 +1,6 @@
 import { data } from 'react-router';
-import { requireAuth } from '~/lib/auth.server';
-import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { requireAuth } from '~/lib/server/auth.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { storefrontPaths } from '~/constants/paths';
 import { parseBookingHistoryFilter } from '~/features/account/lib/booking-history';
 import { submitBookingCancellation } from '~/features/account/server/booking-cancellation.server';

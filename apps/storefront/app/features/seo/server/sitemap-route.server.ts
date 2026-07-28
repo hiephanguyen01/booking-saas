@@ -1,5 +1,5 @@
 import { fetchListingTypes, searchListings } from '~/features/catalog/server/catalog.server';
-import { getOptionalStorefrontTenant } from '~/lib/request-context.server';
+import { getOptionalStorefrontTenant } from '~/lib/server/request-context.server';
 import { requestPublicUrl } from '~/lib/seo';
 
 const SITEMAP_PAGE_SIZE = 48;

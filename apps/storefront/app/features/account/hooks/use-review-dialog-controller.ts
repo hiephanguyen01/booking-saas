@@ -1,7 +1,7 @@
 import type { CustomerReviewItem } from '@booking/contracts';
 import { useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { createSubmissionLock } from '~/lib/submission-lock';
 import { useReviewMedia } from './use-review-media';
 

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { SectionCard } from '~/components/section-card';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 
 const LINK_CLASS =
   'min-h-5 rounded-sm text-sm leading-5 font-medium text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none';

@@ -10,7 +10,7 @@ import type {
 } from '~/features/booking/server/bookings-route.server';
 import { storefrontPaths } from '~/constants/paths';
 import { useLocale } from '~/hooks/use-locale';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 import { dateLabelInTz, timeInTz } from '~/lib/time';
 

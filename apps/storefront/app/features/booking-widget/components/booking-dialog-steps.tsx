@@ -5,7 +5,7 @@ import { Spinner } from '@booking/ui/components/ui/spinner';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw } from 'lucide-react';
 import { AvailabilitySkeleton } from '~/components/loading-skeletons';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useBookingDialogStepsController } from '~/features/booking-widget/hooks/use-booking-dialog-steps-controller';

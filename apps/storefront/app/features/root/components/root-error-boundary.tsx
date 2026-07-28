@@ -4,7 +4,7 @@ import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { Button } from '@booking/ui/components/ui/button';
 import { isRouteErrorResponse, Link } from 'react-router';
 import { TenantBrand } from '~/features/site-shell/components/tenant-brand';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { RootLoaderPayload } from '~/features/root/server/root-loader.server';
 import { SuspendedNotice } from './suspended-notice';

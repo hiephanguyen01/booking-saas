@@ -1,12 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import type { RouterContextProvider } from 'react-router';
 import { localeParam } from '~/constants/paths';
-import { storefrontAuthMiddleware } from './auth-middleware.server';
-import { storefrontEnv } from './env.server';
-import { runWithStorefrontRequestContext } from './request-context.server';
-import { storefrontCspNonceContext } from './security-context.server';
-import { tenantUnavailableResponse } from './tenant-availability';
-import { resolveStorefront } from './tenant.server';
+import { storefrontAuthMiddleware } from '~/lib/server/auth-middleware.server';
+import { storefrontEnv } from '~/lib/server/env.server';
+import { runWithStorefrontRequestContext } from '~/lib/server/request-context.server';
+import { storefrontCspNonceContext } from '~/lib/server/security-context.server';
+import { resolveStorefront } from '~/lib/server/tenant.server';
+import { tenantUnavailableResponse } from '~/lib/tenant-availability';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);

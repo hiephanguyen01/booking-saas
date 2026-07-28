@@ -13,7 +13,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-group';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { CircleAlert } from 'lucide-react';
-import { NsI18n, useTranslation } from '~/lib/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
 import type { AccountBookingViewModel } from '~/features/account/lib/booking-history';
 import { CancellationPolicyList } from '~/features/account/components/shared/account-primitives';
 import { useCancelBookingDialogController } from '~/features/account/hooks/use-cancel-booking-dialog-controller';

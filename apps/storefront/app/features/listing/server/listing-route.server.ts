@@ -6,12 +6,12 @@ import {
   type PublicListingDetailResponse,
 } from '@booking/contracts';
 import { submitContentReport } from '~/features/content-reports/server/content-report.server';
-import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
+import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { fetchAvailability } from '~/features/booking/server/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '~/features/catalog/server/catalog.server';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
 import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
-import { optionalData } from '~/lib/optional-data.server';
+import { optionalData } from '~/lib/server/optional-data.server';
 import { selectedPackageForListing } from '~/lib/package-options';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
 import { addDays, todayInTz, zonedToUtcIso } from '~/lib/time';
