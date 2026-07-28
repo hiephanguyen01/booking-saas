@@ -531,9 +531,10 @@ Quyết định ban đầu chỉ move module có đúng một consumer feature. 
   `affiliate`, `auth-flow`, `booking`, `catalog`, `checkout-flow`, `partner`,
   `payment-redirect`, `public-reviews`, `recent`.
 - [x] Sửa toàn bộ import nội bộ của file vừa move sang `~/lib/*` khi cần hạ tầng.
-- [x] `app/lib` còn 22 `*.server.ts`, chỉ gồm API/session/auth context, Redis/env,
-  request parsing/security, tenant/i18n, administrative divisions và upload concern.
-- [x] Verify không còn `*.server.ts` nằm ngoài `features/*/server` hoặc `app/lib`.
+- [x] Correction `4257988d`: `readiness` + `request-security` về root, `upload-origin` về storage;
+  20 cross-feature infrastructure/request module còn lại về `app/lib/server/`.
+- [x] Xoá facade `app/lib/i18n.tsx`; consumer import trực tiếp `@booking/i18n`.
+- [x] Verify top-level `app/lib/` không còn `*.server.ts`/`.tsx`; structure gate chặn regression.
 
 ---
 
@@ -1213,6 +1214,13 @@ hook trong shared components, đồng thời chặn tương tự trong feature c
 cố ý đã xác nhận gate đỏ đúng lý do; tree thật đạt React Doctor 100/100 và full static check lần cuối
 đạt Turbo 24/24, module graph 17 modules, RLS 46/46.
 
+**Correction sau review (`4257988d`):** audit lại 23 top-level server module: ba module có owner đã về
+`features/{root,storage}/server/`, 20 shared infrastructure/request module về `app/lib/server/`.
+Facade không JSX `app/lib/i18n.tsx` đã xoá và toàn bộ consumer import trực tiếp `@booking/i18n`.
+Structure gate chặn `lib/*.server.ts` và mọi `.tsx` trong shared/feature `lib`; security gate giữ
+nguyên policy với path mới. Probe âm bắt đúng hai vi phạm. React Doctor changed-scope không có
+diagnostic mới; full static check đạt Turbo 24/24, module graph 17 module và RLS 46/46.
+
 ---
 
 ## Quyết định đã chốt (2026-07-28)
@@ -1222,6 +1230,9 @@ cố ý đã xác nhận gate đỏ đúng lý do; tree thật đạt React Doct
 3. **Phase 6.1** — listing giữ CSS branch; controlled packages dùng JS chọn đúng một primitive vì
    Dialog/Drawer portal. Ngoại lệ đã duyệt sau khi runtime chứng minh CSS mount song song tạo 2 overlay
    + 2 focus trap.
+4. **Storefront `lib/`** — pure/shared helper ở top-level; shared server infrastructure ở
+   `lib/server/`; server có owner ở feature; `lib/` không chứa JSX; i18n import trực tiếp
+   `@booking/i18n`.
 
 ## Thứ tự KHÔNG được đảo
 

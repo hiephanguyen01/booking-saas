@@ -92,9 +92,9 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
 
   Review sau đó chốt lại ranh giới: shared **không đồng nghĩa hạ tầng**. Thêm 9 BFF/domain module đã rời
   `app/lib` về owner feature: `affiliate`, `auth-flow`, `booking`, `catalog`, `checkout-flow`,
-  `partner`, `payment-redirect`, `public-reviews`, `recent`. `app/lib` hiện còn 22 `*.server.ts`, chỉ là
-  hạ tầng/shared request concern (API, session/auth context, Redis, env, request parsing/security,
-  tenant/i18n, administrative divisions).
+  `partner`, `payment-redirect`, `public-reviews`, `recent`. Correction `4257988d` sau Phase 13 đã
+  hoàn tất ranh giới còn lại: server có owner về feature; 20 shared infrastructure/request concern về
+  `app/lib/server/`; top-level `app/lib/` chỉ còn pure/shared helper và không chứa JSX.
 - **Task 3.5 ban đầu** làm phẳng sub-feature. Review của chủ dự án chỉ ra việc đó quá tay với account:
   `account/components` nay được group lại theo trang (`booking-detail`, `bookings`, `favorites`,
   `messages`, `profile`, `recent`, `reviews`, `legal`, `account-shell`, `account-flow`, `shared`).
@@ -160,7 +160,8 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
   `features/root/server`, set-locale action body về root server; xoá support module cuối cùng khỏi
   `routes/`.
 - **8.4 (`b5a9b4cd`)** — action/loader body của favorite toggle, sitemap, hai upload presign và
-  readiness probe về `features/{favorites,seo,storage}/server` hoặc `lib/readiness.server.ts`.
+  readiness probe rời route. Correction `4257988d` sau đó đặt readiness đúng owner tại
+  `features/root/server/readiness.server.ts`.
   Resource route không có default component giả.
 - **8.5** — audit verification-only: 0 route→route import ngoài `./+types/*`; hai coupling mục tiêu đã
   được xoá trong 8.2/8.3 nên không tạo empty commit.
@@ -243,6 +244,20 @@ bốn specifier đó sang `~/`, không đổi code component hay runtime.
   áp cùng luật cho `features/*/components` của storefront. Probe file tạm đã làm gate đỏ đúng hai
   diagnostic rồi được xoá.
 
+### Correction sau Phase 13 — chuẩn hoá `app/lib` (`4257988d`)
+
+- Audit lại toàn bộ 23 top-level `*.server.ts`: `readiness` + `request-security` thuộc root,
+  `upload-origin` thuộc storage; 20 file còn lại thật sự là shared server infrastructure/request
+  concern.
+- Ba file có owner đã về `features/{root,storage}/server/`; 20 file shared về `app/lib/server/`.
+  Top-level `app/lib/` giờ không còn `*.server.ts`.
+- Xoá `app/lib/i18n.tsx`: file chỉ re-export `@booking/i18n`, không có JSX và tạo một facade dư. 150
+  consumer import trực tiếp package source of truth; runtime/type contract không đổi.
+- Structure gate nay chặn top-level storefront `lib/*.server.ts` và mọi `.tsx` trong shared/feature
+  `lib/`. Probe tạm đã làm gate đỏ đúng hai diagnostic rồi được xoá.
+- Security gate được đổi đúng path allowlist/owner mới; policy direct fetch, form parsing, env và tenant
+  resolution giữ nguyên.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -274,7 +289,10 @@ React Doctor Task 11.1 scan 4 file đạt **100/100**. Task 11.2 scan 7 file bá
 Phase 12 scan đúng diff chưa commit so với `HEAD` đạt **100/100**, không có diagnostic. Lint storefront
 vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5. Correction `df1090cb` đạt React Doctor
 **100/100**; full static check chạy lại trên correction đạt Turbo 24/24, module graph 17 modules và RLS
-46/46.
+46/46. Correction `4257988d` chạy React Doctor v0.9.2 với `--scope changed --base HEAD`: **không có
+diagnostic mới** (tool hiển thị project score 74/100); storefront Turbo đạt 15/15, security,
+structure/no-tests gate đều xanh. Full static check toàn repo chạy lại sau correction đạt Turbo
+24/24, module graph 17 module không cycle và RLS 46/46.
 
 Runtime Phase 12: bật API + storefront dev, request `/vi` với host chưa map tenant trả HTTP 200,
 `<title>` platform đúng và SSR đủ `models`, `capabilities`, `workflow`, `demos`, `pricing`, `faq`,
@@ -463,6 +481,9 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Phase 11.2** — duyệt gỡ sạch mock; UI production không đổi vì mock vốn tắt ở production.
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
+- **Storefront `lib/` convention** — pure/shared helper ở top-level; cross-feature server
+  infrastructure ở `lib/server/`; server có owner ở `features/<name>/server/`; `lib/` không chứa JSX.
+  Import i18n trực tiếp từ `@booking/i18n`, không dựng facade nội bộ.
 
 ## Trạng thái Phase 5–13
 
@@ -482,6 +503,8 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
   17 modules không cycle và RLS 46/46.
 - Correction sau review đã chuyển bốn shared hook còn sót khỏi `app/components` sang `app/hooks`; gate
   mới chặn cả tên file `use-*` và exported hook trong components.
+- Correction `4257988d` đã đưa 20 shared server module về `app/lib/server`, ba server module có owner
+  về feature, xoá facade `lib/i18n.tsx`, và mở rộng structure/security gate theo convention mới.
 
 ## Việc đầu tiên
 
