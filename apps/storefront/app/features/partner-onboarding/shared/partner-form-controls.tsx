@@ -15,7 +15,7 @@ import { Link, useNavigation } from 'react-router';
 import { isFormNavigationPending } from '~/features/auth/ui/otp-submission-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { usePasswordVisibility } from '~/lib/use-password-visibility';
+import { usePasswordVisibility } from '~/hooks/use-password-visibility';
 
 export function EmailField({ defaultValue, error }: { defaultValue?: string; error?: string }) {
   const { t } = useTranslation(NsI18n.Auth);

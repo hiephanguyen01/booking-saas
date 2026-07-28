@@ -5,7 +5,7 @@ import { normalizeDailyRange } from '~/lib/daily-range';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { packagesForMode } from '~/lib/package-options';
 import { addDays, dateLabelInTz, localToDateOnly, zonedToUtcIso } from '~/lib/time';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { loader as bookingDataLoader } from '~/routes/listing-group-booking-data';
 import {
   atomicHourlySlots,

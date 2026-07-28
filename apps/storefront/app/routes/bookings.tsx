@@ -19,7 +19,7 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { readRecentCodes } from '~/lib/recent.server';
 import { dateLabelInTz, timeInTz } from '~/lib/time';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { Route } from './+types/bookings';
 
 export function meta() {

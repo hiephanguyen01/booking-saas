@@ -8,7 +8,7 @@ import {
 } from '~/features/listing-group/listing-group-utils';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { dateLabelInTz, dateOnlyToLocal, localToDateOnly, timeInTz } from '~/lib/time';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { SetSearchParams } from './booking-panel-types';
 
 export function useBookingPanelHourlyPickerController({

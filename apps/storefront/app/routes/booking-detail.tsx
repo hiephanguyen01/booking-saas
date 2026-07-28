@@ -8,7 +8,7 @@ import { useBookingDetailController } from '~/features/booking/use-booking-detai
 import { PaymentHandoff } from '~/features/checkout/components/payment-handoff';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { Route } from './+types/booking-detail';
 
 export function meta() {

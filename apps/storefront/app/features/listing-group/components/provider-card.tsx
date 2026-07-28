@@ -5,7 +5,7 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { RoomTrust } from '~/features/listing-group/listing-group-types';
 import { Link } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 
 /**
  * The partner behind the group's rooms.

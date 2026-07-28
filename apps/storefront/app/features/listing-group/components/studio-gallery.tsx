@@ -4,7 +4,7 @@ import {
 } from '@booking/ui/components/media/media-viewer-dialog';
 import { Expand, ImageIcon } from 'lucide-react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { useStudioGalleryController } from './use-studio-gallery-controller';
 
 const TILE_COUNT = 6;

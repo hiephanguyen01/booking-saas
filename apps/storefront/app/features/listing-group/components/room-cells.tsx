@@ -10,7 +10,7 @@ import { PendingLink } from '~/components/pending-link';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { hoursBetween } from '~/lib/time';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { BookingMode, RoomOption } from '~/features/listing-group/listing-group-types';
 import {
   checkoutHref,

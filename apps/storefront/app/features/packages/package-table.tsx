@@ -15,7 +15,7 @@ import { useRef, useState } from 'react';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
-import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { formatVnd } from '~/lib/ui';
 import { packageDurationHours, packageDetails } from './package-data';
 import { PackageMediaDetails } from './package-media-details';

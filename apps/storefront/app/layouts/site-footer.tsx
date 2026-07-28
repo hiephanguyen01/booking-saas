@@ -3,7 +3,7 @@ import { Facebook, Instagram, Mail, Music2, Phone, Youtube, type LucideIcon } fr
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontTenant } from '~/lib/tenant.server';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import { SOCIAL_PROFILES, type SocialKey } from './site-footer-fallback';
 import { TenantBrand } from './tenant-brand';
 

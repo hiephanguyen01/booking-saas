@@ -5,7 +5,7 @@ import { cn } from '@booking/ui/lib/utils';
 import { ChevronDown, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { RatingStars } from './rating-stars';
 import { ReviewTime } from './review-time';
 import { SectionCard } from './section-card';

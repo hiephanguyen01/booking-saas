@@ -7,7 +7,7 @@ import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatVnd } from '~/lib/ui';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 
 /** The query keys the promo form must carry through so the quote stays intact. */
 const CHECKOUT_KEYS = ['listing', 'mode', 'start', 'end', 'qty'] as const;

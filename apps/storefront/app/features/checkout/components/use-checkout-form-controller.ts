@@ -16,7 +16,7 @@ import { useNavigation } from 'react-router';
 import { NsI18n, type ScopedI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { createSubmissionLock } from '~/lib/submission-lock';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import { isCheckoutNavigation } from './checkout-submission-state';
 
 export type CheckoutContactFieldModel = {

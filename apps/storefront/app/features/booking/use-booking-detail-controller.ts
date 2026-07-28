@@ -1,5 +1,5 @@
 import { useFetcher, useNavigation, useOutletContext, useSearchParams } from 'react-router';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { StorefrontContext } from '~/root';
 import type { loader as paymentStatusLoader } from '~/routes/booking-payment-status';
 import type { Route } from '../../routes/+types/booking-detail';

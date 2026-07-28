@@ -6,7 +6,7 @@ import { ListingCard } from '~/features/catalog/components/listing-card';
 import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { storefrontPaths } from '~/constants/paths';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { Route } from '../../routes/+types/provider';
 
 export function ProviderProfilePage({

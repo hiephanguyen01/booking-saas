@@ -11,7 +11,7 @@ import { cancellationCutoffParts, type CancellationPolicyLine } from '~/lib/canc
 import { NsI18n, type ScopedI18n, useTranslation } from '~/lib/i18n';
 import { dateLabelInTz, dateOnlyInTz, nightsBetween, timeInTz } from '~/lib/time';
 import { formatListingLocation } from '~/lib/ui';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { checkoutAmounts } from '~/features/checkout/checkout-presentation';
 import { PricePanel } from './price-panel';
 import { PromoForm } from './promo-form';

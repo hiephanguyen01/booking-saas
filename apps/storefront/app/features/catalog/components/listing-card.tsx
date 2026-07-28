@@ -4,7 +4,7 @@ import type { PublicListingResponse } from '@booking/contracts';
 import { attributeSummary, formatListingLocation, formatVnd } from '~/lib/ui';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { ListingCardPresentation, ListingFavoriteControl } from './listing-card.types';
 import { RatingStars } from '~/components/rating-stars';
 

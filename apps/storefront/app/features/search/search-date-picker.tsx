@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/
 import { CalendarDays, ChevronDown, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import { ModeToggle, modeHint } from './search-form-controls';
 import type { DateRange } from './search-form-types';
 import type { SearchMode } from './search-state';

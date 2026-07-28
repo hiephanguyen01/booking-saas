@@ -13,7 +13,7 @@ import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useNavigation } from 'react-router';
 import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { usePasswordVisibility } from '~/lib/use-password-visibility';
+import { usePasswordVisibility } from '~/hooks/use-password-visibility';
 
 function messageFor(
   error: string | undefined,

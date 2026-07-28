@@ -8,7 +8,7 @@ import { useSearchParams } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
 import { packagesForMode } from '~/lib/package-options';
 import { nightsBetween } from '~/lib/time';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import { getInventorySelection } from './booking-panel-inventory-picker';
 
 const BOOKABLE_MODES: AvailabilityMode[] = ['hourly', 'daily', 'inventory'];

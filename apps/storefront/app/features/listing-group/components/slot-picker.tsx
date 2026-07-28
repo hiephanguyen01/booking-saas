@@ -30,7 +30,7 @@ import { PendingLink } from '~/components/pending-link';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { RoomOption } from '~/features/listing-group/listing-group-types';
 import { useSlotPickerController } from './use-slot-picker-controller';
 

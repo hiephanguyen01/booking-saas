@@ -4,7 +4,7 @@ import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-g
 import { Button } from '@booking/ui/components/ui/button';
 import { Info, Star } from 'lucide-react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import {
   bookingDetailState,
   type AccountBookingViewModel,

@@ -5,7 +5,7 @@ import type { AccountContentSkeletonVariant } from '~/components/loading-skeleto
 import type { AccountMenuSummary } from '~/features/account/account-menu';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { StorefrontTenant } from '~/lib/tenant.server';
-import { isReadNavigationMethod, useMinimumPending } from '~/lib/use-minimum-pending';
+import { isReadNavigationMethod, useMinimumPending } from '~/hooks/use-minimum-pending';
 import type { StorefrontContext } from '~/root';
 
 export interface AccountLayoutLoaderData {

@@ -13,7 +13,7 @@ import { Building2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/listing-group-types';
 import { roomAvailabilityState } from '~/features/listing-group/listing-group-utils';
 import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';

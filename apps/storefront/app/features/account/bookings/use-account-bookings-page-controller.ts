@@ -3,7 +3,7 @@ import type { Locale } from '@booking/i18n';
 import { useState } from 'react';
 import { useLocation, useNavigation } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
-import { isReadNavigationMethod, useMinimumPending } from '~/lib/use-minimum-pending';
+import { isReadNavigationMethod, useMinimumPending } from '~/hooks/use-minimum-pending';
 import {
   parseBookingHistoryFilter,
   type AccountBookingViewModel,

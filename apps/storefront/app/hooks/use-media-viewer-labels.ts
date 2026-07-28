@@ -1,5 +1,5 @@
 import type { MediaViewerLabels } from '@booking/ui/components/media/media-viewer-dialog';
-import { NsI18n, useTranslation } from './i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export function useMediaViewerLabels(): MediaViewerLabels {
   const { t } = useTranslation(NsI18n.Common);

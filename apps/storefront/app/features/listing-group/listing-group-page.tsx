@@ -6,7 +6,7 @@ import { PublicReviewsSection } from '~/components/public-reviews-section';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { formatListingLocation, googleMapsHref } from '~/lib/ui';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import { clockHoursBetween } from '~/lib/time';
 import type { StorefrontContext } from '~/root';
 import { SearchForm } from '~/features/search/search-form';

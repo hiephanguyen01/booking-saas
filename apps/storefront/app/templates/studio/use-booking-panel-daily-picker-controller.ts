@@ -13,7 +13,7 @@ import {
   localToDateOnly,
   zonedToUtcIso,
 } from '~/lib/time';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { SetSearchParams } from './booking-panel-types';
 
 export type BookingPanelDateRange = { from: Date | undefined; to?: Date | undefined };

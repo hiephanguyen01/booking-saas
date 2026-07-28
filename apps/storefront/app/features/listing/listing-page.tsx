@@ -9,7 +9,7 @@ import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, googleMapsHref } from '~/lib/ui';
-import { useLocale } from '~/lib/use-locale';
+import { useLocale } from '~/hooks/use-locale';
 import type { StorefrontContext } from '~/root';
 import type { Route } from '../../routes/+types/listing';
 import { BookingPanel } from '~/templates/studio/booking-panel';
