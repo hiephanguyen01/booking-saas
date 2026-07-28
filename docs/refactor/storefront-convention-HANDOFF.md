@@ -31,6 +31,10 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 | 11 | `features/` shape không đồng nhất | 3 | ✅ |
 | 12 | ESLint thiếu `eslint-plugin-react-hooks` | 5 | ❌ |
 
+Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-level support declaration,
+1 support module không phải route (`legacy/redirect.server.ts`) và 11 import route→route ngoài
+`+types`. Phase 8 cũ chỉ liệt kê 3 route béo nên đã được mở rộng; xem quyết định ở §5.
+
 ---
 
 ## 2. Đã làm gì (Phase 1–4)
@@ -168,8 +172,8 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 
 - Phase 4 (cắt `features → routes`) đã hoàn tất trước Phase 5 đúng như yêu cầu; giờ mới được bật rule.
 - Phase 5 (hàng rào) nên trước 6–12, để mọi phase sau tự động được canh.
-- `check:frontend-structure` chỉ nối vào CI ở **Phase 8**, vì bất biến "route ≤ 120 dòng" còn đỏ 3 chỗ
-  (`routes/bookings.tsx` 235 dòng, `community.tsx`, `account/help.tsx`) cho tới lúc đó.
+- `check:frontend-structure` chỉ nối vào CI ở **Phase 8**. LOC gate hiện bắt
+  `routes/bookings.tsx`; Phase 8 còn mở rộng gate để bắt support declaration/module mà LOC không thấy.
 
 ### Quyết định đã chốt với chủ dự án (đừng hỏi lại)
 
@@ -184,6 +188,10 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Task 3.4 bổ sung** — module BFF/domain shared vẫn phải có owner feature; `app/lib` chỉ giữ hạ tầng
   và shared request concern. Cross-feature import type/read là hợp lệ, không phải lý do để để domain
   module ở `app/lib`.
+- **Route convention (chốt 2026-07-28)** — lấy convention được ghi trong dashboard làm chuẩn, không
+  copy nợ hiện hữu của dashboard. `routes/` chỉ chứa file được đăng ký trong route config và chỉ có
+  React Router exports mỏng; UI/helper/handler/constants/response builder về owner feature. Storefront
+  không có ngoại lệ support file trong `routes/`; `legacy/redirect.server.ts` phải rời khỏi đây.
 
 ### Quy trình đang dùng
 
@@ -199,7 +207,8 @@ Phase 5 — dựng hàng rào theo đúng thứ tự:
    được import `routes`, chỉ route module được import `+types`.
 2. Bật `eslint-plugin-react-hooks`, sửa các vi phạm thật nếu có mà không đổi hành vi.
 3. Thêm `check:frontend-structure`; allowlist feature level 2 là
-   `components|hooks|server|lib`. Chưa nối route-length gate vào CI trước Phase 8.
+   `components|hooks|server|lib`. Phần gate route-only áp cho storefront; chưa nối vào CI trước
+   Phase 8 vì audit mở rộng vẫn còn nợ route.
 
 ---
 
@@ -289,6 +298,8 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Phase 7** — duyệt gộp 3 page shell, chấp nhận 3 thay đổi pixel ở trang packages:
   `bg-muted/40`→`/30`, `py-6`→`py-4`, `MapPin size-5`→`size-4`; landmark `<main>` cho cả 3.
 - **Phase 11.2** — duyệt gỡ sạch mock; UI production không đổi vì mock vốn tắt ở production.
+- **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
+  về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
 ## Việc đầu tiên
 
@@ -300,8 +311,8 @@ Làm Phase 5 theo thứ tự:
 3. Thêm `check:frontend-structure`, với allowlist feature level 2 là
    `components|hooks|server|lib`.
 
-Phase 4 bắt buộc trước Phase 5 và đã hoàn tất. Không nối route-length gate vào CI trước Phase 8 vì
-còn route dài cần Phase 8 xử lý.
+Phase 4 bắt buộc trước Phase 5 và đã hoàn tất. Không nối route-only gate vào CI trước Phase 8; Phase 8
+đã được mở rộng theo audit 65 route file / 21 support declaration / 11 route→route import.
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.

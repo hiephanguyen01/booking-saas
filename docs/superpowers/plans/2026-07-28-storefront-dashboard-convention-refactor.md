@@ -845,7 +845,9 @@ for (const app of APPS) {
     if (!ok) failures.push(`${app}/app/${rel}: *.server.ts phải ở lib/ hoặc features/<name>/server/`);
   }
 
-  // 4. route module phải mỏng
+  // 4. Storefront route module phải mỏng. Dashboard implementation còn nợ riêng;
+  // convention dashboard là chuẩn tham chiếu nhưng chưa thể bật cùng gate trong phase này.
+  if (app !== 'apps/storefront') continue;
   for (const file of files(join(appDir, 'routes'))) {
     const lines = readFileSync(file, 'utf8').split('\n').length;
     if (lines > MAX_ROUTE_LINES) {
@@ -862,8 +864,9 @@ if (failures.length) {
 console.log('Frontend structure check passed.');
 ```
 
-> Bất biến #4 sẽ **đỏ** cho tới khi Phase 8 xong (`routes/bookings.tsx` 235 dòng). Vì vậy Task 5.3 chỉ
-> commit script + npm script; **nối vào CI ở Phase 8 Task 8.4**, sau khi 3 route béo đã tách xong.
+> Bất biến #4 sẽ **đỏ** cho tới khi Phase 8 xong (`routes/bookings.tsx` 235 dòng). LOC chỉ là gate
+> tạm; audit mở rộng còn thấy 21 support declaration và 1 support module mà LOC không bắt. Phase 8 sẽ
+> bổ sung semantic route-only checks rồi mới nối script vào CI.
 
 - [ ] **Step 2: Thêm npm script** vào root `package.json` (CHƯA nối CI)
 
@@ -872,8 +875,8 @@ console.log('Frontend structure check passed.');
 ```
 
 - [ ] **Step 3: Chạy `pnpm check:frontend-structure`.** Kỳ vọng: bất biến 1–3 **xanh** (Phase 2–3 đã dọn),
-      bất biến 4 **đỏ** đúng 3 dòng — `routes/bookings.tsx` (235), `account/help.tsx`… Đây là nợ Phase 8
-      sẽ trả. Ghi lại output vào commit message.
+      LOC gate storefront đỏ ở `routes/bookings.tsx`. Ghi rõ trong commit message rằng Phase 8 còn
+      semantic debt chưa được gate bắt.
 
 - [ ] **Step 4: Commit** (`chore(ci): add frontend structure gate script`)
 
@@ -994,17 +997,50 @@ packages đang giống hệt nhau (`rounded-lg bg-card p-5 text-right text-card-
 
 ---
 
-# Phase 8 — `routes/` chỉ còn route module (mục 5)
+# Phase 8 — `routes/` chỉ còn route module (mục 5, audit mở rộng 2026-07-28)
 
-- [ ] **Task 8.1:** `routes/bookings.tsx` (235 dòng) → tách `features/booking/components/bookings-lookup-page.tsx`
-      + `features/booking/server/bookings-route.server.ts`; route còn `meta/loader/action/default`.
-- [ ] **Task 8.2:** `routes/community.tsx` (56) → `features/community/components/community-page.tsx`.
-- [ ] **Task 8.3:** `routes/account/help.tsx` (71) → `features/account/components/help-page.tsx`.
-- [ ] **Task 8.4:** Chạy `pnpm check:frontend-structure` (Task 5.3) — cả 4 bất biến phải xanh. Giờ mới
-      **nối vào CI**: thêm step `pnpm check:frontend-structure` vào `.github/workflows/ci.yml` ngay cạnh
-      `check:module-cycles`, và vào chuỗi "Full static check" trong `AGENTS.md`.
+**Convention đã chốt:** lấy rule được ghi trong `apps/dashboard/CLAUDE.md` làm chuẩn, không copy nợ
+route béo đang tồn tại trong code dashboard. File được đăng ký bởi `app/routes.ts` chỉ chứa các export
+React Router (`default`, loader/action variants, middleware variants, `meta`, `links`, `headers`,
+`handle`, `shouldRevalidate`, `ErrorBoundary`, `HydrateFallback`) dưới dạng adapter mỏng.
+UI/helper/handler/constants/response builder thuộc owner feature. Storefront không có `nav.ts` hay
+area-local `routes.ts`, nên không có support-file exception trong `routes/`.
 
-Copy nguyên JSX, **không sửa một className nào**. Verify + commit từng task.
+Audit thật sau Phase 4: **65 route file; 10 file có 21 top-level support declaration; 1 non-route
+support module; 11 route→route import ngoài `+types`**. Danh sách 3 file của plan cũ là thiếu.
+
+- [ ] **Task 8.1 — booking lookup:** `routes/bookings.tsx` → UI (`Bookings`, `RequestForm`,
+      `RecentList`) vào `features/booking/components/bookings-lookup-page.tsx`; loader/action body vào
+      `features/booking/server/bookings-route.server.ts`. Route chỉ delegate `meta/loader/action/default`.
+- [ ] **Task 8.2 — inline page UI:** tách nguyên JSX, không sửa className/copy:
+      - `routes/community.tsx` → `features/community/components/community-page.tsx`;
+      - `routes/account/help.tsx` → `features/account/components/help/help-page.tsx`;
+      - `routes/account/{security,terms}.tsx` → `features/account/components/legal/`;
+      - `routes/partner-onboarding/done.tsx` → feature component;
+      - `TenantHome` trong `routes/home.tsx` → `features/home/components/tenant-home.tsx`.
+- [ ] **Task 8.3 — route-local pure/support logic:**
+      - `EMPTY_REFS` + `needsFavoriteRefs` trong `locale-layout.tsx` → `features/favorites/lib/`;
+      - `legacy/redirect.server.ts` → `features/root/server/legacy-redirect.server.ts`, sửa 10 legacy
+        route import và xoá support module khỏi `routes/`;
+      - thân `set-locale` action → `features/root/server/set-locale-route.server.ts`.
+- [ ] **Task 8.4 — resource/operational handlers:**
+      - `favorites-toggle` → `features/favorites/server/favorites-toggle-route.server.ts`;
+      - `sitemap.xml` + XML/pagination helpers → `features/seo/server/sitemap-route.server.ts`;
+      - hai upload presign action + JSON response helper → `features/storage/server/`;
+      - readiness timeout/backend probe → `lib/readiness.server.ts`.
+      Các route resource còn đúng một adapter export, không tạo default component giả.
+- [ ] **Task 8.5 — xoá route coupling:** không còn import route→route ngoài relative `./+types/*`;
+      `account/help` lấy context type trực tiếp từ feature, legacy route lấy redirect handler từ feature.
+- [ ] **Task 8.6 — gate và CI:** mở rộng `check:frontend-structure` để storefront `routes/`:
+      - không chứa file support ngoài các module được route config đăng ký;
+      - không có top-level support declaration ngoài danh sách React Router export;
+      - route giữ dưới ngưỡng LOC đã chốt.
+      Chạy gate xanh rồi mới nối `pnpm check:frontend-structure` vào CI, `AGENTS.md` và full static check.
+      Route-only gate tạm chỉ áp storefront; dashboard có audit/refactor riêng vì code hiện tại còn
+      40/85 route file với 77 helper/constant dù convention doc đã đúng.
+
+Mỗi task: copy/move nguyên logic → rewrite import → scoped format → typecheck/build/lint/security →
+commit. **Không sửa className, DOM, copy, request contract, URL hay thứ tự side effect.**
 
 ---
 

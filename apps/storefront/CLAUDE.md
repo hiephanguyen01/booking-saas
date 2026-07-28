@@ -3,6 +3,30 @@
 Local rules for the customer storefront. Root context: [`../../AGENTS.md`](../../AGENTS.md). Frontend
 conventions shared with the dashboard: [`../../docs/conventions.md`](../../docs/conventions.md).
 
+## Folder architecture
+
+```
+app/
+  routes/                 ROUTE MODULES ONLY — group nested flows/resources by semantic name
+  features/<name>/
+    components/           feature UI
+    hooks/                feature-local controller hooks
+    server/               loader/action/BFF bodies
+    lib/                  pure helpers, constants and types
+  components/             cross-feature UI primitives
+  hooks/                  cross-feature hooks
+  constants/              paths and shared display constants
+  lib/                    infrastructure and shared request/pure helpers
+```
+
+A file referenced by `app/routes.ts` may expose React Router route-module exports only:
+`default`, `loader`, `clientLoader`, `action`, `clientAction`, `middleware`, `clientMiddleware`,
+`ErrorBoundary`, `HydrateFallback`, `headers`, `handle`, `links`, `meta`, and `shouldRevalidate`.
+Keep these exports as thin adapters. Page UI, controller hooks, request handlers, schemas, constants,
+response builders and other support functions belong to the owning feature. `routes/` must not contain
+support modules imported by other routes. Dashboard area-local `routes.ts`/`nav.ts` files are deliberate
+route-config/navigation exceptions; storefront currently has no equivalent exception.
+
 ## What's different from the dashboard
 
 - **Multi-tenant by `Host` header.** The tenant is resolved per-request from the hostname via a backend
