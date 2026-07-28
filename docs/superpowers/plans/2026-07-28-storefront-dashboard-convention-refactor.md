@@ -1206,6 +1206,13 @@ frontend structure, storefront security, Turbo **24/24**, và RLS **46/46**. Sto
 warning hook đã ghi nhận; sourcemap messages của raw `packages/ui` không làm build fail. Cả 13 phase
 hoàn tất.
 
+**Correction sau review (`df1090cb`):** audit Phase 3 trước đó chỉ quét
+`features/*/components`, bỏ sót ba controller hook file và một exported hook trong top-level
+`app/components`. Cả bốn đã chuyển sang `app/hooks`; structure gate nay chặn file `use-*` và exported
+hook trong shared components, đồng thời chặn tương tự trong feature components của storefront. Probe
+cố ý đã xác nhận gate đỏ đúng lý do; tree thật đạt React Doctor 100/100 và full static check lần cuối
+đạt Turbo 24/24, module graph 17 modules, RLS 46/46.
+
 ---
 
 ## Quyết định đã chốt (2026-07-28)

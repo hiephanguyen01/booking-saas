@@ -232,6 +232,17 @@ bốn specifier đó sang `~/`, không đổi code component hay runtime.
   và mô tả CI từ Phase 8 nên không tạo diff trùng lặp.
 - **13.4** full static check toàn repo xanh: Turbo 24/24, module graph 17 module không cycle, RLS 46/46.
 
+### Correction sau Phase 13 — hook còn sót trong top-level components (`df1090cb`)
+
+- Review của chủ dự án bắt được ba file controller hook trong `app/components` và
+  `useIsNavigatingTo` export ngay trong `pending-link.tsx`; audit Phase 3 cũ chỉ quét
+  `features/*/components` nên đã bỏ sót top-level.
+- Chuyển nguyên ba controller và tách nguyên `useIsNavigatingTo` sang `app/hooks`; bốn consumer chỉ đổi
+  import, không đổi logic/JSX/runtime.
+- `check:frontend-structure` nay chặn cả file `use-*` lẫn exported hook trong shared `components/`, và
+  áp cùng luật cho `features/*/components` của storefront. Probe file tạm đã làm gate đỏ đúng hai
+  diagnostic rồi được xoá.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -261,7 +272,9 @@ PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
 React Doctor Task 11.1 scan 4 file đạt **100/100**. Task 11.2 scan 7 file báo storefront **89/100**,
 `@booking/i18n` **100/100**, nhưng `diagnostics.json` rỗng nên không có regression actionable.
 Phase 12 scan đúng diff chưa commit so với `HEAD` đạt **100/100**, không có diagnostic. Lint storefront
-vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
+vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5. Correction `df1090cb` đạt React Doctor
+**100/100**; full static check chạy lại trên correction đạt Turbo 24/24, module graph 17 modules và RLS
+46/46.
 
 Runtime Phase 12: bật API + storefront dev, request `/vi` với host chưa map tenant trả HTTP 200,
 `<title>` platform đúng và SSR đủ `models`, `capabilities`, `workflow`, `demos`, `pricing`, `faq`,
@@ -282,6 +295,7 @@ Các bất biến cấu trúc, kiểm bằng tay ngày 2026-07-28 — **tất c�
 find apps/storefront/app/features -mindepth 2 -maxdepth 2 -type d \
   | grep -vE '/(components|hooks|server|lib)$'                   # rỗng
 find apps/storefront/app/features -name '*.server.ts' | grep -v '/server/'   # rỗng
+find apps/storefront/app/components -name 'use-*'                           # rỗng
 cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*.tsx' \
   | grep -v '+types'                                             # rỗng
 cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features components  # rỗng
@@ -466,6 +480,8 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
   public imports và không đổi JSX/className/copy.
 - Tài liệu storefront/shared convention đã chốt; full static check cuối đạt Turbo 24/24, module graph
   17 modules không cycle và RLS 46/46.
+- Correction sau review đã chuyển bốn shared hook còn sót khỏi `app/components` sang `app/hooks`; gate
+  mới chặn cả tên file `use-*` và exported hook trong components.
 
 ## Việc đầu tiên
 

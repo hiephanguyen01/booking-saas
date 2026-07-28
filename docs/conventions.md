@@ -149,8 +149,8 @@ app/
 - Both apps use `~/` for cross-directory imports and `./sibling` within one directory. Route URLs come
   from `~/constants/paths`, never ad-hoc string construction.
 - ESLint enforces route boundaries and React Hooks rules. `pnpm check:frontend-structure` enforces the
-  six buckets, feature/server placement, and storefront's semantic route-only constraints; it runs in
-  CI and in the repository full static check.
+  six buckets, feature/server placement, hook placement outside `components/`, and storefront's
+  semantic route-only constraints; it runs in CI and in the repository full static check.
 
 - Each route exports `loader` (server data), `action` (server mutation), and a default component
   receiving `loaderData` / `actionData`. Protected routes resolve identity in a root `middleware` +
