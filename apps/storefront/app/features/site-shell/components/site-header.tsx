@@ -2,7 +2,7 @@ import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts'
 import { Button } from '@booking/ui/components/ui/button';
 import { Search } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
-import type { AccountMenuSummary } from '~/features/account/account-menu';
+import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontTenant } from '~/lib/tenant.server';

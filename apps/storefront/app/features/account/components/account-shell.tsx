@@ -15,8 +15,8 @@ import {
 import type { ComponentType, SVGProps } from 'react';
 import { NavLink } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { type AccountNavKey, userInitials } from '~/features/account/account-nav';
-import type { AccountMenuSummary } from '~/features/account/account-menu';
+import { type AccountNavKey, userInitials } from '~/features/account/lib/account-nav';
+import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import { useAccountShellController } from './use-account-shell-controller';
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;

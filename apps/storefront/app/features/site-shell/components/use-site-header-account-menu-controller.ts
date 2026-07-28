@@ -1,7 +1,7 @@
 import type { Locale } from '@booking/i18n';
 import { useFetcher, useLocation } from 'react-router';
-import type { AccountMenuSummary } from '~/features/account/account-menu';
-import { accountNavItems, type AccountNavKey } from '~/features/account/account-nav';
+import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
+import { accountNavItems, type AccountNavKey } from '~/features/account/lib/account-nav';
 import { storefrontPaths } from '~/constants/paths';
 
 function formatBadgeCount(count: number | undefined): string | undefined {

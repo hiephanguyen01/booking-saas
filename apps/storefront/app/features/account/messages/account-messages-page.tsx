@@ -4,7 +4,7 @@ import { Input } from '@booking/ui/components/ui/input';
 import { MessageSquareText, Send } from 'lucide-react';
 import type { Route } from '../../../routes/account/+types/messages';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import { userInitials } from '~/features/account/account-nav';
+import { userInitials } from '~/features/account/lib/account-nav';
 import {
   AccountPanel,
   DemoNotice,

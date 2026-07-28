@@ -1,8 +1,8 @@
 import type { Locale } from '@booking/i18n';
 import { useFetcher } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
-import { accountNavItems, type AccountNavKey } from '~/features/account/account-nav';
-import type { AccountMenuSummary } from '~/features/account/account-menu';
+import { accountNavItems, type AccountNavKey } from '~/features/account/lib/account-nav';
+import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 
 const ACCOUNT_NAV_GROUP_KEYS: AccountNavKey[][] = [
   ['profile', 'bookings', 'messages', 'reviews'],

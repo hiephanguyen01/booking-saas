@@ -22,8 +22,8 @@ import {
 } from 'lucide-react';
 import { type ComponentType, Fragment, type SVGProps } from 'react';
 import { Link, useFetcher } from 'react-router';
-import type { AccountMenuSummary } from '~/features/account/account-menu';
-import { type AccountNavKey, userInitials } from '~/features/account/account-nav';
+import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
+import { type AccountNavKey, userInitials } from '~/features/account/lib/account-nav';
 import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { useSiteHeaderAccountMenuController } from './use-site-header-account-menu-controller';

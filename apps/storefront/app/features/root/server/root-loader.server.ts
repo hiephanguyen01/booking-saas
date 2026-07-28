@@ -1,7 +1,7 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { createTranslator, type Locale } from '@booking/i18n';
 import { data } from 'react-router';
-import type { AccountMenuSummary } from '~/features/account/account-menu';
+import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import {
   readRefCode,
   refAttributionCookie,

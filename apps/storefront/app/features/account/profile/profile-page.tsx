@@ -7,7 +7,7 @@ import { useOutletContext } from 'react-router';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { Route } from '../../../routes/account/+types/profile';
 import type { AccountOutletContext } from '~/routes/account/layout';
-import { userInitials } from '~/features/account/account-nav';
+import { userInitials } from '~/features/account/lib/account-nav';
 import { AccountPanel } from '~/features/account/components/account-primitives';
 import { useAccountProfileController } from './use-account-profile-controller';
 
