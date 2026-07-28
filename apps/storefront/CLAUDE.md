@@ -48,8 +48,10 @@ route-config/navigation exceptions; storefront currently has no equivalent excep
 
 - **Multi-tenant by `Host` header.** The tenant is resolved per-request from the hostname via a backend
   call in `app/lib/server/tenant.server.ts` (not from a login). One storefront serves every tenant's
-  domain;
-  an unmapped host serves the BookingOS platform landing without creating a tenant session.
+  domain; an unmapped host serves the BookingOS platform landing without creating a tenant session.
+  A **single-label host (`localhost`) or bare IP** short-circuits to the platform landing with no
+  backend call at all — it can never be a tenant domain. Every multi-label host still goes through
+  resolution, because a tenant may map its own apex (`giangstudio.vn`), not just a subdomain.
 - **Bilingual.** Every page nests under a `/:locale` (`vi` | `en`) layout backed by `@booking/i18n`;
   unlocalized legacy paths are kept as redirect route modules for inbound links. The dashboard, by
   contrast, is Vietnamese-hardcoded.

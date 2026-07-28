@@ -117,7 +117,10 @@ pnpm --filter=@booking/api storage:init                # MinIO bucket + public-r
 pnpm dev                                               # api :3000, storefront :5173, dashboard :5174
 ```
 
-- **Storefront** (`localhost:5173`) resolves **BookingStudio** (seed maps `localhost`/`127.0.0.1`).
+- **Storefront** (`localhost:5173`) serves the **BookingOS platform landing** — a single-label host
+  (`localhost`) or a bare IP can never be a tenant domain, so it skips tenant resolution entirely.
+  A tenant storefront is reached on its own host: `bookingstudio.localhost:5173`,
+  `bookingstad.localhost:5173`.
 - **Dashboard** (`localhost:5174`) — log in with a seeded user below.
 - **OTP emails** (registration / password reset) land in **Mailpit** at `localhost:8025`.
 
@@ -126,7 +129,7 @@ pnpm dev                                               # api :3000, storefront :
 
 | Tenant | Vertical | Staging | Local | Catalog |
 | --- | --- | --- | --- | --- |
-| **BookingStudio** | studio | `bookingstudio.stg.bookingos.vn` | `bookingstudio.localhost`, `localhost`, `127.0.0.1` | 6 types, 121 listings |
+| **BookingStudio** | studio | `bookingstudio.stg.bookingos.vn` | `bookingstudio.localhost` | 6 types, 121 listings |
 | **BookingStad** | sport | `bookingstad.stg.bookingos.vn` | `bookingstad.localhost` | 5 court types (bóng đá, bóng rổ, tennis, cầu lông, pickleball), 40 courts |
 
 BookingStad's subscription is a **trial expiring in 5 days** on purpose — it is what fills the admin
