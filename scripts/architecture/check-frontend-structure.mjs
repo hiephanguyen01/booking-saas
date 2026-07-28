@@ -186,6 +186,40 @@ for (const app of apps) {
 
   for (const file of sourceFiles(appDirectory)) {
     const appRelativePath = relative(appDirectory, file).split('\\').join('/');
+    const isSharedComponent = appRelativePath.startsWith('components/');
+    const isStorefrontFeatureComponent =
+      app === 'apps/storefront' && /^features\/[^/]+\/components\//.test(appRelativePath);
+    const isComponentFile = isSharedComponent || isStorefrontFeatureComponent;
+
+    if (isComponentFile) {
+      if (/(^|\/)use-[^/]+\.tsx?$/.test(appRelativePath)) {
+        failures.push(
+          `${app}/app/${appRelativePath}: hook use-* phải ở hooks/ cùng cấp, không nằm trong components/`,
+        );
+      }
+
+      const source = readFileSync(file, 'utf8');
+      const sourceFile = ts.createSourceFile(
+        file,
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+      );
+      for (const statement of sourceFile.statements) {
+        const isExported =
+          hasModifier(statement, ts.SyntaxKind.ExportKeyword) || ts.isExportDeclaration(statement);
+        if (!isExported) continue;
+
+        const hookNames = declaredNames(statement).filter((name) => /^use[A-Z]/.test(name));
+        for (const hookName of hookNames) {
+          failures.push(
+            `${app}/app/${appRelativePath}:${sourceLocation(sourceFile, statement)}: exported hook ${hookName} phải ở hooks/ cùng cấp`,
+          );
+        }
+      }
+    }
+
     if (!appRelativePath.includes('.server.')) continue;
     if (appRelativePath === 'entry.server.tsx') continue;
 

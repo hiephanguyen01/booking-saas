@@ -8,10 +8,10 @@ import {
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
 import { Copy, EllipsisVertical, Flag } from 'lucide-react';
-import { FavoriteHeartButton } from '~/features/favorites/components/favorite-heart-button';
-import { NsI18n, useTranslation } from '~/lib/i18n';
 import { ContentReportDialog } from '~/features/content-reports/components/content-report-dialog';
-import { useHeaderActionsController } from './use-header-actions-controller';
+import { FavoriteHeartButton } from '~/features/favorites/components/favorite-heart-button';
+import { useHeaderActionsController } from '~/hooks/use-header-actions-controller';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export function HeaderActions({
   title,
