@@ -3,118 +3,298 @@ import type { viPlatform } from '../vi/platform';
 
 export const enPlatform = {
   seo: {
-    title: 'BookingOS — Booking operations platform',
+    title: 'BookingOS - Booking platform for service businesses',
     description:
-      'BookingOS helps service businesses launch a branded booking storefront and run scheduling, partners, payments, and finance from one platform.',
+      'Launch a branded booking website and manage schedules, partners, payments, and finance on one platform.',
   },
   skipToContent: 'Skip navigation',
-  brandLabel: 'BookingOS — Platform home',
+  brandLabel: 'BookingOS - Platform home',
   nav: {
     label: 'Main navigation',
-    benefits: 'Platform',
+    product: 'Product',
+    solutions: 'Solutions',
     workflow: 'How it works',
-    audiences: 'Who it is for',
+    pricing: 'Pricing',
+    faq: 'FAQ',
     login: 'Sign in',
+    consultation: 'Book a consultation',
     language: 'Xem bằng tiếng Việt',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
   },
   hero: {
-    eyebrow: 'Booking infrastructure for modern teams',
-    title: 'Turn booking operations into a growth advantage.',
+    title: 'More bookings. Less manual work.',
     description:
-      'One operating system for storefronts, availability, partners, payments, and finance — flexible enough for your brand and rigorous enough to scale safely.',
-    primaryCta: 'Sign in to Dashboard',
-    secondaryCta: 'Explore the platform',
-    trustNote: 'Built for multi-location service businesses in Vietnam.',
-  },
-  preview: {
-    eyebrow: 'Live operations',
-    title: 'One operating rhythm. Every touchpoint.',
-    status: 'Systems in sync',
-    storefront: 'Storefront',
-    scheduling: 'Schedule & resources',
-    finance: 'Finance',
-    bookingFlow: "Today's booking flow",
-    incoming: 'New requests',
-    confirmed: 'Confirmed',
-    settled: 'Settled',
-    controlTitle: 'Real-time control',
-    controlDescription: 'Availability, access, and money movement share one source of truth.',
-  },
-  benefits: {
-    eyebrow: 'More than a booking page',
-    title: 'Operations from storefront to ledger.',
-    description:
-      'BookingOS connects the customer experience to the operating rules behind it, helping teams scale without scaling chaos.',
-    storefront: {
-      title: 'Branded storefronts',
-      description: 'Each business gets its own domain, experience, and service catalog.',
+      'BookingOS unifies your booking website, schedule, partners, and finance so your service business can grow.',
+    primaryCta: 'Book a consultation',
+    secondaryCta: 'View real demos',
+    visualAlt: 'Studio space used in the BookingStudio demo model',
+    visualCaption: 'A storefront that looks and feels like your business.',
+    visualMeta: 'Image from the BookingStudio demo model',
+    schedule: {
+      title: 'Sample operations schedule',
+      status: 'Synced',
+      caption: 'Illustrative data for the demo model',
+      time: 'Time',
+      monday: 'Mon',
+      tuesday: 'Tue',
+      morning: 'Studio A',
+      afternoon: 'Studio B',
+      confirmed: 'Confirmed',
+      available: 'Available',
     },
-    operations: {
-      title: 'Unified operations',
-      description: 'Manage listings, resources, availability, bookings, and partners in one flow.',
+  },
+  models: {
+    eyebrow: 'Flexible by design',
+    title: 'One platform, many service models.',
+    description:
+      'From hourly schedules to class capacity, BookingOS adapts to how businesses sell time and resources.',
+    studio: 'Studios',
+    sport: 'Sports venues',
+    class: 'Classes',
+    appointment: 'Appointments',
+    stay: 'Daily stays',
+    inventory: 'Equipment rental',
+  },
+  transformation: {
+    eyebrow: 'One operating source',
+    title: 'From scattered calendars to one connected operation.',
+    description: 'Connect the booking experience to schedules, partners, and finance behind it.',
+    beforeTitle: 'When tools do not connect',
+    afterTitle: 'When operations run on BookingOS',
+    before: {
+      one: 'Bookings arrive through separate channels.',
+      two: 'Calendars are updated manually.',
+      three: 'Partner information lives in different places.',
+      four: 'Payments are hard to trace at month end.',
+      five: 'The website is disconnected from operations.',
+    },
+    after: {
+      one: 'Customers view availability and book directly.',
+      two: 'Resources are managed in one place.',
+      three: 'Partners work on the same platform.',
+      four: 'Bookings and money share one history.',
+      five: 'The storefront carries your own brand.',
+    },
+  },
+  capabilities: {
+    eyebrow: 'Core capabilities',
+    title: 'Every touchpoint works as one system.',
+    description:
+      'Each capability solves a clear job while data stays connected from discovery through reconciliation.',
+    storefront: {
+      title: 'A website built around your brand.',
+      description:
+        'Publish a responsive storefront with your catalog, availability, and branded booking journey.',
+      detail: 'Custom domains by plan, branded design, and a complete booking experience.',
+    },
+    scheduling: {
+      title: 'Availability stays accurate.',
+      description:
+        'Manage hourly, daily, appointment, class, and inventory bookings in one operating model.',
+      detail: 'Hold inventory during payment and prevent two bookings from taking one resource.',
+    },
+    partners: {
+      title: 'Run a partner network without losing control.',
+      description:
+        'Onboard partners, review content, assign permissions, and apply commissions by relationship.',
+      detail: 'Every role sees only the work and data it is allowed to use.',
     },
     finance: {
-      title: 'Transparent money movement',
+      title: 'Every unit of revenue can be reconciled.',
       description:
-        'Payments, commissions, and settlements stay consistent through double-entry records.',
-    },
-    security: {
-      title: 'Secure by architecture',
-      description:
-        'Data-layer tenant isolation and dynamic permissions protect every operating role.',
+        'Connect bookings, transactions, commissions, and payables in one consistent financial history.',
+      detail:
+        'Track money held by the tenant and obligations to partners, affiliates, and the platform.',
     },
   },
   workflow: {
-    eyebrow: 'From configuration to growth',
-    title: 'Set it up once. Operate as a system.',
+    eyebrow: 'How it works',
+    title: 'Configure. Publish. Grow.',
+    description: 'Start from your current model and grow without replacing the whole system.',
     configure: {
-      step: '01',
-      title: 'Shape your model',
-      description: 'Configure the brand, services, pricing, policies, and partner structure.',
+      title: 'Configure',
+      description:
+        'Set up the brand, services, schedule, pricing, policies, and partner structure.',
+      note: 'Model the way your business actually operates.',
     },
     publish: {
-      step: '02',
-      title: 'Publish the experience',
-      description: 'Launch on your own domain with availability and pricing kept in sync.',
+      title: 'Publish',
+      description: 'Launch services on the storefront, review content, and begin taking bookings.',
+      note: 'Customers see availability and pricing from one source.',
     },
-    operate: {
-      step: '03',
-      title: 'Operate and expand',
+    grow: {
+      title: 'Grow',
       description:
-        'Track bookings, payments, performance, and financial obligations from the dashboard.',
+        'Track bookings and money, then add locations, resources, or partners as needed.',
+      note: 'Expand while keeping operational control.',
     },
   },
-  audiences: {
-    eyebrow: 'One platform, three experiences',
-    title: 'Everyone sees exactly what they need.',
-    tenant: {
-      label: 'Tenant',
-      title: 'Businesses control their ecosystem',
-      description: 'Own the brand, policies, partners, service quality, and financial operations.',
+  demos: {
+    eyebrow: 'Demo models',
+    title: 'Two models, one operating system.',
+    description:
+      'BookingStudio and BookingStad show how one platform can adapt to very different ways of selling time.',
+    demoLabel: 'BookingOS demo model',
+    illustrationLabel: 'Illustrative service-space image',
+    studio: {
+      title: 'BookingStudio',
+      description:
+        'Studios, photo packages, and rental equipment using hourly, daily, and inventory bookings.',
+      alt: 'Photography space in the BookingStudio demo model',
     },
-    partner: {
-      label: 'Partner',
-      title: 'Partners focus on delivering',
-      description: 'Manage services, resources, working schedules, bookings, and revenue.',
-    },
-    customer: {
-      label: 'Customer',
-      title: 'Customers book without friction',
-      description: 'Discover, schedule, pay, and follow a booking in one trusted experience.',
+    sport: {
+      title: 'BookingStad',
+      description:
+        'Multiple sports and resources organized in one storefront and shared operating schedule.',
+      alt: 'Illustrative indoor sports courts for the BookingStad model',
     },
   },
-  cta: {
-    eyebrow: 'Operate as a system',
-    title: 'Ready to bring every booking operation into one rhythm?',
-    description: 'Open the BookingOS Dashboard to continue managing your workspace.',
-    login: 'Sign in to Dashboard',
-    explore: 'See how it works',
+  pricing: {
+    eyebrow: 'Service plans',
+    title: 'Choose a plan that fits your scale.',
+    description:
+      'Official pricing is being finalized. We will recommend a configuration after understanding your operating model.',
+    pendingTitle: 'Get a recommendation for your operation',
+    pendingDescription:
+      'Tell us about locations, partners, services, and booking volume to receive a suitable plan without invented or hidden fees.',
+    consultation: 'Book a consultation',
+    plans: {
+      one: {
+        name: '[PLAN NAME]',
+        price: '[PRICE]',
+        limits: '[LIMITS]',
+        feature: '[FEATURES]',
+      },
+      two: {
+        name: '[PLAN NAME]',
+        price: '[PRICE]',
+        limits: '[LIMITS]',
+        feature: '[FEATURES]',
+      },
+      three: {
+        name: '[PLAN NAME]',
+        price: '[PRICE]',
+        limits: '[LIMITS]',
+        feature: '[FEATURES]',
+      },
+    },
+  },
+  trust: {
+    eyebrow: 'Trust by architecture',
+    title: 'Infrastructure designed for sensitive data and money.',
+    description:
+      'Protection is built into the operating flow, not added later as a list of security claims.',
+    isolation: {
+      title: 'Business data stays isolated',
+      description: 'Each tenant works only inside its own data boundary.',
+    },
+    access: {
+      title: 'Role-based access',
+      description: 'Platform, tenant, and partner roles have separate permission scopes.',
+    },
+    session: {
+      title: 'Server-side sessions',
+      description: 'Secure cookies replace exposed browser tokens.',
+    },
+    schedule: {
+      title: 'Resource collision prevention',
+      description: 'Database constraints stop two bookings from taking the same schedule.',
+    },
+    ledger: {
+      title: 'Consistent financial history',
+      description: 'Double-entry records preserve obligations between operating parties.',
+    },
+  },
+  faq: {
+    eyebrow: 'Answers',
+    title: 'Frequently asked questions.',
+    description: 'Short answers before we discuss your operating model.',
+    one: {
+      question: 'Which service businesses is BookingOS designed for?',
+      answer:
+        'BookingOS fits businesses that sell time, resources, capacity, or inventory in advance. It can model studios, sports venues, classes, appointments, stays, and equipment rental.',
+    },
+    two: {
+      question: 'Which booking modes does BookingOS support?',
+      answer:
+        'The platform supports hourly, daily, appointment, capacity-based class, and quantity-based inventory bookings.',
+    },
+    three: {
+      question: 'Can I use my own domain and brand?',
+      answer:
+        'Yes. Each tenant has a branded storefront. Custom domains are available according to the selected plan.',
+    },
+    four: {
+      question: 'How does BookingOS manage multiple partners?',
+      answer:
+        'Tenants can onboard partners, assign permissions, review content, manage listings, and configure commission rules by relationship.',
+    },
+    five: {
+      question: 'How do payments and reconciliation work?',
+      answer:
+        'Payments go to the configured tenant account. BookingOS records transactions, commissions, and payables so the tenant can reconcile and run payouts through its own process.',
+    },
+    six: {
+      question: 'How long does implementation take?',
+      answer:
+        'Timing depends on services, data, domains, and payment configuration. BookingOS proposes an implementation plan after the consultation.',
+    },
+  },
+  consultation: {
+    eyebrow: 'Start with your model',
+    title: 'Tell us about your booking operation.',
+    description:
+      'Share a few details so the BookingOS team can prepare a consultation around your needs.',
+    nameLabel: 'Full name',
+    namePlaceholder: 'Minh Anh Nguyen',
+    phoneLabel: 'Phone number',
+    phonePlaceholder: '090 123 4567',
+    businessLabel: 'Business name',
+    businessPlaceholder: 'Brand or company name',
+    serviceLabel: 'Service model',
+    servicePlaceholder: 'Choose a service model',
+    options: {
+      studio: 'Studio',
+      sport: 'Sports venue',
+      class: 'Classes',
+      appointment: 'Appointments',
+      stay: 'Daily stay or rental',
+      inventory: 'Equipment rental',
+      other: 'Another model',
+    },
+    submit: 'Book a consultation',
+    submitting: 'Sending request...',
+    required: 'Required',
+    nameError: 'Enter your full name.',
+    phoneError: 'Enter a valid Vietnamese phone number.',
+    businessError: 'Enter your business name.',
+    serviceError: 'Choose a service model.',
+    unavailableTitle: 'The consultation channel is not connected yet.',
+    unavailableDescription:
+      'The form interface is ready but does not send data outside the site. Please return after the consultation channel is configured.',
+    successTitle: 'Your request has been received.',
+    successDescription: 'The BookingOS team will contact you using the details provided.',
+    errorTitle: 'The request could not be sent.',
+    errorDescription: 'Check your details and try again.',
+    privacyNote: 'Your information is only used to discuss BookingOS once submission is connected.',
   },
   footer: {
-    tagline: 'Booking infrastructure for modern service businesses.',
-    product: 'Platform',
+    tagline: 'Booking and operating infrastructure for Vietnamese service businesses.',
+    productTitle: 'Product',
+    solutionsTitle: 'Solutions',
+    supportTitle: 'Support',
+    legalTitle: 'Legal',
+    product: 'Platform capabilities',
     workflow: 'How it works',
-    login: 'Dashboard',
+    pricing: 'Pricing',
+    demos: 'Demo models',
+    faq: 'Frequently asked questions',
+    consultation: 'Book a consultation',
+    login: 'Sign in to Dashboard',
+    terms: 'Terms of use',
+    privacy: 'Privacy policy',
+    legalUnavailable: 'Legal routes will be added before publication.',
     rights: 'BookingOS. Booking and operations platform.',
   },
 } satisfies TranslationShape<typeof viPlatform>;

@@ -1,0 +1,143 @@
+import { Menu, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
+import { NsI18n, useTranslation } from '../../../lib/i18n';
+
+const NAV_ITEMS = [
+  { href: '#product', label: 'nav.product' },
+  { href: '#solutions', label: 'nav.solutions' },
+  { href: '#workflow', label: 'nav.workflow' },
+  { href: '#pricing', label: 'nav.pricing' },
+  { href: '#faq', label: 'nav.faq' },
+] as const;
+
+export function PlatformHeader({
+  locale,
+  dashboardLoginUrl,
+}: {
+  locale: 'vi' | 'en';
+  dashboardLoginUrl: string;
+}) {
+  const { t } = useTranslation(NsI18n.Platform);
+  const alternateLocale = locale === 'vi' ? 'en' : 'vi';
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [menuOpen]);
+
+  const closeMenu = () => setMenuOpen(false);
+
+  return (
+    <header className="platform-header sticky top-0 z-40 border-b border-[#0a0e13]/8 bg-[#f7f5ef]/94 backdrop-blur-xl">
+      <div className="mx-auto flex h-18 w-full max-w-350 items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
+        <PlatformBrand label={t('brandLabel')} />
+
+        <nav aria-label={t('nav.label')} className="hidden items-center gap-5 xl:flex">
+          {NAV_ITEMS.map((item) => (
+            <a key={item.href} className="platform-nav-link" href={item.href}>
+              {t(item.label)}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/${alternateLocale}`}
+            aria-label={t('nav.language')}
+            className="platform-icon-button hidden sm:inline-flex"
+          >
+            {alternateLocale}
+          </Link>
+          <a
+            href={dashboardLoginUrl}
+            className="hidden min-h-11 items-center justify-center px-3 text-sm font-bold text-[#0a0e13] transition hover:text-[#8a5600] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-2 md:inline-flex"
+          >
+            {t('nav.login')}
+          </a>
+          <a href="#consultation" className="platform-primary-button hidden md:inline-flex">
+            {t('nav.consultation')}
+          </a>
+          <button
+            ref={menuButtonRef}
+            type="button"
+            aria-expanded={menuOpen}
+            aria-controls="platform-mobile-menu"
+            aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
+            className="platform-icon-button xl:hidden"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? (
+              <X className="size-5" aria-hidden="true" />
+            ) : (
+              <Menu className="size-5" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {menuOpen ? (
+        <div
+          id="platform-mobile-menu"
+          className="border-t border-[#0a0e13]/8 bg-[#f7f5ef] px-5 pb-6 pt-4 shadow-[0_24px_60px_rgba(10,14,19,0.12)] sm:px-8 xl:hidden"
+        >
+          <nav aria-label={t('nav.label')} className="mx-auto grid w-full max-w-350 gap-1">
+            {NAV_ITEMS.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="flex min-h-12 items-center rounded-xl px-3 text-base font-bold text-[#31363c] hover:bg-[#ffb020]/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300]"
+                onClick={closeMenu}
+              >
+                {t(item.label)}
+              </a>
+            ))}
+            <div className="mt-3 grid gap-2 border-t border-[#0a0e13]/8 pt-4 sm:grid-cols-3">
+              <Link
+                to={`/${alternateLocale}`}
+                className="platform-secondary-button"
+                onClick={closeMenu}
+              >
+                {alternateLocale.toUpperCase()}
+              </Link>
+              <a href={dashboardLoginUrl} className="platform-secondary-button" onClick={closeMenu}>
+                {t('nav.login')}
+              </a>
+              <a href="#consultation" className="platform-primary-button" onClick={closeMenu}>
+                {t('nav.consultation')}
+              </a>
+            </div>
+          </nav>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+export function PlatformBrand({ label }: { label: string }) {
+  return (
+    <Link
+      to="."
+      aria-label={label}
+      className="inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300] focus-visible:ring-offset-2"
+    >
+      <span
+        className="grid size-9 place-items-center rounded-[0.7rem] bg-[#0a0e13] text-[#ffb020]"
+        aria-hidden="true"
+      >
+        <span className="text-sm font-extrabold tracking-[-0.05em]">B</span>
+      </span>
+      <span className="text-lg font-extrabold tracking-[-0.035em] text-[#0a0e13]">BookingOS</span>
+    </Link>
+  );
+}
