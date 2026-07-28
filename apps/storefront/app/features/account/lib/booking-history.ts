@@ -6,7 +6,7 @@ import type {
   CustomerReviewItem,
   QuoteLineItem,
 } from '@booking/contracts';
-import type { Locale } from '@booking/i18n';
+import { createTranslator, type Locale } from '@booking/i18n';
 import {
   cancellationCutoffParts,
   cancellationPolicyLines as sharedCancellationPolicyLines,
@@ -139,19 +139,24 @@ export function cancellationPolicyLines(
 }
 
 function durationLabel(booking: BookingResponse, locale: Locale): string {
+  const { t } = createTranslator(locale);
   if (booking.bookingMode === 'daily') {
     const from = dateOnlyInTz(booking.startUtc, booking.resourceTimezone);
     const to = dateOnlyInTz(booking.endUtc, booking.resourceTimezone);
     const days = Math.max(1, nightsBetween(from, to));
-    return locale === 'en' ? `${days} ${days === 1 ? 'day' : 'days'}` : `${days} ngày`;
+    return t(days === 1 ? 'account.bookings.durationDay' : 'account.bookings.durationDays', {
+      count: days,
+    });
   }
   if (booking.bookingMode === 'inventory') {
-    return locale === 'en' ? `${booking.quantity} items` : `${booking.quantity} sản phẩm`;
+    return t('account.bookings.durationItems', { count: booking.quantity });
   }
   const start = Date.parse(booking.startUtc);
   const end = Date.parse(booking.endUtc);
   const hours = Math.max(1, Math.round((end - start) / 3_600_000));
-  return locale === 'en' ? `${hours} ${hours === 1 ? 'hour' : 'hours'}` : `${hours} giờ`;
+  return t(hours === 1 ? 'account.bookings.durationHour' : 'account.bookings.durationHours', {
+    count: hours,
+  });
 }
 
 function dateLabel(value: string, locale: Locale, timezone: string): string {

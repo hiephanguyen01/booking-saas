@@ -10,6 +10,10 @@ export const enCommon = {
   currencyNote: 'Booking platform · secure payments · VND',
   notFound: 'Not found',
   close: 'Close',
+  breadcrumbHome: 'Home',
+  reviewTime: {
+    today: 'Today',
+  },
   mediaViewer: {
     close: 'Close media viewer',
     previous: 'Previous media',

@@ -57,6 +57,11 @@ export const enAccount = {
     additionalCharge: 'Additional charge: {type}',
     pickedUpAt: 'Picked up',
     returnedAt: 'Returned',
+    durationDay: '{count} day',
+    durationDays: '{count} days',
+    durationItems: '{count} items',
+    durationHour: '{count} hour',
+    durationHours: '{count} hours',
     modes: {
       hourly: 'Hourly',
       daily: 'Daily',

@@ -1,3 +1,4 @@
+import { createTranslator } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 
 type ListingGroupStructuredDataInput = {
@@ -21,6 +22,7 @@ export function buildListingGroupStructuredData({
   group,
 }: ListingGroupStructuredDataInput) {
   const origin = new URL(canonical).origin;
+  const homeLabel = createTranslator(locale).t('common.breadcrumbHome');
 
   return {
     '@context': 'https://schema.org',
@@ -68,7 +70,7 @@ export function buildListingGroupStructuredData({
           {
             '@type': 'ListItem',
             position: 1,
-            name: locale === 'vi' ? 'Trang chủ' : 'Home',
+            name: homeLabel,
             item: new URL(`/${locale}`, canonical).toString(),
           },
           { '@type': 'ListItem', position: 2, name: group.title, item: canonical },

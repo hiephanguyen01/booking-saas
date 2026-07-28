@@ -11,4 +11,11 @@ export const enErrors = {
   tenantSuspendedTitle: '{tenant} is temporarily unavailable',
   tenantSuspendedDescription:
     'This booking site is currently unavailable. Please contact the store owner for details.',
+  tenantUnavailable: 'This storefront is currently unavailable. Please try again later.',
+  api: {
+    timeout: 'The request timed out. Please try again.',
+    network: 'The service is temporarily unavailable. Please try again.',
+    invalidResponse: 'The service returned an invalid response. Please try again.',
+    generic: 'Unable to complete the request. Please try again.',
+  },
 } satisfies TranslationShape<typeof viErrors>;

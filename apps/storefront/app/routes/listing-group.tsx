@@ -27,8 +27,8 @@ export function shouldRevalidate({
     : defaultShouldRevalidate;
 }
 
-export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
-  return buildListingGroupMeta(loaderData?.group);
+export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
+  return buildListingGroupMeta(loaderData?.group, params.locale === 'en' ? 'en' : 'vi');
 }
 
 export function loader({ request, params, url }: Route.LoaderArgs) {

@@ -54,6 +54,11 @@ export const viAccount = {
     additionalCharge: 'Phụ phí: {type}',
     pickedUpAt: 'Đã nhận sản phẩm',
     returnedAt: 'Đã trả sản phẩm',
+    durationDay: '{count} ngày',
+    durationDays: '{count} ngày',
+    durationItems: '{count} sản phẩm',
+    durationHour: '{count} giờ',
+    durationHours: '{count} giờ',
     modes: {
       hourly: 'Theo giờ',
       daily: 'Theo ngày',

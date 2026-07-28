@@ -1,4 +1,5 @@
 import type { ApiResult } from '@booking/api-client';
+import { createTranslator, type Locale } from '@booking/i18n';
 
 const SAFE_ERROR_CODE_RE = /^[A-Z][A-Z0-9_]{1,63}$/;
 const SAFE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/;
@@ -54,25 +55,18 @@ function safeFieldErrors(
 }
 
 function safeFailureMessage(request: Request, result: ApiResult<unknown>): string {
-  const english = /^\/en(?:\/|$)/.test(new URL(request.url).pathname);
+  const locale: Locale = /^\/en(?:\/|$)/.test(new URL(request.url).pathname) ? 'en' : 'vi';
+  const { t } = createTranslator(locale);
   if (result.failure === 'timeout') {
-    return english
-      ? 'The request timed out. Please try again.'
-      : 'Yêu cầu đã hết thời gian chờ. Vui lòng thử lại.';
+    return t('errors.api.timeout');
   }
   if (result.failure === 'network') {
-    return english
-      ? 'The service is temporarily unavailable. Please try again.'
-      : 'Dịch vụ tạm thời không khả dụng. Vui lòng thử lại.';
+    return t('errors.api.network');
   }
   if (result.failure === 'invalid-response') {
-    return english
-      ? 'The service returned an invalid response. Please try again.'
-      : 'Dịch vụ trả về phản hồi không hợp lệ. Vui lòng thử lại.';
+    return t('errors.api.invalidResponse');
   }
-  return english
-    ? 'Unable to complete the request. Please try again.'
-    : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.';
+  return t('errors.api.generic');
 }
 
 /**

@@ -7,6 +7,10 @@ export const viCommon = {
   currencyNote: 'Nền tảng đặt chỗ · thanh toán an toàn · VND',
   notFound: 'Không tìm thấy',
   close: 'Đóng',
+  breadcrumbHome: 'Trang chủ',
+  reviewTime: {
+    today: 'Hôm nay',
+  },
   mediaViewer: {
     close: 'Đóng trình xem',
     previous: 'Nội dung trước',

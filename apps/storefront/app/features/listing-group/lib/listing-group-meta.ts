@@ -4,8 +4,8 @@ type ListingGroupMetaSource = {
   photos: readonly string[];
 };
 
-export function buildListingGroupMeta(group: ListingGroupMetaSource | undefined) {
-  if (!group) return [{ title: 'Bài đăng' }];
+export function buildListingGroupMeta(group: ListingGroupMetaSource | undefined, locale: Locale) {
+  if (!group) return [{ title: createTranslator(locale).t('listing.group.metaFallback') }];
 
   const description = group.description?.slice(0, 180) ?? group.title;
   const tags: Array<Record<string, string>> = [
@@ -19,3 +19,4 @@ export function buildListingGroupMeta(group: ListingGroupMetaSource | undefined)
   if (group.photos[0]) tags.push({ property: 'og:image', content: group.photos[0] });
   return tags;
 }
+import { createTranslator, type Locale } from '@booking/i18n';

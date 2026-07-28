@@ -136,6 +136,7 @@ export const viListing = {
   },
   /** The listing-group ("studio") page — a group of bookable child listings. */
   group: {
+    metaFallback: 'Bài đăng',
     viewMap: 'Xem bản đồ',
     save: 'Lưu {title}',
     saveComingSoon: 'Tính năng lưu studio đang được phát triển',

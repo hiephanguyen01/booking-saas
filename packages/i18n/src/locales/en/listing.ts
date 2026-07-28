@@ -138,6 +138,7 @@ export const enListing = {
     viewPackagePhoto: 'View photo {index} of package {name}',
   },
   group: {
+    metaFallback: 'Listing',
     viewMap: 'View map',
     save: 'Save {title}',
     saveComingSoon: 'Saving a studio is not available yet',

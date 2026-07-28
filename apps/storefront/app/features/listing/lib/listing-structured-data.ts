@@ -1,5 +1,5 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
-import type { Locale } from '@booking/i18n';
+import { createTranslator, type Locale } from '@booking/i18n';
 import type { StorefrontContext } from '~/features/root/lib/storefront-context';
 
 interface ListingStructuredDataInput {
@@ -16,6 +16,7 @@ export function buildListingStructuredData({
   listing,
 }: ListingStructuredDataInput) {
   const origin = new URL(canonical).origin;
+  const homeLabel = createTranslator(locale).t('common.breadcrumbHome');
 
   return {
     '@context': 'https://schema.org',
@@ -60,7 +61,7 @@ export function buildListingStructuredData({
           {
             '@type': 'ListItem',
             position: 1,
-            name: locale === 'vi' ? 'Trang chủ' : 'Home',
+            name: homeLabel,
             item: new URL(`/${locale}`, canonical).toString(),
           },
           { '@type': 'ListItem', position: 2, name: listing.title, item: canonical },

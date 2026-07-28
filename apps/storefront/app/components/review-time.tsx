@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@booking/ui/lib/utils';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 const MARKET_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const DAY_MS = 86_400_000;
@@ -23,15 +24,18 @@ export function ReviewTime({
   variant?: ReviewTimeVariant;
   className?: string;
 }) {
+  const { t } = useTranslation(NsI18n.Common);
   const absolute = formatAbsoluteDate(value, locale);
+  const todayLabel = t('reviewTime.today');
   const [relative, setRelative] = useState<string | null>(null);
 
   useEffect(() => {
-    const update = (): void => setRelative(formatRelativeTime(value, locale, variant, Date.now()));
+    const update = (): void =>
+      setRelative(formatRelativeTime(value, locale, variant, Date.now(), todayLabel));
     update();
     const timer = setInterval(update, 60_000);
     return () => clearInterval(timer);
-  }, [locale, value, variant]);
+  }, [locale, todayLabel, value, variant]);
 
   return (
     <time className={cn(className)} dateTime={value} title={absolute}>
@@ -52,11 +56,12 @@ function formatRelativeTime(
   locale: 'vi' | 'en',
   variant: ReviewTimeVariant,
   now: number,
+  todayLabel: string,
 ): string {
   const timestamp = new Date(value).getTime();
   if (variant === 'day') {
     const days = marketCalendarDay(timestamp) - marketCalendarDay(now);
-    if (days === 0) return locale === 'en' ? 'Today' : 'Hôm nay';
+    if (days === 0) return todayLabel;
     return new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
       numeric: 'auto',
     }).format(days, 'day');
