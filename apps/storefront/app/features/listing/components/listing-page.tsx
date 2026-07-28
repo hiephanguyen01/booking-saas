@@ -18,7 +18,7 @@ import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
 import { StudioGallery } from '~/components/studio-gallery';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
-import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
+import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
 import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
 import { StudioBookingCard } from './studio-booking-card';
 

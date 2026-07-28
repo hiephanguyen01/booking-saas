@@ -1,4 +1,4 @@
-import type { Route } from '../../routes/+types/listing-group';
+import type { Route } from '../../../routes/+types/listing-group';
 
 export type ListingGroupData = Route.ComponentProps['loaderData'];
 export type ListingGroupState = ListingGroupData['state'];

@@ -31,7 +31,7 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
-import type { RoomOption } from '~/features/listing-group/listing-group-types';
+import type { RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { useSlotPickerController } from './use-slot-picker-controller';
 
 /** The hour picker: a dialog on desktop, a drawer on touch widths. */

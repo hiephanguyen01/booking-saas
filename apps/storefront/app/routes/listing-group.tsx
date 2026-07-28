@@ -1,9 +1,9 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing-group';
-import { ListingGroupPage } from '~/features/listing-group/listing-group-page';
-import { buildListingGroupMeta } from '~/features/listing-group/listing-group-meta';
-import { buildListingGroupStructuredData } from '~/features/listing-group/listing-group-structured-data';
+import { ListingGroupPage } from '~/features/listing-group/components/listing-group-page';
+import { buildListingGroupMeta } from '~/features/listing-group/lib/listing-group-meta';
+import { buildListingGroupStructuredData } from '~/features/listing-group/lib/listing-group-structured-data';
 import {
   handleListingGroupAction,
   loadListingGroupRoute,

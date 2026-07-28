@@ -11,12 +11,12 @@ import { NsI18n, useTranslation } from '~/lib/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
 import { hoursBetween } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
-import type { BookingMode, RoomOption } from '~/features/listing-group/listing-group-types';
+import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import {
   checkoutHref,
   type RoomAvailabilityState,
-} from '~/features/listing-group/listing-group-utils';
-import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
+} from '~/features/listing-group/lib/listing-group-utils';
+import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 import { SlotPicker } from './slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';

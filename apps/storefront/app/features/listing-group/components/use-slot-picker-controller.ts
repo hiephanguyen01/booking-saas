@@ -5,7 +5,7 @@ import {
   checkoutHref,
   slotInterval,
   toggleContiguousSlot,
-} from '~/features/listing-group/listing-group-utils';
+} from '~/features/listing-group/lib/listing-group-utils';
 
 export function useSlotPickerController({
   locale,

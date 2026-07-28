@@ -7,7 +7,7 @@ import { useRef, useState } from 'react';
 import { BookingDialogFooter } from '~/components/booking-dialog-footer';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
-import type { BookingMode, RoomOption } from '~/features/listing-group/listing-group-types';
+import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { PackageMediaDetails } from '~/features/packages/components/package-media-details';
 import { RoomBookingDialogShell } from './room-booking-dialog-shell';
 import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';

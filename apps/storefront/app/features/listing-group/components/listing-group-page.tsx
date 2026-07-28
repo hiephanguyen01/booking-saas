@@ -10,15 +10,15 @@ import { useLocale } from '~/hooks/use-locale';
 import { clockHoursBetween } from '~/lib/time';
 import type { StorefrontContext } from '~/root';
 import { SearchForm } from '~/features/search/components/search-form';
-import { AmenitiesSection } from './components/amenities-section';
+import { AmenitiesSection } from './amenities-section';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
-import { RelatedStudios } from './components/related-studios';
-import { RoomOptionsSection } from './components/room-options-section';
+import { RelatedStudios } from './related-studios';
+import { RoomOptionsSection } from './room-options-section';
 import { StudioGallery } from '~/components/studio-gallery';
-import type { ListingGroupData } from './listing-group-types';
-import { minimumRoomPrice } from './room-attributes';
+import type { ListingGroupData } from '~/features/listing-group/lib/listing-group-types';
+import { minimumRoomPrice } from '~/features/listing-group/lib/room-attributes';
 
 /**
  * A listing group ("studio") and the rooms bookable inside it.

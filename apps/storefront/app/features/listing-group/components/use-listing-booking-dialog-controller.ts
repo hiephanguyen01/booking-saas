@@ -12,7 +12,7 @@ import {
   checkoutHref,
   slotInterval,
   toggleContiguousSlot,
-} from '~/features/listing-group/listing-group-utils';
+} from '~/features/listing-group/lib/listing-group-utils';
 import type { ListingBookingMode, RoomBookingDateRange } from './room-booking-dialog-steps';
 
 type BookingRequestKind = 'availability' | 'quote';

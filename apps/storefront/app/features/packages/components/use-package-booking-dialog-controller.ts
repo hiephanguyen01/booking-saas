@@ -10,7 +10,7 @@ import type { PublicPackageOption } from '~/lib/package-options';
 import { dateLabelInTz } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
 import type { loader as bookingDataLoader } from '~/routes/listing-booking-data';
-import { checkoutHref, slotInterval } from '~/features/listing-group/listing-group-utils';
+import { checkoutHref, slotInterval } from '~/features/listing-group/lib/listing-group-utils';
 
 type BookingRequestKind = 'availability' | 'quote';
 

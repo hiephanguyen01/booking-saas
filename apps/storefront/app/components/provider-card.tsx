@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/a
 import { Button } from '@booking/ui/components/ui/button';
 import { Check, Store, ShieldCheck } from 'lucide-react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { RoomTrust } from '~/features/listing-group/listing-group-types';
+import type { RoomTrust } from '~/features/listing-group/lib/listing-group-types';
 import { Link } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
 import { useLocale } from '~/hooks/use-locale';
