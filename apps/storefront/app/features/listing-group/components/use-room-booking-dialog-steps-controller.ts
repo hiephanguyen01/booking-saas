@@ -1,10 +1,10 @@
 import type { AvailabilityResponse, HourlySlot } from '@booking/contracts';
 import { useMemo } from 'react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { PublicPackageOption } from '../../../lib/package-options';
-import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '../../../lib/time';
-import { formatVnd } from '../../../lib/ui';
-import { useLocale } from '../../../lib/use-locale';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PublicPackageOption } from '~/lib/package-options';
+import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '~/lib/time';
+import { formatVnd } from '~/lib/ui';
+import { useLocale } from '~/lib/use-locale';
 
 export function useRoomBookingDialogStepsController({
   mode,

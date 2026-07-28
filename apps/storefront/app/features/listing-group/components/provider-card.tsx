@@ -1,11 +1,11 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import { Check, Store, ShieldCheck } from 'lucide-react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { RoomTrust } from '../listing-group-types';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { RoomTrust } from '~/features/listing-group/listing-group-types';
 import { Link } from 'react-router';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { useLocale } from '../../../lib/use-locale';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { useLocale } from '~/lib/use-locale';
 
 /**
  * The partner behind the group's rooms.

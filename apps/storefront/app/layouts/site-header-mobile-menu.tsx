@@ -10,8 +10,8 @@ import {
 import { Globe2, LayoutGrid, Menu, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
-import type { AccountNavKey } from '../features/account/account-nav';
-import { type Locale, NsI18n, useTranslation } from '../lib/i18n';
+import type { AccountNavKey } from '~/features/account/account-nav';
+import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
 import { SiteHeaderAccountAvatar, SiteHeaderLogoutForm } from './site-header-account-menu';
 import { useSiteHeaderMobileMenuController } from './use-site-header-mobile-menu-controller';
 
@@ -29,14 +29,8 @@ export function SiteHeaderMobileMenu({
   redirectTo: string;
 }) {
   const { t } = useTranslation(NsI18n.Navigation);
-  const {
-    accountItems,
-    catalogPath,
-    localeFetcher,
-    localeRedirectTo,
-    nextLocale,
-    paths,
-  } = useSiteHeaderMobileMenuController({ locale, redirectTo });
+  const { accountItems, catalogPath, localeFetcher, localeRedirectTo, nextLocale, paths } =
+    useSiteHeaderMobileMenuController({ locale, redirectTo });
 
   return (
     <Sheet>
@@ -115,11 +109,7 @@ export function SiteHeaderMobileMenu({
   );
 }
 
-function MobileAccountLinks({
-  items,
-}: {
-  items: Array<{ key: AccountNavKey; to: string }>;
-}) {
+function MobileAccountLinks({ items }: { items: Array<{ key: AccountNavKey; to: string }> }) {
   const { t } = useTranslation(NsI18n.Account);
   return (
     <>

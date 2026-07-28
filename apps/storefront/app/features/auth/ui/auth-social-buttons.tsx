@@ -1,6 +1,6 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { FieldSeparator } from '@booking/ui/components/ui/field';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export function SocialButtons() {
   const { t } = useTranslation(NsI18n.Auth);

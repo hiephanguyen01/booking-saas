@@ -1,15 +1,15 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { ReceiptText, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router';
-import { AccountResultsSkeleton } from '../../../components/loading-skeletons';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
+import { AccountResultsSkeleton } from '~/components/loading-skeletons';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
 import type { Route } from '../../../routes/account/+types/bookings';
-import { AccountPanel, PageHeading } from '../components/account-primitives';
-import { BookingHistoryCard } from '../components/booking-history-card';
-import { CancelBookingDialog } from '../components/cancel-booking-dialog';
-import { ReviewDialog } from '../components/review-dialog';
-import { BOOKING_HISTORY_FILTERS } from '../lib/booking-history';
+import { AccountPanel, PageHeading } from '~/features/account/components/account-primitives';
+import { BookingHistoryCard } from '~/features/account/components/booking-history-card';
+import { CancelBookingDialog } from '~/features/account/components/cancel-booking-dialog';
+import { ReviewDialog } from '~/features/account/components/review-dialog';
+import { BOOKING_HISTORY_FILTERS } from '~/features/account/lib/booking-history';
 import { useAccountBookingsPageController } from './use-account-bookings-page-controller';
 
 export function AccountBookingsPage({ loaderData }: Route.ComponentProps) {

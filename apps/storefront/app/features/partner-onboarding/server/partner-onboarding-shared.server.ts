@@ -1,16 +1,11 @@
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
-import {
-  authFlow,
-  flowView,
-  type AuthFlowPhase,
-  type AuthFlowView,
-} from '../../../lib/auth-flow.server';
+import { authFlow, flowView, type AuthFlowPhase, type AuthFlowView } from '~/lib/auth-flow.server';
 import {
   formRequestFailureStatus,
   readFormRequestBody,
   type FormRequestBody,
-} from '../../../lib/form-request.server';
+} from '~/lib/form-request.server';
 
 const PARTNER_MAX_FORM_BYTES = 16 * 1024;
 
@@ -33,9 +28,7 @@ export const failedPartnerFormData = (result: Extract<FormRequestBody, { ok: fal
     code: result.code,
   });
 
-export function invalidPartnerOnboarding(
-  fieldErrors: Record<string, string[] | undefined>,
-) {
+export function invalidPartnerOnboarding(fieldErrors: Record<string, string[] | undefined>) {
   return data<PartnerOnboardingActionData>(
     {
       fieldErrors: Object.fromEntries(
@@ -48,11 +41,7 @@ export function invalidPartnerOnboarding(
   );
 }
 
-export function failedPartnerOnboarding(result: {
-  status: number;
-  code?: string;
-  error?: string;
-}) {
+export function failedPartnerOnboarding(result: { status: number; code?: string; error?: string }) {
   return data<PartnerOnboardingActionData>(
     { error: result.code ?? result.error ?? 'UNKNOWN' },
     { status: result.status >= 400 && result.status < 600 ? result.status : 500 },
@@ -63,11 +52,7 @@ export function failedPartnerOnboarding(result: {
  * Server-side flow accessor. The returned record may contain a completion token,
  * so route loaders must expose it only through `requirePartnerView`.
  */
-export async function requirePartnerPhase(
-  request: Request,
-  phase: AuthFlowPhase,
-  locale: Locale,
-) {
+export async function requirePartnerPhase(request: Request, phase: AuthFlowPhase, locale: Locale) {
   const flow = await authFlow.read(request);
   if (!flow || flow.record.phase !== phase) throw redirect(partnerStartPath(locale));
   return {

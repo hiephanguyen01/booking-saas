@@ -15,7 +15,7 @@ import {
 } from '@booking/ui/components/ui/drawer';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { usePackageBookingDialogShellController } from './use-package-booking-dialog-shell-controller';
 
 export function PackageBookingDialogShell({

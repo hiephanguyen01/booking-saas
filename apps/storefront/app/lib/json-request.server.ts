@@ -1,8 +1,7 @@
 export const DEFAULT_MAX_JSON_REQUEST_BYTES = 64 * 1024;
 
 export type JsonRequestBody =
-  | { ok: true; value: unknown }
-  | { ok: false; code: 'INVALID_JSON' | 'PAYLOAD_TOO_LARGE' };
+  { ok: true; value: unknown } | { ok: false; code: 'INVALID_JSON' | 'PAYLOAD_TOO_LARGE' };
 
 interface JsonReadableRequest {
   body?: ReadableStream<Uint8Array> | null;

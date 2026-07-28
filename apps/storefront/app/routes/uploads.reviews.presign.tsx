@@ -3,10 +3,10 @@ import {
   reviewMediaPresignInputSchema,
   type PresignUploadResponse,
 } from '@booking/contracts';
-import { apiPost } from '../lib/api.server';
-import { getOptionalAuth } from '../lib/auth.server';
-import { readJsonRequestBody } from '../lib/json-request.server';
-import { allowedStorageUploadUrl } from '../lib/upload-origin.server';
+import { apiPost } from '~/lib/api.server';
+import { getOptionalAuth } from '~/lib/auth.server';
+import { readJsonRequestBody } from '~/lib/json-request.server';
+import { allowedStorageUploadUrl } from '~/lib/upload-origin.server';
 import type { Route } from './+types/uploads.reviews.presign';
 
 const MAX_PRESIGN_REQUEST_BYTES = 16 * 1024;

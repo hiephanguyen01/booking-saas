@@ -1,8 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import {
-  bookingAccessGrantSchema,
-  type CustomerPaymentMethod,
-} from '@booking/contracts';
+import { bookingAccessGrantSchema, type CustomerPaymentMethod } from '@booking/contracts';
 import { createCookie } from 'react-router';
 import { storefrontEnv } from './env.server';
 import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';

@@ -12,7 +12,7 @@ import { Textarea } from '@booking/ui/components/ui/textarea';
 import { cn } from '@booking/ui/lib/utils';
 import { ImagePlus, LoaderCircle, Star, Upload, X } from 'lucide-react';
 import { useRef, type DragEvent } from 'react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { SelectedReviewMedia } from './review-dialog-media';
 
 export function ReviewDialogView({
@@ -231,7 +231,9 @@ export function ReviewDialogView({
             {t('reviews.dialog.cancel')}
           </Button>
           <Button type="button" onClick={onSubmit} disabled={!formValid || submitting}>
-            {submitting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}
+            {submitting ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            ) : null}
             {submitting ? t('reviews.dialog.submitting') : t('reviews.dialog.submit')}
           </Button>
         </DialogFooter>

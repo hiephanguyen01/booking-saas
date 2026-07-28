@@ -4,7 +4,7 @@ import 'swiper/css';
 import 'swiper/css/a11y';
 import 'swiper/css/effect-coverflow';
 import { useSyncExternalStore } from 'react';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 const LOOP_MIN_IMAGES = 5;
 const REDUCED_MOTION_MEDIA_QUERY = '(prefers-reduced-motion: reduce)';

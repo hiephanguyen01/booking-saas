@@ -1,8 +1,11 @@
 import type { CustomerReviewItem } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { useState } from 'react';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { bookingDetailState, type AccountBookingViewModel } from '../lib/booking-history';
+import { storefrontPaths } from '~/lib/locale-paths';
+import {
+  bookingDetailState,
+  type AccountBookingViewModel,
+} from '~/features/account/lib/booking-history';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 

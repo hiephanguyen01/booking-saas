@@ -1,12 +1,12 @@
 import { formatCurrency, type Locale } from '@booking/i18n';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Camera, Check, Construction } from 'lucide-react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import {
   cancellationCutoffParts,
   cancellationPolicyLines,
   type AccountBookingViewModel,
-} from '../lib/booking-history';
+} from '~/features/account/lib/booking-history';
 
 export function AccountPanel({
   children,
@@ -103,7 +103,10 @@ export function CancellationPolicyList({
               percent: line.feePercent,
             });
         return (
-          <p key={index} className={`flex items-center gap-1.5 ${isFree ? 'text-emerald-700' : ''}`}>
+          <p
+            key={index}
+            className={`flex items-center gap-1.5 ${isFree ? 'text-emerald-700' : ''}`}
+          >
             <Check
               className={`size-3.5 shrink-0 ${isFree ? '' : 'text-emerald-600'}`}
               aria-hidden="true"

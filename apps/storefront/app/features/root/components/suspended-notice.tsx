@@ -1,4 +1,4 @@
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export function SuspendedNotice({ name }: { name: string }) {
   const { t } = useTranslation(NsI18n.Error);

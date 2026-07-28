@@ -3,7 +3,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { CalendarDays, ChevronDown } from 'lucide-react';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { PickerLabel } from './booking-panel-presentation';
 import type { SetSearchParams } from './booking-panel-types';
 import {

@@ -12,9 +12,9 @@ import { Spinner } from '@booking/ui/components/ui/spinner';
 import { cn } from '@booking/ui/lib/utils';
 import { CircleAlert, type LucideIcon } from 'lucide-react';
 import { Form, Link } from 'react-router';
-import { SectionCard } from '../../../components/section-card';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { formatVnd } from '../../../lib/ui';
+import { SectionCard } from '~/components/section-card';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { formatVnd } from '~/lib/ui';
 import {
   useCheckoutFormController,
   type CheckoutContactFieldModel,
@@ -72,7 +72,12 @@ export function CheckoutForm({
   });
 
   return (
-    <Form method="post" className="flex flex-col gap-4" onSubmit={handleSubmit} aria-busy={submitting}>
+    <Form
+      method="post"
+      className="flex flex-col gap-4"
+      onSubmit={handleSubmit}
+      aria-busy={submitting}
+    >
       <input type="hidden" name="intent" value="checkout" />
       <input type="hidden" name="checkoutAttemptId" value={checkoutAttemptId} />
       <input type="hidden" name="listingId" value={listingId} />

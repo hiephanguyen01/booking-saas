@@ -1,5 +1,5 @@
 import type { Locale } from '@booking/i18n';
-import { storefrontEnv } from '../../../lib/env.server';
+import { storefrontEnv } from '~/lib/env.server';
 
 export interface MockConversation {
   id: string;

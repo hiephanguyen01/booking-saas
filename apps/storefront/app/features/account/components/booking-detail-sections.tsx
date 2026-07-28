@@ -3,9 +3,12 @@ import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Button } from '@booking/ui/components/ui/button';
 import { Info, Star } from 'lucide-react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
-import { bookingDetailState, type AccountBookingViewModel } from '../lib/booking-history';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import {
+  bookingDetailState,
+  type AccountBookingViewModel,
+} from '~/features/account/lib/booking-history';
 
 export function BookingContactSection({ booking }: { booking: AccountBookingViewModel }) {
   const { t } = useTranslation(NsI18n.Account);
@@ -146,12 +149,7 @@ export function BookingReviewSection({
           <p className="text-xs leading-5 text-[#4d5a70]">
             {t('bookings.reviewSection.unavailable')}
           </p>
-          <Button
-            type="button"
-            size="sm"
-            disabled
-            className="h-9 rounded-sm px-5 text-xs"
-          >
+          <Button type="button" size="sm" disabled className="h-9 rounded-sm px-5 text-xs">
             {t('bookings.reviewSection.submit')}
           </Button>
         </div>

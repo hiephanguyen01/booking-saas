@@ -1,8 +1,7 @@
 export const DEFAULT_MAX_FORM_REQUEST_BYTES = 32 * 1024;
 
 export type FormRequestBody =
-  | { ok: true; value: FormData }
-  | { ok: false; code: 'INVALID_FORM_DATA' | 'PAYLOAD_TOO_LARGE' };
+  { ok: true; value: FormData } | { ok: false; code: 'INVALID_FORM_DATA' | 'PAYLOAD_TOO_LARGE' };
 
 export type FormRequestFailureCode = Extract<FormRequestBody, { ok: false }>['code'];
 

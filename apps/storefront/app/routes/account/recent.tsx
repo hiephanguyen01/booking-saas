@@ -1,5 +1,5 @@
-import { AccountRecentPage } from '../../features/account/recent/account-recent-page';
-import { loadAccountRecentRoute } from '../../features/account/recent/server/account-recent-route.server';
+import { AccountRecentPage } from '~/features/account/recent/account-recent-page';
+import { loadAccountRecentRoute } from '~/features/account/recent/server/account-recent-route.server';
 import type { Route } from './+types/recent';
 
 export function loader({ request, params }: Route.LoaderArgs) {

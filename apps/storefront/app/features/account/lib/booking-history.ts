@@ -11,8 +11,8 @@ import {
   cancellationCutoffParts,
   cancellationPolicyLines as sharedCancellationPolicyLines,
   type CancellationPolicyLine,
-} from '../../../lib/cancellation-policy';
-import { dateOnlyInTz, nightsBetween } from '../../../lib/time';
+} from '~/lib/cancellation-policy';
+import { dateOnlyInTz, nightsBetween } from '~/lib/time';
 
 export { cancellationCutoffParts, type CancellationPolicyLine };
 
@@ -203,12 +203,7 @@ export function toAccountBookingViewModel(
     startUtc: booking.startUtc,
     endUtc: booking.endUtc,
     dateLabel: dateLabel(booking.startUtc, locale, booking.resourceTimezone),
-    timeLabel: timeLabel(
-      booking.startUtc,
-      booking.endUtc,
-      locale,
-      booking.resourceTimezone,
-    ),
+    timeLabel: timeLabel(booking.startUtc, booking.endUtc, locale, booking.resourceTimezone),
     durationLabel: durationLabel(booking, locale),
     customer: booking.customer,
     customerNote: booking.customerNote,

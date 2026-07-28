@@ -1,1 +1,1 @@
-export * from '../../features/partner-onboarding/shared';
+export * from '~/features/partner-onboarding/shared';

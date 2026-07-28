@@ -9,17 +9,17 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { data, Link } from 'react-router';
 import { z } from 'zod';
-import { BookingAccessVerifyForm } from '../features/booking/components/booking-access-verify-form';
-import { apiGet, rethrowApiInfrastructureFailure } from '../lib/api.server';
-import { getOptionalAuth } from '../lib/auth.server';
-import { requestBookingOtp } from '../lib/booking.server';
-import { storefrontEnv } from '../lib/env.server';
-import { errorStatus } from '../lib/http-status';
-import { NsI18n, useTranslation } from '../lib/i18n';
-import { storefrontPaths } from '../lib/locale-paths';
-import { readRecentCodes } from '../lib/recent.server';
-import { dateLabelInTz, timeInTz } from '../lib/time';
-import { useLocale } from '../lib/use-locale';
+import { BookingAccessVerifyForm } from '~/features/booking/components/booking-access-verify-form';
+import { apiGet, rethrowApiInfrastructureFailure } from '~/lib/api.server';
+import { getOptionalAuth } from '~/lib/auth.server';
+import { requestBookingOtp } from '~/lib/booking.server';
+import { storefrontEnv } from '~/lib/env.server';
+import { errorStatus } from '~/lib/http-status';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { readRecentCodes } from '~/lib/recent.server';
+import { dateLabelInTz, timeInTz } from '~/lib/time';
+import { useLocale } from '~/lib/use-locale';
 import type { Route } from './+types/bookings';
 
 export function meta() {

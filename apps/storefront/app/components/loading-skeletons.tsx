@@ -16,13 +16,7 @@ function LoadingRegion({
   children: ReactNode;
 }) {
   return (
-    <div
-      className={className}
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-      aria-label={label}
-    >
+    <div className={className} role="status" aria-live="polite" aria-busy="true" aria-label={label}>
       <div aria-hidden="true">{children}</div>
       <span className="sr-only">{label}</span>
     </div>
@@ -176,13 +170,7 @@ export function HomeListingCardsSkeleton({
 
 export type AccountContentSkeletonVariant = 'list' | 'form' | 'detail';
 
-export function AccountResultsSkeleton({
-  label,
-  count = 4,
-}: {
-  label: string;
-  count?: number;
-}) {
+export function AccountResultsSkeleton({ label, count = 4 }: { label: string; count?: number }) {
   return (
     <LoadingRegion label={label} className="space-y-3">
       <AccountResultRows count={count} />

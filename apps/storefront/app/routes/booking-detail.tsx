@@ -1,14 +1,14 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
-import { BookingPaymentView } from '../features/booking/components/booking-payment-view';
+import { BookingPaymentView } from '~/features/booking/components/booking-payment-view';
 import {
   handleBookingDetailAction,
   loadBookingDetail,
-} from '../features/booking/server/booking-detail.server';
-import { useBookingDetailController } from '../features/booking/use-booking-detail-controller';
-import { PaymentHandoff } from '../features/checkout/components/payment-handoff';
-import { NsI18n, useTranslation } from '../lib/i18n';
-import { storefrontPaths } from '../lib/locale-paths';
-import { useLocale } from '../lib/use-locale';
+} from '~/features/booking/server/booking-detail.server';
+import { useBookingDetailController } from '~/features/booking/use-booking-detail-controller';
+import { PaymentHandoff } from '~/features/checkout/components/payment-handoff';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { useLocale } from '~/lib/use-locale';
 import type { Route } from './+types/booking-detail';
 
 export function meta() {

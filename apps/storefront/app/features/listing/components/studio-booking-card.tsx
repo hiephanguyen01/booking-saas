@@ -1,11 +1,11 @@
 import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
-import { minimumConfiguredPrice } from '../../../lib/booking-presentation';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { formatVnd } from '../../../lib/ui';
+import { minimumConfiguredPrice } from '~/lib/booking-presentation';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { formatVnd } from '~/lib/ui';
 import {
   ListingBookingDialog,
   type ListingBookingMode,
-} from '../../listing-group/components/room-booking-dialog';
+} from '~/features/listing-group/components/room-booking-dialog';
 
 export function StudioBookingCard({
   listing,

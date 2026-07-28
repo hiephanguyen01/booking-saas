@@ -2,24 +2,24 @@ import type { PublicListingDetailResponse } from '@booking/contracts';
 import { MapPin, Users } from 'lucide-react';
 import { Suspense } from 'react';
 import { Await, Link, useOutletContext } from 'react-router';
-import { ListingRatingSummary } from '../../components/listing-rating-summary';
-import { ReviewsSectionSkeleton } from '../../components/loading-skeletons';
-import { PublicReviewsSection } from '../../components/public-reviews-section';
-import { SectionCard } from '../../components/section-card';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import { storefrontPaths } from '../../lib/locale-paths';
-import { formatListingLocation, googleMapsHref } from '../../lib/ui';
-import { useLocale } from '../../lib/use-locale';
-import type { StorefrontContext } from '../../root';
+import { ListingRatingSummary } from '~/components/listing-rating-summary';
+import { ReviewsSectionSkeleton } from '~/components/loading-skeletons';
+import { PublicReviewsSection } from '~/components/public-reviews-section';
+import { SectionCard } from '~/components/section-card';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { formatListingLocation, googleMapsHref } from '~/lib/ui';
+import { useLocale } from '~/lib/use-locale';
+import type { StorefrontContext } from '~/root';
 import type { Route } from '../../routes/+types/listing';
-import { BookingPanel } from '../../templates/studio/booking-panel';
-import { ExpandableDescription } from '../listing-group/components/expandable-description';
-import { HeaderActions } from '../listing-group/components/header-actions';
-import { ProviderCard } from '../listing-group/components/provider-card';
-import { StudioGallery } from '../listing-group/components/studio-gallery';
-import { AttributeSpecCards } from '../listing-group/components/attribute-spec-cards';
-import { roomCapacity, specCards } from '../listing-group/room-attributes';
-import { DeferredSearchBar } from '../search/deferred-search-bar';
+import { BookingPanel } from '~/templates/studio/booking-panel';
+import { ExpandableDescription } from '~/features/listing-group/components/expandable-description';
+import { HeaderActions } from '~/features/listing-group/components/header-actions';
+import { ProviderCard } from '~/features/listing-group/components/provider-card';
+import { StudioGallery } from '~/features/listing-group/components/studio-gallery';
+import { AttributeSpecCards } from '~/features/listing-group/components/attribute-spec-cards';
+import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
+import { DeferredSearchBar } from '~/features/search/deferred-search-bar';
 import { StudioBookingCard } from './components/studio-booking-card';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {
@@ -202,7 +202,9 @@ function ListingDetails({
         {capacity ? (
           <div className="flex items-start gap-2.5 text-sm">
             <Users className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden="true" />
-            <span className="text-muted-foreground">{t('group.maxGuests', { count: capacity })}</span>
+            <span className="text-muted-foreground">
+              {t('group.maxGuests', { count: capacity })}
+            </span>
           </div>
         ) : null}
         <AttributeSpecCards cards={cards} />

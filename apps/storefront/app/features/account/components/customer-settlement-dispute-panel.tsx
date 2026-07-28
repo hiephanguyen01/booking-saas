@@ -4,7 +4,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Textarea } from '@booking/ui/components/ui/textarea';
 import { CircleAlert, Clock3, Scale } from 'lucide-react';
 import { Form } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useCustomerSettlementDisputePanelController } from './use-customer-settlement-dispute-panel-controller';
 
 export function CustomerSettlementDisputePanel({

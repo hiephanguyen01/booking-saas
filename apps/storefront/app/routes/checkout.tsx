@@ -1,12 +1,12 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import type { Route } from './+types/checkout';
-import { CheckoutPage } from '../features/checkout/checkout-page';
+import { CheckoutPage } from '~/features/checkout/checkout-page';
 import {
   handleCheckoutAction,
   loadCheckout,
-} from '../features/checkout/server/checkout-route.server';
-import { createTranslator } from '../lib/i18n';
-import { storefrontPaths } from '../lib/locale-paths';
+} from '~/features/checkout/server/checkout-route.server';
+import { createTranslator } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
   const locale = params.locale === 'en' ? 'en' : 'vi';

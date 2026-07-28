@@ -7,16 +7,11 @@ import type {
 import { Button } from '@booking/ui/components/ui/button';
 import { Separator } from '@booking/ui/components/ui/separator';
 import { Link } from 'react-router';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { DailyPicker, FixedDailyPicker } from './booking-panel-daily-picker';
 import { HourlyPicker } from './booking-panel-hourly-picker';
 import { InventoryPicker } from './booking-panel-inventory-picker';
-import {
-  Breakdown,
-  ModeToggle,
-  PackagePicker,
-  QuoteHeader,
-} from './booking-panel-presentation';
+import { Breakdown, ModeToggle, PackagePicker, QuoteHeader } from './booking-panel-presentation';
 import { useBookingPanelController } from './use-booking-panel-controller';
 
 interface PanelProps {

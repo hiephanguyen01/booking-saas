@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { StorefrontTenant } from '../../../lib/tenant.server';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import type { StorefrontTenant } from '~/lib/tenant.server';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export function AuthFrame({
   tenant,

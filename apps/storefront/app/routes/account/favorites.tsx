@@ -1,5 +1,5 @@
-import { AccountFavoritesPage } from '../../features/account/favorites/account-favorites-page';
-import { loadAccountFavoritesRoute } from '../../features/account/favorites/server/account-favorites-route.server';
+import { AccountFavoritesPage } from '~/features/account/favorites/account-favorites-page';
+import { loadAccountFavoritesRoute } from '~/features/account/favorites/server/account-favorites-route.server';
 import type { Route } from './+types/favorites';
 
 export function loader({ request, params }: Route.LoaderArgs) {

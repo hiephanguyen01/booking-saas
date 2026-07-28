@@ -1,8 +1,8 @@
 import { moneyStringSchema, timeOfDaySchema } from '@booking/contracts';
-import type { PriceUnit } from '../../lib/ui';
-import { datesInDailyRange, normalizeDailyRange } from '../../lib/daily-range';
-import { canOffsetDateOnly, isValidDateOnly } from '../../lib/date-only';
-import { addDays, todayInTz, DEFAULT_TZ } from '../../lib/time';
+import type { PriceUnit } from '~/lib/ui';
+import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
+import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
+import { addDays, todayInTz, DEFAULT_TZ } from '~/lib/time';
 
 export type SearchMode = 'hourly' | 'daily' | 'inventory' | 'none';
 export type SearchArea = '' | 'under-25' | '25-50' | '50-100' | 'over-100';
@@ -75,7 +75,11 @@ function dateParam(value: string | null, fallback: string, offsetDays = 0): stri
   return value && canOffsetDateOnly(value, offsetDays) ? value : fallback;
 }
 
-function positiveInt(value: string | null, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
+function positiveInt(
+  value: string | null,
+  fallback: number,
+  max = Number.MAX_SAFE_INTEGER,
+): number {
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
 }

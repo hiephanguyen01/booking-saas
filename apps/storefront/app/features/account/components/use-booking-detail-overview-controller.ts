@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import type { AccountBookingViewModel, BookingDetailState } from '../lib/booking-history';
+import type {
+  AccountBookingViewModel,
+  BookingDetailState,
+} from '~/features/account/lib/booking-history';
 
 type BookingModeLabelKey = 'hourly' | 'daily' | 'inventory' | 'other';
 

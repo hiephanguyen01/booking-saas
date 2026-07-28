@@ -2,8 +2,8 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { QuoteSkeleton } from './loading-skeletons';
 import { PendingLink } from './pending-link';
-import { NsI18n, useTranslation } from '../lib/i18n';
-import { formatVnd } from '../lib/ui';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { formatVnd } from '~/lib/ui';
 
 export function BookingDialogFooter({
   selectionSummary,

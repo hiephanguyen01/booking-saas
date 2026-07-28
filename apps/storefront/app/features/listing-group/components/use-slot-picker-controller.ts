@@ -1,7 +1,11 @@
 import type { HourlySlot } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { useState } from 'react';
-import { checkoutHref, slotInterval, toggleContiguousSlot } from '../listing-group-utils';
+import {
+  checkoutHref,
+  slotInterval,
+  toggleContiguousSlot,
+} from '~/features/listing-group/listing-group-utils';
 
 export function useSlotPickerController({
   locale,

@@ -3,8 +3,8 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Calendar } from '@booking/ui/components/ui/calendar';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw } from 'lucide-react';
-import { AvailabilitySkeleton } from '../../components/loading-skeletons';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { AvailabilitySkeleton } from '~/components/loading-skeletons';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { usePackageBookingDialogStepsController } from './use-package-booking-dialog-steps-controller';
 
 export function PackageBookingDialogSteps({

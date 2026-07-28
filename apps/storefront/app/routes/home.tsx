@@ -1,9 +1,9 @@
 import { useOutletContext } from 'react-router';
-import { loadAdministrativeProvinces } from '../lib/administrative-divisions.server';
-import { getOptionalStorefrontTenant } from '../lib/request-context.server';
-import type { StorefrontContext } from '../root';
-import { homeTemplateFor } from '../templates';
-import { loadHomeCatalog } from '../templates/studio/home-data.server';
+import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
+import { getOptionalStorefrontTenant } from '~/lib/request-context.server';
+import type { StorefrontContext } from '~/root';
+import { homeTemplateFor } from '~/templates';
+import { loadHomeCatalog } from '~/templates/studio/home-data.server';
 import type { Route } from './+types/home';
 
 export async function loader({ request }: Route.LoaderArgs) {

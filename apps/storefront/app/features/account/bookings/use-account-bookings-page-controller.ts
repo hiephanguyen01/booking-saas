@@ -2,13 +2,13 @@ import type { CustomerReviewItem } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { useState } from 'react';
 import { useLocation, useNavigation } from 'react-router';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { isReadNavigationMethod, useMinimumPending } from '../../../lib/use-minimum-pending';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { isReadNavigationMethod, useMinimumPending } from '~/lib/use-minimum-pending';
 import {
   parseBookingHistoryFilter,
   type AccountBookingViewModel,
   type BookingHistoryFilter,
-} from '../lib/booking-history';
+} from '~/features/account/lib/booking-history';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 

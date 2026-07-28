@@ -1,16 +1,12 @@
 import type { CustomerReviewItem } from '@booking/contracts';
 import { useState } from 'react';
 import { useLocation, useNavigation } from 'react-router';
-import { isReadNavigationMethod, useMinimumPending } from '../../../lib/use-minimum-pending';
+import { isReadNavigationMethod, useMinimumPending } from '~/lib/use-minimum-pending';
 import { parseAccountReviewFilter, type AccountReviewFilter } from './review-filter';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 
-export function useAccountReviewsPageController({
-  status,
-}: {
-  status: AccountReviewFilter;
-}) {
+export function useAccountReviewsPageController({ status }: { status: AccountReviewFilter }) {
   const [activeReview, setActiveReview] = useState<PendingReview | null>(null);
   const location = useLocation();
   const navigation = useNavigation();

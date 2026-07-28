@@ -17,11 +17,5 @@ export function ReviewDialog({
 }) {
   const controller = useReviewDialogController({ review, open, action, onOpenChange });
 
-  return (
-    <ReviewDialogView
-      open={open}
-      reviewTitle={review?.listingTitle ?? ''}
-      {...controller}
-    />
-  );
+  return <ReviewDialogView open={open} reviewTitle={review?.listingTitle ?? ''} {...controller} />;
 }

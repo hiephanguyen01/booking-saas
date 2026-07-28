@@ -8,17 +8,17 @@ import {
 } from '@booking/ui/components/ui/input-otp';
 import { Mail } from 'lucide-react';
 import { useOutletContext } from 'react-router';
-import { useOtpFormController } from '../../auth/ui/use-otp-form-controller';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { StorefrontContext } from '../../../root';
+import { useOtpFormController } from '~/features/auth/ui/use-otp-form-controller';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { StorefrontContext } from '~/root';
 import type { Route } from '../../../routes/partner-onboarding/+types/verify';
 import {
   AuthSplit,
   FormAlert,
   FormHeading,
   PrimaryButton,
-} from '../../../routes/partner-onboarding/shared';
-import type { PartnerOnboardingActionData } from '../server/partner-onboarding-shared.server';
+} from '~/routes/partner-onboarding/shared';
+import type { PartnerOnboardingActionData } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
 export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentProps) {
   const verifyActionData = actionData as PartnerOnboardingActionData | undefined;
@@ -46,9 +46,7 @@ export function PartnerVerifyPage({ loaderData, actionData }: Route.ComponentPro
         >
           <Mail className="size-9" strokeWidth={1.75} />
         </span>
-        <p className="mt-2 text-xs font-medium text-muted-foreground">
-          {t('partner.verifyBadge')}
-        </p>
+        <p className="mt-2 text-xs font-medium text-muted-foreground">{t('partner.verifyBadge')}</p>
       </div>
       <FormAlert>{message}</FormAlert>
       <form onSubmit={handleSubmit} className="space-y-7">

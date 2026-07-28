@@ -6,9 +6,7 @@ import {
 } from '@booking/contracts';
 import { publicGetData } from './api.server';
 
-export function loadAdministrativeProvinces(
-  request: Request,
-): Promise<AdministrativeProvince[]> {
+export function loadAdministrativeProvinces(request: Request): Promise<AdministrativeProvince[]> {
   return publicGetData(request, '/public/administrative-divisions/provinces', {
     schema: administrativeProvinceListSchema,
   });

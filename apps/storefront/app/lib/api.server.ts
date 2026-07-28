@@ -53,11 +53,7 @@ export async function publicPost<T>(
   body: unknown,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await apiClient.publicPost(
-    path,
-    body,
-    storefrontRequestOptions(request, options),
-  );
+  const result = await apiClient.publicPost(path, body, storefrontRequestOptions(request, options));
   return sanitizeApiResult(request, result);
 }
 
@@ -83,11 +79,7 @@ export function apiGet<T>(
 ): Promise<ApiResult<T>> {
   const key = `api-get:${authReadKey(auth)}:${path}:${queryKey(options.query)}`;
   return memoizedRead(request, key, async () => {
-    const result = await apiClient.get(
-      path,
-      auth,
-      storefrontRequestOptions(request, options),
-    );
+    const result = await apiClient.get(path, auth, storefrontRequestOptions(request, options));
     return sanitizeApiResult(request, result);
   });
 }
@@ -99,12 +91,7 @@ export async function apiPost<T>(
   auth: Auth,
   options: StorefrontJsonOptions<T>,
 ): Promise<ApiResult<T>> {
-  const result = await apiClient.post(
-    path,
-    body,
-    auth,
-    storefrontRequestOptions(request, options),
-  );
+  const result = await apiClient.post(path, body, auth, storefrontRequestOptions(request, options));
   return sanitizeApiResult(request, result);
 }
 

@@ -10,9 +10,7 @@ export interface RefreshLockStore {
   deleteIfValue(key: string, value: string): Promise<void>;
 }
 
-export type RefreshLockObservation<T> =
-  | { resolved: false }
-  | { resolved: true; value: T };
+export type RefreshLockObservation<T> = { resolved: false } | { resolved: true; value: T };
 
 export interface RefreshLockOptions {
   ttlMs?: number;

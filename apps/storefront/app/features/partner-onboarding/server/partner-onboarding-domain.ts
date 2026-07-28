@@ -1,5 +1,5 @@
 import type { PartnerOnboardingProfileInput } from '@booking/contracts';
-import type { PartnerApplyPayload } from '../../../lib/partner.server';
+import type { PartnerApplyPayload } from '~/lib/partner.server';
 
 interface PartnerAuthSnapshot {
   info: {

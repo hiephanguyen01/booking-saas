@@ -4,11 +4,11 @@ import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-m
 import { Button } from '@booking/ui/components/ui/button';
 import { CalendarDays } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { BookingDialogFooter } from '../../../components/booking-dialog-footer';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
-import type { BookingMode, RoomOption } from '../listing-group-types';
-import { PackageMediaDetails } from '../../packages/package-media-details';
+import { BookingDialogFooter } from '~/components/booking-dialog-footer';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import type { BookingMode, RoomOption } from '~/features/listing-group/listing-group-types';
+import { PackageMediaDetails } from '~/features/packages/package-media-details';
 import { RoomBookingDialogShell } from './room-booking-dialog-shell';
 import { RoomBookingDialogSteps, type ListingBookingMode } from './room-booking-dialog-steps';
 import { useListingBookingDialogController } from './use-listing-booking-dialog-controller';
@@ -61,11 +61,7 @@ export function ListingBookingDialog({
     </Button>
   );
   const body = (
-    <RoomBookingDialogSteps
-      {...stepsProps}
-      today={today}
-      onOpenPackageMedia={openPackageMedia}
-    />
+    <RoomBookingDialogSteps {...stepsProps} today={today} onOpenPackageMedia={openPackageMedia} />
   );
   const footer = <BookingDialogFooter {...footerProps} />;
 

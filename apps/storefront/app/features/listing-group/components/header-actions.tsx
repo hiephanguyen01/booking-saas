@@ -8,9 +8,9 @@ import {
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
 import { Copy, EllipsisVertical, Flag } from 'lucide-react';
-import { FavoriteHeartButton } from '../../favorites/components/favorite-heart-button';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { ContentReportDialog } from '../../content-reports/content-report-dialog';
+import { FavoriteHeartButton } from '~/features/favorites/components/favorite-heart-button';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { ContentReportDialog } from '~/features/content-reports/content-report-dialog';
 import { useHeaderActionsController } from './use-header-actions-controller';
 
 export function HeaderActions({

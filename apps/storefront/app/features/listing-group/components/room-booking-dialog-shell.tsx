@@ -19,7 +19,7 @@ import {
 } from '@booking/ui/components/ui/drawer';
 import { X } from 'lucide-react';
 import { useRef, type ReactElement, type ReactNode } from 'react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export function RoomBookingDialogShell({
   desktopOpen,

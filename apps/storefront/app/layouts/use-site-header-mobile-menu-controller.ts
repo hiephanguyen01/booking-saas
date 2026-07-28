@@ -1,7 +1,7 @@
 import type { Locale } from '@booking/i18n';
 import { useFetcher, useLocation } from 'react-router';
-import { accountNavItems } from '../features/account/account-nav';
-import { storefrontPaths, switchLocalePath } from '../lib/locale-paths';
+import { accountNavItems } from '~/features/account/account-nav';
+import { storefrontPaths, switchLocalePath } from '~/lib/locale-paths';
 
 export function useSiteHeaderMobileMenuController({
   locale,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigation, useSubmit } from 'react-router';
-import type { AuthActionData } from '../../../lib/auth-types';
+import type { AuthActionData } from '~/lib/auth-types';
 import { otpSubmissionIntent } from './otp-submission-state';
 
 export type OtpActionData = AuthActionData & { resendAfterSec?: number };

@@ -1,8 +1,8 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { HomeListingCardsSkeleton } from '../../components/loading-skeletons';
-import { FavoriteListingCard } from '../../features/favorites/components/favorite-cards';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { HomeListingCardsSkeleton } from '~/components/loading-skeletons';
+import { FavoriteListingCard } from '~/features/favorites/components/favorite-cards';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { LocationTabs } from './location-tabs';
 import { useRecommendedSectionController } from './use-recommended-section-controller';
 

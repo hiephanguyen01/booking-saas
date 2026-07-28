@@ -26,12 +26,12 @@ import {
 import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown, Clock3, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { PendingLink } from '../../../components/pending-link';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '../../../lib/time';
-import { formatVnd } from '../../../lib/ui';
-import { useLocale } from '../../../lib/use-locale';
-import type { RoomOption } from '../listing-group-types';
+import { PendingLink } from '~/components/pending-link';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
+import { formatVnd } from '~/lib/ui';
+import { useLocale } from '~/lib/use-locale';
+import type { RoomOption } from '~/features/listing-group/listing-group-types';
 import { useSlotPickerController } from './use-slot-picker-controller';
 
 /** The hour picker: a dialog on desktop, a drawer on touch widths. */

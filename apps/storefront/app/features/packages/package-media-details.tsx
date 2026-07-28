@@ -1,9 +1,9 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import { Aperture, Clock3, FileImage, Images, WalletCards } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { PublicPackageOption } from '../../lib/package-options';
-import { formatVnd } from '../../lib/ui';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PublicPackageOption } from '~/lib/package-options';
+import { formatVnd } from '~/lib/ui';
 import { packageDetails, packageDurationHours } from './package-data';
 
 export function PackageMediaDetails({
@@ -55,9 +55,7 @@ export function PackageMediaDetails({
             icon={<FileImage />}
             label={t('packages.originalFiles')}
             value={t(
-              details.rawFiles
-                ? 'packages.rawFilesIncluded'
-                : 'packages.rawFilesNotIncluded',
+              details.rawFiles ? 'packages.rawFilesIncluded' : 'packages.rawFilesNotIncluded',
             )}
           />
         ) : null}
@@ -66,15 +64,7 @@ export function PackageMediaDetails({
   );
 }
 
-function Detail({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function Detail({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
       <span className="mt-0.5 grid size-5 shrink-0 place-items-center text-card-foreground [&_svg]:size-5">

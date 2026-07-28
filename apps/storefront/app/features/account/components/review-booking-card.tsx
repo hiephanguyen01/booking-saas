@@ -4,10 +4,10 @@ import { Button } from '@booking/ui/components/ui/button';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { CalendarDays, Star } from 'lucide-react';
 import { Link } from 'react-router';
-import { ReviewTime } from '../../../components/review-time';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
-import { useMediaViewerLabels } from '../../../lib/use-media-viewer-labels';
+import { ReviewTime } from '~/components/review-time';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
 import { AccountPanel } from './account-primitives';
 import { BookingCardHeader } from './booking-card-header';
 
@@ -74,7 +74,12 @@ export function ReviewBookingCard({
       {review.status === 'pending' ? (
         <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
           <p className="text-sm font-medium text-emerald-600">{t('reviews.invitation')}</p>
-          <Button type="button" variant="outline" onClick={() => onReview(review)} className="text-primary">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onReview(review)}
+            className="text-primary"
+          >
             {t('reviews.action')}
           </Button>
         </div>
@@ -169,7 +174,8 @@ function formatBookingRange(
     year: 'numeric',
     timeZone,
   });
-  if (start && end) return `${formatter.format(new Date(start))} – ${formatter.format(new Date(end))}`;
+  if (start && end)
+    return `${formatter.format(new Date(start))} – ${formatter.format(new Date(end))}`;
   return formatter.format(new Date(start ?? end ?? ''));
 }
 

@@ -1,6 +1,6 @@
 import { useOutletContext } from 'react-router';
-import type { StorefrontContext } from '../../root';
-import { jsonLd } from '../../lib/seo';
+import type { StorefrontContext } from '~/root';
+import { jsonLd } from '~/lib/seo';
 import type { Route } from '../../routes/+types/provider';
 import { ProviderProfilePage } from './provider-profile-page';
 

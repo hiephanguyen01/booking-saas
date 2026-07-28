@@ -1,7 +1,7 @@
 import { useFetcher, useNavigation, useOutletContext, useSearchParams } from 'react-router';
-import { useLocale } from '../../lib/use-locale';
-import type { StorefrontContext } from '../../root';
-import type { loader as paymentStatusLoader } from '../../routes/booking-payment-status';
+import { useLocale } from '~/lib/use-locale';
+import type { StorefrontContext } from '~/root';
+import type { loader as paymentStatusLoader } from '~/routes/booking-payment-status';
 import type { Route } from '../../routes/+types/booking-detail';
 import { deriveBookingPaymentState } from './booking-payment-state';
 import { useAdaptivePaymentPolling } from './use-adaptive-payment-polling';

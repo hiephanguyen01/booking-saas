@@ -1,5 +1,5 @@
 import type { AttributeField } from '@booking/contracts';
-import { formatVnd } from '../../lib/ui';
+import { formatVnd } from '~/lib/ui';
 import type { RoomOption } from './listing-group-types';
 
 /**
@@ -36,7 +36,9 @@ export function roomCapacity(attributes: Record<string, unknown>): number | null
 const isCapacityKey = (key: string): boolean => /capacity|guest|succhua/i.test(key);
 
 const stringLines = (raw: unknown): string[] =>
-  Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string' && v.trim() !== '') : [];
+  Array.isArray(raw)
+    ? raw.filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+    : [];
 
 /**
  * Resolves a listing's `attributes` against its type's `attributeSchema` into ordered

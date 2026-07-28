@@ -1,5 +1,5 @@
 import type { Route } from './+types/logout';
-import { logoutAction } from '../../lib/auth-routes.server';
+import { logoutAction } from '~/lib/auth-routes.server';
 export const action = ({ request, params }: Route.ActionArgs) =>
   logoutAction(request, params.locale);
 export function loader() {

@@ -6,9 +6,9 @@ import {
   type AuthOtpVerifiedResponse,
 } from '@booking/contracts';
 import { data, redirect } from 'react-router';
-import { publicPost } from '../../../../lib/api.server';
-import { authFlow } from '../../../../lib/auth-flow.server';
-import { requireLocale } from '../../../../lib/i18n.server';
+import { publicPost } from '~/lib/api.server';
+import { authFlow } from '~/lib/auth-flow.server';
+import { requireLocale } from '~/lib/i18n.server';
 import {
   failedPartnerFormData,
   failedPartnerOnboarding,
@@ -17,7 +17,7 @@ import {
   readPartnerFormData,
   requirePartnerPhase,
   requirePartnerView,
-} from '../../server/partner-onboarding-shared.server';
+} from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
 export function loadPartnerVerifyRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);

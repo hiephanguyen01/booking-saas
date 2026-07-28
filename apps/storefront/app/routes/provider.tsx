@@ -1,6 +1,6 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
-import { ProviderRoutePage } from '../features/provider/provider-route-page';
-import { loadProviderRoute } from '../features/provider/server/provider-route.server';
+import { ProviderRoutePage } from '~/features/provider/provider-route-page';
+import { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import type { Route } from './+types/provider';
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {

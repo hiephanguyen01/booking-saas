@@ -1,6 +1,6 @@
 import type { ReviewListResponse, ReviewSummary } from '@booking/contracts';
 import { useSearchParams } from 'react-router';
-import { PUBLIC_REVIEW_LIMIT_STEP, PUBLIC_REVIEW_MAX_LIMIT } from '../lib/public-reviews';
+import { PUBLIC_REVIEW_LIMIT_STEP, PUBLIC_REVIEW_MAX_LIMIT } from '~/lib/public-reviews';
 
 const RATINGS = [5, 4, 3, 2, 1] as const;
 
@@ -34,10 +34,7 @@ export function usePublicReviewsSectionController({
       href: searchHref(next),
     };
   });
-  const nextLimit = Math.min(
-    visibleLimit + PUBLIC_REVIEW_LIMIT_STEP,
-    PUBLIC_REVIEW_MAX_LIMIT,
-  );
+  const nextLimit = Math.min(visibleLimit + PUBLIC_REVIEW_LIMIT_STEP, PUBLIC_REVIEW_MAX_LIMIT);
   const moreParams = new URLSearchParams(searchParams);
   moreParams.set('reviewLimit', String(nextLimit));
   const canShowMore =

@@ -1,9 +1,12 @@
 import { BookingI18nProvider } from '@booking/i18n';
 import { Outlet } from 'react-router';
-import { PlatformLanding } from '../../platform-landing/components/platform-landing';
-import { SiteFooter } from '../../../layouts/site-footer';
-import { SiteHeader } from '../../../layouts/site-header';
-import type { RootLoaderPayload, TenantRootLoaderPayload } from '../server/root-loader.server';
+import { PlatformLanding } from '~/features/platform-landing/components/platform-landing';
+import { SiteFooter } from '~/layouts/site-footer';
+import { SiteHeader } from '~/layouts/site-header';
+import type {
+  RootLoaderPayload,
+  TenantRootLoaderPayload,
+} from '~/features/root/server/root-loader.server';
 import { SuspendedNotice } from './suspended-notice';
 import { TenantThemeStyle } from './tenant-theme-style';
 import { useStorefrontAppShellController } from './use-storefront-app-shell-controller';

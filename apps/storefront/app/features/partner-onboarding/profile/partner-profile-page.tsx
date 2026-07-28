@@ -4,7 +4,7 @@ import { Field, FieldLabel } from '@booking/ui/components/ui/field';
 import { Form } from '@booking/ui/components/ui/form';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import type { Route } from '../../../routes/partner-onboarding/+types/profile';
-import { FormAlert } from '../../../routes/partner-onboarding/shared';
+import { FormAlert } from '~/routes/partner-onboarding/shared';
 import {
   PARTNER_PROFILE_BANKS,
   PartnerDocumentPair,
@@ -52,11 +52,7 @@ export function PartnerProfilePage({ loaderData, actionData }: Route.ComponentPr
                   </output>
                 </Field>
                 <FieldRenderer
-                  field={partnerProfileTextField(
-                    'name',
-                    t('common:becomePartner.partnerName'),
-                    t,
-                  )}
+                  field={partnerProfileTextField('name', t('common:becomePartner.partnerName'), t)}
                 />
               </div>
               <div className="mt-6">
@@ -124,11 +120,7 @@ export function PartnerProfilePage({ loaderData, actionData }: Route.ComponentPr
                     }}
                   />
                   <FieldRenderer
-                    field={partnerProfileTextField(
-                      'address',
-                      t('common:becomePartner.address'),
-                      t,
-                    )}
+                    field={partnerProfileTextField('address', t('common:becomePartner.address'), t)}
                   />
                   <div className="space-y-4 pt-1 text-base leading-6 text-foreground">
                     <p>{t('auth:partner.privacyNotice', { tenant: loaderData.tenantName })}</p>
@@ -146,11 +138,7 @@ export function PartnerProfilePage({ loaderData, actionData }: Route.ComponentPr
                   <PartnerDocumentPair company={partnerType === 'company'} t={t} />
                   {partnerType === 'company' ? <PartnerDocumentPair company={false} t={t} /> : null}
                   <FieldRenderer
-                    field={partnerProfileTextField(
-                      'phone',
-                      t('common:becomePartner.phone'),
-                      t,
-                    )}
+                    field={partnerProfileTextField('phone', t('common:becomePartner.phone'), t)}
                   />
                   <FieldRenderer
                     field={{

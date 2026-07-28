@@ -1,5 +1,5 @@
-import { AccountMessagesPage } from '../../features/account/messages/account-messages-page';
-import { loadAccountMessagesRoute } from '../../features/account/messages/server/account-messages-route.server';
+import { AccountMessagesPage } from '~/features/account/messages/account-messages-page';
+import { loadAccountMessagesRoute } from '~/features/account/messages/server/account-messages-route.server';
 import type { Route } from './+types/messages';
 
 export function loader({ params }: Route.LoaderArgs) {

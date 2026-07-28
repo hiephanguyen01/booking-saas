@@ -6,10 +6,7 @@ export const MINIMUM_SKELETON_MS = 250;
  * Keeps an already-visible pending surface mounted long enough to read as an
  * intentional transition instead of a single-frame flash.
  */
-export function useMinimumPending(
-  active: boolean,
-  minimumMs = MINIMUM_SKELETON_MS,
-): boolean {
+export function useMinimumPending(active: boolean, minimumMs = MINIMUM_SKELETON_MS): boolean {
   const [minimumVisible, setMinimumVisible] = useState(false);
   const visibleSince = useRef<number | null>(null);
 

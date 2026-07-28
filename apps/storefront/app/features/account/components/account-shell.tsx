@@ -14,9 +14,9 @@ import {
 } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { NavLink } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { type AccountNavKey, userInitials } from '../account-nav';
-import type { AccountMenuSummary } from '../account-menu';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { type AccountNavKey, userInitials } from '~/features/account/account-nav';
+import type { AccountMenuSummary } from '~/features/account/account-menu';
 import { useAccountShellController } from './use-account-shell-controller';
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;

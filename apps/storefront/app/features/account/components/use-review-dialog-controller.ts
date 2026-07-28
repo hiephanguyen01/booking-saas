@@ -1,8 +1,8 @@
 import type { CustomerReviewItem } from '@booking/contracts';
 import { useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { createSubmissionLock } from '../../../lib/submission-lock';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { createSubmissionLock } from '~/lib/submission-lock';
 import { useReviewMedia } from './review-dialog-media';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
@@ -46,7 +46,11 @@ export function useReviewDialogController({
   }, [fetcher.state]);
 
   useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data?.ok && fetcher.data.bookingId === review?.bookingId) {
+    if (
+      fetcher.state === 'idle' &&
+      fetcher.data?.ok &&
+      fetcher.data.bookingId === review?.bookingId
+    ) {
       onOpenChange(false);
     }
   }, [fetcher.data, fetcher.state, onOpenChange, review?.bookingId]);

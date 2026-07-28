@@ -2,11 +2,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/a
 import { Badge } from '@booking/ui/components/ui/badge';
 import { BriefcaseBusiness, CalendarCheck, ShieldCheck, Star } from 'lucide-react';
 import { Link } from 'react-router';
-import { ListingCard } from '../catalog/components/listing-card';
-import { PublicReviewsSection } from '../../components/public-reviews-section';
-import { SectionCard } from '../../components/section-card';
-import { storefrontPaths } from '../../lib/locale-paths';
-import { useLocale } from '../../lib/use-locale';
+import { ListingCard } from '~/features/catalog/components/listing-card';
+import { PublicReviewsSection } from '~/components/public-reviews-section';
+import { SectionCard } from '~/components/section-card';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { useLocale } from '~/lib/use-locale';
 import type { Route } from '../../routes/+types/provider';
 
 export function ProviderProfilePage({

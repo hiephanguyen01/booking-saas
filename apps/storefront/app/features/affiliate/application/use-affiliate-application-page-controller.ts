@@ -2,13 +2,8 @@ import { type AffiliateRegistrationInput } from '@booking/contracts';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { useMemo } from 'react';
 import { useRouteLoaderData } from 'react-router';
-import {
-  NsI18n,
-  useTranslation,
-  type ScopedI18n,
-  type ScopedTranslationKey,
-} from '../../../lib/i18n';
-import type { loader as rootLoader } from '../../../root';
+import { NsI18n, useTranslation, type ScopedI18n, type ScopedTranslationKey } from '~/lib/i18n';
+import type { loader as rootLoader } from '~/root';
 
 const APPLY_ERRORS = {
   emailTakenWrongPassword: 'common:becomePartner.errors.emailTakenWrongPassword',

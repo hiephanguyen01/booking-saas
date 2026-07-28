@@ -44,10 +44,7 @@ export interface AuthFlowView {
 }
 
 /** Narrow a flow record to the client-safe view. */
-export function flowView(flow: {
-  record: AuthFlowRecord;
-  resendAfterSec: number;
-}): AuthFlowView {
+export function flowView(flow: { record: AuthFlowRecord; resendAfterSec: number }): AuthFlowView {
   return {
     maskedDestination: flow.record.maskedDestination ?? null,
     resendAfterSec: flow.resendAfterSec,

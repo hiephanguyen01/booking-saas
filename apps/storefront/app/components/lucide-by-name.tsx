@@ -16,6 +16,7 @@ export function LucideByName({
   className?: string;
   fallback?: LucideIcon;
 }) {
-  const Icon = (name && (Icons as unknown as Record<string, LucideIcon | undefined>)[name]) || Fallback;
+  const Icon =
+    (name && (Icons as unknown as Record<string, LucideIcon | undefined>)[name]) || Fallback;
   return Icon ? <Icon className={className} aria-hidden="true" /> : null;
 }

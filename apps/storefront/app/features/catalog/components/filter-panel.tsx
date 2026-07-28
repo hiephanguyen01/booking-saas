@@ -15,13 +15,10 @@ import { RadioGroup, RadioGroupItem } from '@booking/ui/components/ui/radio-grou
 import { ChevronDown, Star } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Form, Link } from 'react-router';
-import { LucideByName } from '../../../components/lucide-by-name';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { StorefrontSearchState } from '../../search/search-state';
-import {
-  type FilterOption,
-  useFilterPanelController,
-} from './use-filter-panel-controller';
+import { LucideByName } from '~/components/lucide-by-name';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { StorefrontSearchState } from '~/features/search/search-state';
+import { type FilterOption, useFilterPanelController } from './use-filter-panel-controller';
 
 /**
  * The catalog sidebar filters.

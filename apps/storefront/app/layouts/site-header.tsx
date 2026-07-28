@@ -2,10 +2,10 @@ import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts'
 import { Button } from '@booking/ui/components/ui/button';
 import { Search } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
-import type { AccountMenuSummary } from '../features/account/account-menu';
-import { type Locale, NsI18n, useTranslation } from '../lib/i18n';
-import { storefrontPaths } from '../lib/locale-paths';
-import type { StorefrontTenant } from '../lib/tenant.server';
+import type { AccountMenuSummary } from '~/features/account/account-menu';
+import { type Locale, NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
+import type { StorefrontTenant } from '~/lib/tenant.server';
 import { TenantBrand } from './tenant-brand';
 import { SiteHeaderAccountMenu } from './site-header-account-menu';
 import { SiteHeaderMobileMenu } from './site-header-mobile-menu';

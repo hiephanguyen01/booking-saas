@@ -28,8 +28,7 @@ export function deriveBookingPaymentState(
   const bookingStatus = normalizeBookingStatus(status.bookingStatus);
   const paymentOutcome = searchParams.get('payment');
   const isSuccess =
-    status.paymentStatus === 'succeeded' ||
-    (bookingStatus !== null && SUCCESS.has(bookingStatus));
+    status.paymentStatus === 'succeeded' || (bookingStatus !== null && SUCCESS.has(bookingStatus));
   const serverFailed =
     status.paymentStatus === 'failed' ||
     status.paymentStatus === 'expired' ||

@@ -1,8 +1,8 @@
 import { useOutletContext } from 'react-router';
-import { AuthFrame, SuccessState } from '../../features/auth/auth-ui';
-import { requireFlowPhaseOnly } from '../../lib/auth-routes.server';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { StorefrontContext } from '../../root';
+import { AuthFrame, SuccessState } from '~/features/auth/auth-ui';
+import { requireFlowPhaseOnly } from '~/lib/auth-routes.server';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/forgot-password-success';
 export const meta = ({ params }: Route.MetaArgs) => [
   { title: params.locale === 'en' ? 'Password changed' : 'Đổi mật khẩu thành công' },

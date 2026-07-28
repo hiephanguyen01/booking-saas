@@ -5,11 +5,11 @@ import {
   type CustomerReviewItem,
 } from '@booking/contracts';
 import { data } from 'react-router';
-import { apiGet, apiPost } from '../../../lib/api.server';
-import { requireAuth } from '../../../lib/auth.server';
-import { formRequestFailureStatus, readFormRequestBody } from '../../../lib/form-request.server';
-import { errorStatus } from '../../../lib/http-status';
-import { storefrontPaths } from '../../../lib/locale-paths';
+import { apiGet, apiPost } from '~/lib/api.server';
+import { requireAuth } from '~/lib/auth.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { errorStatus } from '~/lib/http-status';
+import { storefrontPaths } from '~/lib/locale-paths';
 
 const REVIEW_PAGE_SIZE = 100;
 
@@ -77,7 +77,10 @@ export async function submitCustomerReview(
     media,
   });
   if (!parsed.success) {
-    return data<ReviewActionData>({ ok: false, error: 'INVALID_REVIEW', bookingId }, { status: 400 });
+    return data<ReviewActionData>(
+      { ok: false, error: 'INVALID_REVIEW', bookingId },
+      { status: 400 },
+    );
   }
 
   const result = await apiPost(

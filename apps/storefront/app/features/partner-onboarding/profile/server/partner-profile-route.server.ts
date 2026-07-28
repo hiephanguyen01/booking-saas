@@ -1,20 +1,20 @@
 import { partnerOnboardingProfileSchema } from '@booking/contracts';
 import { redirect } from 'react-router';
-import { loadAdministrativeProvinces } from '../../../../lib/administrative-divisions.server';
-import { authFlow } from '../../../../lib/auth-flow.server';
-import { requireAuth } from '../../../../lib/auth.server';
-import { requireLocale } from '../../../../lib/i18n.server';
-import { readJsonRequestBody } from '../../../../lib/json-request.server';
-import { applyAsPartner } from '../../../../lib/partner.server';
-import { getCurrentStorefrontTenant } from '../../../../lib/request-context.server';
-import { partnerApplyPayloadFor } from '../../server/partner-onboarding-domain';
+import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
+import { authFlow } from '~/lib/auth-flow.server';
+import { requireAuth } from '~/lib/auth.server';
+import { requireLocale } from '~/lib/i18n.server';
+import { readJsonRequestBody } from '~/lib/json-request.server';
+import { applyAsPartner } from '~/lib/partner.server';
+import { getCurrentStorefrontTenant } from '~/lib/request-context.server';
+import { partnerApplyPayloadFor } from '~/features/partner-onboarding/server/partner-onboarding-domain';
 import {
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
   partnerStartPath,
   partnerStepPath,
   requirePartnerPhase,
-} from '../../server/partner-onboarding-shared.server';
+} from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
 export async function loadPartnerProfileRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);

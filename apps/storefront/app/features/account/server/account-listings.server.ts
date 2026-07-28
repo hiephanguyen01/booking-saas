@@ -1,6 +1,6 @@
-import type { ListingCardPresentation } from '../../catalog/components/listing-card.types';
-import { loadHomeCatalog } from '../../../templates/studio/home-data.server';
-import type { AccountListingItem } from '../account-listing-item';
+import type { ListingCardPresentation } from '~/features/catalog/components/listing-card.types';
+import { loadHomeCatalog } from '~/templates/studio/home-data.server';
+import type { AccountListingItem } from '~/features/account/account-listing-item';
 import { accountMocksEnabled } from './mock-data.server';
 
 const PRESENTATION_FIXTURES = [

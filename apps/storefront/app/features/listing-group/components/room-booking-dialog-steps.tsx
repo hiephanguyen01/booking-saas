@@ -4,9 +4,9 @@ import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw } from 'lucide-react';
-import { AvailabilitySkeleton } from '../../../components/loading-skeletons';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { PublicPackageOption } from '../../../lib/package-options';
+import { AvailabilitySkeleton } from '~/components/loading-skeletons';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PublicPackageOption } from '~/lib/package-options';
 import { RoomPhotoStrip } from './room-photo-strip';
 import { useRoomBookingDialogStepsController } from './use-room-booking-dialog-steps-controller';
 

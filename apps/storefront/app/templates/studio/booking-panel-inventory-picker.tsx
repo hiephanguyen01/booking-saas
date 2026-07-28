@@ -1,8 +1,8 @@
 import type { AvailabilityResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import { addDays, zonedToUtcIso } from '../../lib/time';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { addDays, zonedToUtcIso } from '~/lib/time';
 import { PickerLabel } from './booking-panel-presentation';
 import type { SetSearchParams } from './booking-panel-types';
 

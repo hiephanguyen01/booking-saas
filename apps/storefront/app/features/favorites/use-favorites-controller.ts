@@ -2,7 +2,7 @@ import type { FavoriteRefsResponse, FavoriteTargetKind } from '@booking/contract
 import type { Locale } from '@booking/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFetchers, useSubmit } from 'react-router';
-import { storefrontPaths } from '../../lib/locale-paths';
+import { storefrontPaths } from '~/lib/locale-paths';
 
 const DEBOUNCE_MS = 350;
 const ERROR_TOAST_MS = 4000;
@@ -120,8 +120,7 @@ export function useFavoritesController({
       // Fetcher data may be empty after a route/network failure or may still hold
       // the previous submission's result. Either case settles the current write as
       // rejected; leaving it in `inFlight` would block every later toggle for this key.
-      const rejected =
-        result?.clientMutationId !== active.mutationId || result.ok !== true;
+      const rejected = result?.clientMutationId !== active.mutationId || result.ok !== true;
 
       inFlight.current.delete(key);
       const queued = pending.current.get(key);

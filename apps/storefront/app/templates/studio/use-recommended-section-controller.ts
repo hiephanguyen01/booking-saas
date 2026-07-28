@@ -1,9 +1,6 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { useState } from 'react';
-import {
-  filterHomeListingsByLocation,
-  type HomeLocationKey,
-} from './home-listing-presentation';
+import { filterHomeListingsByLocation, type HomeLocationKey } from './home-listing-presentation';
 
 const PAGE_SIZE = 8;
 

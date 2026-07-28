@@ -1,7 +1,7 @@
 import { useLocation, useNavigation, useOutletContext, useSearchParams } from 'react-router';
-import { isReadNavigationMethod, useMinimumPending } from '../../lib/use-minimum-pending';
-import type { StorefrontContext } from '../../root';
-import type { SearchSort } from '../search/search-state';
+import { isReadNavigationMethod, useMinimumPending } from '~/lib/use-minimum-pending';
+import type { StorefrontContext } from '~/root';
+import type { SearchSort } from '~/features/search/search-state';
 
 const SORT_OPTIONS = [
   { value: 'relevance', labelKey: 'sort.relevance' },

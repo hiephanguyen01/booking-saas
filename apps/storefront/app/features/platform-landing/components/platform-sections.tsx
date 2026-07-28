@@ -22,8 +22,8 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { PlatformRootLoaderPayload } from '../../root/server/root-loader.server';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PlatformRootLoaderPayload } from '~/features/root/server/root-loader.server';
 import { PlatformConsultationForm } from './platform-consultation-form';
 import { PlatformBrand } from './platform-header';
 

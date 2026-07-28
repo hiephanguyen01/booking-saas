@@ -1,5 +1,5 @@
 import type { Locale } from '@booking/i18n';
-import { storefrontPaths } from '../../lib/locale-paths';
+import { storefrontPaths } from '~/lib/locale-paths';
 
 export type AccountNavKey =
   | 'profile'

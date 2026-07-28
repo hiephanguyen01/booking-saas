@@ -1,7 +1,7 @@
 import type { ContentReportTarget } from '@booking/contracts';
 import { useActionData, useLocation, useOutletContext } from 'react-router';
-import { storefrontPaths } from '../../lib/locale-paths';
-import type { StorefrontContext } from '../../root';
+import { storefrontPaths } from '~/lib/locale-paths';
+import type { StorefrontContext } from '~/root';
 
 type ReportActionData = {
   reportOk?: boolean;
@@ -24,11 +24,7 @@ export function useContentReportDialogController({
   const actionData = useActionData() as ReportActionData | undefined;
   const joiner = location.search ? '&' : '?';
   const returnTo = `${location.pathname}${location.search}${joiner}report=1`;
-  const view: ReportDialogView = !currentUser
-    ? 'login'
-    : actionData?.reportOk
-      ? 'success'
-      : 'form';
+  const view: ReportDialogView = !currentUser ? 'login' : actionData?.reportOk ? 'success' : 'form';
 
   return {
     actionData,

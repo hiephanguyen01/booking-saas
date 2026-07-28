@@ -2,14 +2,11 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@booking/ui/component
 import { Input } from '@booking/ui/components/ui/input';
 import { Mail, UserRound } from 'lucide-react';
 import { Link } from 'react-router';
-import type { AuthActionData } from '../../../lib/auth-types';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { storefrontPaths } from '../../../lib/locale-paths';
+import type { AuthActionData } from '~/lib/auth-types';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
 import { AuthFormError, AuthPasswordInput, AuthSubmitButton } from './auth-form-controls';
-import {
-  useAuthStartFormController,
-  type AuthStartMode,
-} from './use-auth-start-form-controller';
+import { useAuthStartFormController, type AuthStartMode } from './use-auth-start-form-controller';
 
 export function StartForm({
   mode,

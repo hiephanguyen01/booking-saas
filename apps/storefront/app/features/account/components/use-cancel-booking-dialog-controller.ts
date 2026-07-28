@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useFetcher } from 'react-router';
-import { createSubmissionLock } from '../../../lib/submission-lock';
-import type { BookingCancellationActionData } from '../server/booking-cancellation.server';
+import { createSubmissionLock } from '~/lib/submission-lock';
+import type { BookingCancellationActionData } from '~/features/account/server/booking-cancellation.server';
 
 export function useCancelBookingDialogController({
   bookingCode,

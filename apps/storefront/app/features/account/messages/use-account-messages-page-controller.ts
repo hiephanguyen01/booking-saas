@@ -23,8 +23,7 @@ export function useAccountMessagesPageController<TConversation extends AccountCo
     const normalizedQuery = query.toLowerCase();
     return conversations.filter((item) => item.name.toLowerCase().includes(normalizedQuery));
   }, [conversations, query]);
-  const selected =
-    conversations.find((item) => item.id === selectedId) ?? conversations[0];
+  const selected = conversations.find((item) => item.id === selectedId) ?? conversations[0];
   const messages = useMemo(
     () => [
       ...(selected?.messages ?? []),

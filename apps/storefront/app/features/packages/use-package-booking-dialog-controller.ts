@@ -5,12 +5,12 @@ import type {
 } from '@booking/contracts';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useFetcher } from 'react-router';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { PublicPackageOption } from '../../lib/package-options';
-import { dateLabelInTz } from '../../lib/time';
-import { useLocale } from '../../lib/use-locale';
-import type { loader as bookingDataLoader } from '../../routes/listing-booking-data';
-import { checkoutHref, slotInterval } from '../listing-group/listing-group-utils';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PublicPackageOption } from '~/lib/package-options';
+import { dateLabelInTz } from '~/lib/time';
+import { useLocale } from '~/lib/use-locale';
+import type { loader as bookingDataLoader } from '~/routes/listing-booking-data';
+import { checkoutHref, slotInterval } from '~/features/listing-group/listing-group-utils';
 
 type BookingRequestKind = 'availability' | 'quote';
 
@@ -113,8 +113,8 @@ export function usePackageBookingDialogController({
   const interval = slotInterval(selectedSlots);
   const selectionMatches = Boolean(
     interval &&
-      currentData?.selectionStart === interval.start &&
-      currentData.selectionEnd === interval.end,
+    currentData?.selectionStart === interval.start &&
+    currentData.selectionEnd === interval.end,
   );
   const quote = selectionMatches ? currentData?.quote : null;
   const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';

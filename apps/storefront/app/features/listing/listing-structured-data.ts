@@ -1,6 +1,6 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
-import type { StorefrontContext } from '../root/storefront-context';
+import type { StorefrontContext } from '~/features/root/storefront-context';
 
 interface ListingStructuredDataInput {
   tenant: StorefrontContext['tenant'];

@@ -1,8 +1,8 @@
 import type { PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import type { RefObject } from 'react';
-import { BookingDialogFooter } from '../../components/booking-dialog-footer';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { PublicPackageOption } from '../../lib/package-options';
+import { BookingDialogFooter } from '~/components/booking-dialog-footer';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PublicPackageOption } from '~/lib/package-options';
 import { PackageBookingDialogShell } from './package-booking-dialog-shell';
 import { PackageBookingDialogSteps } from './package-booking-dialog-steps';
 import { usePackageBookingDialogController } from './use-package-booking-dialog-controller';

@@ -1,16 +1,16 @@
 import { RouteErrorState } from '@booking/ui/components/route-error-state';
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing';
-import { buildListingMeta } from '../features/listing/listing-meta';
-import { buildListingStructuredData } from '../features/listing/listing-structured-data';
-import { ListingPage } from '../features/listing/listing-page';
+import { buildListingMeta } from '~/features/listing/listing-meta';
+import { buildListingStructuredData } from '~/features/listing/listing-structured-data';
+import { ListingPage } from '~/features/listing/listing-page';
 import {
   handleListingAction,
   loadListingRoute,
-} from '../features/listing/server/listing-route.server';
-import { PackageListingPage } from '../features/packages/package-listing-page';
-import { jsonLd } from '../lib/seo';
-import type { StorefrontContext } from '../root';
+} from '~/features/listing/server/listing-route.server';
+import { PackageListingPage } from '~/features/packages/package-listing-page';
+import { jsonLd } from '~/lib/seo';
+import type { StorefrontContext } from '~/root';
 
 export async function action({ request, params }: Route.ActionArgs) {
   return handleListingAction(request, params.listingSlug);

@@ -1,5 +1,5 @@
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { PlatformRootLoaderPayload } from '../../root/server/root-loader.server';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PlatformRootLoaderPayload } from '~/features/root/server/root-loader.server';
 import { PlatformHeader } from './platform-header';
 import {
   CapabilitiesSection,

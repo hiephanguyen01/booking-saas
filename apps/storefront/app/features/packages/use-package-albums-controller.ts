@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import type { PublicPackageOption } from '../../lib/package-options';
+import type { PublicPackageOption } from '~/lib/package-options';
 
 type PackageAlbum = {
   id: string;

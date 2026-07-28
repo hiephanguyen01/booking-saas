@@ -94,7 +94,9 @@ export default function handleRequest(
           );
         },
         onShellError(error: unknown) {
-          failBeforeShell(error instanceof Error ? error : new Error('Storefront SSR shell failed'));
+          failBeforeShell(
+            error instanceof Error ? error : new Error('Storefront SSR shell failed'),
+          );
         },
         onError(error: unknown) {
           responseStatusCode = 500;

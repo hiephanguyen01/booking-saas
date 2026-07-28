@@ -1,8 +1,8 @@
-import { PartnerProfilePage } from '../../features/partner-onboarding/profile/partner-profile-page';
+import { PartnerProfilePage } from '~/features/partner-onboarding/profile/partner-profile-page';
 import {
   loadPartnerProfileRoute,
   submitPartnerProfileRoute,
-} from '../../features/partner-onboarding/profile/server/partner-profile-route.server';
+} from '~/features/partner-onboarding/profile/server/partner-profile-route.server';
 import type { Route } from './+types/profile';
 import { partnerMeta } from './shared';
 

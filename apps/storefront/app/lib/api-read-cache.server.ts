@@ -3,11 +3,7 @@ import type { ApiRequestOptions, Auth } from '@booking/api-client';
 
 const requestReads = new WeakMap<Request, Map<string, Promise<unknown>>>();
 
-export function memoizedRead<T>(
-  request: Request,
-  key: string,
-  read: () => Promise<T>,
-): Promise<T> {
+export function memoizedRead<T>(request: Request, key: string, read: () => Promise<T>): Promise<T> {
   let reads = requestReads.get(request);
   if (!reads) {
     reads = new Map();

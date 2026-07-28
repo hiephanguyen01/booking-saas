@@ -1,5 +1,5 @@
 import type { Route } from '../../routes/+types/checkout';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { BookingColumn } from './components/booking-column';
 import { CheckoutForm } from './components/checkout-form';
 import { MemberBanner } from './components/member-banner';

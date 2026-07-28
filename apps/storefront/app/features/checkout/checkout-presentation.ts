@@ -1,8 +1,5 @@
 import type { CancellationPolicySummary } from '@booking/contracts';
-import {
-  cancellationPolicyLines,
-  type CancellationPolicyLine,
-} from '../../lib/cancellation-policy';
+import { cancellationPolicyLines, type CancellationPolicyLine } from '~/lib/cancellation-policy';
 
 export function checkoutAmounts(
   quote: { subtotal: string; depositAmount: string; securityDeposit: string },
@@ -13,9 +10,7 @@ export function checkoutAmounts(
   const securityDeposit = BigInt(quote.securityDeposit);
   const finalAmount = BigInt(promo?.finalAmount ?? quote.subtotal);
   const adjustedDeposit =
-    promo && subtotal > 0n
-      ? (finalAmount * deposit + subtotal / 2n) / subtotal
-      : deposit;
+    promo && subtotal > 0n ? (finalAmount * deposit + subtotal / 2n) / subtotal : deposit;
 
   return {
     subtotal: quote.subtotal,

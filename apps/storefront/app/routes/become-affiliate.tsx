@@ -1,8 +1,8 @@
-import { AffiliateApplicationPage } from '../features/affiliate/application/affiliate-application-page';
+import { AffiliateApplicationPage } from '~/features/affiliate/application/affiliate-application-page';
 import {
   loadAffiliateApplicationRoute,
   submitAffiliateApplication,
-} from '../features/affiliate/application/server/affiliate-application-route.server';
+} from '~/features/affiliate/application/server/affiliate-application-route.server';
 import type { Route } from './+types/become-affiliate';
 import { partnerMeta } from './partner-onboarding/shared';
 

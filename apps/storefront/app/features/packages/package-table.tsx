@@ -12,11 +12,11 @@ import {
 import { cn } from '@booking/ui/lib/utils';
 import { Aperture, Check, Clock3, Expand, FileImage, Images } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { SectionCard } from '../../components/section-card';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { PublicPackageOption } from '../../lib/package-options';
-import { useMediaViewerLabels } from '../../lib/use-media-viewer-labels';
-import { formatVnd } from '../../lib/ui';
+import { SectionCard } from '~/components/section-card';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PublicPackageOption } from '~/lib/package-options';
+import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
+import { formatVnd } from '~/lib/ui';
 import { packageDurationHours, packageDetails } from './package-data';
 import { PackageMediaDetails } from './package-media-details';
 
@@ -45,11 +45,7 @@ export function PackageTable({
       alt: t('group.photoAlt', { title: activePackage.name, index: index + 1 }),
     })) ?? [];
 
-  function openPackageMedia(
-    packageId: string,
-    index: number,
-    trigger: HTMLButtonElement,
-  ): void {
+  function openPackageMedia(packageId: string, index: number, trigger: HTMLButtonElement): void {
     mediaTriggerRef.current = trigger;
     setActiveMedia({ packageId, index });
   }

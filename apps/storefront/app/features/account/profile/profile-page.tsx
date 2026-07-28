@@ -4,11 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@booking/ui/components/ui/a
 import { Button } from '@booking/ui/components/ui/button';
 import { CheckCircle2 } from 'lucide-react';
 import { useOutletContext } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { Route } from '../../../routes/account/+types/profile';
-import type { AccountOutletContext } from '../../../routes/account/layout';
-import { userInitials } from '../account-nav';
-import { AccountPanel } from '../components/account-primitives';
+import type { AccountOutletContext } from '~/routes/account/layout';
+import { userInitials } from '~/features/account/account-nav';
+import { AccountPanel } from '~/features/account/components/account-primitives';
 import { useAccountProfileController } from './use-account-profile-controller';
 
 type AccountProfilePageProps = {
@@ -18,26 +18,19 @@ type AccountProfilePageProps = {
 export function AccountProfilePage({ actionData }: AccountProfilePageProps) {
   const { user } = useOutletContext<AccountOutletContext>();
   const { t } = useTranslation(NsI18n.Account);
-  const {
-    avatarSrc,
-    choosePhoto,
-    customerId,
-    defaultValues,
-    fields,
-    inputRef,
-    selectAvatar,
-  } = useAccountProfileController({
-    user,
-    labels: {
-      fullName: t('profile.fullName'),
-      email: t('profile.email'),
-      phone: t('profile.phone'),
-      currentPassword: t('profile.currentPassword'),
-      newPassword: t('profile.newPassword'),
-      confirmPassword: t('profile.confirmPassword'),
-      placeholder: t('profile.placeholder'),
-    },
-  });
+  const { avatarSrc, choosePhoto, customerId, defaultValues, fields, inputRef, selectAvatar } =
+    useAccountProfileController({
+      user,
+      labels: {
+        fullName: t('profile.fullName'),
+        email: t('profile.email'),
+        phone: t('profile.phone'),
+        currentPassword: t('profile.currentPassword'),
+        newPassword: t('profile.newPassword'),
+        confirmPassword: t('profile.confirmPassword'),
+        placeholder: t('profile.placeholder'),
+      },
+    });
 
   return (
     <AccountPanel className="rounded-none px-6 py-8 sm:px-8 lg:px-10">

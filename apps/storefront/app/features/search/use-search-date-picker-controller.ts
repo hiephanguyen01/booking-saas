@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Locale } from '../../lib/i18n';
-import {
-  dateLabelInTz,
-  dateOnlyToLocal,
-  DEFAULT_TZ,
-  localToDateOnly,
-  todayInTz,
-} from '../../lib/time';
+import type { Locale } from '~/lib/i18n';
+import { dateLabelInTz, dateOnlyToLocal, DEFAULT_TZ, localToDateOnly, todayInTz } from '~/lib/time';
 import type { DateRange } from './search-form-types';
 import type { SearchMode } from './search-state';
 
@@ -63,9 +57,7 @@ export function useSearchDatePickerController({
   const formatDay = (value: Date): string =>
     dateLabelInTz(localToDateOnly(value), DEFAULT_TZ, locale);
   const isSingleDayRange =
-    range.from && range.to
-      ? localToDateOnly(range.from) === localToDateOnly(range.to)
-      : false;
+    range.from && range.to ? localToDateOnly(range.from) === localToDateOnly(range.to) : false;
   const label = singleMode
     ? date
       ? dateLabelInTz(date, DEFAULT_TZ, locale)

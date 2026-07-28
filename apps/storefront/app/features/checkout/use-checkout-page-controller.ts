@@ -1,17 +1,14 @@
 import { checkoutDestinationSchema } from '@booking/contracts';
 import { useLocation, useOutletContext, useSearchParams } from 'react-router';
 import type { Route } from '../../routes/+types/checkout';
-import type { StorefrontContext } from '../../root';
-import { storefrontPaths } from '../../lib/locale-paths';
-import { useLocale } from '../../lib/use-locale';
+import type { StorefrontContext } from '~/root';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { useLocale } from '~/lib/use-locale';
 import { checkoutAmounts, checkoutCancellationLines } from './checkout-presentation';
 
 type CheckoutPageControllerProps = Pick<Route.ComponentProps, 'loaderData' | 'actionData'>;
 
-export function useCheckoutPageController({
-  loaderData,
-  actionData,
-}: CheckoutPageControllerProps) {
+export function useCheckoutPageController({ loaderData, actionData }: CheckoutPageControllerProps) {
   const { listing, start, quote, promoCode, promo, currentUser } = loaderData;
   const { tenant } = useOutletContext<StorefrontContext>();
   const locale = useLocale();

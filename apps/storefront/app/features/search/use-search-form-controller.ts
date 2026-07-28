@@ -1,8 +1,8 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import { useState } from 'react';
-import { storefrontPaths } from '../../lib/locale-paths';
-import { dateOnlyToLocal, localToDateOnly } from '../../lib/time';
-import { useLocale } from '../../lib/use-locale';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { dateOnlyToLocal, localToDateOnly } from '~/lib/time';
+import { useLocale } from '~/lib/use-locale';
 import type { DateRange, LocationOption } from './search-form-types';
 import {
   canSubmitSearch,

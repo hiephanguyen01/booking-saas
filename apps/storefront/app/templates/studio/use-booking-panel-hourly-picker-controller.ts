@@ -5,10 +5,10 @@ import {
   contiguousSlotsForInterval,
   slotInterval,
   toggleContiguousSlot,
-} from '../../features/listing-group/listing-group-utils';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import { dateLabelInTz, dateOnlyToLocal, localToDateOnly, timeInTz } from '../../lib/time';
-import { useLocale } from '../../lib/use-locale';
+} from '~/features/listing-group/listing-group-utils';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { dateLabelInTz, dateOnlyToLocal, localToDateOnly, timeInTz } from '~/lib/time';
+import { useLocale } from '~/lib/use-locale';
 import type { SetSearchParams } from './booking-panel-types';
 
 export function useBookingPanelHourlyPickerController({

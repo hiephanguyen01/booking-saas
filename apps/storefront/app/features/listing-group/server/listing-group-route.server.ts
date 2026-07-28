@@ -1,17 +1,13 @@
-import {
-  MAX_BOOKING_RANGE_DAYS,
-  moneyStringSchema,
-  timeOfDaySchema,
-} from '@booking/contracts';
-import { submitContentReport } from '../../content-reports/content-report.server';
-import { parseSearchState, rangeDates } from '../../search/search-state';
-import { loadAdministrativeProvinces } from '../../../lib/administrative-divisions.server';
-import { fetchAvailability } from '../../../lib/booking.server';
-import { fetchListing, fetchListingGroup, fetchListings, fetchQuote } from '../../../lib/catalog.server';
-import { mapWithConcurrency } from '../../../lib/concurrency.server';
-import { optionalData } from '../../../lib/optional-data.server';
-import { loadPublicReviews } from '../../../lib/public-reviews.server';
-import { addDays, DEFAULT_TZ, nightsBetween, todayInTz, zonedToUtcIso } from '../../../lib/time';
+import { MAX_BOOKING_RANGE_DAYS, moneyStringSchema, timeOfDaySchema } from '@booking/contracts';
+import { submitContentReport } from '~/features/content-reports/content-report.server';
+import { parseSearchState, rangeDates } from '~/features/search/search-state';
+import { loadAdministrativeProvinces } from '~/lib/administrative-divisions.server';
+import { fetchAvailability } from '~/lib/booking.server';
+import { fetchListing, fetchListingGroup, fetchListings, fetchQuote } from '~/lib/catalog.server';
+import { mapWithConcurrency } from '~/lib/concurrency.server';
+import { optionalData } from '~/lib/optional-data.server';
+import { loadPublicReviews } from '~/lib/public-reviews.server';
+import { addDays, DEFAULT_TZ, nightsBetween, todayInTz, zonedToUtcIso } from '~/lib/time';
 
 const LISTING_DETAIL_CONCURRENCY = 4;
 const PACKAGE_AVAILABILITY_CONCURRENCY = 3;
@@ -163,7 +159,9 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
           bookingToday,
           browsing: false as const,
           availability,
-          available: state.hasTimeSelection ? Boolean(requestedSlot && quote) : openSlots.length > 0,
+          available: state.hasTimeSelection
+            ? Boolean(requestedSlot && quote)
+            : openSlots.length > 0,
           price,
           quote,
           start: requestedStart,

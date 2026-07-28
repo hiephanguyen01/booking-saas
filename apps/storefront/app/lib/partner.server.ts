@@ -29,9 +29,7 @@ export type PartnerErrorCode =
   | 'invalidLocation'
   | 'generic';
 type ErrorCode = PartnerErrorCode;
-type TokenResult =
-  | { ok: true; token: string }
-  | { ok: false; code: ErrorCode; status: number };
+type TokenResult = { ok: true; token: string } | { ok: false; code: ErrorCode; status: number };
 
 /**
  * Register a fresh account, or — if the email already exists (register 409) —

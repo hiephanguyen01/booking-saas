@@ -1,9 +1,9 @@
 import type { HourlySlot } from '@booking/contracts';
 import { useMemo } from 'react';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '../../lib/time';
-import { formatVnd } from '../../lib/ui';
-import { useLocale } from '../../lib/use-locale';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '~/lib/time';
+import { formatVnd } from '~/lib/ui';
+import { useLocale } from '~/lib/use-locale';
 
 export function usePackageBookingDialogStepsController({
   date,

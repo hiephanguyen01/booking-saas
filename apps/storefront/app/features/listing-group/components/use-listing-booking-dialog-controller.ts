@@ -1,26 +1,18 @@
-import type {
-  HourlySlot,
-  PublicListingDetailWithTimezoneResponse,
-} from '@booking/contracts';
+import type { HourlySlot, PublicListingDetailWithTimezoneResponse } from '@booking/contracts';
 import { useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
-import { normalizeDailyRange } from '../../../lib/daily-range';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { packagesForMode } from '../../../lib/package-options';
-import {
-  addDays,
-  dateLabelInTz,
-  localToDateOnly,
-  zonedToUtcIso,
-} from '../../../lib/time';
-import { useLocale } from '../../../lib/use-locale';
-import type { loader as bookingDataLoader } from '../../../routes/listing-group-booking-data';
+import { normalizeDailyRange } from '~/lib/daily-range';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { packagesForMode } from '~/lib/package-options';
+import { addDays, dateLabelInTz, localToDateOnly, zonedToUtcIso } from '~/lib/time';
+import { useLocale } from '~/lib/use-locale';
+import type { loader as bookingDataLoader } from '~/routes/listing-group-booking-data';
 import {
   atomicHourlySlots,
   checkoutHref,
   slotInterval,
   toggleContiguousSlot,
-} from '../listing-group-utils';
+} from '~/features/listing-group/listing-group-utils';
 import type { ListingBookingMode, RoomBookingDateRange } from './room-booking-dialog-steps';
 
 type BookingRequestKind = 'availability' | 'quote';
@@ -190,7 +182,8 @@ export function useListingBookingDialogController({
     currentData?.selectionStart &&
     currentData.selectionEnd &&
     (mode === 'daily' ||
-      (interval?.start === currentData.selectionStart && interval.end === currentData.selectionEnd)),
+      (interval?.start === currentData.selectionStart &&
+        interval.end === currentData.selectionEnd)),
   );
   const hasCompleteSelection = mode === 'hourly' ? Boolean(interval) : Boolean(from && to);
   const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';

@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
-import type { StorefrontContext } from '../root';
+import type { StorefrontContext } from '~/root';
 import { SiteFooter } from './site-footer';
 import { SiteHeader } from './site-header';
-import { NsI18n, useTranslation } from '../lib/i18n';
-import { storefrontPaths } from '../lib/locale-paths';
-import { ListingTypeGlyph } from '../components/listing-type-glyph';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { storefrontPaths } from '~/lib/locale-paths';
+import { ListingTypeGlyph } from '~/components/listing-type-glyph';
 
 type AccountFlowLayoutProps = {
   children: ReactNode;

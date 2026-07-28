@@ -1,7 +1,7 @@
 import type { Route } from './+types/sitemap[.]xml';
-import { fetchListingTypes, searchListings } from '../lib/catalog.server';
-import { requestPublicUrl } from '../lib/seo';
-import { getOptionalStorefrontTenant } from '../lib/request-context.server';
+import { fetchListingTypes, searchListings } from '~/lib/catalog.server';
+import { requestPublicUrl } from '~/lib/seo';
+import { getOptionalStorefrontTenant } from '~/lib/request-context.server';
 
 const SITEMAP_PAGE_SIZE = 48;
 

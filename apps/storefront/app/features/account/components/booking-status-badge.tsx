@@ -1,6 +1,6 @@
 import type { BookingStatus } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 const STATUS_CLASS: Record<BookingStatus, string> = {
   draft: 'border-transparent bg-transparent text-slate-600',

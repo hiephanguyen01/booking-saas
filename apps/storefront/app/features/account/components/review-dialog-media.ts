@@ -7,7 +7,7 @@ import {
 } from '@booking/contracts';
 import { presignAndPutReviewMedia } from '@booking/ui/lib/upload';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 type UploadState = 'ready' | 'uploading' | 'uploaded' | 'error';
 

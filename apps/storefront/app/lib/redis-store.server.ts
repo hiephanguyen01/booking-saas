@@ -78,9 +78,7 @@ export const storefrontRedisStore: RedisJsonStore = {
     return Number(result) === 1;
   },
   async deleteIfValue(key, value) {
-    await (
-      await client()
-    ).sendCommand(['EVAL', DELETE_IF_VALUE_SCRIPT, '1', key, value]);
+    await (await client()).sendCommand(['EVAL', DELETE_IF_VALUE_SCRIPT, '1', key, value]);
   },
   async ping() {
     await (await client()).ping();

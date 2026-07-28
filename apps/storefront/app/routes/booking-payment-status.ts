@@ -1,6 +1,6 @@
 import { data } from 'react-router';
-import { fetchPaymentStatus } from '../lib/booking.server';
-import { getCheckoutFlowService } from '../lib/checkout-flow.server';
+import { fetchPaymentStatus } from '~/lib/booking.server';
+import { getCheckoutFlowService } from '~/lib/checkout-flow.server';
 import type { Route } from './+types/booking-payment-status';
 
 /** Lightweight polling endpoint for the booking confirmation screen. */

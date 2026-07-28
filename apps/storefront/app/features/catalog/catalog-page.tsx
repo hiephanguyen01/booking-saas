@@ -16,17 +16,14 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router';
-import { CatalogResultSkeleton } from '../../components/loading-skeletons';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { CatalogResultSkeleton } from '~/components/loading-skeletons';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { Route } from '../../routes/+types/catalog';
-import { FavoriteSearchResultCard } from '../favorites/components/favorite-cards';
-import { SearchForm } from '../search/search-form';
+import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
+import { SearchForm } from '~/features/search/search-form';
 import { CatalogPagination } from './components/catalog-pagination';
 import { FilterPanel } from './components/filter-panel';
-import {
-  type CatalogSortItem,
-  useCatalogPageController,
-} from './use-catalog-page-controller';
+import { type CatalogSortItem, useCatalogPageController } from './use-catalog-page-controller';
 
 export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
   const { type, search, state } = loaderData;
@@ -58,11 +55,7 @@ export function CatalogPage({ loaderData, params }: Route.ComponentProps) {
           <FilterPanel state={state} facets={search.facets} booleanFacetKeys={booleanFacetKeys} />
         </aside>
 
-        <section
-          aria-labelledby="search-results-title"
-          aria-busy={pending}
-          className="min-w-0"
-        >
+        <section aria-labelledby="search-results-title" aria-busy={pending} className="min-w-0">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <h1 id="search-results-title" className="text-2xl font-semibold text-foreground">

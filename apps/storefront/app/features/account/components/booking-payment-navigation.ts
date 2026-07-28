@@ -4,9 +4,7 @@ export interface BookingPaymentNavigationSnapshot {
   formData?: FormData;
 }
 
-export function isBookingPaymentNavigation(
-  navigation: BookingPaymentNavigationSnapshot,
-): boolean {
+export function isBookingPaymentNavigation(navigation: BookingPaymentNavigationSnapshot): boolean {
   return (
     navigation.state !== 'idle' &&
     navigation.formMethod != null &&

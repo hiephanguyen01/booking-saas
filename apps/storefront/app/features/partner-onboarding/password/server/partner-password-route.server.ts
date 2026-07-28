@@ -4,11 +4,11 @@ import {
   type AuthFlowCompleteResponse,
 } from '@booking/contracts';
 import { z } from 'zod';
-import { backendLogin, publicPost } from '../../../../lib/api.server';
-import { authFlow } from '../../../../lib/auth-flow.server';
-import { requireLocale } from '../../../../lib/i18n.server';
-import { suppressStorefrontSessionCommit } from '../../../../lib/request-context.server';
-import { createUserSession } from '../../../../lib/session.server';
+import { backendLogin, publicPost } from '~/lib/api.server';
+import { authFlow } from '~/lib/auth-flow.server';
+import { requireLocale } from '~/lib/i18n.server';
+import { suppressStorefrontSessionCommit } from '~/lib/request-context.server';
+import { createUserSession } from '~/lib/session.server';
 import {
   failedPartnerFormData,
   failedPartnerOnboarding,
@@ -18,7 +18,7 @@ import {
   readPartnerFormData,
   requirePartnerPhase,
   requirePartnerPhaseOnly,
-} from '../../server/partner-onboarding-shared.server';
+} from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
 const partnerPasswordSchema = z.object({
   password: z

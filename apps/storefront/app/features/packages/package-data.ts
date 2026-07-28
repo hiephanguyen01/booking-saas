@@ -1,5 +1,5 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
-import { packagesForMode, type PublicPackageOption } from '../../lib/package-options';
+import { packagesForMode, type PublicPackageOption } from '~/lib/package-options';
 
 export interface PackageDetails {
   style: string | null;

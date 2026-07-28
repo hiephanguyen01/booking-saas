@@ -1,20 +1,20 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
 import { createTranslator, type Locale } from '@booking/i18n';
 import { data } from 'react-router';
-import type { AccountMenuSummary } from '../../account/account-menu';
+import type { AccountMenuSummary } from '~/features/account/account-menu';
 import {
   readRefCode,
   refAttributionCookie,
   resolveVisitorId,
   trackReferral,
-} from '../../../lib/affiliate.server';
-import { getOptionalAuth } from '../../../lib/auth.server';
-import { fetchListingTypes } from '../../../lib/catalog.server';
-import { resolveLocale } from '../../../lib/i18n.server';
-import { getOptionalStorefrontTenant } from '../../../lib/request-context.server';
-import { canonicalUrl, localizedAlternates, requestPublicUrl } from '../../../lib/seo';
-import { storefrontEnv } from '../../../lib/env.server';
-import type { StorefrontTenant } from '../../../lib/tenant.server';
+} from '~/lib/affiliate.server';
+import { getOptionalAuth } from '~/lib/auth.server';
+import { fetchListingTypes } from '~/lib/catalog.server';
+import { resolveLocale } from '~/lib/i18n.server';
+import { getOptionalStorefrontTenant } from '~/lib/request-context.server';
+import { canonicalUrl, localizedAlternates, requestPublicUrl } from '~/lib/seo';
+import { storefrontEnv } from '~/lib/env.server';
+import type { StorefrontTenant } from '~/lib/tenant.server';
 
 export interface TenantRootLoaderPayload {
   kind: 'tenant';

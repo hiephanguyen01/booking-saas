@@ -6,14 +6,17 @@ import {
   CollapsibleTrigger,
 } from '@booking/ui/components/ui/collapsible';
 import { Check, ChevronDown, Clock3, MapPin, Users } from 'lucide-react';
-import { PendingLink } from '../../../components/pending-link';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { formatListingLocation, formatVnd } from '../../../lib/ui';
-import { hoursBetween } from '../../../lib/time';
-import { useLocale } from '../../../lib/use-locale';
-import type { BookingMode, RoomOption } from '../listing-group-types';
-import { checkoutHref, type RoomAvailabilityState } from '../listing-group-utils';
-import { roomCapacity, specCards } from '../room-attributes';
+import { PendingLink } from '~/components/pending-link';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { formatListingLocation, formatVnd } from '~/lib/ui';
+import { hoursBetween } from '~/lib/time';
+import { useLocale } from '~/lib/use-locale';
+import type { BookingMode, RoomOption } from '~/features/listing-group/listing-group-types';
+import {
+  checkoutHref,
+  type RoomAvailabilityState,
+} from '~/features/listing-group/listing-group-utils';
+import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
 import { AttributeSpecCards } from './attribute-spec-cards';
 import { SlotPicker } from './slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';

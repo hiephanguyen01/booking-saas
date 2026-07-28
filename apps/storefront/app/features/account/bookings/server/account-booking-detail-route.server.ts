@@ -7,20 +7,20 @@ import {
 } from '@booking/contracts';
 import { data, redirect } from 'react-router';
 import { z } from 'zod';
-import { apiGet, apiPost } from '../../../../lib/api.server';
-import { requireAuth } from '../../../../lib/auth.server';
-import { checkoutBooking, fetchPaymentOptions } from '../../../../lib/booking.server';
-import { formRequestFailureStatus, readFormRequestBody } from '../../../../lib/form-request.server';
-import { errorStatus } from '../../../../lib/http-status';
-import { storefrontPaths } from '../../../../lib/locale-paths';
+import { apiGet, apiPost } from '~/lib/api.server';
+import { requireAuth } from '~/lib/auth.server';
+import { checkoutBooking, fetchPaymentOptions } from '~/lib/booking.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { errorStatus } from '~/lib/http-status';
+import { storefrontPaths } from '~/lib/locale-paths';
 import {
   allowedPaymentFormPost,
   allowedPaymentRedirect,
   isMockPaymentRedirect,
-} from '../../../../lib/payment-redirect.server';
-import { submitBookingCancellation } from '../../server/booking-cancellation.server';
-import { loadAccountBooking } from '../../server/booking-history.server';
-import { submitCustomerReview } from '../../server/customer-reviews.server';
+} from '~/lib/payment-redirect.server';
+import { submitBookingCancellation } from '~/features/account/server/booking-cancellation.server';
+import { loadAccountBooking } from '~/features/account/server/booking-history.server';
+import { submitCustomerReview } from '~/features/account/server/customer-reviews.server';
 
 const bookingActionSchema = z.discriminatedUnion('intent', [
   z.object({ intent: z.literal('pay') }),

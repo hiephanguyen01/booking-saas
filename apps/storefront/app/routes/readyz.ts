@@ -1,12 +1,15 @@
-import { storefrontEnv } from '../lib/env.server';
-import { storefrontRedisStore } from '../lib/redis-store.server';
+import { storefrontEnv } from '~/lib/env.server';
+import { storefrontRedisStore } from '~/lib/redis-store.server';
 
 const READY_TIMEOUT_MS = 2_000;
 
 async function withinReadinessTimeout(operation: Promise<void>): Promise<void> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => reject(new Error('Readiness dependency timed out')), READY_TIMEOUT_MS);
+    timeout = setTimeout(
+      () => reject(new Error('Readiness dependency timed out')),
+      READY_TIMEOUT_MS,
+    );
   });
   try {
     await Promise.race([operation, deadline]);

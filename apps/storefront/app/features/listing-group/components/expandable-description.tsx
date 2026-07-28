@@ -2,7 +2,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 /** Longer than this and the copy is clamped behind a "show more" toggle. */
 const CLAMP_THRESHOLD = 220;

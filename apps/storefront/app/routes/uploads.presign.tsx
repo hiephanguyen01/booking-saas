@@ -9,9 +9,9 @@ import {
   type PresignUploadResponse,
 } from '@booking/contracts';
 import type { Route } from './+types/uploads.presign';
-import { apiFailureStatus, publicPost } from '../lib/api.server';
-import { readJsonRequestBody } from '../lib/json-request.server';
-import { allowedStorageUploadUrl } from '../lib/upload-origin.server';
+import { apiFailureStatus, publicPost } from '~/lib/api.server';
+import { readJsonRequestBody } from '~/lib/json-request.server';
+import { allowedStorageUploadUrl } from '~/lib/upload-origin.server';
 
 const MAX_PRESIGN_REQUEST_BYTES = 16 * 1024;
 
@@ -42,10 +42,7 @@ export async function action({ request }: Route.ActionArgs): Promise<Response> {
 
   const parsed = presignUploadInputSchema.safeParse(body.value);
   if (!parsed.success || parsed.data.target !== 'partners') {
-    return json(
-      { code: 'INVALID_UPLOAD_REQUEST', message: 'Yêu cầu tải lên không hợp lệ.' },
-      400,
-    );
+    return json({ code: 'INVALID_UPLOAD_REQUEST', message: 'Yêu cầu tải lên không hợp lệ.' }, 400);
   }
 
   const result = await publicPost<PresignUploadResponse>(

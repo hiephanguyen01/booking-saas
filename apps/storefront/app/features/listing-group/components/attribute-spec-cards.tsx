@@ -1,8 +1,8 @@
 import { cn } from '@booking/ui/lib/utils';
 import { Info } from 'lucide-react';
-import { LucideByName } from '../../../components/lucide-by-name';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import type { SpecCard } from '../room-attributes';
+import { LucideByName } from '~/components/lucide-by-name';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { SpecCard } from '~/features/listing-group/room-attributes';
 
 /** One spec card: icon + label, then a single value or a bullet list. */
 function SpecCardRow({ card }: { card: SpecCard }) {

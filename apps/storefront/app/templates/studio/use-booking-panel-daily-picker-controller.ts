@@ -4,16 +4,16 @@ import type {
   PublicListingDetailResponse,
 } from '@booking/contracts';
 import { useMemo, useState } from 'react';
-import { eligibleDailyRange, normalizeDailyRange } from '../../lib/daily-range';
-import { NsI18n, useTranslation } from '../../lib/i18n';
+import { eligibleDailyRange, normalizeDailyRange } from '~/lib/daily-range';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import {
   addDays,
   dateLabelInTz,
   dateOnlyToLocal,
   localToDateOnly,
   zonedToUtcIso,
-} from '../../lib/time';
-import { useLocale } from '../../lib/use-locale';
+} from '~/lib/time';
+import { useLocale } from '~/lib/use-locale';
 import type { SetSearchParams } from './booking-panel-types';
 
 export type BookingPanelDateRange = { from: Date | undefined; to?: Date | undefined };
@@ -67,9 +67,7 @@ export function useFixedDailyPickerController({
     isDateDisabled: (date: Date) => !openDates.has(localToDateOnly(date)),
     selectDate,
     selectedDate: selectedDateValue ? dateOnlyToLocal(selectedDateValue) : undefined,
-    selectedDateLabel: selectedDateValue
-      ? dateLabelInTz(selectedDateValue, tz, locale)
-      : null,
+    selectedDateLabel: selectedDateValue ? dateLabelInTz(selectedDateValue, tz, locale) : null,
     setCalendarOpen,
   };
 }

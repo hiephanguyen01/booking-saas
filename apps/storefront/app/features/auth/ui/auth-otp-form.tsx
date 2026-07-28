@@ -6,12 +6,9 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@booking/ui/components/ui/input-otp';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import { AuthFormError, AuthSubmitButton } from './auth-form-controls';
-import {
-  useOtpFormController,
-  type OtpActionData,
-} from './use-otp-form-controller';
+import { useOtpFormController, type OtpActionData } from './use-otp-form-controller';
 
 export function OtpForm({
   initialSeconds,

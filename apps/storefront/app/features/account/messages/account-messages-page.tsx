@@ -3,14 +3,14 @@ import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { MessageSquareText, Send } from 'lucide-react';
 import type { Route } from '../../../routes/account/+types/messages';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
-import { userInitials } from '../account-nav';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { userInitials } from '~/features/account/account-nav';
 import {
   AccountPanel,
   DemoNotice,
   MockDisabledState,
   PageHeading,
-} from '../components/account-primitives';
+} from '~/features/account/components/account-primitives';
 import { useAccountMessagesPageController } from './use-account-messages-page-controller';
 
 export function AccountMessagesPage({ loaderData }: Route.ComponentProps) {

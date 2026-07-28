@@ -2,8 +2,7 @@ import type { CustomerAccountSettingsInput } from '@booking/contracts';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { useEffect, useRef, useState } from 'react';
 
-export const ACCOUNT_AVATAR_PLACEHOLDER =
-  '/images/booking-studio/home/promo-photographer.png';
+export const ACCOUNT_AVATAR_PLACEHOLDER = '/images/booking-studio/home/promo-photographer.png';
 
 type AccountProfileUser = {
   id: string;

@@ -1,5 +1,5 @@
 import { formatCurrency, type Locale } from '@booking/i18n';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 interface BookingFinancialSummaryProps {
   paidAmount: string;
@@ -21,7 +21,9 @@ export function BookingFinancialSummary({
   const money = (value: string) => formatCurrency(BigInt(value), 'VND', locale);
 
   return (
-    <dl className={`grid grid-cols-3 divide-x divide-border/70 rounded-lg bg-muted/30 ${className}`}>
+    <dl
+      className={`grid grid-cols-3 divide-x divide-border/70 rounded-lg bg-muted/30 ${className}`}
+    >
       <FinancialValue
         label={t('bookings.payment.paidDeposit')}
         value={money(paidAmount)}

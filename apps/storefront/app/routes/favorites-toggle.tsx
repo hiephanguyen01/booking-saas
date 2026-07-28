@@ -1,9 +1,9 @@
 import { favoriteToggleResponseSchema, toggleFavoriteInputSchema } from '@booking/contracts';
 import { data } from 'react-router';
-import { apiPost } from '../lib/api.server';
-import { getOptionalAuth } from '../lib/auth.server';
-import { formRequestFailureStatus, readFormRequestBody } from '../lib/form-request.server';
-import { errorStatus } from '../lib/http-status';
+import { apiPost } from '~/lib/api.server';
+import { getOptionalAuth } from '~/lib/auth.server';
+import { formRequestFailureStatus, readFormRequestBody } from '~/lib/form-request.server';
+import { errorStatus } from '~/lib/http-status';
 import type { Route } from './+types/favorites-toggle';
 
 const CLIENT_MUTATION_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -32,18 +32,12 @@ export async function action({ request }: Route.ActionArgs) {
       : null;
 
   if (!clientMutationId) {
-    return data(
-      { ok: false as const, error: 'invalid', clientMutationId: null },
-      { status: 400 },
-    );
+    return data({ ok: false as const, error: 'invalid', clientMutationId: null }, { status: 400 });
   }
 
   const auth = getOptionalAuth();
   if (!auth) {
-    return data(
-      { ok: false as const, error: 'unauthorized', clientMutationId },
-      { status: 401 },
-    );
+    return data({ ok: false as const, error: 'unauthorized', clientMutationId }, { status: 401 });
   }
 
   const parsed = toggleFavoriteInputSchema.safeParse({
@@ -55,9 +49,15 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: false as const, error: 'invalid', clientMutationId }, { status: 400 });
   }
 
-  const result = await apiPost(request, '/customer/favorites', parsed.data, auth.session.accessToken, {
-    schema: favoriteToggleResponseSchema,
-  });
+  const result = await apiPost(
+    request,
+    '/customer/favorites',
+    parsed.data,
+    auth.session.accessToken,
+    {
+      schema: favoriteToggleResponseSchema,
+    },
+  );
   if (!result.ok) {
     return data(
       { ok: false as const, error: 'failed', clientMutationId },

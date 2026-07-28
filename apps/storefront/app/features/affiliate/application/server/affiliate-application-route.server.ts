@@ -1,10 +1,10 @@
 import { affiliateRegistrationSchema } from '@booking/contracts';
 import { data } from 'react-router';
-import { applyAsAffiliate } from '../../../../lib/affiliate.server';
-import { storefrontEnv } from '../../../../lib/env.server';
-import { errorStatus } from '../../../../lib/http-status';
-import { registerOrLogin } from '../../../../lib/partner.server';
-import { getCurrentStorefrontTenant } from '../../../../lib/request-context.server';
+import { applyAsAffiliate } from '~/lib/affiliate.server';
+import { storefrontEnv } from '~/lib/env.server';
+import { errorStatus } from '~/lib/http-status';
+import { registerOrLogin } from '~/lib/partner.server';
+import { getCurrentStorefrontTenant } from '~/lib/request-context.server';
 
 export function loadAffiliateApplicationRoute() {
   const tenant = getCurrentStorefrontTenant();

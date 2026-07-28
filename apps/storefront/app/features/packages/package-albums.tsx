@@ -4,10 +4,10 @@ import {
   type MediaViewerItem,
 } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
-import { SectionCard } from '../../components/section-card';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import type { PublicPackageOption } from '../../lib/package-options';
-import { useMediaViewerLabels } from '../../lib/use-media-viewer-labels';
+import { SectionCard } from '~/components/section-card';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import type { PublicPackageOption } from '~/lib/package-options';
+import { useMediaViewerLabels } from '~/lib/use-media-viewer-labels';
 import { PackageMediaDetails } from './package-media-details';
 import { usePackageAlbumsController } from './use-package-albums-controller';
 
@@ -24,15 +24,8 @@ export function PackageAlbums({
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const viewerLabels = useMediaViewerLabels();
-  const {
-    active,
-    activeIndex,
-    albums,
-    handleOpenChange,
-    openAlbum,
-    setActiveIndex,
-    triggerRef,
-  } = usePackageAlbumsController({ packages, fallbackPhotos, title });
+  const { active, activeIndex, albums, handleOpenChange, openAlbum, setActiveIndex, triggerRef } =
+    usePackageAlbumsController({ packages, fallbackPhotos, title });
   const mediaItems: MediaViewerItem[] =
     active?.photos.map((photo, index) => ({
       kind: 'image',

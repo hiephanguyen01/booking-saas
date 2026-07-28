@@ -9,12 +9,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch, type Path } from 'react-hook-form';
 import { useFetcher, useNavigation, useSubmit } from 'react-router';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { Route } from '../../../routes/partner-onboarding/+types/profile';
-import {
-  PARTNER_PROFILE_APPLY_ERRORS,
-  PARTNER_PROFILE_DEFAULTS,
-} from './partner-profile-fields';
+import { PARTNER_PROFILE_APPLY_ERRORS, PARTNER_PROFILE_DEFAULTS } from './partner-profile-fields';
 
 type PartnerProfilePageControllerArgs = Pick<Route.ComponentProps, 'loaderData' | 'actionData'>;
 
@@ -77,9 +74,8 @@ export function usePartnerProfilePageController({
   const errorCode = actionData?.error;
   const errorMessage = errorCode
     ? t(
-        PARTNER_PROFILE_APPLY_ERRORS[
-          errorCode as keyof typeof PARTNER_PROFILE_APPLY_ERRORS
-        ] ?? 'common:becomePartner.errors.generic',
+        PARTNER_PROFILE_APPLY_ERRORS[errorCode as keyof typeof PARTNER_PROFILE_APPLY_ERRORS] ??
+          'common:becomePartner.errors.generic',
       )
     : undefined;
 

@@ -1,6 +1,6 @@
 import { AirVent, Camera, Check, Dog, LampCeiling, ParkingCircle, Wifi } from 'lucide-react';
-import { SectionCard } from '../../../components/section-card';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { SectionCard } from '~/components/section-card';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 const MAX_AMENITIES = 12;
 

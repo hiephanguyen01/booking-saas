@@ -1,5 +1,5 @@
-import { BookingDetailPanel } from '../components/booking-detail-panel';
-import { PaymentHandoff } from '../../checkout/components/payment-handoff';
+import { BookingDetailPanel } from '~/features/account/components/booking-detail-panel';
+import { PaymentHandoff } from '~/features/checkout/components/payment-handoff';
 import type { Route } from '../../../routes/account/+types/booking-detail';
 
 export function AccountBookingDetailPage({ loaderData, actionData }: Route.ComponentProps) {

@@ -6,11 +6,11 @@ import type {
 import { Separator } from '@booking/ui/components/ui/separator';
 import { cn } from '@booking/ui/lib/utils';
 import type { ReactNode } from 'react';
-import { minimumConfiguredPrice } from '../../lib/booking-presentation';
-import { NsI18n, useTranslation } from '../../lib/i18n';
-import { hoursBetween } from '../../lib/time';
-import { formatVnd } from '../../lib/ui';
-import type { PublicPackageOption } from '../../lib/package-options';
+import { minimumConfiguredPrice } from '~/lib/booking-presentation';
+import { NsI18n, useTranslation } from '~/lib/i18n';
+import { hoursBetween } from '~/lib/time';
+import { formatVnd } from '~/lib/ui';
+import type { PublicPackageOption } from '~/lib/package-options';
 
 export function PackagePicker({
   packages,

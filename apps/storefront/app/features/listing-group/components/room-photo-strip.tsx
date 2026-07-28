@@ -1,5 +1,5 @@
 import { ImageIcon } from 'lucide-react';
-import { NsI18n, useTranslation } from '../../../lib/i18n';
+import { NsI18n, useTranslation } from '~/lib/i18n';
 
 export function RoomPhotoStrip({
   photos,
