@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { storefrontPaths } from '~/constants/paths';
 import { dateOnlyToLocal, localToDateOnly } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
-import type { DateRange, LocationOption } from './search-form-types';
+import type { DateRange, LocationOption } from '~/features/search/lib/search-form-types';
 import {
   canSubmitSearch,
   dateSelectionForMode,
@@ -13,7 +13,7 @@ import {
   type SearchDateSelection,
   type SearchMode,
   type StorefrontSearchState,
-} from './search-state';
+} from '~/features/search/lib/search-state';
 
 function searchableModes(type: PublicListingTypeResponse | undefined): SearchMode[] {
   if (!type || type.searchConfig.schedule === 'none') return [];

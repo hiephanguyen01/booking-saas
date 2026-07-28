@@ -9,7 +9,7 @@ import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import { clockHoursBetween } from '~/lib/time';
 import type { StorefrontContext } from '~/root';
-import { SearchForm } from '~/features/search/search-form';
+import { SearchForm } from '~/features/search/components/search-form';
 import { AmenitiesSection } from './components/amenities-section';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';

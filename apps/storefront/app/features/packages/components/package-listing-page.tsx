@@ -14,7 +14,7 @@ import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
 import { StudioGallery } from '~/components/studio-gallery';
-import { DeferredSearchBar } from '~/features/search/deferred-search-bar';
+import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
 import { PackageAlbums } from './package-albums';
 import { PackageBookingDialog } from './package-booking-dialog';
 import { listingPackages, minimumPackagePrice } from '~/features/packages/lib/package-data';

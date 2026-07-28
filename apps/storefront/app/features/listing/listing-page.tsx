@@ -19,7 +19,7 @@ import { ProviderCard } from '~/components/provider-card';
 import { StudioGallery } from '~/components/studio-gallery';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 import { roomCapacity, specCards } from '~/features/listing-group/room-attributes';
-import { DeferredSearchBar } from '~/features/search/deferred-search-bar';
+import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
 import { StudioBookingCard } from './components/studio-booking-card';
 
 export function ListingPage({ loaderData, params }: Route.ComponentProps) {

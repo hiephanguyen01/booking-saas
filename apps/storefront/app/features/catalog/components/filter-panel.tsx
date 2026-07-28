@@ -17,7 +17,7 @@ import type { ReactNode } from 'react';
 import { Form, Link } from 'react-router';
 import { LucideByName } from '~/components/lucide-by-name';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { StorefrontSearchState } from '~/features/search/search-state';
+import type { StorefrontSearchState } from '~/features/search/lib/search-state';
 import { type FilterOption, useFilterPanelController } from './use-filter-panel-controller';
 
 /**

@@ -4,7 +4,7 @@ import { Await, useSearchParams } from 'react-router';
 import { SearchBarSkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { SearchForm, type LocationOption } from './search-form';
-import { parseSearchState } from './search-state';
+import { parseSearchState } from '~/features/search/lib/search-state';
 
 /**
  * The sticky top search bar shared by the listing and package detail pages.

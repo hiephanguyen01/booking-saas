@@ -14,11 +14,11 @@ import {
   SearchField,
   modeHint,
 } from './search-form-controls';
-import type { LocationOption, SearchFormVariant } from './search-form-types';
-import type { StorefrontSearchState } from './search-state';
+import type { LocationOption, SearchFormVariant } from '~/features/search/lib/search-form-types';
+import type { StorefrontSearchState } from '~/features/search/lib/search-state';
 import { useSearchFormController } from './use-search-form-controller';
 
-export type { LocationOption } from './search-form-types';
+export type { LocationOption } from '~/features/search/lib/search-form-types';
 
 const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20] as const;
 

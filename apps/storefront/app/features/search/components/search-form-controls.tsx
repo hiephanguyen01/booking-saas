@@ -15,8 +15,8 @@ import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ListingTypeGlyph } from '~/components/listing-type-glyph';
 import { NsI18n, useTranslation } from '~/lib/i18n';
-import type { SearchMode } from './search-state';
-import type { SearchFormVariant } from './search-form-types';
+import type { SearchMode } from '~/features/search/lib/search-state';
+import type { SearchFormVariant } from '~/features/search/lib/search-form-types';
 import { useLocationComboboxController } from './use-location-combobox-controller';
 
 type ModeAppearance = 'pills' | 'tabs';

@@ -2,7 +2,10 @@ import type { PublicListingResponse } from '@booking/contracts';
 import { ListingCard } from '~/features/catalog/components/listing-card';
 import type { ListingCardPresentation } from '~/features/catalog/components/listing-card.types';
 import { SearchResultCard } from '~/features/catalog/components/search-result-card';
-import type { EnrichedSearchListing, StorefrontSearchState } from '~/features/search/search-state';
+import type {
+  EnrichedSearchListing,
+  StorefrontSearchState,
+} from '~/features/search/lib/search-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useFavorite } from '~/features/favorites/favorites-context';
 

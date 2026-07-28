@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Locale } from '~/lib/i18n';
 import { dateLabelInTz, dateOnlyToLocal, DEFAULT_TZ, localToDateOnly, todayInTz } from '~/lib/time';
-import type { DateRange } from './search-form-types';
-import type { SearchMode } from './search-state';
+import type { DateRange } from '~/features/search/lib/search-form-types';
+import type { SearchMode } from '~/features/search/lib/search-state';
 
 export function useSearchDatePickerController({
   mode,

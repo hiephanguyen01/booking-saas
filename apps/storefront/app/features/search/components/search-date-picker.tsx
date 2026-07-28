@@ -13,8 +13,8 @@ import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { useLocale } from '~/hooks/use-locale';
 import { ModeToggle, modeHint } from './search-form-controls';
-import type { DateRange } from './search-form-types';
-import type { SearchMode } from './search-state';
+import type { DateRange } from '~/features/search/lib/search-form-types';
+import type { SearchMode } from '~/features/search/lib/search-state';
 import { useSearchDatePickerController } from './use-search-date-picker-controller';
 
 export function SearchDatePicker({

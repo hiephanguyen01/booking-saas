@@ -6,7 +6,7 @@ import {
   withSearchContext,
   type EnrichedSearchListing,
   type StorefrontSearchState,
-} from '~/features/search/search-state';
+} from '~/features/search/lib/search-state';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
