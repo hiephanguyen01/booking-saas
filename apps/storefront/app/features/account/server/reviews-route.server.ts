@@ -3,7 +3,7 @@ import { apiGet } from '~/lib/api.server';
 import { requireAuth } from '~/lib/auth.server';
 import { storefrontPaths } from '~/constants/paths';
 import { submitCustomerReview } from '~/features/account/server/customer-reviews.server';
-import { parseAccountReviewFilter } from '~/features/account/reviews/review-filter';
+import { parseAccountReviewFilter } from '~/features/account/lib/review-filter';
 
 const REVIEW_PAGE_SIZE = 10;
 

@@ -2,7 +2,10 @@ import type { CustomerReviewItem } from '@booking/contracts';
 import { useState } from 'react';
 import { useLocation, useNavigation } from 'react-router';
 import { isReadNavigationMethod, useMinimumPending } from '~/hooks/use-minimum-pending';
-import { parseAccountReviewFilter, type AccountReviewFilter } from './review-filter';
+import {
+  parseAccountReviewFilter,
+  type AccountReviewFilter,
+} from '~/features/account/lib/review-filter';
 
 type PendingReview = Extract<CustomerReviewItem, { status: 'pending' }>;
 

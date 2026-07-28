@@ -1,8 +1,8 @@
-import { AccountBookingsPage } from '~/features/account/bookings/account-bookings-page';
+import { AccountBookingsPage } from '~/features/account/components/account-bookings-page';
 import {
   handleAccountBookingsAction,
   loadAccountBookingsRoute,
-} from '~/features/account/bookings/server/account-bookings-route.server';
+} from '~/features/account/server/account-bookings-route.server';
 import type { Route } from './+types/bookings';
 
 export function loader({ request, params }: Route.LoaderArgs) {

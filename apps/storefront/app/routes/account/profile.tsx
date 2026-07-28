@@ -1,8 +1,8 @@
-import { AccountProfilePage } from '~/features/account/profile/profile-page';
+import { AccountProfilePage } from '~/features/account/components/profile-page';
 import {
   handleAccountProfileAction,
   loadAccountProfileRoute,
-} from '~/features/account/profile/server/profile-route.server';
+} from '~/features/account/server/profile-route.server';
 import type { Route } from './+types/profile';
 
 export function loader({ request, params }: Route.LoaderArgs) {

@@ -1,8 +1,8 @@
-import { AccountBookingDetailPage } from '~/features/account/bookings/account-booking-detail-page';
+import { AccountBookingDetailPage } from '~/features/account/components/account-booking-detail-page';
 import {
   handleAccountBookingDetailAction,
   loadAccountBookingDetailRoute,
-} from '~/features/account/bookings/server/account-booking-detail-route.server';
+} from '~/features/account/server/account-booking-detail-route.server';
 import type { Route } from './+types/booking-detail';
 
 export function meta() {

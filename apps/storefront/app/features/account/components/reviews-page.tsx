@@ -7,7 +7,7 @@ import type { Route } from '../../../routes/account/+types/reviews';
 import { AccountPanel, PageHeading } from '~/features/account/components/account-primitives';
 import { ReviewBookingCard } from '~/features/account/components/review-booking-card';
 import { ReviewDialog } from '~/features/account/components/review-dialog';
-import type { AccountReviewFilter } from './review-filter';
+import type { AccountReviewFilter } from '~/features/account/lib/review-filter';
 import { useAccountReviewsPageController } from './use-account-reviews-page-controller';
 
 export function AccountReviewsPage({ loaderData }: Route.ComponentProps) {

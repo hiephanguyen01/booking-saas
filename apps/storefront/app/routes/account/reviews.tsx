@@ -1,8 +1,8 @@
-import { AccountReviewsPage } from '~/features/account/reviews/reviews-page';
+import { AccountReviewsPage } from '~/features/account/components/reviews-page';
 import {
   handleAccountReviewsAction,
   loadAccountReviewsRoute,
-} from '~/features/account/reviews/server/reviews-route.server';
+} from '~/features/account/server/reviews-route.server';
 import type { Route } from './+types/reviews';
 
 export function loader({ request, params }: Route.LoaderArgs) {
