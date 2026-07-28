@@ -101,9 +101,9 @@ prisma, redis, tenant-context, time, validation). Details in
 
 > `--filter=api` also resolves (pnpm matches the directory). CI (`.github/workflows/ci.yml`, "Frontend
 > CI") runs the no-tests policy guard, module-cycle and frontend-structure guards, Storefront security
-> gate, contracts build, API typecheck, frontend lint/typechecks/production builds, `check:rls`, and
-> both frontend Docker builds. The API is typechecked but is not run through a standalone
-> production-build step in CI.
+> gate, API typecheck, frontend lint/typechecks/production builds, and `check:rls`. Turbo builds
+> required workspace packages once through the dependency graph. CI runs for pull requests into
+> `main` (or manually); container images are built only by the manual Deploy workflow.
 
 ## Local run recipe
 

@@ -966,6 +966,34 @@ Chỉ làm sau khi Cloudflare zone đã Active và toàn bộ DNS hoạt động
 
 Nếu Tenten UI không hỗ trợ DS record, liên hệ Tenten trước khi bật DNSSEC.
 
+## Phase 18 — Chỉ chạy staging từ 10:00 đến 22:00
+
+Dùng Amazon EventBridge Scheduler trong cùng region Singapore `ap-southeast-1`. Tạo hai recurring
+schedules với **Flexible time window = Off** và timezone `Asia/Ho_Chi_Minh`:
+
+| Schedule | Cron expression | Universal target | Input |
+| --- | --- | --- | --- |
+| `bookingos-stg-start-1000` | `cron(0 10 * * ? *)` | EC2 `StartInstances` | `{"InstanceIds":["INSTANCE_ID"]}` |
+| `bookingos-stg-stop-2200` | `cron(0 22 * * ? *)` | EC2 `StopInstances` | `{"InstanceIds":["INSTANCE_ID"]}` |
+
+Trong console: EventBridge → Scheduler → Create schedule → **All APIs** → Amazon EC2 → chọn API
+tương ứng. Có thể để console tạo execution role riêng cho từng schedule; role chỉ cần quyền
+`ec2:StartInstances` hoặc `ec2:StopInstances` trên đúng staging instance.
+
+Elastic IP và EBS vẫn tồn tại khi instance stopped. Docker, nginx và crond đã được systemd enable;
+các container dùng `restart: unless-stopped`, nên stack tự trở lại sau khi EC2 start. GitHub deploy
+qua SSH chỉ chạy được trong khung giờ EC2 đang bật hoặc sau khi start instance thủ công.
+
+Kiểm tra timezone của host:
+
+```bash
+timedatectl | grep 'Time zone'
+```
+
+Amazon Linux mặc định UTC. Khi đó Docker image cleanup lúc `04:00` UTC tương ứng `11:00` Việt Nam,
+và một trong hai lượt Certbot renewal lúc `12:00` UTC tương ứng `19:00` Việt Nam; cả hai vẫn nằm
+trong thời gian staging hoạt động.
+
 ## Tenant custom domain
 
 Wildcard Let’s Encrypt `*.stg.bookingos.vn` chỉ phủ subdomain của BookingOS. Nó không phủ domain
@@ -1001,4 +1029,5 @@ Không thêm custom domain public trước khi có một trong hai cơ chế TLS
 - [ ] `ALLOW_MOCK_PAYMENTS=false`.
 - [ ] `PAYMENTS_ENC_KEY` đã escrow ngoài EC2.
 - [ ] Database dump đã được copy ra ngoài EC2.
+- [ ] EventBridge Scheduler start staging 10:00 và stop 22:00 theo `Asia/Ho_Chi_Minh`.
 - [ ] Biết release, xem log và rollback image.

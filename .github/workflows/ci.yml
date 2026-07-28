@@ -1,9 +1,9 @@
 name: Frontend CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,47 +27,15 @@ jobs:
       - run: pnpm check:module-cycles
       - run: pnpm check:frontend-structure
       - run: pnpm --filter=@booking/storefront security
-      - run: pnpm --filter=@booking/contracts build
       - name: API typecheck
-        run: pnpm --filter=@booking/api typecheck
-      - name: Frontend lint
-        run: pnpm turbo run lint --filter=@booking/storefront --filter=@booking/dashboard
-      - name: Storefront typecheck
-        run: pnpm turbo run typecheck --filter=@booking/storefront
-      - name: Dashboard typecheck
-        run: pnpm turbo run typecheck --filter=@booking/dashboard
+        # Run through Turbo so workspace dependencies such as contracts are
+        # built once and reused by the frontend checks below.
+        run: pnpm turbo run typecheck --filter=@booking/api
+      - name: Frontend lint and typecheck
+        run: pnpm turbo run lint typecheck --filter=@booking/storefront --filter=@booking/dashboard
       - name: Frontend production builds
+        # Keep this separate from typecheck: React Router typegen and build both
+        # write generated route files and should not race within the same app.
         run: pnpm turbo run build --filter=@booking/storefront --filter=@booking/dashboard
       # Static RLS coverage: every tenant_id table has FORCE RLS + policy in migrations (no DB needed)
       - run: pnpm --filter=@booking/api check:rls
-
-  docker:
-    needs: quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/api/Dockerfile
-          push: false
-          tags: bookingos-api:ci
-          cache-from: type=gha,scope=api
-          cache-to: type=gha,mode=max,scope=api
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/storefront/Dockerfile
-          push: false
-          tags: booking-storefront:ci
-          cache-from: type=gha,scope=storefront
-          cache-to: type=gha,mode=max,scope=storefront
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/dashboard/Dockerfile
-          push: false
-          tags: booking-dashboard:ci
-          cache-from: type=gha,scope=dashboard
-          cache-to: type=gha,mode=max,scope=dashboard
