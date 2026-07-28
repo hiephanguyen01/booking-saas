@@ -1,8 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–12 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
-của chủ dự án; Phase 13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Cả 13 phase đã xong; Phase 3 và Phase 8 scope đã bổ sung theo
+review của chủ dự án; full static check toàn repo xanh
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -37,7 +37,7 @@ Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-leve
 
 ---
 
-## 2. Đã làm gì (Phase 1–12)
+## 2. Đã làm gì (Phase 1–13)
 
 Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
 loader/action contract hay URL.
@@ -216,6 +216,22 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
 - `platform-sections.tsx` từ 721 dòng còn barrel 11 dòng; `platform-landing.tsx` không phải đổi import.
 - Không đổi JSX, className, copy, thứ tự render hay runtime contract.
 
+Sau Phase 12, scan invariant bắt được 4 import `../` trong section mới; commit **`50601151`** đổi đúng
+bốn specifier đó sang `~/`, không đổi code component hay runtime.
+
+### Phase 13 — chốt tài liệu
+
+- **13.1 (`9215ecfa`)** — `apps/storefront/CLAUDE.md` nay có folder architecture + import discipline
+  rõ ràng, đúng shape `{components,hooks,server,lib}`, route-only rule và ba khác biệt storefront:
+  tenant theo `Host`, `/:locale`, tenant theme untrusted ở `app/lib/theme.ts`. Sửa luôn câu stale trong
+  dashboard doc: `../` hiện hữu là migration debt, không phải precedent.
+- **13.2 (`0817a899`)** — `docs/conventions.md` ghi sáu bucket chung, owner placement, `~/`,
+  route/server boundary và hai hàng rào ESLint + `check:frontend-structure`; narrow compatibility
+  barrel được mô tả đúng với `platform-sections.tsx`.
+- **13.3** verification-only: `AGENTS.md` đã có structure guard trong bảng Commands, full static check
+  và mô tả CI từ Phase 8 nên không tạo diff trùng lặp.
+- **13.4** full static check toàn repo xanh: Turbo 24/24, module graph 17 module không cycle, RLS 46/46.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -228,6 +244,16 @@ PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
 pnpm check:frontend-structure                                     # passed, 64/64 routes
 pnpm --filter=@booking/storefront security                        # passed
 pnpm check:no-tests                                               # passed
+```
+
+Full static check cuối Phase 13:
+
+```bash
+PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
+  pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure \
+  && pnpm --filter=@booking/storefront security \
+  && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls
+# passed: Turbo 24/24; module graph 17 modules; RLS 46/46
 ```
 
 `.nvmrc` yêu cầu 22.22.0 nhưng máy hiện không cài đúng patch đó; Node 24.18.0 là bản đã dùng để verify.
@@ -323,9 +349,8 @@ thư mục đó **không có trên máy**. Handoff này và plan trong `docs/sup
 
 ### Việc đầu tiên hôm sau
 
-Phase 13 Task 13.1 — viết lại phần cấu trúc trong `apps/storefront/CLAUDE.md` theo khung
-`apps/dashboard/CLAUDE.md` (“Folder architecture” + “Import discipline”), nhưng giữ rõ khác biệt
-storefront: multi-tenant theo `Host`, song ngữ `/:locale`, và tenant theme untrusted ở `lib/theme.ts`.
+Không còn phase implementation. Việc tiếp theo là review final branch diff/commit history, rồi
+push/mở PR khi chủ dự án yêu cầu; không tự mở thêm scope refactor.
 
 ---
 
@@ -338,14 +363,14 @@ Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–12 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
-Phase 13 chưa làm.** Việc của bạn: làm tiếp từ Phase 13.
+**Cả 13 phase đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án; full
+static check toàn repo xanh.** Không còn task implementation trong plan.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + Phase 13.
+   đọc `## Global Constraints` + kết quả Phase 13.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
 Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
@@ -425,7 +450,7 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
-## Trạng thái Phase 5–12
+## Trạng thái Phase 5–13
 
 - Boundary ESLint đang bật cho cả hai frontend.
 - React Hooks lint: storefront 0 error / 3 warning đã ghi nhận; dashboard/UI sạch. Không tự sửa warning
@@ -439,11 +464,13 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - Account presentation mock/demo scaffolding đã xoá; messages/recent chỉ còn production-state thật.
 - Platform landing god file đã tách thành 11 section file + 1 content module; barrel cũ giữ nguyên
   public imports và không đổi JSX/className/copy.
+- Tài liệu storefront/shared convention đã chốt; full static check cuối đạt Turbo 24/24, module graph
+  17 modules không cycle và RLS 46/46.
 
 ## Việc đầu tiên
 
-Làm Phase 13 Task 13.1: viết lại phần cấu trúc trong `apps/storefront/CLAUDE.md` theo khung dashboard,
-ghi rõ ba khác biệt storefront (Host multi-tenant, `/:locale`, tenant theme untrusted).
+Không triển khai thêm phase. Kiểm tra branch sạch và review commit history/final diff; chỉ push hoặc mở
+PR khi chủ dự án yêu cầu.
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.

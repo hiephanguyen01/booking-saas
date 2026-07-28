@@ -1184,20 +1184,27 @@ anchor chính.
 
 # Phase 13 — Chốt tài liệu
 
-- [ ] **Task 13.1: Viết lại `apps/storefront/CLAUDE.md`** phần cấu trúc — copy khung của
+- [x] **Task 13.1: Viết lại `apps/storefront/CLAUDE.md`** phần cấu trúc — copy khung của
       `apps/dashboard/CLAUDE.md` §"Folder architecture" + §"Import discipline", ghi rõ phần storefront
       khác: multi-tenant theo `Host`, song ngữ `/:locale`, `lib/theme.ts` xử lý theme tenant (untrusted).
-- [ ] **Task 13.2: `docs/conventions.md` §Frontend** — thêm mục "Bố cục app frontend" nói **cả hai** app
-      dùng chung 6 bucket + `~/`, và ESLint/`check:frontend-structure` đang giữ luật.
-- [ ] **Task 13.3: `AGENTS.md`** — thêm `pnpm check:frontend-structure` vào bảng lệnh và vào chuỗi
-      "Full static check".
-- [ ] **Task 13.4: Chạy full static check của repo**
+      Commit `9215ecfa`.
+- [x] **Task 13.2: `docs/conventions.md` §Frontend** — thêm mục "Bố cục app frontend" nói **cả hai** app
+      dùng chung 6 bucket + `~/`, và ESLint/`check:frontend-structure` đang giữ luật. Commit `0817a899`.
+- [x] **Task 13.3: `AGENTS.md`** — verification-only: `pnpm check:frontend-structure` đã được thêm vào
+      bảng lệnh, chuỗi "Full static check" và mô tả CI từ Phase 8 (`15e33f03`), nên không tạo thay đổi
+      trùng lặp.
+- [x] **Task 13.4: Chạy full static check của repo**
 
 ```bash
 pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure \
   && pnpm --filter=@booking/storefront security \
   && pnpm turbo lint typecheck build && pnpm --filter=@booking/api check:rls
 ```
+
+**Kết quả Phase 13:** full static check xanh ngày 2026-07-28: no-tests, module cycles (17 modules),
+frontend structure, storefront security, Turbo **24/24**, và RLS **46/46**. Storefront còn đúng 3
+warning hook đã ghi nhận; sourcemap messages của raw `packages/ui` không làm build fail. Cả 13 phase
+hoàn tất.
 
 ---
 
