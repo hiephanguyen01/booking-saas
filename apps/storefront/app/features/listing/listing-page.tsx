@@ -12,7 +12,7 @@ import { formatListingLocation, googleMapsHref } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import type { StorefrontContext } from '~/root';
 import type { Route } from '../../routes/+types/listing';
-import { BookingPanel } from '~/templates/studio/booking-panel';
+import { BookingPanel } from '~/features/booking-widget/components/booking-panel';
 import { ExpandableDescription } from '~/features/listing-group/components/expandable-description';
 import { HeaderActions } from '~/features/listing-group/components/header-actions';
 import { ProviderCard } from '~/features/listing-group/components/provider-card';

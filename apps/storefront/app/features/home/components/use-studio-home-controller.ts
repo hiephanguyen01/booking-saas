@@ -1,7 +1,7 @@
 import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
 import { useState } from 'react';
 import { useMinimumPendingPulse } from '~/hooks/use-minimum-pending';
-import { splitHomeListings } from './home-listing-presentation';
+import { splitHomeListings } from '~/features/home/lib/home-listing-presentation';
 
 export function useStudioHomeController({
   listingTypes,

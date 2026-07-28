@@ -1,12 +1,11 @@
 import type { PublicListingResponse, PublicListingTypeResponse } from '@booking/contracts';
 import type { LocationOption } from '~/features/search/search-form';
 import type { StorefrontTenant } from '~/lib/tenant.server';
-import { StudioHome } from './studio/home';
+import { StudioHome } from '~/features/home/components/home';
 
 /**
- * Vertical → home template (§16.1). `tenants.vertical` selects the base layout.
- * Only `studio` ships in Phase 1; `rental`/`classes` fall back to it until their
- * templates land (Phase 2/3).
+ * Vertical → home template (§16.1). `tenants.vertical` chọn layout gốc.
+ * Phase 1 chỉ có `studio`; các vertical khác fallback về nó cho tới khi có template riêng.
  */
 export interface HomeTemplateProps {
   tenant: StorefrontTenant;
@@ -16,7 +15,11 @@ export interface HomeTemplateProps {
 }
 
 export function homeTemplateFor(
-  _vertical: StorefrontTenant['vertical'],
+  vertical: StorefrontTenant['vertical'],
 ): (props: HomeTemplateProps) => React.ReactNode {
-  return StudioHome;
+  switch (vertical) {
+    case 'studio':
+    default:
+      return StudioHome;
+  }
 }
