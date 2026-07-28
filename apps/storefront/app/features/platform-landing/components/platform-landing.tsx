@@ -19,7 +19,7 @@ export function PlatformLanding({ loaderData }: { loaderData: PlatformRootLoader
   const { t } = useTranslation(NsI18n.Platform);
 
   return (
-    <div className="platform-landing overflow-x-clip selection:bg-[#ffb020] selection:text-[#0a0e13]">
+    <div className="platform-landing overflow-x-clip selection:bg-primary selection:text-primary-foreground">
       <a href="#platform-main" className="platform-skip-link">
         {t('skipToContent')}
       </a>

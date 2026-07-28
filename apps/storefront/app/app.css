@@ -53,18 +53,112 @@ html {
   scroll-behavior: smooth;
 }
 
+/*
+ * BookingOS platform landing — its own brand, not a tenant surface.
+ *
+ * This page renders only when the host resolves to `kind: 'platform'` (unmapped
+ * host, `localhost`, bare IP), so `TenantThemeStyle` never mounts above it and no
+ * tenant `theme_config` can reach it. The brand is therefore fixed here, but it is
+ * expressed by overriding the shadcn *base* tokens inside this scope — so every
+ * section styles itself with the normal semantic utilities (`bg-card`,
+ * `text-muted-foreground`, `bg-primary`, `ring-ring`, …) and a rebrand is one block.
+ *
+ * `--platform-*` covers only the roles shadcn has no slot for: the softened-ink and
+ * muted steps between `--foreground` and `--muted-foreground`, the amber text/soft
+ * scale derived from `--primary`, and the status green.
+ *
+ * Dark bands (consultation, dark capability row, "after" panel) opt in with
+ * `className="dark"` and get the flipped set below — same utilities, no ternaries.
+ */
 .platform-landing {
-  --platform-surface: #f4f5f7;
-  --platform-panel: #ffffff;
-  --platform-ink: #0a0e13;
-  --platform-muted: #4a515b;
-  --platform-line: #e4e6ea;
-  --platform-accent: #ffb020;
-  --platform-focus: #b87300;
+  --background: #f4f5f7;
+  --foreground: #0a0e13;
+  --card: #ffffff;
+  --card-foreground: #0a0e13;
+  --secondary: #fbfbfc;
+  --secondary-foreground: #0a0e13;
+  --muted: #edeff2;
+  --muted-foreground: #4a515b;
+  --border: #e4e6ea;
+  --input: #e4e6ea;
+  --primary: #ffb020;
+  --primary-foreground: #0a0e13;
+  --ring: #b87300;
+
+  --platform-ink-soft: #2a303a;
+  --platform-muted-soft: #6a707a;
+  --platform-muted-subtle: #8a909a;
+  --platform-primary-hover: #e89a00;
+  --platform-primary-soft: #fff4de;
+  --platform-primary-tint: #fffaf0;
+  --platform-primary-emphasis: #b27400;
+  --platform-primary-ink: #9a6200;
+  --platform-primary-ink-strong: #6f4900;
+  --platform-success: #31845f;
+  --platform-success-ink: #526159;
+  /* Elevation stays ink-tinted in both scopes, so it is not flipped by `.dark`. */
+  --platform-shadow: #0a0e13;
+
   min-height: 100dvh;
-  background: var(--platform-surface);
-  color: var(--platform-ink);
+  background: var(--background);
+  color: var(--foreground);
   font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * Every token a dark band reads must be restated: `@booking/ui`'s own `.dark`
+ * block and `.platform-landing` have equal specificity, and `.platform-landing`
+ * comes later in source order, so an omission here silently keeps the light value.
+ */
+.platform-landing .dark {
+  --background: #0a0e13;
+  --foreground: #f4f5f7;
+  --card: #12171f;
+  --card-foreground: #f4f5f7;
+  --secondary: #1b212b;
+  --secondary-foreground: #f4f5f7;
+  --muted: #141922;
+  --muted-foreground: #c9cdd4;
+  --border: #232a34;
+  --input: #2c333d;
+  --primary: #ffb020;
+  --primary-foreground: #0a0e13;
+  /* amber, not the light-mode `#b87300`: that ring is invisible on near-black */
+  --ring: #ffb020;
+  --destructive: oklch(0.704 0.191 22.216);
+
+  --platform-ink-soft: #f4f5f7;
+  --platform-muted-soft: #d7dae0;
+  --platform-muted-subtle: #9aa0a9;
+  --platform-primary-hover: #e89a00;
+  --platform-primary-soft: #1b212b;
+  --platform-primary-tint: #1b212b;
+  --platform-primary-emphasis: #ffb020;
+  --platform-primary-ink: #ffb020;
+  --platform-primary-ink-strong: #ffb020;
+  --platform-success: #31845f;
+  --platform-success-ink: #bfe9cc;
+}
+
+/* Elevation — kept in CSS so the shadow color can be mixed from a token. */
+.platform-media-shadow {
+  box-shadow: 0 24px 60px -28px color-mix(in oklch, var(--platform-shadow) 40%, transparent);
+}
+
+.platform-card-shadow {
+  box-shadow: 0 20px 44px -22px color-mix(in oklch, var(--platform-shadow) 45%, transparent);
+}
+
+.platform-panel-shadow {
+  box-shadow: 0 24px 54px -30px color-mix(in oklch, var(--platform-shadow) 60%, transparent);
+}
+
+.platform-sheet-shadow {
+  box-shadow: 0 24px 60px color-mix(in oklch, var(--platform-shadow) 12%, transparent);
+}
+
+.platform-badge-glow {
+  box-shadow: 0 8px 20px -8px color-mix(in oklch, var(--primary) 80%, transparent);
 }
 
 .platform-hero {
@@ -82,7 +176,7 @@ html {
 
 .platform-heading {
   max-width: 22ch;
-  color: var(--platform-ink);
+  color: var(--foreground);
   font-size: clamp(1.75rem, 3.4vw, 2.5rem);
   font-weight: 800;
   letter-spacing: -0.025em;
@@ -91,7 +185,7 @@ html {
 
 .platform-description {
   max-width: 52ch;
-  color: var(--platform-muted);
+  color: var(--muted-foreground);
   font-size: 1rem;
   line-height: 1.6;
 }
@@ -101,7 +195,7 @@ html {
   min-height: 2.75rem;
   align-items: center;
   border-radius: 0.5rem;
-  color: #464d53;
+  color: var(--platform-ink-soft);
   font-size: 0.9375rem;
   font-weight: 500;
   white-space: nowrap;
@@ -111,11 +205,11 @@ html {
 }
 
 .platform-nav-link:hover {
-  color: #8a5600;
+  color: var(--platform-primary-ink);
 }
 
 .platform-nav-link:focus-visible {
-  outline: 2px solid var(--platform-focus);
+  outline: 2px solid var(--ring);
   outline-offset: 4px;
 }
 
@@ -142,8 +236,8 @@ html {
 
 .platform-primary-button {
   border: 0;
-  background: var(--platform-accent);
-  color: var(--platform-ink);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .platform-header-cta {
@@ -152,8 +246,8 @@ html {
   gap: 0.5rem;
   border-radius: 999px;
   min-height: 2.75rem;
-  background: var(--platform-accent);
-  color: var(--platform-ink);
+  background: var(--primary);
+  color: var(--primary-foreground);
   padding: 0.6875rem 1.375rem;
   font-size: 0.9375rem;
   font-weight: 700;
@@ -174,29 +268,29 @@ html {
 
 .platform-primary-button:hover,
 .platform-header-cta:hover {
-  background: #e89a00;
-  color: var(--platform-ink);
+  background: var(--platform-primary-hover);
+  color: var(--primary-foreground);
 }
 
 .platform-secondary-button {
-  border: 1px solid rgb(10 14 19 / 0.18);
-  background: #ffffff;
-  color: var(--platform-ink);
+  border: 1px solid color-mix(in oklch, var(--foreground) 18%, transparent);
+  background: var(--card);
+  color: var(--card-foreground);
 }
 
 .platform-secondary-button:hover {
-  border-color: rgb(10 14 19 / 0.38);
-  background: #ffffff;
+  border-color: color-mix(in oklch, var(--foreground) 38%, transparent);
+  background: var(--card);
 }
 
 .platform-dark-button {
-  border: 1px solid var(--platform-ink);
-  background: var(--platform-ink);
-  color: #f4f5f7;
+  border: 1px solid var(--foreground);
+  background: var(--foreground);
+  color: var(--background);
 }
 
 .platform-dark-button:hover {
-  background: #242a31;
+  background: color-mix(in oklch, var(--foreground) 88%, var(--background));
 }
 
 .platform-primary-button:active,
@@ -212,7 +306,7 @@ html {
 .platform-icon-button:focus-visible,
 .platform-header-cta:focus-visible,
 .platform-menu-button:focus-visible {
-  outline: 2px solid var(--platform-focus);
+  outline: 2px solid var(--ring);
   outline-offset: 3px;
 }
 
@@ -221,9 +315,9 @@ html {
   min-height: 2.75rem;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgb(10 14 19 / 0.14);
+  border: 1px solid color-mix(in oklch, var(--foreground) 14%, transparent);
   border-radius: 0.75rem;
-  color: #333a40;
+  color: var(--platform-ink-soft);
   font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -238,13 +332,13 @@ html {
   place-items: center;
   border: 0;
   border-radius: 0.75rem;
-  background: var(--platform-ink);
-  color: #f4f5f7;
+  background: var(--foreground);
+  color: var(--background);
 }
 
 .platform-icon-button:hover {
-  border-color: rgb(10 14 19 / 0.34);
-  background: rgb(255 176 32 / 0.1);
+  border-color: color-mix(in oklch, var(--foreground) 34%, transparent);
+  background: color-mix(in oklch, var(--primary) 10%, transparent);
 }
 
 .platform-skip-link {
@@ -256,8 +350,8 @@ html {
   min-height: 2.75rem;
   align-items: center;
   border-radius: 999px;
-  background: var(--platform-ink);
-  color: #f4f5f7;
+  background: var(--foreground);
+  color: var(--background);
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 800;
@@ -272,10 +366,10 @@ html {
 .platform-form-control {
   width: 100%;
   min-height: 3rem;
-  border: 1px solid #2c333d;
+  border: 1px solid var(--input);
   border-radius: 0.6875rem;
-  background: #0a0e13;
-  color: #f4f5f7;
+  background: var(--background);
+  color: var(--foreground);
   padding: 0.8125rem 0.875rem;
   font-size: 1rem;
   outline: none;
@@ -285,23 +379,23 @@ html {
 }
 
 .platform-form-control::placeholder {
-  color: #7a808a;
+  color: var(--platform-muted-subtle);
 }
 
 .platform-form-control:focus-visible {
-  border-color: var(--platform-focus);
-  box-shadow: 0 0 0 3px rgb(184 115 0 / 0.17);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 25%, transparent);
 }
 
 .platform-form-control[aria-invalid='true'] {
-  border-color: #8a3a34;
+  border-color: var(--destructive);
 }
 
 .platform-field-error {
   display: flex;
   align-items: flex-start;
   gap: 0.375rem;
-  color: #ff8a7a;
+  color: var(--destructive);
   font-size: 0.8125rem;
   line-height: 1.25rem;
 }

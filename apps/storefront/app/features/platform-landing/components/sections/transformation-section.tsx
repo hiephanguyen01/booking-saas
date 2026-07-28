@@ -20,7 +20,7 @@ export function TransformationSection() {
             muted
           />
           <div className="grid place-items-center py-1" aria-hidden="true">
-            <span className="grid size-12 place-items-center rounded-full bg-[#ffb020] text-[#0a0e13] shadow-[0_8px_20px_-8px_rgba(255,176,32,.8)]">
+            <span className="platform-badge-glow grid size-12 place-items-center rounded-full bg-primary text-primary-foreground">
               <ArrowDownRight className="size-5 lg:-rotate-45" />
             </span>
           </div>
@@ -47,12 +47,14 @@ function TransformationList({
     <div
       className={`rounded-[1.25rem] p-7 sm:p-8 ${
         muted
-          ? 'border border-[#e4e6ea] bg-white text-[#0a0e13]'
-          : 'bg-[#0a0e13] text-[#f4f5f7] shadow-[0_24px_54px_-30px_rgba(10,14,19,.6)]'
+          ? 'border border-border bg-card text-card-foreground'
+          : 'platform-panel-shadow dark bg-background text-foreground'
       }`}
     >
       <h3
-        className={`text-[13px] font-bold tracking-[0.06em] uppercase ${muted ? 'text-[#8a909a]' : 'text-[#ffb020]'}`}
+        className={`text-[13px] font-bold tracking-[0.06em] uppercase ${
+          muted ? 'text-(--platform-muted-subtle)' : 'text-primary'
+        }`}
       >
         {title}
       </h3>
@@ -60,12 +62,12 @@ function TransformationList({
         {items.map((item) => (
           <li
             key={item}
-            className={`flex items-start gap-3 text-[15.5px] leading-6 ${muted ? 'text-[#4a515b]' : 'text-[#d7dae0]'}`}
+            className="flex items-start gap-3 text-[15.5px] leading-6 text-muted-foreground"
           >
             {muted ? (
-              <span className="mt-3 h-px w-4 shrink-0 bg-[#b9bec6]" aria-hidden="true" />
+              <span className="mt-3 h-px w-4 shrink-0 bg-muted-foreground/40" aria-hidden="true" />
             ) : (
-              <Check className="mt-1 size-4 shrink-0 text-[#ffb020]" aria-hidden="true" />
+              <Check className="mt-1 size-4 shrink-0 text-primary" aria-hidden="true" />
             )}
             {item}
           </li>

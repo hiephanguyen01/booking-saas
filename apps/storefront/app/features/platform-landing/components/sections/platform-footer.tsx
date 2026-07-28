@@ -7,20 +7,20 @@ export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderP
   const alternateLocale = loaderData.locale === 'vi' ? 'en' : 'vi';
 
   return (
-    <footer className="border-t border-[#e4e6ea] bg-[#fbfbfc] px-5 py-10 sm:px-6 sm:py-14">
+    <footer className="border-t border-border bg-secondary px-5 py-10 sm:px-6 sm:py-14">
       <div className="mx-auto grid w-full max-w-300 gap-10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div>
           <PlatformBrand label={t('brandLabel')} />
-          <p className="mt-4 max-w-95 text-[15px] leading-6 text-[#6a707a]">
+          <p className="mt-4 max-w-95 text-[15px] leading-6 text-(--platform-muted-soft)">
             {t('footer.tagline')}
           </p>
           <div className="mt-5 flex gap-2">
-            <span className="rounded-full bg-[#0a0e13] px-3 py-1.5 text-sm font-semibold text-white">
+            <span className="rounded-full bg-foreground px-3 py-1.5 text-sm font-semibold text-background">
               {loaderData.locale === 'vi' ? 'Tiếng Việt' : 'English'}
             </span>
             <a
               href={`/${alternateLocale}`}
-              className="rounded-full border border-[#d3d6dc] px-3 py-1.5 text-sm font-semibold text-[#4a515b] hover:border-[#0a0e13] hover:text-[#0a0e13]"
+              className="rounded-full border border-muted-foreground/30 px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:border-foreground hover:text-foreground"
             >
               {alternateLocale === 'vi' ? 'Tiếng Việt' : 'English'}
             </a>
@@ -38,16 +38,16 @@ export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderP
           ]}
         />
         <nav aria-label={t('footer.legalTitle')}>
-          <h2 className="text-[13px] font-bold tracking-[0.05em] text-[#8a909a] uppercase">
+          <h2 className="text-[13px] font-bold tracking-[0.05em] text-(--platform-muted-subtle) uppercase">
             {t('footer.legalTitle')}
           </h2>
-          <ul className="mt-4 grid gap-3 text-[15px] text-[#9aa0a9]">
+          <ul className="mt-4 grid gap-3 text-[15px] text-(--platform-muted-subtle)">
             <li title={t('footer.legalUnavailable')}>{t('footer.terms')}</li>
             <li title={t('footer.legalUnavailable')}>{t('footer.privacy')}</li>
           </ul>
         </nav>
       </div>
-      <div className="mx-auto mt-10 w-full max-w-300 border-t border-[#e4e6ea] pt-6 text-sm text-[#8a909a]">
+      <div className="mx-auto mt-10 w-full max-w-300 border-t border-border pt-6 text-sm text-(--platform-muted-subtle)">
         <p>© {t('footer.rights')}</p>
       </div>
     </footer>
@@ -57,13 +57,15 @@ export function PlatformFooter({ loaderData }: { loaderData: PlatformRootLoaderP
 function FooterGroup({ title, links }: { title: string; links: [string, string][] }) {
   return (
     <nav aria-label={title}>
-      <h2 className="text-[13px] font-bold tracking-[0.05em] text-[#8a909a] uppercase">{title}</h2>
+      <h2 className="text-[13px] font-bold tracking-[0.05em] text-(--platform-muted-subtle) uppercase">
+        {title}
+      </h2>
       <ul className="mt-4 grid gap-3">
         {links.map(([label, href]) => (
           <li key={`${label}-${href}`}>
             <a
               href={href}
-              className="text-[15px] text-[#4a515b] transition hover:text-[#b27400] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b87300]"
+              className="text-[15px] text-muted-foreground transition hover:text-(--platform-primary-ink) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {label}
             </a>

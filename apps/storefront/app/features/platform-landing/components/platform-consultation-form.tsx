@@ -101,11 +101,9 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
           autoComplete="organization"
         />
         <div className="grid content-start gap-2">
-          <label htmlFor={`${formId}-service`} className="text-sm font-semibold text-[#f4f5f7]">
+          <label htmlFor={`${formId}-service`} className="text-sm font-semibold text-foreground">
             {t('consultation.serviceLabel')}{' '}
-            <span className="text-xs font-medium text-[#ffb020]">
-              ({t('consultation.required')})
-            </span>
+            <span className="text-xs font-medium text-primary">({t('consultation.required')})</span>
           </label>
           <select
             ref={refs.service}
@@ -136,8 +134,10 @@ export function PlatformConsultationForm({ submitLead }: { submitLead?: SubmitLe
         </div>
       </div>
 
-      <div className="grid gap-4 border-t border-[#232a34] pt-5">
-        <p className="text-xs leading-5 text-[#9aa0a9]">{t('consultation.privacyNote')}</p>
+      <div className="grid gap-4 border-t border-border pt-5">
+        <p className="text-xs leading-5 text-(--platform-muted-subtle)">
+          {t('consultation.privacyNote')}
+        </p>
         <button
           type="submit"
           disabled={status === 'submitting'}
@@ -178,9 +178,9 @@ function FormField({
 
   return (
     <div className="grid content-start gap-2">
-      <label htmlFor={id} className="text-sm font-semibold text-[#f4f5f7]">
+      <label htmlFor={id} className="text-sm font-semibold text-foreground">
         {label}{' '}
-        <span className="text-xs font-medium text-[#ffb020]">({t('consultation.required')})</span>
+        <span className="text-xs font-medium text-primary">({t('consultation.required')})</span>
       </label>
       <input
         ref={inputRef}
@@ -227,10 +227,10 @@ function FormStatusMessage({ status }: { status: FormStatus }) {
       aria-live={success ? 'polite' : 'assertive'}
       className={`flex gap-3 rounded-xl border p-4 text-sm leading-6 ${
         success
-          ? 'border-[#1e4029] bg-[#0e2015] text-[#bfe9cc]'
+          ? 'border-(--platform-success)/45 bg-(--platform-success)/15 text-(--platform-success-ink)'
           : unavailable
-            ? 'border-[#4a3a12] bg-[#221a0a] text-[#e6d9be]'
-            : 'border-[#4a2020] bg-[#2a1414] text-[#f0c9c4]'
+            ? 'border-primary/25 bg-primary/10 text-primary'
+            : 'border-destructive/40 bg-destructive/12 text-destructive'
       }`}
     >
       {success ? (

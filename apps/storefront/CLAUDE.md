@@ -72,6 +72,20 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
   tenant-driven (it's shadcn's neutral hover surface). Legacy `--sf-primary` / `--sf-accent` /
   `--sf-background` are still emitted for hand-rolled classNames — prefer semantic tokens for new work.
 
+### The platform landing is not a tenant surface
+
+`features/platform-landing` renders only for `kind: 'platform'` (unmapped host, `localhost`, bare IP),
+so `TenantThemeStyle` never mounts above it and **no tenant theme can reach it**. Its BookingOS brand
+(amber `#ffb020` on near-black) is fixed in the `.platform-landing` scope in `app/app.css`, which
+overrides the same shadcn **base** tokens — so its sections style themselves with ordinary semantic
+utilities (`bg-card`, `text-muted-foreground`, `bg-primary`, `ring-ring`) and never a literal color.
+`--platform-*` covers only the roles shadcn has no slot for (ink/muted steps, the amber text scale,
+status green, elevation). Dark bands opt in with `className="dark"` and read the flipped set in
+`.platform-landing .dark`; **every token a dark band uses must be restated there**, because
+`@booking/ui`'s `.dark` and `.platform-landing` have equal specificity and `.platform-landing` wins on
+source order. Do **not** move this brand into the global `:root` to make it "tenant-overridable": it
+would hand every un-themed tenant storefront BookingOS's amber, and there is no tenant here to override.
+
 ## BFF & data
 
 Server-only domain/BFF modules live under `app/features/<name>/server/`; only cross-feature

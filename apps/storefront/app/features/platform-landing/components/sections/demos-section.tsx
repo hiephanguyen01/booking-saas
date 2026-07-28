@@ -6,7 +6,7 @@ export function DemosSection() {
   return (
     <section
       id="demos"
-      className="platform-section border-t border-[#e7e9ed] bg-[#fbfbfc] px-5 py-18 sm:px-6 sm:py-22"
+      className="platform-section border-t border-border bg-secondary px-5 py-18 sm:px-6 sm:py-22"
     >
       <div className="mx-auto w-full max-w-300">
         <div className="platform-section-reveal max-w-190">
@@ -56,8 +56,8 @@ function DemoFigure({
   label: string;
 }) {
   return (
-    <figure className="platform-section-reveal overflow-hidden rounded-[1.375rem] border border-[#e4e6ea] bg-white">
-      <div className="overflow-hidden border-b border-[#e4e6ea] bg-[#edeff2]">
+    <figure className="platform-section-reveal overflow-hidden rounded-[1.375rem] border border-border bg-card">
+      <div className="overflow-hidden border-b border-border bg-muted">
         <img
           src={image}
           width={width}
@@ -69,11 +69,11 @@ function DemoFigure({
         />
       </div>
       <figcaption className="p-7 sm:p-8">
-        <p className="inline-flex rounded-full bg-[#fff4de] px-3 py-1.5 text-xs font-bold tracking-[0.05em] text-[#b27400] uppercase">
+        <p className="inline-flex rounded-full bg-(--platform-primary-soft) px-3 py-1.5 text-xs font-bold tracking-[0.05em] text-(--platform-primary-emphasis) uppercase">
           {label}
         </p>
-        <h3 className="mt-4 text-[22px] font-bold tracking-[-0.02em] text-[#0a0e13]">{title}</h3>
-        <p className="mt-2 text-[15.5px] leading-6 text-[#4a515b]">{description}</p>
+        <h3 className="mt-4 text-[22px] font-bold tracking-[-0.02em] text-foreground">{title}</h3>
+        <p className="mt-2 text-[15.5px] leading-6 text-muted-foreground">{description}</p>
       </figcaption>
     </figure>
   );

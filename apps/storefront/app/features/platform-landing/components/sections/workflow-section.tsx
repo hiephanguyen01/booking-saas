@@ -20,18 +20,18 @@ export function WorkflowSection() {
           {items.map(({ key, icon: Icon }) => (
             <li
               key={key}
-              className="platform-section-reveal rounded-[1.125rem] border border-[#e4e6ea] border-t-[3px] border-t-[#ffb020] bg-[#fbfbfc] p-7"
+              className="platform-section-reveal rounded-[1.125rem] border border-border border-t-[3px] border-t-primary bg-secondary p-7"
             >
-              <span className="grid size-11.5 place-items-center rounded-xl bg-[#0a0e13] text-[#ffb020]">
+              <span className="grid size-11.5 place-items-center rounded-xl bg-foreground text-primary">
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <h3 className="mt-5 text-[21px] font-bold tracking-[-0.02em] text-[#0a0e13]">
+              <h3 className="mt-5 text-[21px] font-bold tracking-[-0.02em] text-foreground">
                 {t(`workflow.${key}.title`)}
               </h3>
-              <p className="mt-3 text-[15px] leading-6 text-[#4a515b]">
+              <p className="mt-3 text-[15px] leading-6 text-muted-foreground">
                 {t(`workflow.${key}.description`)}
               </p>
-              <p className="mt-5 text-sm leading-6 font-semibold text-[#6f4900]">
+              <p className="mt-5 text-sm leading-6 font-semibold text-(--platform-primary-ink-strong)">
                 {t(`workflow.${key}.note`)}
               </p>
             </li>

@@ -17,16 +17,18 @@ export function PricingSection() {
           {plans.map((plan) => (
             <article
               key={plan}
-              className="platform-section-reveal flex flex-col rounded-[1.375rem] border border-[#e4e6ea] bg-white p-7 sm:p-8"
+              className="platform-section-reveal flex flex-col rounded-[1.375rem] border border-border bg-card p-7 sm:p-8"
             >
-              <h3 className="text-[19px] font-bold tracking-[-0.01em] text-[#0a0e13]">
+              <h3 className="text-[19px] font-bold tracking-[-0.01em] text-foreground">
                 {t(`pricing.plans.${plan}.name`)}
               </h3>
-              <p className="mt-1.5 text-sm text-[#8a909a]">{t(`pricing.plans.${plan}.limits`)}</p>
-              <p className="mt-5 text-3xl font-extrabold tracking-[-0.02em] text-[#0a0e13]">
+              <p className="mt-1.5 text-sm text-(--platform-muted-subtle)">
+                {t(`pricing.plans.${plan}.limits`)}
+              </p>
+              <p className="mt-5 text-3xl font-extrabold tracking-[-0.02em] text-foreground">
                 {t(`pricing.plans.${plan}.price`)}
               </p>
-              <p className="mt-6 flex-1 border-t border-[#e4e6ea] pt-5 text-[15px] leading-6 text-[#4a515b]">
+              <p className="mt-6 flex-1 border-t border-border pt-5 text-[15px] leading-6 text-muted-foreground">
                 {t(`pricing.plans.${plan}.feature`)}
               </p>
               <a href="#consultation" className="platform-dark-button mt-7 w-full">
@@ -35,9 +37,12 @@ export function PricingSection() {
             </article>
           ))}
         </div>
-        <p className="mt-7 text-[15px] text-[#6a707a]">
+        <p className="mt-7 text-[15px] text-(--platform-muted-soft)">
           {t('pricing.pendingDescription')}{' '}
-          <a href="#consultation" className="font-semibold text-[#9a6200] hover:text-[#6f4900]">
+          <a
+            href="#consultation"
+            className="font-semibold text-(--platform-primary-ink) hover:text-(--platform-primary-ink-strong)"
+          >
             {t('pricing.consultation')}
           </a>
         </p>

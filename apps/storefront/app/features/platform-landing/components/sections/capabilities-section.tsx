@@ -7,7 +7,7 @@ export function CapabilitiesSection() {
   return (
     <section
       id="capabilities"
-      className="platform-section border-t border-[#e7e9ed] bg-[#fbfbfc] px-5 py-18 sm:px-6 sm:py-22"
+      className="platform-section border-t border-border bg-secondary px-5 py-18 sm:px-6 sm:py-22"
     >
       <div className="mx-auto w-full max-w-300">
         <div className="platform-section-reveal max-w-180">
@@ -77,38 +77,33 @@ function CapabilityRow({
   return (
     <article
       className={`platform-section-reveal grid items-center gap-8 overflow-hidden rounded-[1.375rem] p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:gap-11 lg:p-10 ${
-        dark ? 'bg-[#0a0e13] text-[#f4f5f7]' : 'border border-[#e4e6ea] bg-white text-[#0a0e13]'
+        dark
+          ? 'dark bg-background text-foreground'
+          : 'border border-border bg-card text-card-foreground'
       }`}
     >
       <div className={mediaFirst ? 'md:order-2' : undefined}>
-        <span
-          className={`grid size-11 place-items-center rounded-xl ${
-            dark ? 'bg-[#1b212b] text-[#ffb020]' : 'bg-[#fff4de] text-[#b27400]'
-          }`}
-        >
+        <span className="grid size-11 place-items-center rounded-xl bg-(--platform-primary-soft) text-(--platform-primary-emphasis)">
           <Icon className="size-5" aria-hidden="true" />
         </span>
         <h3 className="mt-5 max-w-125 text-2xl leading-[1.15] font-bold tracking-[-0.02em]">
           {title}
         </h3>
-        <p
-          className={`mt-4 max-w-135 text-[15.5px] leading-6 ${dark ? 'text-[#c9cdd4]' : 'text-[#4a515b]'}`}
-        >
+        <p className="mt-4 max-w-135 text-[15.5px] leading-6 text-muted-foreground">
           {description}
         </p>
-        <p
-          className={`mt-5 flex items-start gap-2 text-sm leading-6 font-semibold ${
-            dark ? 'text-[#f4f5f7]' : 'text-[#343a40]'
-          }`}
-        >
-          <Check className="mt-1 size-4 shrink-0 text-[#b27400]" aria-hidden="true" />
+        <p className="mt-5 flex items-start gap-2 text-sm leading-6 font-semibold text-(--platform-ink-soft)">
+          <Check
+            className="mt-1 size-4 shrink-0 text-(--platform-primary-emphasis)"
+            aria-hidden="true"
+          />
           {detail}
         </p>
       </div>
       <div
-        className={`overflow-hidden rounded-[0.875rem] border ${
+        className={`overflow-hidden rounded-[0.875rem] border border-border bg-muted ${
           mediaFirst ? 'md:order-1' : ''
-        } ${dark ? 'border-[#2a313c] bg-[#141922]' : 'border-[#e4e6ea] bg-[#edeff2]'}`}
+        }`}
       >
         <img
           src={image}
