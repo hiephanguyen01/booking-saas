@@ -1,8 +1,8 @@
-import { PartnerVerifyPage } from '~/features/partner-onboarding/verify/partner-verify-page';
+import { PartnerVerifyPage } from '~/features/partner-onboarding/components/partner-verify-page';
 import {
   loadPartnerVerifyRoute,
   submitPartnerVerifyRoute,
-} from '~/features/partner-onboarding/verify/server/partner-verify-route.server';
+} from '~/features/partner-onboarding/server/partner-verify-route.server';
 import type { Route } from './+types/verify';
 import { partnerMeta } from './shared';
 

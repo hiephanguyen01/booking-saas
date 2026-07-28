@@ -1,6 +1,6 @@
 import { CircleCheck } from 'lucide-react';
 import { useLoaderData } from 'react-router';
-import { loadPartnerDoneRoute } from '~/features/partner-onboarding/done/server/partner-done-route.server';
+import { loadPartnerDoneRoute } from '~/features/partner-onboarding/server/partner-done-route.server';
 import { NsI18n, useTranslation } from '~/lib/i18n';
 import type { Route } from './+types/done';
 import { partnerMeta } from './shared';
