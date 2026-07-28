@@ -833,11 +833,10 @@ if (failures.length) {
 console.log('Frontend structure check passed.');
 ```
 
-> Bất biến #4 sẽ **đỏ** cho tới khi Phase 8 xong (`routes/bookings.tsx` 236 dòng). LOC chỉ là gate
-> tạm; audit mở rộng còn thấy 21 support declaration và 1 support module mà LOC không bắt. Phase 8 sẽ
-> bổ sung semantic route-only checks rồi mới nối script vào CI.
+> Bất biến #4 từng **đỏ** cho tới khi Phase 8 xong (`routes/bookings.tsx` 236 dòng). Phase 8 đã bổ sung
+> semantic route-only checks để bắt support declaration/module và nối script vào CI.
 
-- [x] **Step 2: Thêm npm script** vào root `package.json` (CHƯA nối CI)
+- [x] **Step 2: Thêm npm script** vào root `package.json` (Phase 5 chưa nối; Phase 8 đã nối CI)
 
 ```json
 "check:frontend-structure": "node scripts/architecture/check-frontend-structure.mjs"
@@ -978,35 +977,39 @@ area-local `routes.ts`, nên không có support-file exception trong `routes/`.
 Audit thật sau Phase 4: **65 route file; 10 file có 21 top-level support declaration; 1 non-route
 support module; 11 route→route import ngoài `+types`**. Danh sách 3 file của plan cũ là thiếu.
 
-- [ ] **Task 8.1 — booking lookup:** `routes/bookings.tsx` → UI (`Bookings`, `RequestForm`,
+- [x] **Task 8.1 — booking lookup (`3057b70f`):** `routes/bookings.tsx` → UI (`Bookings`, `RequestForm`,
       `RecentList`) vào `features/booking/components/bookings-lookup-page.tsx`; loader/action body vào
       `features/booking/server/bookings-route.server.ts`. Route chỉ delegate `meta/loader/action/default`.
-- [ ] **Task 8.2 — inline page UI:** tách nguyên JSX, không sửa className/copy:
+- [x] **Task 8.2 — inline page UI (`0f2253ea`):** tách nguyên JSX, không sửa className/copy:
       - `routes/community.tsx` → `features/community/components/community-page.tsx`;
       - `routes/account/help.tsx` → `features/account/components/help/help-page.tsx`;
       - `routes/account/{security,terms}.tsx` → `features/account/components/legal/`;
       - `routes/partner-onboarding/done.tsx` → feature component;
       - `TenantHome` trong `routes/home.tsx` → `features/home/components/tenant-home.tsx`.
-- [ ] **Task 8.3 — route-local pure/support logic:**
+- [x] **Task 8.3 — route-local pure/support logic (`589f3b9c`):**
       - `EMPTY_REFS` + `needsFavoriteRefs` trong `locale-layout.tsx` → `features/favorites/lib/`;
       - `legacy/redirect.server.ts` → `features/root/server/legacy-redirect.server.ts`, sửa 10 legacy
         route import và xoá support module khỏi `routes/`;
       - thân `set-locale` action → `features/root/server/set-locale-route.server.ts`.
-- [ ] **Task 8.4 — resource/operational handlers:**
+- [x] **Task 8.4 — resource/operational handlers (`b5a9b4cd`):**
       - `favorites-toggle` → `features/favorites/server/favorites-toggle-route.server.ts`;
       - `sitemap.xml` + XML/pagination helpers → `features/seo/server/sitemap-route.server.ts`;
       - hai upload presign action + JSON response helper → `features/storage/server/`;
       - readiness timeout/backend probe → `lib/readiness.server.ts`.
       Các route resource còn đúng một adapter export, không tạo default component giả.
-- [ ] **Task 8.5 — xoá route coupling:** không còn import route→route ngoài relative `./+types/*`;
+- [x] **Task 8.5 — xoá route coupling:** không còn import route→route ngoài relative `./+types/*`;
       `account/help` lấy context type trực tiếp từ feature, legacy route lấy redirect handler từ feature.
-- [ ] **Task 8.6 — gate và CI:** mở rộng `check:frontend-structure` để storefront `routes/`:
+      Verification-only: hai coupling đã rời route trong 8.2/8.3, không tạo empty commit.
+- [x] **Task 8.6 — gate và CI (`15e33f03`):** mở rộng `check:frontend-structure` để storefront `routes/`:
       - không chứa file support ngoài các module được route config đăng ký;
       - không có top-level support declaration ngoài danh sách React Router export;
       - route giữ dưới ngưỡng LOC đã chốt.
       Chạy gate xanh rồi mới nối `pnpm check:frontend-structure` vào CI, `AGENTS.md` và full static check.
       Route-only gate tạm chỉ áp storefront; dashboard có audit/refactor riêng vì code hiện tại còn
       40/85 route file với 77 helper/constant dù convention doc đã đúng.
+
+**Kết quả Phase 8:** gate xanh với 64/64 route module, route dài nhất 60 dòng; 0 support module,
+0 top-level support declaration và 0 route→route import ngoài `./+types/*`. Gate đã nối CI.
 
 Mỗi task: copy/move nguyên logic → rewrite import → scoped format → typecheck/build/lint/security →
 commit. **Không sửa className, DOM, copy, request contract, URL hay thứ tự side effect.**

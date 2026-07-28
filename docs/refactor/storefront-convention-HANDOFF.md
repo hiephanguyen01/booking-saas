@@ -1,8 +1,8 @@
 # Bàn giao — Storefront refactor theo convention `apps/dashboard`
 
 **Nhánh:** `refactor/storefront-dashboard-convention`
-**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–7 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
-của chủ dự án; Phase 8–13 chưa làm
+**Ngày:** 2026-07-28 · **Trạng thái:** Phase 1–8 xong; Phase 3 và Phase 8 scope đã bổ sung theo review
+của chủ dự án; Phase 9–13 chưa làm
 **Plan đầy đủ:** [`docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md`](../superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md)
 
 ---
@@ -22,7 +22,7 @@ kiểu **thiếu hàng rào**: `eslint.config.mjs` chỉ có boundary rule cho `
 | 2 | 3 implementation song song cho "chọn ngày → chọn slot → quote" (~2.6k LOC) | 6 | ✅ |
 | 3 | 2 dialog shell copy gần nguyên, khác nhau ở SSR/hydration | 6 | ✅ |
 | 4 | 3 page shell copy tay và đã drift | 7 | ✅ |
-| 5 | `routes/` không đồng nhất — `bookings.tsx` 236 dòng chứa cả UI | 8 | ❌ |
+| 5 | `routes/` không đồng nhất — `bookings.tsx` 236 dòng chứa cả UI | 8 | ✅ |
 | 6 | i18n bypass — 20 chuỗi hardcode dù có sẵn 10 namespace | 9 | ❌ |
 | 7 | `params.locale === 'en' ? 'en' : 'vi'` lặp 27 lần / 18 file | 10 | ❌ |
 | 8 | Dead code: 1 component + controller, 39 i18n key mồ côi × 2 locale | 11 | ❌ |
@@ -37,7 +37,7 @@ Audit bổ sung `routes/` sau Phase 4: 65 file route, 10 file chứa 21 top-leve
 
 ---
 
-## 2. Đã làm gì (Phase 1–7)
+## 2. Đã làm gì (Phase 1–8)
 
 Phase 1–4 chỉ thay đổi ranh giới module, vị trí file, import và kiểu dữ liệu; không chủ ý đổi UI,
 loader/action contract hay URL.
@@ -123,8 +123,9 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
 - Cài `eslint-plugin-react-hooks@7.1.1`: `rules-of-hooks` là error,
   `exhaustive-deps` là warning để không tự đổi runtime. Storefront hiện có 3 warning đã ghi nhận
   (`days` ×2, `durationSlots` ×1); dashboard và `packages/ui` sạch.
-- Thêm `pnpm check:frontend-structure`. Bucket/feature/server placement đều xanh; LOC gate storefront
-  chỉ đỏ `routes/bookings.tsx` (236 dòng), đúng nợ Phase 8. Script **chưa nối CI**.
+- Thêm `pnpm check:frontend-structure`. Tại cuối Phase 5, bucket/feature/server placement xanh nhưng
+  LOC gate còn đỏ `routes/bookings.tsx` (236 dòng), nên chưa nối CI. Nợ này đã được giải quyết và gate
+  được nối CI ở Phase 8.
 
 ### Phase 6 — gộp booking engine
 
@@ -148,6 +149,26 @@ quyết định bổ sung của chủ dự án sau review: controller hook featu
   ở listing/packages và eager ở listing-group.
 - Chỉ packages đổi ba pixel đã duyệt: `bg-muted/40→/30`, `py-6→py-4`, `MapPin size-5→size-4`.
 
+### Phase 8 — `routes/` chỉ còn route module
+
+- **8.1 (`3057b70f`)** — `routes/bookings.tsx` từ 236 dòng thành adapter mỏng; page UI về
+  `features/booking/components/bookings-lookup-page.tsx`, loader/action body về
+  `features/booking/server/bookings-route.server.ts`.
+- **8.2 (`0f2253ea`)** — chuyển nguyên JSX của community, account help/security/terms,
+  partner-onboarding done và home sang component của owner feature; không đổi copy/className/DOM.
+- **8.3 (`589f3b9c`)** — favorite-ref policy về `features/favorites/lib`, legacy redirect về
+  `features/root/server`, set-locale action body về root server; xoá support module cuối cùng khỏi
+  `routes/`.
+- **8.4 (`b5a9b4cd`)** — action/loader body của favorite toggle, sitemap, hai upload presign và
+  readiness probe về `features/{favorites,seo,storage}/server` hoặc `lib/readiness.server.ts`.
+  Resource route không có default component giả.
+- **8.5** — audit verification-only: 0 route→route import ngoài `./+types/*`; hai coupling mục tiêu đã
+  được xoá trong 8.2/8.3 nên không tạo empty commit.
+- **8.6 (`15e33f03`)** — structure gate đọc `app/routes.ts` làm source of truth và dùng TypeScript AST
+  để chặn support file thừa, route module thiếu, top-level support declaration, export lạ,
+  route→route import và route trên 120 dòng. Gate hiện xanh với **64/64** route module; route dài nhất
+  60 dòng. Đã nối vào CI và full static check trong `AGENTS.md`.
+
 ---
 
 ## 3. Trạng thái xác minh
@@ -157,14 +178,16 @@ Lần xác minh gần nhất ngày 2026-07-28:
 ```bash
 PATH="/Users/duyvo/.nvm/versions/node/v24.18.0/bin:$PATH" \
   pnpm turbo lint typecheck build --filter=@booking/storefront...  # 15/15 successful
+pnpm check:frontend-structure                                     # passed, 64/64 routes
 pnpm --filter=@booking/storefront security                        # passed
 pnpm check:no-tests                                               # passed
 ```
 
 `.nvmrc` yêu cầu 22.22.0 nhưng máy hiện không cài đúng patch đó; Node 24.18.0 là bản đã dùng để verify.
 
-React Doctor scoped `--base HEAD` sau Phase 7 scan 6 file, **100/100**, không diagnostic. Lint
-storefront vẫn 0 error / 3 warning hook đã ghi nhận từ Phase 5.
+React Doctor scoped `--base HEAD` sau commit cuối Phase 8 scan 1 file React, **100/100**, không
+diagnostic. Các lượt Task 8.3/8.4 cũng 100/100. Lint storefront vẫn 0 error / 3 warning hook đã ghi
+nhận từ Phase 5.
 
 Browser verify desktop + mobile:
 
@@ -184,6 +207,7 @@ find apps/storefront/app/features -name '*.server.ts' | grep -v '/server/'   # r
 cd apps/storefront/app && grep -rn "from '\.\./" . --include='*.ts' --include='*.tsx' \
   | grep -v '+types'                                             # rỗng
 cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features components  # rỗng
+pnpm check:frontend-structure                                    # passed
 ```
 
 ---
@@ -216,8 +240,9 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 
 - Phase 4 (cắt `features → routes`) đã hoàn tất trước Phase 5 đúng như yêu cầu.
 - Phase 5 (hàng rào) đã hoàn tất trước 6–12, mọi phase sau được boundary/lint canh.
-- `check:frontend-structure` chỉ nối vào CI ở **Phase 8**. LOC gate hiện bắt
-  `routes/bookings.tsx`; Phase 8 còn mở rộng gate để bắt support declaration/module mà LOC không thấy.
+- `check:frontend-structure` đã được mở rộng và nối CI ở **Phase 8**, sau khi 64 route module đều xanh.
+  Dashboard tạm chỉ chịu bucket/feature/server-placement gate; semantic route-only gate sẽ bật sau
+  audit/refactor dashboard riêng.
 
 ### Quyết định đã chốt với chủ dự án (đừng hỏi lại)
 
@@ -246,10 +271,9 @@ thư mục đó **không có trên máy**. Handoff này và plan trong `docs/sup
 
 ### Việc đầu tiên hôm sau
 
-Phase 8.1 — tách `routes/bookings.tsx`: UI về
-`features/booking/components/bookings-lookup-page.tsx`, loader/action về
-`features/booking/server/bookings-route.server.ts`; route chỉ còn delegate mỏng. Sau đó làm tiếp các
-task 8.2–8.6 theo đúng audit route đã ghi trong plan.
+Phase 9.1 — thay 9 cặp chuỗi Việt/Anh hardcode trong
+`features/provider/components/provider-profile-page.tsx` bằng i18n key, giữ nguyên từng chuỗi hiển thị
+và không đổi UI. Làm tiếp Phase 9 theo từng task/commit trong plan.
 
 ---
 
@@ -262,14 +286,14 @@ Tiếp tục refactor trong monorepo tại `/Users/duyvo/Desktop/booking-saas`.
 
 Nhánh `refactor/storefront-dashboard-convention`.
 Mục tiêu tổng: đưa `apps/storefront` về đúng convention của `apps/dashboard`, chia 13 phase.
-**Phase 1–7 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
-Phase 8–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 8.
+**Phase 1–8 đã xong. Phase 3 và Phase 8 scope đã được bổ sung theo review của chủ dự án.
+Phase 9–13 chưa làm.** Việc của bạn: làm tiếp từ Phase 9.
 
 ## Đọc trước khi gõ bất cứ thứ gì
 
 1. `docs/refactor/storefront-convention-HANDOFF.md` — bàn giao đầy đủ, đọc HẾT.
 2. `docs/superpowers/plans/2026-07-28-storefront-dashboard-convention-refactor.md` — plan 13 phase,
-   đọc `## Global Constraints` + Phase 8.
+   đọc `## Global Constraints` + Phase 9.
 3. `AGENTS.md` và `apps/storefront/CLAUDE.md` — luật chung của repo.
 
 Thư mục `.superpowers/sdd/2026-07-28-storefront-dashboard-convention-refactor/` hiện không có trên
@@ -295,6 +319,7 @@ pnpm --filter=@booking/storefront lint
 pnpm --filter=@booking/dashboard lint
 pnpm --filter=@booking/ui lint
 pnpm --filter=@booking/storefront security
+pnpm check:frontend-structure
 ```
 
 ⚠️ **`pnpm --filter=@booking/storefront typecheck` chạy MỘT MÌNH sẽ báo 17 lỗi GIẢ**
@@ -322,6 +347,7 @@ Chạy verify **sau mỗi commit**, không phải chỉ ở cuối.
 - BFF/domain server nằm trong `features/<owner>/server`; `app/lib` chỉ giữ hạ tầng/shared request concern.
 - Feature/components không còn import `routes` hoặc `routes/+types`.
 - Hai resource loader booking-data và loader payment status delegate sang feature server.
+- `routes/` chỉ có 64 module đăng ký bởi `app/routes.ts`, không có support declaration/module.
 
 Các lệnh sau phải rỗng:
 
@@ -347,20 +373,21 @@ cd apps/storefront/app && grep -rn "~/routes/\|routes/+types" features component
 - **Route convention** — route module chỉ giữ React Router exports mỏng; mọi support function/module
   về owner feature. Gate route-only tạm áp storefront vì dashboard implementation còn nợ riêng.
 
-## Trạng thái Phase 5–7
+## Trạng thái Phase 5–8
 
 - Boundary ESLint đang bật cho cả hai frontend.
 - React Hooks lint: storefront 0 error / 3 warning đã ghi nhận; dashboard/UI sạch. Không tự sửa warning
   dependency array trong phase khác.
-- `pnpm check:frontend-structure` cố ý đỏ đúng `routes/bookings.tsx` cho tới Phase 8; chưa nối CI.
+- `pnpm check:frontend-structure` xanh với 64/64 route module và đã nối CI/full static check.
 - Booking shell/controller/steps/slot picker đã hợp nhất trong `features/booking-widget`; không dựng lại
   implementation riêng trong `listing-group` hoặc `packages`.
 - Ba detail page đã dùng chung `DetailPageLayout` và `DetailPriceCard`.
 
 ## Việc đầu tiên
 
-Làm Phase 8.1: tách UI và loader/action khỏi `routes/bookings.tsx`, giữ route module thành adapter
-mỏng. Sau đó tiếp tục audit list 8.2–8.6; chỉ nối structure gate vào CI khi toàn bộ Phase 8 đã xanh.
+Làm Phase 9.1: thay 9 cặp chuỗi Việt/Anh hardcode trong
+`features/provider/components/provider-profile-page.tsx` bằng i18n key, giữ nguyên từng chuỗi hiển thị
+và không đổi UI.
 
 Nếu plan mâu thuẫn với các quyết định trong handoff này, handoff mới hơn thắng; cập nhật lại plan thay
 vì làm theo dữ liệu audit cũ.
