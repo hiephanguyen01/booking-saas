@@ -1,4 +1,4 @@
-import type { RootLoaderPayload } from './server/root-loader.server';
+import type { RootLoaderPayload } from '~/features/root/server/root-loader.server';
 
 export function buildRootMeta(loaderData: RootLoaderPayload | undefined) {
   if (!loaderData) return [{ title: 'BookingOS' }];

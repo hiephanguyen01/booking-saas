@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMatches } from 'react-router';
 import type { TenantRootLoaderPayload } from '~/features/root/server/root-loader.server';
-import type { StorefrontContext } from '~/features/root/storefront-context';
+import type { StorefrontContext } from '~/features/root/lib/storefront-context';
 
 export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayload) {
   const { tenant, listingTypes, locale, canonical, cspNonce, currentUser, accountMenuSummary } =
