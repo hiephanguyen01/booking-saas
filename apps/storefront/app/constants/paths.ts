@@ -24,6 +24,12 @@ export function pathLocale(pathname: string): Locale {
 
 const segment = (value: string) => encodeURIComponent(value);
 
+/** Auth destinations are never valid post-login return targets. */
+export function isStorefrontAuthPath(value: string): boolean {
+  const pathname = value.split(/[?#]/, 1)[0];
+  return /^\/(?:vi|en)\/auth(?:\/|$)/.test(pathname);
+}
+
 /** The steps `/become-partner` nests, in flow order. */
 export type PartnerOnboardingStep = 'verify' | 'password' | 'profile' | 'done';
 
@@ -48,8 +54,10 @@ export const storefrontPaths = {
   becomePartnerStep: (locale: Locale, step: PartnerOnboardingStep) =>
     `/${locale}/become-partner/${step}`,
   becomeAffiliate: (locale: Locale) => `/${locale}/become-affiliate`,
-  login: (locale: Locale, redirectTo?: string) =>
-    `/${locale}/auth/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`,
+  login: (locale: Locale, redirectTo?: string) => {
+    const returnTarget = redirectTo && !isStorefrontAuthPath(redirectTo) ? redirectTo : null;
+    return `/${locale}/auth/login${returnTarget ? `?redirectTo=${encodeURIComponent(returnTarget)}` : ''}`;
+  },
   register: (locale: Locale) => `/${locale}/auth/register`,
   registerVerify: (locale: Locale) => `/${locale}/auth/register/verify`,
   registerPassword: (locale: Locale) => `/${locale}/auth/register/password`,
