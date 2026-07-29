@@ -11,7 +11,10 @@ import {
   type AuthFlowCompleteResponse,
   type AuthOtpVerifiedResponse,
 } from '@booking/contracts';
+import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
+import type { ZodType } from 'zod';
+import { storefrontPaths } from '~/constants/paths';
 import {
   authFlow,
   flowView,
@@ -30,6 +33,53 @@ import { suppressStorefrontSessionCommit } from '~/lib/server/request-context.se
 import { safeRedirectPath } from '~/lib/safe-redirect';
 import { createUserSession, destroyUserSession } from '~/lib/server/session.server';
 import type { AuthActionData } from '~/lib/auth-types';
+
+export type AuthPurpose = 'registration' | 'password_reset';
+
+/**
+ * Registration and password reset walk the identical three-step OTP flow — start,
+ * verify, set password — and differ only in which backend prefix they post to, which
+ * phase names the flow cookie carries and which pages those phases render. Declaring
+ * that difference once keeps each action about the step it performs; it used to be
+ * eight `purpose === 'registration' ? … : …` ternaries spread across two functions.
+ */
+const AUTH_PURPOSES = {
+  registration: {
+    endpoint: 'registration',
+    startSchema: registrationStartInputSchema,
+    verifyPhase: 'registration_verify',
+    passwordPhase: 'registration_password',
+    successPhase: 'registration_success',
+    startPath: storefrontPaths.register,
+    verifyPath: storefrontPaths.registerVerify,
+    passwordPath: storefrontPaths.registerPassword,
+    successPath: storefrontPaths.registerSuccess,
+  },
+  password_reset: {
+    endpoint: 'password-reset',
+    startSchema: passwordResetStartInputSchema,
+    verifyPhase: 'reset_verify',
+    passwordPhase: 'reset_password',
+    successPhase: 'reset_success',
+    startPath: storefrontPaths.forgotPassword,
+    verifyPath: storefrontPaths.forgotPasswordVerify,
+    passwordPath: storefrontPaths.forgotPasswordNewPassword,
+    successPath: storefrontPaths.forgotPasswordSuccess,
+  },
+} as const satisfies Record<
+  AuthPurpose,
+  {
+    endpoint: string;
+    startSchema: ZodType;
+    verifyPhase: AuthFlowPhase;
+    passwordPhase: AuthFlowPhase;
+    successPhase: AuthFlowPhase;
+    startPath: (locale: Locale) => string;
+    verifyPath: (locale: Locale) => string;
+    passwordPath: (locale: Locale) => string;
+    successPath: (locale: Locale) => string;
+  }
+>;
 
 const AUTH_MAX_FORM_BYTES = 16 * 1024;
 const fields = (form: FormData) => Object.fromEntries(form.entries());
@@ -54,61 +104,44 @@ const failedAuthForm = (result: Extract<FormRequestBody, { ok: false }>) =>
   failed({ status: formRequestFailureStatus(result.code), code: result.code });
 
 export async function startRegistrationAction(request: Request, localeParam?: string) {
-  const locale = requireLocale(localeParam);
-  const formBody = await readAuthForm(request);
-  if (!formBody.ok) return failedAuthForm(formBody);
-
-  const parsed = registrationStartInputSchema.safeParse({
-    ...fields(formBody.value),
-    locale,
-  });
-  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
-  const result = await publicPost<AuthChallengeResponse>(
-    request,
-    '/auth/registration/start',
-    parsed.data,
-    {
-      schema: authChallengeResponseSchema,
-    },
-  );
-  if (!result.ok || !result.data) return failed(result);
-  const setCookie = await authFlow.create(request, {
-    phase: 'registration_verify',
-    challengeId: result.data.challengeId,
-    maskedDestination: result.data.maskedDestination,
-    resendAvailableAt: Date.now() + result.data.resendAfterSec * 1_000,
-  });
-  return redirect(`/${locale}/auth/register/verify`, { headers: { 'Set-Cookie': setCookie } });
+  return startAuthFlowAction(request, localeParam, 'registration');
 }
 
 export async function startResetAction(request: Request, localeParam?: string) {
+  return startAuthFlowAction(request, localeParam, 'password_reset');
+}
+
+/** Requests the OTP challenge and parks the flow on its verify step. */
+async function startAuthFlowAction(
+  request: Request,
+  localeParam: string | undefined,
+  purpose: AuthPurpose,
+) {
   const locale = requireLocale(localeParam);
+  const flow = AUTH_PURPOSES[purpose];
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
 
-  const parsed = passwordResetStartInputSchema.safeParse({
-    ...fields(formBody.value),
-    locale,
-  });
+  const parsed = flow.startSchema.safeParse({ ...fields(formBody.value), locale });
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthChallengeResponse>(
     request,
-    '/auth/password-reset/start',
+    `/auth/${flow.endpoint}/start`,
     parsed.data,
-    {
-      schema: authChallengeResponseSchema,
-    },
+    { schema: authChallengeResponseSchema },
   );
   if (!result.ok || !result.data) return failed(result);
   const setCookie = await authFlow.create(request, {
-    phase: 'reset_verify',
+    phase: flow.verifyPhase,
     challengeId: result.data.challengeId,
     maskedDestination: result.data.maskedDestination,
-    resendAvailableAt: Date.now() + result.data.resendAfterSec * 1_000,
+    resendAvailableAt: resendAvailableAt(result.data.resendAfterSec),
   });
-  return redirect(`/${locale}/auth/forgot-password/verify`, {
-    headers: { 'Set-Cookie': setCookie },
-  });
+  return redirect(flow.verifyPath(locale), { headers: { 'Set-Cookie': setCookie } });
+}
+
+function resendAvailableAt(resendAfterSec: number): number {
+  return Date.now() + resendAfterSec * 1_000;
 }
 
 /**
@@ -150,14 +183,11 @@ export async function requireFlowPhaseOnly(
 export async function verifyAction(
   request: Request,
   localeParam: string | undefined,
-  purpose: 'registration' | 'password_reset',
+  purpose: AuthPurpose,
 ) {
   const locale = requireLocale(localeParam);
-  const expected: AuthFlowPhase =
-    purpose === 'registration' ? 'registration_verify' : 'reset_verify';
-  const start =
-    purpose === 'registration' ? `/${locale}/auth/register` : `/${locale}/auth/forgot-password`;
-  const flow = await requireFlowPhase(request, expected, start);
+  const config = AUTH_PURPOSES[purpose];
+  const flow = await requireFlowPhase(request, config.verifyPhase, config.startPath(locale));
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
   const form = formBody.value;
@@ -172,7 +202,7 @@ export async function verifyAction(
 
     const result = await publicPost<AuthChallengeResponse>(
       request,
-      `/auth/${purpose === 'registration' ? 'registration' : 'password-reset'}/resend`,
+      `/auth/${config.endpoint}/resend`,
       { challengeId: flow.record.challengeId },
       { schema: authChallengeResponseSchema },
     );
@@ -180,7 +210,7 @@ export async function verifyAction(
     await authFlow.update(flow.id, {
       ...flow.record,
       maskedDestination: result.data.maskedDestination,
-      resendAvailableAt: Date.now() + result.data.resendAfterSec * 1_000,
+      resendAvailableAt: resendAvailableAt(result.data.resendAfterSec),
     });
     return data({ resent: true, resendAfterSec: result.data.resendAfterSec });
   }
@@ -191,34 +221,27 @@ export async function verifyAction(
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthOtpVerifiedResponse>(
     request,
-    `/auth/${purpose === 'registration' ? 'registration' : 'password-reset'}/verify`,
+    `/auth/${config.endpoint}/verify`,
     parsed.data,
     { schema: authOtpVerifiedResponseSchema },
   );
   if (!result.ok || !result.data) return failed(result);
   await authFlow.update(flow.id, {
-    phase: purpose === 'registration' ? 'registration_password' : 'reset_password',
+    phase: config.passwordPhase,
     completionToken: result.data.completionToken,
     maskedDestination: flow.record.maskedDestination,
   });
-  return redirect(
-    purpose === 'registration'
-      ? `/${locale}/auth/register/password`
-      : `/${locale}/auth/forgot-password/new-password`,
-  );
+  return redirect(config.passwordPath(locale));
 }
 
 export async function completePasswordAction(
   request: Request,
   localeParam: string | undefined,
-  purpose: 'registration' | 'password_reset',
+  purpose: AuthPurpose,
 ) {
   const locale = requireLocale(localeParam);
-  const expected: AuthFlowPhase =
-    purpose === 'registration' ? 'registration_password' : 'reset_password';
-  const start =
-    purpose === 'registration' ? `/${locale}/auth/register` : `/${locale}/auth/forgot-password`;
-  const flow = await requireFlowPhase(request, expected, start);
+  const config = AUTH_PURPOSES[purpose];
+  const flow = await requireFlowPhase(request, config.passwordPhase, config.startPath(locale));
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
   const form = fields(formBody.value);
@@ -233,19 +256,13 @@ export async function completePasswordAction(
   if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthFlowCompleteResponse>(
     request,
-    `/auth/${purpose === 'registration' ? 'registration' : 'password-reset'}/complete`,
+    `/auth/${config.endpoint}/complete`,
     parsed.data,
     { schema: authFlowCompleteResponseSchema },
   );
   if (!result.ok || !result.data) return failed(result);
-  await authFlow.update(flow.id, {
-    phase: purpose === 'registration' ? 'registration_success' : 'reset_success',
-  });
-  return redirect(
-    purpose === 'registration'
-      ? `/${locale}/auth/register/success`
-      : `/${locale}/auth/forgot-password/success`,
-  );
+  await authFlow.update(flow.id, { phase: config.successPhase });
+  return redirect(config.successPath(locale));
 }
 
 export async function loginAction(request: Request, localeParam?: string) {

@@ -2,9 +2,11 @@ import type { CustomerBookingSettlementResponse, QuoteLineItem } from '@booking/
 import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Button } from '@booking/ui/components/ui/button';
+import { cn } from '@booking/ui/lib/utils';
 import { Info, Star } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
+import { subtractMoney } from '~/lib/money';
 import {
   bookingDetailState,
   type AccountBookingViewModel,
@@ -248,20 +250,9 @@ function CancellationSummary({
   const refunded = settlement ? BigInt(settlement.refundedAmount) : 0n;
   const refundAmount =
     booking.refundAmount ?? (refunded > 0n && settlement ? settlement.refundedAmount : '0');
-  const serviceRefundAmount = maxMoney(BigInt(refundAmount) - BigInt(booking.securityDeposit));
-  const cancellationFee = maxMoney(BigInt(booking.paidAmount) - serviceRefundAmount);
-  const noRefundDue =
-    refundAmount === '0' && settlement?.status === 'dispute_window' && !settlement.refundConfirmed;
-  const refundStatus =
-    settlement?.status === 'refund_pending'
-      ? t('bookings.refund.pending')
-      : noRefundDue
-        ? t('bookings.refund.noRefundDue')
-        : refunded > 0n && settlement?.status === 'dispute_window'
-          ? t('bookings.refund.partialCompleted')
-          : refunded > 0n || settlement?.status === 'refunded' || settlement?.refundConfirmed
-            ? t('bookings.refund.completed')
-            : t('bookings.refund.pending');
+  const serviceRefundAmount = subtractMoney(refundAmount, booking.securityDeposit);
+  const cancellationFee = subtractMoney(booking.paidAmount, serviceRefundAmount);
+  const refundStatus = t(refundStatusKey(refundAmount, refunded, settlement));
 
   return (
     <DetailSection title={t('bookings.refund.title')}>
@@ -279,10 +270,7 @@ function CancellationSummary({
           label={t('bookings.payment.deposit')}
           value={money(booking.paidAmount, locale)}
         />
-        <DetailRow
-          label={t('bookings.refund.fee')}
-          value={money(String(cancellationFee), locale)}
-        />
+        <DetailRow label={t('bookings.refund.fee')} value={money(cancellationFee, locale)} />
         <DetailRow label={t('bookings.refund.amount')} value={money(refundAmount, locale)} />
       </DetailRows>
       <SummaryFooter value={refundStatus} />
@@ -362,14 +350,15 @@ function DetailRow({
   accent?: boolean;
   align?: 'start' | 'end';
 }) {
-  const alignmentClass =
-    align === 'start' ? 'sm:grid-cols-[160px_minmax(0,1fr)]' : 'sm:grid-cols-2 sm:text-right';
   return (
     <div
-      className={`grid min-h-12 items-center gap-1 border-b border-[#d8dee8] py-2 text-sm last:border-b-0 ${alignmentClass}`}
+      className={cn(
+        'grid min-h-12 items-center gap-1 border-b border-[#d8dee8] py-2 text-sm last:border-b-0',
+        align === 'start' ? 'sm:grid-cols-[160px_minmax(0,1fr)]' : 'sm:grid-cols-2 sm:text-right',
+      )}
     >
       <dt className="text-[#667085]">{label}</dt>
-      <dd className={`break-words text-[#263247] ${accent ? 'font-semibold text-[#ff3f44]' : ''}`}>
+      <dd className={cn('break-words text-[#263247]', accent && 'font-semibold text-[#ff3f44]')}>
         {value}
       </dd>
     </div>
@@ -384,8 +373,36 @@ function SummaryFooter({ value }: { value: string }) {
   );
 }
 
-function maxMoney(value: bigint): bigint {
-  return value > 0n ? value : 0n;
+/**
+ * The settlement wording, most specific case first. `refund_pending` outranks
+ * everything; a dispute window that has moved no money yet reads as "nothing to
+ * refund", one that moved some reads as partial; anything else that has money out
+ * or an explicit confirmation is complete. Everything left is still pending.
+ */
+function refundStatusKey(
+  refundAmount: string,
+  refunded: bigint,
+  settlement: CustomerBookingSettlementResponse | null,
+):
+  | 'bookings.refund.pending'
+  | 'bookings.refund.noRefundDue'
+  | 'bookings.refund.partialCompleted'
+  | 'bookings.refund.completed' {
+  if (settlement?.status === 'refund_pending') return 'bookings.refund.pending';
+  if (
+    refundAmount === '0' &&
+    settlement?.status === 'dispute_window' &&
+    !settlement.refundConfirmed
+  ) {
+    return 'bookings.refund.noRefundDue';
+  }
+  if (refunded > 0n && settlement?.status === 'dispute_window') {
+    return 'bookings.refund.partialCompleted';
+  }
+  if (refunded > 0n || settlement?.status === 'refunded' || settlement?.refundConfirmed) {
+    return 'bookings.refund.completed';
+  }
+  return 'bookings.refund.pending';
 }
 
 function money(value: string, locale: Locale): string {

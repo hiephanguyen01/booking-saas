@@ -12,6 +12,8 @@ import {
   cancellationPolicyLines as sharedCancellationPolicyLines,
   type CancellationPolicyLine,
 } from '~/lib/cancellation-policy';
+import { intlLocale } from '~/lib/intl';
+import { subtractMoney } from '~/lib/money';
 import { dateOnlyInTz, nightsBetween } from '~/lib/time';
 
 export { cancellationCutoffParts, type CancellationPolicyLine };
@@ -160,7 +162,7 @@ function durationLabel(booking: BookingResponse, locale: Locale): string {
 }
 
 function dateLabel(value: string, locale: Locale, timezone: string): string {
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+  return new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
@@ -170,22 +172,13 @@ function dateLabel(value: string, locale: Locale, timezone: string): string {
 }
 
 function timeLabel(startUtc: string, endUtc: string, locale: Locale, timezone: string): string {
-  const formatter = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+  const formatter = new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
     timeZone: timezone,
   });
   return `${formatter.format(new Date(startUtc))} - ${formatter.format(new Date(endUtc))}`;
-}
-
-function subtractMoney(total: string, paid: string): string {
-  try {
-    const balance = BigInt(total) - BigInt(paid);
-    return (balance > 0n ? balance : 0n).toString();
-  } catch {
-    return '0';
-  }
 }
 
 export function toAccountBookingViewModel(

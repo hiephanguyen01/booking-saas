@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import { ReviewTime } from '~/components/review-time';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import { intlLocale } from '~/lib/intl';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
@@ -167,7 +168,7 @@ function formatBookingRange(
   timeZone: string,
 ) {
   if (!start && !end) return null;
-  const formatter = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+  const formatter = new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
@@ -180,7 +181,7 @@ function formatBookingRange(
 }
 
 function formatTime(value: string, locale: 'vi' | 'en', timeZone: string) {
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+  return new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,

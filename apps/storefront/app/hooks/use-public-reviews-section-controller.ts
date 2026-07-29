@@ -1,5 +1,6 @@
 import type { ReviewListResponse, ReviewSummary } from '@booking/contracts';
 import { useSearchParams } from 'react-router';
+import { intlLocale } from '~/lib/intl';
 import { PUBLIC_REVIEW_LIMIT_STEP, PUBLIC_REVIEW_MAX_LIMIT } from '~/lib/public-reviews';
 
 const RATINGS = [5, 4, 3, 2, 1] as const;
@@ -43,7 +44,7 @@ export function usePublicReviewsSectionController({
 
   return {
     canShowMore,
-    formattedAverage: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+    formattedAverage: new Intl.NumberFormat(intlLocale(locale, 'en-US'), {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
     }).format(summary.ratingAvg ?? 0),

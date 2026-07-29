@@ -9,6 +9,7 @@ import { submitContentReport } from '~/features/content-reports/server/content-r
 import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { fetchAvailability } from '~/features/booking/server/booking.server';
 import { fetchListing, fetchListings, fetchQuote } from '~/features/catalog/server/catalog.server';
+import { openDailyDates } from '~/lib/availability';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
 import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
 import { optionalData } from '~/lib/server/optional-data.server';
@@ -222,8 +223,6 @@ function isSelectionAvailable(
   const to = searchParams.get('to');
   const range = normalizeDailyRange(from ?? undefined, to ?? undefined);
   if (!range) return false;
-  const openDates = new Set(
-    availability.days.filter((day) => day.status === 'available').map((day) => day.date),
-  );
+  const openDates = openDailyDates(availability);
   return datesInDailyRange(range).every((date) => openDates.has(date));
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@booking/ui/lib/utils';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { intlLocale } from '~/lib/intl';
 
 const MARKET_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const DAY_MS = 86_400_000;
@@ -45,7 +46,7 @@ export function ReviewTime({
 }
 
 function formatAbsoluteDate(value: string, locale: 'vi' | 'en'): string {
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+  return new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
     dateStyle: 'long',
     timeZone: MARKET_TIME_ZONE,
   }).format(new Date(value));
@@ -62,13 +63,13 @@ function formatRelativeTime(
   if (variant === 'day') {
     const days = marketCalendarDay(timestamp) - marketCalendarDay(now);
     if (days === 0) return todayLabel;
-    return new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+    return new Intl.RelativeTimeFormat(intlLocale(locale, 'en-US'), {
       numeric: 'auto',
     }).format(days, 'day');
   }
 
   let duration = Math.round((timestamp - now) / 1000);
-  const formatter = new Intl.RelativeTimeFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+  const formatter = new Intl.RelativeTimeFormat(intlLocale(locale, 'en-US'), {
     numeric: 'always',
   });
   const divisions = [

@@ -1,9 +1,12 @@
 import type { AvailabilityResponse, HourlySlot } from '@booking/contracts';
 import { useMemo } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { openDailyDates } from '~/lib/availability';
 import type { PublicPackageOption } from '~/lib/package-options';
 import { DEFAULT_TZ, dateLabelInTz, dateOnlyToLocal, localToDateOnly } from '~/lib/time';
 import { formatVnd } from '~/lib/ui';
+import { intlLocale } from '~/lib/intl';
+import { useCalendarFormatters } from '~/hooks/use-calendar-formatters';
 import { useLocale } from '~/hooks/use-locale';
 
 export function useBookingDialogStepsController({
@@ -44,15 +47,7 @@ export function useBookingDialogStepsController({
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const todayDate = dateOnlyToLocal(today);
-  const openDates = useMemo(
-    () =>
-      new Set(
-        availability?.mode === 'daily'
-          ? availability.days.filter((day) => day.status === 'available').map((day) => day.date)
-          : [],
-      ),
-    [availability],
-  );
+  const openDates = useMemo(() => openDailyDates(availability), [availability]);
   const dailyEndDate = useMemo(() => {
     if (availability?.mode !== 'daily' || availability.days.length === 0) return undefined;
     let latest = availability.days[0].date;
@@ -61,8 +56,9 @@ export function useBookingDialogStepsController({
     }
     return dateOnlyToLocal(latest);
   }, [availability]);
+  const formatters = useCalendarFormatters(locale, 'narrow');
   const calendarA11y = useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
+    const tag = intlLocale(locale);
     const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
     const fullDate = new Intl.DateTimeFormat(tag, {
       weekday: 'long',
@@ -71,13 +67,7 @@ export function useBookingDialogStepsController({
       year: 'numeric',
     });
     return {
-      formatters: {
-        formatCaption: (month: Date) => caption.format(month),
-        formatWeekdayName: (day: Date) =>
-          locale === 'en'
-            ? new Intl.DateTimeFormat(tag, { weekday: 'narrow' }).format(day)
-            : ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][day.getDay()],
-      },
+      formatters,
       labels: {
         labelDayButton: (day: Date) => fullDate.format(day),
         labelGrid: (month?: Date) =>
@@ -87,10 +77,10 @@ export function useBookingDialogStepsController({
         labelNext: () => t('group.nextMonth'),
       },
     };
-  }, [locale, t]);
+  }, [formatters, locale, t]);
   const timeFormatter = useMemo(
     () =>
-      new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
+      new Intl.DateTimeFormat(intlLocale(locale), {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
