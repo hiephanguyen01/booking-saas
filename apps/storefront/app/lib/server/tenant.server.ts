@@ -1,10 +1,11 @@
 import { publicTenantResponseSchema, type PublicTenantResponse } from '@booking/contracts';
 import { publicGetData } from './api.server';
+import { storefrontEnv } from './env.server';
 
 export type StorefrontTenant = PublicTenantResponse;
 
 export type StorefrontResolution =
-  { kind: 'tenant'; tenant: StorefrontTenant } | { kind: 'platform' };
+  { kind: 'tenant'; tenant: StorefrontTenant } | { kind: 'platform' } | { kind: 'unknown-host' };
 
 /**
  * Host header → hostname. Mirrors the API's canonical parser
@@ -23,17 +24,20 @@ function requestHostname(request: Request): string {
 }
 
 /**
- * Hosts that can never be a tenant's own domain: a single-label host
- * (`localhost`, a container name) or a bare IP literal. These are the platform's
- * own entry points, so they serve the BookingOS landing without asking the API.
+ * Known platform entry points: the configured BookingOS base domain, a
+ * single-label host (`localhost`, a container name), or a bare IP literal.
+ * These serve the platform landing without asking the API.
  *
- * Deliberately NOT included: any multi-label host. A tenant may map its own apex
- * (`giangstudio.vn`) as well as a subdomain, so those must still go through
- * resolution — an unmapped one comes back UNKNOWN_HOST and lands on the platform
- * page anyway (that is how the production apex `bookingos.vn` resolves).
+ * Every other multi-label host goes through tenant resolution because a tenant
+ * may map its own apex (`giangstudio.vn`) as well as a subdomain. An unmapped
+ * hostname must return the unknown-host error instead of impersonating BookingOS.
  */
 function isPlatformHostname(hostname: string): boolean {
-  return !hostname.includes('.') || /^[\d.]+$/.test(hostname);
+  return (
+    hostname === storefrontEnv.platformHostname ||
+    !hostname.includes('.') ||
+    /^[\d.]+$/.test(hostname)
+  );
 }
 
 /**
@@ -42,7 +46,7 @@ function isPlatformHostname(hostname: string): boolean {
  * (Host→tenant mapping + Redis cache live on the API). Access is enforced here
  * before any route renders:
  *   - platform host        → BookingOS platform landing, without asking the API
- *   - unmapped host        → BookingOS platform landing (API returns UNKNOWN_HOST)
+ *   - unmapped host        → unknown-host resolution (API returns UNKNOWN_HOST)
  *   - suspended / expired  → `live: false` → root renders the suspended page
  */
 export async function resolveStorefront(request: Request): Promise<StorefrontResolution> {
@@ -56,7 +60,7 @@ export async function resolveStorefront(request: Request): Promise<StorefrontRes
     return { kind: 'tenant', tenant: dto };
   } catch (error) {
     if (error instanceof Response && error.status === 404) {
-      return { kind: 'platform' };
+      return { kind: 'unknown-host' };
     }
     if (error instanceof Response && error.status === 503) {
       throw new Response('Storefront temporarily unavailable', { status: 503 });

@@ -1,9 +1,11 @@
 # Rendered by the nginx image's envsubst entrypoint from ${DASHBOARD_HOST} and
 # ${API_HOST} (see docker-compose.deploy.yml). TLS terminates in front of this.
-
-upstream storefront_upstream { server storefront:3000; keepalive 32; }
-upstream dashboard_upstream  { server dashboard:3000;  keepalive 32; }
-upstream api_upstream        { server api:3000;        keepalive 32; }
+#
+# Docker may assign a different container IP after a restart. Using its embedded
+# DNS resolver together with variable-based proxy targets makes nginx re-resolve
+# service names instead of pinning the IPs it saw when nginx started.
+resolver 127.0.0.11 valid=10s ipv6=off;
+resolver_timeout 5s;
 
 # Uploads go browser → storage directly via a presigned URL, so nothing large
 # passes through here except the presign request itself.
@@ -20,13 +22,15 @@ proxy_buffering off;
 server {
   listen 80;
   server_name ${DASHBOARD_HOST};
-  location / { proxy_pass http://dashboard_upstream; }
+  set $dashboard_target dashboard:3000;
+  location / { proxy_pass http://$dashboard_target; }
 }
 
 server {
   listen 80;
   server_name ${API_HOST};
-  location / { proxy_pass http://api_upstream; }
+  set $api_target api:3000;
+  location / { proxy_pass http://$api_target; }
 }
 
 # DEFAULT SERVER — deliberately last and catch-all.
@@ -38,5 +42,6 @@ server {
 server {
   listen 80 default_server;
   server_name _;
-  location / { proxy_pass http://storefront_upstream; }
+  set $storefront_target storefront:3000;
+  location / { proxy_pass http://$storefront_target; }
 }

@@ -252,7 +252,10 @@ Start the app with the repository's configured environment:
 pnpm --filter=@booking/storefront dev
 ```
 
-Inspect the platform landing on an unmapped host in Vietnamese and English at 1440x900, 1024x768, 768x1024, and 390x844. Compare header height, 1200px content alignment, hero proportions, surface colors, section spacing, radii, shadows, and mobile stacking against the attached HTML.
+Inspect the platform landing on the configured BookingOS base domain in Vietnamese and English at
+1440x900, 1024x768, 768x1024, and 390x844. Compare header height, 1200px content alignment, hero
+proportions, surface colors, section spacing, radii, shadows, and mobile stacking against the
+attached HTML.
 
 - [ ] **Step 3: Exercise interactions manually**
 

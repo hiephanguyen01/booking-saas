@@ -8,9 +8,10 @@ already implemented in the React Router storefront.
 
 ## Scope
 
-The redesign applies only to the platform landing rendered for unmapped hosts. It does not change
-tenant storefront templates, routes, SEO behavior, API contracts, or the consultation submission
-flow.
+The redesign applies only to the platform landing rendered for the configured BookingOS base domain
+(plus local single-label/IP entry points). Unmapped tenant hosts render the unknown-storefront 404
+page. The redesign does not change tenant storefront templates, routes, SEO behavior, API contracts,
+or the consultation submission flow.
 
 The implementation will preserve:
 

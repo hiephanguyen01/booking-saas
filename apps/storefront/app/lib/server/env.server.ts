@@ -18,6 +18,7 @@ const rawEnvironmentSchema = z
     BACKEND_URL: optional(z.string().url()),
     REDIS_URL: optional(z.string().url()),
     DASHBOARD_URL: optional(z.string().url()),
+    PLATFORM_BASE_DOMAIN: optional(z.string().trim().min(1)),
     SESSION_SECRET_CURRENT: optional(z.string().min(32)),
     SESSION_SECRET_PREVIOUS: optional(z.string().min(32)),
     SESSION_SECRET: optional(z.string().min(32)),
@@ -110,6 +111,39 @@ const dashboardUrl = requiredUrl(
   HTTP_PROTOCOLS,
 );
 
+function requiredHostname(
+  name: 'PLATFORM_BASE_DOMAIN',
+  value: string | undefined,
+  developmentFallback: string,
+): string {
+  if (!value && production) invalidEnvironment(`${name} is required in production`);
+  const hostname = (value ?? developmentFallback).toLowerCase().replace(/\.$/, '');
+
+  let parsedHostname: URL;
+  try {
+    parsedHostname = new URL(`http://${hostname}`);
+  } catch {
+    invalidEnvironment(`${name} must be a valid hostname`);
+  }
+  if (
+    parsedHostname.hostname !== hostname ||
+    parsedHostname.port ||
+    parsedHostname.username ||
+    parsedHostname.password ||
+    parsedHostname.pathname !== '/'
+  ) {
+    invalidEnvironment(`${name} must be a bare hostname`);
+  }
+
+  return hostname;
+}
+
+const platformHostname = requiredHostname(
+  'PLATFORM_BASE_DOMAIN',
+  raw.PLATFORM_BASE_DOMAIN,
+  'bookingos.vn',
+);
+
 const currentSecret = raw.SESSION_SECRET_CURRENT ?? (!production ? raw.SESSION_SECRET : undefined);
 if (!currentSecret) {
   invalidEnvironment('SESSION_SECRET_CURRENT must contain at least 32 characters');
@@ -143,6 +177,7 @@ export const storefrontEnv = Object.freeze({
   backendUrl: backendUrl.origin,
   redisUrl: redisUrl.toString(),
   dashboardUrl: dashboardUrl.origin,
+  platformHostname,
   sessionSecrets: Object.freeze(
     [currentSecret, raw.SESSION_SECRET_PREVIOUS].filter((value): value is string => Boolean(value)),
   ),

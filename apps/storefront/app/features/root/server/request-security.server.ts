@@ -9,6 +9,7 @@ import { resolveStorefront } from '~/lib/server/tenant.server';
 import { tenantUnavailableResponse } from '~/lib/tenant-availability';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const DOCUMENT_METHODS = new Set(['GET', 'HEAD']);
 const OPERATIONAL_PATHS = new Set(['/healthz', '/readyz']);
 const PLATFORM_DOCUMENT_PATHS = new Set(['/vi', '/en', '/robots.txt', '/sitemap.xml']);
 const PRIVATE_CACHE_CONTROL = 'private, no-store';
@@ -218,7 +219,7 @@ export async function storefrontRequestMiddleware(
   const cspNonce = createCspNonce();
   context.set(storefrontCspNonceContext, cspNonce);
   // Every exit from this middleware carries the same headers; naming that once
-  // keeps the single-exit contract legible across the eight returns below.
+  // keeps the response-header contract legible across every branch below.
   const secure = (response: Response) => withSecurityHeaders(response, request, cspNonce);
 
   const pathname = new URL(request.url).pathname;
@@ -228,12 +229,18 @@ export async function storefrontRequestMiddleware(
 
   const rejected = csrfFailure(request);
   if (rejected) return secure(rejected);
+
+  const method = request.method.toUpperCase();
+  const isDocumentRequest = DOCUMENT_METHODS.has(method);
   const resolution = await resolveStorefront(request);
+  if (resolution.kind === 'unknown-host') {
+    const response = secure(unknownHost());
+    if (isDocumentRequest) throw response;
+    return response;
+  }
+
   if (resolution.kind === 'platform') {
-    const method = request.method.toUpperCase();
-    if (method !== 'GET' && method !== 'HEAD') {
-      return secure(unknownHost());
-    }
+    if (!isDocumentRequest) return secure(unknownHost());
 
     const url = new URL(request.url);
     const locale = pathLocale(url.pathname);

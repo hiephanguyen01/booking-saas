@@ -56,10 +56,11 @@ html {
 /*
  * BookingOS platform landing — its own brand, not a tenant surface.
  *
- * This page renders only when the host resolves to `kind: 'platform'` (unmapped
- * host, `localhost`, bare IP), so `TenantThemeStyle` never mounts above it and no
- * tenant `theme_config` can reach it. The brand is therefore fixed here, but it is
- * expressed by overriding the shadcn *base* tokens inside this scope — so every
+ * This page renders only when the host resolves to `kind: 'platform'` (the
+ * configured platform base domain, `localhost`, or a bare IP), so
+ * `TenantThemeStyle` never mounts above it and no tenant `theme_config` can reach
+ * it. The brand is therefore fixed here, but it is expressed by overriding the
+ * shadcn *base* tokens inside this scope — so every
  * section styles itself with the normal semantic utilities (`bg-card`,
  * `text-muted-foreground`, `bg-primary`, `ring-ring`, …) and a rebrand is one block.
  *

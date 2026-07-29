@@ -3,6 +3,9 @@ import type { viErrors } from '../vi/errors';
 
 export const enErrors = {
   pageNotFound: 'Page not found',
+  unknownHostTitle: 'Storefront not found',
+  unknownHostDescription:
+    'This domain is not connected to a storefront. Please check the address and try again.',
   generic: 'Something went wrong.',
   home: 'Back to Home',
   tenantSuspendedTitle: '{tenant} is temporarily unavailable',

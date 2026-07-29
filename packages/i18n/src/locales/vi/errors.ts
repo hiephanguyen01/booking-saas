@@ -1,5 +1,8 @@
 export const viErrors = {
   pageNotFound: 'Không tìm thấy trang',
+  unknownHostTitle: 'Không tìm thấy cửa hàng',
+  unknownHostDescription:
+    'Tên miền này chưa được liên kết với cửa hàng nào. Vui lòng kiểm tra lại địa chỉ bạn đã nhập.',
   generic: 'Đã có lỗi xảy ra.',
   home: 'Về trang chủ',
   tenantSuspendedTitle: '{tenant} tạm ngưng hoạt động',

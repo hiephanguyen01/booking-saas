@@ -57,6 +57,23 @@ function RootErrorNotice({
     return <SuspendedNotice name={tenantUnavailable.tenantName} />;
   }
 
+  if (isUnknownHostError(error)) {
+    return (
+      <main className="flex min-h-dvh justify-center bg-muted/40 px-4 py-12 font-studio text-foreground">
+        <section className="flex w-full max-w-125 flex-col items-center justify-center text-center">
+          <NotFoundIllustration />
+          <p className="text-sm font-medium text-muted-foreground">404</p>
+          <h1 className="mt-2 text-[28px] leading-10 font-semibold sm:text-[32px] sm:leading-12">
+            {t('unknownHostTitle')}
+          </h1>
+          <p className="mt-3 max-w-105 text-sm leading-6 text-muted-foreground sm:text-base">
+            {t('unknownHostDescription')}
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   if (isNotFoundError(error)) {
     return (
       <div className="flex min-h-dvh flex-col bg-muted/40 font-studio text-foreground">
@@ -85,13 +102,7 @@ function RootErrorNotice({
         <main className="flex flex-1 justify-center px-4 pb-12 pt-8 sm:px-6 lg:pt-22">
           <section className="flex w-full max-w-125 flex-col items-center gap-6 text-center">
             <div className="flex w-full flex-col items-center">
-              <img
-                src="/booking-studio/404-illustration.png"
-                alt=""
-                width={500}
-                height={500}
-                className="aspect-square w-full object-contain"
-              />
+              <NotFoundIllustration />
               <h1 className="w-full text-[28px] leading-10 font-semibold sm:text-[32px] sm:leading-12">
                 {t('pageNotFound')}
               </h1>
@@ -120,15 +131,28 @@ function RootErrorNotice({
   );
 }
 
-function tenantUnavailableErrorData(error: unknown): TenantUnavailableErrorData | null {
-  if (!isRouteErrorResponse(error) || error.status !== 423) return null;
-  if (!error.data || typeof error.data !== 'object') return null;
+function NotFoundIllustration() {
+  return (
+    <img
+      src="/booking-studio/404-illustration.png"
+      alt=""
+      width={500}
+      height={500}
+      className="aspect-square w-full object-contain"
+    />
+  );
+}
 
-  const candidate = error.data as {
-    code?: unknown;
-    tenantName?: unknown;
-    locale?: unknown;
-  };
+function routeErrorData(error: unknown, status: number): Record<string, unknown> | null {
+  if (!isRouteErrorResponse(error) || error.status !== status) return null;
+  return error.data && typeof error.data === 'object'
+    ? (error.data as Record<string, unknown>)
+    : null;
+}
+
+function tenantUnavailableErrorData(error: unknown): TenantUnavailableErrorData | null {
+  const candidate = routeErrorData(error, 423);
+  if (!candidate) return null;
   if (
     candidate.code !== 'TENANT_UNAVAILABLE' ||
     typeof candidate.tenantName !== 'string' ||
@@ -142,6 +166,10 @@ function tenantUnavailableErrorData(error: unknown): TenantUnavailableErrorData 
     tenantName: candidate.tenantName,
     locale: candidate.locale,
   };
+}
+
+function isUnknownHostError(error: unknown): boolean {
+  return routeErrorData(error, 404)?.code === 'UNKNOWN_HOST';
 }
 
 function isNotFoundError(error: unknown): boolean {

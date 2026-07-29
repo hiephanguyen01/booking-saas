@@ -48,10 +48,10 @@ route-config/navigation exceptions; storefront currently has no equivalent excep
 
 - **Multi-tenant by `Host` header.** The tenant is resolved per-request from the hostname via a backend
   call in `app/lib/server/tenant.server.ts` (not from a login). One storefront serves every tenant's
-  domain; an unmapped host serves the BookingOS platform landing without creating a tenant session.
-  A **single-label host (`localhost`) or bare IP** short-circuits to the platform landing with no
-  backend call at all — it can never be a tenant domain. Every multi-label host still goes through
-  resolution, because a tenant may map its own apex (`giangstudio.vn`), not just a subdomain.
+  domain; an unmapped host returns the unknown-storefront 404 page. The exact
+  `PLATFORM_BASE_DOMAIN`, a **single-label host (`localhost`)**, or a bare IP short-circuits to the
+  BookingOS platform landing with no backend call. Every other multi-label host goes through
+  resolution because a tenant may map its own apex (`giangstudio.vn`), not just a subdomain.
 - **Bilingual.** Every page nests under a `/:locale` (`vi` | `en`) layout backed by `@booking/i18n`;
   unlocalized legacy paths are kept as redirect route modules for inbound links. The dashboard, by
   contrast, is Vietnamese-hardcoded.
@@ -74,8 +74,9 @@ SSR (see `root.tsx`), overriding the shadcn base tokens (`--background`, `--prim
 
 ### The platform landing is not a tenant surface
 
-`features/platform-landing` renders only for `kind: 'platform'` (unmapped host, `localhost`, bare IP),
-so `TenantThemeStyle` never mounts above it and **no tenant theme can reach it**. Its BookingOS brand
+`features/platform-landing` renders only for `kind: 'platform'` (the configured platform base domain,
+`localhost`, or a bare IP), so `TenantThemeStyle` never mounts above it and **no tenant theme can
+reach it**. Its BookingOS brand
 (amber `#ffb020` on near-black) is fixed in the `.platform-landing` scope in `app/app.css`, which
 overrides the same shadcn **base** tokens — so its sections style themselves with ordinary semantic
 utilities (`bg-card`, `text-muted-foreground`, `bg-primary`, `ring-ring`) and never a literal color.
