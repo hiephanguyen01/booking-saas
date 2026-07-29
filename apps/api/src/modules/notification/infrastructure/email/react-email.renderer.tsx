@@ -63,10 +63,6 @@ const SUPPORTING_ASSETS = {
 } as const;
 
 const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
-  booking_pending_payment_customer: {
-    vi: { subject: 'Đơn đặt {bookingCode} đang chờ thanh toán', title: 'Đơn đang chờ thanh toán', intro: 'Vui lòng hoàn tất thanh toán {amount} để giữ chỗ cho đơn {bookingCode}.', cta: 'Thanh toán đơn' },
-    en: { subject: 'Booking {bookingCode} awaiting payment', title: 'Payment required', intro: 'Please complete the {amount} payment to hold booking {bookingCode}.', cta: 'Pay booking' },
-  },
   booking_pending_approval_partner: {
     vi: { subject: 'Đơn đặt mới {bookingCode} cần duyệt', title: 'Bạn có đơn đặt mới', intro: 'Đơn {bookingCode} cho “{listingTitle}” lúc {startsAt} đang chờ duyệt.', cta: 'Xem đơn đặt' },
     en: { subject: 'New booking {bookingCode} needs approval', title: 'You have a new booking', intro: 'Booking {bookingCode} for “{listingTitle}” at {startsAt} is waiting for approval.', cta: 'Review booking' },
