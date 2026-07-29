@@ -1,4 +1,8 @@
-import { type AutoCampaignResponse, type ValidatePromoResponse } from '@booking/contracts';
+import {
+  type AutoCampaignResponse,
+  type StorefrontPromotionsResponse,
+  type ValidatePromoResponse,
+} from '@booking/contracts';
 import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
@@ -6,9 +10,12 @@ import { MissingHost } from '../../../../shared/http/request-boundary-errors';
 import { Public } from '../../../identity-access/infrastructure/http/decorators/public.decorator';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';
 import { ResolveAutoCampaignUseCase } from '../../application/use-cases/resolve-auto-campaign.use-case';
+import { ListStorefrontPromotionsUseCase } from '../../application/use-cases/list-storefront-promotions.use-case';
 import {
   AutoCampaignDto,
   AutoCampaignResponseDto,
+  StorefrontPromotionDto,
+  StorefrontPromotionsDto,
   ValidatePromoDto,
   ValidatePromoResponseDto,
 } from './dto/promotions.dto';
@@ -20,6 +27,7 @@ export class PublicPromoController {
   constructor(
     private readonly validatePromo: ValidatePromoUseCase,
     private readonly autoCampaign: ResolveAutoCampaignUseCase,
+    private readonly listStorefrontPromotions: ListStorefrontPromotionsUseCase,
   ) {}
 
   @Public()
@@ -32,6 +40,18 @@ export class PublicPromoController {
     @Req() req: Request,
   ): Promise<ValidatePromoResponse> {
     return this.validatePromo.execute(hostOf(req), input);
+  }
+
+  @Public()
+  @Post('promotions')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'List discoverable promo codes evaluated for a storefront checkout' })
+  @ApiOkResponse({ type: [StorefrontPromotionDto] })
+  async promotions(
+    @Body() input: StorefrontPromotionsDto,
+    @Req() req: Request,
+  ): Promise<StorefrontPromotionsResponse> {
+    return this.listStorefrontPromotions.execute(hostOf(req), input);
   }
 
   @Public()

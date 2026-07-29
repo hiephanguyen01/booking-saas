@@ -72,6 +72,10 @@ export function PromotionSummarySection({
           value={promotion.usageLimitPerCustomer != null ? formatNumber(promotion.usageLimitPerCustomer) : 'Không giới hạn'}
         />
         <DetailField label="Chỉ lần đặt đầu tiên" value={promotion.firstBookingOnly ? 'Có' : 'Không'} />
+        <DetailField
+          label="Hiển thị trên storefront"
+          value={promotion.code && promotion.storefrontVisible ? 'Có' : 'Không'}
+        />
         <DetailField label="Ngày tạo" value={<DateTimeValue iso={promotion.createdAt} relative />} />
         <DetailField
           label="Khung giờ ưu đãi (off-peak)"

@@ -1,5 +1,7 @@
 import { useLocation, useNavigation, useOutletContext, useSearchParams } from 'react-router';
 import { isReadNavigationMethod, useMinimumPending } from '~/hooks/use-minimum-pending';
+import { useLocale } from '~/hooks/use-locale';
+import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontContext } from '~/root';
 import type { SearchSort } from '~/features/search/lib/search-state';
 
@@ -29,11 +31,14 @@ export function useCatalogPageController({
 }) {
   const { listingTypes } = useOutletContext<StorefrontContext>();
   const location = useLocation();
+  const locale = useLocale();
   const navigation = useNavigation();
   const [searchParams] = useSearchParams();
+  const catalogPrefix = storefrontPaths.catalog(locale, '');
   const pending = useMinimumPending(
     navigation.state === 'loading' &&
-      navigation.location?.pathname === location.pathname &&
+      (navigation.location?.pathname === location.pathname ||
+        navigation.location?.pathname.startsWith(catalogPrefix)) &&
       isReadNavigationMethod(navigation.formMethod),
   );
   const booleanFacetKeys = attributeSchema

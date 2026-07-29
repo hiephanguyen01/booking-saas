@@ -10,6 +10,8 @@ import {
   promotionCategoryOptionSchema,
   promotionDetailResponseSchema,
   promotionResponseSchema,
+  storefrontPromotionSchema,
+  storefrontPromotionsInputSchema,
   updatePartnerPromotionInputSchema,
   updatePromotionInputSchema,
   validatePromoInputSchema,
@@ -26,10 +28,12 @@ export class UpdatePromotionDto extends createZodDto(updatePromotionInputSchema)
 export class CreatePartnerPromotionDto extends createZodDto(createPartnerPromotionInputSchema) {}
 export class UpdatePartnerPromotionDto extends createZodDto(updatePartnerPromotionInputSchema) {}
 export class ValidatePromoDto extends createZodDto(validatePromoInputSchema) {}
+export class StorefrontPromotionsDto extends createZodDto(storefrontPromotionsInputSchema) {}
 export class AutoCampaignDto extends createZodDto(autoCampaignInputSchema) {}
 
 // Responses
 export class ValidatePromoResponseDto extends createZodDto(validatePromoResponseSchema) {}
+export class StorefrontPromotionDto extends createZodDto(storefrontPromotionSchema) {}
 export class AutoCampaignResponseDto extends createZodDto(autoCampaignSchema) {}
 export class PromotionResponseDto extends createZodDto(promotionResponseSchema) {}
 export class PromotionDetailResponseDto extends createZodDto(promotionDetailResponseSchema) {}

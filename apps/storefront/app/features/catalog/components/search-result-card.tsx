@@ -65,7 +65,7 @@ export function SearchResultCard({
           />
         ) : null}
         {discountPercent !== null ? (
-          <span className="absolute top-6 left-0 flex h-10 w-18 items-center bg-primary px-2 text-base font-semibold text-primary-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
+          <span className="absolute top-6 left-0 flex h-10 w-18 items-center bg-success px-2 text-base font-semibold text-success-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
             - {discountPercent}%
           </span>
         ) : null}
@@ -123,13 +123,13 @@ export function SearchResultCard({
                   {regularPrice}
                 </span>
               ) : null}
-              <span className={discountPercent !== null ? 'text-primary' : 'text-foreground'}>
+              <span className={discountPercent !== null ? 'text-success' : 'text-foreground'}>
                 {t('listing:fromPriceShort')}{' '}
                 <strong className="text-lg leading-7 font-semibold">{price}</strong>
               </span>
             </span>
             <span
-              className={`block ${discountPercent !== null ? 'text-primary' : 'text-muted-foreground'}`}
+              className={`block ${discountPercent !== null ? 'text-success' : 'text-muted-foreground'}`}
             >
               {t(priceUnit.key, priceUnit.count === undefined ? {} : { count: priceUnit.count })}
             </span>

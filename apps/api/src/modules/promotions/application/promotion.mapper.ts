@@ -22,6 +22,7 @@ export function toPromotionResponse(p: PromotionRecord): PromotionResponse {
     appliesToId: p.appliesToId,
     minOrderAmount: p.minOrderAmount?.toString() ?? null,
     firstBookingOnly: p.firstBookingOnly,
+    storefrontVisible: p.storefrontVisible,
     usageLimitTotal: p.usageLimitTotal,
     usageLimitPerCustomer: p.usageLimitPerCustomer,
     timeWindows: p.timeWindows,

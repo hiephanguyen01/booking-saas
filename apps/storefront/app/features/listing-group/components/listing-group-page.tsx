@@ -53,6 +53,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           initialState={state}
           locations={locations}
           variant="bar"
+          typeChangeBehavior="navigate-to-catalog"
         />
       }
       header={

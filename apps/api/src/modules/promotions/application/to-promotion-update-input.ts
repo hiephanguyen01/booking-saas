@@ -15,6 +15,7 @@ export function toPromotionUpdateInput(input: {
   maxDiscount?: string | null;
   minOrderAmount?: string | null;
   firstBookingOnly?: boolean;
+  storefrontVisible?: boolean;
   usageLimitTotal?: number | null;
   usageLimitPerCustomer?: number | null;
   timeWindows?: PromotionUpdateInput['timeWindows'];
@@ -35,6 +36,7 @@ export function toPromotionUpdateInput(input: {
           : vnd(input.minOrderAmount)
         : undefined,
     firstBookingOnly: input.firstBookingOnly,
+    storefrontVisible: input.storefrontVisible,
     usageLimitTotal: input.usageLimitTotal,
     usageLimitPerCustomer: input.usageLimitPerCustomer,
     timeWindows: input.timeWindows,
