@@ -96,7 +96,7 @@ export interface TemplateData {
   recipientEmail?: string;
   recipientPhone?: string;
   customerNote?: string;
-  policyText?: string;
+  policyLines?: string[];
   paymentMethod?: string;
   ctaUrl?: string;
   agreementUrl?: string;

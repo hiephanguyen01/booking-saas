@@ -186,6 +186,27 @@ function OtpCard({ otp, expiresInMin, locale }: { otp: string; expiresInMin: num
   );
 }
 
+function PolicyParagraphs({ lines }: { lines?: string[] }) {
+  if (!lines?.length) return null;
+  return (
+    <Section style={{ background: '#FFF8E7', borderRadius: '8px', padding: '14px 16px' }}>
+      {lines.map((line, index) => (
+        <Text
+          key={line}
+          style={{
+            color: NEUTRAL_600,
+            fontSize: '13px',
+            lineHeight: '20px',
+            margin: index === lines.length - 1 ? 0 : '0 0 8px',
+          }}
+        >
+          {line}
+        </Text>
+      ))}
+    </Section>
+  );
+}
+
 function EmailView({ copy, locale, brand, data }: { copy: Copy; locale: Locale; brand: EmailBrand; data: TemplateData }) {
   const logo = safeLogo(brand.logoUrl);
   const icon = copy.statusIcon ? STATUS_ASSETS[copy.statusIcon] : undefined;
@@ -220,7 +241,7 @@ function EmailView({ copy, locale, brand, data }: { copy: Copy; locale: Locale; 
                 <DetailRow label={locale === 'vi' ? 'Còn lại phải thanh toán' : 'Balance due'} value={data.balanceAmount} />
               </Section>
             ) : null}
-            {data.policyText ? <Text style={{ background: '#FFF8E7', borderRadius: '8px', color: NEUTRAL_600, fontSize: '13px', lineHeight: '20px', padding: '14px 16px' }}>{data.policyText}</Text> : null}
+            <PolicyParagraphs lines={data.policyLines} />
             {data.agreementVersions ? <Text style={{ color: NEUTRAL_600, fontSize: '13px' }}>{data.agreementVersions}</Text> : null}
             {copy.cta && data.ctaUrl ? <Section style={{ textAlign: 'center', margin: '28px 0 8px' }}><Button href={data.ctaUrl} style={{ backgroundColor: primary, borderRadius: '8px', color: '#FFFFFF', fontSize: '14px', fontWeight: 700, padding: '13px 22px', textDecoration: 'none' }}>{copy.cta}</Button></Section> : null}
             {data.termsUrl ? <Text style={{ fontSize: '13px', textAlign: 'center' }}><a href={data.termsUrl} style={{ color: primary }}>{locale === 'vi' ? 'Xem điều khoản sử dụng' : 'View terms of use'}</a></Text> : null}

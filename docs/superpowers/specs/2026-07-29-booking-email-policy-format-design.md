@@ -27,8 +27,10 @@ no second raw-hours formatter.
 ## Rendering
 
 - Confirmed customer keeps its current policy section with icons and final notice box.
-- Cancelled and no-show customer emails use the same policy wording in their notice area,
-  alongside state-specific notices when applicable.
+- No-show customer emails use the same scheduled policy wording in their notice area.
+- Cancelled customer and partner emails show the durable outcome that was actually applied,
+  such as `Hủy mất 50% cọc`. When a refund is due, they also state that processing usually
+  takes 10-15 business days.
 - Shared booking emails for customer and partner render each policy sentence as a
   separate paragraph in the existing yellow policy box.
 - Refunded remains compact and does not gain a policy section.
@@ -42,6 +44,8 @@ no second raw-hours formatter.
 - A partial-refund tier displays the retained fee calculated from the durable paid amount.
 - The fee basis says deposit only when the paid amount is the deposit; otherwise it says
   paid amount.
+- A cancellation outcome uses the event/template and frozen `refundPercent`, not the booking's
+  later live status, so outbox retries remain historically accurate.
 - The final zero-refund/no-show line starts at the last refundable cutoff.
 - Invalid, empty, or non-applicable snapshots hide the policy block completely.
 - Missing values never produce placeholders, raw-hour copy, or invented amounts.

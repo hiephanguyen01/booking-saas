@@ -53,7 +53,7 @@ export class DispatchReminderUseCase {
     await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
       locale: customer.locale,
       brand: ctx.brand,
-      data: bookingTemplateData(ctx, customer, {}),
+      data: bookingTemplateData(ctx, customer, {}, REMINDER_PLAN_ITEM.templateId),
     });
   }
 }

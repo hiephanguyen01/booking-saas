@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Render one timezone-aware cancellation-policy format in every booking email that currently exposes policy content.
+**Goal:** Render one timezone-aware scheduled cancellation-policy format in booking emails, while cancelled emails show the durable policy outcome actually applied.
 
 **Architecture:** Extract the confirmed-email policy formatter into a pure shared notification-domain module. Feed its structured items and paragraph lines through `bookingTemplateData` to both the specialized customer layouts and the generic booking shell; delete the raw-hours formatter.
 
@@ -76,7 +76,7 @@ Verify vi/en, `168/100 → 48/50 → 0/0`, a `95.000 ₫` retained fee from a `1
 
 - [ ] **Step 1: Replace the raw policy data path**
 
-Delete `cancellationPolicyText`. Populate `policyLines` from the shared presentation already returned through confirmation data. Supply policy items/notices to confirmed, and use `policyLines` for cancelled/no-show notices. If their snapshot is invalid, retain only the existing state notice; refunded receives no policy lines.
+Delete `cancellationPolicyText`. Populate `policyLines` from the shared presentation already returned through confirmation data. Supply policy items/notices to confirmed and no-show. Cancelled templates use the applied `refundPercent` to describe the retained deposit/paid amount and show the 10-15 business-day notice only when a refund is due. Refunded receives no policy lines. Choose content by template/event rather than live booking status so delayed outbox delivery stays accurate.
 
 - [ ] **Step 2: Render generic booking policy paragraphs**
 
@@ -84,7 +84,7 @@ Replace the single `policyText` `<Text>` with a yellow policy section that maps 
 
 - [ ] **Step 3: Update specialized customer fallback rendering**
 
-Use `policyLines` in `fallbackSnapshot`; confirmed keeps the icon/tone section and final notice, cancelled/no-show render the synchronized lines in their notice area, and refunded remains compact.
+Use `policyLines` in `fallbackSnapshot`; confirmed keeps the icon/tone section and final notice, cancelled renders its applied outcome, no-show renders the scheduled lines in its notice area, and refunded remains compact.
 
 - [ ] **Step 4: Prove no raw-hours formatter remains**
 

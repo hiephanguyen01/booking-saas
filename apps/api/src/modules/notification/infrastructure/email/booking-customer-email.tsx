@@ -460,7 +460,7 @@ function fallbackSnapshot(data: TemplateData): BookingCustomerEmailData {
       ...(data.refundAmount ? { amount: data.refundAmount } : {}),
       ...(data.cancellationFee ? { fee: data.cancellationFee } : {}),
     },
-    ...(data.policyText ? { noticeLines: [data.policyText] } : {}),
+    ...(data.policyLines?.length ? { noticeLines: data.policyLines } : {}),
   };
 }
 
