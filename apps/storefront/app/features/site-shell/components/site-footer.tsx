@@ -1,5 +1,12 @@
 import { Link } from 'react-router';
-import { Facebook, Instagram, Mail, Music2, Phone, Youtube, type LucideIcon } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
+import {
+  siFacebook,
+  siInstagram,
+  siTiktok,
+  siYoutube,
+  type SimpleIcon,
+} from 'simple-icons';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontTenant } from '~/lib/server/tenant.server';
@@ -119,16 +126,26 @@ export function SiteFooter({
   );
 }
 
-const SOCIAL_ICONS: Record<SocialKey, LucideIcon> = {
-  facebook: Facebook,
-  instagram: Instagram,
-  tiktok: Music2,
-  youtube: Youtube,
+const SOCIAL_ICONS: Record<SocialKey, SimpleIcon> = {
+  facebook: siFacebook,
+  instagram: siInstagram,
+  tiktok: siTiktok,
+  youtube: siYoutube,
 };
 
 function SocialIcon({ network }: { network: SocialKey }) {
-  const Icon = SOCIAL_ICONS[network];
-  return <Icon aria-hidden="true" className="size-6" />;
+  const icon = SOCIAL_ICONS[network];
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-6"
+      fill={`#${icon.hex}`}
+      viewBox="0 0 24 24"
+    >
+      <path d={icon.path} />
+    </svg>
+  );
 }
 
 function FooterList({ title, items }: { title: string; items: string[] }) {
