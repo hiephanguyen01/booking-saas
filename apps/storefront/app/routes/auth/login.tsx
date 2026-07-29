@@ -9,8 +9,12 @@ import type { AuthActionData } from '~/lib/auth-types';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontContext } from '~/root';
+import { requireGuestAuth } from '~/lib/server/auth.server';
+import { requireLocale } from '~/lib/server/i18n.server';
 
 export const meta = ({ params }: Route.MetaArgs) => authMeta(params.locale, 'login');
+export const loader = ({ params }: Route.LoaderArgs) =>
+  requireGuestAuth(requireLocale(params.locale));
 export const action = ({ request, params }: Route.ActionArgs) =>
   loginAction(request, params.locale);
 

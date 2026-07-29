@@ -2,7 +2,7 @@ import { formatVnd } from '../../../shared/money/money';
 import { formatInZone } from '../../../shared/time/time';
 import { bookingConfirmationPresentation } from './booking-confirmation-presentation';
 import { normalizeLocale, type TemplateData } from './email-template';
-import type { NotificationPlanItem } from './notification-plan';
+import type { NotificationPlanItem, NotificationTemplateId } from './notification-plan';
 import type {
   BookingNotificationContext,
   NotificationRecipient,
@@ -24,10 +24,11 @@ export function audienceRecipients(
 export function bookingTemplateData(
   ctx: BookingNotificationContext,
   recipient: NotificationRecipient,
-  payload: { refundAmount?: string; reason?: string },
+  payload: { refundAmount?: string; refundPercent?: number; reason?: string },
+  templateId: NotificationTemplateId,
 ): TemplateData {
   const locale = normalizeLocale(recipient.locale);
-  const isCustomer = ctx.customer?.userId === recipient.userId;
+  const isCustomer = templateId.endsWith('_customer');
   const refundedAmount = payload.refundAmount
     ? BigInt(payload.refundAmount)
     : ctx.refundedAmount;
@@ -39,6 +40,23 @@ export function bookingTemplateData(
   const startsAt = formatInZone(ctx.startUtc, ctx.timezone, locale);
   const endsAt = formatInZone(ctx.endUtc, ctx.timezone, locale);
   const confirmation = bookingConfirmationPresentation(ctx, locale);
+  const scheduledPolicyLines = [
+        ...confirmation.policyItems.map((item) => item.text),
+        ...confirmation.policyNoticeLines,
+      ];
+  const policyLines = templateId === 'booking_refunded_customer'
+      || templateId === 'booking_refunded_partner'
+    ? []
+    : templateId === 'booking_cancelled_customer'
+      || templateId === 'booking_cancelled_partner'
+      ? cancellationOutcomeLines(
+          ctx,
+          locale,
+          isCustomer,
+          payload.refundPercent ?? ctx.refundPercent,
+          refundedAmount,
+        )
+      : scheduledPolicyLines;
   const fee = ctx.paidAmount > refundedAmount ? ctx.paidAmount - refundedAmount : 0n;
   return {
     tenantName: ctx.tenantName,
@@ -59,7 +77,7 @@ export function bookingTemplateData(
     recipientEmail: isCustomer ? recipient.email : undefined,
     recipientPhone: isCustomer ? recipient.phone : undefined,
     customerNote: isCustomer ? (ctx.customerNote ?? undefined) : undefined,
-    policyText: cancellationPolicyText(ctx.cancellationPolicySnapshot, locale),
+    ...(policyLines.length ? { policyLines } : {}),
     ctaUrl: isCustomer
       ? `${ctx.brand.storefrontUrl ?? 'http://localhost:5173'}/${locale}/bookings/${encodeURIComponent(ctx.code)}`
       : `${ctx.brand.dashboardUrl}/partner/bookings/${ctx.bookingId}`,
@@ -90,9 +108,53 @@ export function bookingTemplateData(
       },
       policyItems: confirmation.policyItems,
       policyNoticeLines: confirmation.policyNoticeLines,
-      noticeLines: bookingNoticeLines(ctx, refundedAmount, locale),
+      noticeLines: templateId === 'booking_cancelled_customer'
+        || templateId === 'booking_no_show_customer'
+        ? policyLines
+        : [],
     },
   };
+}
+
+function cancellationOutcomeLines(
+  ctx: BookingNotificationContext,
+  locale: 'vi' | 'en',
+  isCustomer: boolean,
+  refundPercent: number | null,
+  refundAmount: bigint,
+): string[] {
+  if (
+    refundPercent === null
+    || !Number.isInteger(refundPercent)
+    || refundPercent < 0
+    || refundPercent > 100
+  ) {
+    return [];
+  }
+
+  const feePercent = ctx.paidAmount > 0n ? 100 - refundPercent : 0;
+  const subject = locale === 'vi'
+    ? (isCustomer ? 'Đơn của quý khách' : 'Đơn')
+    : (isCustomer ? 'Your booking' : 'The booking');
+  const basis = ctx.depositAmount > 0n && ctx.paidAmount === ctx.depositAmount
+    ? (locale === 'vi' ? 'cọc' : 'the deposit')
+    : (locale === 'vi' ? 'số tiền đã thanh toán' : 'the paid amount');
+  const outcome = locale === 'vi'
+    ? feePercent === 0
+      ? `${subject} được áp dụng chính sách Hủy miễn phí`
+      : `${subject} được áp dụng chính sách Hủy mất ${feePercent}% ${basis}`
+    : feePercent === 0
+      ? `${subject} is subject to free cancellation`
+      : `${subject} is subject to a cancellation policy that forfeits ${feePercent}% of ${basis}`;
+
+  return [
+    outcome,
+    ...(refundAmount > 0n
+      ? [locale === 'vi'
+          ? 'Việc hoàn tiền thường mất 10-15 ngày làm việc'
+          : 'Refunds usually take 10-15 business days']
+      : []),
+  ];
 }
 
 function paymentMethodLabel(
@@ -121,26 +183,6 @@ function refundDestination(
   return locale === 'vi' ? 'Phương thức thanh toán ban đầu' : 'Original payment method';
 }
 
-function bookingNoticeLines(
-  ctx: BookingNotificationContext,
-  refundedAmount: bigint,
-  locale: 'vi' | 'en',
-): string[] {
-  if (ctx.status === 'no_show') {
-    return [locale === 'vi'
-      ? 'Đơn áp dụng chính sách vắng mặt và không được hoàn tiền.'
-      : 'The booking is subject to the no-show policy and is not refundable.'];
-  }
-  if (ctx.status === 'cancelled' && ctx.refundPercent !== null) {
-    const feePercent = Math.max(0, 100 - ctx.refundPercent);
-    return [locale === 'vi'
-      ? `Đơn được áp dụng chính sách hủy với phí ${feePercent}% số tiền đã thanh toán.`
-      : `A cancellation fee of ${feePercent}% of the paid amount applies to this booking.`];
-  }
-  if (ctx.status === 'refunded' && refundedAmount > 0n) return [];
-  return [];
-}
-
 function safeHttpUrl(value: string | null): boolean {
   if (!value) return false;
   try {
@@ -149,23 +191,4 @@ function safeHttpUrl(value: string | null): boolean {
   } catch {
     return false;
   }
-}
-
-function cancellationPolicyText(snapshot: unknown, locale: 'vi' | 'en'): string | undefined {
-  if (!Array.isArray(snapshot) || snapshot.length === 0) return undefined;
-  const tiers = snapshot.flatMap((item) => {
-    if (!item || typeof item !== 'object') return [];
-    const record = item as Record<string, unknown>;
-    return typeof record.hoursBefore === 'number' && typeof record.refundPercent === 'number'
-      ? [{ hoursBefore: record.hoursBefore, refundPercent: record.refundPercent }]
-      : [];
-  });
-  if (tiers.length === 0) return undefined;
-  return tiers
-    .map(({ hoursBefore, refundPercent }) =>
-      locale === 'vi'
-        ? `Hủy trước ${hoursBefore} giờ: hoàn ${refundPercent}%.`
-        : `Cancel ${hoursBefore} hours before: ${refundPercent}% refund.`,
-    )
-    .join(' ');
 }

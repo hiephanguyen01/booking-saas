@@ -11,7 +11,7 @@ export const platformHealthTenantSchema = z.object({
   name: z.string(),
   slug: z.string(),
   status: z.string(),
-  /** Storefront base template (§16.1) — `studio` | `rental` | `classes`. */
+  /** Storefront base template (§16.1) — `studio` | `rental` | `classes` | `sport`. */
   vertical: z.string(),
   createdAt: z.string(),
   /** VND đồng digit strings. */

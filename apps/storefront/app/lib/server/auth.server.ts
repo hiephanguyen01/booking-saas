@@ -4,6 +4,13 @@ import { storefrontPaths } from '~/constants/paths';
 import { getCurrentStorefrontAuth } from './request-context.server';
 
 export const getOptionalAuth = () => getCurrentStorefrontAuth();
+
+/** Keeps signed-in customers out of entry-point auth pages. */
+export function requireGuestAuth(locale: Locale): null {
+  if (getOptionalAuth()) throw redirect(storefrontPaths.home(locale));
+  return null;
+}
+
 export function requireAuth(redirectTo: string) {
   const auth = getOptionalAuth();
   if (!auth) throw redirect(redirectTo);

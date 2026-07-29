@@ -1,5 +1,5 @@
 import { quoteResponseSchema } from '@booking/contracts';
-import { formatVnd, percentOfBps } from '../../../shared/money/money';
+import { formatVnd } from '../../../shared/money/money';
 import { wallClockInZone } from '../../../shared/time/time';
 import type {
   BookingEmailPolicyItem,
@@ -8,11 +8,7 @@ import type {
   Locale,
 } from './email-template';
 import type { BookingNotificationContext } from './ports/notification-reader.port';
-
-interface CancellationTier {
-  hoursBefore: number;
-  refundPercent: number;
-}
+import { bookingPolicyPresentation } from './booking-policy-presentation';
 
 export interface BookingConfirmationPresentation {
   duration: string;
@@ -174,102 +170,19 @@ function paymentMethodLabel(
   return undefined;
 }
 
-function cancellationTiers(snapshot: unknown): CancellationTier[] {
-  if (!Array.isArray(snapshot)) return [];
-  return snapshot.flatMap((item) => {
-    if (!item || typeof item !== 'object') return [];
-    const record = item as Record<string, unknown>;
-    if (
-      typeof record.hoursBefore !== 'number'
-      || !Number.isFinite(record.hoursBefore)
-      || typeof record.refundPercent !== 'number'
-      || !Number.isFinite(record.refundPercent)
-    ) {
-      return [];
-    }
-    return [{
-      hoursBefore: Math.max(0, Math.round(record.hoursBefore)),
-      refundPercent: Math.max(0, Math.min(100, Math.round(record.refundPercent))),
-    }];
-  }).sort((left, right) => right.hoursBefore - left.hoursBefore);
-}
-
-function cutoff(start: Date, hoursBefore: number): Date {
-  return new Date(start.getTime() - hoursBefore * 3_600_000);
-}
-
-function policyMoment(date: Date, timezone: string, locale: Locale): string {
-  const timeText = timeLabel(date, timezone);
-  if (locale === 'vi') {
-    const parts = wallClockInZone(date, timezone);
-    return `${timeText}, ngày ${pad(parts.day)} tháng ${pad(parts.month)}, ${parts.year}`;
-  }
-  return `${timeText}, ${dateLabel(date, timezone, locale)}`;
-}
-
-function feeText(ctx: BookingNotificationContext, refundPercent: number, locale: Locale): string {
-  const feePercent = 100 - refundPercent;
-  const fee = percentOfBps(ctx.paidAmount, feePercent * 100);
-  if (fee <= 0n) return locale === 'vi' ? `phí ${feePercent}%` : `${feePercent}% fee`;
-  const paidBasis = ctx.depositAmount > 0n && ctx.paidAmount === ctx.depositAmount
-    ? (locale === 'vi' ? 'tiền cọc' : 'the deposit')
-    : (locale === 'vi' ? 'số tiền đã thanh toán' : 'the paid amount');
-  return locale === 'vi'
-    ? `phí ${formatVnd(fee, locale)} (${feePercent}% ${paidBasis})`
-    : `${formatVnd(fee, locale)} fee (${feePercent}% of ${paidBasis})`;
-}
-
-function policyPresentation(
-  ctx: BookingNotificationContext,
-  locale: Locale,
-): { items: BookingEmailPolicyItem[]; notices: string[] } {
-  const tiers = cancellationTiers(ctx.cancellationPolicySnapshot);
-  const refundable = tiers.filter((tier) => tier.refundPercent > 0);
-  if (refundable.length === 0) return { items: [], notices: [] };
-
-  const items = refundable.map((tier, index): BookingEmailPolicyItem => {
-    const tierCutoff = policyMoment(cutoff(ctx.startUtc, tier.hoursBefore), ctx.timezone, locale);
-    if (tier.refundPercent === 100) {
-      return {
-        text: locale === 'vi'
-          ? `Hủy miễn phí trước ${tierCutoff}`
-          : `Free cancellation before ${tierCutoff}`,
-        tone: 'positive',
-      };
-    }
-    const prior = refundable[index - 1];
-    const starts = prior
-      ? policyMoment(cutoff(ctx.startUtc, prior.hoursBefore), ctx.timezone, locale)
-      : undefined;
-    return {
-      text: locale === 'vi'
-        ? `${starts ? `Từ ${starts} đến trước ${tierCutoff}` : `Trước ${tierCutoff}`}: ${feeText(ctx, tier.refundPercent, locale)}`
-        : `${starts ? `From ${starts} until ${tierCutoff}` : `Before ${tierCutoff}`}: ${feeText(ctx, tier.refundPercent, locale)}`,
-      tone: 'neutral',
-    };
-  });
-
-  const notices = items.map((item) => item.text);
-  const lastRefundable = refundable.at(-1);
-  if (lastRefundable) {
-    const noRefundFrom = policyMoment(
-      cutoff(ctx.startUtc, lastRefundable.hoursBefore),
-      ctx.timezone,
-      locale,
-    );
-    notices.push(locale === 'vi'
-      ? `Hủy từ ${noRefundFrom} hoặc vắng mặt vào ngày thực hiện đơn sẽ không được hoàn tiền.`
-      : `Cancellations from ${noRefundFrom}, or a no-show on the booking date, are not refundable.`);
-  }
-  return { items, notices };
-}
-
 export function bookingConfirmationPresentation(
   ctx: BookingNotificationContext,
   locale: Locale,
 ): BookingConfirmationPresentation {
   const duration = durationLabel(ctx.startUtc, ctx.endUtc, ctx.bookingMode, locale);
-  const policy = policyPresentation(ctx, locale);
+  const policy = bookingPolicyPresentation({
+    snapshot: ctx.cancellationPolicySnapshot,
+    startUtc: ctx.startUtc,
+    timezone: ctx.timezone,
+    locale,
+    paidAmount: ctx.paidAmount,
+    depositAmount: ctx.depositAmount,
+  });
   return {
     duration,
     dateRange: `${dateLabel(ctx.startUtc, ctx.timezone, locale)} - ${dateLabel(ctx.endUtc, ctx.timezone, locale)}`,
@@ -278,6 +191,6 @@ export function bookingConfirmationPresentation(
     detailEndsAt: `${dateLabel(ctx.endUtc, ctx.timezone, locale)} | ${timeLabel(ctx.endUtc, ctx.timezone)}`,
     pricing: pricingPresentation(ctx, locale, duration),
     policyItems: policy.items,
-    policyNoticeLines: policy.notices,
+    policyNoticeLines: policy.noticeLines,
   };
 }

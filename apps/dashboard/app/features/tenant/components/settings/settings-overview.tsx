@@ -327,5 +327,6 @@ function subscriptionLabel(status: TenantAreaContext['subscription']['status']):
 function verticalLabel(vertical: TenantThemeResponse['vertical']): string {
   if (vertical === 'studio') return 'Studio và không gian';
   if (vertical === 'rental') return 'Cho thuê thiết bị';
+  if (vertical === 'sport') return 'Sân và địa điểm thể thao';
   return 'Lớp học và lịch nhóm';
 }

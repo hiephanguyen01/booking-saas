@@ -51,22 +51,18 @@ type Copy = {
 };
 
 const STATUS_ASSETS = {
-  confirmed: { filename: 'booking-confirmed.png', cid: 'booking-confirmed@bookingos' },
-  cancelled: { filename: 'booking-cancelled.png', cid: 'booking-cancelled@bookingos' },
-  refunded: { filename: 'booking-refunded.png', cid: 'booking-refunded@bookingos' },
-  noShow: { filename: 'booking-no-show.png', cid: 'booking-no-show@bookingos' },
+  confirmed: { filename: 'booking-confirmed.svg', cid: 'booking-confirmed@bookingos' },
+  cancelled: { filename: 'booking-cancelled.svg', cid: 'booking-cancelled@bookingos' },
+  refunded: { filename: 'booking-refunded.svg', cid: 'booking-refunded@bookingos' },
+  noShow: { filename: 'booking-no-show.svg', cid: 'booking-no-show@bookingos' },
 } as const;
 
 const SUPPORTING_ASSETS = {
-  calendar: { filename: 'calendar.png', cid: BOOKING_EMAIL_CIDS.calendar },
-  policyCheck: { filename: 'policy-check.png', cid: BOOKING_EMAIL_CIDS.policyCheck },
+  calendar: { filename: 'calendar.svg', cid: BOOKING_EMAIL_CIDS.calendar },
+  policyCheck: { filename: 'policy-check.svg', cid: BOOKING_EMAIL_CIDS.policyCheck },
 } as const;
 
 const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
-  booking_pending_payment_customer: {
-    vi: { subject: 'Đơn đặt {bookingCode} đang chờ thanh toán', title: 'Đơn đang chờ thanh toán', intro: 'Vui lòng hoàn tất thanh toán {amount} để giữ chỗ cho đơn {bookingCode}.', cta: 'Thanh toán đơn' },
-    en: { subject: 'Booking {bookingCode} awaiting payment', title: 'Payment required', intro: 'Please complete the {amount} payment to hold booking {bookingCode}.', cta: 'Pay booking' },
-  },
   booking_pending_approval_partner: {
     vi: { subject: 'Đơn đặt mới {bookingCode} cần duyệt', title: 'Bạn có đơn đặt mới', intro: 'Đơn {bookingCode} cho “{listingTitle}” lúc {startsAt} đang chờ duyệt.', cta: 'Xem đơn đặt' },
     en: { subject: 'New booking {bookingCode} needs approval', title: 'You have a new booking', intro: 'Booking {bookingCode} for “{listingTitle}” at {startsAt} is waiting for approval.', cta: 'Review booking' },
@@ -190,6 +186,27 @@ function OtpCard({ otp, expiresInMin, locale }: { otp: string; expiresInMin: num
   );
 }
 
+function PolicyParagraphs({ lines }: { lines?: string[] }) {
+  if (!lines?.length) return null;
+  return (
+    <Section style={{ background: '#FFF8E7', borderRadius: '8px', padding: '14px 16px' }}>
+      {lines.map((line, index) => (
+        <Text
+          key={line}
+          style={{
+            color: NEUTRAL_600,
+            fontSize: '13px',
+            lineHeight: '20px',
+            margin: index === lines.length - 1 ? 0 : '0 0 8px',
+          }}
+        >
+          {line}
+        </Text>
+      ))}
+    </Section>
+  );
+}
+
 function EmailView({ copy, locale, brand, data }: { copy: Copy; locale: Locale; brand: EmailBrand; data: TemplateData }) {
   const logo = safeLogo(brand.logoUrl);
   const icon = copy.statusIcon ? STATUS_ASSETS[copy.statusIcon] : undefined;
@@ -224,7 +241,7 @@ function EmailView({ copy, locale, brand, data }: { copy: Copy; locale: Locale; 
                 <DetailRow label={locale === 'vi' ? 'Còn lại phải thanh toán' : 'Balance due'} value={data.balanceAmount} />
               </Section>
             ) : null}
-            {data.policyText ? <Text style={{ background: '#FFF8E7', borderRadius: '8px', color: NEUTRAL_600, fontSize: '13px', lineHeight: '20px', padding: '14px 16px' }}>{data.policyText}</Text> : null}
+            <PolicyParagraphs lines={data.policyLines} />
             {data.agreementVersions ? <Text style={{ color: NEUTRAL_600, fontSize: '13px' }}>{data.agreementVersions}</Text> : null}
             {copy.cta && data.ctaUrl ? <Section style={{ textAlign: 'center', margin: '28px 0 8px' }}><Button href={data.ctaUrl} style={{ backgroundColor: primary, borderRadius: '8px', color: '#FFFFFF', fontSize: '14px', fontWeight: 700, padding: '13px 22px', textDecoration: 'none' }}>{copy.cta}</Button></Section> : null}
             {data.termsUrl ? <Text style={{ fontSize: '13px', textAlign: 'center' }}><a href={data.termsUrl} style={{ color: primary }}>{locale === 'vi' ? 'Xem điều khoản sử dụng' : 'View terms of use'}</a></Text> : null}

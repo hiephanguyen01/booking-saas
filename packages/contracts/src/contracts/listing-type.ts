@@ -55,11 +55,19 @@ export const LISTING_TYPE_ICONS = [
   'Plane',
   // Sport / wellness
   'Dumbbell',
+  'Goal',
+  'Dribbble',
+  'Circle',
+  'Feather',
   'Trophy',
   'Waves',
   'HeartPulse',
   'Stethoscope',
   'Footprints',
+  'Sprout',
+  'Grid3x3',
+  'MoveVertical',
+  'Handshake',
   // Beauty / fashion
   'Palette',
   'Scissors',
@@ -95,6 +103,7 @@ export const LISTING_TYPE_ICONS = [
   // Attribute / spec-card glyphs (photographers, gear, makeup, offers, excludes…)
   'Gift',
   'Images',
+  'ListChecks',
   'CircleSlash',
   'Star',
   'Info',
