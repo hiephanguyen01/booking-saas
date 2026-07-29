@@ -68,6 +68,10 @@ export class UpdatePartnerPromotionUseCase {
         }
       }
 
+
+      const resultingCode = input.code === undefined ? existing.code : (data.code ?? null);
+      if (resultingCode === null) data.storefrontVisible = false;
+
       return this.promotions.update(tx, id, data);
     });
   }

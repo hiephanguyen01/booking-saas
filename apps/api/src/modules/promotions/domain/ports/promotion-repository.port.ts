@@ -12,6 +12,7 @@ export interface PromotionRecord extends PromotionSpec {
   createdByPartnerId: string | null;
   fundingPartnerId: string | null;
   createdAt: Date;
+  storefrontVisible: boolean;
 }
 
 /** Filters for the paginated promotion lists (tenant + partner). */
@@ -40,6 +41,8 @@ export interface IPromotionRepository {
   ): Promise<RepoPage<PromotionRecord>>;
   /** Active, code-less auto-applied campaigns for the tenant (§12.1 Phase 2). */
   listActiveAutoCampaigns(tx: PrismaTx): Promise<PromotionRecord[]>;
+  /** Active customer-entered codes explicitly made discoverable on the storefront. */
+  listStorefrontVisibleCodes(tx: PrismaTx): Promise<PromotionRecord[]>;
   /** Tenant-created partner-funded promos awaiting this partner's opt-in (§12.2). */
   listPendingOptIn(tx: PrismaTx, partnerId: string): Promise<PromotionRecord[]>;
   /** Transition a promotion to `ended` (usage history is preserved, §12.2). */

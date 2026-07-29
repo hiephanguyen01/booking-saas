@@ -181,6 +181,7 @@ function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel;
           <DetailRow
             label={t('bookings.payment.discount')}
             value={`- ${money(booking.discountAmount, locale)}`}
+            tone="success"
           />
         ) : null}
         <DetailRow label={t('bookings.payment.total')} value={money(booking.finalAmount, locale)} />
@@ -218,7 +219,7 @@ function PricingLineRow({ line, locale }: { line: QuoteLineItem; locale: Locale 
       <dd className="flex flex-wrap items-center justify-end gap-2 text-foreground">
         {hasDiscount ? (
           <>
-            <span className="bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+            <span className="bg-success px-2 py-0.5 text-[11px] font-semibold text-success-foreground">
               -{percentOff}%
             </span>
             <span className="text-[11px] text-muted-foreground line-through">
@@ -338,11 +339,13 @@ function DetailRow({
   label,
   value,
   accent = false,
+  tone = 'default',
   align = 'end',
 }: {
   label: string;
   value: string;
   accent?: boolean;
+  tone?: 'default' | 'success';
   align?: 'start' | 'end';
 }) {
   return (
@@ -353,7 +356,13 @@ function DetailRow({
       )}
     >
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn('break-words text-foreground', accent && 'font-semibold text-primary')}>
+      <dd
+        className={cn(
+          'break-words text-foreground',
+          accent && 'font-semibold text-primary',
+          tone === 'success' && 'font-medium text-success',
+        )}
+      >
         {value}
       </dd>
     </div>

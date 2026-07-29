@@ -56,6 +56,7 @@ export function readPromotionForm(form: FormData): Record<string, unknown> {
     appliesToId: str('appliesToId'),
     minOrderAmount: clearableStr('minOrderAmount'),
     firstBookingOnly: form.get('firstBookingOnly') === 'true',
+    storefrontVisible: form.get('storefrontVisible') === 'true',
     usageLimitTotal: clearableNum('usageLimitTotal'),
     usageLimitPerCustomer: clearableNum('usageLimitPerCustomer'),
     timeWindows,

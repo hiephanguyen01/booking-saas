@@ -68,7 +68,7 @@ export function ListingCard({
             </div>
           )}
           {presentation?.discountPercent ? (
-            <span className="absolute left-0 top-6 flex h-10 w-18 items-center bg-primary px-2 text-base font-semibold text-primary-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
+            <span className="absolute left-0 top-6 flex h-10 w-18 items-center bg-success px-2 text-base font-semibold text-success-foreground [clip-path:polygon(0_0,100%_0,84%_50%,100%_100%,0_100%)]">
               - {presentation.discountPercent}%
             </span>
           ) : null}
@@ -102,7 +102,7 @@ export function ListingCard({
                   <span className="mr-2 text-muted-foreground line-through">{originalPrice}</span>
                 ) : null}
                 <span
-                  className={presentation?.discountPercent ? 'text-primary' : 'text-foreground'}
+                  className={presentation?.discountPercent ? 'text-success' : 'text-foreground'}
                 >
                   <span className="font-normal">{t('fromPriceShort')} </span>
                   <span className="text-base font-semibold">{price}</span>
@@ -110,7 +110,7 @@ export function ListingCard({
               </p>
               <p
                 className={`mt-1 ${
-                  presentation?.discountPercent ? 'text-primary' : 'text-muted-foreground'
+                  presentation?.discountPercent ? 'text-success' : 'text-muted-foreground'
                 }`}
               >
                 {presentation?.priceUnit

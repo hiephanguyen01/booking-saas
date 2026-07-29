@@ -12,6 +12,8 @@ import type {
   CustomerPaymentMethod,
   PaymentStatusResponse,
   PublicPaymentOptions,
+  StorefrontPromotionsInput,
+  StorefrontPromotionsResponse,
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
@@ -24,6 +26,7 @@ import {
   createBookingResponseSchema,
   paymentStatusResponseSchema,
   publicPaymentOptionsSchema,
+  storefrontPromotionsResponseSchema,
   validatePromoResponseSchema,
 } from '@booking/contracts';
 import { optionalAuthPost, publicGetData } from '~/lib/server/api.server';
@@ -72,6 +75,15 @@ export function validatePromo(
 ): Promise<ApiResult<ValidatePromoResponse>> {
   return optionalAuthPost(request, '/public/checkout/validate-promo', input, {
     schema: validatePromoResponseSchema,
+  });
+}
+
+export function fetchStorefrontPromotions(
+  request: Request,
+  input: StorefrontPromotionsInput,
+): Promise<ApiResult<StorefrontPromotionsResponse>> {
+  return optionalAuthPost(request, '/public/checkout/promotions', input, {
+    schema: storefrontPromotionsResponseSchema,
   });
 }
 

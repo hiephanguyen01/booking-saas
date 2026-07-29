@@ -18,6 +18,7 @@ import { MarkPromotionAppliedUseCase } from '../../application/use-cases/mark-pr
 import { ReleasePromotionUseCase } from '../../application/use-cases/release-promotion.use-case';
 import { ValidatePromoUseCase } from '../../application/use-cases/validate-promo.use-case';
 import { ResolveAutoCampaignUseCase } from '../../application/use-cases/resolve-auto-campaign.use-case';
+import { ListStorefrontPromotionsUseCase } from '../../application/use-cases/list-storefront-promotions.use-case';
 import { CreatePromotionUseCase } from '../../application/use-cases/create-promotion.use-case';
 import { UpdatePromotionUseCase } from '../../application/use-cases/update-promotion.use-case';
 import { EndPromotionUseCase } from '../../application/use-cases/end-promotion.use-case';
@@ -51,6 +52,7 @@ import { PartnerPromotionsEnabledGuard } from './guards/partner-promotions-enabl
     ReleasePromotionUseCase,
     ValidatePromoUseCase,
     ResolveAutoCampaignUseCase,
+    ListStorefrontPromotionsUseCase,
     CreatePromotionUseCase,
     UpdatePromotionUseCase,
     EndPromotionUseCase,

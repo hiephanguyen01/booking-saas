@@ -13,6 +13,7 @@ import {
   checkoutBooking,
   createBooking,
   fetchPaymentOptions,
+  fetchStorefrontPromotions,
   validatePromo,
 } from '~/features/booking/server/booking.server';
 import { fetchListing, fetchQuote } from '~/features/catalog/server/catalog.server';
@@ -105,17 +106,12 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
   if (!listing) throw redirect(storefrontPaths.home(locale));
   if (!quote) throw redirect(storefrontPaths.listing(locale, slug));
 
-  let promo: ValidatePromoResponse | null = null;
-  if (promoCode) {
-    const result = await validatePromo(request, {
-      code: promoCode,
-      listingId: listing.id,
-      amount: quote.subtotal,
-      start,
-      end,
-    });
-    promo = result.data;
-  }
+  const promoInput = { listingId: listing.id, amount: quote.subtotal, start, end };
+  const [promoResult, promotionsResult] = await Promise.all([
+    promoCode ? validatePromo(request, { code: promoCode, ...promoInput }) : Promise.resolve(null),
+    fetchStorefrontPromotions(request, promoInput),
+  ]);
+  const promo: ValidatePromoResponse | null = promoResult?.data ?? null;
 
   return {
     listing,
@@ -127,6 +123,8 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
     quote,
     promoCode,
     promo,
+    availablePromotions: promotionsResult.data ?? [],
+    promotionsUnavailable: !promotionsResult.ok,
     currentUser: getOptionalAuth()?.info.user ?? null,
     paymentMethods: paymentOptions.methods,
     checkoutAttemptId: createCheckoutAttemptId(),
