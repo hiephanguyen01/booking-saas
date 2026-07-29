@@ -1,5 +1,5 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { storefrontPaths } from '~/constants/paths';
 import { dateOnlyToLocal, localToDateOnly } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
@@ -61,15 +61,19 @@ export function useSearchFormController({
   const fixedPackages = selectedListingType?.bookingSelection === 'fixed_packages';
   const selectedConfig = selectedListingType?.searchConfig;
   const availableModes = searchableModes(selectedListingType);
-  const optionMap = new Map<string, string>();
-  for (const option of locations) {
-    if (typeof option === 'string') optionMap.set(option, option);
-    else optionMap.set(option.value, option.label);
-  }
-  if (state.location && !optionMap.has(state.location)) {
-    optionMap.set(state.location, state.location);
-  }
-  const options = [...optionMap].map(([value, label]) => ({ value, label }));
+  // `locations` is the tenant's full province list (63 entries on the catalog page)
+  // and does not change while the visitor types, so it is mapped once.
+  const options = useMemo(() => {
+    const optionMap = new Map<string, string>();
+    for (const option of locations) {
+      if (typeof option === 'string') optionMap.set(option, option);
+      else optionMap.set(option.value, option.label);
+    }
+    if (state.location && !optionMap.has(state.location)) {
+      optionMap.set(state.location, state.location);
+    }
+    return [...optionMap].map(([value, label]) => ({ value, label }));
+  }, [locations, state.location]);
   const action = storefrontPaths.catalog(locale, selectedType);
   const rangeFrom = range.from ? localToDateOnly(range.from) : undefined;
   const rangeTo = range.to ? localToDateOnly(range.to) : undefined;
