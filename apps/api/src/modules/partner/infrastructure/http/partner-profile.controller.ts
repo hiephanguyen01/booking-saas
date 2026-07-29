@@ -1,18 +1,18 @@
-import {
-  type PartnerResponse
-} from '@booking/contracts';
+import type { PartnerAgreementResponse, PartnerResponse } from '@booking/contracts';
 import { Body, Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { toPartnerResponse } from '../../application/partner.mapper';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
+import { ListPartnerAgreementsUseCase } from '../../application/use-cases/list-partner-agreements.use-case';
 import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
 import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
 import { UpdatePayoutInfoUseCase } from '../../application/use-cases/update-payout-info.use-case';
 import {
   PartnerResponseDto,
+  PartnerAgreementListResponseDto,
   SetDefaultCancellationPolicyDto,
   SubmitIdentityDto,
   UpdatePartnerDocumentsDto,
@@ -28,6 +28,7 @@ import {
 export class PartnerProfileController {
   constructor(
     private readonly getProfile: GetPartnerProfileUseCase,
+    private readonly listAgreements: ListPartnerAgreementsUseCase,
     private readonly updatePayoutInfo: UpdatePayoutInfoUseCase,
     private readonly updateDocuments: UpdatePartnerDocumentsUseCase,
     private readonly submitIdentity: SubmitIdentityUseCase,
@@ -45,6 +46,17 @@ export class PartnerProfileController {
   async profile(): Promise<PartnerResponse> {
     const partnerId = this.tenantContext.partnerIdOrThrow();
     return toPartnerResponse(await this.getProfile.execute(partnerId));
+  }
+
+  @RequirePermissions('partner.profile.manage')
+  @Get('agreements')
+  @ApiOperation({ summary: "List the calling partner's recorded agreement versions" })
+  @ApiOkResponse({ type: PartnerAgreementListResponseDto })
+  async agreements(): Promise<PartnerAgreementResponse[]> {
+    return this.listAgreements.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      this.tenantContext.partnerIdOrThrow(),
+    );
   }
 
   @RequirePermissions('partner.profile.manage')

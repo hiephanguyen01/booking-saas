@@ -4,6 +4,7 @@ import {
   createHousePartnerInputSchema,
   listPartnersQuerySchema,
   partnerApplyInputSchema,
+  partnerAgreementListResponseSchema,
   partnerResponseSchema,
   publicPartnerProfileResponseSchema,
   setDefaultCancellationPolicyInputSchema,
@@ -30,6 +31,9 @@ export class ListPartnersQueryDto extends createZodDto(listPartnersQuerySchema) 
 
 // Responses
 export class PartnerResponseDto extends createZodDto(partnerResponseSchema) {}
+export class PartnerAgreementListResponseDto extends createZodDto(
+  partnerAgreementListResponseSchema,
+) {}
 export class PublicPartnerProfileResponseDto extends createZodDto(
   publicPartnerProfileResponseSchema,
 ) {}

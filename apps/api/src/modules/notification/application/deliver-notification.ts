@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
-import { renderEmail, type TemplateData } from '../domain/email-template';
+import type { EmailBrand, TemplateData } from '../domain/email-template';
 import type { NotificationDelivery } from '../domain/entities/notification-delivery.entity';
+import type { IEmailRenderer } from '../domain/ports/email-renderer.port';
 import type { IEmailSender } from '../domain/ports/email-sender.port';
 import type { INotificationLogRepository } from '../domain/ports/notification-log-repository.port';
 
@@ -10,6 +11,7 @@ const logger = new Logger('NotificationDelivery');
 export interface DeliveryPorts {
   email: IEmailSender;
   logs: INotificationLogRepository;
+  renderer: IEmailRenderer;
 }
 
 /**
@@ -25,17 +27,23 @@ export interface DeliveryPorts {
 export async function deliverNotification(
   ports: DeliveryPorts,
   delivery: NotificationDelivery,
-  render: { locale: string; data: TemplateData },
+  input: { locale: string; brand: EmailBrand; data: TemplateData },
 ): Promise<void> {
   const { dedupe, onFailure } = delivery.policy;
   if (dedupe && (await ports.logs.alreadySent(delivery.dedupeKey))) return;
-  const content = renderEmail(delivery.templateId, render.locale, render.data);
+  const content = await ports.renderer.render(
+    delivery.templateId,
+    input.locale,
+    input.brand,
+    input.data,
+  );
   try {
     await ports.email.send({
       to: delivery.recipientEmail,
       subject: content.subject,
       text: content.text,
       html: content.html,
+      attachments: content.attachments,
     });
     delivery.markSent(content.subject, new Date());
     await ports.logs.record(delivery.logEntry());

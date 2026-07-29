@@ -28,6 +28,7 @@ export class StartRegistrationUseCase {
       email: input.email,
       fullName: input.fullName,
       locale: input.locale,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     });
     await this.email.sendOtp({
       purpose: 'registration',
@@ -36,6 +37,8 @@ export class StartRegistrationUseCase {
       locale: input.locale,
       otp: challenge.otp,
       expiresInSec: challenge.expiresInSec,
+      challengeId: challenge.challengeId,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     });
     return toResponse(challenge, input.email);
   }

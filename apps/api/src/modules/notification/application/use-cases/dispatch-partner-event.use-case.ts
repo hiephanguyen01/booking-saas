@@ -7,6 +7,7 @@ import {
 } from '../../domain/entities/notification-delivery.entity';
 import { planForEvent } from '../../domain/notification-plan';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
+import { EMAIL_RENDERER, type IEmailRenderer } from '../../domain/ports/email-renderer.port';
 import {
   NOTIFICATION_LOG_REPOSITORY,
   type INotificationLogRepository,
@@ -27,6 +28,7 @@ export class DispatchPartnerEventUseCase {
   constructor(
     @Inject(NOTIFICATION_READER) private readonly reader: INotificationReader,
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
+    @Inject(EMAIL_RENDERER) private readonly renderer: IEmailRenderer,
     @Inject(NOTIFICATION_LOG_REPOSITORY) private readonly logs: INotificationLogRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -44,6 +46,13 @@ export class DispatchPartnerEventUseCase {
           tenantName: ctx.tenantName,
           recipientName: recipient.name,
           partnerName: ctx.partnerName,
+          recipientEmail: recipient.email,
+          ctaUrl: item.templateId === 'partner_agreement_recorded'
+            ? `${ctx.brand.dashboardUrl}/partner/profile#agreements`
+            : `${ctx.brand.dashboardUrl}/partner`,
+          agreementUrl: `${ctx.brand.dashboardUrl}/partner/profile#agreements`,
+          termsUrl: `${ctx.brand.storefrontUrl ?? 'http://localhost:5173'}/${recipient.locale === 'en' ? 'en' : 'vi'}/account/terms`,
+          agreementVersions: ctx.agreementVersions.join(' · ') || undefined,
         };
         const delivery = NotificationDelivery.start({
           tenantId,
@@ -60,8 +69,9 @@ export class DispatchPartnerEventUseCase {
           bookingId: null,
           policy: OUTBOX_DELIVERY_POLICY,
         });
-        await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+        await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
           locale: recipient.locale,
+          brand: ctx.brand,
           data,
         });
       }

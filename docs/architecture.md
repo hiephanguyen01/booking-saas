@@ -105,6 +105,13 @@ rest, validated again after decryption, and never returned; invalid/tampered sto
 Dynamic tenant/listing JSON remains open by design, while provider handoffs, refund evidence and
 HTTP queries are typed/validated at their boundary.
 
+The notification module owns a React Email renderer behind an application port. Dispatchers resolve
+tenant brand, primary storefront domain and durable booking/refund snapshots inside the same
+RLS-scoped read, then render bilingual HTML + plain text before handing the message to SMTP. Outbox
+emails retain per-template dedupe keys and retry/dead-letter behavior; synchronous OTP delivery keeps
+its existing non-throwing policy. Partner agreement mail links to the protected
+`/partner/profile/agreements` projection rather than attaching generated legal documents.
+
 ## Frontend internals
 
 React Router 8 framework mode: each route exports `loader` (server data), `action` (server mutation),

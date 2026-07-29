@@ -17,16 +17,22 @@ export const registrationStartInputSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
   email: z.string().email().toLowerCase(),
   locale: localeSchema.default('vi'),
+  tenantId: uuidSchema.optional(),
 });
 export type RegistrationStartInput = z.infer<typeof registrationStartInputSchema>;
 
 export const passwordResetStartInputSchema = z.object({
   email: z.string().email().toLowerCase(),
   locale: localeSchema.default('vi'),
+  tenantId: uuidSchema.optional(),
 });
 export type PasswordResetStartInput = z.infer<typeof passwordResetStartInputSchema>;
 
-export const authChallengeInputSchema = z.object({ challengeId: challengeIdSchema });
+export const authChallengeInputSchema = z.object({
+  challengeId: challengeIdSchema,
+  /** Storefront tenant fallback for challenges issued before tenant branding was persisted. */
+  tenantId: uuidSchema.optional(),
+});
 export type AuthChallengeInput = z.infer<typeof authChallengeInputSchema>;
 
 export const authOtpVerifyInputSchema = z.object({

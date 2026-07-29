@@ -7,6 +7,7 @@ import {
 import { planForPayout } from '../../domain/notification-plan';
 import { payoutTemplateData } from '../../domain/payout-notification-data';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
+import { EMAIL_RENDERER, type IEmailRenderer } from '../../domain/ports/email-renderer.port';
 import {
   NOTIFICATION_LOG_REPOSITORY,
   type INotificationLogRepository,
@@ -28,6 +29,7 @@ export class DispatchPayoutEventUseCase {
   constructor(
     @Inject(NOTIFICATION_READER) private readonly reader: INotificationReader,
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
+    @Inject(EMAIL_RENDERER) private readonly renderer: IEmailRenderer,
     @Inject(NOTIFICATION_LOG_REPOSITORY) private readonly logs: INotificationLogRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -59,8 +61,9 @@ export class DispatchPayoutEventUseCase {
           bookingId: null,
           policy: OUTBOX_DELIVERY_POLICY,
         });
-        await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+        await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
           locale: recipient.locale,
+          brand: ctx.brand,
           data: payoutTemplateData(ctx, recipient, payload),
         });
       }

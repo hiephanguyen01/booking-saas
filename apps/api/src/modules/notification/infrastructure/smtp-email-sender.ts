@@ -26,6 +26,7 @@ export class SmtpEmailSender implements IEmailSender {
       subject: message.subject,
       text: message.text,
       html: message.html,
+      attachments: message.attachments,
     });
   }
 

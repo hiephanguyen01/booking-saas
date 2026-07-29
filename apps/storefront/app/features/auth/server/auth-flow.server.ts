@@ -19,6 +19,7 @@ export type AuthFlowPhase =
 
 export interface AuthFlowRecord {
   phase: AuthFlowPhase;
+  tenantId?: string;
   email?: string;
   challengeId?: string;
   completionToken?: string;

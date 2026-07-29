@@ -26,6 +26,7 @@ export class StartPasswordResetUseCase {
       purpose: 'password_reset',
       email: input.email,
       locale: input.locale,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       ...(isPasswordAccount && user ? { userId: user.id, fullName: user.fullName } : {}),
     });
     if (isPasswordAccount && user) {
@@ -36,6 +37,8 @@ export class StartPasswordResetUseCase {
         locale: input.locale,
         otp: challenge.otp,
         expiresInSec: challenge.expiresInSec,
+        challengeId: challenge.challengeId,
+        ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       });
     }
     return toResponse(challenge, input.email);

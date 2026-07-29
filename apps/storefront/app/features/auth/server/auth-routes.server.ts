@@ -31,7 +31,10 @@ import {
   readAuthForm,
 } from '~/features/auth/server/auth-form.server';
 import { requireLocale } from '~/lib/server/i18n.server';
-import { suppressStorefrontSessionCommit } from '~/lib/server/request-context.server';
+import {
+  getOptionalStorefrontTenant,
+  suppressStorefrontSessionCommit,
+} from '~/lib/server/request-context.server';
 import { safeRedirectPath } from '~/lib/safe-redirect';
 import { createUserSession, destroyUserSession } from '~/lib/server/session.server';
 import type { AuthActionData } from '~/lib/auth-types';
@@ -102,7 +105,12 @@ async function startAuthFlowAction(
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
 
-  const parsed = flow.startSchema.safeParse({ ...formFields(formBody.value), locale });
+  const tenant = getOptionalStorefrontTenant();
+  const parsed = flow.startSchema.safeParse({
+    ...formFields(formBody.value),
+    locale,
+    ...(tenant ? { tenantId: tenant.id } : {}),
+  });
   if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthChallengeResponse>(
     request,
@@ -113,6 +121,7 @@ async function startAuthFlowAction(
   if (!result.ok || !result.data) return failedAuthRequest(result);
   const setCookie = await authFlow.create(request, {
     phase: flow.verifyPhase,
+    ...(tenant ? { tenantId: tenant.id } : {}),
     challengeId: result.data.challengeId,
     maskedDestination: result.data.maskedDestination,
     resendAvailableAt: resendAvailableAt(result.data.resendAfterSec),
@@ -207,7 +216,10 @@ export async function verifyAction(
     const result = await publicPost<AuthChallengeResponse>(
       request,
       `/auth/${config.endpoint}/resend`,
-      { challengeId: flow.record.challengeId },
+      {
+        challengeId: flow.record.challengeId,
+        ...(flow.record.tenantId ? { tenantId: flow.record.tenantId } : {}),
+      },
       { schema: authChallengeResponseSchema },
     );
     if (!result.ok || !result.data) return failedAuthRequest(result);

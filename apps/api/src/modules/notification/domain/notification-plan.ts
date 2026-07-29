@@ -14,6 +14,8 @@ export type NotificationTemplateId =
   | 'booking_confirmed_partner'
   | 'booking_cancelled_customer'
   | 'booking_cancelled_partner'
+  | 'booking_refunded_customer'
+  | 'booking_refunded_partner'
   | 'booking_completed_customer'
   | 'booking_no_show_customer'
   | 'booking_rejected_customer'
@@ -21,7 +23,9 @@ export type NotificationTemplateId =
   | 'booking_otp_customer'
   | 'listing_published_partner'
   | 'listing_hidden_partner'
+  | 'partner_application_received'
   | 'partner_approved'
+  | 'partner_agreement_recorded'
   | 'payout_paid_partner';
 
 export interface NotificationPlanItem {
@@ -38,6 +42,7 @@ export const BOOKING_NOTIFICATION_EVENTS: readonly string[] = [
   'booking.completed',
   'booking.no_show',
   'booking.rejected',
+  'booking.refunded',
 ];
 
 /** Events routed by listing context. */
@@ -47,7 +52,10 @@ export const LISTING_NOTIFICATION_EVENTS: readonly string[] = [
 ];
 
 /** Events routed by partner context. */
-export const PARTNER_NOTIFICATION_EVENTS: readonly string[] = ['partner.approved'];
+export const PARTNER_NOTIFICATION_EVENTS: readonly string[] = [
+  'partner.applied',
+  'partner.approved',
+];
 
 /**
  * Events routed by payout context. Rendered with a dedicated dispatcher (needs the
@@ -87,12 +95,22 @@ export function planForEvent(
       return [{ audience: 'customer', templateId: 'booking_no_show_customer' }];
     case 'booking.rejected':
       return [{ audience: 'customer', templateId: 'booking_rejected_customer' }];
+    case 'booking.refunded':
+      return [
+        { audience: 'customer', templateId: 'booking_refunded_customer' },
+        { audience: 'partner', templateId: 'booking_refunded_partner' },
+      ];
     case 'listing.published':
       return [{ audience: 'partner', templateId: 'listing_published_partner' }];
     case 'listing.hidden':
       return [{ audience: 'partner', templateId: 'listing_hidden_partner' }];
+    case 'partner.applied':
+      return [{ audience: 'partner', templateId: 'partner_application_received' }];
     case 'partner.approved':
-      return [{ audience: 'partner', templateId: 'partner_approved' }];
+      return [
+        { audience: 'partner', templateId: 'partner_approved' },
+        { audience: 'partner', templateId: 'partner_agreement_recorded' },
+      ];
     default:
       return [];
   }

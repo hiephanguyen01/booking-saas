@@ -6,6 +6,7 @@ import {
   OTP_DELIVERY_POLICY,
 } from '../../domain/entities/notification-delivery.entity';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
+import { EMAIL_RENDERER, type IEmailRenderer } from '../../domain/ports/email-renderer.port';
 import {
   NOTIFICATION_LOG_REPOSITORY,
   type INotificationLogRepository,
@@ -29,6 +30,7 @@ export class SendBookingOtpUseCase {
   constructor(
     @Inject(NOTIFICATION_READER) private readonly reader: INotificationReader,
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
+    @Inject(EMAIL_RENDERER) private readonly renderer: IEmailRenderer,
     @Inject(NOTIFICATION_LOG_REPOSITORY) private readonly logs: INotificationLogRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -50,6 +52,7 @@ export class SendBookingOtpUseCase {
       bookingCode: ctx.code,
       otp,
       expiresInMin: Math.max(1, Math.round(expiresInSec / 60)),
+      ctaUrl: `${ctx.brand.storefrontUrl ?? 'http://localhost:5173'}/${recipient.locale === 'en' ? 'en' : 'vi'}/bookings/${encodeURIComponent(ctx.code)}`,
     };
     const delivery = NotificationDelivery.start({
       tenantId,
@@ -61,8 +64,9 @@ export class SendBookingOtpUseCase {
       bookingId,
       policy: OTP_DELIVERY_POLICY,
     });
-    await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+    await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
       locale: recipient.locale,
+      brand: ctx.brand,
       data,
     });
   }
