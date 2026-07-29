@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { listingTypeSearchConfigSchema, modeConfigSchema } from '@booking/contracts';
 import {
   cycle,
   ensureWeeklyRules,
@@ -34,14 +35,17 @@ const BADMINTON_FLOORS = ['Thảm cao su', 'Sàn PU', 'Sàn gỗ'];
 const PICKLEBALL_SURFACES = ['Sân cứng', 'Thảm acrylic'];
 
 /** Peak-hour pricing is applied separately; this is the off-peak base rate. */
-const hourly = (basePrice: number): Prisma.InputJsonValue => ({
-  hourly: {
-    basePrice: String(basePrice),
-    minDurationMin: 60,
-    maxDurationMin: 240,
-    slotStepMin: 30,
-  },
-});
+const hourly = (basePrice: number): Prisma.InputJsonValue =>
+  modeConfigSchema.parse({
+    hourly: {
+      basePrice: String(basePrice),
+      packages: [],
+      minDuration: 1,
+      maxDuration: 4,
+      granularity: 30,
+      leadTimeMin: 0,
+    },
+  });
 
 const boolAttr = (key: string, label: string, icon: string) => ({
   key,
@@ -52,10 +56,12 @@ const boolAttr = (key: string, label: string, icon: string) => ({
 });
 
 const searchConfig = (attributeFacets: Prisma.InputJsonValue[]): Prisma.InputJsonValue => ({
-  schedule: 'hourly',
-  showGuests: false,
-  systemFacets: ['price', 'location', 'amenities'],
-  attributeFacets,
+  ...listingTypeSearchConfigSchema.parse({
+    schedule: 'hourly',
+    showGuests: false,
+    systemFacets: ['price', 'location', 'amenities'],
+    attributeFacets,
+  }),
 });
 
 export const SPORT_CATALOG: CatalogDefinition[] = [
@@ -96,10 +102,10 @@ export const SPORT_CATALOG: CatalogDefinition[] = [
       { key: 'facilities', label: 'Tiện ích khác', type: 'list', icon: 'ListChecks' },
     ],
     searchConfig: searchConfig([
-      { key: 'pitchSize', control: 'chips' },
-      { key: 'surface', control: 'chips' },
-      { key: 'roofed', control: 'toggle' },
-      { key: 'nightLights', control: 'toggle' },
+      { key: 'pitchSize', control: 'checkbox' },
+      { key: 'surface', control: 'checkbox' },
+      { key: 'roofed', control: 'checkbox' },
+      { key: 'nightLights', control: 'checkbox' },
     ]),
     title: (index, location) => `Sân bóng đá ${location.shortName} ${index + 1}`,
     description: (index, location) =>
@@ -145,9 +151,9 @@ export const SPORT_CATALOG: CatalogDefinition[] = [
       { key: 'facilities', label: 'Tiện ích khác', type: 'list', icon: 'ListChecks' },
     ],
     searchConfig: searchConfig([
-      { key: 'floor', control: 'chips' },
-      { key: 'indoor', control: 'toggle' },
-      { key: 'nightLights', control: 'toggle' },
+      { key: 'floor', control: 'checkbox' },
+      { key: 'indoor', control: 'checkbox' },
+      { key: 'nightLights', control: 'checkbox' },
     ]),
     title: (index, location) => `Sân bóng rổ ${location.shortName} ${index + 1}`,
     description: (index, location) =>
@@ -191,9 +197,9 @@ export const SPORT_CATALOG: CatalogDefinition[] = [
       { key: 'facilities', label: 'Tiện ích khác', type: 'list', icon: 'ListChecks' },
     ],
     searchConfig: searchConfig([
-      { key: 'surface', control: 'chips' },
-      { key: 'indoor', control: 'toggle' },
-      { key: 'nightLights', control: 'toggle' },
+      { key: 'surface', control: 'checkbox' },
+      { key: 'indoor', control: 'checkbox' },
+      { key: 'nightLights', control: 'checkbox' },
     ]),
     title: (index, location) => `Sân tennis ${location.shortName} ${index + 1}`,
     description: (index, location) =>
@@ -244,9 +250,9 @@ export const SPORT_CATALOG: CatalogDefinition[] = [
       { key: 'facilities', label: 'Tiện ích khác', type: 'list', icon: 'ListChecks' },
     ],
     searchConfig: searchConfig([
-      { key: 'floor', control: 'chips' },
-      { key: 'ceilingHeight', control: 'buckets', buckets: [7, 9, 12] },
-      { key: 'airConditioned', control: 'toggle' },
+      { key: 'floor', control: 'checkbox' },
+      { key: 'ceilingHeight', control: 'range' },
+      { key: 'airConditioned', control: 'checkbox' },
     ]),
     title: (index, location) => `Sân cầu lông ${location.shortName} ${index + 1}`,
     description: (index, location) =>
@@ -290,9 +296,9 @@ export const SPORT_CATALOG: CatalogDefinition[] = [
       { key: 'facilities', label: 'Tiện ích khác', type: 'list', icon: 'ListChecks' },
     ],
     searchConfig: searchConfig([
-      { key: 'surface', control: 'chips' },
-      { key: 'indoor', control: 'toggle' },
-      { key: 'paddleRental', control: 'toggle' },
+      { key: 'surface', control: 'checkbox' },
+      { key: 'indoor', control: 'checkbox' },
+      { key: 'paddleRental', control: 'checkbox' },
     ]),
     title: (index, location) => `Sân pickleball ${location.shortName} ${index + 1}`,
     description: (index, location) =>

@@ -14,7 +14,7 @@ import {
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import type { ZodType } from 'zod';
-import { storefrontPaths } from '~/constants/paths';
+import { isStorefrontAuthPath, storefrontPaths } from '~/constants/paths';
 import {
   authFlow,
   flowView,
@@ -22,7 +22,7 @@ import {
   type AuthFlowView,
 } from '~/features/auth/server/auth-flow.server';
 import { backendLogin, backendLogout, publicPost } from '~/lib/server/api.server';
-import { getOptionalAuth } from '~/lib/server/auth.server';
+import { getOptionalAuth, requireGuestAuth } from '~/lib/server/auth.server';
 import {
   failedAuthForm,
   failedAuthRequest,
@@ -87,20 +87,17 @@ const AUTH_PURPOSES = {
 >;
 
 export async function startRegistrationAction(request: Request, localeParam?: string) {
-  return startAuthFlowAction(request, localeParam, 'registration');
+  const locale = requireLocale(localeParam);
+  requireGuestAuth(locale);
+  return startAuthFlowAction(request, locale, 'registration');
 }
 
 export async function startResetAction(request: Request, localeParam?: string) {
-  return startAuthFlowAction(request, localeParam, 'password_reset');
+  return startAuthFlowAction(request, requireLocale(localeParam), 'password_reset');
 }
 
 /** Requests the OTP challenge and parks the flow on its verify step. */
-async function startAuthFlowAction(
-  request: Request,
-  localeParam: string | undefined,
-  purpose: AuthPurpose,
-) {
-  const locale = requireLocale(localeParam);
+async function startAuthFlowAction(request: Request, locale: Locale, purpose: AuthPurpose) {
   const flow = AUTH_PURPOSES[purpose];
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
@@ -283,6 +280,7 @@ export async function completePasswordAction(
 
 export async function loginAction(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
+  requireGuestAuth(locale);
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
   const parsed = loginInputSchema.safeParse(formFields(formBody.value));
@@ -291,10 +289,9 @@ export async function loginAction(request: Request, localeParam?: string) {
   if (!result.ok || !result.tokens || !result.user) return failedAuthRequest(result);
   suppressStorefrontSessionCommit();
   const url = new URL(request.url);
-  const redirectTo = safeRedirectPath(
-    url.searchParams.get('redirectTo'),
-    storefrontPaths.home(locale),
-  );
+  const fallback = storefrontPaths.home(locale);
+  const requestedRedirect = safeRedirectPath(url.searchParams.get('redirectTo'), fallback);
+  const redirectTo = isStorefrontAuthPath(requestedRedirect) ? fallback : requestedRedirect;
   return createUserSession(request, { ...result.tokens, userId: result.user.id }, redirectTo);
 }
 

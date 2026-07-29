@@ -23,6 +23,7 @@ export const VERTICAL_LABELS: Record<string, string> = {
   studio: 'Studio',
   rental: 'Cho thuê',
   classes: 'Lớp học',
+  sport: 'Thể thao',
 };
 
 export const LOCALE_LABELS: Record<Locale, string> = { vi: 'Tiếng Việt', en: 'English' };

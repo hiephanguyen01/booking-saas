@@ -23,6 +23,7 @@ export interface BookingEventPayload {
   bookingId: string;
   status?: string;
   refundAmount?: string;
+  refundPercent?: number;
   reason?: string;
 }
 
@@ -70,7 +71,7 @@ export class DispatchBookingEventUseCase {
         await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
           locale: recipient.locale,
           brand: ctx.brand,
-          data: bookingTemplateData(ctx, recipient, payload),
+          data: bookingTemplateData(ctx, recipient, payload, item.templateId),
         });
       }
     }

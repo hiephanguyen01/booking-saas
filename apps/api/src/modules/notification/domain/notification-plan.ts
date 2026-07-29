@@ -7,7 +7,6 @@
 export type Audience = 'customer' | 'partner';
 
 export type NotificationTemplateId =
-  | 'booking_pending_payment_customer'
   | 'booking_pending_approval_partner'
   | 'booking_approved_customer'
   | 'booking_confirmed_customer'
@@ -66,7 +65,7 @@ export const PAYOUT_NOTIFICATION_EVENTS: readonly string[] = ['payout.paid'];
 /**
  * The audiences + templates for an event. `booking.created` branches on the draft
  * outcome: an approval-gated booking pings the partner to review; a pay-now booking
- * pings the customer with the payment link.
+ * produces no immediate email because confirmation follows successful payment.
  */
 export function planForEvent(
   eventType: string,
@@ -76,7 +75,7 @@ export function planForEvent(
     case 'booking.created':
       return payload.status === 'pending_approval'
         ? [{ audience: 'partner', templateId: 'booking_pending_approval_partner' }]
-        : [{ audience: 'customer', templateId: 'booking_pending_payment_customer' }];
+        : [];
     case 'booking.approved':
       return [{ audience: 'customer', templateId: 'booking_approved_customer' }];
     case 'booking.confirmed':
