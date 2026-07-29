@@ -18,8 +18,7 @@ export function ProviderProfilePage({
 }: {
   loaderData: ServerDataFrom<typeof loadProviderRoute>;
 }) {
-  const { profile, listings, reviews, reviewSummary, reviewRating, reviewLimit, activeType } =
-    loaderData;
+  const { profile, listings, activeType, ...reviewData } = loaderData;
   const locale = useLocale();
   const { t } = useTranslation(NsI18n.Catalog);
   const activeSince = new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
@@ -119,13 +118,7 @@ export function ProviderProfilePage({
             </div>
           )}
         </SectionCard>
-        <PublicReviewsSection
-          reviews={reviews}
-          summary={reviewSummary}
-          locale={locale}
-          selectedRating={reviewRating}
-          visibleLimit={reviewLimit}
-        />
+        <PublicReviewsSection {...reviewData} locale={locale} />
       </div>
     </div>
   );

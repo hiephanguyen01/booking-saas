@@ -6,10 +6,9 @@ import {
 } from '@booking/contracts';
 import { data } from 'react-router';
 import { apiGet, apiPost } from '~/lib/server/api.server';
-import { requireAuth } from '~/lib/server/auth.server';
+import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
-import { storefrontPaths } from '~/constants/paths';
 
 const REVIEW_PAGE_SIZE = 100;
 
@@ -58,7 +57,7 @@ export async function submitCustomerReview(
     );
   }
 
-  const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
+  const auth = requireCustomerAuth(request, locale, { includeSearch: false });
   const fields = body.value;
   const bookingId =
     typeof fields.get('bookingId') === 'string' ? String(fields.get('bookingId')) : null;

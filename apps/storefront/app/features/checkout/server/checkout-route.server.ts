@@ -4,6 +4,7 @@ import {
   guestInfoSchema,
   type ValidatePromoResponse,
 } from '@booking/contracts';
+import { localeTranslator } from '~/lib/translator';
 import type { Locale } from '@booking/i18n';
 import { data, redirect } from 'react-router';
 import { readRefCode } from '~/features/affiliate/server/affiliate.server';
@@ -26,7 +27,6 @@ import {
 } from '~/features/checkout/server/checkout-flow.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
-import { createTranslator } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import {
   allowedPaymentFormPost,
@@ -134,7 +134,7 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
 }
 
 export async function handleCheckoutAction(request: Request, locale: Locale) {
-  const t = createTranslator(locale).t;
+  const t = localeTranslator(locale).t;
   const formBody = await readFormRequestBody(request, CHECKOUT_MAX_FORM_BYTES);
   if (!formBody.ok) {
     return checkoutFailure(

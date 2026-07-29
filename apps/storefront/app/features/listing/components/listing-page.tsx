@@ -91,15 +91,7 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
           />
           <Suspense fallback={<ReviewsSectionSkeleton label={t('common:loading')} />}>
             <Await resolve={loaderData.auxiliaryData}>
-              {({ reviews, reviewSummary, reviewRating, reviewLimit }) => (
-                <PublicReviewsSection
-                  reviews={reviews}
-                  summary={reviewSummary}
-                  locale={locale}
-                  selectedRating={reviewRating}
-                  visibleLimit={reviewLimit}
-                />
-              )}
+              {(reviewData) => <PublicReviewsSection {...reviewData} locale={locale} />}
             </Await>
           </Suspense>
         </>

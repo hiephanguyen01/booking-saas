@@ -1,5 +1,6 @@
 import type { CurrentUser, PublicListingTypeResponse } from '@booking/contracts';
-import { createTranslator, type Locale } from '@booking/i18n';
+import { localeTranslator } from '~/lib/translator';
+import { type Locale } from '@booking/i18n';
 import { data } from 'react-router';
 import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import {
@@ -51,7 +52,7 @@ export async function loadStorefrontRoot(request: Request, routeUrl: URL, cspNon
   const alternates = localizedAlternates(publicUrl);
 
   if (!tenant) {
-    const { t } = createTranslator(locale);
+    const { t } = localeTranslator(locale);
     const payload: PlatformRootLoaderPayload = {
       kind: 'platform',
       locale,

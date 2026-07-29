@@ -22,6 +22,7 @@ import type { ServerDataFrom } from '~/lib/react-router-data';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { FavoriteSearchResultCard } from '~/features/favorites/components/favorite-cards';
 import { SearchForm } from '~/features/search/components/search-form';
+import { searchResultContext } from '~/features/search/lib/search-state';
 import { CatalogPagination } from './catalog-pagination';
 import { FilterPanel } from './filter-panel';
 import {
@@ -36,6 +37,8 @@ export interface CatalogPageProps {
 
 export function CatalogPage({ loaderData, params }: CatalogPageProps) {
   const { type, search, state } = loaderData;
+  // Identical for every card on the page, so derived once here rather than 48 times.
+  const resultContext = searchResultContext(state);
   const { t } = useTranslation([NsI18n.Catalog, NsI18n.Common]);
   const { listingTypes, pending, booleanFacetKeys, searchFormKey, sortItems } =
     useCatalogPageController({
@@ -129,7 +132,7 @@ export function CatalogPage({ loaderData, params }: CatalogPageProps) {
                 <FavoriteSearchResultCard
                   key={`${listing.kind}:${listing.id}`}
                   listing={listing}
-                  state={state}
+                  context={resultContext}
                 />
               ))}
             </div>

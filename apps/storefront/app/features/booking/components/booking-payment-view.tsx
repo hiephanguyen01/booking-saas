@@ -2,14 +2,7 @@ import type { BookingStatus, PaymentStatusResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import {
-  ArrowLeft,
-  CircleX,
-  Clock3,
-  Home,
-  RefreshCw,
-  ShieldCheck,
-} from 'lucide-react';
+import { ArrowLeft, CircleX, Clock3, Home, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';

@@ -1,26 +1,23 @@
 import { Heart, MapPin } from 'lucide-react';
 import { Link } from 'react-router';
 import { RatingStars } from '~/components/rating-stars';
-import {
-  rangeDates,
-  withSearchContext,
-  type EnrichedSearchListing,
-  type StorefrontSearchState,
+import type {
+  EnrichedSearchListing,
+  SearchResultContext,
 } from '~/features/search/lib/search-state';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
-import { clockHoursBetween } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
 import type { ListingFavoriteControl } from '~/features/catalog/lib/listing-card.types';
 
 export function SearchResultCard({
   listing,
-  state,
+  context,
   favoriteControl,
 }: {
   listing: EnrichedSearchListing;
-  state: StorefrontSearchState;
+  context: SearchResultContext;
   favoriteControl?: ListingFavoriteControl;
 }) {
   const locale = useLocale();
@@ -29,16 +26,13 @@ export function SearchResultCard({
     listing.kind === 'group'
       ? storefrontPaths.listingGroup(locale, listing.slug)
       : storefrontPaths.listing(locale, listing.slug);
-  const href = withSearchContext(detailPath, state);
+  const href = `${detailPath}?${context.query}`;
   const photos = listing.photos.slice(0, 3);
   const location = formatListingLocation(listing);
   const price = formatVnd(listing.priceFrom);
   const regularPrice = formatVnd(listing.regularPriceFrom);
   const discountPercent = calculateDiscountPercent(listing.regularPriceFrom, listing.priceFrom);
-  const selectedDayCount = state.hasDailyRange ? rangeDates(state.from, state.to).length : 0;
-  const selectedHours = state.hasTimeSelection
-    ? clockHoursBetween(state.startTime, state.endTime)
-    : null;
+  const priceUnit = priceUnitLabel(context, listing.priceUnit);
 
   return (
     <article className="group relative grid overflow-hidden rounded-lg border-[1.4px] border-border bg-card transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-md md:h-46 md:grid-cols-[248px_120px_minmax(0,1fr)] md:gap-x-1.5">
@@ -137,23 +131,45 @@ export function SearchResultCard({
             <span
               className={`block ${discountPercent !== null ? 'text-primary' : 'text-muted-foreground'}`}
             >
-              {state.hasDailyRange
-                ? t('listing:forSelectedDays', { count: selectedDayCount })
-                : listing.priceUnit === 'hour'
-                  ? selectedHours
-                    ? t('listing:forHours', { count: selectedHours })
-                    : t('listing:perHour')
-                  : listing.priceUnit === 'item'
-                    ? t('listing:perItem')
-                    : listing.priceUnit === 'session'
-                      ? t('listing:perSession')
-                      : t('listing:perDay')}
+              {t(priceUnit.key, priceUnit.count === undefined ? {} : { count: priceUnit.count })}
             </span>
           </p>
         </div>
       </div>
     </article>
   );
+}
+
+const PRICE_UNIT_KEYS = {
+  hour: 'listing:perHour',
+  day: 'listing:perDay',
+  item: 'listing:perItem',
+  session: 'listing:perSession',
+  package: 'listing:perDay',
+} as const satisfies Record<EnrichedSearchListing['priceUnit'], string>;
+
+/**
+ * What the "from" price is quoted per, most specific first: a chosen date range
+ * wins over the listing's own unit, and a chosen time window turns the hourly
+ * unit into the actual hour count.
+ */
+function priceUnitLabel(
+  context: SearchResultContext,
+  priceUnit: EnrichedSearchListing['priceUnit'],
+): {
+  key:
+    | 'listing:forSelectedDays'
+    | 'listing:forHours'
+    | (typeof PRICE_UNIT_KEYS)[keyof typeof PRICE_UNIT_KEYS];
+  count?: number;
+} {
+  if (context.hasDailyRange) {
+    return { key: 'listing:forSelectedDays', count: context.selectedDayCount };
+  }
+  if (priceUnit === 'hour' && context.selectedHours) {
+    return { key: 'listing:forHours', count: context.selectedHours };
+  }
+  return { key: PRICE_UNIT_KEYS[priceUnit] };
 }
 
 function calculateDiscountPercent(regularPrice: string, salePrice: string): number | null {

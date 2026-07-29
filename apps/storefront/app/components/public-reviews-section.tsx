@@ -14,24 +14,24 @@ import { SectionCard } from './section-card';
 
 export function PublicReviewsSection({
   reviews,
-  summary,
+  reviewSummary,
   locale,
-  selectedRating,
-  visibleLimit,
+  reviewRating,
+  reviewLimit,
 }: {
   reviews: ReviewListResponse | null;
-  summary: ReviewSummary | null;
+  reviewSummary: ReviewSummary | null;
   locale: 'vi' | 'en';
-  selectedRating?: number;
-  visibleLimit: number;
+  reviewRating?: number;
+  reviewLimit: number;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const model = usePublicReviewsSectionController({
     reviews,
-    summary,
+    reviewSummary,
     locale,
-    selectedRating,
-    visibleLimit,
+    reviewRating,
+    reviewLimit,
   });
 
   if (!model) return null;
@@ -44,12 +44,14 @@ export function PublicReviewsSection({
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-sm leading-5">
           <span className="inline-flex items-center gap-1">
-            <RatingStars rating={model.summary.ratingAvg ?? 0} />
+            <RatingStars rating={model.reviewSummary.ratingAvg ?? 0} />
             <strong className="font-medium text-foreground">{model.formattedAverage}</strong>
           </span>
           <span className="h-4 w-px bg-border" aria-hidden="true" />
           <span className="text-muted-foreground">
-            <strong className="font-medium text-foreground">{model.summary.reviewCount}</strong>{' '}
+            <strong className="font-medium text-foreground">
+              {model.reviewSummary.reviewCount}
+            </strong>{' '}
             {t('reviews.countLabel')}
           </span>
         </div>
@@ -86,7 +88,7 @@ export function PublicReviewsSection({
         ))}
       </div>
 
-      {selectedRating && (!reviews || reviews.items.length === 0) ? (
+      {reviewRating && (!reviews || reviews.items.length === 0) ? (
         <p className="rounded-md border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
           {t('reviews.emptyRating')}
         </p>

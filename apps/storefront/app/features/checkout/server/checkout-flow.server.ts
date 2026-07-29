@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { signedCookie } from '~/lib/server/signed-cookie.server';
 import { bookingAccessGrantSchema, type CustomerPaymentMethod } from '@booking/contracts';
-import { createCookie } from 'react-router';
-import { storefrontEnv } from '~/lib/server/env.server';
 import { storefrontRedisStore, type RedisJsonStore } from '~/lib/server/redis-store.server';
 
 const TTL_SECONDS = 30 * 60;
@@ -52,14 +51,7 @@ export function maskCheckoutEmail(email: string): string {
 }
 
 export function createCheckoutFlowService(store: RedisJsonStore = storefrontRedisStore) {
-  const cookie = createCookie('__storefront_checkout_flow', {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    secure: storefrontEnv.secureCookies,
-    secrets: [...storefrontEnv.sessionSecrets],
-    maxAge: TTL_SECONDS,
-  });
+  const cookie = signedCookie('__storefront_checkout_flow', TTL_SECONDS);
 
   async function entriesFrom(request: Request): Promise<CheckoutFlowCookieEntry[]> {
     let parsed: unknown;

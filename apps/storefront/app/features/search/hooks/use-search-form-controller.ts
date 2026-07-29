@@ -44,8 +44,9 @@ export function useSearchFormController({
 }) {
   const locale = useLocale();
   const state = initialState ?? parseSearchState(new URLSearchParams());
-  const studioType = listingTypes.find((type) => type.slug.toLowerCase() === 'studio');
-  const initialType = currentType ?? studioType?.slug ?? listingTypes[0]?.slug ?? 'studio';
+  // Default to the tenant's first listing type (by sortOrder from the API) — never a
+  // hard-coded slug, so the form reflects whatever types the tenant actually created.
+  const initialType = currentType ?? listingTypes[0]?.slug ?? '';
   const [selectedType, setSelectedType] = useState(initialType);
   const initialConfig = listingTypes.find((type) => type.slug === initialType)?.searchConfig;
   const [mode, setMode] = useState<SearchMode>(
@@ -54,11 +55,8 @@ export function useSearchFormController({
   const seed = selectedDates(state);
   const [date, setDate] = useState(seed.date);
   const [range, setRange] = useState<DateRange>(() => toRange(seed));
-  const types = [...listingTypes].sort((left, right) => {
-    if (left.slug.toLowerCase() === 'studio') return -1;
-    if (right.slug.toLowerCase() === 'studio') return 1;
-    return 0;
-  });
+  // The API already returns types in the tenant's configured `sortOrder`.
+  const types = listingTypes;
   const selectedListingType = listingTypes.find((type) => type.slug === selectedType);
   const fixedPackages = selectedListingType?.bookingSelection === 'fixed_packages';
   const selectedConfig = selectedListingType?.searchConfig;

@@ -1,7 +1,7 @@
 import { customerAccountSettingsInputSchema } from '@booking/contracts';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { data } from 'react-router';
-import { requireAuth } from '~/lib/server/auth.server';
-import { storefrontPaths } from '~/constants/paths';
+import { requireCustomerAuth } from '~/lib/server/auth.server';
 
 export type ProfileActionData = {
   saved: boolean;
@@ -12,14 +12,14 @@ export type ProfileActionData = {
 type StorefrontLocale = 'vi' | 'en';
 
 export function loadAccountProfileRoute(request: Request, locale: StorefrontLocale) {
-  requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
+  requireCustomerAuth(request, locale, { includeSearch: false });
   return null;
 }
 
 export async function handleAccountProfileAction(request: Request, locale: StorefrontLocale) {
-  requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
-  const body: unknown = await request.json().catch(() => ({}));
-  const value = body && typeof body === 'object' ? body : {};
+  requireCustomerAuth(request, locale, { includeSearch: false });
+  const body = await readJsonRequestBody(request);
+  const value = body.ok && body.value && typeof body.value === 'object' ? body.value : {};
   const parsed = customerAccountSettingsInputSchema.safeParse(value);
 
   if (!parsed.success) {

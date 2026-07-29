@@ -1,5 +1,6 @@
-import { createTranslator, type Locale } from '@booking/i18n';
+import { type Locale } from '@booking/i18n';
+import { localeTranslator } from '~/lib/translator';
 
 export function buildCommunityMeta(locale: Locale) {
-  return [{ title: createTranslator(locale).t('account.community.metaTitle') }];
+  return [{ title: localeTranslator(locale).t('account.community.metaTitle') }];
 }

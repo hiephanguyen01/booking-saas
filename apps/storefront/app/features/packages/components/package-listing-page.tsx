@@ -22,7 +22,7 @@ import { PackageAlbums } from './package-albums';
 import { PackageBookingDialog } from './package-booking-dialog';
 import { listingPackages, minimumPackagePrice } from '~/features/packages/lib/package-data';
 import { PackageTable } from './package-table';
-import { RelatedListings } from './related-listings';
+import { RelatedListings } from '~/components/related-listings';
 import { usePackageBookingController } from '~/features/packages/hooks/use-package-booking-controller';
 
 export function PackageListingPage({
@@ -143,16 +143,15 @@ export function PackageListingPage({
               }
             >
               <Await resolve={auxiliaryData}>
-                {({ reviews, reviewSummary, reviewRating, reviewLimit, relatedListings }) => (
+                {({ relatedListings, ...reviewData }) => (
                   <>
-                    <PublicReviewsSection
-                      reviews={reviews}
-                      summary={reviewSummary}
-                      locale={locale}
-                      selectedRating={reviewRating}
-                      visibleLimit={reviewLimit}
+                    <PublicReviewsSection {...reviewData} locale={locale} />
+                    <RelatedListings
+                      listings={relatedListings}
+                      title={t('packages.related')}
+                      titleId="related-listings-title"
+                      titleClassName="text-lg"
                     />
-                    <RelatedListings listings={relatedListings} />
                   </>
                 )}
               </Await>

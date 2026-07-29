@@ -2,9 +2,8 @@ import { Outlet } from 'react-router';
 import { AccountContentSkeleton } from '~/components/loading-skeletons';
 import { AccountShell } from '~/features/account/components/account-shell/account-shell';
 import { getAccountMenuSummary } from '~/features/account/server/account-menu.server';
-import { requireAuth } from '~/lib/server/auth.server';
+import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { requireLocale } from '~/lib/server/i18n.server';
-import { storefrontPaths } from '~/constants/paths';
 import { useAccountLayoutController } from '~/features/account/hooks/use-account-layout-controller';
 import type { Route } from './+types/layout';
 
@@ -14,8 +13,7 @@ export function meta() {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = requireLocale(params.locale);
-  const url = new URL(request.url);
-  const auth = requireAuth(storefrontPaths.login(locale, `${url.pathname}${url.search}`));
+  const auth = requireCustomerAuth(request, locale);
   const accountMenuSummary = await getAccountMenuSummary(request, auth.session.accessToken);
   return { user: auth.info.user, locale, accountMenuSummary };
 }

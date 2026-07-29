@@ -4,6 +4,7 @@ import type {
   PublicListingDetailWithTimezoneResponse,
   QuoteResponse,
 } from '@booking/contracts';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
 import { packagesForMode } from '~/lib/package-options';
@@ -37,7 +38,13 @@ export function useBookingPanelController({
     (BOOKABLE_MODES as string[]).includes(item),
   );
   const fixedPackages = listing.bookingSelection === 'fixed_packages';
-  const packages = packagesForMode(listing.modeConfig, mode);
+  // Parsed once per listing rather than on every render: `packagesForMode` walks the
+  // untyped `modeConfig` jsonb and zod-parses each package. Same reason as
+  // `use-booking-dialog-controller`, and this panel re-renders on every fetcher tick.
+  const packages = useMemo(
+    () => packagesForMode(listing.modeConfig, mode),
+    [listing.modeConfig, mode],
+  );
   const packageId = searchParams.get('packageId');
   const selectedPackage = packages.find((item) => item.id === packageId) ?? null;
   const inventory =

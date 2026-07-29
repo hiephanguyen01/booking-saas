@@ -16,7 +16,7 @@ import { AmenitiesSection } from './amenities-section';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
-import { RelatedListings } from './related-listings';
+import { RelatedListings } from '~/components/related-listings';
 import { RoomOptionsSection } from './room-options-section';
 import { ListingGallery } from '~/components/listing-gallery';
 import type { ListingGroupData } from '~/features/listing-group/lib/listing-group-types';
@@ -132,13 +132,17 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
 
           <PublicReviewsSection
             reviews={loaderData.reviews}
-            summary={loaderData.reviewSummary}
+            reviewSummary={loaderData.reviewSummary}
             locale={locale}
-            selectedRating={loaderData.reviewRating}
-            visibleLimit={loaderData.reviewLimit}
+            reviewRating={loaderData.reviewRating}
+            reviewLimit={loaderData.reviewLimit}
           />
 
-          <RelatedListings listings={relatedListings} />
+          <RelatedListings
+            listings={relatedListings}
+            title={t('group.related')}
+            titleId="related-title"
+          />
         </>
       }
     />

@@ -49,6 +49,14 @@ export interface ListingLocation {
   workingArea?: string | null;
 }
 
+/**
+ * A collator built once. `String.localeCompare(other, locale, options)` cannot
+ * reuse V8's cached collator when an options bag is passed, so calling it inside
+ * a filter costs roughly an order of magnitude more than an explicit instance —
+ * and this runs per card on a catalog page that renders up to 48 of them.
+ */
+const VI_COLLATOR = new Intl.Collator('vi', { sensitivity: 'base' });
+
 /** Compact cards show the administrative area; detail pages include the street address. */
 export function formatListingLocation(
   location: ListingLocation,
@@ -58,15 +66,15 @@ export function formatListingLocation(
     detail === 'full'
       ? [location.address, location.workingArea, location.wardName, location.provinceName]
       : [location.workingArea, location.wardName, location.provinceName];
-  const unique = values
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value))
-    .filter(
-      (value, index, items) =>
-        items.findIndex(
-          (item) => item.localeCompare(value, 'vi', { sensitivity: 'base' }) === 0,
-        ) === index,
-    );
+
+  // "Quận 1" and "quận 1" are the same place, so dedupe accent- and case-insensitively.
+  const unique: string[] = [];
+  for (const raw of values) {
+    const value = raw?.trim();
+    if (!value) continue;
+    if (unique.some((seen) => VI_COLLATOR.compare(seen, value) === 0)) continue;
+    unique.push(value);
+  }
   return unique.length ? unique.join(', ') : null;
 }
 

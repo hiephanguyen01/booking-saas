@@ -43,12 +43,15 @@ export function useFavoritesController({
   const inFlight = useRef(new Map<string, FavoriteWrite>());
   const mutationSequence = useRef(0);
 
+  // Keyed on the id arrays, not on `refs`: the locale layout revalidates after every
+  // navigation and every action, so the wrapper object is fresh even when the ids
+  // are not — and a new Set here re-renders every heart on the page.
   const serverSet = useMemo(() => {
     const set = new Set<string>();
     for (const id of refs.listingIds) set.add(keyOf('listing', id));
     for (const id of refs.groupIds) set.add(keyOf('group', id));
     return set;
-  }, [refs]);
+  }, [refs.listingIds, refs.groupIds]);
 
   useEffect(() => {
     setOverrides((prev) => {

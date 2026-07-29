@@ -275,7 +275,10 @@ export async function loginAction(request: Request, localeParam?: string) {
   if (!result.ok || !result.tokens || !result.user) return failed(result);
   suppressStorefrontSessionCommit();
   const url = new URL(request.url);
-  const redirectTo = safeRedirectPath(url.searchParams.get('redirectTo'), storefrontPaths.home(locale));
+  const redirectTo = safeRedirectPath(
+    url.searchParams.get('redirectTo'),
+    storefrontPaths.home(locale),
+  );
   return createUserSession(request, { ...result.tokens, userId: result.user.id }, redirectTo);
 }
 

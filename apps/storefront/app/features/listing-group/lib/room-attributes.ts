@@ -25,15 +25,26 @@ export function minimumRoomPrice(options: RoomOption[]): string | null {
   return minimum === null ? null : formatVnd(String(minimum));
 }
 
+/**
+ * The attribute keys that mean "how many people fit".
+ *
+ * Capacity gets its own row (see {@link roomCapacity}), so the spec cards must
+ * suppress exactly these keys. The two used to be a list and a looser regex that
+ * could disagree — a key the regex matched but the list did not was suppressed
+ * from the cards *and* produced no capacity row, so the attribute vanished.
+ */
+const CAPACITY_KEYS = ['capacity', 'maxGuests', 'guestCapacity', 'sucChua'] as const;
+
 export function roomCapacity(attributes: Record<string, unknown>): number | null {
-  for (const key of ['capacity', 'maxGuests', 'guestCapacity', 'sucChua']) {
+  for (const key of CAPACITY_KEYS) {
     const value = Number(attributes[key]);
     if (Number.isFinite(value) && value > 0) return value;
   }
   return null;
 }
 
-const isCapacityKey = (key: string): boolean => /capacity|guest|succhua/i.test(key);
+const isCapacityKey = (key: string): boolean =>
+  CAPACITY_KEYS.some((capacityKey) => capacityKey === key);
 
 const stringLines = (raw: unknown): string[] =>
   Array.isArray(raw)

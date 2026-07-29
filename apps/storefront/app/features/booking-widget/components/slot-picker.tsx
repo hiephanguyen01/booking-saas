@@ -25,7 +25,7 @@ import {
 } from '@booking/ui/components/ui/drawer';
 import { cn } from '@booking/ui/lib/utils';
 import { CalendarDays, ChevronDown, Clock3, X } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { PendingLink } from '~/components/pending-link';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { DEFAULT_TZ, dateLabelInTz, timeInTz } from '~/lib/time';
@@ -55,8 +55,6 @@ export function SlotPicker({
   date: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const [desktopOpen, setDesktopOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const trigger = (
     <Button className="w-full">
       <Clock3 /> {t('group.pickHours')}
@@ -66,7 +64,7 @@ export function SlotPicker({
   return (
     <>
       <div className="hidden lg:block">
-        <Dialog open={desktopOpen} onOpenChange={setDesktopOpen}>
+        <Dialog>
           <DialogTrigger asChild>{trigger}</DialogTrigger>
           <DialogContent className="gap-0 p-0 sm:max-w-107.5">
             <DialogHeader className="border-b p-5 pr-12">
@@ -78,7 +76,7 @@ export function SlotPicker({
         </Dialog>
       </div>
       <div className="lg:hidden">
-        <Drawer open={mobileOpen} onOpenChange={setMobileOpen}>
+        <Drawer>
           <DrawerTrigger asChild>{trigger}</DrawerTrigger>
           <DrawerContent>
             <DrawerHeader>

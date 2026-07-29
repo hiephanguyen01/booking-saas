@@ -1,4 +1,5 @@
 import { affiliateRegistrationSchema } from '@booking/contracts';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { data } from 'react-router';
 import { applyAsAffiliate } from '~/features/affiliate/server/affiliate.server';
 import { storefrontEnv } from '~/lib/server/env.server';
@@ -17,7 +18,10 @@ export function loadAffiliateApplicationRoute() {
 
 export async function submitAffiliateApplication(request: Request) {
   const tenant = getCurrentStorefrontTenant();
-  const parsed = affiliateRegistrationSchema.safeParse(await request.json());
+  // Through the bounded reader: an unparseable or oversized body becomes  and
+  // falls out of the schema as the same 400 a malformed payload already produced.
+  const body = await readJsonRequestBody(request);
+  const parsed = affiliateRegistrationSchema.safeParse(body.ok ? body.value : {});
 
   if (!parsed.success) {
     return data(

@@ -194,7 +194,9 @@ function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel;
       </DetailRows>
       {booking.status !== 'pending_payment' ? (
         <div className="mt-0 grid min-h-12 items-center border border-border bg-muted px-4 text-sm sm:grid-cols-2">
-          <span className="text-muted-foreground sm:text-right">{t('bookings.payment.balance')}</span>
+          <span className="text-muted-foreground sm:text-right">
+            {t('bookings.payment.balance')}
+          </span>
           <span className="font-semibold text-foreground sm:text-right">
             {money(booking.balanceAmount, locale)}
           </span>

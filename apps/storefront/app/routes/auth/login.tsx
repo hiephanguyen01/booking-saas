@@ -1,4 +1,5 @@
 import { Link, useActionData, useOutletContext } from 'react-router';
+import { authMeta } from '~/features/auth/lib/auth-meta';
 import type { Route } from './+types/login';
 import { AuthFrame } from '~/features/auth/components/auth-frame';
 import { SocialButtons } from '~/features/auth/components/auth-social-buttons';
@@ -9,10 +10,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontContext } from '~/root';
 
-export const meta = ({ params }: Route.MetaArgs) => [
-  { title: params.locale === 'en' ? 'Log in' : 'Đăng nhập' },
-  { name: 'robots', content: 'noindex,nofollow' },
-];
+export const meta = ({ params }: Route.MetaArgs) => authMeta(params.locale, 'login');
 export const action = ({ request, params }: Route.ActionArgs) =>
   loginAction(request, params.locale);
 
