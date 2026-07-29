@@ -5,7 +5,7 @@ import { FavoriteListingCard } from '~/features/favorites/components/favorite-ca
 
 const MAX_RELATED = 4;
 
-export function RelatedStudios({ listings }: { listings: PublicListingResponse[] }) {
+export function RelatedListings({ listings }: { listings: PublicListingResponse[] }) {
   const { t } = useTranslation(NsI18n.Listing);
   if (!listings.length) return null;
   return (

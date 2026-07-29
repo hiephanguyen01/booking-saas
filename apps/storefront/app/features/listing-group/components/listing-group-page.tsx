@@ -16,9 +16,9 @@ import { AmenitiesSection } from './amenities-section';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
-import { RelatedStudios } from './related-studios';
+import { RelatedListings } from './related-listings';
 import { RoomOptionsSection } from './room-options-section';
-import { StudioGallery } from '~/components/studio-gallery';
+import { ListingGallery } from '~/components/listing-gallery';
 import type { ListingGroupData } from '~/features/listing-group/lib/listing-group-types';
 import { minimumRoomPrice } from '~/features/listing-group/lib/room-attributes';
 
@@ -82,7 +82,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
           <HeaderActions title={group.title} favorite={{ kind: 'group', id: group.id }} />
         </header>
       }
-      gallery={<StudioGallery photos={group.photos} title={group.title} />}
+      gallery={<ListingGallery photos={group.photos} title={group.title} />}
       main={
         <>
           <SectionCard aria-labelledby="introduction-title">
@@ -138,7 +138,7 @@ export function ListingGroupPage({ loaderData }: { loaderData: ListingGroupData 
             visibleLimit={loaderData.reviewLimit}
           />
 
-          <RelatedStudios listings={relatedListings} />
+          <RelatedListings listings={relatedListings} />
         </>
       }
     />

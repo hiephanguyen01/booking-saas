@@ -30,7 +30,7 @@ export function BookingSuccessView({
         className="mx-auto flex w-full max-w-107.5 flex-col items-center justify-center gap-5 bg-card p-6 text-center shadow-[0_4px_15px_rgba(0,0,0,0.07)] sm:p-10"
       >
         <BadgeCheck
-          className="size-15 shrink-0 text-[#0abf90]"
+          className="size-15 shrink-0 text-emerald-500"
           strokeWidth={1.8}
           aria-hidden="true"
         />
@@ -48,14 +48,14 @@ export function BookingSuccessView({
               {maskedEmail ? (
                 <>
                   {t('success.bookingCodePrefix')}{' '}
-                  <span className="font-medium text-[#009b76]">{code}</span>{' '}
+                  <span className="font-medium text-emerald-600">{code}</span>{' '}
                   {t('success.sentToEmail')}{' '}
                   <span className="font-medium text-foreground">{maskedEmail}</span>
                 </>
               ) : (
                 <>
                   {t('success.bookingCodeFallbackPrefix')}{' '}
-                  <span className="font-medium text-[#009b76]">{code}</span>.{' '}
+                  <span className="font-medium text-emerald-600">{code}</span>.{' '}
                   {t('success.emailSentFallback')}
                 </>
               )}

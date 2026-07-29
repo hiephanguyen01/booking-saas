@@ -9,38 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@booking/ui/components/ui/dropdown-menu';
-import {
-  CircleHelp,
-  Eye,
-  Heart,
-  LogOut,
-  MessageSquareText,
-  NotebookText,
-  Pencil,
-  ShieldCheck,
-  UserRound,
-} from 'lucide-react';
-import { type ComponentType, Fragment, type SVGProps } from 'react';
+import { LogOut, Pencil } from 'lucide-react';
+import { Fragment } from 'react';
+import { ACCOUNT_NAV_ICONS, type AccountNavIcon } from '~/components/account-nav-icons';
 import { Link, useFetcher } from 'react-router';
 import type { AccountMenuSummary } from '~/features/account/lib/account-menu';
 import { type AccountNavKey, userInitials } from '~/features/account/lib/account-nav';
 import { type Locale, NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import { useSiteHeaderAccountMenuController } from '~/features/site-shell/hooks/use-site-header-account-menu-controller';
-
-type AccountMenuIcon = ComponentType<SVGProps<SVGSVGElement>>;
-
-const ACCOUNT_MENU_ICONS: Record<AccountNavKey, AccountMenuIcon> = {
-  profile: UserRound,
-  bookings: BookingMenuIcon,
-  messages: MessageSquareText,
-  reviews: RatingMenuIcon,
-  favorites: Heart,
-  recent: Eye,
-  terms: NotebookText,
-  security: ShieldCheck,
-  help: CircleHelp,
-};
 
 const ACCOUNT_MENU_DIVIDERS = new Set<AccountNavKey>(['reviews', 'recent', 'help']);
 
@@ -96,7 +73,7 @@ export function SiteHeaderAccountMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="mx-0 my-0" />
         {items.map((item) => {
-          const Icon = ACCOUNT_MENU_ICONS[item.key];
+          const Icon = ACCOUNT_NAV_ICONS[item.key];
           return (
             <Fragment key={item.key}>
               <DropdownLink to={item.to} icon={Icon} badge={item.badge} active={item.active}>
@@ -175,7 +152,7 @@ function DropdownLink({
   children,
 }: {
   to: string;
-  icon: AccountMenuIcon;
+  icon: AccountNavIcon;
   badge?: string;
   active?: boolean;
   children: React.ReactNode;
@@ -199,55 +176,5 @@ function DropdownLink({
         ) : null}
       </Link>
     </DropdownMenuItem>
-  );
-}
-
-function BookingMenuIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
-      <rect
-        x="2.5"
-        y="4"
-        width="15"
-        height="12"
-        rx="1.25"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <rect
-        x="5.25"
-        y="7"
-        width="2.5"
-        height="2.5"
-        rx="0.4"
-        stroke="currentColor"
-        strokeWidth="1.25"
-      />
-      <path
-        d="M10.25 7.75h4.5M10.25 11.5h4.5M5.25 12.25h2.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function RatingMenuIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 22 22" fill="none" aria-hidden="true" {...props}>
-      <path
-        d="M2.5 6h8M2.5 11h5.5M2.5 16h7"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="m15.5 8.25 1.05 2.13 2.35.34-1.7 1.66.4 2.34-2.1-1.1-2.1 1.1.4-2.34-1.7-1.66 2.35-.34 1.05-2.13Z"
-        stroke="currentColor"
-        strokeWidth="1.35"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

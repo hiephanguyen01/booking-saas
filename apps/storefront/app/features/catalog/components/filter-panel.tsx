@@ -17,7 +17,7 @@ import type { ReactNode } from 'react';
 import { Form, Link } from 'react-router';
 import { LucideByName } from '~/components/lucide-by-name';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import type { StorefrontSearchState } from '~/features/search/lib/search-state';
+import { scheduleParams, type StorefrontSearchState } from '~/features/search/lib/search-state';
 import {
   type FilterOption,
   useFilterPanelController,
@@ -55,22 +55,10 @@ export function FilterPanel({
         <input type="hidden" name="quantity" value={state.quantity} />
       ) : null}
       {state.sort !== 'relevance' ? <input type="hidden" name="sort" value={state.sort} /> : null}
-      {state.mode === 'hourly' && state.hasDateSelection ? (
-        <>
-          <input type="hidden" name="date" value={state.date} />
-          {state.hasTimeSelection ? (
-            <>
-              <input type="hidden" name="startTime" value={state.startTime} />
-              <input type="hidden" name="endTime" value={state.endTime} />
-            </>
-          ) : null}
-        </>
-      ) : (state.mode === 'daily' || state.mode === 'inventory') && state.hasDailyRange ? (
-        <>
-          <input type="hidden" name="from" value={state.from} />
-          <input type="hidden" name="to" value={state.to} />
-        </>
-      ) : null}
+      {/* `location` is deliberately absent: the panel renders it as a real facet control. */}
+      {scheduleParams(state).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
 
       <h2 className="text-base font-semibold uppercase text-foreground">{t('filters.title')}</h2>
 

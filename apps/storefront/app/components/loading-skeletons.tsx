@@ -193,6 +193,63 @@ function AccountResultRows({ count }: { count: number }) {
   ));
 }
 
+function AccountFormSkeletonBody() {
+  return (
+    <div className="rounded-none border bg-background px-6 py-8 sm:px-8">
+      <div className="mb-8 flex items-center gap-4">
+        <StorefrontSkeleton className="size-18 rounded-full" />
+        <div className="space-y-2">
+          <StorefrontSkeleton className="h-4 w-36" />
+          <StorefrontSkeleton className="h-3.5 w-48" />
+        </div>
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="space-y-2">
+            <StorefrontSkeleton className="h-3.5 w-24" />
+            <StorefrontSkeleton className="h-11 w-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AccountDetailSkeletonBody() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 2 }, (_, index) => (
+        <div key={index} className="rounded-lg border bg-background p-5 sm:p-6">
+          <StorefrontSkeleton className="h-5 w-40" />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 4 }, (_, row) => (
+              <div key={row} className="space-y-2">
+                <StorefrontSkeleton className="h-3.5 w-20" />
+                <StorefrontSkeleton className="h-4 w-32" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AccountListSkeletonBody() {
+  return (
+    <div className="space-y-3">
+      <StorefrontSkeleton className="h-12 w-full rounded-none" />
+      <AccountResultRows count={4} />
+    </div>
+  );
+}
+
+const ACCOUNT_SKELETON_BODIES: Record<AccountContentSkeletonVariant, () => React.ReactElement> = {
+  form: AccountFormSkeletonBody,
+  detail: AccountDetailSkeletonBody,
+  list: AccountListSkeletonBody,
+};
+
 export function AccountContentSkeleton({
   label,
   variant,
@@ -200,49 +257,11 @@ export function AccountContentSkeleton({
   label: string;
   variant: AccountContentSkeletonVariant;
 }) {
+  const Body = ACCOUNT_SKELETON_BODIES[variant];
   return (
     <LoadingRegion label={label} className="space-y-4 py-2 font-studio">
       <StorefrontSkeleton className="h-6 w-44" />
-      {variant === 'form' ? (
-        <div className="rounded-none border bg-background px-6 py-8 sm:px-8">
-          <div className="mb-8 flex items-center gap-4">
-            <StorefrontSkeleton className="size-18 rounded-full" />
-            <div className="space-y-2">
-              <StorefrontSkeleton className="h-4 w-36" />
-              <StorefrontSkeleton className="h-3.5 w-48" />
-            </div>
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2">
-            {Array.from({ length: 6 }, (_, index) => (
-              <div key={index} className="space-y-2">
-                <StorefrontSkeleton className="h-3.5 w-24" />
-                <StorefrontSkeleton className="h-11 w-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : variant === 'detail' ? (
-        <div className="space-y-4">
-          {Array.from({ length: 2 }, (_, index) => (
-            <div key={index} className="rounded-lg border bg-background p-5 sm:p-6">
-              <StorefrontSkeleton className="h-5 w-40" />
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                {Array.from({ length: 4 }, (_, row) => (
-                  <div key={row} className="space-y-2">
-                    <StorefrontSkeleton className="h-3.5 w-20" />
-                    <StorefrontSkeleton className="h-4 w-32" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <StorefrontSkeleton className="h-12 w-full rounded-none" />
-          <AccountResultRows count={4} />
-        </div>
-      )}
+      <Body />
     </LoadingRegion>
   );
 }

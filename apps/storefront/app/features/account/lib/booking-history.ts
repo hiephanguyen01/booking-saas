@@ -6,15 +6,15 @@ import type {
   CustomerReviewItem,
   QuoteLineItem,
 } from '@booking/contracts';
-import { createTranslator, type Locale } from '@booking/i18n';
+import type { Locale } from '@booking/i18n';
+import { localeTranslator } from '~/lib/translator';
 import {
   cancellationCutoffParts,
   cancellationPolicyLines as sharedCancellationPolicyLines,
   type CancellationPolicyLine,
 } from '~/lib/cancellation-policy';
-import { intlLocale } from '~/lib/intl';
 import { subtractMoney } from '~/lib/money';
-import { dateOnlyInTz, nightsBetween } from '~/lib/time';
+import { bookingDateInTz, bookingTimeInTz, dateOnlyInTz, nightsBetween } from '~/lib/time';
 
 export { cancellationCutoffParts, type CancellationPolicyLine };
 
@@ -141,7 +141,7 @@ export function cancellationPolicyLines(
 }
 
 function durationLabel(booking: BookingResponse, locale: Locale): string {
-  const { t } = createTranslator(locale);
+  const { t } = localeTranslator(locale);
   if (booking.bookingMode === 'daily') {
     const from = dateOnlyInTz(booking.startUtc, booking.resourceTimezone);
     const to = dateOnlyInTz(booking.endUtc, booking.resourceTimezone);
@@ -161,24 +161,8 @@ function durationLabel(booking: BookingResponse, locale: Locale): string {
   });
 }
 
-function dateLabel(value: string, locale: Locale, timezone: string): string {
-  return new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: timezone,
-  }).format(new Date(value));
-}
-
 function timeLabel(startUtc: string, endUtc: string, locale: Locale, timezone: string): string {
-  const formatter = new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: timezone,
-  });
-  return `${formatter.format(new Date(startUtc))} - ${formatter.format(new Date(endUtc))}`;
+  return `${bookingTimeInTz(startUtc, timezone, locale)} - ${bookingTimeInTz(endUtc, timezone, locale)}`;
 }
 
 export function toAccountBookingViewModel(
@@ -200,7 +184,7 @@ export function toAccountBookingViewModel(
     resourceTimezone: booking.resourceTimezone,
     startUtc: booking.startUtc,
     endUtc: booking.endUtc,
-    dateLabel: dateLabel(booking.startUtc, locale, booking.resourceTimezone),
+    dateLabel: bookingDateInTz(booking.startUtc, booking.resourceTimezone, locale),
     timeLabel: timeLabel(booking.startUtc, booking.endUtc, locale, booking.resourceTimezone),
     durationLabel: durationLabel(booking, locale),
     customer: booking.customer,

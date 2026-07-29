@@ -9,6 +9,7 @@ export const enErrors = {
   tenantSuspendedDescription:
     'This booking site is currently unavailable. Please contact the store owner for details.',
   tenantUnavailable: 'This storefront is currently unavailable. Please try again later.',
+  invalidProvinceCode: 'That province code is not valid.',
   api: {
     timeout: 'The request timed out. Please try again.',
     network: 'The service is temporarily unavailable. Please try again.',

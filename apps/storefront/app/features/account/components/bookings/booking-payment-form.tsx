@@ -1,16 +1,9 @@
 import { Button } from '@booking/ui/components/ui/button';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ComponentProps,
-  type FormEvent,
-  type ReactNode,
-} from 'react';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
+import type { ComponentProps, FormEvent, ReactNode } from 'react';
 import { Form, useNavigation } from 'react-router';
-import { createSubmissionLock } from '~/lib/submission-lock';
-import { isBookingPaymentNavigation } from '~/features/account/lib/booking-payment-navigation';
+import { isPendingIntent } from '~/lib/form-navigation';
 
 export function BookingPaymentForm({
   action,
@@ -22,33 +15,13 @@ export function BookingPaymentForm({
   buttonProps?: ComponentProps<typeof Button>;
 }) {
   const navigation = useNavigation();
-  const submitLockRef = useRef(createSubmissionLock());
-  const navigationWasBusyRef = useRef(false);
-  const [locked, setLocked] = useState(false);
-  const paymentPending = isBookingPaymentNavigation(navigation);
-
-  useEffect(() => {
-    if (paymentPending) {
-      navigationWasBusyRef.current = true;
-      return;
-    }
-
-    if (navigation.state === 'idle' && navigationWasBusyRef.current) {
-      navigationWasBusyRef.current = false;
-      submitLockRef.current.release();
-      setLocked(false);
-    }
-  }, [navigation.state, paymentPending]);
+  const paymentPending = isPendingIntent(navigation, 'pay');
+  const { busy: pending, run } = useSubmissionGuard(paymentPending ? 'submitting' : 'idle');
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    if (!submitLockRef.current.tryAcquire()) {
-      event.preventDefault();
-      return;
-    }
-    setLocked(true);
+    // The browser performs the submit; the guard only decides whether it may start.
+    if (!run(() => undefined)) event.preventDefault();
   }
-
-  const pending = locked || paymentPending;
 
   return (
     <Form method="post" action={action} onSubmit={handleSubmit}>

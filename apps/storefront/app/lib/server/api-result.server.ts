@@ -1,5 +1,7 @@
-import type { ApiResult } from '@booking/api-client';
-import { createTranslator, type Locale } from '@booking/i18n';
+import type { ApiFailure, ApiResult } from '@booking/api-client';
+import type { TranslationKey } from '@booking/i18n';
+import { localeTranslator } from '~/lib/translator';
+import { resolveLocale } from './i18n.server';
 
 const SAFE_ERROR_CODE_RE = /^[A-Z][A-Z0-9_]{1,63}$/;
 const SAFE_FIELD_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/;
@@ -54,19 +56,17 @@ function safeFieldErrors(
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
+/** Every other failure — including a plain `http` status — reads as the generic error. */
+const FAILURE_MESSAGE_KEYS: Partial<Record<ApiFailure, TranslationKey>> = {
+  timeout: 'errors.api.timeout',
+  network: 'errors.api.network',
+  'invalid-response': 'errors.api.invalidResponse',
+};
+
 function safeFailureMessage(request: Request, result: ApiResult<unknown>): string {
-  const locale: Locale = /^\/en(?:\/|$)/.test(new URL(request.url).pathname) ? 'en' : 'vi';
-  const { t } = createTranslator(locale);
-  if (result.failure === 'timeout') {
-    return t('errors.api.timeout');
-  }
-  if (result.failure === 'network') {
-    return t('errors.api.network');
-  }
-  if (result.failure === 'invalid-response') {
-    return t('errors.api.invalidResponse');
-  }
-  return t('errors.api.generic');
+  const { t } = localeTranslator(resolveLocale(request, 'vi'));
+  const key = (result.failure && FAILURE_MESSAGE_KEYS[result.failure]) || 'errors.api.generic';
+  return t(key);
 }
 
 /**

@@ -10,6 +10,7 @@ import type { loadProviderRoute } from '~/features/provider/server/provider-rout
 import { useLocale } from '~/hooks/use-locale';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { intlLocale } from '~/lib/intl';
+import { nameInitials } from '~/lib/ui';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
 export function ProviderProfilePage({
@@ -37,7 +38,9 @@ export function ProviderProfilePage({
                   {profile.logoUrl ? (
                     <AvatarImage src={profile.logoUrl} alt={profile.name} />
                   ) : null}
-                  <AvatarFallback className="text-2xl">{initials(profile.name)}</AvatarFallback>
+                  <AvatarFallback className="text-2xl">
+                    {nameInitials(profile.name, 'BK')}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="pb-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -147,16 +150,5 @@ function Stat({
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
     </div>
-  );
-}
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || 'BK'
   );
 }

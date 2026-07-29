@@ -3,6 +3,7 @@ import {
   reviewMediaPresignInputSchema,
   type PresignUploadResponse,
 } from '@booking/contracts';
+import { requestBodyFailureStatus } from '~/lib/server/request-body.server';
 import { apiPost } from '~/lib/server/api.server';
 import { getOptionalAuth } from '~/lib/server/auth.server';
 import { readJsonRequestBody } from '~/lib/server/json-request.server';
@@ -24,7 +25,7 @@ export async function handleReviewMediaUploadPresignAction(request: Request): Pr
             ? 'Review media upload request is too large.'
             : 'Invalid review media upload request.',
       },
-      body.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400,
+      requestBodyFailureStatus(body.code),
     );
   }
 

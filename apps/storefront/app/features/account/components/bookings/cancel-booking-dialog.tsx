@@ -61,7 +61,7 @@ export function CancelBookingDialog({
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-none border-0 p-6 shadow-2xl sm:max-w-[562px] sm:p-8">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold text-[#202a3a]">
+          <DialogTitle className="text-2xl font-semibold text-foreground">
             {t('bookings.cancelDialog.title')}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -73,9 +73,9 @@ export function CancelBookingDialog({
           <CancellationPolicyList booking={booking} locale={locale} />
         </div>
 
-        <Alert className="rounded-lg border-0 bg-[#fff2bd] px-4 py-3 text-[#ef8b00]">
+        <Alert className="rounded-lg border-0 bg-amber-100 px-4 py-3 text-amber-600">
           <CircleAlert />
-          <AlertDescription className="text-sm leading-5 text-[#ef8b00]">
+          <AlertDescription className="text-sm leading-5 text-amber-600">
             {t('bookings.cancelDialog.warning')}
           </AlertDescription>
         </Alert>
@@ -93,11 +93,11 @@ export function CancelBookingDialog({
             {REASON_KEYS.map((key) => (
               <label
                 key={key}
-                className="flex cursor-pointer items-start gap-3 text-sm leading-5 text-[#263247]"
+                className="flex cursor-pointer items-start gap-3 text-sm leading-5 text-foreground"
               >
                 <RadioGroupItem
                   value={key}
-                  className="mt-0.5 border-[#526078] text-[#ff3f44] data-[state=checked]:border-[#ff3f44]"
+                  className="mt-0.5 border-foreground text-primary data-[state=checked]:border-primary"
                 />
                 <span className="pt-px">{t(`bookings.cancelDialog.reasons.${key}`)}</span>
               </label>
@@ -113,7 +113,7 @@ export function CancelBookingDialog({
                 disabled={submitting}
                 placeholder={t('bookings.cancelDialog.otherPlaceholder')}
                 aria-invalid={selected === 'other' && otherReason.trim().length === 0}
-                className="min-h-11 rounded-sm border-[#ff8e91] text-sm"
+                className="min-h-11 rounded-sm border-primary/40 text-sm"
               />
               <p className="mt-1 text-xs text-muted-foreground">{otherReason.length}/500</p>
             </div>
@@ -130,7 +130,7 @@ export function CancelBookingDialog({
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 rounded-sm border-[#263247] text-[#263247]"
+                className="h-12 rounded-sm border-foreground text-foreground"
                 disabled={submitting}
               >
                 {t('bookings.cancelDialog.back')}
@@ -138,7 +138,7 @@ export function CancelBookingDialog({
             </DialogClose>
             <Button
               type="submit"
-              className="h-12 rounded-sm bg-[#ff3f44] text-white hover:bg-[#e93439]"
+              className="h-12 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={!reason || submitting}
             >
               {submitting

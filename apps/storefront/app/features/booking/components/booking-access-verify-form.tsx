@@ -1,12 +1,12 @@
 import type { Locale } from '@booking/i18n';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
+import type { FormEvent } from 'react';
 import { Form, useNavigation } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { createSubmissionLock } from '~/lib/submission-lock';
-import { isBookingAccessNavigation } from '~/features/booking/lib/booking-access-navigation';
+import { isPendingIntent } from '~/lib/form-navigation';
 
 export function BookingAccessVerifyForm({
   code,
@@ -19,31 +19,12 @@ export function BookingAccessVerifyForm({
 }) {
   const { t } = useTranslation(NsI18n.Booking);
   const navigation = useNavigation();
-  const submitLockRef = useRef(createSubmissionLock());
-  const navigationWasBusyRef = useRef(false);
-  const [locked, setLocked] = useState(false);
-  const verificationPending = isBookingAccessNavigation(navigation);
-  const submitting = locked || verificationPending;
-
-  useEffect(() => {
-    if (verificationPending) {
-      navigationWasBusyRef.current = true;
-      return;
-    }
-
-    if (navigation.state === 'idle' && navigationWasBusyRef.current) {
-      navigationWasBusyRef.current = false;
-      submitLockRef.current.release();
-      setLocked(false);
-    }
-  }, [navigation.state, verificationPending]);
+  const verificationPending = isPendingIntent(navigation, 'verify-access');
+  const { busy: submitting, run } = useSubmissionGuard(verificationPending ? 'submitting' : 'idle');
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    if (!submitLockRef.current.tryAcquire()) {
-      event.preventDefault();
-      return;
-    }
-    setLocked(true);
+    // The browser performs the submit; the guard only decides whether it may start.
+    if (!run(() => undefined)) event.preventDefault();
   }
 
   return (

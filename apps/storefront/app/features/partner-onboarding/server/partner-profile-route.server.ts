@@ -1,4 +1,6 @@
 import { partnerOnboardingProfileSchema } from '@booking/contracts';
+import { requestBodyFailureStatus } from '~/lib/server/request-body.server';
+import { storefrontPaths } from '~/constants/paths';
 import { redirect } from 'react-router';
 import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
@@ -11,15 +13,13 @@ import { partnerApplyPayloadFor } from '~/features/partner-onboarding/server/par
 import {
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
-  partnerStartPath,
-  partnerStepPath,
   requirePartnerPhase,
 } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
 export async function loadPartnerProfileRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   await requirePartnerPhase(request, 'partner_registration_profile', locale);
-  const auth = requireAuth(partnerStartPath(locale));
+  const auth = requireAuth(storefrontPaths.becomePartner(locale));
   const tenant = getCurrentStorefrontTenant();
   const provinces = await loadAdministrativeProvinces(request);
   return { email: auth.info.user.email, tenantName: tenant.name, provinces };
@@ -28,13 +28,13 @@ export async function loadPartnerProfileRoute(request: Request, localeParam?: st
 export async function submitPartnerProfileRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   const flow = await requirePartnerPhase(request, 'partner_registration_profile', locale);
-  const auth = requireAuth(partnerStartPath(locale));
+  const auth = requireAuth(storefrontPaths.becomePartner(locale));
   const tenant = getCurrentStorefrontTenant();
 
   const body = await readJsonRequestBody(request);
   if (!body.ok) {
     return failedPartnerOnboarding({
-      status: body.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400,
+      status: requestBodyFailureStatus(body.code),
       code: body.code,
     });
   }
@@ -53,5 +53,5 @@ export async function submitPartnerProfileRoute(request: Request, localeParam?: 
     email: flow.record.email,
     maskedDestination: flow.record.maskedDestination,
   });
-  return redirect(partnerStepPath(locale, 'done'));
+  return redirect(storefrontPaths.becomePartnerStep(locale, 'done'));
 }

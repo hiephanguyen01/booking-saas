@@ -6,6 +6,7 @@ import { ChevronDown, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { usePublicReviewsSectionController } from '~/hooks/use-public-reviews-section-controller';
+import { nameInitials } from '~/lib/ui';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { RatingStars } from './rating-stars';
 import { ReviewTime } from './review-time';
@@ -162,19 +163,8 @@ function ReviewAvatar({ name, className }: { name: string; className: string }) 
   return (
     <Avatar className={cn('shrink-0', className)}>
       <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-        {initials(name)}
+        {nameInitials(name, 'BK')}
       </AvatarFallback>
     </Avatar>
-  );
-}
-
-function initials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || 'BK'
   );
 }

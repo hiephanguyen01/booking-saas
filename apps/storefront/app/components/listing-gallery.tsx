@@ -4,12 +4,12 @@ import {
 } from '@booking/ui/components/media/media-viewer-dialog';
 import { Expand, ImageIcon } from 'lucide-react';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
-import { useStudioGalleryController } from '~/hooks/use-studio-gallery-controller';
+import { useListingGalleryController } from '~/hooks/use-listing-gallery-controller';
 import { NsI18n, useTranslation } from '@booking/i18n';
 
 const TILE_COUNT = 6;
 
-export function StudioGallery({ photos, title }: { photos: string[]; title: string }) {
+export function ListingGallery({ photos, title }: { photos: string[]; title: string }) {
   const { t } = useTranslation(NsI18n.Listing);
   const viewerLabels = useMediaViewerLabels();
   const {
@@ -21,7 +21,7 @@ export function StudioGallery({ photos, title }: { photos: string[]; title: stri
     showPhoto,
     triggerRef,
     visiblePhotos,
-  } = useStudioGalleryController(photos);
+  } = useListingGalleryController(photos);
   const mediaItems: MediaViewerItem[] = photos.map((photo, index) => ({
     kind: 'image',
     url: photo,

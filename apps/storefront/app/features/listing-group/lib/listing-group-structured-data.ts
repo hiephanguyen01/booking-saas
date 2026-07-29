@@ -1,10 +1,16 @@
-import { createTranslator } from '@booking/i18n';
+import type { Locale } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
+import {
+  breadcrumbNode,
+  organizationNode,
+  serviceNode,
+  structuredDataGraph,
+} from '~/lib/structured-data';
 
 type ListingGroupStructuredDataInput = {
   tenant: { name: string };
   canonical: string;
-  locale: 'vi' | 'en';
+  locale: Locale;
   group: {
     title: string;
     description?: string | null;
@@ -22,60 +28,30 @@ export function buildListingGroupStructuredData({
   group,
 }: ListingGroupStructuredDataInput) {
   const origin = new URL(canonical).origin;
-  const homeLabel = createTranslator(locale).t('common.breadcrumbHome');
 
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Organization',
-        '@id': `${origin}/#organization`,
-        name: tenant.name,
-        url: origin,
-      },
-      {
-        '@type': 'CollectionPage',
-        '@id': `${canonical}#webpage`,
-        url: canonical,
-        name: group.title,
-        description: group.description,
-        image: group.photos,
-        hasPart: group.listings.map((listing) => ({
-          '@type': 'Service',
-          name: listing.title,
-          url: new URL(storefrontPaths.listing(locale, listing.slug), canonical).toString(),
-        })),
-      },
-      {
+  return structuredDataGraph([
+    organizationNode(origin, tenant.name),
+    {
+      '@type': 'CollectionPage',
+      '@id': `${canonical}#webpage`,
+      url: canonical,
+      name: group.title,
+      description: group.description,
+      image: group.photos,
+      hasPart: group.listings.map((listing) => ({
         '@type': 'Service',
-        '@id': `${canonical}#service`,
-        name: group.title,
-        image: group.photos,
-        provider: { '@id': `${origin}/#organization` },
-        ...(group.reviewCount > 0 && group.ratingAvg !== null
-          ? {
-              aggregateRating: {
-                '@type': 'AggregateRating',
-                ratingValue: group.ratingAvg,
-                reviewCount: group.reviewCount,
-                bestRating: 5,
-                worstRating: 1,
-              },
-            }
-          : {}),
-      },
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          {
-            '@type': 'ListItem',
-            position: 1,
-            name: homeLabel,
-            item: new URL(`/${locale}`, canonical).toString(),
-          },
-          { '@type': 'ListItem', position: 2, name: group.title, item: canonical },
-        ],
-      },
-    ],
-  };
+        name: listing.title,
+        url: new URL(storefrontPaths.listing(locale, listing.slug), canonical).toString(),
+      })),
+    },
+    serviceNode({
+      canonical,
+      origin,
+      name: group.title,
+      images: group.photos,
+      reviewCount: group.reviewCount,
+      ratingAvg: group.ratingAvg,
+    }),
+    breadcrumbNode(locale, canonical, group.title),
+  ]);
 }

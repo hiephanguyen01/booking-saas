@@ -3,6 +3,7 @@ import {
   presignUploadResponseSchema,
   type PresignUploadResponse,
 } from '@booking/contracts';
+import { requestBodyFailureStatus } from '~/lib/server/request-body.server';
 import { apiFailureStatus, publicPost } from '~/lib/server/api.server';
 import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { allowedStorageUploadUrl } from '~/features/storage/server/upload-origin.server';
@@ -25,7 +26,7 @@ export async function handlePartnerUploadPresignAction(request: Request): Promis
             ? 'Yêu cầu tải lên vượt quá kích thước cho phép.'
             : 'Yêu cầu tải lên không hợp lệ.',
       },
-      body.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400,
+      requestBodyFailureStatus(body.code),
     );
   }
 

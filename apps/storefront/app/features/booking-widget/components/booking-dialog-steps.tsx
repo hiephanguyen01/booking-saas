@@ -8,15 +8,15 @@ import type { ReactNode } from 'react';
 import { AvailabilitySkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
+import type { ScheduledBookingMode } from '~/features/booking-widget/lib/booking-modes';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useBookingDialogStepsController } from '~/features/booking-widget/hooks/use-booking-dialog-steps-controller';
 
-export type ListingBookingMode = 'hourly' | 'daily';
 export type RoomBookingDateRange = { from: Date | undefined; to?: Date | undefined };
 
 interface BookingDialogStepsProps {
-  mode: ListingBookingMode;
-  supportedModes: ListingBookingMode[];
+  mode: ScheduledBookingMode;
+  supportedModes: ScheduledBookingMode[];
   fixedPackages: boolean;
   packageOptions: PublicPackageOption[];
   packageId: string | null;
@@ -30,7 +30,6 @@ interface BookingDialogStepsProps {
   availability: AvailabilityResponse | null;
   availabilityPending: boolean;
   availabilityError: boolean;
-  hasAvailability: boolean;
   requestError: boolean;
   slots: HourlySlot[];
   selectedSlots: HourlySlot[];
@@ -38,7 +37,7 @@ interface BookingDialogStepsProps {
   selectionUnavailable: boolean;
   quotePending: boolean;
   quoteError: boolean;
-  onSwitchMode: (mode: ListingBookingMode) => void;
+  onSwitchMode: (mode: ScheduledBookingMode) => void;
   onSelectPackage: (packageId: string) => void;
   onSelectDate: (date: string) => void;
   onChangeDate: () => void;
@@ -104,9 +103,9 @@ function BookingModeSwitch({
   supportedModes,
   onSwitchMode,
 }: {
-  mode: ListingBookingMode;
-  supportedModes: ListingBookingMode[];
-  onSwitchMode: (mode: ListingBookingMode) => void;
+  mode: ScheduledBookingMode;
+  supportedModes: ScheduledBookingMode[];
+  onSwitchMode: (mode: ScheduledBookingMode) => void;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   if (supportedModes.length <= 1) return null;
@@ -195,12 +194,31 @@ function BookingPackageSelector({
   );
 }
 
+type HourlyStepProps = Pick<
+  BookingDialogStepsProps,
+  | 'date'
+  | 'availability'
+  | 'availabilityPending'
+  | 'availabilityError'
+  | 'requestError'
+  | 'quotePending'
+  | 'quoteError'
+  | 'onChangeDate'
+  | 'onToggleSlot'
+  | 'onRetryHourly'
+  | 'onRetryQuote'
+> & { packageFlow: boolean; model: BookingDialogStepModel };
+
+type DailyStepProps = Pick<
+  BookingDialogStepsProps,
+  'availabilityPending' | 'requestError' | 'onSelectRange' | 'onRetryDaily'
+> & { model: BookingDialogStepModel };
+
 function HourlyBookingStep({
   date,
   availability,
   availabilityPending,
   availabilityError,
-  hasAvailability,
   requestError,
   quotePending,
   quoteError,
@@ -210,12 +228,12 @@ function HourlyBookingStep({
   onToggleSlot,
   onRetryHourly,
   onRetryQuote,
-}: BookingDialogStepsProps & { packageFlow: boolean; model: BookingDialogStepModel }) {
+}: HourlyStepProps) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const titleId = packageFlow ? 'packages-day-step-title' : 'room-day-step-title';
-  // The two flows load and fail through different fetchers: the packages page keeps its
-  // availability across package switches, the room dialog refetches per request.
-  const loaded = packageFlow ? hasAvailability : Boolean(availability);
+  const loaded = Boolean(availability);
+  // The two flows fail differently: the packages page reports the availability
+  // request on its own, the room dialog surfaces any failed request in the step.
   const failed = packageFlow ? availabilityError : requestError;
 
   if (!date) {
@@ -293,7 +311,7 @@ function DailyBookingStep({
   model,
   onSelectRange,
   onRetryDaily,
-}: BookingDialogStepsProps & { model: BookingDialogStepModel }) {
+}: DailyStepProps) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
     <section aria-labelledby="room-range-step-title" aria-busy={availabilityPending}>

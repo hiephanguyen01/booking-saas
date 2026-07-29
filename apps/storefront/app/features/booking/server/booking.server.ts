@@ -1,6 +1,5 @@
 import type { ApiResult } from '@booking/api-client';
 import type {
-  AutoCampaignResponse,
   AvailabilityMode,
   AvailabilityResponse,
   BookingAccessResponse,
@@ -16,7 +15,6 @@ import type {
   ValidatePromoResponse,
 } from '@booking/contracts';
 import {
-  autoCampaignResponseSchema,
   availabilityResponseSchema,
   bookingAccessResponseSchema,
   bookingOtpResponseSchema,
@@ -74,16 +72,6 @@ export function validatePromo(
 ): Promise<ApiResult<ValidatePromoResponse>> {
   return optionalAuthPost(request, '/public/checkout/validate-promo', input, {
     schema: validatePromoResponseSchema,
-  });
-}
-
-/** The best auto-applied campaign for a slot (§12.1), or null when none applies. */
-export function resolveAutoCampaign(
-  request: Request,
-  input: { listingId: string; amount: string; start?: string; end?: string },
-): Promise<ApiResult<AutoCampaignResponse>> {
-  return optionalAuthPost(request, '/public/checkout/auto-campaigns', input, {
-    schema: autoCampaignResponseSchema,
   });
 }
 

@@ -5,6 +5,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import type { RoomTrust } from '~/features/listing-group/lib/listing-group-types';
 import { Link } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
+import { nameInitials } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 
 /**
@@ -24,7 +25,7 @@ export function ProviderCard({ trust }: { trust: RoomTrust | null }) {
       <div className="flex items-center gap-3">
         <Avatar className="size-11">
           {trust?.partnerLogoUrl ? <AvatarImage src={trust.partnerLogoUrl} alt="" /> : null}
-          <AvatarFallback>{initials(partnerName)}</AvatarFallback>
+          <AvatarFallback>{nameInitials(partnerName, 'ST')}</AvatarFallback>
         </Avatar>
         <p className="min-w-0 truncate font-semibold">{partnerName}</p>
       </div>
@@ -48,16 +49,5 @@ export function ProviderCard({ trust }: { trust: RoomTrust | null }) {
         </Link>
       </Button>
     </div>
-  );
-}
-
-function initials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || 'ST'
   );
 }

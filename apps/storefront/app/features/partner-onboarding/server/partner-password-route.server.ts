@@ -3,6 +3,7 @@ import {
   authPasswordCompleteInputSchema,
   type AuthFlowCompleteResponse,
 } from '@booking/contracts';
+import { storefrontPaths } from '~/constants/paths';
 import { z } from 'zod';
 import { backendLogin, publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
@@ -14,7 +15,6 @@ import {
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
   partnerFormFields,
-  partnerStepPath,
   readPartnerFormData,
   requirePartnerPhase,
   requirePartnerPhaseOnly,
@@ -81,6 +81,6 @@ export async function submitPartnerPasswordRoute(request: Request, localeParam?:
   return createUserSession(
     request,
     { ...login.tokens, userId: login.user.id },
-    partnerStepPath(locale, 'profile'),
+    storefrontPaths.becomePartnerStep(locale, 'profile'),
   );
 }

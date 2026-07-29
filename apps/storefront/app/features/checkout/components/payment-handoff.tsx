@@ -2,9 +2,9 @@ import type { CheckoutDestination } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Spinner } from '@booking/ui/components/ui/spinner';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, type FormEvent } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import { createSubmissionLock } from '~/lib/submission-lock';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
 
 type FormPostDestination = Extract<CheckoutDestination, { type: 'form_post' }>;
 
@@ -13,8 +13,7 @@ type FormPostDestination = Extract<CheckoutDestination, { type: 'form_post' }>;
 export function PaymentHandoff({ destination }: { destination: FormPostDestination }) {
   const formRef = useRef<HTMLFormElement>(null);
   const hasAutoSubmittedRef = useRef(false);
-  const submitLockRef = useRef(createSubmissionLock());
-  const [submitting, setSubmitting] = useState(false);
+  const { busy: submitting, run } = useSubmissionGuard('idle');
   const { t } = useTranslation(NsI18n.Checkout);
 
   useEffect(() => {
@@ -28,11 +27,8 @@ export function PaymentHandoff({ destination }: { destination: FormPostDestinati
   }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    if (!submitLockRef.current.tryAcquire()) {
-      event.preventDefault();
-      return;
-    }
-    setSubmitting(true);
+    // The page hands off to the gateway and unloads, so the guard never releases.
+    if (!run(() => undefined)) event.preventDefault();
   }
 
   return (

@@ -9,7 +9,7 @@ import type { AccountBookingViewModel } from '~/features/account/lib/booking-his
 import {
   AccountPanel,
   CancellationPolicyList,
-  StudioThumbnail,
+  ListingThumbnail,
 } from '~/features/account/components/shared/account-primitives';
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
 import { BookingFinancialSummary } from './booking-financial-summary';
@@ -49,7 +49,7 @@ export function BookingHistoryCard({
               className="aspect-[4/3] w-full rounded-lg object-cover"
             />
           ) : (
-            <StudioThumbnail
+            <ListingThumbnail
               label={booking.listingTitle}
               className="aspect-[4/3] w-full rounded-lg border border-border/70"
             />

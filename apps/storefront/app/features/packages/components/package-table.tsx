@@ -10,14 +10,15 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { cn } from '@booking/ui/lib/utils';
-import { Aperture, Check, Clock3, Expand, FileImage, Images } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Aperture, Check, Clock3, Expand, Images } from 'lucide-react';
+import { useMediaGallery } from '~/hooks/use-media-gallery';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import type { PublicPackageOption } from '~/lib/package-options';
+import { packageDurationLabel, type PublicPackageOption } from '~/lib/package-options';
+import { AttributeSpecCards } from '~/components/attribute-spec-cards';
+import { specCards } from '~/features/listing-group/lib/room-attributes';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { formatVnd } from '~/lib/ui';
-import { packageDetails, packageDurationHours } from '~/lib/package-details';
 import { PackageMediaDetails } from '~/components/package-media-details';
 
 export function PackageTable({
@@ -33,22 +34,14 @@ export function PackageTable({
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const viewerLabels = useMediaViewerLabels();
-  const [activeMedia, setActiveMedia] = useState<{ packageId: string; index: number } | null>(null);
-  const mediaTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const activePackage = activeMedia
-    ? (packages.find((item) => item.id === activeMedia.packageId) ?? null)
-    : null;
+  const gallery = useMediaGallery(packages, (item) => item.id);
+  const activePackage = gallery.item;
   const mediaItems: MediaViewerItem[] =
     activePackage?.photos.map((photo, index) => ({
       kind: 'image',
       url: photo,
       alt: t('group.photoAlt', { title: activePackage.name, index: index + 1 }),
     })) ?? [];
-
-  function openPackageMedia(packageId: string, index: number, trigger: HTMLButtonElement): void {
-    mediaTriggerRef.current = trigger;
-    setActiveMedia({ packageId, index });
-  }
 
   return (
     <SectionCard id="packages" aria-labelledby="packages-title" className="scroll-mt-28">
@@ -95,7 +88,7 @@ export function PackageTable({
                     listing={listing}
                     selected={selectedId === item.id}
                     onSelect={onSelect}
-                    onOpenMedia={openPackageMedia}
+                    onOpenMedia={gallery.open}
                   />
                 ))}
               </tbody>
@@ -110,7 +103,7 @@ export function PackageTable({
                 listing={listing}
                 selected={selectedId === item.id}
                 onSelect={onSelect}
-                onOpenMedia={openPackageMedia}
+                onOpenMedia={gallery.open}
               />
             ))}
           </div>
@@ -118,21 +111,13 @@ export function PackageTable({
       )}
 
       <PackageMediaViewerDialog
-        open={Boolean(activePackage)}
+        {...gallery.dialogProps}
         items={mediaItems}
-        activeIndex={activeMedia?.index ?? 0}
-        onOpenChange={(open) => {
-          if (!open) setActiveMedia(null);
-        }}
-        onActiveIndexChange={(index) => {
-          setActiveMedia((current) => (current ? { ...current, index } : current));
-        }}
         labels={viewerLabels}
         title={activePackage?.name ?? t('packages.servicePackages')}
         description={t('packages.mediaViewerDescription', {
           name: activePackage?.name ?? t('packages.servicePackages'),
         })}
-        returnFocusRef={mediaTriggerRef}
         details={
           activePackage ? <PackageMediaDetails item={activePackage} listing={listing} /> : null
         }
@@ -145,7 +130,7 @@ function PackageRow({ item, listing, selected, onSelect, onOpenMedia }: PackageP
   return (
     <tr className={cn('border-t align-top', selected && 'bg-primary/5')}>
       <td className="p-5">
-        <PackageSummary item={item} listing={listing} onOpenMedia={onOpenMedia} />
+        <PackageSummary item={item} onOpenMedia={onOpenMedia} />
       </td>
       <td className="border-l p-5">
         <PackageFacts item={item} listing={listing} />
@@ -197,12 +182,10 @@ interface PackageProps {
 
 function PackageSummary({
   item,
-  listing,
   onOpenMedia,
   hidePhotos = false,
-}: Pick<PackageProps, 'item' | 'listing' | 'onOpenMedia'> & { hidePhotos?: boolean }) {
+}: Pick<PackageProps, 'item' | 'onOpenMedia'> & { hidePhotos?: boolean }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const details = packageDetails(listing.attributes);
   return (
     <div className="space-y-4">
       <h3 className="text-base font-semibold">{item.name}</h3>
@@ -216,48 +199,37 @@ function PackageSummary({
       <p className="text-sm leading-6 text-muted-foreground">
         {item.description || t('packages.packageDescriptionFallback')}
       </p>
-      {details.style ? (
-        <p className="flex items-start gap-2 text-sm">
-          <Aperture className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          {t('packages.photographyStyle', { value: details.style })}
-        </p>
-      ) : null}
     </div>
   );
 }
 
+/**
+ * Duration, then whatever the listing type's attribute schema declares — labels,
+ * icons and order are tenant-authored, so a photography package and a coaching
+ * package each describe themselves without a branch here.
+ */
 function PackageFacts({ item, listing }: Pick<PackageProps, 'item' | 'listing'>) {
   const { t } = useTranslation(NsI18n.Listing);
-  const details = packageDetails(listing.attributes);
+  const duration = packageDurationLabel(item);
   return (
     <div className="space-y-3 text-sm">
       <p className="flex items-start gap-2">
         <Clock3 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-        {t('packages.packageDuration', { count: packageDurationHours(item) })}
+        {t(duration.key, { count: duration.count })}
       </p>
-      {details.editedPhotos !== null ? (
-        <p className="flex items-start gap-2">
-          <Images className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          {t('packages.editedPhotos', { count: details.editedPhotos })}
-        </p>
-      ) : null}
-      {details.rawFiles !== null ? (
-        <p className="flex items-start gap-2">
-          <FileImage className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          {t(details.rawFiles ? 'packages.rawFilesIncluded' : 'packages.rawFilesNotIncluded')}
-        </p>
-      ) : null}
+      <AttributeSpecCards cards={specCards(listing.attributes, listing.attributeSchema)} />
     </div>
   );
 }
 
 function PackagePrice({ item }: { item: PublicPackageOption }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const duration = packageDurationLabel(item);
   return (
     <div>
       <strong className="text-lg text-primary">{formatVnd(item.price)}</strong>
       <p className="mt-1 text-xs text-muted-foreground">
-        {t('packages.packageDuration', { count: packageDurationHours(item) })}
+        {t(duration.key, { count: duration.count })}
       </p>
     </div>
   );

@@ -1,4 +1,5 @@
 import type { Locale } from '@booking/i18n';
+import { storefrontPaths } from '~/constants/paths';
 import { data, redirect } from 'react-router';
 import {
   authFlow,
@@ -19,10 +20,6 @@ export interface PartnerOnboardingActionData {
   fieldErrors?: Record<string, string[]>;
   resendAfterSec?: number;
 }
-
-export const partnerStartPath = (locale: Locale) => `/${locale}/become-partner`;
-export const partnerStepPath = (locale: Locale, step: string) =>
-  `${partnerStartPath(locale)}/${step}`;
 
 export const partnerFormFields = (form: FormData) => Object.fromEntries(form.entries());
 export const readPartnerFormData = (request: Request) =>
@@ -59,7 +56,7 @@ export function failedPartnerOnboarding(result: { status: number; code?: string;
  */
 export async function requirePartnerPhase(request: Request, phase: AuthFlowPhase, locale: Locale) {
   const flow = await authFlow.read(request);
-  if (!flow || flow.record.phase !== phase) throw redirect(partnerStartPath(locale));
+  if (!flow || flow.record.phase !== phase) throw redirect(storefrontPaths.becomePartner(locale));
   return {
     ...flow,
     resendAfterSec: Math.max(

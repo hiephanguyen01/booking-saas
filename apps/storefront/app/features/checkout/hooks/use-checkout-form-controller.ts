@@ -11,13 +11,13 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigation } from 'react-router';
 import { NsI18n, type ScopedI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { createSubmissionLock } from '~/lib/submission-lock';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
 import { useLocale } from '~/hooks/use-locale';
-import { isCheckoutNavigation } from '~/features/checkout/lib/checkout-submission-state';
+import { isPendingIntent } from '~/lib/form-navigation';
 
 export type CheckoutContactFieldModel = {
   name: 'fullName' | 'phone' | 'email' | 'customerNote';
@@ -70,10 +70,8 @@ export function useCheckoutFormController({
   const { t } = useTranslation(NsI18n.Checkout);
   const navigation = useNavigation();
   const locale = useLocale();
-  const submitLockRef = useRef(createSubmissionLock());
-  const navigationWasBusyRef = useRef(false);
-  const [locked, setLocked] = useState(false);
-  const checkoutPending = isCheckoutNavigation(navigation);
+  const checkoutPending = isPendingIntent(navigation, 'checkout');
+  const { busy: submitting, run } = useSubmissionGuard(checkoutPending ? 'submitting' : 'idle');
   const packageError =
     serverError === 'PACKAGE_UNAVAILABLE' || serverError === 'PACKAGE_DURATION_MISMATCH';
   const contactFields: CheckoutContactFieldModel[] = [
@@ -114,25 +112,9 @@ export function useCheckoutFormController({
     return { value: method, icon: option.icon, label: t(option.label) };
   });
 
-  useEffect(() => {
-    if (checkoutPending) {
-      navigationWasBusyRef.current = true;
-      return;
-    }
-
-    if (navigation.state === 'idle' && navigationWasBusyRef.current) {
-      navigationWasBusyRef.current = false;
-      submitLockRef.current.release();
-      setLocked(false);
-    }
-  }, [checkoutPending, navigation.state]);
-
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    if (!submitLockRef.current.tryAcquire()) {
-      event.preventDefault();
-      return;
-    }
-    setLocked(true);
+    // The browser performs the submit; the guard only decides whether it may start.
+    if (!run(() => undefined)) event.preventDefault();
   }
 
   return {
@@ -142,7 +124,7 @@ export function useCheckoutFormController({
     packageRetryHref: packageError ? storefrontPaths.listing(locale, listingSlug) : null,
     paymentMethodOptions,
     serverErrorMessage: serverError ? checkoutError(serverError, t) : null,
-    submitting: locked || checkoutPending,
+    submitting,
   };
 }
 

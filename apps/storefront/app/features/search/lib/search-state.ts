@@ -31,13 +31,6 @@ export interface StorefrontSearchState {
   page: number;
 }
 
-export interface SearchRoomSummary {
-  slug: string;
-  title: string;
-  price: string;
-  capacity: number | null;
-}
-
 export interface EnrichedSearchListing {
   id: string;
   kind: 'listing' | 'group';
@@ -56,8 +49,6 @@ export interface EnrichedSearchListing {
   reviewCount: number;
   /** Locale-independent; rendered via the listing.perHour/perDay i18n keys. */
   priceUnit: PriceUnit;
-  matchingRoomCount: number;
-  rooms: SearchRoomSummary[];
 }
 
 export interface SearchDateSelection {
@@ -174,6 +165,33 @@ export function parseSearchState(
   };
 }
 
+/**
+ * The date/time params that survive a re-submit, for whichever mode is active.
+ *
+ * One rule with two renderings — `searchContextParams` writes it into a URL, the
+ * catalog filter panel writes it into hidden inputs. Keeping both on this list is
+ * what stops a new mode or time field from being carried by one and dropped by
+ * the other.
+ */
+export function scheduleParams(state: StorefrontSearchState): Array<[string, string]> {
+  if (state.mode === 'hourly' && state.hasDateSelection) {
+    return state.hasTimeSelection
+      ? [
+          ['date', state.date],
+          ['startTime', state.startTime],
+          ['endTime', state.endTime],
+        ]
+      : [['date', state.date]];
+  }
+  if ((state.mode === 'daily' || state.mode === 'inventory') && state.hasDailyRange) {
+    return [
+      ['from', state.from],
+      ['to', state.to],
+    ];
+  }
+  return [];
+}
+
 export function searchContextParams(state: StorefrontSearchState): URLSearchParams {
   const params = new URLSearchParams();
   if (state.q) params.set('q', state.q);
@@ -181,37 +199,13 @@ export function searchContextParams(state: StorefrontSearchState): URLSearchPara
   if (state.mode !== 'none') params.set('mode', state.mode);
   params.set('guests', String(state.guests));
   if (state.mode === 'inventory') params.set('quantity', String(state.quantity));
-  if (state.mode === 'hourly' && state.hasDateSelection) {
-    params.set('date', state.date);
-    if (state.hasTimeSelection) {
-      params.set('startTime', state.startTime);
-      params.set('endTime', state.endTime);
-    }
-  } else if ((state.mode === 'daily' || state.mode === 'inventory') && state.hasDailyRange) {
-    params.set('from', state.from);
-    params.set('to', state.to);
-  }
+  for (const [name, value] of scheduleParams(state)) params.set(name, value);
   return params;
 }
 
 export function withSearchContext(path: string, state: StorefrontSearchState): string {
   const params = searchContextParams(state);
   return `${path}?${params.toString()}`;
-}
-
-export function locationSelectOptions(locations: string[], selected: string): string[] {
-  const values = selected ? [selected, ...locations] : locations;
-  const unique = new Map<string, string>();
-  for (const raw of values) {
-    const value = raw.trim();
-    if (!value) continue;
-    const key = value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLocaleLowerCase('vi');
-    if (!unique.has(key)) unique.set(key, value);
-  }
-  return [...unique.values()].sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
 export function dateSelectionForMode(nextMode: SearchMode): SearchDateSelection {
@@ -263,23 +257,3 @@ export function rangeDates(from: string, to: string): string[] {
   return range ? datesInDailyRange(range) : [];
 }
 
-export function numberAttribute(
-  attributes: Record<string, unknown>,
-  keys: string[],
-): number | null {
-  for (const key of keys) {
-    const raw = attributes[key];
-    const value =
-      typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw.replace(',', '.')) : NaN;
-    if (Number.isFinite(value) && value >= 0) return value;
-  }
-  return null;
-}
-
-export function matchesArea(area: SearchArea, value: number | null): boolean {
-  if (!area || value === null) return true;
-  if (area === 'under-25') return value < 25;
-  if (area === '25-50') return value >= 25 && value < 50;
-  if (area === '50-100') return value >= 50 && value < 100;
-  return value >= 100;
-}

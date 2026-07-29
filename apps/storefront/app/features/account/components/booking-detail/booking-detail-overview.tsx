@@ -10,7 +10,7 @@ import type {
 } from '~/features/account/lib/booking-history';
 import {
   CancellationPolicyList,
-  StudioThumbnail,
+  ListingThumbnail,
 } from '~/features/account/components/shared/account-primitives';
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
 import { BookingPaymentForm } from '~/features/account/components/bookings/booking-payment-form';
@@ -84,31 +84,31 @@ function ListingSummary({
             className="aspect-[4/3] w-full object-cover"
           />
         ) : (
-          <StudioThumbnail
+          <ListingThumbnail
             label={booking.listingTitle}
-            className="aspect-[4/3] w-full border border-[#d8dee8]"
+            className="aspect-[4/3] w-full border border-border"
           />
         )}
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold leading-6 text-[#263247]">{booking.listingTitle}</h2>
+          <h2 className="text-sm font-semibold leading-6 text-foreground">{booking.listingTitle}</h2>
           {booking.resourceName ? (
             <p className="mt-0.5 text-xs text-muted-foreground">{booking.resourceName}</p>
           ) : null}
-          <p className="mt-2 flex items-start gap-2 text-xs text-[#4d5a70]">
+          <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
             <CalendarDays aria-hidden="true" className="mt-px size-4 shrink-0" />
             <span>{booking.dateLabel}</span>
           </p>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#4d5a70]">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#f1f3f7] px-2 py-1">
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1">
               <Clock3 aria-hidden="true" className="size-3" />
               {booking.timeLabel}
             </span>
-            <span className="rounded-full bg-[#f1f3f7] px-2 py-1">{booking.durationLabel}</span>
+            <span className="rounded-full bg-muted px-2 py-1">{booking.durationLabel}</span>
           </div>
         </div>
       </div>
 
-      <dl className="mt-5 space-y-2 text-xs leading-5 text-[#4d5a70]">
+      <dl className="mt-5 space-y-2 text-xs leading-5 text-muted-foreground">
         <BookingFact
           icon={PackageCheck}
           label={t('bookings.bookingType')}
@@ -130,11 +130,11 @@ function ListingSummary({
       </dl>
 
       {booking.listingDescription ? (
-        <p className="mt-4 border-t border-[#d8dee8] py-4 text-xs leading-5 text-[#5b6678]">
+        <p className="mt-4 border-t border-border py-4 text-xs leading-5 text-muted-foreground">
           {booking.listingDescription}
         </p>
       ) : (
-        <div className="mt-4 border-t border-[#d8dee8]" />
+        <div className="mt-4 border-t border-border" />
       )}
     </div>
   );
@@ -151,8 +151,8 @@ function BookingFact({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[#263247]" />
-      <dt className="font-semibold text-[#263247]">{label}:</dt>
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-foreground" />
+      <dt className="font-semibold text-foreground">{label}:</dt>
       <dd className="min-w-0 break-words">{value}</dd>
     </div>
   );
@@ -184,8 +184,8 @@ function PolicyActions({
   if (!showActions) return null;
 
   return (
-    <div className="mx-5 flex flex-col gap-4 border-t border-[#d8dee8] py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 text-xs leading-5 text-[#4d5a70]">
+    <div className="mx-5 flex flex-col gap-4 border-t border-border py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 text-xs leading-5 text-muted-foreground">
         {state === 'cancelled' ? (
           <div className="space-y-1">
             <p>· {t('bookings.refundPreview', { percent: booking.refundPercent ?? 0 })}</p>
@@ -204,7 +204,7 @@ function PolicyActions({
         {canPay ? (
           <BookingPaymentForm
             buttonProps={{
-              className: 'h-10 rounded-sm bg-[#ff3f44] px-6 text-white hover:bg-[#e93439]',
+              className: 'h-10 rounded-sm bg-primary px-6 text-primary-foreground hover:bg-primary/90',
             }}
           >
             {t('bookings.payNow')}
@@ -215,7 +215,7 @@ function PolicyActions({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-sm border-[#263247] bg-[#4b5669] px-6 text-white hover:bg-[#3f495a] hover:text-white"
+              className="h-10 rounded-sm border-foreground bg-foreground px-6 text-background hover:bg-foreground/90 hover:text-background"
               onClick={() => setCancelOpen(true)}
             >
               {t('bookings.cancel')}
@@ -232,7 +232,7 @@ function PolicyActions({
           <Button
             asChild
             variant="outline"
-            className="h-10 rounded-sm border-[#263247] px-6 text-[#263247]"
+            className="h-10 rounded-sm border-foreground px-6 text-foreground"
           >
             <Link to={storefrontPaths.account.help(locale)}>{t('bookings.dispute')}</Link>
           </Button>

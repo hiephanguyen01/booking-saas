@@ -41,14 +41,37 @@ export function zonedToUtcIso(dateStr: string, timeStr: string, tz: string): str
   return new Date(guess - offset).toISOString();
 }
 
+/**
+ * `Intl.DateTimeFormat` construction is expensive and the display helpers below
+ * are called once per slot / per booking inside render loops, so every formatter
+ * in this module is built once per (shape, locale, timezone) and reused.
+ */
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function cachedFormatter(
+  key: string,
+  build: () => Intl.DateTimeFormat,
+): Intl.DateTimeFormat {
+  const cached = formatters.get(key);
+  if (cached) return cached;
+
+  const formatter = build();
+  formatters.set(key, formatter);
+  return formatter;
+}
+
 /** `HH:MM` wall time of a UTC instant in `tz`. */
 export function timeInTz(utcIso: string, tz: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: tz,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(utcIso));
+  return cachedFormatter(
+    `clock:${tz}`,
+    () =>
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }),
+  ).format(new Date(utcIso));
 }
 
 /** e.g. "T4, 20 thg 7" — a short date label for a UTC instant or literal date. */
@@ -57,12 +80,57 @@ export function dateLabelInTz(utcIsoOrDate: string, tz: string, locale: string):
   const value = dateOnly
     ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
     : new Date(utcIsoOrDate);
-  return new Intl.DateTimeFormat(intlLocale(locale), {
-    timeZone: dateOnly ? 'UTC' : tz,
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-  }).format(value);
+  // A literal `YYYY-MM-DD` is a calendar day, not an instant: read it back in UTC
+  // so no timezone can shift it to the neighbouring day.
+  const timeZone = dateOnly ? 'UTC' : tz;
+  const tag = intlLocale(locale);
+  return cachedFormatter(
+    `shortDate:${tag}:${timeZone}`,
+    () =>
+      new Intl.DateTimeFormat(tag, {
+        timeZone,
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+      }),
+  ).format(value);
+}
+
+/**
+ * The booking surfaces' date/time pair — "Monday, 20/07/2026" and "14:00".
+ *
+ * Distinct from `timeInTz`, which is the machine-ish `HH:MM` used for form values.
+ * These widen `en` to `en-US` (month-first) because that is what the account
+ * booking list, booking detail and review cards have always rendered; see
+ * `~/lib/intl`. Formatters are cached because both are called once per booking in
+ * lists that routinely hold dozens.
+ */
+function bookingFormatter(
+  kind: 'longDate' | 'time',
+  tz: string,
+  locale: string,
+): Intl.DateTimeFormat {
+  const tag = intlLocale(locale, 'en-US');
+  return cachedFormatter(
+    `${kind}:${tag}:${tz}`,
+    () =>
+      new Intl.DateTimeFormat(
+        tag,
+        kind === 'longDate'
+          ? { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: tz }
+          : { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz },
+      ),
+  );
+}
+
+/** e.g. "Thứ Hai, 20/07/2026" — the long booking date of a UTC instant in `tz`. */
+export function bookingDateInTz(utcIso: string, tz: string, locale: string): string {
+  return bookingFormatter('longDate', tz, locale).format(new Date(utcIso));
+}
+
+/** e.g. "14:00" — the wall-clock time of a UTC instant in `tz`. */
+export function bookingTimeInTz(utcIso: string, tz: string, locale: string): string {
+  return bookingFormatter('time', tz, locale).format(new Date(utcIso));
 }
 
 /** Today's `YYYY-MM-DD` in `tz`, optionally anchored to a supplied instant. */

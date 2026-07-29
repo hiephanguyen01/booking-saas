@@ -4,6 +4,7 @@ import type {
   handleBookingDetailAction,
   loadBookingDetail,
 } from '~/features/booking/server/booking-detail.server';
+import { storefrontPaths } from '~/constants/paths';
 import { useLocale } from '~/hooks/use-locale';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 import type { StorefrontContext } from '~/root';
@@ -41,7 +42,7 @@ export function useBookingDetailController({
 
   useAdaptivePaymentPolling({
     enabled: paymentState.shouldPoll,
-    href: `/${locale}/bookings/${encodeURIComponent(code)}/payment-status`,
+    href: storefrontPaths.bookingPaymentStatus(locale, code),
     load: paymentFetcher.load,
     state: paymentFetcher.state,
   });

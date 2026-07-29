@@ -6,17 +6,15 @@ import { CalendarDays } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { BookingDialogFooter } from '~/components/booking-dialog-footer';
 import { PackageMediaDetails } from '~/components/package-media-details';
-import {
-  BookingDialogSteps,
-  type ListingBookingMode,
-} from '~/features/booking-widget/components/booking-dialog-steps';
+import { BookingDialogSteps } from '~/features/booking-widget/components/booking-dialog-steps';
+import type { ScheduledBookingMode } from '~/features/booking-widget/lib/booking-modes';
 import { BookingDialogShell } from '~/features/booking-widget/components/booking-dialog-shell';
 import { useBookingDialogController } from '~/features/booking-widget/hooks/use-booking-dialog-controller';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 
-export type { ListingBookingMode } from '~/features/booking-widget/components/booking-dialog-steps';
+export type { ScheduledBookingMode } from '~/features/booking-widget/lib/booking-modes';
 
 export function ListingBookingDialog({
   listing,
@@ -26,7 +24,7 @@ export function ListingBookingDialog({
 }: {
   listing: PublicListingDetailWithTimezoneResponse;
   groupSlug?: string;
-  preferredMode: ListingBookingMode;
+  preferredMode: ScheduledBookingMode;
   today: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);

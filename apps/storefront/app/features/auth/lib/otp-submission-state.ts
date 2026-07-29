@@ -1,13 +1,6 @@
-export interface FormNavigationSnapshot {
-  state: 'idle' | 'loading' | 'submitting';
-  formMethod?: string;
-  formData?: FormData;
-}
+import { isFormNavigationPending, type FormNavigationSnapshot } from '~/lib/form-navigation';
 
-export function isFormNavigationPending(navigation: FormNavigationSnapshot): boolean {
-  return navigation.state !== 'idle' && navigation.formMethod != null;
-}
-
+/** Which of the OTP form's two buttons is in flight. */
 export function otpSubmissionIntent(
   navigation: FormNavigationSnapshot,
 ): 'idle' | 'verify' | 'resend' {
