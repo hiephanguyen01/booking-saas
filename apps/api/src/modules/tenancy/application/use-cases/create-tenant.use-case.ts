@@ -15,6 +15,7 @@ import {
 } from '../../domain/ports/tenant-domain-repository.port';
 import { TENANT_CACHE, type ITenantCache } from '../../domain/ports/tenant-cache.port';
 import { TENANCY_CONFIG, type TenancyConfig } from '../../domain/ports/tenancy-config.port';
+import { OutboxService } from '../../../../shared/outbox/outbox.service';
 
 /**
  * Platform admin creates a tenant (§21 Phase 1 — manual, no self-serve). The
@@ -28,9 +29,12 @@ export class CreateTenantUseCase {
     @Inject(TENANT_DOMAIN_REPOSITORY) private readonly domains: ITenantDomainRepository,
     @Inject(TENANT_CACHE) private readonly cache: ITenantCache,
     @Inject(TENANCY_CONFIG) private readonly config: TenancyConfig,
+    private readonly outbox: OutboxService,
   ) {}
 
-  async execute(input: CreateTenantInput): Promise<{ tenant: TenantRecord; primaryDomain: DomainRecord }> {
+  async execute(
+    input: CreateTenantInput,
+  ): Promise<{ tenant: TenantRecord; primaryDomain: DomainRecord }> {
     if (await this.tenants.findBySlug(input.slug)) {
       throw new TenantSlugTaken(input.slug);
     }
@@ -61,6 +65,11 @@ export class CreateTenantUseCase {
         }),
         tx,
       );
+      await this.outbox.emit(tx, {
+        tenantId: tenant.id,
+        eventType: 'tenant.created',
+        payload: { tenantId: tenant.id },
+      });
       return { tenant, primaryDomain };
     });
     await this.cache.invalidateHost(subdomain);

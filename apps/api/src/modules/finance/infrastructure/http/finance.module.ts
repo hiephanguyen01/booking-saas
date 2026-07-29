@@ -56,6 +56,7 @@ import { GetTenantPayoutPolicyUseCase } from '../../application/use-cases/get-te
 import { UpdatePayoutPolicyUseCase } from '../../application/use-cases/update-payout-policy.use-case';
 import { GetCustomerBookingSettlementUseCase } from '../../application/use-cases/get-customer-booking-settlement.use-case';
 import { RespondSettlementDisputeUseCase } from '../../application/use-cases/respond-settlement-dispute.use-case';
+import { EnsureDefaultCommissionRuleUseCase } from '../../application/use-cases/ensure-default-commission-rule.use-case';
 import { SettlementReleaseWorker } from '../settlement-release.worker';
 import { TenantFinanceController } from './tenant-finance.controller';
 import { PartnerFinanceController } from './partner-finance.controller';
@@ -121,6 +122,7 @@ import { TenantDisputeController } from './tenant-dispute.controller';
     UpdatePayoutPolicyUseCase,
     GetCustomerBookingSettlementUseCase,
     RespondSettlementDisputeUseCase,
+    EnsureDefaultCommissionRuleUseCase,
     SettlementReleaseWorker,
   ],
   // Exported so the booking module can snapshot the commission at booking time.
@@ -138,6 +140,7 @@ export class FinanceModule implements OnModuleInit {
     private readonly finalizeRefund: FinalizeSettlementRefundUseCase,
     private readonly clawbackJournal: RecordClawbackJournalUseCase,
     private readonly releaseSettlement: ReleaseSettlementUseCase,
+    private readonly ensureDefaultCommissionRule: EnsureDefaultCommissionRuleUseCase,
   ) {}
 
   /**
@@ -150,6 +153,11 @@ export class FinanceModule implements OnModuleInit {
    *   refunded (post-completion dispute) → clawback reversal.
    */
   onModuleInit(): void {
+    this.registry.register('tenant.created', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.ensureDefaultCommissionRule.execute(tenantId).then(() => undefined);
+    });
     this.registry.register('payment.succeeded', (event) => {
       const payload = event.payload as { paymentId: string };
       const tenantId = this.requireTenantId(event.eventType, event.tenantId);

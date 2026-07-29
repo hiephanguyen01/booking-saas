@@ -1,11 +1,16 @@
 import { Link, useSearchParams, data as routeData } from 'react-router';
 import {
+  createCommissionRuleInputSchema,
   createPayoutInputSchema,
   failPayoutInputSchema,
   markPayoutPaidInputSchema,
+  updateCommissionRuleInputSchema,
+  type CommissionRuleResponse,
+  type ListingTypeResponse,
   type Paginated,
   type PartnerResponse,
   type PayoutResponse,
+  type PromotionCategoryOption,
   type TenantFinanceSummaryResponse,
   type TenantPayableResponse,
 } from '@booking/contracts';
@@ -14,11 +19,11 @@ import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components/ui/tabs';
 import { BookText, Scale, ShieldCheck } from 'lucide-react';
 import type { Route } from './+types/_index';
-import { apiGet, apiPost } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { useTenantArea } from '~/features/tenant/lib/area-context';
 import { formatVnd } from '~/lib/format';
-import { ErrorBanner } from '~/components/action-feedback';
+import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { PaginationBar } from '~/components/pagination-bar';
 import { StatCard } from '~/components/stat-card';
@@ -27,6 +32,14 @@ import { dashboardPaths } from '~/constants/paths';
 import { BalanceCards } from '~/features/tenant/components/finance/balance-cards';
 import { CreatePayoutDialog } from '~/features/tenant/components/finance/create-payout-dialog';
 import { PayoutsTable } from '~/features/tenant/components/finance/payouts-table';
+import {
+  CommissionRulesPanel,
+  type CommissionTargetOptions,
+} from '~/features/tenant/components/finance/commission-rules-panel';
+import {
+  readCommissionRatePatch,
+  readCreateCommissionRule,
+} from '~/features/tenant/server/commission-rule-form.server';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tài chính · Tenant · BookingOS' }];
@@ -35,6 +48,7 @@ export function meta(): Route.MetaDescriptors {
 export async function loader({ request }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.finance.read');
   const canPayouts = can('tenant.payouts.manage');
+  const canCommissions = can('tenant.commissions.manage');
 
   // The create-payout dialog re-loads this route with ?payeeType&payeeId to preview the
   // TRUE payable for the selected payee. That number — `available` = maturePayable − outstanding
@@ -54,6 +68,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       payoutsTotal: 0,
       partnerNames: {} as Record<string, string>,
       canPayouts,
+      canCommissions,
+      commissionRules: [] as CommissionRuleResponse[],
+      commissionTargets: emptyCommissionTargets(),
       payable: res.ok ? res.data : null,
       payableError: res.ok ? null : (res.error ?? 'Không tính được số tiền phải chi.'),
       error: null as string | null,
@@ -61,18 +78,44 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const { toApiQuery } = readListParams(url.searchParams);
-  const [summaryRes, payoutsRes, partnersRes] = await Promise.all([
-    apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth),
-    canPayouts
-      ? apiGet<Paginated<PayoutResponse>>('/tenant/finance/payouts', auth, { query: toApiQuery() })
-      : Promise.resolve(null),
-    can('tenant.partners.read')
-      ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
-      : Promise.resolve(null),
-  ]);
+  const [summaryRes, payoutsRes, partnersRes, commissionRes, listingTypesRes, categoriesRes] =
+    await Promise.all([
+      apiGet<TenantFinanceSummaryResponse>('/tenant/finance/summary', auth),
+      canPayouts
+        ? apiGet<Paginated<PayoutResponse>>('/tenant/finance/payouts', auth, {
+            query: toApiQuery(),
+          })
+        : Promise.resolve(null),
+      can('tenant.partners.read')
+        ? apiGet<Paginated<PartnerResponse>>('/tenant/partners?pageSize=100', auth)
+        : Promise.resolve(null),
+      canCommissions
+        ? apiGet<CommissionRuleResponse[]>('/tenant/finance/commission-rules', auth)
+        : Promise.resolve(null),
+      canCommissions && can('tenant.listings.read')
+        ? apiGet<ListingTypeResponse[]>('/tenant/listing-types?includeInactive=true', auth)
+        : Promise.resolve(null),
+      canCommissions && can('tenant.promotions.manage')
+        ? apiGet<PromotionCategoryOption[]>('/tenant/promotions/categories', auth)
+        : Promise.resolve(null),
+    ]);
 
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
+  const commissionTargets: CommissionTargetOptions = {
+    partners: (partnersRes?.ok ? (partnersRes.data?.items ?? []) : []).map((partner) => ({
+      id: partner.id,
+      label: partner.name,
+    })),
+    listingTypes: (listingTypesRes?.ok ? (listingTypesRes.data ?? []) : []).map((type) => ({
+      id: type.id,
+      label: type.name,
+    })),
+    categories: (categoriesRes?.ok ? (categoriesRes.data ?? []) : []).map((category) => ({
+      id: category.id,
+      label: category.name,
+    })),
+  };
 
   return {
     summary: summaryRes.ok ? summaryRes.data : null,
@@ -80,6 +123,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     payoutsTotal: payoutsRes?.ok ? (payoutsRes.data?.total ?? 0) : 0,
     partnerNames,
     canPayouts,
+    canCommissions,
+    commissionRules: commissionRes?.ok ? (commissionRes.data ?? []) : [],
+    commissionTargets,
     payable: null as TenantPayableResponse | null,
     payableError: null as string | null,
     error: summaryRes.ok ? null : (summaryRes.error ?? 'Không tải được dữ liệu tài chính.'),
@@ -87,9 +133,52 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { auth } = await requireTenant(request, 'tenant.payouts.manage');
+  const { auth, can } = await requireTenant(request);
   const form = await request.formData();
   const intent = String(form.get('intent'));
+
+  if (
+    intent === 'create-commission-rule' ||
+    intent === 'update-commission-rule' ||
+    intent === 'delete-commission-rule'
+  ) {
+    if (!can('tenant.commissions.manage')) {
+      return routeData({ error: 'Bạn không có quyền quản lý hoa hồng.' }, { status: 403 });
+    }
+
+    if (intent === 'delete-commission-rule') {
+      const id = String(form.get('ruleId') ?? '');
+      const res = await apiDelete(`/tenant/finance/commission-rules/${id}`, auth);
+      if (!res.ok)
+        return routeData({ error: res.error ?? 'Không xoá được quy tắc.' }, { status: 400 });
+      return { ok: true, message: 'Đã xoá quy tắc riêng.' };
+    }
+
+    if (intent === 'create-commission-rule') {
+      const parsed = createCommissionRuleInputSchema.safeParse(readCreateCommissionRule(form));
+      if (!parsed.success) {
+        return routeData({ error: 'Kiểm tra lại phạm vi và tỷ lệ hoa hồng.' }, { status: 400 });
+      }
+      const res = await apiPost('/tenant/finance/commission-rules', parsed.data, auth);
+      if (!res.ok)
+        return routeData({ error: res.error ?? 'Không tạo được quy tắc.' }, { status: 400 });
+      return { ok: true, message: 'Đã thêm quy tắc hoa hồng.' };
+    }
+
+    const id = String(form.get('ruleId') ?? '');
+    const parsed = updateCommissionRuleInputSchema.safeParse(readCommissionRatePatch(form));
+    if (!parsed.success) {
+      return routeData({ error: 'Kiểm tra lại tỷ lệ hoa hồng.' }, { status: 400 });
+    }
+    const res = await apiPatch(`/tenant/finance/commission-rules/${id}`, parsed.data, auth);
+    if (!res.ok)
+      return routeData({ error: res.error ?? 'Không cập nhật được quy tắc.' }, { status: 400 });
+    return { ok: true, message: 'Đã cập nhật quy tắc hoa hồng.' };
+  }
+
+  if (!can('tenant.payouts.manage')) {
+    return routeData({ error: 'Bạn không có quyền quản lý lệnh chi.' }, { status: 403 });
+  }
 
   if (intent === 'create-payout') {
     const parsed = createPayoutInputSchema.safeParse({
@@ -137,11 +226,25 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantFinance({ loaderData, actionData }: Route.ComponentProps) {
-  const { summary, payouts, payoutsTotal, partnerNames, canPayouts, error } = loaderData;
+  const {
+    summary,
+    payouts,
+    payoutsTotal,
+    partnerNames,
+    canPayouts,
+    canCommissions,
+    commissionRules,
+    commissionTargets,
+    error,
+  } = loaderData;
   const { readOnly } = useTenantArea();
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
+  const actionSuccess =
+    actionData && 'message' in actionData && typeof actionData.message === 'string'
+      ? actionData.message
+      : null;
 
   const partnerBalances = summary?.partnerBalances ?? [];
   const affiliateBalances = summary?.affiliateBalances ?? [];
@@ -186,6 +289,7 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         </Card>
       ) : null}
       <ErrorBanner error={actionError} />
+      <SuccessBanner message={actionSuccess} />
 
       {summary ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -204,6 +308,7 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
         <TabsList>
           <TabsTrigger value="balances">Số dư công nợ</TabsTrigger>
           {canPayouts ? <TabsTrigger value="payouts">Lệnh chi</TabsTrigger> : null}
+          {canCommissions ? <TabsTrigger value="commissions">Hoa hồng</TabsTrigger> : null}
         </TabsList>
 
         <TabsContent value="balances" className="space-y-6">
@@ -225,7 +330,21 @@ export default function TenantFinance({ loaderData, actionData }: Route.Componen
             />
           </TabsContent>
         ) : null}
+
+        {canCommissions ? (
+          <TabsContent value="commissions" className="space-y-4">
+            <CommissionRulesPanel
+              rules={commissionRules}
+              targets={commissionTargets}
+              readOnly={readOnly}
+            />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );
+}
+
+function emptyCommissionTargets(): CommissionTargetOptions {
+  return { partners: [], listingTypes: [], categories: [] };
 }
