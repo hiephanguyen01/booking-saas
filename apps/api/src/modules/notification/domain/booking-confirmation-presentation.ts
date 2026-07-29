@@ -118,7 +118,10 @@ function pricingPresentation(
     ? Number(((regularAmount - quotedAmount) * 100n) / regularAmount)
     : 0;
   const balance = ctx.finalAmount > ctx.paidAmount ? ctx.finalAmount - ctx.paidAmount : 0n;
-  const paidIsDeposit = ctx.depositAmount > 0n && ctx.paidAmount === ctx.depositAmount;
+  const paidIsPartialDeposit =
+    ctx.depositAmount > 0n &&
+    ctx.depositAmount < ctx.finalAmount &&
+    ctx.paidAmount === ctx.depositAmount;
   const balanceText = balance > 0n ? formatVnd(balance, locale) : undefined;
   return {
     lines,
@@ -137,7 +140,7 @@ function pricingPresentation(
     ...(ctx.paidAmount > 0n
       ? {
           paid: formatVnd(ctx.paidAmount, locale),
-          paidLabel: paidIsDeposit
+          paidLabel: paidIsPartialDeposit
             ? (locale === 'vi' ? 'Đã cọc' : 'Deposit paid')
             : (locale === 'vi' ? 'Đã thanh toán' : 'Paid'),
         }
