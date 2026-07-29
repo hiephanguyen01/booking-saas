@@ -1,5 +1,17 @@
 export const viAuth = {
   header: { login: 'Đăng nhập', register: 'Đăng ký tài khoản', reset: 'Khôi phục mật khẩu' },
+  /** Browser titles for the customer auth steps; every one of these pages is noindex. */
+  meta: {
+    login: 'Đăng nhập',
+    register: 'Đăng ký',
+    registerVerify: 'Xác thực email',
+    registerPassword: 'Thiết lập mật khẩu',
+    registerSuccess: 'Đăng ký thành công',
+    forgotPassword: 'Khôi phục mật khẩu',
+    forgotPasswordVerify: 'Xác thực mã đặt lại',
+    forgotPasswordNewPassword: 'Mật khẩu mới',
+    forgotPasswordSuccess: 'Đổi mật khẩu thành công',
+  },
   login: {
     title: 'Chào mừng bạn trở lại',
     description: 'Đăng nhập để quản lý các đặt chỗ của bạn.',

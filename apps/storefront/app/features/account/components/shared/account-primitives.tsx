@@ -2,10 +2,10 @@ import { formatCurrency, type Locale } from '@booking/i18n';
 import { Camera, Check, Construction, type LucideIcon } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import {
-  cancellationCutoffParts,
   cancellationPolicyLines,
   type AccountBookingViewModel,
 } from '~/features/account/lib/booking-history';
+import { cancellationLineTexts } from '~/lib/cancellation-policy';
 
 export function AccountPanel({
   children,
@@ -58,39 +58,33 @@ export function CancellationPolicyList({
   locale: Locale;
 }) {
   const { t } = useTranslation(NsI18n.Account);
-  const lines = cancellationPolicyLines(booking);
+  const lines = cancellationLineTexts(
+    cancellationPolicyLines(booking),
+    locale,
+    booking.resourceTimezone,
+    {
+      cutoffDate: (parts) => t('bookings.policy.cutoffDate', parts),
+      free: (vars) => t('bookings.policy.freeCancellationUntil', vars),
+      late: (vars) => t('bookings.policy.lateCancellationFrom', vars),
+    },
+    (feeAmount) => formatCurrency(BigInt(feeAmount), 'VND', locale),
+  );
   if (!lines.length) return null;
 
   return (
     <div className="space-y-1 text-xs text-muted-foreground">
-      {lines.map((line, index) => {
-        const { time, day, month } = cancellationCutoffParts(
-          line.cutoffUtc,
-          locale,
-          booking.resourceTimezone,
-        );
-        const date = t('bookings.policy.cutoffDate', { time, day, month });
-        const isFree = line.feePercent <= 0;
-        const text = isFree
-          ? t('bookings.policy.freeCancellationUntil', { date })
-          : t('bookings.policy.lateCancellationFrom', {
-              date,
-              amount: formatCurrency(BigInt(line.feeAmount), 'VND', locale),
-              percent: line.feePercent,
-            });
-        return (
-          <p
-            key={index}
-            className={`flex items-center gap-1.5 ${isFree ? 'text-emerald-700' : ''}`}
-          >
-            <Check
-              className={`size-3.5 shrink-0 ${isFree ? '' : 'text-emerald-600'}`}
-              aria-hidden="true"
-            />
-            {text}
-          </p>
-        );
-      })}
+      {lines.map((line, index) => (
+        <p
+          key={index}
+          className={`flex items-center gap-1.5 ${line.isFree ? 'text-emerald-700' : ''}`}
+        >
+          <Check
+            className={`size-3.5 shrink-0 ${line.isFree ? '' : 'text-emerald-600'}`}
+            aria-hidden="true"
+          />
+          {line.text}
+        </p>
+      ))}
     </div>
   );
 }

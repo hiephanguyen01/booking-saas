@@ -1,10 +1,11 @@
-import type {
-  AdditionalCharge,
-  BookingResponse,
-  BookingStatus,
-  CancellationTier,
-  CustomerReviewItem,
-  QuoteLineItem,
+import {
+  quoteLineItemSchema,
+  type AdditionalCharge,
+  type BookingResponse,
+  type BookingStatus,
+  type CancellationTier,
+  type CustomerReviewItem,
+  type QuoteLineItem,
 } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 import { localeTranslator } from '~/lib/translator';
@@ -219,20 +220,17 @@ export function toAccountBookingViewModel(
   };
 }
 
+/**
+ * `pricingSnapshot` is open jsonb frozen at booking time, so its rows are
+ * narrowed by the contract that owns the shape rather than by hand-written
+ * `typeof` checks that drift the moment a field is added. A row the schema
+ * rejects is dropped; the rest still render.
+ */
 function pricingLineItems(snapshot: BookingResponse['pricingSnapshot']): QuoteLineItem[] {
   if (!snapshot || !Array.isArray(snapshot.lineItems)) return [];
-  return snapshot.lineItems.filter((item): item is QuoteLineItem => {
-    if (!item || typeof item !== 'object') return false;
-    const line = item as Partial<QuoteLineItem>;
-    return (
-      typeof line.label === 'string' &&
-      typeof line.quantity === 'number' &&
-      typeof line.unitPrice === 'string' &&
-      typeof line.regularUnitPrice === 'string' &&
-      typeof line.amount === 'string' &&
-      typeof line.regularAmount === 'string'
-    );
-  });
+  return snapshot.lineItems.filter(
+    (item): item is QuoteLineItem => quoteLineItemSchema.safeParse(item).success,
+  );
 }
 
 function displayAttributes(

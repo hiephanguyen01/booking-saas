@@ -3,6 +3,17 @@ import type { viAuth } from '../vi/auth';
 
 export const enAuth = {
   header: { login: 'Log in', register: 'Create account', reset: 'Reset password' },
+  meta: {
+    login: 'Log in',
+    register: 'Create account',
+    registerVerify: 'Verify email',
+    registerPassword: 'Create password',
+    registerSuccess: 'Account created',
+    forgotPassword: 'Reset password',
+    forgotPasswordVerify: 'Verify reset code',
+    forgotPasswordNewPassword: 'New password',
+    forgotPasswordSuccess: 'Password changed',
+  },
   login: {
     title: 'Welcome back',
     description: 'Log in to manage your bookings.',

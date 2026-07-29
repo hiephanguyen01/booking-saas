@@ -18,8 +18,7 @@ export function ProviderProfilePage({
 }: {
   loaderData: ServerDataFrom<typeof loadProviderRoute>;
 }) {
-  const { profile, listings, reviews, reviewSummary, reviewRating, reviewLimit, activeType } =
-    loaderData;
+  const { profile, listings, activeType, ...reviewData } = loaderData;
   const locale = useLocale();
   const { t } = useTranslation(NsI18n.Catalog);
   const activeSince = new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
@@ -107,11 +106,9 @@ export function ProviderProfilePage({
           </div>
           {listings.length ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <>
-                {listings.map((listing) => (
-                  <ListingCard key={`${listing.kind}:${listing.id}`} listing={listing} />
-                ))}
-              </>
+              {listings.map((listing) => (
+                <ListingCard key={`${listing.kind}:${listing.id}`} listing={listing} />
+              ))}
             </div>
           ) : (
             <div className="mt-6 rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
@@ -119,13 +116,7 @@ export function ProviderProfilePage({
             </div>
           )}
         </SectionCard>
-        <PublicReviewsSection
-          reviews={reviews}
-          summary={reviewSummary}
-          locale={locale}
-          selectedRating={reviewRating}
-          visibleLimit={reviewLimit}
-        />
+        <PublicReviewsSection {...reviewData} locale={locale} />
       </div>
     </div>
   );

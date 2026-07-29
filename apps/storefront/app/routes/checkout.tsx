@@ -1,4 +1,5 @@
 import type { Route } from './+types/checkout';
+import { localeTranslator } from '~/lib/translator';
 import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
 import { localeParam } from '~/constants/paths';
 import { CheckoutPage } from '~/features/checkout/components/checkout-page';
@@ -6,12 +7,11 @@ import {
   handleCheckoutAction,
   loadCheckout,
 } from '~/features/checkout/server/checkout-route.server';
-import { createTranslator } from '@booking/i18n';
 
 export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
   const locale = localeParam(params.locale);
   return [
-    { title: createTranslator(locale).t('checkout.title') },
+    { title: localeTranslator(locale).t('checkout.title') },
     { name: 'robots', content: 'noindex' },
   ];
 }

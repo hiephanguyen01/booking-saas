@@ -2,7 +2,7 @@ import { moneyStringSchema, timeOfDaySchema } from '@booking/contracts';
 import type { PriceUnit } from '~/lib/ui';
 import { datesInDailyRange, normalizeDailyRange } from '~/lib/daily-range';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
-import { addDays, todayInTz, DEFAULT_TZ } from '~/lib/time';
+import { addDays, clockHoursBetween, todayInTz, DEFAULT_TZ } from '~/lib/time';
 
 export type SearchMode = 'hourly' | 'daily' | 'inventory' | 'none';
 export type SearchArea = '' | 'under-25' | '25-50' | '50-100' | 'over-100';
@@ -208,6 +208,32 @@ export function withSearchContext(path: string, state: StorefrontSearchState): s
   return `${path}?${params.toString()}`;
 }
 
+/**
+ * Everything a result card needs from the current search — all of it identical
+ * for every card on the page.
+ *
+ * Derived once by the list and passed down, because `rangeDates` runs a zod
+ * parse plus up to 31 date round-trips and the catalog renders up to 48 cards.
+ */
+export interface SearchResultContext {
+  /** Query string to append to a detail path so the schedule survives the click. */
+  query: string;
+  hasDailyRange: boolean;
+  selectedDayCount: number;
+  selectedHours: number | null;
+}
+
+export function searchResultContext(state: StorefrontSearchState): SearchResultContext {
+  return {
+    query: searchContextParams(state).toString(),
+    hasDailyRange: state.hasDailyRange,
+    selectedDayCount: state.hasDailyRange ? rangeDates(state.from, state.to).length : 0,
+    selectedHours: state.hasTimeSelection
+      ? clockHoursBetween(state.startTime, state.endTime)
+      : null,
+  };
+}
+
 export function dateSelectionForMode(nextMode: SearchMode): SearchDateSelection {
   return { mode: nextMode, date: '', from: '', to: '' };
 }
@@ -256,4 +282,3 @@ export function rangeDates(from: string, to: string): string[] {
   const range = normalizeDailyRange(from, to);
   return range ? datesInDailyRange(range) : [];
 }
-

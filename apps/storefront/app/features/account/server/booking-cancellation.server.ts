@@ -1,10 +1,9 @@
 import { data } from 'react-router';
 import { z } from 'zod';
-import { requireAuth } from '~/lib/server/auth.server';
+import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { cancelBooking } from '~/features/booking/server/booking.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
-import { storefrontPaths } from '~/constants/paths';
 import { loadAccountBooking } from './booking-history.server';
 
 const cancellationSchema = z.object({
@@ -34,7 +33,7 @@ export async function submitBookingCancellation(
     );
   }
 
-  const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
+  const auth = requireCustomerAuth(request, locale, { includeSearch: false });
   const parsed = cancellationSchema.safeParse({ reason: body.value.get('reason') });
 
   if (!normalizedCode || !parsed.success) {

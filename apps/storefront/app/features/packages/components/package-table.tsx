@@ -1,5 +1,4 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
-import type { MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -10,8 +9,8 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { cn } from '@booking/ui/lib/utils';
-import { Aperture, Check, Clock3, Expand, Images } from 'lucide-react';
-import { useMediaGallery } from '~/hooks/use-media-gallery';
+import { Aperture, Check, Clock3, Expand } from 'lucide-react';
+import { useMediaGallery, usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { packageDurationLabel, type PublicPackageOption } from '~/lib/package-options';
@@ -20,6 +19,10 @@ import { specCards } from '~/features/listing-group/lib/room-attributes';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { formatVnd } from '~/lib/ui';
 import { PackageMediaDetails } from '~/components/package-media-details';
+import { RoomPhotoStrip } from '~/components/room-photo-strip';
+
+/** Stable identity so the media-items memo does not rebuild while nothing is open. */
+const EMPTY_PHOTOS: string[] = [];
 
 export function PackageTable({
   listing,
@@ -36,12 +39,10 @@ export function PackageTable({
   const viewerLabels = useMediaViewerLabels();
   const gallery = useMediaGallery(packages, (item) => item.id);
   const activePackage = gallery.item;
-  const mediaItems: MediaViewerItem[] =
-    activePackage?.photos.map((photo, index) => ({
-      kind: 'image',
-      url: photo,
-      alt: t('group.photoAlt', { title: activePackage.name, index: index + 1 }),
-    })) ?? [];
+  const mediaItems = usePhotoMediaItems(
+    activePackage?.photos ?? EMPTY_PHOTOS,
+    activePackage?.name ?? '',
+  );
 
   return (
     <SectionCard id="packages" aria-labelledby="packages-title" className="scroll-mt-28">
@@ -281,51 +282,17 @@ function PackagePhotoStrip({
   onOpenPhoto: (index: number, trigger: HTMLButtonElement) => void;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const visible = photos.slice(0, 3);
-  if (!visible.length) {
-    return (
-      <div className="grid h-36 place-items-center rounded-md bg-muted text-muted-foreground">
-        <Images className="size-6" aria-hidden="true" />
-      </div>
-    );
-  }
   return (
-    <div className="grid h-36 grid-cols-[2fr_1fr] gap-2 overflow-hidden rounded-md">
-      <button
-        type="button"
-        onClick={(event) => onOpenPhoto(0, event.currentTarget)}
-        aria-label={t('packages.viewPackagePhoto', { name: title, index: 1 })}
-        className="group relative min-h-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-      >
-        <img
-          src={visible[0]}
-          alt={title}
-          className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-        />
+    <RoomPhotoStrip
+      photos={photos}
+      title={title}
+      onOpenPhoto={onOpenPhoto}
+      photoLabel={(index) => t('packages.viewPackagePhoto', { name: title, index })}
+      coverBadge={
         <span className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-full bg-card/90 text-card-foreground shadow-sm">
           <Expand className="size-3.5" aria-hidden="true" />
         </span>
-      </button>
-      <div className="grid gap-2 overflow-hidden">
-        {[visible[1], visible[2]].map((photo, index) =>
-          photo ? (
-            <button
-              key={photo}
-              type="button"
-              onClick={(event) => onOpenPhoto(index + 1, event.currentTarget)}
-              aria-label={t('packages.viewPackagePhoto', {
-                name: title,
-                index: index + 2,
-              })}
-              className="min-h-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-            >
-              <img src={photo} alt="" className="size-full object-cover" />
-            </button>
-          ) : (
-            <span key={index} className="bg-muted" />
-          ),
-        )}
-      </div>
-    </div>
+      }
+    />
   );
 }

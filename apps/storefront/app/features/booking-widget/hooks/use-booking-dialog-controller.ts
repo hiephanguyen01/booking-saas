@@ -207,9 +207,9 @@ export function useBookingDialogController({
   const hasCompleteSelection = mode === 'hourly' ? Boolean(interval) : Boolean(from && to);
   const availabilityPending = fetcher.state !== 'idle' && requestKind === 'availability';
   const quotePending = fetcher.state !== 'idle' && requestKind === 'quote';
-  const requestError = fetcher.state === 'idle' && response && !response.ok;
-  const availabilityError = Boolean(requestError && requestKind === 'availability');
-  const quoteError = Boolean(requestError && requestKind === 'quote' && hasCompleteSelection);
+  const requestError = fetcher.state === 'idle' && response !== undefined && !response.ok;
+  const availabilityError = requestError && requestKind === 'availability';
+  const quoteError = requestError && requestKind === 'quote' && hasCompleteSelection;
   const selectionUnavailable = Boolean(
     hasCompleteSelection && fetcher.state === 'idle' && currentData && !currentData.quote,
   );
@@ -403,7 +403,7 @@ export function useBookingDialogController({
       availability,
       availabilityPending,
       availabilityError,
-      requestError: Boolean(requestError),
+      requestError,
       slots,
       selectedSlots,
       selectionError,

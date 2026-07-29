@@ -1,7 +1,6 @@
 import { customerReviewListResponseSchema } from '@booking/contracts';
 import { apiGet } from '~/lib/server/api.server';
-import { requireAuth } from '~/lib/server/auth.server';
-import { storefrontPaths } from '~/constants/paths';
+import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { submitCustomerReview } from '~/features/account/server/customer-reviews.server';
 import { parseAccountReviewFilter } from '~/features/account/lib/review-filter';
 
@@ -9,7 +8,7 @@ const REVIEW_PAGE_SIZE = 10;
 
 export async function loadAccountReviewsRoute(request: Request, locale: 'vi' | 'en') {
   const url = new URL(request.url);
-  const auth = requireAuth(storefrontPaths.login(locale, `${url.pathname}${url.search}`));
+  const auth = requireCustomerAuth(request, locale);
   const status = parseAccountReviewFilter(url.searchParams.get('status'));
   const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
   const result = await apiGet(request, '/customer/reviews', auth.session.accessToken, {

@@ -1,18 +1,32 @@
 import { ImageIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 
-/** Compact gallery shared by listing and booking surfaces. */
+/**
+ * Compact gallery shared by listing and booking surfaces: one large cover plus two
+ * thumbnails, or a placeholder when there are no photos.
+ *
+ * `photoLabel` and `coverBadge` exist because the package table needs its own
+ * aria-label wording and an expand affordance on the cover; everything else about
+ * the two strips was identical.
+ */
 export function RoomPhotoStrip({
   photos,
   title,
   onOpenPhoto,
+  coverBadge,
+  photoLabel,
 }: {
   photos: string[];
   title: string;
   onOpenPhoto?: (index: number, trigger: HTMLButtonElement) => void;
+  coverBadge?: ReactNode;
+  photoLabel?: (oneBasedIndex: number) => string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const label = photoLabel ?? ((index: number) => t('group.goToPhoto', { index }));
   const [cover, second, third] = photos;
+
   if (!cover)
     return (
       <div className="grid h-36 place-items-center rounded-md bg-muted text-muted-foreground">
@@ -20,6 +34,7 @@ export function RoomPhotoStrip({
         <span className="sr-only">{title}</span>
       </div>
     );
+
   return (
     <div className="grid h-36 grid-cols-[2fr_1fr] grid-rows-2 gap-1.5 overflow-hidden rounded-md">
       <RoomPhoto
@@ -28,29 +43,22 @@ export function RoomPhotoStrip({
         index={0}
         onOpenPhoto={onOpenPhoto}
         className="row-span-2"
-        label={t('group.goToPhoto', { index: 1 })}
+        label={label(1)}
+        badge={coverBadge}
       />
-      {second ? (
-        <RoomPhoto
-          photo={second}
-          title={title}
-          index={1}
-          onOpenPhoto={onOpenPhoto}
-          label={t('group.goToPhoto', { index: 2 })}
-        />
-      ) : (
-        <div className="bg-muted" />
-      )}
-      {third ? (
-        <RoomPhoto
-          photo={third}
-          title={title}
-          index={2}
-          onOpenPhoto={onOpenPhoto}
-          label={t('group.goToPhoto', { index: 3 })}
-        />
-      ) : (
-        <div className="bg-muted" />
+      {[second, third].map((photo, offset) =>
+        photo ? (
+          <RoomPhoto
+            key={photo}
+            photo={photo}
+            title={title}
+            index={offset + 1}
+            onOpenPhoto={onOpenPhoto}
+            label={label(offset + 2)}
+          />
+        ) : (
+          <div key={offset} className="bg-muted" />
+        ),
       )}
     </div>
   );
@@ -63,6 +71,7 @@ function RoomPhoto({
   onOpenPhoto,
   className,
   label,
+  badge,
 }: {
   photo: string;
   title: string;
@@ -70,7 +79,12 @@ function RoomPhoto({
   onOpenPhoto?: (index: number, trigger: HTMLButtonElement) => void;
   className?: string;
   label: string;
+  badge?: ReactNode;
 }) {
+  const image = (
+    <img src={photo} alt={index === 0 ? title : ''} className="size-full object-cover" />
+  );
+
   if (!onOpenPhoto) {
     return (
       <img
@@ -86,9 +100,10 @@ function RoomPhoto({
       type="button"
       onClick={(event) => onOpenPhoto(index, event.currentTarget)}
       aria-label={label}
-      className={`${className ?? ''} min-h-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
+      className={`${className ?? ''} relative min-h-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
     >
-      <img src={photo} alt={index === 0 ? title : ''} className="size-full object-cover" />
+      {image}
+      {badge}
     </button>
   );
 }

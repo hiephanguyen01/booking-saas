@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createCookie } from 'react-router';
-import { storefrontEnv } from '~/lib/server/env.server';
+import { signedCookie } from '~/lib/server/signed-cookie.server';
 import { storefrontRedisStore } from '~/lib/server/redis-store.server';
 
 const FLOW_TTL_SECONDS = 30 * 60;
@@ -51,14 +50,7 @@ export function flowView(flow: { record: AuthFlowRecord; resendAfterSec: number 
   };
 }
 
-const cookie = createCookie('__storefront_auth_flow', {
-  httpOnly: true,
-  path: '/',
-  sameSite: 'lax',
-  secure: storefrontEnv.secureCookies,
-  secrets: [...storefrontEnv.sessionSecrets],
-  maxAge: FLOW_TTL_SECONDS,
-});
+const cookie = signedCookie('__storefront_auth_flow', FLOW_TTL_SECONDS);
 
 async function idFrom(request: Request) {
   const id: unknown = await cookie.parse(request.headers.get('Cookie'));

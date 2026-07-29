@@ -39,6 +39,49 @@ export function cancellationPolicyLines(params: {
     });
 }
 
+/** The copy keys a surface supplies; the wording lives in its own i18n namespace. */
+export interface CancellationLineLabels {
+  cutoffDate: (parts: ReturnType<typeof cancellationCutoffParts>) => string;
+  free: (vars: { date: string }) => string;
+  late: (vars: { date: string; amount: string; percent: number }) => string;
+}
+
+export interface CancellationLineText {
+  /** A full-refund tier; both surfaces tint it differently. */
+  isFree: boolean;
+  text: string;
+}
+
+/**
+ * Turns tiers into the sentence each surface prints.
+ *
+ * The account panel and the checkout column ran this exact pipeline separately —
+ * cutoff parts, free-vs-late branch, formatted fee — so a policy wording change
+ * had to be made twice. Only the markup and the namespace differ now.
+ */
+export function cancellationLineTexts(
+  lines: CancellationPolicyLine[],
+  locale: Locale,
+  timeZone: string,
+  labels: CancellationLineLabels,
+  formatFee: (feeAmount: string) => string,
+): CancellationLineText[] {
+  return lines.map((line) => {
+    const date = labels.cutoffDate(cancellationCutoffParts(line.cutoffUtc, locale, timeZone));
+    const isFree = line.feePercent <= 0;
+    return {
+      isFree,
+      text: isFree
+        ? labels.free({ date })
+        : labels.late({
+            date,
+            amount: formatFee(line.feeAmount),
+            percent: line.feePercent,
+          }),
+    };
+  });
+}
+
 interface CutoffFormatters {
   time: Intl.DateTimeFormat;
   date: Intl.DateTimeFormat;

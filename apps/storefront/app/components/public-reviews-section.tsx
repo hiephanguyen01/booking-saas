@@ -1,4 +1,5 @@
 import type { ReviewListResponse, ReviewResponse, ReviewSummary } from '@booking/contracts';
+import type { MediaViewerLabels } from '@booking/ui/components/media/media-viewer-dialog';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { cn } from '@booking/ui/lib/utils';
@@ -14,24 +15,25 @@ import { SectionCard } from './section-card';
 
 export function PublicReviewsSection({
   reviews,
-  summary,
+  reviewSummary,
   locale,
-  selectedRating,
-  visibleLimit,
+  reviewRating,
+  reviewLimit,
 }: {
   reviews: ReviewListResponse | null;
-  summary: ReviewSummary | null;
+  reviewSummary: ReviewSummary | null;
   locale: 'vi' | 'en';
-  selectedRating?: number;
-  visibleLimit: number;
+  reviewRating?: number;
+  reviewLimit: number;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const viewerLabels = useMediaViewerLabels();
   const model = usePublicReviewsSectionController({
     reviews,
-    summary,
+    reviewSummary,
     locale,
-    selectedRating,
-    visibleLimit,
+    reviewRating,
+    reviewLimit,
   });
 
   if (!model) return null;
@@ -44,12 +46,14 @@ export function PublicReviewsSection({
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-sm leading-5">
           <span className="inline-flex items-center gap-1">
-            <RatingStars rating={model.summary.ratingAvg ?? 0} />
+            <RatingStars rating={model.reviewSummary.ratingAvg ?? 0} />
             <strong className="font-medium text-foreground">{model.formattedAverage}</strong>
           </span>
           <span className="h-4 w-px bg-border" aria-hidden="true" />
           <span className="text-muted-foreground">
-            <strong className="font-medium text-foreground">{model.summary.reviewCount}</strong>{' '}
+            <strong className="font-medium text-foreground">
+              {model.reviewSummary.reviewCount}
+            </strong>{' '}
             {t('reviews.countLabel')}
           </span>
         </div>
@@ -82,11 +86,11 @@ export function PublicReviewsSection({
 
       <div className="divide-y divide-border border-t border-border">
         {reviews?.items.map((review) => (
-          <ReviewItem key={review.id} review={review} locale={locale} />
+          <ReviewItem key={review.id} review={review} locale={locale} viewerLabels={viewerLabels} />
         ))}
       </div>
 
-      {selectedRating && (!reviews || reviews.items.length === 0) ? (
+      {reviewRating && (!reviews || reviews.items.length === 0) ? (
         <p className="rounded-md border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
           {t('reviews.emptyRating')}
         </p>
@@ -106,9 +110,16 @@ export function PublicReviewsSection({
   );
 }
 
-function ReviewItem({ review, locale }: { review: ReviewResponse; locale: 'vi' | 'en' }) {
+function ReviewItem({
+  review,
+  locale,
+  viewerLabels,
+}: {
+  review: ReviewResponse;
+  locale: 'vi' | 'en';
+  viewerLabels: MediaViewerLabels;
+}) {
   const { t } = useTranslation(NsI18n.Listing);
-  const viewerLabels = useMediaViewerLabels();
   return (
     <article className="flex flex-col gap-2 py-5 first:pt-4 last:pb-0">
       <div className="flex items-start justify-between gap-4">

@@ -24,10 +24,12 @@ import {
 import { backendLogin, backendLogout, publicPost } from '~/lib/server/api.server';
 import { getOptionalAuth } from '~/lib/server/auth.server';
 import {
-  formRequestFailureStatus,
-  readFormRequestBody,
-  type FormRequestBody,
-} from '~/lib/server/form-request.server';
+  failedAuthForm,
+  failedAuthRequest,
+  formFields,
+  invalidAuthInput,
+  readAuthForm,
+} from '~/features/auth/server/auth-form.server';
 import { requireLocale } from '~/lib/server/i18n.server';
 import { suppressStorefrontSessionCommit } from '~/lib/server/request-context.server';
 import { safeRedirectPath } from '~/lib/safe-redirect';
@@ -81,28 +83,6 @@ const AUTH_PURPOSES = {
   }
 >;
 
-const AUTH_MAX_FORM_BYTES = 16 * 1024;
-const fields = (form: FormData) => Object.fromEntries(form.entries());
-const invalid = (fieldErrors: Record<string, string[] | undefined>) =>
-  data<AuthActionData>(
-    {
-      fieldErrors: Object.fromEntries(
-        Object.entries(fieldErrors).filter((entry): entry is [string, string[]] =>
-          Boolean(entry[1]),
-        ),
-      ),
-    },
-    { status: 400 },
-  );
-const failed = (result: { status: number; code?: string; error?: string }) =>
-  data<AuthActionData>(
-    { error: result.code ?? result.error ?? 'UNKNOWN' },
-    { status: result.status >= 400 && result.status < 600 ? result.status : 500 },
-  );
-const readAuthForm = (request: Request) => readFormRequestBody(request, AUTH_MAX_FORM_BYTES);
-const failedAuthForm = (result: Extract<FormRequestBody, { ok: false }>) =>
-  failed({ status: formRequestFailureStatus(result.code), code: result.code });
-
 export async function startRegistrationAction(request: Request, localeParam?: string) {
   return startAuthFlowAction(request, localeParam, 'registration');
 }
@@ -122,15 +102,15 @@ async function startAuthFlowAction(
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
 
-  const parsed = flow.startSchema.safeParse({ ...fields(formBody.value), locale });
-  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
+  const parsed = flow.startSchema.safeParse({ ...formFields(formBody.value), locale });
+  if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthChallengeResponse>(
     request,
     `/auth/${flow.endpoint}/start`,
     parsed.data,
     { schema: authChallengeResponseSchema },
   );
-  if (!result.ok || !result.data) return failed(result);
+  if (!result.ok || !result.data) return failedAuthRequest(result);
   const setCookie = await authFlow.create(request, {
     phase: flow.verifyPhase,
     challengeId: result.data.challengeId,
@@ -161,22 +141,46 @@ export async function requireFlowPhase(request: Request, phase: AuthFlowPhase, f
   };
 }
 
+/** The flow steps a route can gate on; `AUTH_PURPOSES` maps each to its phase. */
+export type AuthFlowStep = 'verify' | 'password' | 'success';
+
+const STEP_PHASES = {
+  verify: 'verifyPhase',
+  password: 'passwordPhase',
+  success: 'successPhase',
+} as const satisfies Record<AuthFlowStep, keyof (typeof AUTH_PURPOSES)['registration']>;
+
+/**
+ * Both loader gates take the purpose and step rather than a redirect string, so
+ * the fallback comes from `AUTH_PURPOSES` — the table that already owns every
+ * path in the flow. Six route modules used to hand-build `/${locale}/auth/…`.
+ */
+function stepPhase(purpose: AuthPurpose, step: AuthFlowStep): AuthFlowPhase {
+  return AUTH_PURPOSES[purpose][STEP_PHASES[step]];
+}
+
 /** Loader-safe flow gate: enforces the phase and returns only client-safe fields. */
 export async function requireFlowView(
   request: Request,
-  phase: AuthFlowPhase,
-  fallback: string,
+  purpose: AuthPurpose,
+  step: AuthFlowStep,
+  localeParam: string | undefined,
 ): Promise<AuthFlowView> {
-  return flowView(await requireFlowPhase(request, phase, fallback));
+  const locale = requireLocale(localeParam);
+  const phase = stepPhase(purpose, step);
+  return flowView(await requireFlowPhase(request, phase, AUTH_PURPOSES[purpose].startPath(locale)));
 }
 
 /** Loader-safe phase gate for steps that render no flow data at all. */
 export async function requireFlowPhaseOnly(
   request: Request,
-  phase: AuthFlowPhase,
-  fallback: string,
+  purpose: AuthPurpose,
+  step: AuthFlowStep,
+  localeParam: string | undefined,
 ): Promise<null> {
-  await requireFlowPhase(request, phase, fallback);
+  const locale = requireLocale(localeParam);
+  const phase = stepPhase(purpose, step);
+  await requireFlowPhase(request, phase, AUTH_PURPOSES[purpose].startPath(locale));
   return null;
 }
 
@@ -206,7 +210,7 @@ export async function verifyAction(
       { challengeId: flow.record.challengeId },
       { schema: authChallengeResponseSchema },
     );
-    if (!result.ok || !result.data) return failed(result);
+    if (!result.ok || !result.data) return failedAuthRequest(result);
     await authFlow.update(flow.id, {
       ...flow.record,
       maskedDestination: result.data.maskedDestination,
@@ -218,14 +222,14 @@ export async function verifyAction(
     challengeId: flow.record.challengeId,
     code: form.get('code'),
   });
-  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
+  if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthOtpVerifiedResponse>(
     request,
     `/auth/${config.endpoint}/verify`,
     parsed.data,
     { schema: authOtpVerifiedResponseSchema },
   );
-  if (!result.ok || !result.data) return failed(result);
+  if (!result.ok || !result.data) return failedAuthRequest(result);
   await authFlow.update(flow.id, {
     phase: config.passwordPhase,
     completionToken: result.data.completionToken,
@@ -244,23 +248,23 @@ export async function completePasswordAction(
   const flow = await requireFlowPhase(request, config.passwordPhase, config.startPath(locale));
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
-  const form = fields(formBody.value);
+  const form = formFields(formBody.value);
 
   if (form.password !== form.confirmPassword) {
-    return invalid({ confirmPassword: ['PASSWORD_MISMATCH'] });
+    return invalidAuthInput({ confirmPassword: ['PASSWORD_MISMATCH'] });
   }
   const parsed = authPasswordCompleteInputSchema.safeParse({
     completionToken: flow.record.completionToken,
     password: form.password,
   });
-  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
+  if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await publicPost<AuthFlowCompleteResponse>(
     request,
     `/auth/${config.endpoint}/complete`,
     parsed.data,
     { schema: authFlowCompleteResponseSchema },
   );
-  if (!result.ok || !result.data) return failed(result);
+  if (!result.ok || !result.data) return failedAuthRequest(result);
   await authFlow.update(flow.id, { phase: config.successPhase });
   return redirect(config.successPath(locale));
 }
@@ -269,13 +273,16 @@ export async function loginAction(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   const formBody = await readAuthForm(request);
   if (!formBody.ok) return failedAuthForm(formBody);
-  const parsed = loginInputSchema.safeParse(fields(formBody.value));
-  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
+  const parsed = loginInputSchema.safeParse(formFields(formBody.value));
+  if (!parsed.success) return invalidAuthInput(parsed.error.flatten().fieldErrors);
   const result = await backendLogin(request, parsed.data);
-  if (!result.ok || !result.tokens || !result.user) return failed(result);
+  if (!result.ok || !result.tokens || !result.user) return failedAuthRequest(result);
   suppressStorefrontSessionCommit();
   const url = new URL(request.url);
-  const redirectTo = safeRedirectPath(url.searchParams.get('redirectTo'), storefrontPaths.home(locale));
+  const redirectTo = safeRedirectPath(
+    url.searchParams.get('redirectTo'),
+    storefrontPaths.home(locale),
+  );
   return createUserSession(request, { ...result.tokens, userId: result.user.id }, redirectTo);
 }
 

@@ -1,5 +1,4 @@
 import type { AttributeField, HourlySlot } from '@booking/contracts';
-import { type MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -10,7 +9,7 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { Building2 } from 'lucide-react';
-import { useMediaGallery } from '~/hooks/use-media-gallery';
+import { useMediaGallery, usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
@@ -20,6 +19,9 @@ import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from 
 import { RoomMediaDetails } from './room-media-details';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
+
+/** Stable identity so the media-items memo does not rebuild while nothing is open. */
+const EMPTY_PHOTOS: string[] = [];
 
 export function RoomOptionsSection({
   roomOptions,
@@ -47,13 +49,22 @@ export function RoomOptionsSection({
     visibleOptions,
   } = useRoomOptionsController({ hideUnavailableByDefault, roomOptions });
   const gallery = useMediaGallery(visibleOptions, (option) => option.child.id);
+  // The desktop table and the mobile cards render the same rooms with the same
+  // eight props; CSS decides which is visible.
+  const cellProps = (option: RoomOption): RoomProps => ({
+    option,
+    attributeSchema,
+    groupSlug,
+    mode,
+    date,
+    slots: slotsByRoom.get(option.child.id) ?? [],
+    onOpenMedia: gallery.open,
+  });
   const activeRoom = gallery.item;
-  const mediaItems: MediaViewerItem[] =
-    activeRoom?.child.photos.map((photo, index) => ({
-      kind: 'image',
-      url: photo,
-      alt: t('group.photoAlt', { title: activeRoom.child.title, index: index + 1 }),
-    })) ?? [];
+  const mediaItems = usePhotoMediaItems(
+    activeRoom?.child.photos ?? EMPTY_PHOTOS,
+    activeRoom?.child.title ?? '',
+  );
 
   return (
     <SectionCard id="room-options" aria-labelledby="room-options-title" className="scroll-mt-28">
@@ -102,32 +113,14 @@ export function RoomOptionsSection({
               </thead>
               <tbody>
                 {visibleOptions.map((option) => (
-                  <RoomRow
-                    key={option.child.id}
-                    option={option}
-                    attributeSchema={attributeSchema}
-                    groupSlug={groupSlug}
-                    mode={mode}
-                    date={date}
-                    slots={slotsByRoom.get(option.child.id) ?? []}
-                    onOpenMedia={gallery.open}
-                  />
+                  <RoomRow key={option.child.id} {...cellProps(option)} />
                 ))}
               </tbody>
             </table>
           </div>
           <div className="flex flex-col gap-4 xl:hidden">
             {visibleOptions.map((option) => (
-              <RoomCard
-                key={option.child.id}
-                option={option}
-                attributeSchema={attributeSchema}
-                groupSlug={groupSlug}
-                mode={mode}
-                date={date}
-                slots={slotsByRoom.get(option.child.id) ?? []}
-                onOpenMedia={gallery.open}
-              />
+              <RoomCard key={option.child.id} {...cellProps(option)} />
             ))}
           </div>
         </>

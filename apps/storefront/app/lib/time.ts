@@ -8,19 +8,43 @@ import { intlLocale } from './intl';
 
 export const DEFAULT_TZ = 'Asia/Ho_Chi_Minh';
 
+/**
+ * `Intl.DateTimeFormat` construction costs roughly an order of magnitude more
+ * than formatting with an existing one, and the helpers here are called once per
+ * booking, per room and per slot. Every formatter in this module is therefore
+ * built once per (shape, locale, timezone) and reused; they are stateless.
+ */
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function cachedFormatter(key: string, build: () => Intl.DateTimeFormat): Intl.DateTimeFormat {
+  const cached = formatters.get(key);
+  if (cached) return cached;
+
+  const formatter = build();
+  formatters.set(key, formatter);
+  return formatter;
+}
+
 /** ms to add to a UTC instant to get the given zone's wall time (e.g. +7h for ICT). */
 function tzOffsetMs(tz: string, at: Date): number {
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-  const parts = Object.fromEntries(dtf.formatToParts(at).map((p) => [p.type, p.value]));
+  const parts = Object.fromEntries(
+    cachedFormatter(
+      `offset:${tz}`,
+      () =>
+        new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          hourCycle: 'h23',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }),
+    )
+      .formatToParts(at)
+      .map((p) => [p.type, p.value]),
+  );
   const asUtc = Date.UTC(
     Number(parts.year),
     Number(parts.month) - 1,
@@ -32,6 +56,25 @@ function tzOffsetMs(tz: string, at: Date): number {
   return asUtc - at.getTime();
 }
 
+/** `YYYY-MM-DD` calendar date of an instant in `tz`. */
+function ymdInTz(at: Date, tz: string): string {
+  const parts = Object.fromEntries(
+    cachedFormatter(
+      `ymd:${tz}`,
+      () =>
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: tz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }),
+    )
+      .formatToParts(at)
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 /** Convert a wall-clock `YYYY-MM-DD` + `HH:MM` in `tz` to a UTC ISO instant. */
 export function zonedToUtcIso(dateStr: string, timeStr: string, tz: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -39,25 +82,6 @@ export function zonedToUtcIso(dateStr: string, timeStr: string, tz: string): str
   const guess = Date.UTC(y, m - 1, d, hh, mm);
   const offset = tzOffsetMs(tz, new Date(guess));
   return new Date(guess - offset).toISOString();
-}
-
-/**
- * `Intl.DateTimeFormat` construction is expensive and the display helpers below
- * are called once per slot / per booking inside render loops, so every formatter
- * in this module is built once per (shape, locale, timezone) and reused.
- */
-const formatters = new Map<string, Intl.DateTimeFormat>();
-
-function cachedFormatter(
-  key: string,
-  build: () => Intl.DateTimeFormat,
-): Intl.DateTimeFormat {
-  const cached = formatters.get(key);
-  if (cached) return cached;
-
-  const formatter = build();
-  formatters.set(key, formatter);
-  return formatter;
 }
 
 /** `HH:MM` wall time of a UTC instant in `tz`. */
@@ -135,32 +159,12 @@ export function bookingTimeInTz(utcIso: string, tz: string, locale: string): str
 
 /** Today's `YYYY-MM-DD` in `tz`, optionally anchored to a supplied instant. */
 export function todayInTz(tz: string, at = new Date()): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-      .formatToParts(at)
-      .map((p) => [p.type, p.value]),
-  );
-  return `${parts.year}-${parts.month}-${parts.day}`;
+  return ymdInTz(at, tz);
 }
 
 /** Calendar date of a UTC instant in `tz`, as `YYYY-MM-DD`. */
 export function dateOnlyInTz(utcIso: string, tz: string): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-      .formatToParts(new Date(utcIso))
-      .map((part) => [part.type, part.value]),
-  );
-  return `${parts.year}-${parts.month}-${parts.day}`;
+  return ymdInTz(new Date(utcIso), tz);
 }
 
 /** `YYYY-MM-DD` → local `Date` at noon (avoids off-by-one from tz when feeding a calendar). */

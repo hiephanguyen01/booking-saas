@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { createCookie, redirect } from 'react-router';
+import { signedCookie } from '~/lib/server/signed-cookie.server';
+import { redirect } from 'react-router';
 import { storefrontRedisStore, type RedisJsonStore } from './redis-store.server';
 import {
   SessionRefreshLockTimeoutError,
   withDistributedRefreshLock,
   type RefreshLockObservation,
 } from './refresh-lock.server';
-import { storefrontEnv } from './env.server';
 import { safeRedirectPath } from '~/lib/safe-redirect';
 
 const TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -22,14 +22,7 @@ export { SessionRefreshLockTimeoutError };
 export type { RefreshLockObservation };
 
 export function createStorefrontSessionService(store: RedisJsonStore = storefrontRedisStore) {
-  const cookie = createCookie('__storefront_session', {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    secure: storefrontEnv.secureCookies,
-    secrets: [...storefrontEnv.sessionSecrets],
-    maxAge: TTL_SECONDS,
-  });
+  const cookie = signedCookie('__storefront_session', TTL_SECONDS);
 
   async function readById(id: string): Promise<StorefrontSessionData | null> {
     const data = await store.get<StorefrontSessionData>(`${PREFIX}${id}`);

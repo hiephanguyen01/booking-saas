@@ -1,19 +1,10 @@
 import type { PublicListingResponse } from '@booking/contracts';
 import { fetchListings } from '~/features/catalog/server/catalog.server';
 
-type ListingFetcher = (
-  request: Request,
-  search: URLSearchParams,
-) => Promise<PublicListingResponse[]>;
-
 export interface HomeCatalogResult {
   listings: PublicListingResponse[];
 }
 
-export async function loadHomeCatalog(
-  request: Request,
-  fetcher: ListingFetcher = fetchListings,
-): Promise<HomeCatalogResult> {
-  const listings = await fetcher(request, new URLSearchParams());
-  return { listings };
+export async function loadHomeCatalog(request: Request): Promise<HomeCatalogResult> {
+  return { listings: await fetchListings(request, new URLSearchParams()) };
 }

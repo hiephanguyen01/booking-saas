@@ -43,13 +43,20 @@ if (!parsed.success) {
 const raw = parsed.data;
 const production = raw.NODE_ENV === 'production';
 
+/** Every required URL is checked the same way, including its allowed protocols. */
 function requiredUrl(
   name: 'BACKEND_URL' | 'REDIS_URL' | 'DASHBOARD_URL',
   value: string | undefined,
   developmentFallback: string,
+  protocols: readonly string[],
 ): URL {
   if (!value && production) invalidEnvironment(`${name} is required in production`);
   const url = new URL(value ?? developmentFallback);
+  if (!protocols.includes(url.protocol)) {
+    invalidEnvironment(
+      `${name} must use ${protocols.map((item) => item.replace(':', '')).join(' or ')}`,
+    );
+  }
   if (production && ['localhost', '127.0.0.1', '::1'].includes(url.hostname)) {
     invalidEnvironment(`${name} cannot target a loopback host in production`);
   }
@@ -84,20 +91,24 @@ function parseOrigins(
   return origins;
 }
 
-const backendUrl = requiredUrl('BACKEND_URL', raw.BACKEND_URL, 'http://localhost:3000');
-if (!['http:', 'https:'].includes(backendUrl.protocol)) {
-  invalidEnvironment('BACKEND_URL must use http or https');
-}
+const HTTP_PROTOCOLS = ['http:', 'https:'] as const;
 
-const redisUrl = requiredUrl('REDIS_URL', raw.REDIS_URL, 'redis://localhost:6379');
-if (!['redis:', 'rediss:'].includes(redisUrl.protocol)) {
-  invalidEnvironment('REDIS_URL must use redis or rediss');
-}
-
-const dashboardUrl = requiredUrl('DASHBOARD_URL', raw.DASHBOARD_URL, 'http://localhost:5174');
-if (!['http:', 'https:'].includes(dashboardUrl.protocol)) {
-  invalidEnvironment('DASHBOARD_URL must use http or https');
-}
+const backendUrl = requiredUrl(
+  'BACKEND_URL',
+  raw.BACKEND_URL,
+  'http://localhost:3000',
+  HTTP_PROTOCOLS,
+);
+const redisUrl = requiredUrl('REDIS_URL', raw.REDIS_URL, 'redis://localhost:6379', [
+  'redis:',
+  'rediss:',
+]);
+const dashboardUrl = requiredUrl(
+  'DASHBOARD_URL',
+  raw.DASHBOARD_URL,
+  'http://localhost:5174',
+  HTTP_PROTOCOLS,
+);
 
 const currentSecret = raw.SESSION_SECRET_CURRENT ?? (!production ? raw.SESSION_SECRET : undefined);
 if (!currentSecret) {

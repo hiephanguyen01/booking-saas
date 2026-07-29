@@ -1,7 +1,6 @@
 import { data } from 'react-router';
-import { requireAuth } from '~/lib/server/auth.server';
+import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
-import { storefrontPaths } from '~/constants/paths';
 import { parseBookingHistoryFilter } from '~/features/account/lib/booking-history';
 import { submitBookingCancellation } from '~/features/account/server/booking-cancellation.server';
 import { loadAccountBookings } from '~/features/account/server/booking-history.server';
@@ -9,7 +8,7 @@ import { submitCustomerReview } from '~/features/account/server/customer-reviews
 
 export async function loadAccountBookingsRoute(request: Request, locale: 'vi' | 'en') {
   const url = new URL(request.url);
-  const auth = requireAuth(storefrontPaths.login(locale, `${url.pathname}${url.search}`));
+  const auth = requireCustomerAuth(request, locale);
   const filter = parseBookingHistoryFilter(url.searchParams.get('status'));
   const result = await loadAccountBookings(request, auth.session.accessToken, locale, filter);
 

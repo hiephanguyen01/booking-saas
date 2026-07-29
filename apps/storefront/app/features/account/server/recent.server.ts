@@ -1,5 +1,4 @@
-import { createCookie } from 'react-router';
-import { storefrontEnv } from '~/lib/server/env.server';
+import { signedCookie } from '~/lib/server/signed-cookie.server';
 
 /**
  * "My bookings" for guests without an account (§8.6): a signed, httpOnly cookie
@@ -11,14 +10,7 @@ const MAX = 10;
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
 const BOOKING_CODE_RE = /^BK-[A-HJ-NP-Z2-9]{6}$/;
 
-const recentCookie = createCookie('sf_recent', {
-  httpOnly: true,
-  path: '/',
-  sameSite: 'lax',
-  secure: storefrontEnv.secureCookies,
-  secrets: [...storefrontEnv.sessionSecrets],
-  maxAge: MAX_AGE_SECONDS,
-});
+const recentCookie = signedCookie('sf_recent', MAX_AGE_SECONDS);
 
 function validCodes(value: unknown): string[] {
   if (!Array.isArray(value)) return [];

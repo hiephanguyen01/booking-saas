@@ -1,4 +1,5 @@
-import { createTranslator, isLocale, type TranslationKey } from '@booking/i18n';
+import { isLocale, type TranslationKey } from '@booking/i18n';
+import { localeTranslator } from '~/lib/translator';
 
 const META_TITLE_KEYS = {
   start: 'auth.partner.meta.start',
@@ -23,7 +24,7 @@ export function partnerMeta(
   locale: string | undefined,
   step: OnboardingMetaStep,
 ): Array<Record<string, string>> {
-  const { t } = createTranslator(isLocale(locale) ? locale : 'vi');
+  const { t } = localeTranslator(isLocale(locale) ? locale : 'vi');
   const title = t(META_TITLE_KEYS[step]);
   return [
     { title: tenantName ? `${title} · ${tenantName}` : title },

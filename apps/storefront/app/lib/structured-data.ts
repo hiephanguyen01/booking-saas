@@ -21,7 +21,7 @@ export function organizationNode(origin: string, name: string, logoUrl?: string 
 }
 
 /** Google drops a rating with no reviews behind it, so emit it only when there is one. */
-function aggregateRatingNode(reviewCount: number, ratingAvg: number | null) {
+export function aggregateRatingNode(reviewCount: number, ratingAvg: number | null) {
   if (reviewCount <= 0 || ratingAvg === null) return {};
   return {
     aggregateRating: {

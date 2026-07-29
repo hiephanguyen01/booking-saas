@@ -192,6 +192,39 @@ function selectedFirst(
   return { visible: ordered.slice(0, cut), hidden: ordered.slice(cut) };
 }
 
+/** The overflow-aware option list both control kinds render; only the leaf differs. */
+function FilterOptionList({
+  options,
+  isSelected,
+  visibleCount,
+  renderOption,
+  wrap,
+}: {
+  options: FilterOption[];
+  isSelected: (option: FilterOption) => boolean;
+  visibleCount: number;
+  renderOption: (option: FilterOption) => ReactNode;
+  wrap: (children: ReactNode) => ReactNode;
+}) {
+  const { visible, hidden } = selectedFirst(options, isSelected, visibleCount);
+
+  return (
+    <Collapsible>
+      {wrap(
+        <>
+          {visible.map(renderOption)}
+          {hidden.length ? (
+            <CollapsibleContent className="flex flex-col gap-3">
+              {hidden.map(renderOption)}
+            </CollapsibleContent>
+          ) : null}
+        </>,
+      )}
+      {hidden.length ? <ShowMoreTrigger /> : null}
+    </Collapsible>
+  );
+}
+
 function FilterRadioList({
   name,
   options,
@@ -206,34 +239,27 @@ function FilterRadioList({
   allLabel: string;
   visibleCount?: number;
 }) {
-  const { visible, hidden } = selectedFirst(
-    options,
-    (option) => option.value === selected,
-    visibleCount,
-  );
-  const item = (option: FilterOption): ReactNode => (
-    <OptionLabel key={option.value}>
-      <RadioGroupItem value={option.value} />
-      <span>{option.label}</span>
-    </OptionLabel>
-  );
-
   return (
-    <Collapsible>
-      <RadioGroup name={name} defaultValue={selected} className="gap-3">
-        <OptionLabel>
-          <RadioGroupItem value="" />
-          <span>{allLabel}</span>
+    <FilterOptionList
+      options={options}
+      isSelected={(option) => option.value === selected}
+      visibleCount={visibleCount}
+      renderOption={(option) => (
+        <OptionLabel key={option.value}>
+          <RadioGroupItem value={option.value} />
+          <span>{option.label}</span>
         </OptionLabel>
-        {visible.map(item)}
-        {hidden.length ? (
-          <CollapsibleContent className="flex flex-col gap-3">
-            {hidden.map(item)}
-          </CollapsibleContent>
-        ) : null}
-      </RadioGroup>
-      {hidden.length ? <ShowMoreTrigger /> : null}
-    </Collapsible>
+      )}
+      wrap={(children) => (
+        <RadioGroup name={name} defaultValue={selected} className="gap-3">
+          <OptionLabel>
+            <RadioGroupItem value="" />
+            <span>{allLabel}</span>
+          </OptionLabel>
+          {children}
+        </RadioGroup>
+      )}
+    />
   );
 }
 
@@ -248,35 +274,27 @@ function FilterCheckList({
   selected: string[];
   visibleCount?: number;
 }) {
-  const { visible, hidden } = selectedFirst(
-    options,
-    (option) => selected.includes(option.value),
-    visibleCount,
-  );
-  const item = (option: FilterOption): ReactNode => (
-    <OptionLabel key={option.value}>
-      <Checkbox
-        name={name}
-        value={option.value}
-        defaultChecked={selected.includes(option.value)}
-        className="size-4 rounded-xs"
-      />
-      <span>{option.label}</span>
-    </OptionLabel>
-  );
+  // One Set for all three membership passes: ordering, rendering, and the guard above.
+  const selectedValues = new Set(selected);
 
   return (
-    <Collapsible>
-      <div className="flex flex-col gap-3">
-        {visible.map(item)}
-        {hidden.length ? (
-          <CollapsibleContent className="flex flex-col gap-3">
-            {hidden.map(item)}
-          </CollapsibleContent>
-        ) : null}
-      </div>
-      {hidden.length ? <ShowMoreTrigger /> : null}
-    </Collapsible>
+    <FilterOptionList
+      options={options}
+      isSelected={(option) => selectedValues.has(option.value)}
+      visibleCount={visibleCount}
+      renderOption={(option) => (
+        <OptionLabel key={option.value}>
+          <Checkbox
+            name={name}
+            value={option.value}
+            defaultChecked={selectedValues.has(option.value)}
+            className="size-4 rounded-xs"
+          />
+          <span>{option.label}</span>
+        </OptionLabel>
+      )}
+      wrap={(children) => <div className="flex flex-col gap-3">{children}</div>}
+    />
   );
 }
 

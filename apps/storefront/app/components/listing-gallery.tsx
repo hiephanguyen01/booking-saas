@@ -1,7 +1,5 @@
-import {
-  MediaViewerDialog,
-  type MediaViewerItem,
-} from '@booking/ui/components/media/media-viewer-dialog';
+import { MediaViewerDialog } from '@booking/ui/components/media/media-viewer-dialog';
+import { usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { Expand, ImageIcon } from 'lucide-react';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { useListingGalleryController } from '~/hooks/use-listing-gallery-controller';
@@ -22,11 +20,7 @@ export function ListingGallery({ photos, title }: { photos: string[]; title: str
     triggerRef,
     visiblePhotos,
   } = useListingGalleryController(photos);
-  const mediaItems: MediaViewerItem[] = photos.map((photo, index) => ({
-    kind: 'image',
-    url: photo,
-    alt: t('group.photoAlt', { title, index: index + 1 }),
-  }));
+  const mediaItems = usePhotoMediaItems(photos, title);
 
   return (
     <>

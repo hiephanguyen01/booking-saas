@@ -8,7 +8,7 @@ import {
 import { data, redirect } from 'react-router';
 import { z } from 'zod';
 import { apiGet, apiPost } from '~/lib/server/api.server';
-import { requireAuth } from '~/lib/server/auth.server';
+import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { checkoutBooking, fetchPaymentOptions } from '~/features/booking/server/booking.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
@@ -37,7 +37,7 @@ export async function loadAccountBookingDetailRoute(
   locale: 'vi' | 'en',
 ) {
   const url = new URL(request.url);
-  const auth = requireAuth(storefrontPaths.login(locale, `${url.pathname}${url.search}`));
+  const auth = requireCustomerAuth(request, locale);
   const booking = await loadAccountBooking(request, code, locale, auth.session.accessToken);
   if (!booking) throw new Response('Booking not found', { status: 404 });
 
@@ -85,7 +85,7 @@ export async function handleAccountBookingDetailAction(
     return submitBookingCancellation(request, locale, normalizedCode, formData);
   }
 
-  const auth = requireAuth(storefrontPaths.login(locale, new URL(request.url).pathname));
+  const auth = requireCustomerAuth(request, locale, { includeSearch: false });
   const parsed = bookingActionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return data({ ok: false, error: 'CANCEL_REASON_REQUIRED' }, { status: 400 });

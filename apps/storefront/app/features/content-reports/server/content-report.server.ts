@@ -3,6 +3,7 @@ import {
   createContentReportResponseSchema,
   type ContentReportTarget,
 } from '@booking/contracts';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { data } from 'react-router';
 import { apiPost } from '~/lib/server/api.server';
 import { getOptionalAuth } from '~/lib/server/auth.server';
@@ -15,9 +16,10 @@ export async function submitContentReport(
 ) {
   const auth = getOptionalAuth();
   if (!auth) return data({ reportOk: false as const, error: 'unauthorized' }, { status: 401 });
-  const body = await request.json().catch(() => null);
+  const body = await readJsonRequestBody(request);
+  const payload = body.ok && body.value && typeof body.value === 'object' ? body.value : {};
   const parsed = createContentReportInputSchema.safeParse({
-    ...(body && typeof body === 'object' ? body : {}),
+    ...payload,
     target,
     targetId,
   });

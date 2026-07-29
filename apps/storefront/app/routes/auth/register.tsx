@@ -1,4 +1,5 @@
 import { Link, useActionData, useOutletContext } from 'react-router';
+import { authMeta } from '~/features/auth/lib/auth-meta';
 import { AuthFrame } from '~/features/auth/components/auth-frame';
 import { SocialButtons } from '~/features/auth/components/auth-social-buttons';
 import { StartForm } from '~/features/auth/components/auth-start-form';
@@ -8,10 +9,7 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
 import type { StorefrontContext } from '~/root';
 import type { Route } from './+types/register';
-export const meta = ({ params }: Route.MetaArgs) => [
-  { title: params.locale === 'en' ? 'Create account' : 'Đăng ký' },
-  { name: 'robots', content: 'noindex,nofollow' },
-];
+export const meta = ({ params }: Route.MetaArgs) => authMeta(params.locale, 'register');
 export const action = ({ request, params }: Route.ActionArgs) =>
   startRegistrationAction(request, params.locale);
 export default function RegisterRoute() {

@@ -90,7 +90,9 @@ function ListingSummary({
           />
         )}
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold leading-6 text-foreground">{booking.listingTitle}</h2>
+          <h2 className="text-sm font-semibold leading-6 text-foreground">
+            {booking.listingTitle}
+          </h2>
           {booking.resourceName ? (
             <p className="mt-0.5 text-xs text-muted-foreground">{booking.resourceName}</p>
           ) : null}
@@ -204,7 +206,8 @@ function PolicyActions({
         {canPay ? (
           <BookingPaymentForm
             buttonProps={{
-              className: 'h-10 rounded-sm bg-primary px-6 text-primary-foreground hover:bg-primary/90',
+              className:
+                'h-10 rounded-sm bg-primary px-6 text-primary-foreground hover:bg-primary/90',
             }}
           >
             {t('bookings.payNow')}

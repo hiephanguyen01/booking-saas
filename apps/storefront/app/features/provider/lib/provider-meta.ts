@@ -1,11 +1,12 @@
-import { createTranslator, type Locale } from '@booking/i18n';
+import { type Locale } from '@booking/i18n';
+import { localeTranslator } from '~/lib/translator';
 import type { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
 type ProviderProfile = ServerDataFrom<typeof loadProviderRoute>['profile'];
 
 export function buildProviderMeta(profile: ProviderProfile | undefined, locale: Locale) {
-  const { t } = createTranslator(locale);
+  const { t } = localeTranslator(locale);
   if (!profile) return [{ title: t('catalog.provider.metaTitle') }];
 
   return [

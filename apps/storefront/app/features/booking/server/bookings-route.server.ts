@@ -3,6 +3,7 @@ import {
   bookingResponseSchema,
   type BookingResponse,
 } from '@booking/contracts';
+import { readJsonRequestBody } from '~/lib/server/json-request.server';
 import { data } from 'react-router';
 import { z } from 'zod';
 import { readRecentCodes } from '~/features/account/server/recent.server';
@@ -32,7 +33,8 @@ export async function loadBookingsRoute({ request }: { request: Request }) {
 }
 
 export async function actionBookingsRoute({ request }: { request: Request }) {
-  const parsed = bookingLookupInputSchema.safeParse(await request.json().catch(() => ({})));
+  const body = await readJsonRequestBody(request);
+  const parsed = bookingLookupInputSchema.safeParse(body.ok ? body.value : {});
   if (!parsed.success) {
     return data(
       {

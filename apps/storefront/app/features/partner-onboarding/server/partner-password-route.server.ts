@@ -3,8 +3,8 @@ import {
   authPasswordCompleteInputSchema,
   type AuthFlowCompleteResponse,
 } from '@booking/contracts';
+import { partnerPasswordSchema } from '~/features/partner-onboarding/lib/partner-password-rules';
 import { storefrontPaths } from '~/constants/paths';
-import { z } from 'zod';
 import { backendLogin, publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
 import { requireLocale } from '~/lib/server/i18n.server';
@@ -19,17 +19,6 @@ import {
   requirePartnerPhase,
   requirePartnerPhaseOnly,
 } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
-
-const partnerPasswordSchema = z.object({
-  password: z
-    .string()
-    .min(8, 'passwordTooShort')
-    .max(128, 'passwordTooLong')
-    .regex(/[A-Za-z]/, 'passwordNoLetter')
-    .regex(/[0-9]/, 'passwordNoDigit')
-    .regex(/[A-Z]/, 'passwordNoUppercase')
-    .regex(/[^A-Za-z0-9]/, 'passwordNoSpecial'),
-});
 
 export function loadPartnerPasswordRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);

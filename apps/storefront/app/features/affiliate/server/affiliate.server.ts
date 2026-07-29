@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { signedCookie } from '~/lib/server/signed-cookie.server';
 import { affiliateResponseSchema, trackReferralResponseSchema } from '@booking/contracts';
-import { createCookie } from 'react-router';
 import { apiPost, publicPost } from '~/lib/server/api.server';
-import { storefrontEnv } from '~/lib/server/env.server';
 
 /**
  * Server-only affiliate attribution (§15.1). The storefront reads `?ref=CODE`,
@@ -17,17 +16,6 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 /** 30-day attribution window (§15.1). Configurable per tenant is a later phase. */
 const AFF_MAX_AGE = 60 * 60 * 24 * 30;
 const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
-
-function signedCookie(name: string, maxAge: number) {
-  return createCookie(name, {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    secure: storefrontEnv.secureCookies,
-    secrets: [...storefrontEnv.sessionSecrets],
-    maxAge,
-  });
-}
 
 function attributionCookie(tenantId: string) {
   return signedCookie(`${AFF_PREFIX}${tenantId}`, AFF_MAX_AGE);
