@@ -1,5 +1,4 @@
 import { useOutletContext } from 'react-router';
-import { localeParam, storefrontPaths } from '~/constants/paths';
 import { authMeta } from '~/features/auth/lib/auth-meta';
 import { AuthFrame } from '~/features/auth/components/auth-frame';
 import { SuccessState } from '~/features/auth/components/auth-success-state';
@@ -10,11 +9,7 @@ import type { Route } from './+types/forgot-password-success';
 export const meta = ({ params }: Route.MetaArgs) =>
   authMeta(params.locale, 'forgotPasswordSuccess');
 export const loader = ({ request, params }: Route.LoaderArgs) =>
-  requireFlowPhaseOnly(
-    request,
-    'reset_success',
-    storefrontPaths.forgotPassword(localeParam(params.locale)),
-  );
+  requireFlowPhaseOnly(request, 'password_reset', 'success', params.locale);
 export default function RouteComponent() {
   const { tenant, locale } = useOutletContext<StorefrontContext>();
   const { t } = useTranslation(NsI18n.Auth);

@@ -1,4 +1,23 @@
-import { useRef, useState } from 'react';
+import type { MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
+import { useMemo, useRef, useState } from 'react';
+import { NsI18n, useTranslation } from '@booking/i18n';
+
+/**
+ * Photo URLs as viewer items, with the alt text the five galleries all wrote by
+ * hand from the same `group.photoAlt` key.
+ */
+export function usePhotoMediaItems(photos: readonly string[], title: string): MediaViewerItem[] {
+  const { t } = useTranslation(NsI18n.Listing);
+  return useMemo(
+    () =>
+      photos.map((photo, index) => ({
+        kind: 'image' as const,
+        url: photo,
+        alt: t('group.photoAlt', { title, index: index + 1 }),
+      })),
+    [photos, title, t],
+  );
+}
 
 /**
  * Opening a media viewer from a list: which item is showing, at which photo, and

@@ -1,8 +1,6 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
-import {
-  MediaViewerDialog,
-  type MediaViewerItem,
-} from '@booking/ui/components/media/media-viewer-dialog';
+import { usePhotoMediaItems } from '~/hooks/use-media-gallery';
+import { MediaViewerDialog } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
@@ -10,6 +8,9 @@ import type { PublicPackageOption } from '~/lib/package-options';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { PackageMediaDetails } from '~/components/package-media-details';
 import { usePackageAlbumsController } from '~/features/packages/hooks/use-package-albums-controller';
+
+/** Stable identity so the media-items memo does not rebuild while nothing is open. */
+const EMPTY_PHOTOS: string[] = [];
 
 export function PackageAlbums({
   packages,
@@ -26,12 +27,7 @@ export function PackageAlbums({
   const viewerLabels = useMediaViewerLabels();
   const { active, activeIndex, albums, handleOpenChange, openAlbum, setActiveIndex, triggerRef } =
     usePackageAlbumsController({ packages, fallbackPhotos, title });
-  const mediaItems: MediaViewerItem[] =
-    active?.photos.map((photo, index) => ({
-      kind: 'image',
-      url: photo,
-      alt: t('group.photoAlt', { title: active.name, index: index + 1 }),
-    })) ?? [];
+  const mediaItems = usePhotoMediaItems(active?.photos ?? EMPTY_PHOTOS, active?.name ?? title);
 
   if (!albums.length) return null;
 

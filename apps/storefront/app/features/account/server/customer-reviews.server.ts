@@ -9,8 +9,10 @@ import { apiGet, apiPost } from '~/lib/server/api.server';
 import { requireCustomerAuth } from '~/lib/server/auth.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
+import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 
 const REVIEW_PAGE_SIZE = 100;
+const REVIEW_PAGE_CONCURRENCY = 4;
 
 export interface ReviewActionData {
   ok: boolean;
@@ -18,25 +20,34 @@ export interface ReviewActionData {
   bookingId: string | null;
 }
 
+/**
+ * Every review the customer has written, keyed by booking.
+ *
+ * Page 1 reports the total, so the remaining pages are known up front and fetch
+ * concurrently rather than one round trip at a time — this runs on the bookings
+ * list, the booking detail loader and every booking action.
+ */
 export async function loadCustomerReviewsByBooking(
   request: Request,
   accessToken: string,
 ): Promise<Map<string, CustomerReviewItem>> {
-  const reviews = new Map<string, CustomerReviewItem>();
-  let page = 1;
-  let total = Number.POSITIVE_INFINITY;
-
-  while ((page - 1) * REVIEW_PAGE_SIZE < total) {
-    const result = await apiGet(request, '/customer/reviews', accessToken, {
+  const fetchPage = (page: number) =>
+    apiGet(request, '/customer/reviews', accessToken, {
       query: { status: 'all', page, pageSize: REVIEW_PAGE_SIZE },
       schema: customerReviewListResponseSchema,
     });
-    if (!result.ok || !result.data) return reviews;
 
-    total = result.data.total;
+  const reviews = new Map<string, CustomerReviewItem>();
+  const first = await fetchPage(1);
+  if (!first.ok || !first.data) return reviews;
+  for (const review of first.data.items) reviews.set(review.bookingId, review);
+
+  const pageCount = Math.ceil(first.data.total / REVIEW_PAGE_SIZE);
+  const remaining = Array.from({ length: Math.max(0, pageCount - 1) }, (_, index) => index + 2);
+  const rest = await mapWithConcurrency(remaining, REVIEW_PAGE_CONCURRENCY, fetchPage);
+  for (const result of rest) {
+    if (!result.ok || !result.data) continue;
     for (const review of result.data.items) reviews.set(review.bookingId, review);
-    if (result.data.items.length < REVIEW_PAGE_SIZE) break;
-    page += 1;
   }
 
   return reviews;

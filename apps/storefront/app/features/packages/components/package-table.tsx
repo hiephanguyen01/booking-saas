@@ -1,5 +1,4 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
-import type { MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -11,7 +10,7 @@ import {
 } from '@booking/ui/components/ui/empty';
 import { cn } from '@booking/ui/lib/utils';
 import { Aperture, Check, Clock3, Expand } from 'lucide-react';
-import { useMediaGallery } from '~/hooks/use-media-gallery';
+import { useMediaGallery, usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { packageDurationLabel, type PublicPackageOption } from '~/lib/package-options';
@@ -21,6 +20,9 @@ import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { formatVnd } from '~/lib/ui';
 import { PackageMediaDetails } from '~/components/package-media-details';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
+
+/** Stable identity so the media-items memo does not rebuild while nothing is open. */
+const EMPTY_PHOTOS: string[] = [];
 
 export function PackageTable({
   listing,
@@ -37,12 +39,10 @@ export function PackageTable({
   const viewerLabels = useMediaViewerLabels();
   const gallery = useMediaGallery(packages, (item) => item.id);
   const activePackage = gallery.item;
-  const mediaItems: MediaViewerItem[] =
-    activePackage?.photos.map((photo, index) => ({
-      kind: 'image',
-      url: photo,
-      alt: t('group.photoAlt', { title: activePackage.name, index: index + 1 }),
-    })) ?? [];
+  const mediaItems = usePhotoMediaItems(
+    activePackage?.photos ?? EMPTY_PHOTOS,
+    activePackage?.name ?? '',
+  );
 
   return (
     <SectionCard id="packages" aria-labelledby="packages-title" className="scroll-mt-28">

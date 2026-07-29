@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useSubmissionGuard } from '@booking/ui/hooks/use-submission-guard';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigation, useSubmit } from 'react-router';
 import type { AuthActionData } from '~/lib/auth-types';
 import { otpSubmissionIntent } from '~/features/auth/lib/otp-submission-state';
@@ -16,17 +17,13 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
 }) {
   const submit = useSubmit();
   const navigation = useNavigation();
-  const resendLockRef = useRef(false);
-  const resendWasBusyRef = useRef(false);
-  const verifyLockRef = useRef(false);
-  const verifyWasBusyRef = useRef(false);
-  const [resending, setResending] = useState(false);
-  const [verifying, setVerifying] = useState(false);
   const [seconds, setSeconds] = useState(actionData?.resendAfterSec ?? initialSeconds);
   const [code, setCode] = useState('');
   const submissionIntent = otpSubmissionIntent(navigation);
-  const navigationIsResend = submissionIntent === 'resend';
-  const navigationIsVerify = submissionIntent === 'verify';
+  // One guard per button: each closes its own event-to-render gap, and each blocks
+  // while the other is in flight so a resend cannot race a verify.
+  const verify = useSubmissionGuard(submissionIntent === 'verify' ? 'submitting' : 'idle');
+  const resend = useSubmissionGuard(submissionIntent === 'resend' ? 'submitting' : 'idle');
 
   useEffect(() => {
     if (seconds <= 0) return;
@@ -44,59 +41,24 @@ export function useOtpFormController<TActionData extends OtpCooldownActionData>(
     }
   }, [actionData]);
 
-  useEffect(() => {
-    if (navigationIsResend) resendWasBusyRef.current = true;
-    if (navigationIsVerify) verifyWasBusyRef.current = true;
-    if (navigation.state !== 'idle') return;
-
-    if (resendWasBusyRef.current) {
-      resendWasBusyRef.current = false;
-      resendLockRef.current = false;
-      setResending(false);
-    }
-    if (verifyWasBusyRef.current) {
-      verifyWasBusyRef.current = false;
-      verifyLockRef.current = false;
-      setVerifying(false);
-    }
-  }, [navigation.state, navigationIsResend, navigationIsVerify]);
-
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (code.length !== 6 || verifyLockRef.current || resendLockRef.current) return;
-
-    verifyLockRef.current = true;
-    setVerifying(true);
-    try {
-      submit({ code }, { method: 'post' });
-    } catch (error) {
-      verifyLockRef.current = false;
-      setVerifying(false);
-      throw error;
-    }
+    if (code.length !== 6 || resend.busy) return;
+    verify.run(() => submit({ code }, { method: 'post' }));
   }
 
   function resendCode(): void {
-    if (seconds > 0 || resendLockRef.current || verifyLockRef.current) return;
-
-    resendLockRef.current = true;
-    setResending(true);
-    try {
-      submit({ intent: 'resend' }, { method: 'post' });
-    } catch (error) {
-      resendLockRef.current = false;
-      setResending(false);
-      throw error;
-    }
+    if (seconds > 0 || verify.busy) return;
+    resend.run(() => submit({ intent: 'resend' }, { method: 'post' }));
   }
 
   return {
     code,
     handleSubmit,
     resendCode,
-    resending,
+    resending: resend.busy,
     seconds,
     setCode,
-    verifying,
+    verifying: verify.busy,
   };
 }

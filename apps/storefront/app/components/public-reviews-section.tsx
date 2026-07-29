@@ -1,4 +1,5 @@
 import type { ReviewListResponse, ReviewResponse, ReviewSummary } from '@booking/contracts';
+import type { MediaViewerLabels } from '@booking/ui/components/media/media-viewer-dialog';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { cn } from '@booking/ui/lib/utils';
@@ -26,6 +27,7 @@ export function PublicReviewsSection({
   reviewLimit: number;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
+  const viewerLabels = useMediaViewerLabels();
   const model = usePublicReviewsSectionController({
     reviews,
     reviewSummary,
@@ -84,7 +86,7 @@ export function PublicReviewsSection({
 
       <div className="divide-y divide-border border-t border-border">
         {reviews?.items.map((review) => (
-          <ReviewItem key={review.id} review={review} locale={locale} />
+          <ReviewItem key={review.id} review={review} locale={locale} viewerLabels={viewerLabels} />
         ))}
       </div>
 
@@ -108,9 +110,16 @@ export function PublicReviewsSection({
   );
 }
 
-function ReviewItem({ review, locale }: { review: ReviewResponse; locale: 'vi' | 'en' }) {
+function ReviewItem({
+  review,
+  locale,
+  viewerLabels,
+}: {
+  review: ReviewResponse;
+  locale: 'vi' | 'en';
+  viewerLabels: MediaViewerLabels;
+}) {
   const { t } = useTranslation(NsI18n.Listing);
-  const viewerLabels = useMediaViewerLabels();
   return (
     <article className="flex flex-col gap-2 py-5 first:pt-4 last:pb-0">
       <div className="flex items-start justify-between gap-4">

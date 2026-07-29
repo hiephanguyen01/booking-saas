@@ -1,69 +1,35 @@
 import type { Locale } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { data, redirect } from 'react-router';
 import {
-  authFlow,
   flowView,
   type AuthFlowPhase,
   type AuthFlowView,
 } from '~/features/auth/server/auth-flow.server';
-import {
-  formRequestFailureStatus,
-  readFormRequestBody,
-  type FormRequestBody,
-} from '~/lib/server/form-request.server';
+import { requireFlowPhase } from '~/features/auth/server/auth-routes.server';
 
-const PARTNER_MAX_FORM_BYTES = 16 * 1024;
+/**
+ * Partner onboarding walks the same OTP flow as customer registration, on the
+ * same `auth-flow.server` store — so the form quartet, the error envelopes and
+ * the phase gates all come from `features/auth/server`. The only thing this
+ * feature owns is where an out-of-phase visitor is sent back to.
+ */
+export type { AuthActionData as PartnerOnboardingActionData } from '~/lib/auth-types';
+export {
+  failedAuthForm as failedPartnerFormData,
+  failedAuthRequest as failedPartnerOnboarding,
+  formFields as partnerFormFields,
+  invalidAuthInput as invalidPartnerOnboarding,
+  readAuthForm as readPartnerFormData,
+} from '~/features/auth/server/auth-form.server';
 
-export interface PartnerOnboardingActionData {
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  resendAfterSec?: number;
-}
-
-export const partnerFormFields = (form: FormData) => Object.fromEntries(form.entries());
-export const readPartnerFormData = (request: Request) =>
-  readFormRequestBody(request, PARTNER_MAX_FORM_BYTES);
-export const failedPartnerFormData = (result: Extract<FormRequestBody, { ok: false }>) =>
-  failedPartnerOnboarding({
-    status: formRequestFailureStatus(result.code),
-    code: result.code,
-  });
-
-export function invalidPartnerOnboarding(fieldErrors: Record<string, string[] | undefined>) {
-  return data<PartnerOnboardingActionData>(
-    {
-      fieldErrors: Object.fromEntries(
-        Object.entries(fieldErrors).filter((entry): entry is [string, string[]] =>
-          Boolean(entry[1]),
-        ),
-      ),
-    },
-    { status: 400 },
-  );
-}
-
-export function failedPartnerOnboarding(result: { status: number; code?: string; error?: string }) {
-  return data<PartnerOnboardingActionData>(
-    { error: result.code ?? result.error ?? 'UNKNOWN' },
-    { status: result.status >= 400 && result.status < 600 ? result.status : 500 },
-  );
-}
+const partnerFallback = (locale: Locale) => storefrontPaths.becomePartner(locale);
 
 /**
  * Server-side flow accessor. The returned record may contain a completion token,
  * so route loaders must expose it only through `requirePartnerView`.
  */
 export async function requirePartnerPhase(request: Request, phase: AuthFlowPhase, locale: Locale) {
-  const flow = await authFlow.read(request);
-  if (!flow || flow.record.phase !== phase) throw redirect(storefrontPaths.becomePartner(locale));
-  return {
-    ...flow,
-    resendAfterSec: Math.max(
-      0,
-      Math.ceil(((flow.record.resendAvailableAt ?? Date.now()) - Date.now()) / 1_000),
-    ),
-  };
+  return requireFlowPhase(request, phase, partnerFallback(locale));
 }
 
 export async function requirePartnerView(

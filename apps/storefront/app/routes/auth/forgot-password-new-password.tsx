@@ -1,5 +1,4 @@
 import { useActionData, useOutletContext } from 'react-router';
-import { localeParam, storefrontPaths } from '~/constants/paths';
 import { authMeta } from '~/features/auth/lib/auth-meta';
 import type { Route } from './+types/forgot-password-new-password';
 import { AuthFrame } from '~/features/auth/components/auth-frame';
@@ -14,11 +13,7 @@ import type { StorefrontContext } from '~/root';
 export const meta = ({ params }: Route.MetaArgs) =>
   authMeta(params.locale, 'forgotPasswordNewPassword');
 export const loader = ({ request, params }: Route.LoaderArgs) =>
-  requireFlowPhaseOnly(
-    request,
-    'reset_password',
-    storefrontPaths.forgotPassword(localeParam(params.locale)),
-  );
+  requireFlowPhaseOnly(request, 'password_reset', 'password', params.locale);
 export const action = ({ request, params }: Route.ActionArgs) =>
   completePasswordAction(request, params.locale, 'password_reset');
 export default function RouteComponent() {

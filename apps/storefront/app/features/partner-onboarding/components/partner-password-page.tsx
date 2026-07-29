@@ -1,22 +1,13 @@
 import { Form, useActionData, useOutletContext } from 'react-router';
-import { NsI18n, useTranslation, type ScopedTranslationKey } from '@booking/i18n';
+import { NsI18n, useTranslation } from '@booking/i18n';
+import {
+  PARTNER_PASSWORD_CHECKLIST,
+  PARTNER_PASSWORD_ERROR_KEYS,
+} from '~/features/partner-onboarding/lib/partner-password-rules';
 import type { StorefrontContext } from '~/root';
 import { AuthSplit, FormHeading } from './partner-auth-layout';
 import { FormAlert, PasswordField, PrimaryButton } from './partner-form-controls';
 import type { PartnerOnboardingActionData } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
-
-/** Error codes emitted by `partnerPasswordSchema`, which cannot know the locale. */
-const PASSWORD_ERRORS = {
-  passwordTooShort: 'partner.errors.passwordTooShort',
-  passwordTooLong: 'partner.errors.passwordTooLong',
-  passwordNoLetter: 'partner.errors.passwordNoLetter',
-  passwordNoDigit: 'partner.errors.passwordNoDigit',
-  passwordNoUppercase: 'partner.errors.passwordNoUppercase',
-  passwordNoSpecial: 'partner.errors.passwordNoSpecial',
-  passwordMismatch: 'errors.passwordMismatch',
-} as const satisfies Record<string, ScopedTranslationKey<NsI18n.Auth>>;
-
-const RULES = ['length', 'uppercase', 'digit', 'special'] as const;
 
 export function PartnerPasswordPage() {
   const { tenant } = useOutletContext<StorefrontContext>();
@@ -25,7 +16,7 @@ export function PartnerPasswordPage() {
 
   const messageFor = (code?: string) => {
     if (!code) return undefined;
-    const key = PASSWORD_ERRORS[code as keyof typeof PASSWORD_ERRORS];
+    const key = PARTNER_PASSWORD_ERROR_KEYS[code];
     return key ? t(key) : t('errors.generic');
   };
 
@@ -46,8 +37,8 @@ export function PartnerPasswordPage() {
           error={messageFor(actionData?.fieldErrors?.confirmPassword?.[0])}
         />
         <ul className="space-y-2 pt-1 text-sm font-medium leading-5 text-muted-foreground">
-          {RULES.map((rule) => (
-            <li key={rule}>{t(`partner.passwordRules.${rule}`)}</li>
+          {PARTNER_PASSWORD_CHECKLIST.map((key) => (
+            <li key={key}>{t(key)}</li>
           ))}
         </ul>
         <div className="pt-5">

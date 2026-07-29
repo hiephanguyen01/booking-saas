@@ -1,5 +1,4 @@
 import type { AttributeField, HourlySlot } from '@booking/contracts';
-import { type MediaViewerItem } from '@booking/ui/components/media/media-viewer-dialog';
 import { PackageMediaViewerDialog } from '@booking/ui/components/media/package-media-viewer-dialog';
 import { Button } from '@booking/ui/components/ui/button';
 import {
@@ -10,7 +9,7 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { Building2 } from 'lucide-react';
-import { useMediaGallery } from '~/hooks/use-media-gallery';
+import { useMediaGallery, usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
@@ -20,6 +19,9 @@ import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from 
 import { RoomMediaDetails } from './room-media-details';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
+
+/** Stable identity so the media-items memo does not rebuild while nothing is open. */
+const EMPTY_PHOTOS: string[] = [];
 
 export function RoomOptionsSection({
   roomOptions,
@@ -48,12 +50,10 @@ export function RoomOptionsSection({
   } = useRoomOptionsController({ hideUnavailableByDefault, roomOptions });
   const gallery = useMediaGallery(visibleOptions, (option) => option.child.id);
   const activeRoom = gallery.item;
-  const mediaItems: MediaViewerItem[] =
-    activeRoom?.child.photos.map((photo, index) => ({
-      kind: 'image',
-      url: photo,
-      alt: t('group.photoAlt', { title: activeRoom.child.title, index: index + 1 }),
-    })) ?? [];
+  const mediaItems = usePhotoMediaItems(
+    activeRoom?.child.photos ?? EMPTY_PHOTOS,
+    activeRoom?.child.title ?? '',
+  );
 
   return (
     <SectionCard id="room-options" aria-labelledby="room-options-title" className="scroll-mt-28">
