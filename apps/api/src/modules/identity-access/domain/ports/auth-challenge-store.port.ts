@@ -8,6 +8,7 @@ export interface AuthChallengePayload {
   locale: 'vi' | 'en';
   fullName?: string;
   userId?: string;
+  tenantId?: string;
 }
 
 export interface IssuedAuthChallenge {

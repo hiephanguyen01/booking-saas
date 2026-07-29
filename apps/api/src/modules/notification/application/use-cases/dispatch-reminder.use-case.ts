@@ -7,6 +7,7 @@ import {
 } from '../../domain/entities/notification-delivery.entity';
 import { REMINDER_PLAN_ITEM } from '../../domain/notification-plan';
 import { EMAIL_SENDER, type IEmailSender } from '../../domain/ports/email-sender.port';
+import { EMAIL_RENDERER, type IEmailRenderer } from '../../domain/ports/email-renderer.port';
 import {
   NOTIFICATION_LOG_REPOSITORY,
   type INotificationLogRepository,
@@ -28,6 +29,7 @@ export class DispatchReminderUseCase {
   constructor(
     @Inject(NOTIFICATION_READER) private readonly reader: INotificationReader,
     @Inject(EMAIL_SENDER) private readonly email: IEmailSender,
+    @Inject(EMAIL_RENDERER) private readonly renderer: IEmailRenderer,
     @Inject(NOTIFICATION_LOG_REPOSITORY) private readonly logs: INotificationLogRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
@@ -48,8 +50,9 @@ export class DispatchReminderUseCase {
       bookingId,
       policy: OUTBOX_DELIVERY_POLICY,
     });
-    await deliverNotification({ email: this.email, logs: this.logs }, delivery, {
+    await deliverNotification({ email: this.email, logs: this.logs, renderer: this.renderer }, delivery, {
       locale: customer.locale,
+      brand: ctx.brand,
       data: bookingTemplateData(ctx, customer, {}),
     });
   }

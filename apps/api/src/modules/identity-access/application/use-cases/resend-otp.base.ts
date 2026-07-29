@@ -22,6 +22,7 @@ export abstract class ResendOtpUseCase {
       throw new OtpResendCooldown(result.retryAfterSec);
     }
     if (result.payload.purpose === 'registration' || result.payload.userId) {
+      const tenantId = result.payload.tenantId ?? input.tenantId;
       await this.email.sendOtp({
         purpose: result.payload.purpose,
         email: result.payload.email,
@@ -29,6 +30,8 @@ export abstract class ResendOtpUseCase {
         locale: result.payload.locale,
         otp: result.challenge.otp,
         expiresInSec: result.challenge.expiresInSec,
+        challengeId: result.challenge.challengeId,
+        ...(tenantId ? { tenantId } : {}),
       });
     }
     return toResponse(result.challenge, result.payload.email);

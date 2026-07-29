@@ -1,5 +1,5 @@
 import { CircleAlert } from 'lucide-react';
-import type { PartnerResponse } from '@booking/contracts';
+import type { PartnerAgreementResponse, PartnerResponse } from '@booking/contracts';
 import {
   Card,
   CardContent,
@@ -39,12 +39,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   // GET /partner/profile is guarded by `partner.profile.manage` (it exposes the
   // payout account + ID number). Only fetch when the caller holds it.
   if (!canManage) {
-    return { canManage: false as const, partner: null, loadError: null as string | null };
+    return {
+      canManage: false as const,
+      partner: null,
+      agreements: [] as PartnerAgreementResponse[],
+      loadError: null as string | null,
+    };
   }
-  const res = await apiGet<PartnerResponse>('/partner/profile', auth);
+  const [res, agreementRes] = await Promise.all([
+    apiGet<PartnerResponse>('/partner/profile', auth),
+    apiGet<PartnerAgreementResponse[]>('/partner/profile/agreements', auth),
+  ]);
   return {
     canManage: true as const,
     partner: res.ok && res.data ? res.data : null,
+    agreements: agreementRes.ok && agreementRes.data ? agreementRes.data : [],
     loadError: res.ok ? null : (res.error ?? 'Không tải được hồ sơ đối tác.'),
   };
 }
@@ -55,7 +64,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function PartnerProfile({ loaderData, actionData }: Route.ComponentProps) {
-  const { canManage, partner, loadError } = loaderData;
+  const { canManage, partner, agreements, loadError } = loaderData;
 
   const resultFor = (intent: PartnerProfileIntent): PartnerProfileActionResult | null =>
     actionData && actionData.intent === intent ? actionData : null;
@@ -212,6 +221,45 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
 
       {/* 6 · Giấy tờ */}
       <ProfileDocumentsCard partner={partner} result={resultFor('documents')} />
+
+      <Card id="agreements">
+        <CardHeader>
+          <CardTitle>Thỏa thuận đã ghi nhận</CardTitle>
+          <CardDescription>
+            Phiên bản điều khoản được hệ thống ghi nhận khi hồ sơ đối tác được phê duyệt.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {agreements.length ? (
+            <DetailGrid columns={2}>
+              {agreements.map((agreement) => (
+                <DetailField
+                  key={`${agreement.agreementType}:${agreement.version}:${agreement.acceptedAt}`}
+                  label={
+                    agreement.agreementType === 'partner_terms'
+                      ? 'Điều khoản đối tác'
+                      : agreement.agreementType === 'commission_schedule'
+                        ? 'Biểu phí hoa hồng'
+                        : 'Tài trợ khuyến mãi'
+                  }
+                  value={
+                    <span className="space-y-1">
+                      <span className="block font-medium">Phiên bản {agreement.version}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Ghi nhận <DateTimeValue iso={agreement.acceptedAt} />
+                      </span>
+                    </span>
+                  }
+                />
+              ))}
+            </DetailGrid>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Chưa có phiên bản thỏa thuận nào được ghi nhận.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

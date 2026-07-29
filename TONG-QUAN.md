@@ -1191,6 +1191,13 @@ A template is a set of route components + its own layout, sharing `packages/ui` 
 
 Every notification goes through the outbox → BullMQ (retry + dead-letter). Email templates are per-tenant (logo, colors), bilingual vi/en based on `users.locale`. A `notification_logs` table tracks what was sent.
 
+Email HTML is rendered server-side from reusable React Email components, with a plain-text fallback
+and CID-hosted status assets for mail-client compatibility. Registration/password-reset and guest
+booking OTPs use the same tenant-aware visual shell; platform-host auth falls back to BookingOS.
+`partner.applied` acknowledges receipt, while `partner.approved` sends separate account-ready and
+agreement-version messages. Agreement emails link to the recorded versions and terms; they do not
+invent or attach a legal PDF.
+
 ---
 
 ## 18. i18n, Timezone, Currency Conventions

@@ -361,3 +361,11 @@ export const partnerResponseSchema = z.object({
   updatedAt: z.string(),
 });
 export type PartnerResponse = z.infer<typeof partnerResponseSchema>;
+
+export const partnerAgreementResponseSchema = z.object({
+  agreementType: z.enum(['partner_terms', 'commission_schedule', 'promo_funding']),
+  version: z.string(),
+  acceptedAt: z.string(),
+});
+export type PartnerAgreementResponse = z.infer<typeof partnerAgreementResponseSchema>;
+export const partnerAgreementListResponseSchema = z.array(partnerAgreementResponseSchema);

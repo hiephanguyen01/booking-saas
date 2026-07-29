@@ -1,3 +1,5 @@
+import type { EmailAttachment } from '../email-template';
+
 export const EMAIL_SENDER = Symbol('EMAIL_SENDER');
 
 export interface EmailMessage {
@@ -5,6 +7,7 @@ export interface EmailMessage {
   subject: string;
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 /** Outbound email transport (§17). SMTP/mailpit in dev; a log-only fallback in tests. */

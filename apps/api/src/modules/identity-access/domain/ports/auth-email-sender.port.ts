@@ -10,5 +10,7 @@ export interface IAuthEmailSender {
     locale: 'vi' | 'en';
     otp: string;
     expiresInSec: number;
+    challengeId: string;
+    tenantId?: string;
   }): Promise<void>;
 }
