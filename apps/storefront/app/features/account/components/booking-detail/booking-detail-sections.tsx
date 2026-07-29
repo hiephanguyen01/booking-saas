@@ -3,8 +3,9 @@ import { formatCurrency, formatDateTime, type Locale } from '@booking/i18n';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
-import { Info, Star } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { RatingStars } from '~/components/rating-stars';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { subtractMoney } from '~/lib/money';
 import {
@@ -81,8 +82,8 @@ export function PaymentTaxNote({ booking }: { booking: AccountBookingViewModel }
   const state = bookingDetailState(booking.status);
   if (state === 'absent') return null;
   return (
-    <p className="flex items-start gap-2 px-0.5 text-xs leading-5 text-[#4d5a70]">
-      <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[#263247]" />
+    <p className="flex items-start gap-2 px-0.5 text-xs leading-5 text-muted-foreground">
+      <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-foreground" />
       {state === 'cancelled'
         ? t('bookings.refund.policyNote', { percent: booking.refundPercent ?? 0 })
         : t('bookings.payment.taxNote')}
@@ -104,16 +105,8 @@ export function BookingReviewSection({
   return (
     <DetailSection title={t('bookings.reviewSection.title')}>
       {review?.status === 'reviewed' ? (
-        <div className="text-xs leading-5 text-[#4d5a70]">
-          <div className="flex gap-1 text-amber-500" aria-label={`${review.rating}/5`}>
-            {[1, 2, 3, 4, 5].map((value) => (
-              <Star
-                key={value}
-                className="size-4"
-                fill={value <= review.rating ? 'currentColor' : 'none'}
-              />
-            ))}
-          </div>
+        <div className="text-xs leading-5 text-muted-foreground">
+          <RatingStars rating={review.rating} className="gap-1" />
           <p className="mt-3">{review.content}</p>
           <ReviewMediaGallery
             items={review.media}
@@ -123,8 +116,8 @@ export function BookingReviewSection({
             viewerLabels={viewerLabels}
           />
           {review.reply ? (
-            <div className="mt-4 bg-[#f1f3f7] p-4">
-              <p className="font-semibold text-[#263247]">{review.reply.partnerName}</p>
+            <div className="mt-4 bg-muted p-4">
+              <p className="font-semibold text-foreground">{review.reply.partnerName}</p>
               <p className="mt-1">{review.reply.content}</p>
             </div>
           ) : null}
@@ -132,8 +125,8 @@ export function BookingReviewSection({
       ) : review?.status === 'pending' ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-[#263247]">{t('reviews.invitation')}</p>
-            <p className="mt-1 text-xs leading-5 text-[#4d5a70]">
+            <p className="text-sm font-semibold text-foreground">{t('reviews.invitation')}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
               {t('reviews.dialog.description', { title: booking.listingTitle })}
             </p>
           </div>
@@ -141,14 +134,14 @@ export function BookingReviewSection({
             type="button"
             size="sm"
             onClick={onReview}
-            className="h-9 shrink-0 rounded-sm bg-[#ff3f44] px-5 text-xs text-white"
+            className="h-9 shrink-0 rounded-sm bg-primary px-5 text-xs text-primary-foreground"
           >
             {t('bookings.reviewSection.submit')}
           </Button>
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs leading-5 text-[#4d5a70]">
+          <p className="text-xs leading-5 text-muted-foreground">
             {t('bookings.reviewSection.unavailable')}
           </p>
           <Button type="button" size="sm" disabled className="h-9 rounded-sm px-5 text-xs">
@@ -200,9 +193,9 @@ function PaymentSummary({ booking, locale }: { booking: AccountBookingViewModel;
         ) : null}
       </DetailRows>
       {booking.status !== 'pending_payment' ? (
-        <div className="mt-0 grid min-h-12 items-center border border-[#d8dee8] bg-[#f1f3f7] px-4 text-sm sm:grid-cols-2">
-          <span className="text-[#667085] sm:text-right">{t('bookings.payment.balance')}</span>
-          <span className="font-semibold text-[#263247] sm:text-right">
+        <div className="mt-0 grid min-h-12 items-center border border-border bg-muted px-4 text-sm sm:grid-cols-2">
+          <span className="text-muted-foreground sm:text-right">{t('bookings.payment.balance')}</span>
+          <span className="font-semibold text-foreground sm:text-right">
             {money(booking.balanceAmount, locale)}
           </span>
         </div>
@@ -218,15 +211,15 @@ function PricingLineRow({ line, locale }: { line: QuoteLineItem; locale: Locale 
     : 0;
 
   return (
-    <div className="grid min-h-12 items-center gap-1 border-b border-[#d8dee8] py-2 text-sm last:border-b-0 sm:grid-cols-2">
-      <dt className="text-[#667085] sm:text-right">{`${line.label} × ${line.quantity}`}</dt>
-      <dd className="flex flex-wrap items-center justify-end gap-2 text-[#263247]">
+    <div className="grid min-h-12 items-center gap-1 border-b border-border py-2 text-sm last:border-b-0 sm:grid-cols-2">
+      <dt className="text-muted-foreground sm:text-right">{`${line.label} × ${line.quantity}`}</dt>
+      <dd className="flex flex-wrap items-center justify-end gap-2 text-foreground">
         {hasDiscount ? (
           <>
-            <span className="bg-[#ff5b60] px-2 py-0.5 text-[11px] font-semibold text-white">
+            <span className="bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
               -{percentOff}%
             </span>
-            <span className="text-[11px] text-[#667085] line-through">
+            <span className="text-[11px] text-muted-foreground line-through">
               {money(line.regularAmount, locale)}
             </span>
           </>
@@ -329,7 +322,7 @@ function PostServiceRefundSummary({
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-background px-5 py-5 shadow-[0_3px_14px_rgba(15,23,42,0.035)] sm:px-6">
-      <h2 className="text-base font-semibold text-[#263247]">{title}</h2>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -353,12 +346,12 @@ function DetailRow({
   return (
     <div
       className={cn(
-        'grid min-h-12 items-center gap-1 border-b border-[#d8dee8] py-2 text-sm last:border-b-0',
+        'grid min-h-12 items-center gap-1 border-b border-border py-2 text-sm last:border-b-0',
         align === 'start' ? 'sm:grid-cols-[160px_minmax(0,1fr)]' : 'sm:grid-cols-2 sm:text-right',
       )}
     >
-      <dt className="text-[#667085]">{label}</dt>
-      <dd className={cn('break-words text-[#263247]', accent && 'font-semibold text-[#ff3f44]')}>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn('break-words text-foreground', accent && 'font-semibold text-primary')}>
         {value}
       </dd>
     </div>
@@ -367,7 +360,7 @@ function DetailRow({
 
 function SummaryFooter({ value }: { value: string }) {
   return (
-    <div className="mt-0 flex min-h-12 items-center justify-end border border-[#d8dee8] bg-[#f1f3f7] px-4 text-sm font-semibold text-[#263247]">
+    <div className="mt-0 flex min-h-12 items-center justify-end border border-border bg-muted px-4 text-sm font-semibold text-foreground">
       {value}
     </div>
   );

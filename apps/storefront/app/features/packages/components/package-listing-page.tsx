@@ -16,7 +16,7 @@ import type { StorefrontContext } from '~/root';
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
-import { StudioGallery } from '~/components/studio-gallery';
+import { ListingGallery } from '~/components/listing-gallery';
 import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
 import { PackageAlbums } from './package-albums';
 import { PackageBookingDialog } from './package-booking-dialog';
@@ -84,7 +84,7 @@ export function PackageListingPage({
           </header>
         }
         gallery={
-          <StudioGallery
+          <ListingGallery
             key={selectedPackage?.id ?? 'packages'}
             photos={galleryPhotos}
             title={selectedPackage ? `${listing.title} — ${selectedPackage.name}` : listing.title}

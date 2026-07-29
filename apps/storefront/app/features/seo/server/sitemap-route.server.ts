@@ -1,8 +1,10 @@
 import { fetchListingTypes, searchListings } from '~/features/catalog/server/catalog.server';
+import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 import { getOptionalStorefrontTenant } from '~/lib/server/request-context.server';
 import { requestPublicUrl } from '~/lib/seo';
 
 const SITEMAP_PAGE_SIZE = 48;
+const SITEMAP_PAGE_CONCURRENCY = 4;
 
 /**
  * Builds the per-domain sitemap: homepage, active listing-type pages and every
@@ -60,12 +62,8 @@ function sitemapResponse(urls: string): Response {
 }
 
 async function fetchAllListingPaths(request: Request, typeSlug: string): Promise<string[]> {
-  const paths: string[] = [];
-  let page = 1;
-  let totalPages = 1;
-
-  do {
-    const result = await searchListings(
+  const fetchPage = (page: number) =>
+    searchListings(
       request,
       new URLSearchParams({
         type: typeSlug,
@@ -73,17 +71,21 @@ async function fetchAllListingPaths(request: Request, typeSlug: string): Promise
         pageSize: String(SITEMAP_PAGE_SIZE),
       }),
     );
-    paths.push(
-      ...result.items.flatMap((listing) => [
-        `/${listing.kind === 'group' ? 'g' : 'l'}/${encodeURIComponent(listing.slug)}`,
-        `/p/${encodeURIComponent(listing.partnerSlug)}`,
-      ]),
-    );
-    totalPages = result.pagination.totalPages;
-    page += 1;
-  } while (page <= totalPages);
 
-  return paths;
+  // Page 1 answers how many pages there are, so the rest need not be serial.
+  const first = await fetchPage(1);
+  const remaining = Array.from(
+    { length: Math.max(0, first.pagination.totalPages - 1) },
+    (_, index) => index + 2,
+  );
+  const rest = await mapWithConcurrency(remaining, SITEMAP_PAGE_CONCURRENCY, fetchPage);
+
+  return [first, ...rest].flatMap((result) =>
+    result.items.flatMap((listing) => [
+      `/${listing.kind === 'group' ? 'g' : 'l'}/${encodeURIComponent(listing.slug)}`,
+      `/p/${encodeURIComponent(listing.partnerSlug)}`,
+    ]),
+  );
 }
 
 function escapeXml(value: string): string {

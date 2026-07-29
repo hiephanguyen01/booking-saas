@@ -2,6 +2,7 @@ import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing-group';
 import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
 import { localeParam } from '~/constants/paths';
+import { contentReportShouldRevalidate } from '~/features/content-reports/lib/content-report-result';
 import { ListingGroupPage } from '~/features/listing-group/components/listing-group-page';
 import { buildListingGroupMeta } from '~/features/listing-group/lib/listing-group-meta';
 import { buildListingGroupStructuredData } from '~/features/listing-group/lib/listing-group-structured-data';
@@ -16,17 +17,7 @@ export function action({ request, params }: Route.ActionArgs) {
   return handleListingGroupAction(request, params.groupSlug);
 }
 
-export function shouldRevalidate({
-  actionResult,
-  defaultShouldRevalidate,
-}: {
-  actionResult: unknown;
-  defaultShouldRevalidate: boolean;
-}) {
-  return actionResult && typeof actionResult === 'object' && 'reportOk' in actionResult
-    ? false
-    : defaultShouldRevalidate;
-}
+export const shouldRevalidate = contentReportShouldRevalidate;
 
 export function meta({ loaderData, params }: Route.MetaArgs): Route.MetaDescriptors {
   return buildListingGroupMeta(loaderData?.group, localeParam(params.locale));

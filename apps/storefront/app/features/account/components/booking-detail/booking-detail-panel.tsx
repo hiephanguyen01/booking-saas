@@ -41,13 +41,13 @@ export function BookingDetailPanel({
 
   return (
     <div className="mx-auto w-full max-w-[870px]">
-      <h1 className="mb-3 text-lg font-semibold uppercase leading-7 text-[#1f2937]">
+      <h1 className="mb-3 text-lg font-semibold uppercase leading-7 text-foreground">
         {t('bookings.title')}
       </h1>
       <div className="flex min-h-13 items-center bg-background px-5 shadow-[0_3px_14px_rgba(15,23,42,0.025)]">
         <Link
           to={bookingsPath}
-          className="inline-flex min-h-10 items-center gap-3 text-sm font-medium text-[#263247] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex min-h-10 items-center gap-3 text-sm font-medium text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ArrowLeft aria-hidden="true" className="size-4" />
           {t('bookings.detailTitle')}

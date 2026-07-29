@@ -25,11 +25,11 @@ export function BookingCardHeader({
   const { t } = useTranslation(NsI18n.Account);
 
   return (
-    <header className="mx-5 flex min-h-18 flex-col justify-center gap-3 border-b border-[#d8dee8] py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
+    <header className="mx-5 flex min-h-18 flex-col justify-center gap-3 border-b border-border py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-5">
         <Link
           to={storefrontPaths.listing(locale, listingSlug)}
-          className="inline-flex min-w-0 items-center gap-2 text-sm font-medium text-[#263247] hover:underline"
+          className="inline-flex min-w-0 items-center gap-2 text-sm font-medium text-foreground hover:underline"
         >
           <Building2 aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">{partnerName}</span>
@@ -46,11 +46,11 @@ export function BookingCardHeader({
           </Link>
         </Button>
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-[#263247] sm:justify-end">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-foreground sm:justify-end">
         <span className="font-medium uppercase">
           {t('bookings.bookingCode', { code: bookingCode })}
         </span>
-        <span aria-hidden="true" className="h-4 w-px bg-[#cbd2dc]" />
+        <span aria-hidden="true" className="h-4 w-px bg-border" />
         <BookingStatusBadge status={status} />
         {createdAt ? (
           <span className="sr-only">

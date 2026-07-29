@@ -1,5 +1,7 @@
-import type { Locale } from '@booking/i18n';
+import { isLocale, type Locale } from '@booking/i18n';
 import { storefrontEnv } from './env.server';
+
+export { isLocale };
 
 const COOKIE = 'sf_locale';
 
@@ -19,10 +21,6 @@ export function resolveLocale(request: Request, fallback: Locale): Locale {
 export function localeCookie(locale: Locale): string {
   const secure = storefrontEnv.secureCookies ? '; Secure' : '';
   return `${COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly${secure}`;
-}
-
-export function isLocale(value: unknown): value is Locale {
-  return value === 'vi' || value === 'en';
 }
 
 export function requireLocale(value: unknown): Locale {

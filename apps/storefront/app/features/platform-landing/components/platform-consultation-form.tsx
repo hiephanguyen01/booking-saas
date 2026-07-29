@@ -204,43 +204,50 @@ function FormField({
   );
 }
 
+/** One row per resolved status, so wording, tone and live-region politeness cannot drift apart. */
+const STATUS_MESSAGES = {
+  success: {
+    titleKey: 'consultation.successTitle',
+    descriptionKey: 'consultation.successDescription',
+    tone: 'border-(--platform-success)/45 bg-(--platform-success)/15 text-(--platform-success-ink)',
+    role: 'status',
+    ariaLive: 'polite',
+    Icon: CheckCircle2,
+  },
+  unavailable: {
+    titleKey: 'consultation.unavailableTitle',
+    descriptionKey: 'consultation.unavailableDescription',
+    tone: 'border-primary/25 bg-primary/10 text-primary',
+    role: 'alert',
+    ariaLive: 'assertive',
+    Icon: AlertCircle,
+  },
+  error: {
+    titleKey: 'consultation.errorTitle',
+    descriptionKey: 'consultation.errorDescription',
+    tone: 'border-destructive/40 bg-destructive/12 text-destructive',
+    role: 'alert',
+    ariaLive: 'assertive',
+    Icon: AlertCircle,
+  },
+} as const satisfies Record<Exclude<FormStatus, 'idle' | 'submitting'>, unknown>;
+
 function FormStatusMessage({ status }: { status: FormStatus }) {
   const { t } = useTranslation(NsI18n.Platform);
   if (status === 'idle' || status === 'submitting') return null;
 
-  const success = status === 'success';
-  const unavailable = status === 'unavailable';
-  const title = success
-    ? t('consultation.successTitle')
-    : unavailable
-      ? t('consultation.unavailableTitle')
-      : t('consultation.errorTitle');
-  const description = success
-    ? t('consultation.successDescription')
-    : unavailable
-      ? t('consultation.unavailableDescription')
-      : t('consultation.errorDescription');
+  const { titleKey, descriptionKey, tone, role, ariaLive, Icon } = STATUS_MESSAGES[status];
 
   return (
     <div
-      role={success ? 'status' : 'alert'}
-      aria-live={success ? 'polite' : 'assertive'}
-      className={`flex gap-3 rounded-xl border p-4 text-sm leading-6 ${
-        success
-          ? 'border-(--platform-success)/45 bg-(--platform-success)/15 text-(--platform-success-ink)'
-          : unavailable
-            ? 'border-primary/25 bg-primary/10 text-primary'
-            : 'border-destructive/40 bg-destructive/12 text-destructive'
-      }`}
+      role={role}
+      aria-live={ariaLive}
+      className={`flex gap-3 rounded-xl border p-4 text-sm leading-6 ${tone}`}
     >
-      {success ? (
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-      ) : (
-        <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-      )}
+      <Icon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
       <div>
-        <p className="font-bold">{title}</p>
-        <p className="mt-0.5">{description}</p>
+        <p className="font-bold">{t(titleKey)}</p>
+        <p className="mt-0.5">{t(descriptionKey)}</p>
       </div>
     </div>
   );

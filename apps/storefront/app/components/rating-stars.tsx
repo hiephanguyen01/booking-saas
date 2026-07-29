@@ -1,10 +1,11 @@
+import { cn } from '@booking/ui/lib/utils';
 import { Star } from 'lucide-react';
 
-export function RatingStars({ rating, className = '' }: { rating: number; className?: string }) {
+export function RatingStars({ rating, className }: { rating: number; className?: string }) {
   const normalized = Math.min(5, Math.max(0, rating));
 
   return (
-    <span className={`inline-flex items-center gap-0.5 ${className}`} aria-label={`${rating}/5`}>
+    <span className={cn('inline-flex items-center gap-0.5', className)} aria-label={`${rating}/5`}>
       {[0, 1, 2, 3, 4].map((index) => {
         const fillPercent = Math.min(100, Math.max(0, (normalized - index) * 100));
         return (

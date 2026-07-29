@@ -10,7 +10,7 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { Building2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMediaGallery } from '~/hooks/use-media-gallery';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
@@ -38,8 +38,6 @@ export function RoomOptionsSection({
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const viewerLabels = useMediaViewerLabels();
-  const [activeMedia, setActiveMedia] = useState<{ roomId: string; index: number } | null>(null);
-  const mediaTriggerRef = useRef<HTMLButtonElement | null>(null);
   const {
     browsing,
     hideUnavailable,
@@ -48,20 +46,14 @@ export function RoomOptionsSection({
     unavailableCount,
     visibleOptions,
   } = useRoomOptionsController({ hideUnavailableByDefault, roomOptions });
-  const activeRoom = activeMedia
-    ? (visibleOptions.find((option) => option.child.id === activeMedia.roomId) ?? null)
-    : null;
+  const gallery = useMediaGallery(visibleOptions, (option) => option.child.id);
+  const activeRoom = gallery.item;
   const mediaItems: MediaViewerItem[] =
     activeRoom?.child.photos.map((photo, index) => ({
       kind: 'image',
       url: photo,
       alt: t('group.photoAlt', { title: activeRoom.child.title, index: index + 1 }),
     })) ?? [];
-
-  function openRoomMedia(roomId: string, index: number, trigger: HTMLButtonElement): void {
-    mediaTriggerRef.current = trigger;
-    setActiveMedia({ roomId, index });
-  }
 
   return (
     <SectionCard id="room-options" aria-labelledby="room-options-title" className="scroll-mt-28">
@@ -118,7 +110,7 @@ export function RoomOptionsSection({
                     mode={mode}
                     date={date}
                     slots={slotsByRoom.get(option.child.id) ?? []}
-                    onOpenMedia={openRoomMedia}
+                    onOpenMedia={gallery.open}
                   />
                 ))}
               </tbody>
@@ -134,7 +126,7 @@ export function RoomOptionsSection({
                 mode={mode}
                 date={date}
                 slots={slotsByRoom.get(option.child.id) ?? []}
-                onOpenMedia={openRoomMedia}
+                onOpenMedia={gallery.open}
               />
             ))}
           </div>
@@ -152,18 +144,10 @@ export function RoomOptionsSection({
       )}
 
       <PackageMediaViewerDialog
-        open={Boolean(activeRoom)}
+        {...gallery.dialogProps}
         items={mediaItems}
-        activeIndex={activeMedia?.index ?? 0}
-        onOpenChange={(open) => {
-          if (!open) setActiveMedia(null);
-        }}
-        onActiveIndexChange={(index) => {
-          setActiveMedia((current) => (current ? { ...current, index } : current));
-        }}
         labels={viewerLabels}
         title={activeRoom?.child.title ?? t('group.roomTypes')}
-        returnFocusRef={mediaTriggerRef}
         details={
           activeRoom ? (
             <RoomMediaDetails option={activeRoom} attributeSchema={attributeSchema} />

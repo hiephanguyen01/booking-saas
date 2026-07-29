@@ -275,7 +275,7 @@ export async function loginAction(request: Request, localeParam?: string) {
   if (!result.ok || !result.tokens || !result.user) return failed(result);
   suppressStorefrontSessionCommit();
   const url = new URL(request.url);
-  const redirectTo = safeRedirectPath(url.searchParams.get('redirectTo'), `/${locale}`);
+  const redirectTo = safeRedirectPath(url.searchParams.get('redirectTo'), storefrontPaths.home(locale));
   return createUserSession(request, { ...result.tokens, userId: result.user.id }, redirectTo);
 }
 
@@ -284,5 +284,5 @@ export async function logoutAction(request: Request, localeParam?: string) {
   const auth = getOptionalAuth();
   if (auth) await backendLogout(request, auth.session.accessToken);
   suppressStorefrontSessionCommit();
-  return destroyUserSession(request, `/${locale}`);
+  return destroyUserSession(request, storefrontPaths.home(locale));
 }

@@ -1,6 +1,12 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
-import { createTranslator, type Locale } from '@booking/i18n';
+import type { Locale } from '@booking/i18n';
 import type { StorefrontContext } from '~/features/root/lib/storefront-context';
+import {
+  breadcrumbNode,
+  organizationNode,
+  serviceNode,
+  structuredDataGraph,
+} from '~/lib/structured-data';
 
 interface ListingStructuredDataInput {
   tenant: StorefrontContext['tenant'];
@@ -16,57 +22,26 @@ export function buildListingStructuredData({
   listing,
 }: ListingStructuredDataInput) {
   const origin = new URL(canonical).origin;
-  const homeLabel = createTranslator(locale).t('common.breadcrumbHome');
 
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Organization',
-        '@id': `${origin}/#organization`,
-        name: tenant.name,
-        url: origin,
-        ...(tenant.themeConfig.logoUrl ? { logo: tenant.themeConfig.logoUrl } : {}),
-      },
-      {
-        '@type': 'WebPage',
-        '@id': `${canonical}#webpage`,
-        url: canonical,
-        name: listing.title,
-        description: listing.description,
-        inLanguage: locale,
-        image: listing.photos,
-      },
-      {
-        '@type': 'Service',
-        '@id': `${canonical}#service`,
-        name: listing.title,
-        image: listing.photos,
-        provider: { '@id': `${origin}/#organization` },
-        ...(listing.reviewCount > 0 && listing.ratingAvg !== null
-          ? {
-              aggregateRating: {
-                '@type': 'AggregateRating',
-                ratingValue: listing.ratingAvg,
-                reviewCount: listing.reviewCount,
-                bestRating: 5,
-                worstRating: 1,
-              },
-            }
-          : {}),
-      },
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          {
-            '@type': 'ListItem',
-            position: 1,
-            name: homeLabel,
-            item: new URL(`/${locale}`, canonical).toString(),
-          },
-          { '@type': 'ListItem', position: 2, name: listing.title, item: canonical },
-        ],
-      },
-    ],
-  };
+  return structuredDataGraph([
+    organizationNode(origin, tenant.name, tenant.themeConfig.logoUrl),
+    {
+      '@type': 'WebPage',
+      '@id': `${canonical}#webpage`,
+      url: canonical,
+      name: listing.title,
+      description: listing.description,
+      inLanguage: locale,
+      image: listing.photos,
+    },
+    serviceNode({
+      canonical,
+      origin,
+      name: listing.title,
+      images: listing.photos,
+      reviewCount: listing.reviewCount,
+      ratingAvg: listing.ratingAvg,
+    }),
+    breadcrumbNode(locale, canonical, listing.title),
+  ]);
 }

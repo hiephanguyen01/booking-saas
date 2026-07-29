@@ -5,6 +5,7 @@ import {
   type AuthChallengeResponse,
   type AuthOtpVerifiedResponse,
 } from '@booking/contracts';
+import { storefrontPaths } from '~/constants/paths';
 import { data, redirect } from 'react-router';
 import { publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
@@ -13,7 +14,6 @@ import {
   failedPartnerFormData,
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
-  partnerStepPath,
   readPartnerFormData,
   requirePartnerPhase,
   requirePartnerView,
@@ -73,5 +73,5 @@ export async function submitPartnerVerifyRoute(request: Request, localeParam?: s
     maskedDestination: flow.record.maskedDestination,
     completionToken: result.data.completionToken,
   });
-  return redirect(partnerStepPath(locale, 'password'));
+  return redirect(storefrontPaths.becomePartnerStep(locale, 'password'));
 }

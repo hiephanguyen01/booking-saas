@@ -59,7 +59,7 @@ function RootErrorNotice({
 
   if (isNotFoundError(error)) {
     return (
-      <div className="flex min-h-dvh flex-col bg-[#f9fafb] font-studio text-[#344054]">
+      <div className="flex min-h-dvh flex-col bg-muted/40 font-studio text-foreground">
         {rootData?.kind === 'tenant' ? (
           <>
             <TenantThemeStyle theme={rootData.tenant.themeConfig} nonce={rootData.cspNonce} />
@@ -99,7 +99,7 @@ function RootErrorNotice({
 
             <Button
               asChild
-              className="h-12 rounded-sm bg-[#475467] px-5 text-base font-semibold text-white shadow-xs hover:bg-[#344054]"
+              className="h-12 rounded-sm bg-foreground px-5 text-base font-semibold text-background shadow-xs hover:bg-foreground/90"
             >
               <Link to={storefrontPaths.home(locale)}>{t('home')}</Link>
             </Button>

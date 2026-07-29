@@ -2,12 +2,14 @@ import type { CustomerReviewItem } from '@booking/contracts';
 import { Avatar, AvatarFallback } from '@booking/ui/components/ui/avatar';
 import { Button } from '@booking/ui/components/ui/button';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
-import { CalendarDays, Star } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 import { Link } from 'react-router';
+import { RatingStars } from '~/components/rating-stars';
 import { ReviewTime } from '~/components/review-time';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { storefrontPaths } from '~/constants/paths';
-import { intlLocale } from '~/lib/intl';
+import { nameInitials } from '~/lib/ui';
+import { bookingDateInTz, bookingTimeInTz } from '~/lib/time';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { AccountPanel } from '~/features/account/components/shared/account-primitives';
 import { BookingCardHeader } from '~/features/account/components/shared/booking-card-header';
@@ -65,8 +67,8 @@ export function ReviewBookingCard({
           </p>
           {review.bookingStartsAt && review.bookingEndsAt ? (
             <span className="inline-flex rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
-              {formatTime(review.bookingStartsAt, locale, review.resourceTimezone)} –{' '}
-              {formatTime(review.bookingEndsAt, locale, review.resourceTimezone)}
+              {bookingTimeInTz(review.bookingStartsAt, review.resourceTimezone, locale)} –{' '}
+              {bookingTimeInTz(review.bookingEndsAt, review.resourceTimezone, locale)}
             </span>
           ) : null}
         </div>
@@ -90,12 +92,12 @@ export function ReviewBookingCard({
             <div className="flex min-w-0 items-center gap-3">
               <Avatar className="size-10 shrink-0">
                 <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                  {initials(review.customerName)}
+                  {nameInitials(review.customerName, '?')}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{review.customerName}</p>
-                <Stars rating={review.rating} />
+                <RatingStars rating={review.rating} className="mt-1 gap-0.5" />
               </div>
             </div>
             <ReviewTime
@@ -121,7 +123,7 @@ export function ReviewBookingCard({
             <div className="flex items-start gap-3">
               <Avatar className="size-8 shrink-0">
                 <AvatarFallback className="bg-muted text-[11px] font-semibold">
-                  {initials(review.reply.partnerName)}
+                  {nameInitials(review.reply.partnerName, '?')}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1 rounded-md bg-muted/70 px-4 py-3">
@@ -146,21 +148,6 @@ export function ReviewBookingCard({
   );
 }
 
-function Stars({ rating }: { rating: number }) {
-  return (
-    <div className="mt-1 flex gap-0.5 text-amber-500" aria-label={`${rating}/5`}>
-      {[1, 2, 3, 4, 5].map((value) => (
-        <Star
-          key={value}
-          className="size-4"
-          fill={value <= rating ? 'currentColor' : 'none'}
-          aria-hidden="true"
-        />
-      ))}
-    </div>
-  );
-}
-
 function formatBookingRange(
   start: string | null,
   end: string | null,
@@ -168,34 +155,7 @@ function formatBookingRange(
   timeZone: string,
 ) {
   if (!start && !end) return null;
-  const formatter = new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone,
-  });
-  if (start && end)
-    return `${formatter.format(new Date(start))} – ${formatter.format(new Date(end))}`;
-  return formatter.format(new Date(start ?? end ?? ''));
-}
-
-function formatTime(value: string, locale: 'vi' | 'en', timeZone: string) {
-  return new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone,
-  }).format(new Date(value));
-}
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || '?'
-  );
+  const day = (value: string) => bookingDateInTz(value, timeZone, locale);
+  if (start && end) return `${day(start)} – ${day(end)}`;
+  return day(start ?? end ?? '');
 }

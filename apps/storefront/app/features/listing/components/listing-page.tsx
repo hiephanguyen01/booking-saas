@@ -18,11 +18,12 @@ import { BookingPanel } from '~/features/booking-widget/components/booking-panel
 import { ExpandableDescription } from '~/components/expandable-description';
 import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
-import { StudioGallery } from '~/components/studio-gallery';
+import { ListingGallery } from '~/components/listing-gallery';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
 import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
-import { StudioBookingCard } from './studio-booking-card';
+import { supportsScheduledBooking } from '~/features/booking-widget/lib/booking-modes';
+import { ScheduledBookingCard } from './scheduled-booking-card';
 
 export interface ListingPageProps {
   loaderData: ServerDataFrom<typeof loadListingRoute>;
@@ -54,11 +55,12 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
 
   const location = formatListingLocation(listing, 'full');
   const supportsOnlineBooking = mode !== null;
-  const usesStudioBookingDialog =
-    supportsOnlineBooking &&
-    listing.listingTypeSlug === 'studio' &&
-    listing.bookingModes.some((item) => item === 'hourly' || item === 'daily');
-  const preferredStudioMode = mode === 'daily' ? 'daily' : 'hourly';
+  // The aside is chosen by what the listing can be booked as, never by its type
+  // slug: a time-grid listing gets the scheduling dialog, everything else
+  // (inventory, and any future mode) gets the inline panel.
+  const usesSchedulingDialog =
+    supportsOnlineBooking && supportsScheduledBooking(listing.bookingModes);
+  const preferredMode = mode === 'daily' ? 'daily' : 'hourly';
 
   return (
     <DetailPageLayout
@@ -73,7 +75,7 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
       header={
         <ListingHeader listing={listing} location={location} mapsHref={googleMapsHref(location)} />
       }
-      gallery={<StudioGallery photos={listing.photos} title={listing.title} />}
+      gallery={<ListingGallery photos={listing.photos} title={listing.title} />}
       main={
         <>
           <SectionCard aria-labelledby="introduction-title">
@@ -103,11 +105,11 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
         </>
       }
       aside={
-        usesStudioBookingDialog ? (
+        usesSchedulingDialog ? (
           <>
-            <StudioBookingCard
+            <ScheduledBookingCard
               listing={listing}
-              preferredMode={preferredStudioMode}
+              preferredMode={preferredMode}
               today={bookingToday}
             />
             <ProviderCard trust={listing.trust} />

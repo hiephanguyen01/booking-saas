@@ -123,6 +123,8 @@ function SlotPickerContent({
     contiguousError: t('group.contiguousOnly'),
   });
   const timezone = option.availability?.timezone ?? DEFAULT_TZ;
+  // A day can hold dozens of slots; membership must not be a scan per row.
+  const selectedStarts = new Set(selected.map((item) => item.startUtc));
 
   return (
     <div className="flex flex-col gap-4 p-5">
@@ -148,7 +150,7 @@ function SlotPickerContent({
                 <SlotRow
                   key={`${slot.startUtc}:${slot.endUtc}`}
                   id={slotFieldId(option.child.id, slot.startUtc)}
-                  checked={selected.some((item) => item.startUtc === slot.startUtc)}
+                  checked={selectedStarts.has(slot.startUtc)}
                   disabled={!slot.available}
                   onToggle={() => toggleSlot(slot)}
                 >

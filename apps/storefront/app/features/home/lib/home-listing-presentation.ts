@@ -43,13 +43,3 @@ export function filterHomeListingsByLocation(
     return matchers.some((matcher) => locationText.includes(matcher));
   });
 }
-
-export function homeLocationSuggestions(listings: PublicListingResponse[]): string[] {
-  return [
-    ...new Set(
-      listings
-        .flatMap((listing) => [listing.wardName, listing.provinceName, listing.address])
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ];
-}

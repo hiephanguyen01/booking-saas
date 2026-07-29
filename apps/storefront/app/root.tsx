@@ -1,7 +1,7 @@
 import { useLocation, useRouteLoaderData } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
-import { localeParam } from './constants/paths';
+import { pathLocale } from './constants/paths';
 import { RootErrorBoundaryView } from './features/root/components/root-error-boundary';
 import { StorefrontAppShell } from './features/root/components/storefront-app-shell';
 import { StorefrontDocument } from './features/root/components/storefront-document';
@@ -27,7 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   return (
     <StorefrontDocument
-      locale={loaderData?.locale ?? localeFromPath(location.pathname)}
+      locale={loaderData?.locale ?? pathLocale(location.pathname)}
       faviconUrl={
         loaderData?.kind === 'tenant' ? loaderData.tenant.themeConfig.faviconUrl || null : null
       }
@@ -44,10 +44,6 @@ export default function App({ loaderData }: Route.ComponentProps) {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const rootData = useRouteLoaderData<typeof loader>('root');
   const location = useLocation();
-  const locale = rootData?.locale ?? localeFromPath(location.pathname);
+  const locale = rootData?.locale ?? pathLocale(location.pathname);
   return <RootErrorBoundaryView error={error} locale={locale} rootData={rootData} />;
-}
-
-function localeFromPath(pathname: string): 'vi' | 'en' {
-  return localeParam(pathname.split('/').filter(Boolean)[0]);
 }

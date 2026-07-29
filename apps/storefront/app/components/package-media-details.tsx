@@ -1,9 +1,10 @@
 import type { PublicListingDetailResponse } from '@booking/contracts';
-import { Aperture, Clock3, FileImage, Images, WalletCards } from 'lucide-react';
+import { Clock3, WalletCards } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
-import { packageDetails, packageDurationHours } from '~/lib/package-details';
-import type { PublicPackageOption } from '~/lib/package-options';
+import { AttributeSpecCards } from '~/components/attribute-spec-cards';
+import { specCards } from '~/features/listing-group/lib/room-attributes';
+import { packageDurationLabel, type PublicPackageOption } from '~/lib/package-options';
 import { formatVnd } from '~/lib/ui';
 
 /** Package metadata shared by package pages and booking dialogs. */
@@ -15,7 +16,7 @@ export function PackageMediaDetails({
   listing: PublicListingDetailResponse;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
-  const details = packageDetails(listing.attributes);
+  const duration = packageDurationLabel(item);
 
   return (
     <div className="space-y-5">
@@ -30,36 +31,16 @@ export function PackageMediaDetails({
         <Detail
           icon={<Clock3 />}
           label={t('duration')}
-          value={t('packages.packageDuration', { count: packageDurationHours(item) })}
+          value={t(duration.key, { count: duration.count })}
         />
         <Detail
           icon={<WalletCards />}
           label={t('packages.colPrice')}
           value={formatVnd(item.price) ?? item.price}
         />
-        {details.style ? (
-          <Detail
-            icon={<Aperture />}
-            label={t('packages.photographyStyleLabel')}
-            value={details.style}
-          />
-        ) : null}
-        {details.editedPhotos !== null ? (
-          <Detail
-            icon={<Images />}
-            label={t('packages.postProduction')}
-            value={t('packages.editedPhotos', { count: details.editedPhotos })}
-          />
-        ) : null}
-        {details.rawFiles !== null ? (
-          <Detail
-            icon={<FileImage />}
-            label={t('packages.originalFiles')}
-            value={t(
-              details.rawFiles ? 'packages.rawFilesIncluded' : 'packages.rawFilesNotIncluded',
-            )}
-          />
-        ) : null}
+        {/* Label, icon and order come from the listing type's tenant-authored
+            attribute schema, so any vertical's packages describe themselves. */}
+        <AttributeSpecCards cards={specCards(listing.attributes, listing.attributeSchema)} />
       </div>
     </div>
   );

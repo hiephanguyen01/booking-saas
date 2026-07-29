@@ -1,4 +1,9 @@
-import type { AvailabilityMode, PublicListingDetailResponse } from '@booking/contracts';
+import {
+  MAX_BOOKING_RANGE_DAYS,
+  moneyStringSchema,
+  type AvailabilityMode,
+  type PublicListingDetailResponse,
+} from '@booking/contracts';
 
 export interface PublicPackageOption {
   id: string;
@@ -10,6 +15,15 @@ export interface PublicPackageOption {
   price: string;
 }
 
+/**
+ * The offerable packages under one booking mode, read out of the untyped
+ * `modeConfig` jsonb.
+ *
+ * A package is offerable only if it can actually be quoted, so the money shape
+ * goes through `moneyStringSchema` and the duration must be a positive integer
+ * that a daily range could still cover. Anything else is dropped rather than
+ * rendered as a package the customer cannot book.
+ */
 export function packagesForMode(
   modeConfig: Record<string, unknown>,
   mode: AvailabilityMode,
@@ -20,11 +34,16 @@ export function packagesForMode(
     if (!item || typeof item !== 'object') return [];
     const row = item as Record<string, unknown>;
     const duration = Number(mode === 'hourly' ? row.durationMinutes : row.durationDays);
+    const price = moneyStringSchema.safeParse(row.price);
+    const offerableDuration =
+      Number.isInteger(duration) &&
+      duration > 0 &&
+      (mode !== 'daily' || duration <= MAX_BOOKING_RANGE_DAYS);
     if (
       typeof row.id !== 'string' ||
       typeof row.name !== 'string' ||
-      typeof row.price !== 'string' ||
-      !Number.isInteger(duration)
+      !price.success ||
+      !offerableDuration
     )
       return [];
     return [
@@ -37,10 +56,26 @@ export function packagesForMode(
           : [],
         mode,
         duration,
-        price: row.price,
+        price: price.data,
       },
     ];
   });
+}
+
+/**
+ * The i18n key + count that describe a package's length.
+ *
+ * `duration` is minutes for an hourly package and days for a daily one, so the
+ * unit has to come from `mode` — reading it as hours unconditionally mislabels
+ * every daily package.
+ */
+export function packageDurationLabel(item: PublicPackageOption): {
+  key: 'packages.packageDuration' | 'packages.durationDays';
+  count: number;
+} {
+  return item.mode === 'daily'
+    ? { key: 'packages.durationDays', count: item.duration }
+    : { key: 'packages.packageDuration', count: item.duration / 60 };
 }
 
 export function selectedPackageForListing(

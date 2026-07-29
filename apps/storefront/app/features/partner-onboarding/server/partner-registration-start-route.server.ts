@@ -1,4 +1,5 @@
 import { authChallengeResponseSchema, type AuthChallengeResponse } from '@booking/contracts';
+import { storefrontPaths } from '~/constants/paths';
 import { redirect } from 'react-router';
 import { publicPost } from '~/lib/server/api.server';
 import { authFlow } from '~/features/auth/server/auth-flow.server';
@@ -15,7 +16,6 @@ import {
   failedPartnerOnboarding,
   invalidPartnerOnboarding,
   partnerFormFields,
-  partnerStepPath,
   readPartnerFormData,
 } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
@@ -36,7 +36,7 @@ export async function submitPartnerRegistrationStartRoute(request: Request, loca
       email: auth.info.user.email,
       maskedDestination: auth.info.user.email,
     });
-    return redirect(partnerStepPath(locale, 'profile'), {
+    return redirect(storefrontPaths.becomePartnerStep(locale, 'profile'), {
       headers: { 'Set-Cookie': setCookie },
     });
   }
@@ -64,7 +64,7 @@ export async function submitPartnerRegistrationStartRoute(request: Request, loca
     maskedDestination: result.data.maskedDestination,
     resendAvailableAt: Date.now() + result.data.resendAfterSec * 1_000,
   });
-  return redirect(partnerStepPath(locale, 'verify'), {
+  return redirect(storefrontPaths.becomePartnerStep(locale, 'verify'), {
     headers: { 'Set-Cookie': setCookie },
   });
 }

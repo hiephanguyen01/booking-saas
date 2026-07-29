@@ -5,6 +5,7 @@ import type {
 } from '@booking/contracts';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useFetcher } from 'react-router';
+import { storefrontPaths } from '~/constants/paths';
 import { dailyModeConfig } from '~/lib/daily-config';
 import { normalizeDailyRange } from '~/lib/daily-range';
 import { NsI18n, useTranslation } from '@booking/i18n';
@@ -19,10 +20,11 @@ import {
   slotInterval,
   toggleContiguousSlot,
 } from '~/features/booking-widget/lib/slot-selection';
-import type {
-  ListingBookingMode,
-  RoomBookingDateRange,
-} from '~/features/booking-widget/components/booking-dialog-steps';
+import type { RoomBookingDateRange } from '~/features/booking-widget/components/booking-dialog-steps';
+import {
+  scheduledBookingModes,
+  type ScheduledBookingMode,
+} from '~/features/booking-widget/lib/booking-modes';
 
 type BookingRequestKind = 'availability' | 'quote';
 
@@ -37,7 +39,7 @@ export function useBookingDialogController({
 }: {
   listing: PublicListingDetailWithTimezoneResponse;
   groupSlug?: string;
-  preferredMode: ListingBookingMode;
+  preferredMode: ScheduledBookingMode;
   today: string;
   controlled?: {
     open: boolean;
@@ -49,9 +51,7 @@ export function useBookingDialogController({
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
   const locale = useLocale();
   const fetcher = useFetcher<ListingBookingDataResult>();
-  const supportedModes = listing.bookingModes.filter(
-    (item): item is ListingBookingMode => item === 'hourly' || item === 'daily',
-  );
+  const supportedModes = scheduledBookingModes(listing.bookingModes);
   const initialMode = supportedModes.includes(preferredMode)
     ? preferredMode
     : (supportedModes[0] ?? 'hourly');
@@ -68,12 +68,12 @@ export function useBookingDialogController({
     }),
     [listing.modeConfig],
   );
-  const packageOptions = (selectedMode: ListingBookingMode) => packagesByMode[selectedMode];
-  const firstPackageId = (selectedMode: ListingBookingMode) =>
+  const packageOptions = (selectedMode: ScheduledBookingMode) => packagesByMode[selectedMode];
+  const firstPackageId = (selectedMode: ScheduledBookingMode) =>
     fixedPackages ? (packageOptions(selectedMode)[0]?.id ?? null) : null;
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mode, setMode] = useState<ListingBookingMode>(initialMode);
+  const [mode, setMode] = useState<ScheduledBookingMode>(initialMode);
   const [internalPackageId, setInternalPackageId] = useState<string | null>(
     firstPackageId(initialMode),
   );
@@ -86,14 +86,13 @@ export function useBookingDialogController({
   const [cachedAvailability, setCachedAvailability] = useState<AvailabilityResponse | null>(null);
   const [selectionError, setSelectionError] = useState('');
   const [requestKind, setRequestKind] = useState<BookingRequestKind>('availability');
-  const encodedListingSlug = encodeURIComponent(listing.slug);
   const basePath = groupSlug
-    ? `/${locale}/g/${encodeURIComponent(groupSlug)}/rooms/${encodedListingSlug}/booking-data`
-    : `/${locale}/l/${encodedListingSlug}/booking-data`;
+    ? storefrontPaths.listingGroupRoomBookingData(locale, groupSlug, listing.slug)
+    : storefrontPaths.listingBookingData(locale, listing.slug);
 
   function load(
     next: {
-      mode: ListingBookingMode;
+      mode: ScheduledBookingMode;
       date?: string;
       from?: string | null;
       to?: string | null;
@@ -138,26 +137,8 @@ export function useBookingDialogController({
   function handleOpen(next: boolean, target: 'desktop' | 'mobile'): void {
     if (target === 'desktop') setDesktopOpen(next);
     else setMobileOpen(next);
-    if (!next) {
-      reset();
-      return;
-    }
-
-    if (mode === 'hourly' && date) {
-      const draftInterval = slotInterval(selectedSlots);
-      load(
-        {
-          mode,
-          date,
-          start: draftInterval?.start,
-          end: draftInterval?.end,
-          packageId,
-        },
-        draftInterval ? 'quote' : 'availability',
-      );
-    } else if (mode === 'daily') {
-      load({ mode, from: from ?? today, to, packageId }, from && to ? 'quote' : 'availability');
-    }
+    if (next) reloadSelection();
+    else reset();
   }
 
   function changeControlledOpen(next: boolean): void {
@@ -166,7 +147,7 @@ export function useBookingDialogController({
     if (!next) requestAnimationFrame(() => returnFocusRef?.current?.focus());
   }
 
-  function switchMode(next: ListingBookingMode): void {
+  function switchMode(next: ScheduledBookingMode): void {
     if (next === mode) return;
     const nextPackageId = firstPackageId(next);
     clearSelection();
@@ -245,6 +226,23 @@ export function useBookingDialogController({
           ...(packageId ? { packageId } : {}),
         })
       : null;
+
+  /**
+   * Re-issues the request that matches the current selection: a quote once the
+   * selection is complete, plain availability otherwise. Reopening the dialog and
+   * both retry buttons want exactly this.
+   */
+  function reloadSelection(): void {
+    if (mode === 'hourly') {
+      if (!date) return;
+      load(
+        { mode, date, start: interval?.start, end: interval?.end, packageId },
+        interval ? 'quote' : 'availability',
+      );
+      return;
+    }
+    load({ mode, from: from ?? today, to, packageId }, from && to ? 'quote' : 'availability');
+  }
 
   function selectDate(nextDate: string): void {
     clearSelection();
@@ -403,9 +401,7 @@ export function useBookingDialogController({
       from,
       to,
       availability,
-      timezone: bookingTimezone,
       availabilityPending,
-      hasAvailability: Boolean(availability),
       availabilityError,
       requestError: Boolean(requestError),
       slots,
@@ -419,25 +415,13 @@ export function useBookingDialogController({
       onChangeDate: changeDate,
       onToggleSlot: toggleSlot,
       onSelectRange: selectRange,
+      // Deliberately not `reloadSelection`: this button re-fetches the day's
+      // availability, discarding any half-made slot selection.
       onRetryHourly: () => {
         if (date) load({ mode, date }, 'availability');
       },
-      onRetryQuote: () => {
-        if (mode === 'hourly' && date && interval) {
-          load(
-            {
-              mode,
-              date,
-              start: interval.start,
-              end: interval.end,
-              packageId,
-            },
-            'quote',
-          );
-        }
-      },
-      onRetryDaily: () =>
-        load({ mode, from: from ?? today, to }, from && to ? 'quote' : 'availability'),
+      onRetryQuote: reloadSelection,
+      onRetryDaily: reloadSelection,
     },
     footerProps: {
       selectionSummary,

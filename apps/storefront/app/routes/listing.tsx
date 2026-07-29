@@ -1,6 +1,7 @@
 import { useOutletContext } from 'react-router';
 import type { Route } from './+types/listing';
 import { StorefrontRouteErrorBoundary } from '~/components/storefront-route-error-boundary';
+import { contentReportShouldRevalidate } from '~/features/content-reports/lib/content-report-result';
 import { buildListingMeta } from '~/features/listing/lib/listing-meta';
 import { buildListingStructuredData } from '~/features/listing/lib/listing-structured-data';
 import { ListingPage } from '~/features/listing/components/listing-page';
@@ -16,17 +17,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   return handleListingAction(request, params.listingSlug);
 }
 
-export function shouldRevalidate({
-  actionResult,
-  defaultShouldRevalidate,
-}: {
-  actionResult: unknown;
-  defaultShouldRevalidate: boolean;
-}) {
-  return actionResult && typeof actionResult === 'object' && 'reportOk' in actionResult
-    ? false
-    : defaultShouldRevalidate;
-}
+export const shouldRevalidate = contentReportShouldRevalidate;
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
   return buildListingMeta(loaderData?.listing);

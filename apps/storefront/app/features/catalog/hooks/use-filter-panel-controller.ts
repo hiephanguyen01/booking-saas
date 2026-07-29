@@ -93,10 +93,13 @@ export function useFilterPanelController({
       return { value: option.value, label: `${label} (${option.count})` };
     });
 
+    // A value the URL carries but the facet no longer offers still needs a control,
+    // or applying the panel would silently drop it.
+    const offered = new Set(options.map((option) => option.value));
     for (const value of selected) {
-      if (!options.some((option) => option.value === value)) {
-        options.unshift({ value, label: value });
-      }
+      if (offered.has(value)) continue;
+      offered.add(value);
+      options.unshift({ value, label: value });
     }
 
     return {

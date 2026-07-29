@@ -17,7 +17,15 @@ export function switchLocalePath(location: string, locale: Locale): string {
   return `/${segments.join('/')}${url.search}${url.hash}`;
 }
 
+/** The locale of a pathname's first segment, defaulting to `vi` like every route param does. */
+export function pathLocale(pathname: string): Locale {
+  return localeFromPath(pathname) ?? 'vi';
+}
+
 const segment = (value: string) => encodeURIComponent(value);
+
+/** The steps `/become-partner` nests, in flow order. */
+export type PartnerOnboardingStep = 'verify' | 'password' | 'profile' | 'done';
 
 export const storefrontPaths = {
   home: (locale: Locale) => `/${locale}`,
@@ -29,7 +37,16 @@ export const storefrontPaths = {
   checkout: (locale: Locale) => `/${locale}/checkout`,
   bookings: (locale: Locale) => `/${locale}/bookings`,
   booking: (locale: Locale, code: string) => `/${locale}/bookings/${segment(code)}`,
+  bookingPaymentStatus: (locale: Locale, code: string) =>
+    `/${locale}/bookings/${segment(code)}/payment-status`,
+  /** Resource routes the booking widget fetches availability and quotes from. */
+  listingBookingData: (locale: Locale, listingSlug: string) =>
+    `/${locale}/l/${segment(listingSlug)}/booking-data`,
+  listingGroupRoomBookingData: (locale: Locale, groupSlug: string, listingSlug: string) =>
+    `/${locale}/g/${segment(groupSlug)}/rooms/${segment(listingSlug)}/booking-data`,
   becomePartner: (locale: Locale) => `/${locale}/become-partner`,
+  becomePartnerStep: (locale: Locale, step: PartnerOnboardingStep) =>
+    `/${locale}/become-partner/${step}`,
   becomeAffiliate: (locale: Locale) => `/${locale}/become-affiliate`,
   login: (locale: Locale, redirectTo?: string) =>
     `/${locale}/auth/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`,

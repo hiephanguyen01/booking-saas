@@ -3,18 +3,16 @@ import { DetailPriceCard } from '~/components/detail-price-card';
 import { minimumConfiguredPrice } from '~/lib/booking-presentation';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatVnd } from '~/lib/ui';
-import {
-  ListingBookingDialog,
-  type ListingBookingMode,
-} from '~/features/listing-group/components/room-booking-dialog';
+import { ListingBookingDialog } from '~/features/listing-group/components/room-booking-dialog';
+import type { ScheduledBookingMode } from '~/features/booking-widget/lib/booking-modes';
 
-export function StudioBookingCard({
+export function ScheduledBookingCard({
   listing,
   preferredMode,
   today,
 }: {
   listing: PublicListingDetailWithTimezoneResponse;
-  preferredMode: ListingBookingMode;
+  preferredMode: ScheduledBookingMode;
   today: string;
 }) {
   const { t } = useTranslation(NsI18n.Listing);

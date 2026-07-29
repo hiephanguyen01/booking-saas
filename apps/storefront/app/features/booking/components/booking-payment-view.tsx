@@ -4,7 +4,6 @@ import { Card, CardContent } from '@booking/ui/components/ui/card';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import {
   ArrowLeft,
-  CircleCheckBig,
   CircleX,
   Clock3,
   Home,
@@ -87,21 +86,14 @@ export function BookingPaymentView({
           <Card className="gap-0 rounded-sm border-border py-0 shadow-sm">
             <CardContent className="flex flex-col gap-6 p-5 sm:p-8">
               <div className="flex items-start gap-4">
-                <StatusIcon success={isSuccess} pending={isPending} />
+                {/* A succeeded payment already returned as <BookingSuccessView> above. */}
+                <StatusIcon pending={isPending} />
                 <div className="min-w-0">
                   <h2 className="text-xl font-semibold text-foreground">
-                    {isSuccess
-                      ? t('payment.succeeded')
-                      : isPending
-                        ? t('payment.title')
-                        : t('payment.failedTitle')}
+                    {isPending ? t('payment.title') : t('payment.failedTitle')}
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {isSuccess
-                      ? t('payment.confirmedNote')
-                      : isPending
-                        ? t('payment.checking')
-                        : t('payment.failedNote')}
+                    {isPending ? t('payment.checking') : t('payment.failedNote')}
                   </p>
                 </div>
               </div>
@@ -179,14 +171,7 @@ export function BookingPaymentView({
   );
 }
 
-function StatusIcon({ success, pending }: { success: boolean; pending: boolean }) {
-  if (success) {
-    return (
-      <span className="grid size-12 shrink-0 place-items-center rounded-sm bg-emerald-500/10 text-emerald-600">
-        <CircleCheckBig className="size-7" aria-hidden="true" />
-      </span>
-    );
-  }
+function StatusIcon({ pending }: { pending: boolean }) {
   if (pending) {
     return (
       <span className="grid size-12 shrink-0 place-items-center rounded-sm bg-primary/10 text-primary">

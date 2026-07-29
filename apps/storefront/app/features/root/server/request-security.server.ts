@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { RouterContextProvider } from 'react-router';
-import { localeParam } from '~/constants/paths';
+import { pathLocale, storefrontPaths } from '~/constants/paths';
 import { storefrontAuthMiddleware } from '~/lib/server/auth-middleware.server';
 import { storefrontEnv } from '~/lib/server/env.server';
 import { runWithStorefrontRequestContext } from '~/lib/server/request-context.server';
@@ -66,12 +66,8 @@ function unknownHost(): Response {
   );
 }
 
-function platformLocale(pathname: string): 'vi' | 'en' {
-  return localeParam(pathname.split('/').filter(Boolean)[0]);
-}
-
 function platformRedirect(locale: 'vi' | 'en'): Response {
-  return new Response(null, { status: 302, headers: { Location: `/${locale}` } });
+  return new Response(null, { status: 302, headers: { Location: storefrontPaths.home(locale) } });
 }
 
 function createCspNonce(): string {
@@ -220,7 +216,7 @@ export async function storefrontRequestMiddleware(
     }
 
     const url = new URL(request.url);
-    const locale = platformLocale(url.pathname);
+    const locale = pathLocale(url.pathname);
     const isLocalizedLanding = url.pathname === '/vi' || url.pathname === '/en';
     if (!PLATFORM_DOCUMENT_PATHS.has(url.pathname) || (isLocalizedLanding && Boolean(url.search))) {
       return withSecurityHeaders(platformRedirect(locale), request, cspNonce);

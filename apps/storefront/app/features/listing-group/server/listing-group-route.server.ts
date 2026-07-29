@@ -1,9 +1,7 @@
-import {
-  MAX_BOOKING_RANGE_DAYS,
-  moneyStringSchema,
-  type AvailabilityResponse,
-  type PublicListingDetailWithTimezoneResponse,
-  type QuoteResponse,
+import type {
+  AvailabilityResponse,
+  PublicListingDetailWithTimezoneResponse,
+  QuoteResponse,
 } from '@booking/contracts';
 import { submitContentReport } from '~/features/content-reports/server/content-report.server';
 import {
@@ -23,6 +21,7 @@ import {
 import { openDailyDates } from '~/lib/availability';
 import { dailyModeConfig } from '~/lib/daily-config';
 import { compareMoney, minMoney } from '~/lib/money';
+import { packagesForMode } from '~/lib/package-options';
 import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 import { optionalData } from '~/lib/server/optional-data.server';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
@@ -47,21 +46,17 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     type: group.listingTypeSlug,
     pageSize: String(RELATED_PAGE_SIZE),
   });
-  const [catalogCandidates, provinces, reviewData] = await Promise.all([
-    safe(fetchListings(request, relatedSearch)),
-    loadAdministrativeProvinces(request),
-    loadPublicReviews(request, url.searchParams, 'group', groupSlug),
-  ]);
   const state = parseSearchState(url.searchParams, fallbackToday);
   const fixedPackages = group.bookingSelection === 'fixed_packages';
   const hasAvailabilityFilter = fixedPackages
     ? state.hasDateSelection
     : (state.mode === 'hourly' && state.hasDateSelection) ||
       (state.mode === 'daily' && state.hasDailyRange);
-  const options = await mapWithConcurrency(
-    group.listings,
-    LISTING_DETAIL_CONCURRENCY,
-    async (child) => {
+
+  // The room fan-out is the deepest work on the page and needs none of the three
+  // reads beside it, so it starts first and they all settle together.
+  const [options, catalogCandidates, provinces, reviewData] = await Promise.all([
+    mapWithConcurrency(group.listings, LISTING_DETAIL_CONCURRENCY, async (child) => {
       const detail = await safe(fetchListing(request, child.slug));
       if (!detail) return null;
       const availability = hasAvailabilityFilter
@@ -75,8 +70,11 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
         bookingToday: todayInTz(detail.timezone, requestNow),
         ...availability,
       };
-    },
-  );
+    }),
+    safe(fetchListings(request, relatedSearch)),
+    loadAdministrativeProvinces(request),
+    loadPublicReviews(request, url.searchParams, 'group', groupSlug),
+  ]);
   const roomOptions = options.filter(
     (option): option is NonNullable<typeof option> => option !== null,
   );
@@ -172,7 +170,7 @@ async function cheapestPackageRoom(
   date: string,
 ): Promise<RoomAvailability> {
   const mode = searchMode === 'hourly' ? 'hourly' : 'daily';
-  const packages = publicPackages(modeConfig[mode], mode);
+  const packages = packagesForMode(modeConfig, mode);
   const probed = await mapWithConcurrency(
     packages,
     PACKAGE_AVAILABILITY_CONCURRENCY,
@@ -312,34 +310,3 @@ async function dailyRoom(
   };
 }
 
-/**
- * The bookable packages under one mode config, as `{ id, price }` — all this loader
- * needs to probe availability and pick the cheapest. Duration is not returned, only
- * validated: a package with a missing or out-of-range duration is not offerable, and
- * a daily one longer than the availability window could never be quoted.
- *
- * Deliberately stricter than `~/lib/package-options`' `packagesForMode`, which does not
- * validate the money shape or bound the duration.
- */
-function publicPackages(
-  raw: unknown,
-  mode: 'hourly' | 'daily',
-): Array<{ id: string; price: string }> {
-  if (!raw || typeof raw !== 'object') return [];
-  const packages = (raw as Record<string, unknown>).packages;
-  if (!Array.isArray(packages)) return [];
-  const durationKey = mode === 'hourly' ? 'durationMinutes' : 'durationDays';
-  return packages.flatMap((item) => {
-    if (!item || typeof item !== 'object') return [];
-    const row = item as Record<string, unknown>;
-    const duration = Number(row[durationKey]);
-    const price = moneyStringSchema.safeParse(row.price);
-    const validDuration =
-      Number.isInteger(duration) &&
-      duration > 0 &&
-      (mode !== 'daily' || duration <= MAX_BOOKING_RANGE_DAYS);
-    return typeof row.id === 'string' && price.success && validDuration
-      ? [{ id: row.id, price: price.data }]
-      : [];
-  });
-}
