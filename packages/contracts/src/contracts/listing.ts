@@ -185,7 +185,8 @@ export const createListingGroupInputSchema = z
     partnerId: uuidSchema,
     listingTypeId: uuidSchema,
     title: z.string().min(1).max(200),
-    slug: slugSchema,
+    /** Optional on create: the API generates a stable public slug when omitted. */
+    slug: slugSchema.optional(),
     description: z.string().max(5000).optional(),
     workingArea: z.string().max(200).optional(),
     amenities: listingGroupAmenitiesSchema.default([]),
@@ -247,7 +248,12 @@ const modeConfigCoversModes = (
   }
 };
 
-export const createListingInputSchema = listingBaseSchema.superRefine(modeConfigCoversModes);
+export const createListingInputSchema = listingBaseSchema
+  .extend({
+    /** Optional on create: the API generates a stable public slug when omitted. */
+    slug: slugSchema.optional(),
+  })
+  .superRefine(modeConfigCoversModes);
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
 export const depositRequirementResponseSchema = z.object({

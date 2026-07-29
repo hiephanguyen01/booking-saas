@@ -153,21 +153,21 @@ export default function PromotionDetail({ loaderData, actionData }: Route.Compon
 
       {/* Section 5 — Edit. An ended promo can no longer be edited. */}
       {!ended ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Chỉnh sửa</CardTitle>
-            <CardDescription>Cập nhật điều kiện áp dụng.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PromotionForm
-              mode="edit"
-              promotion={promotion}
-              submitLabel="Lưu thay đổi"
-              scopeOptions={scopeOptions}
-              categoryOptions={categoryOptions}
-            />
-          </CardContent>
-        </Card>
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Chỉnh sửa khuyến mãi</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cập nhật mức ưu đãi, điều kiện và lịch chạy.
+            </p>
+          </div>
+          <PromotionForm
+            mode="edit"
+            promotion={promotion}
+            submitLabel="Lưu thay đổi"
+            scopeOptions={scopeOptions}
+            categoryOptions={categoryOptions}
+          />
+        </section>
       ) : null}
 
       {/* Section 6 — Danger zone, behind a confirmation dialog (irreversible). */}

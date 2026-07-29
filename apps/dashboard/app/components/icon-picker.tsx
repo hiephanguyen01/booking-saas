@@ -8,11 +8,7 @@ import {
   CommandItem,
   CommandList,
 } from '@booking/ui/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@booking/ui/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@booking/ui/components/ui/popover';
 import { cn } from '@booking/ui/lib/utils';
 import { ChevronsUpDown, X } from 'lucide-react';
 import { useState } from 'react';
@@ -30,11 +26,15 @@ export function IconPicker({
   onChange,
   ariaLabel = 'Chọn biểu tượng',
   className,
+  compact = false,
+  clearable = true,
 }: {
   value?: ListingTypeIconName | null;
   onChange: (icon: ListingTypeIconName | undefined) => void;
   ariaLabel?: string;
   className?: string;
+  compact?: boolean;
+  clearable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -48,13 +48,18 @@ export function IconPicker({
             role="combobox"
             aria-expanded={open}
             aria-label={ariaLabel}
-            className="justify-start gap-2"
+            size={compact ? 'icon' : 'default'}
+            className={cn(compact ? 'shrink-0' : 'justify-start gap-2')}
           >
             <span className="flex size-5 items-center justify-center text-muted-foreground">
               {value ? <ListingTypeIcon name={value} className="size-4" /> : null}
             </span>
-            <span className="truncate">{value ? ICON_LABEL[value] : 'Chọn biểu tượng'}</span>
-            <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+            {compact ? null : (
+              <>
+                <span className="truncate">{value ? ICON_LABEL[value] : 'Chọn biểu tượng'}</span>
+                <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
+              </>
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">
@@ -82,7 +87,7 @@ export function IconPicker({
           </Command>
         </PopoverContent>
       </Popover>
-      {value ? (
+      {value && clearable ? (
         <Button
           type="button"
           variant="ghost"

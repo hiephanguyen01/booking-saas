@@ -6,17 +6,11 @@ import { updatePartnerDocumentsInputSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import { Button } from '@booking/ui/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@booking/ui/components/ui/card';
 import { SuccessBanner } from '~/components/action-feedback';
 import { PhotoStrip } from '~/components/photo-strip';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import type { PartnerProfileActionResult } from '../../server/profile-actions.server';
+import { Section } from '~/components/form-layout';
 
 const documentFields: FieldConfig<UpdatePartnerDocumentsInput>[] = [
   {
@@ -48,7 +42,7 @@ function readStringArray(value: unknown): string[] {
     : [];
 }
 
-/** "Logo & giấy tờ" — uploaded license docs (with delete) + the upload form. */
+/** Uploaded logo/license documents inside the shared profile settings surface. */
 export function ProfileDocumentsCard({
   partner,
   result,
@@ -70,14 +64,8 @@ export function ProfileDocumentsCard({
   };
 
   return (
-    <Card aria-busy={busy}>
-      <CardHeader>
-        <CardTitle>Logo & giấy tờ</CardTitle>
-        <CardDescription>
-          Hình ảnh được tải trực tiếp lên kho lưu trữ; chỉ đường dẫn được lưu vào hồ sơ.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <Section title="Logo & giấy tờ" description="Hình ảnh đại diện và hồ sơ pháp lý của đối tác.">
+      <div className="space-y-6" aria-busy={busy}>
         {result?.ok ? <SuccessBanner message="Đã lưu giấy tờ." /> : null}
 
         <div className="space-y-3">
@@ -115,15 +103,17 @@ export function ProfileDocumentsCard({
               schema={updatePartnerDocumentsInputSchema}
               fields={documentFields}
               defaultValues={documentDefaults}
+              columns={2}
               submitLabel="Lưu giấy tờ"
               method="patch"
               transform={(v) => ({ ...v, intent: 'documents' })}
               serverError={result?.error ?? null}
               fieldErrors={result?.fieldErrors ?? null}
+              warnOnUnsavedChanges
             />
           </div>
         </fieldset>
-      </CardContent>
-    </Card>
+      </div>
+    </Section>
   );
 }

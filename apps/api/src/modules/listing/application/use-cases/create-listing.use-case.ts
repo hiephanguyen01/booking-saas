@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CreateListingInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
@@ -47,6 +48,7 @@ import {
   ListingGroupReadOnlyForEdit,
   ListingGroupTypeMismatch,
 } from '../../domain/errors/listing-group-errors';
+import { buildPublicSlug } from '../../../../shared/domain/public-slug';
 
 /**
  * Create a listing. Inside one tenant transaction it validates the attributes
@@ -69,13 +71,20 @@ export class CreateListingUseCase {
   ) {}
 
   async execute(tenantId: string, input: CreateListingInput): Promise<ListingRecord> {
+    const slug =
+      input.slug ??
+      buildPublicSlug(
+        input.title,
+        randomUUID().replaceAll('-', '').slice(0, 6),
+        'tin-dang',
+      );
     const location = await this.resolveAdministrativeAddress.execute(
       input.provinceCode,
       input.wardCode,
     );
     return this.tenantDb.forTenant(tenantId, async (tx) => {
-      if (await this.listings.findBySlug(tx, input.slug)) {
-        throw new ListingSlugTaken(input.slug);
+      if (await this.listings.findBySlug(tx, slug)) {
+        throw new ListingSlugTaken(slug);
       }
 
       const type = await this.listingTypes.findById(tx, input.listingTypeId);
@@ -166,7 +175,7 @@ export class CreateListingUseCase {
           groupId: input.groupId ?? null,
           categoryId: input.categoryId ?? null,
           title: input.title,
-          slug: input.slug,
+          slug,
           description: input.description ?? null,
           provinceCode: location.province.code,
           provinceName: location.province.name,

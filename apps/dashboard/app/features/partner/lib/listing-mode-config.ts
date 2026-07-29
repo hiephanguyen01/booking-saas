@@ -144,13 +144,16 @@ export function savedModeConfig(listing?: ListingResponse): ModeConfigMap {
   return (listing?.modeConfig ?? {}) as ModeConfigMap;
 }
 
-export function initialDynamic(listing?: ListingResponse): DynamicState {
+export function initialDynamic(
+  listing?: ListingResponse,
+  defaultModes: BookingMode[] = [],
+): DynamicState {
   const mc = savedModeConfig(listing);
   const h = mc.hourly ?? {};
   const d = mc.daily ?? {};
   const inv = mc.inventory ?? {};
   return {
-    bookingModes: (listing?.bookingModes ?? []) as BookingMode[],
+    bookingModes: (listing?.bookingModes ?? defaultModes) as BookingMode[],
     hourly: {
       basePrice: num(h.basePrice, '0'),
       packages: readPackages(h, 'durationMinutes'),

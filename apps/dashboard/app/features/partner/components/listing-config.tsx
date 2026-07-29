@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@booking/ui/components/ui/select';
-import { Section, Grid, Field } from './form-layout';
+import { Field, Grid, Section } from '~/components/form-layout';
 import { PackageEditor } from './package-editor';
 import { AttributeInput } from './attribute-input';
 import { CONFIGURABLE, useListingModeState } from './use-listing-mode-state';
@@ -48,8 +48,29 @@ export function ListingConfig({
   const errors = form.formState.errors;
 
   return (
-    <div className="space-y-6">
-      <Section title="Hình thức đặt">
+    <>
+      {selectedType && selectedType.attributeSchema.length > 0 ? (
+        <Section
+          title="Thông tin hạng mục"
+          description={`Điền các đặc điểm giúp khách hiểu và so sánh ${selectedType.itemLabel || 'hạng mục'} này.`}
+        >
+          <div className="space-y-3">
+            {selectedType.attributeSchema.map((f) => (
+              <AttributeInput
+                key={f.key}
+                field={f}
+                value={state.attributes[f.key]}
+                onChange={(v) => set('attributes', { ...state.attributes, [f.key]: v })}
+              />
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      <Section
+        title="Cách khách đặt chỗ"
+        description="Chọn một hoặc nhiều hình thức. Phần giá tương ứng sẽ xuất hiện ngay bên dưới."
+      >
         {allowedModes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Chọn loại dịch vụ để xem hình thức khả dụng.
@@ -100,22 +121,7 @@ export function ListingConfig({
           stockError={errors.stockQuantity ? [String(errors.stockQuantity.message)] : undefined}
         />
       ) : null}
-
-      {selectedType && selectedType.attributeSchema.length > 0 ? (
-        <Section title="Thuộc tính">
-          <div className="space-y-3">
-            {selectedType.attributeSchema.map((f) => (
-              <AttributeInput
-                key={f.key}
-                field={f}
-                value={state.attributes[f.key]}
-                onChange={(v) => set('attributes', { ...state.attributes, [f.key]: v })}
-              />
-            ))}
-          </div>
-        </Section>
-      ) : null}
-    </div>
+    </>
   );
 }
 

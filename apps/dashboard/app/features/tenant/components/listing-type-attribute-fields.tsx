@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type {
   AttributeField,
   AttributeFieldType,
@@ -17,6 +18,7 @@ import {
 } from '@booking/ui/components/ui/select';
 import { Plus, X } from 'lucide-react';
 import { IconPicker } from '~/components/icon-picker';
+import { uniqueAttributeKey } from '~/features/tenant/lib/listing-type-attribute-key';
 import { ATTRIBUTE_FIELD_TYPE_LABEL } from '../constants';
 import { normalizeSearchConfig } from './listing-type-search-config';
 
@@ -43,6 +45,7 @@ export function ListingTypeAttributeFields({
   form: UseFormReturn<CreateListingTypeInput>;
 }) {
   const errors = form.formState.errors;
+  const autoKeyRows = useRef(new Set<number>());
 
   return (
     <Controller
@@ -109,6 +112,11 @@ export function ListingTypeAttributeFields({
           )
             return;
           const nextRows = rows.filter((_, index) => index !== i);
+          autoKeyRows.current = new Set(
+            [...autoKeyRows.current]
+              .filter((index) => index !== i)
+              .map((index) => (index > i ? index - 1 : index)),
+          );
           field.onChange(nextRows);
           form.setValue(
             'searchConfig',
@@ -125,11 +133,13 @@ export function ListingTypeAttributeFields({
             { shouldDirty: true, shouldValidate: true },
           );
         };
-        const add = (): void =>
+        const add = (): void => {
+          autoKeyRows.current.add(rows.length);
           field.onChange([
             ...rows,
             { key: '', label: '', type: 'text', required: false, filterable: false },
           ]);
+        };
 
         // Per-row errors live at errors.attributeSchema[i].<field>; the
         // array-level refinement (duplicate keys) lands on the root. Neither was
@@ -140,46 +150,56 @@ export function ListingTypeAttributeFields({
           schemaErrors?.[i]?.[key]?.message;
 
         return (
-          <section className="space-y-3 rounded-lg border p-4">
-            <h2 className="text-sm font-semibold">Thuộc tính tuỳ biến</h2>
+          <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Các trường sẽ hiện khi đối tác tạo tin đăng thuộc loại này. “Lọc được” chỉ làm cho
-              thuộc tính đủ điều kiện; hãy bật và chọn kiểu hiển thị ở phần bộ lọc bên dưới.
+              Ví dụ với studio, bạn có thể yêu cầu đối tác khai báo diện tích, phong cách hoặc thiết
+              bị đi kèm. Hệ thống tự tạo mã nội bộ từ tên trường.
             </p>
             {rootMessage ? (
-              <p className="text-xs text-destructive">{String(rootMessage)}</p>
+              <p className="text-xs text-destructive">
+                Có thông tin bị trùng tên hoặc chưa được điền đầy đủ.
+              </p>
             ) : null}
             <div className="space-y-3">
+              {rows.length === 0 ? (
+                <div className="rounded-lg border border-dashed px-4 py-5 text-sm text-muted-foreground">
+                  Chưa cần khai báo thông tin bổ sung. Bạn có thể bỏ qua phần này.
+                </div>
+              ) : null}
               {rows.map((a, i) => (
                 <div key={i} className="space-y-3 rounded-md border p-3">
                   <div className="flex items-start gap-2">
                     <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <Label>Khoá (key)</Label>
-                        <Input
-                          value={a.key}
-                          onChange={(e) => update(i, { key: e.target.value })}
-                          placeholder="area"
-                          aria-invalid={rowError(i, 'key') ? true : undefined}
-                        />
-                        {rowError(i, 'key') ? (
-                          <p className="text-xs text-destructive">{rowError(i, 'key')}</p>
-                        ) : null}
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Nhãn</Label>
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label>Tên thông tin</Label>
                         <Input
                           value={a.label}
-                          onChange={(e) => update(i, { label: e.target.value })}
-                          placeholder="Diện tích"
-                          aria-invalid={rowError(i, 'label') ? true : undefined}
+                          onChange={(event) => {
+                            const label = event.target.value;
+                            const shouldGenerateKey = autoKeyRows.current.has(i) || !a.key;
+                            update(i, {
+                              label,
+                              ...(shouldGenerateKey
+                                ? { key: uniqueAttributeKey(label, rows, i) }
+                                : {}),
+                            });
+                          }}
+                          onBlur={() => autoKeyRows.current.delete(i)}
+                          placeholder="Ví dụ: Diện tích, Phong cách, Có ánh sáng tự nhiên"
+                          aria-invalid={
+                            rowError(i, 'label') || rowError(i, 'key') ? true : undefined
+                          }
                         />
                         {rowError(i, 'label') ? (
                           <p className="text-xs text-destructive">{rowError(i, 'label')}</p>
+                        ) : rowError(i, 'key') ? (
+                          <p className="text-xs text-destructive">
+                            Hãy nhập tên để hệ thống tạo mã nội bộ.
+                          </p>
                         ) : null}
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Kiểu</Label>
+                        <Label>Loại dữ liệu</Label>
                         <Select
                           value={a.type}
                           onValueChange={(v) =>
@@ -218,8 +238,8 @@ export function ListingTypeAttributeFields({
                         />
                       </div>
                       {isChoice(a.type) ? (
-                        <div className="space-y-1.5">
-                          <Label>Tuỳ chọn (phân tách bằng dấu phẩy)</Label>
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <Label>Các lựa chọn</Label>
                           <Input
                             value={(a.options ?? []).join(', ')}
                             onChange={(e) =>
@@ -230,7 +250,7 @@ export function ListingTypeAttributeFields({
                                   .filter(Boolean),
                               })
                             }
-                            placeholder="Hàn Quốc, Vintage"
+                            placeholder="Nhập cách nhau bằng dấu phẩy, ví dụ: Hàn Quốc, Vintage"
                             aria-invalid={rowError(i, 'options') ? true : undefined}
                           />
                           {rowError(i, 'options') ? (
@@ -267,7 +287,7 @@ export function ListingTypeAttributeFields({
                           checked={a.filterable}
                           onCheckedChange={(v) => update(i, { filterable: v === true })}
                         />
-                        Lọc được
+                        Cho phép dùng làm bộ lọc
                       </label>
                     )}
                   </div>
@@ -275,9 +295,9 @@ export function ListingTypeAttributeFields({
               ))}
             </div>
             <Button type="button" variant="outline" size="sm" onClick={add}>
-              <Plus className="size-4" /> Thêm thuộc tính
+              <Plus className="size-4" /> Thêm thông tin cần khai báo
             </Button>
-          </section>
+          </div>
         );
       }}
     />

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CreateListingGroupInput } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
@@ -15,6 +16,7 @@ import {
 import { ResolveAdministrativeAddressUseCase } from '../../../administrative-division/application/use-cases/resolve-administrative-address.use-case';
 import { ListingGroup } from '../../domain/entities/listing-group.entity';
 import { ListingGroupSlugTaken } from '../../domain/errors/listing-group-errors';
+import { buildPublicSlug } from '../../../../shared/domain/public-slug';
 
 /** Two-tier post: a group (album/amenities/address) that holds room/package listings (§7.3). */
 @Injectable()
@@ -28,6 +30,13 @@ export class CreateListingGroupUseCase {
   ) {}
 
   async execute(tenantId: string, input: CreateListingGroupInput): Promise<ListingGroupRecord> {
+    const slug =
+      input.slug ??
+      buildPublicSlug(
+        input.title,
+        randomUUID().replaceAll('-', '').slice(0, 6),
+        'tin-dang',
+      );
     const location = await this.resolveAdministrativeAddress.execute(
       input.provinceCode,
       input.wardCode,
@@ -36,8 +45,8 @@ export class CreateListingGroupUseCase {
       const listingType = await this.listingTypes.findById(tx, input.listingTypeId);
       if (!listingType) throw new ListingTypeNotFound();
       ListingGroup.assertGroupableType(listingType.structure);
-      if (await this.repo.findBySlug(tx, input.slug)) {
-        throw new ListingGroupSlugTaken(input.slug);
+      if (await this.repo.findBySlug(tx, slug)) {
+        throw new ListingGroupSlugTaken(slug);
       }
       const created = await this.repo.create(
         tx,
@@ -46,7 +55,7 @@ export class CreateListingGroupUseCase {
           partnerId: input.partnerId,
           listingTypeId: input.listingTypeId,
           title: input.title,
-          slug: input.slug,
+          slug,
           description: input.description ?? null,
           provinceCode: location.province.code,
           provinceName: location.province.name,

@@ -1,7 +1,7 @@
 import { data, Link, redirect } from 'react-router';
 import {
   createListingInputSchema,
-  type CancellationPolicySummary,
+  type CancellationPolicyResponse,
   type ListingTypeResponse,
   type DepositRequirementResponse,
 } from '@booking/contracts';
@@ -28,7 +28,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
   const [types, policies] = await Promise.all([
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
-    apiGet<CancellationPolicySummary[]>('/partner/cancellation-policies', auth),
+    apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
   ]);
   const listingTypes = types.data ?? [];
   const url = new URL(request.url);
@@ -150,8 +150,8 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
       <div>
         <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
         <PageHeader
-          title="Tin đăng mới"
-          description="Tạo tin đăng mới; sau khi tạo hãy gửi duyệt để hiển thị."
+          title={`Tạo ${loaderData.selectedType.itemLabel || 'hạng mục'} mới`}
+          description={`Hoàn thiện thông tin ${loaderData.selectedType.name}, giá và chính sách. Tin sẽ được lưu nháp để bạn kiểm tra trước khi gửi duyệt.`}
         />
       </div>
       <ListingForm

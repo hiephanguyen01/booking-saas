@@ -40,7 +40,12 @@ export function useListingModeState(opts: {
 }): ListingModeState {
   const { form, listing, listingTypeId, selectedType } = opts;
 
-  const [state, setState] = useState<DynamicState>(() => initialDynamic(listing));
+  const [state, setState] = useState<DynamicState>(() =>
+    initialDynamic(
+      listing,
+      (selectedType?.defaultModes ?? []).filter((mode) => CONFIGURABLE.includes(mode)),
+    ),
+  );
   const set = <K extends keyof DynamicState>(key: K, value: DynamicState[K]): void =>
     setState((s) => ({ ...s, [key]: value }));
   // The listing's stored mode_config — the base every rebuild spreads over, so a

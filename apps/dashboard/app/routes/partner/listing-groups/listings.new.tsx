@@ -1,7 +1,7 @@
 import { data, redirect } from 'react-router';
 import {
   createListingInputSchema,
-  type CancellationPolicySummary,
+  type CancellationPolicyResponse,
   type ListingGroupDetailResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
@@ -17,7 +17,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [groupRes, typesRes, policiesRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
-    apiGet<CancellationPolicySummary[]>('/partner/cancellation-policies', auth),
+    apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
   ]);
   if (!groupRes.ok || !groupRes.data)
     throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });

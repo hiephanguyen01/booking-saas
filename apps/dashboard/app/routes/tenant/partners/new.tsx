@@ -4,13 +4,13 @@ import {
   type CreateHousePartnerInput,
   type PartnerResponse,
 } from '@booking/contracts';
-import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { BackLink } from '~/components/back-link';
+import { fieldNode, FormSurface, Section } from '~/components/form-layout';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
@@ -68,22 +68,29 @@ export default function NewHousePartner({ actionData }: Route.ComponentProps) {
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Thông tin đối tác</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GenericForm
-            schema={createHousePartnerInputSchema}
-            fields={fields}
-            columns={2}
-            submitLabel="Tạo đối tác"
-            defaultValues={{ name: '', slug: '', description: '' }}
-            serverError={actionData?.error ?? null}
-            fieldErrors={actionData?.fieldErrors ?? null}
-          />
-        </CardContent>
-      </Card>
+      <GenericForm
+        schema={createHousePartnerInputSchema}
+        fields={fields}
+        columns={2}
+        submitLabel="Tạo đối tác"
+        defaultValues={{ name: '', slug: '', description: '' }}
+        serverError={actionData?.error ?? null}
+        fieldErrors={actionData?.fieldErrors ?? null}
+        actionsClassName="justify-end border-t pt-4"
+        warnOnUnsavedChanges
+        renderFields={(renderedFields) => (
+          <FormSurface>
+            <Section
+              title="Thông tin đối tác"
+              description="Đối tác nội bộ được duyệt sẵn và thuộc quyền vận hành của tenant."
+            >
+              {fieldNode(renderedFields, 'name')}
+              {fieldNode(renderedFields, 'slug')}
+              {fieldNode(renderedFields, 'description')}
+            </Section>
+          </FormSurface>
+        )}
+      />
     </div>
   );
 }

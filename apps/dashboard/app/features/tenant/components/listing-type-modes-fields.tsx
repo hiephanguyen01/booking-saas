@@ -1,19 +1,31 @@
 import type { BookingMode, CreateListingTypeInput } from '@booking/contracts';
 import { Controller, type UseFormReturn } from '@booking/ui/components/form/rhf';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
+import { Switch } from '@booking/ui/components/ui/switch';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 
 const ALL_MODES: BookingMode[] = ['hourly', 'daily', 'inventory', 'appointment', 'class'];
 
+const MODE_DESCRIPTION: Record<BookingMode, string> = {
+  hourly: 'Khách chọn giờ bắt đầu và thời lượng sử dụng.',
+  daily: 'Khách đặt theo một hoặc nhiều ngày.',
+  inventory: 'Khách chọn số lượng sản phẩm hoặc thiết bị.',
+  appointment: 'Khách chọn một lịch hẹn còn trống.',
+  class: 'Khách đăng ký một buổi học hoặc sự kiện có lịch cố định.',
+};
+
 /**
- * The `allowedModes` + `defaultModes` checkbox groups, bound to the form via
- * `Controller`. Un-allowing a mode also prunes it from `defaultModes` and, when
- * it was the search schedule, resets `searchConfig.schedule` to `none` — the two
- * subset invariants the shared schema enforces.
+ * One row per booking mode. Availability and the create-listing default stay
+ * together so the subset rule is visible instead of being split into two lists.
  */
-export function ListingTypeModesFields({ form }: { form: UseFormReturn<CreateListingTypeInput> }) {
+export function ListingTypeModesFields({
+  form,
+}: {
+  form: UseFormReturn<CreateListingTypeInput>;
+}) {
   const errors = form.formState.errors;
   const fixedPackages = form.watch('bookingSelection') === 'fixed_packages';
+  const defaults = form.watch('defaultModes') ?? [];
   const modes = fixedPackages
     ? ALL_MODES.filter((mode) => mode === 'hourly' || mode === 'daily')
     : ALL_MODES;
@@ -24,15 +36,18 @@ export function ListingTypeModesFields({ form }: { form: UseFormReturn<CreateLis
       name="allowedModes"
       render={({ field }) => {
         const allowed = field.value ?? [];
-        const toggle = (mode: BookingMode, on: boolean): void => {
-          const next = on ? [...allowed, mode] : allowed.filter((m) => m !== mode);
+
+        const setAllowed = (mode: BookingMode, enabled: boolean): void => {
+          const next = enabled
+            ? [...allowed.filter((value) => value !== mode), mode]
+            : allowed.filter((value) => value !== mode);
           field.onChange(next);
-          // Keep defaultModes a subset of allowedModes.
-          if (!on) {
-            const dm = form.getValues('defaultModes') ?? [];
+
+          if (!enabled) {
             form.setValue(
               'defaultModes',
-              dm.filter((m) => m !== mode),
+              defaults.filter((value) => value !== mode),
+              { shouldDirty: true, shouldValidate: true },
             );
             if (form.getValues('searchConfig.schedule') === mode) {
               form.setValue('searchConfig.schedule', 'none', {
@@ -42,52 +57,90 @@ export function ListingTypeModesFields({ form }: { form: UseFormReturn<CreateLis
             }
           }
         };
-        return (
-          <section className="space-y-3 rounded-lg border p-4">
-            <h2 className="text-sm font-semibold">Hình thức đặt cho phép</h2>
-            <div className="flex flex-wrap gap-4">
-              {modes.map((m) => (
-                <label key={m} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={allowed.includes(m)}
-                    onCheckedChange={(v) => toggle(m, v === true)}
-                  />
-                  {BOOKING_MODE_LABEL[m]}
-                </label>
-              ))}
-            </div>
-            {errors.allowedModes ? (
-              <p className="text-xs text-destructive">{String(errors.allowedModes.message)}</p>
-            ) : null}
 
-            <p className="pt-2 text-xs font-medium text-muted-foreground">
-              Bật sẵn khi tạo tin đăng:
-            </p>
-            <Controller
-              control={form.control}
-              name="defaultModes"
-              render={({ field: dmField }) => {
-                const defaults = dmField.value ?? [];
+        const setDefault = (mode: BookingMode, enabled: boolean): void => {
+          form.setValue(
+            'defaultModes',
+            enabled
+              ? [...defaults.filter((value) => value !== mode), mode]
+              : defaults.filter((value) => value !== mode),
+            { shouldDirty: true, shouldValidate: true },
+          );
+        };
+
+        return (
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/15 px-4 py-3">
+              <p className="text-sm font-medium">Hình thức được hỗ trợ</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Bật những cách khách có thể đặt. “Bật sẵn” chỉ là lựa chọn mặc định khi đối tác tạo
+                tin đăng mới và vẫn có thể thay đổi.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              {modes.map((mode) => {
+                const enabled = allowed.includes(mode);
+                const defaultEnabled = defaults.includes(mode);
+                const allowedId = `allowed-mode-${mode}`;
+                const defaultId = `default-mode-${mode}`;
+
                 return (
-                  <div className="flex flex-wrap gap-4">
-                    {allowed.map((m) => (
-                      <label key={m} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={defaults.includes(m)}
-                          onCheckedChange={(v) =>
-                            dmField.onChange(
-                              v === true ? [...defaults, m] : defaults.filter((x) => x !== m),
-                            )
-                          }
-                        />
-                        {BOOKING_MODE_LABEL[m]}
+                  <div
+                    key={mode}
+                    className="grid gap-3 rounded-lg border px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                  >
+                    <label
+                      htmlFor={allowedId}
+                      className="flex min-w-0 cursor-pointer items-start gap-3"
+                    >
+                      <Checkbox
+                        id={allowedId}
+                        checked={enabled}
+                        onCheckedChange={(checked) => setAllowed(mode, checked === true)}
+                        className="mt-0.5"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium">
+                          {BOOKING_MODE_LABEL[mode]}
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                          {MODE_DESCRIPTION[mode]}
+                        </span>
+                      </span>
+                    </label>
+
+                    <div className="flex items-center justify-between gap-4 border-t pt-3 sm:min-w-40 sm:justify-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+                      <label
+                        htmlFor={defaultId}
+                        className={enabled ? 'text-xs font-medium' : 'text-xs text-muted-foreground'}
+                      >
+                        Bật sẵn
                       </label>
-                    ))}
+                      <Switch
+                        id={defaultId}
+                        checked={enabled && defaultEnabled}
+                        disabled={!enabled}
+                        onCheckedChange={(checked) => setDefault(mode, checked)}
+                        aria-label={`Bật sẵn ${BOOKING_MODE_LABEL[mode]} khi tạo tin đăng`}
+                      />
+                    </div>
                   </div>
                 );
-              }}
-            />
-          </section>
+              })}
+            </div>
+
+            {errors.allowedModes ? (
+              <p className="text-xs text-destructive">
+                Hãy bật ít nhất một hình thức đặt.
+              </p>
+            ) : null}
+            {errors.defaultModes ? (
+              <p className="text-xs text-destructive">
+                Lựa chọn bật sẵn phải thuộc các hình thức được hỗ trợ.
+              </p>
+            ) : null}
+          </div>
         );
       }}
     />
