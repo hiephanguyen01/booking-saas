@@ -20,7 +20,7 @@ import { HeaderActions } from '~/components/header-actions';
 import { ProviderCard } from '~/components/provider-card';
 import { ListingGallery } from '~/components/listing-gallery';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
-import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
+import { listingCapacity, specCards } from '~/lib/listing-attributes';
 import { DeferredSearchBar } from '~/features/search/components/deferred-search-bar';
 import { supportsScheduledBooking } from '~/features/booking-widget/lib/booking-modes';
 import { ScheduledBookingCard } from './scheduled-booking-card';
@@ -88,6 +88,7 @@ export function ListingPage({ loaderData, params }: ListingPageProps) {
           <ListingDetails
             attributes={listing.attributes}
             attributeSchema={listing.attributeSchema}
+            capacity={listing.capacity}
           />
           <Suspense fallback={<ReviewsSectionSkeleton label={t('common:loading')} />}>
             <Await resolve={loaderData.auxiliaryData}>
@@ -178,13 +179,15 @@ function ListingHeader({
 function ListingDetails({
   attributes,
   attributeSchema,
+  capacity: rawCapacity,
 }: {
   attributes: Record<string, unknown>;
   attributeSchema: PublicListingDetailResponse['attributeSchema'];
+  capacity: number | null;
 }) {
   const { t } = useTranslation(NsI18n.Listing);
   const cards = specCards(attributes, attributeSchema);
-  const capacity = roomCapacity(attributes);
+  const capacity = listingCapacity(rawCapacity);
 
   if (!cards.length && !capacity) return null;
 

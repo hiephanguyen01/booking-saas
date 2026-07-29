@@ -125,10 +125,12 @@ rewrite history.
 - **Holds & OTPs live in Redis** (the source of truth). `BookingHold` is only an audit mirror; email
   OTPs (registration, password reset, guest checkout) have no table. Key shapes/TTLs live in the
   identity-access and booking infrastructure adapters.
-- **JSON blobs** (`Listing.modeConfig`, booking `pricingSnapshot`/`commissionSnapshot`/
-  `promotionSnapshot`/`cancellationPolicySnapshot`, `ListingType.searchConfig`, `Tenant.settings`,
-  `SubscriptionPlan.limits`, `Payout.evidence`) are typed & validated by `@booking/contracts`, not by
-  the DB. Check the contract when reading/writing one.
+- **JSON blobs** (`Listing.modeConfig`, `ListingGroup.amenities`, booking
+  `listingSnapshot`/`pricingSnapshot`/`commissionSnapshot`/`promotionSnapshot`/
+  `cancellationPolicySnapshot`, `ListingType.searchConfig`, `Tenant.settings`,
+  `SubscriptionPlan.limits`, `Payout.evidence`) are typed & validated by `@booking/contracts`, not
+  by the DB. `listingSnapshot` freezes the attributes together with their label/icon schema so a
+  later listing-type edit cannot rewrite a historical booking display.
 - **Calendar pricing** stays in `pricing_rules`: `date_range` covers exact daily overrides and
   `date_time_range` covers one local-date hourly window. `price` is the regular unit price and
   nullable `sale_price` is the effective partner-funded sale; booking snapshots freeze both.

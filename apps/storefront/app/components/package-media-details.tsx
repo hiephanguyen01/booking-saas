@@ -3,7 +3,7 @@ import { Clock3, WalletCards } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { AttributeSpecCards } from '~/components/attribute-spec-cards';
-import { specCards } from '~/features/listing-group/lib/room-attributes';
+import { specCards } from '~/lib/listing-attributes';
 import { packageDurationLabel, type PublicPackageOption } from '~/lib/package-options';
 import { formatVnd } from '~/lib/ui';
 

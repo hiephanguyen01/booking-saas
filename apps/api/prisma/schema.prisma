@@ -1132,6 +1132,7 @@ model Booking {
   promotionSnapshot          Json?                     @map("promotion_snapshot")
   cancellationPolicySnapshot Json?                     @map("cancellation_policy_snapshot")
   pricingSnapshot            Json?                     @map("pricing_snapshot")
+  listingSnapshot            Json?                     @map("listing_snapshot")
   commissionSnapshot         Json?                     @map("commission_snapshot")
   customerNote               String?                   @map("customer_note")
   partnerNote                String?                   @map("partner_note")

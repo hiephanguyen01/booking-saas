@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { cancellationTierSchema, paginationQuerySchema, uuidSchema } from './common';
 import { passwordSchema } from './auth';
+import { attributeFieldSchema } from './listing-type';
 
 /** Booking state machine (§8). Terminal-ish branches: completed/no_show/rejected/expired/refunded. */
 export const bookingStatusSchema = z.enum([
@@ -205,6 +206,23 @@ export type AdditionalCharge = z.infer<typeof additionalChargeSchema>;
  */
 const snapshotSchema = z.record(z.unknown()).nullable();
 
+/**
+ * Immutable customer-facing listing presentation captured when a booking is
+ * created. Attribute values and their tenant-authored schema travel together so
+ * historical labels/icons/order never drift after a listing-type edit.
+ */
+export const bookingListingSnapshotSchema = z.object({
+  title: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  photos: z.array(z.string()),
+  attributes: z.record(z.unknown()),
+  attributeSchema: z.array(attributeFieldSchema),
+  capacity: z.number().int().positive().nullable(),
+  group: z.object({ title: z.string(), slug: z.string() }).nullable(),
+});
+export type BookingListingSnapshot = z.infer<typeof bookingListingSnapshotSchema>;
+
 /** Fields common to every booking audience. Contains NO customer PII and NO internal financials. */
 const bookingCoreSchema = z.object({
   id: z.string(),
@@ -217,6 +235,9 @@ const bookingCoreSchema = z.object({
   listingDescription: z.string().nullable(),
   listingImageUrl: z.string().nullable(),
   listingAttributes: z.record(z.unknown()),
+  listingAttributeSchema: z.array(attributeFieldSchema),
+  listingCapacity: z.number().int().positive().nullable(),
+  listingGroup: z.object({ title: z.string(), slug: z.string() }).nullable(),
   resourceId: z.string(),
   resourceName: z.string(),
   /** IANA timezone used to display the booking's resource-local date and time. */

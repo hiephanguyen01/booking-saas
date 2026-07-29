@@ -131,6 +131,9 @@ function toCore(b: BookingRecord) {
       !Array.isArray(b.listingAttributes)
         ? (b.listingAttributes as Record<string, unknown>)
         : {},
+    listingAttributeSchema: b.listingAttributeSchema,
+    listingCapacity: b.listingCapacity,
+    listingGroup: b.listingGroup,
     resourceId: b.resourceId,
     resourceName: b.resourceName,
     resourceTimezone: b.resourceTimezone,

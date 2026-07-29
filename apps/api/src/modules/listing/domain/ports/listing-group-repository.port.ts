@@ -1,6 +1,7 @@
 import type {
   BookingMode,
   BookingSelection,
+  ListingGroupAmenity,
   ModerationActor,
   PublishStatus,
 } from '@booking/contracts';
@@ -38,7 +39,7 @@ export interface ListingGroupRecord {
   wardName: string | null;
   address: string | null;
   workingArea: string | null;
-  amenities: string[];
+  amenities: ListingGroupAmenity[];
   photos: string[];
   status: PublishStatus;
   publishedBy: ModerationActor | null;

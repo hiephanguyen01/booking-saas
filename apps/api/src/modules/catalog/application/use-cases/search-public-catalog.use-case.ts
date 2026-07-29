@@ -24,6 +24,7 @@ import {
   type Interval,
 } from '../../../../shared/domain/availability/interval';
 import { openWindowsForDate } from '../../../../shared/domain/availability/open-windows';
+import { listingGroupAmenityLabels } from '../../../../shared/domain/listing-group-amenities';
 import { toPublicListingTypeResponse } from '../catalog.mapper';
 import { HOLD_READER, type IHoldReader } from '../../domain/ports/hold-reader.port';
 import {
@@ -193,9 +194,7 @@ export class SearchPublicCatalogUseCase {
       throw new CatalogDateFilterDisabled();
     }
     if (mode === 'hourly' && hasRange)
-      throw new CatalogScheduleQueryInvalid(
-        'Hourly search uses date, startTime and endTime',
-      );
+      throw new CatalogScheduleQueryInvalid('Hourly search uses date, startTime and endTime');
     if (
       (mode === 'daily' || mode === 'inventory') &&
       hasHourly &&
@@ -207,9 +206,7 @@ export class SearchPublicCatalogUseCase {
         !query.endTime
       )
     ) {
-      throw new CatalogScheduleQueryInvalid(
-        'Daily and inventory search use from and to',
-      );
+      throw new CatalogScheduleQueryInvalid('Daily and inventory search use from and to');
     }
   }
 
@@ -218,8 +215,7 @@ export class SearchPublicCatalogUseCase {
       type.attributeSchema.filter((f) => f.filterable).map((f) => [f.key, f]),
     );
     for (const key of [...Object.keys(query.attributes), ...Object.keys(query.attributeRanges)]) {
-      if (!allowed.has(key))
-        throw new CatalogAttributeFilterInvalid(key);
+      if (!allowed.has(key)) throw new CatalogAttributeFilterInvalid(key);
     }
   }
 
@@ -249,7 +245,7 @@ export class SearchPublicCatalogUseCase {
       )
     )
       return false;
-    const amenities = stringArray(listing.group?.amenities);
+    const amenities = listingGroupAmenityLabels(listing.group?.amenities).map(normalize);
     if (query.amenities.length && !query.amenities.every((a) => amenities.includes(normalize(a))))
       return false;
 
@@ -579,7 +575,7 @@ export class SearchPublicCatalogUseCase {
         provinceName: g?.provinceName ?? l.provinceName,
         wardCode: g?.wardCode ?? l.wardCode,
         wardName: g?.wardName ?? l.wardName,
-        amenities: stringArrayRaw(g?.amenities),
+        amenities: listingGroupAmenityLabels(g?.amenities),
         ratingAvg: g?.ratingAvg ?? l.ratingAvg,
         reviewCount: g?.reviewCount ?? l.reviewCount,
         priceFrom: cheapest.price.toString(),
@@ -633,7 +629,9 @@ export class SearchPublicCatalogUseCase {
             'amenities',
             'Tiện ích',
             cards.flatMap((l) =>
-              stringArrayRaw(l.group?.amenities).map((a) => [a, a] as [string, string]),
+              listingGroupAmenityLabels(l.group?.amenities).map(
+                (amenity) => [amenity, amenity] as [string, string],
+              ),
             ),
           ),
         );
@@ -828,9 +826,6 @@ function rawValues(raw: unknown): string[] {
   return [];
 }
 
-function stringArray(raw: unknown): string[] {
-  return stringArrayRaw(raw).map(normalize);
-}
 function stringArrayRaw(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string') : [];
 }

@@ -4,12 +4,10 @@ import type {
   ListingTypeResponse,
 } from '@booking/contracts';
 import { createListingGroupInputSchema } from '@booking/contracts';
-import { Controller } from '@booking/ui/components/form/rhf';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import { Input } from '@booking/ui/components/ui/input';
-import { Field, FieldDescription, FieldLabel } from '@booking/ui/components/ui/field';
 import { AdministrativeAddressFields } from './administrative-address-fields';
+import { ListingGroupAmenitiesField } from './listing-group-amenities-field';
 
 export function ListingGroupForm({
   partnerId,
@@ -64,30 +62,7 @@ export function ListingGroupForm({
       extraFields={(form) => (
         <div className="space-y-6">
           <AdministrativeAddressFields form={form} />
-          <Controller
-            control={form.control}
-            name="amenities"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor="group-amenities">Tiện ích hoặc thông tin chung</FieldLabel>
-                <Input
-                  id="group-amenities"
-                  value={(field.value ?? []).join(', ')}
-                  onBlur={field.onBlur}
-                  onChange={(event) =>
-                    field.onChange(
-                      event.target.value
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                    )
-                  }
-                  placeholder="Bãi đỗ xe, lễ tân, wifi"
-                />
-                <FieldDescription>Phân tách các mục bằng dấu phẩy.</FieldDescription>
-              </Field>
-            )}
-          />
+          <ListingGroupAmenitiesField form={form} />
         </div>
       )}
       transform={(values) => ({

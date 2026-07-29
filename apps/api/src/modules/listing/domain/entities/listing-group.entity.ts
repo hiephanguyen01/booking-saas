@@ -1,4 +1,4 @@
-import type { ModerationActor, PublishStatus } from '@booking/contracts';
+import type { ListingGroupAmenity, ModerationActor, PublishStatus } from '@booking/contracts';
 import {
   ListingGroupNotOwnedForManage,
   ListingGroupReadOnlyForOwnEdit,
@@ -84,7 +84,7 @@ export interface NewListingGroup {
   wardName: string;
   address: string;
   workingArea: string | null;
-  amenities: string[];
+  amenities: ListingGroupAmenity[];
   photos: string[];
 }
 
@@ -113,7 +113,7 @@ export interface ListingGroupContentPatch {
   wardName?: string;
   address?: string;
   workingArea?: string;
-  amenities?: string[];
+  amenities?: ListingGroupAmenity[];
   photos?: string[];
 }
 

@@ -54,6 +54,7 @@ import { validateSlotPolicy } from '../../domain/slot-policy';
 import { Booking } from '../../domain/entities/booking.entity';
 import { BookingPeriod } from '../../domain/value-objects/booking-period.value-object';
 import { BookingMoney } from '../../domain/value-objects/booking-money.value-object';
+import { buildBookingListingSnapshot } from '../../domain/booking-listing-snapshot';
 import {
   BookingSlotHeld,
   BookingSlotPolicyRejected,
@@ -370,6 +371,16 @@ export class CreateBookingUseCase {
       cancellationPolicyId: args.effectivePolicyId,
       cancellationPolicySnapshot: args.policyRules,
       pricingSnapshot: args.quote,
+      listingSnapshot: buildBookingListingSnapshot({
+        title: args.listing.title,
+        slug: args.listing.slug,
+        description: args.listing.description,
+        photos: args.listing.photos,
+        attributes: args.listing.attributes,
+        attributeSchema: args.listing.attributeSchema,
+        capacity: args.listing.capacity,
+        group: args.listing.group,
+      }),
       customerNote: args.input.customerNote ?? null,
     });
     if (promo) {

@@ -9,17 +9,18 @@ import {
   EmptyTitle,
 } from '@booking/ui/components/ui/empty';
 import { cn } from '@booking/ui/lib/utils';
-import { Aperture, Check, Clock3, Expand } from 'lucide-react';
+import { Aperture, Check, Expand } from 'lucide-react';
 import { useMediaGallery, usePhotoMediaItems } from '~/hooks/use-media-gallery';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { packageDurationLabel, type PublicPackageOption } from '~/lib/package-options';
-import { AttributeSpecCards } from '~/components/attribute-spec-cards';
-import { specCards } from '~/features/listing-group/lib/room-attributes';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import { formatVnd } from '~/lib/ui';
 import { PackageMediaDetails } from '~/components/package-media-details';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
+import { GuestCapacityRules } from '~/components/guest-capacity-rules';
+import { OfferingDetailsDisclosure } from '~/components/offering-details-disclosure';
+import { specCards } from '~/lib/listing-attributes';
 
 /** Stable identity so the media-items memo does not rebuild while nothing is open. */
 const EMPTY_PHOTOS: string[] = [];
@@ -71,7 +72,7 @@ export function PackageTable({
                     {t('packages.colPackage')}
                   </th>
                   <th scope="col" className="w-[25%] border-l p-4">
-                    {t('packages.colRules')}
+                    {t('group.colCapacity')}
                   </th>
                   <th scope="col" className="w-[18%] border-l p-4">
                     {t('packages.colPrice')}
@@ -131,10 +132,10 @@ function PackageRow({ item, listing, selected, onSelect, onOpenMedia }: PackageP
   return (
     <tr className={cn('border-t align-top', selected && 'bg-primary/5')}>
       <td className="p-5">
-        <PackageSummary item={item} onOpenMedia={onOpenMedia} />
+        <PackageSummary item={item} listing={listing} onOpenMedia={onOpenMedia} />
       </td>
       <td className="border-l p-5">
-        <PackageFacts item={item} listing={listing} />
+        <GuestCapacityRules capacity={listing.capacity} />
       </td>
       <td className="border-l p-5">
         <PackagePrice item={item} />
@@ -163,7 +164,7 @@ function PackageCard(props: PackageProps) {
         <div className="sm:col-span-2">
           <PackageSummary {...props} hidePhotos />
         </div>
-        <PackageFacts item={props.item} listing={props.listing} />
+        <GuestCapacityRules capacity={props.listing.capacity} />
         <PackagePrice item={props.item} />
         <div className="sm:col-span-2">
           <PackageChoice {...props} />
@@ -183,9 +184,10 @@ interface PackageProps {
 
 function PackageSummary({
   item,
+  listing,
   onOpenMedia,
   hidePhotos = false,
-}: Pick<PackageProps, 'item' | 'onOpenMedia'> & { hidePhotos?: boolean }) {
+}: Pick<PackageProps, 'item' | 'listing' | 'onOpenMedia'> & { hidePhotos?: boolean }) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
     <div className="space-y-4">
@@ -200,25 +202,7 @@ function PackageSummary({
       <p className="text-sm leading-6 text-muted-foreground">
         {item.description || t('packages.packageDescriptionFallback')}
       </p>
-    </div>
-  );
-}
-
-/**
- * Duration, then whatever the listing type's attribute schema declares — labels,
- * icons and order are tenant-authored, so a photography package and a coaching
- * package each describe themselves without a branch here.
- */
-function PackageFacts({ item, listing }: Pick<PackageProps, 'item' | 'listing'>) {
-  const { t } = useTranslation(NsI18n.Listing);
-  const duration = packageDurationLabel(item);
-  return (
-    <div className="space-y-3 text-sm">
-      <p className="flex items-start gap-2">
-        <Clock3 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-        {t(duration.key, { count: duration.count })}
-      </p>
-      <AttributeSpecCards cards={specCards(listing.attributes, listing.attributeSchema)} />
+      <OfferingDetailsDisclosure cards={specCards(listing.attributes, listing.attributeSchema)} />
     </div>
   );
 }

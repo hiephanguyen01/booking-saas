@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { BookingStatus } from '@booking/contracts';
+import { attributeFieldSchema, type BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import { pageOffset, type RepoPage } from '../../../../shared/pagination/pagination';
 import type {
@@ -19,6 +19,7 @@ import type {
 } from '../../domain/ports/booking-repository.port';
 import { IdempotencyConflictError, SlotTakenError } from '../../domain/booking-errors';
 import { BookingStateChanged } from '../../domain/errors/booking-domain-errors';
+import { parseBookingListingSnapshot } from '../../domain/booking-listing-snapshot';
 
 interface Row {
   id: string;
@@ -29,6 +30,11 @@ interface Row {
   listingDescription: string | null;
   listingImageUrl: string | null;
   listingAttributes: unknown;
+  listingAttributeSchema: unknown;
+  listingCapacity: number | null;
+  listingGroupTitle: string | null;
+  listingGroupSlug: string | null;
+  listingSnapshot: unknown;
   partnerId: string;
   partnerName: string;
   resourceId: string;
@@ -92,9 +98,17 @@ const SELECT = Prisma.sql`
          l.description AS "listingDescription",
          COALESCE(
            b.pricing_snapshot #>> '{selectedPackage,photos,0}',
-           l.photos->>0
+           CASE
+             WHEN b.listing_snapshot IS NULL THEN l.photos->>0
+             ELSE b.listing_snapshot #>> '{photos,0}'
+           END
          ) AS "listingImageUrl",
          l.attributes AS "listingAttributes",
+         lt.attribute_schema AS "listingAttributeSchema",
+         l.capacity AS "listingCapacity",
+         lg.title AS "listingGroupTitle",
+         lg.slug AS "listingGroupSlug",
+         b.listing_snapshot AS "listingSnapshot",
          b.partner_id AS "partnerId", p.name AS "partnerName",
          b.resource_id AS "resourceId", r.name AS "resourceName",
          r.timezone AS "resourceTimezone", b.customer_id AS "customerId",
@@ -121,13 +135,54 @@ const SELECT = Prisma.sql`
   FROM bookings b
   JOIN users u ON u.id = b.customer_id
   JOIN listings l ON l.id = b.listing_id
+  JOIN listing_types lt ON lt.id = l.listing_type_id
+  LEFT JOIN listing_groups lg ON lg.id = l.group_id
   JOIN partners p ON p.id = b.partner_id
   JOIN resources r ON r.id = b.resource_id`;
 
 function toRecord(r: Row): BookingRecord {
-  const { customerFullName, customerPhone, customerEmail, ...rest } = r;
+  const {
+    customerFullName,
+    customerPhone,
+    customerEmail,
+    listingGroupTitle,
+    listingGroupSlug,
+    ...rest
+  } = r;
+  const snapshot = parseBookingListingSnapshot(r.listingSnapshot);
+  const liveAttributeSchema = attributeFieldSchema.array().safeParse(r.listingAttributeSchema);
   return {
     ...rest,
+    listingTitle: snapshot?.title ?? r.listingTitle,
+    listingSlug: snapshot?.slug ?? r.listingSlug,
+    listingDescription: snapshot ? snapshot.description : r.listingDescription,
+    listingAttributes: snapshot?.attributes ?? r.listingAttributes,
+    listingAttributeSchema:
+      snapshot?.attributeSchema ?? (liveAttributeSchema.success ? liveAttributeSchema.data : []),
+    listingCapacity: snapshot ? snapshot.capacity : r.listingCapacity,
+    listingGroup: snapshot
+      ? snapshot.group
+      : listingGroupTitle && listingGroupSlug
+        ? { title: listingGroupTitle, slug: listingGroupSlug }
+        : null,
+    listingSnapshot: snapshot ?? {
+      title: r.listingTitle,
+      slug: r.listingSlug,
+      description: r.listingDescription,
+      photos: r.listingImageUrl ? [r.listingImageUrl] : [],
+      attributes:
+        r.listingAttributes &&
+        typeof r.listingAttributes === 'object' &&
+        !Array.isArray(r.listingAttributes)
+          ? (r.listingAttributes as Record<string, unknown>)
+          : {},
+      attributeSchema: liveAttributeSchema.success ? liveAttributeSchema.data : [],
+      capacity: r.listingCapacity,
+      group:
+        listingGroupTitle && listingGroupSlug
+          ? { title: listingGroupTitle, slug: listingGroupSlug }
+          : null,
+    },
     status: r.status as BookingStatus,
     customer: {
       id: r.customerId,
@@ -167,7 +222,8 @@ export class PrismaBookingRepository implements IBookingRepository {
         booking_mode, status, timeslot, blocked_period,
         guest_count, quantity, total_amount, discount_amount, final_amount, deposit_amount, security_deposit,
         promotion_id, promo_code, promotion_snapshot, commission_snapshot, affiliate_id, referral_code,
-        cancellation_policy_id, cancellation_policy_snapshot, pricing_snapshot, customer_note, updated_at
+        cancellation_policy_id, cancellation_policy_snapshot, pricing_snapshot, listing_snapshot,
+        customer_note, updated_at
       ) VALUES (
         ${id}::uuid, ${tenantId}::uuid, ${data.listingId}::uuid, ${data.partnerId}::uuid,
         ${data.resourceId}::uuid, ${data.customerId}::uuid, ${data.code}, ${data.idempotencyKey},
@@ -182,7 +238,9 @@ export class PrismaBookingRepository implements IBookingRepository {
         ${data.affiliateId ?? null}::uuid, ${data.referralCode ?? null},
         ${data.cancellationPolicyId}::uuid,
         ${JSON.stringify(data.cancellationPolicySnapshot ?? null)}::jsonb,
-        ${JSON.stringify(data.pricingSnapshot ?? null)}::jsonb, ${data.customerNote}, now()
+        ${JSON.stringify(data.pricingSnapshot ?? null)}::jsonb,
+        ${JSON.stringify(data.listingSnapshot)}::jsonb,
+        ${data.customerNote}, now()
       )`);
     } catch (err) {
       // A concurrent request with the same idempotency key won the race — the
