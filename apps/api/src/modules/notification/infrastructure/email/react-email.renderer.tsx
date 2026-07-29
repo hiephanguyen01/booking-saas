@@ -51,15 +51,15 @@ type Copy = {
 };
 
 const STATUS_ASSETS = {
-  confirmed: { filename: 'booking-confirmed.png', cid: 'booking-confirmed@bookingos' },
-  cancelled: { filename: 'booking-cancelled.png', cid: 'booking-cancelled@bookingos' },
-  refunded: { filename: 'booking-refunded.png', cid: 'booking-refunded@bookingos' },
-  noShow: { filename: 'booking-no-show.png', cid: 'booking-no-show@bookingos' },
+  confirmed: { filename: 'booking-confirmed.svg', cid: 'booking-confirmed@bookingos' },
+  cancelled: { filename: 'booking-cancelled.svg', cid: 'booking-cancelled@bookingos' },
+  refunded: { filename: 'booking-refunded.svg', cid: 'booking-refunded@bookingos' },
+  noShow: { filename: 'booking-no-show.svg', cid: 'booking-no-show@bookingos' },
 } as const;
 
 const SUPPORTING_ASSETS = {
-  calendar: { filename: 'calendar.png', cid: BOOKING_EMAIL_CIDS.calendar },
-  policyCheck: { filename: 'policy-check.png', cid: BOOKING_EMAIL_CIDS.policyCheck },
+  calendar: { filename: 'calendar.svg', cid: BOOKING_EMAIL_CIDS.calendar },
+  policyCheck: { filename: 'policy-check.svg', cid: BOOKING_EMAIL_CIDS.policyCheck },
 } as const;
 
 const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {

@@ -87,6 +87,7 @@ function feeText(input: BookingPolicyPresentationInput, refundPercent: number): 
 export function bookingPolicyPresentation(
   input: BookingPolicyPresentationInput,
 ): BookingPolicyPresentation {
+  console.log("🚀 ~ bookingPolicyPresentation ~ input:", input)
   const refundable = cancellationTiers(input.snapshot)
     .filter((tier) => tier.refundPercent > 0);
   if (refundable.length === 0) return { items: [], noticeLines: [], lines: [] };

@@ -35,11 +35,19 @@ export const ICON_LABEL: Record<ListingTypeIcon, string> = {
   Plane: 'Máy bay',
   // Sport / wellness
   Dumbbell: 'Tập luyện',
+  Goal: 'Khung thành',
+  Dribbble: 'Bóng rổ',
+  Circle: 'Bóng tròn',
+  Feather: 'Cầu lông',
   Trophy: 'Cúp',
   Waves: 'Bơi/Sóng',
   HeartPulse: 'Sức khoẻ',
   Stethoscope: 'Y tế',
   Footprints: 'Bước chân',
+  Sprout: 'Mặt sân/Cỏ',
+  Grid3x3: 'Mặt sân/Lưới',
+  MoveVertical: 'Chiều cao',
+  Handshake: 'Cho thuê/Hỗ trợ',
   // Beauty / fashion
   Palette: 'Bảng màu',
   Scissors: 'Làm tóc',
@@ -75,6 +83,7 @@ export const ICON_LABEL: Record<ListingTypeIcon, string> = {
   // Attribute / spec-card glyphs
   Gift: 'Ưu đãi/Quà tặng',
   Images: 'Ảnh/Hậu kì',
+  ListChecks: 'Danh sách tiện ích',
   CircleSlash: 'Không bao gồm',
   Star: 'Nổi bật',
   Info: 'Thông tin',

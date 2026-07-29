@@ -22,7 +22,7 @@ export function meta(): Route.MetaDescriptors {
 }
 
 const STATUS_VALUES: TenantStatus[] = ['active', 'suspended', 'expired'];
-const VERTICAL_VALUES: Vertical[] = ['studio', 'rental', 'classes'];
+const VERTICAL_VALUES: Vertical[] = ['studio', 'rental', 'classes', 'sport'];
 
 const TENANTS_FILTER_SPEC: FilterSpec = [
   { kind: 'text', key: 'search', label: 'Tìm kiếm', placeholder: 'Tên hoặc slug tenant…' },

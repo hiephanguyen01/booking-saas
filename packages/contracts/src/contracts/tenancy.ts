@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { localeSchema, paginationQuerySchema, uuidSchema } from './common';
 
 /** Storefront base template (TONG-QUAN.md §16.1) — independent of listing modes. */
-export const verticalSchema = z.enum(['studio', 'rental', 'classes']);
+export const verticalSchema = z.enum(['studio', 'rental', 'classes', 'sport']);
 export type Vertical = z.infer<typeof verticalSchema>;
 
 export const tenantStatusSchema = z.enum(['active', 'suspended', 'expired']);
