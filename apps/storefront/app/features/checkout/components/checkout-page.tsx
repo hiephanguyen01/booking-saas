@@ -17,6 +17,8 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
     quote,
     promoCode,
     promo,
+    availablePromotions,
+    promotionsUnavailable,
     currentUser,
     paymentMethods,
   } = loaderData;
@@ -52,6 +54,8 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
             searchParams={searchParams}
             promoCode={promoCode}
             promo={promo}
+            availablePromotions={availablePromotions}
+            promotionsUnavailable={promotionsUnavailable}
             quote={quote}
             amounts={amounts}
           />

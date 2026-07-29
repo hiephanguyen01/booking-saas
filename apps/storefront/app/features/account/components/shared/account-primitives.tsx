@@ -76,12 +76,9 @@ export function CancellationPolicyList({
       {lines.map((line, index) => (
         <p
           key={index}
-          className={`flex items-center gap-1.5 ${line.isFree ? 'text-emerald-700' : ''}`}
+          className={`flex items-center gap-1.5 ${line.isFree ? 'text-success' : ''}`}
         >
-          <Check
-            className={`size-3.5 shrink-0 ${line.isFree ? '' : 'text-emerald-600'}`}
-            aria-hidden="true"
-          />
+          <Check className="size-3.5 shrink-0" aria-hidden="true" />
           {line.text}
         </p>
       ))}

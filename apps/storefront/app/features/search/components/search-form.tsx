@@ -1,16 +1,15 @@
-import type { PublicListingTypeResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@booking/ui/components/ui/native-select';
 import { cn } from '@booking/ui/lib/utils';
 import { Info, Search, Users } from 'lucide-react';
+import { useRef } from 'react';
 import { Form } from 'react-router';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { SearchDatePicker } from './search-date-picker';
 import { CategoryPicker, LocationCombobox, ModeToggle, SearchField } from './search-form-controls';
-import type { LocationOption, SearchFormVariant } from '~/features/search/lib/search-form-types';
+import type { SearchFormProps } from '~/features/search/lib/search-form-types';
 import { modeHint } from '~/features/search/lib/search-mode-hint';
-import type { StorefrontSearchState } from '~/features/search/lib/search-state';
 import { useSearchFormController } from '~/features/search/hooks/use-search-form-controller';
 
 export type { LocationOption } from '~/features/search/lib/search-form-types';
@@ -24,16 +23,11 @@ export function SearchForm({
   locations = [],
   variant,
   onTypeChange,
-}: {
-  listingTypes: PublicListingTypeResponse[];
-  currentType?: string;
-  initialState?: StorefrontSearchState;
-  locations?: LocationOption[];
-  variant: SearchFormVariant;
-  onTypeChange?: (typeSlug: string) => void;
-}) {
+  typeChangeBehavior,
+}: SearchFormProps) {
   const { t } = useTranslation(NsI18n.Common);
   const isHero = variant === 'hero';
+  const formRef = useRef<HTMLFormElement>(null);
   const {
     action,
     availableModes,
@@ -58,10 +52,16 @@ export function SearchForm({
     initialState,
     locations,
     onTypeChange,
+    typeChangeBehavior,
   });
+
+  function handleTypeChange(nextType: string): void {
+    changeType(nextType, formRef.current ? new FormData(formRef.current) : undefined);
+  }
 
   return (
     <Form
+      ref={formRef}
       method="get"
       action={action}
       aria-label={t('home.search')}
@@ -76,7 +76,7 @@ export function SearchForm({
         <CategoryPicker
           types={types}
           selectedType={selectedType}
-          onSelectType={changeType}
+          onSelectType={handleTypeChange}
           variant={variant}
         />
       ) : null}

@@ -86,6 +86,8 @@ const promotionBaseSchema = z.object({
   minOrderAmount: vndDigits.nullish(),
   /** Only applies to a customer's first booking in the tenant (§12.2). */
   firstBookingOnly: z.boolean().default(false),
+  /** Whether a code may be discovered in the public storefront checkout picker. */
+  storefrontVisible: z.boolean().default(false),
   /** `null` clears the total usage cap (unlimited). */
   usageLimitTotal: z.number().int().positive().max(1_000_000).nullish(),
   /** Per-customer usage cap (§12.2). `null` clears it (unlimited). */
@@ -181,6 +183,7 @@ const partnerPromotionBaseSchema = promotionBaseSchema.pick({
   appliesToId: true,
   minOrderAmount: true,
   firstBookingOnly: true,
+  storefrontVisible: true,
   usageLimitTotal: true,
   usageLimitPerCustomer: true,
   timeWindows: true,
@@ -214,6 +217,10 @@ export const validatePromoInputSchema = z.object({
   end: z.string().datetime().optional(),
 });
 export type ValidatePromoInput = z.infer<typeof validatePromoInputSchema>;
+
+/** Storefront promotion discovery uses the same checkout context as code validation. */
+export const storefrontPromotionsInputSchema = validatePromoInputSchema.omit({ code: true });
+export type StorefrontPromotionsInput = z.infer<typeof storefrontPromotionsInputSchema>;
 
 /** Storefront auto-campaign resolution (§12.1 Phase 2) — best code-less campaign for a slot. */
 export const autoCampaignInputSchema = z.object({
@@ -250,6 +257,27 @@ export const validatePromoResponseSchema = z.object({
 });
 export type ValidatePromoResponse = z.infer<typeof validatePromoResponseSchema>;
 
+/** A discoverable promotion evaluated for the current storefront checkout. */
+export const storefrontPromotionSchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  discountType: promotionDiscountTypeSchema,
+  discountValue: z.string(),
+  maxDiscount: z.string().nullable(),
+  minOrderAmount: z.string().nullable(),
+  firstBookingOnly: z.boolean(),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  eligible: z.boolean(),
+  discountAmount: z.string(),
+  finalAmount: z.string(),
+  error: promoErrorCodeSchema.optional(),
+});
+export type StorefrontPromotion = z.infer<typeof storefrontPromotionSchema>;
+
+export const storefrontPromotionsResponseSchema = z.array(storefrontPromotionSchema);
+export type StorefrontPromotionsResponse = z.infer<typeof storefrontPromotionsResponseSchema>;
+
 /** A single applicable auto-campaign. */
 export const autoCampaignSchema = z.object({
   promotionId: z.string(),
@@ -276,6 +304,7 @@ export const promotionResponseSchema = z.object({
   appliesToId: z.string().nullable(),
   minOrderAmount: z.string().nullable(),
   firstBookingOnly: z.boolean(),
+  storefrontVisible: z.boolean(),
   usageLimitTotal: z.number().nullable(),
   usageLimitPerCustomer: z.number().nullable(),
   timeWindows: z.array(promotionTimeWindowSchema).nullable(),

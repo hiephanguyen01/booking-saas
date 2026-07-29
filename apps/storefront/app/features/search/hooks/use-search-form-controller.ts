@@ -1,9 +1,11 @@
 import type { PublicListingTypeResponse } from '@booking/contracts';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { storefrontPaths } from '~/constants/paths';
 import { dateOnlyToLocal, localToDateOnly } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
-import type { DateRange, LocationOption } from '~/features/search/lib/search-form-types';
+import type { DateRange, SearchFormOptions } from '~/features/search/lib/search-form-types';
+import { buildTypeChangeCatalogHref } from '~/features/search/lib/type-change-navigation';
 import {
   canSubmitSearch,
   dateSelectionForMode,
@@ -12,7 +14,6 @@ import {
   validDailyRange,
   type SearchDateSelection,
   type SearchMode,
-  type StorefrontSearchState,
 } from '~/features/search/lib/search-state';
 
 function searchableModes(type: PublicListingTypeResponse | undefined): SearchMode[] {
@@ -35,14 +36,10 @@ export function useSearchFormController({
   initialState,
   locations,
   onTypeChange,
-}: {
-  listingTypes: PublicListingTypeResponse[];
-  currentType?: string;
-  initialState?: StorefrontSearchState;
-  locations: LocationOption[];
-  onTypeChange?: (typeSlug: string) => void;
-}) {
+  typeChangeBehavior = 'local',
+}: SearchFormOptions) {
   const locale = useLocale();
+  const navigate = useNavigate();
   const state = initialState ?? parseSearchState(new URLSearchParams());
   // Default to the tenant's first listing type (by sortOrder from the API) — never a
   // hard-coded slug, so the form reflects whatever types the tenant actually created.
@@ -80,9 +77,17 @@ export function useSearchFormController({
   const dailyRange = validDailyRange(rangeFrom, rangeTo);
   const canSubmit = canSubmitSearch(mode, rangeFrom, rangeTo);
 
-  function changeType(nextType: string): void {
-    const schedule =
-      listingTypes.find((type) => type.slug === nextType)?.searchConfig.schedule ?? 'none';
+  function changeType(nextType: string, formData?: FormData): void {
+    if (nextType === selectedType) return;
+    const targetType = listingTypes.find((type) => type.slug === nextType);
+    if (!targetType) return;
+
+    if (typeChangeBehavior === 'navigate-to-catalog') {
+      void navigate(buildTypeChangeCatalogHref(locale, formData, targetType));
+      return;
+    }
+
+    const schedule = targetType.searchConfig.schedule;
     const selection = dateSelectionForMode(schedule as SearchMode);
     setDate(selection.date);
     setRange(toRange(selection));

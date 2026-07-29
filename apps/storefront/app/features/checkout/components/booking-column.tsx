@@ -1,6 +1,7 @@
 import type {
   PublicListingDetailWithTimezoneResponse,
   QuoteResponse,
+  StorefrontPromotion,
   ValidatePromoResponse,
 } from '@booking/contracts';
 import { formatCurrency } from '@booking/i18n';
@@ -26,6 +27,8 @@ export function BookingColumn({
   searchParams,
   promoCode,
   promo,
+  availablePromotions,
+  promotionsUnavailable,
   quote,
   amounts,
 }: {
@@ -38,6 +41,8 @@ export function BookingColumn({
   searchParams: URLSearchParams;
   promoCode: string | null;
   promo: ValidatePromoResponse | null;
+  availablePromotions: StorefrontPromotion[];
+  promotionsUnavailable: boolean;
   quote: QuoteResponse;
   amounts: ReturnType<typeof checkoutAmounts>;
 }) {
@@ -159,7 +164,7 @@ export function BookingColumn({
             ).map((line, index) => (
               <p
                 key={index}
-                className={`flex items-start gap-2 text-sm leading-5 ${line.isFree ? 'text-primary' : 'text-foreground'}`}
+                className={`flex items-start gap-2 text-sm leading-5 ${line.isFree ? 'text-success' : 'text-foreground'}`}
               >
                 <Check className="mt-0.5 size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
                 <span>{line.text}</span>
@@ -174,7 +179,13 @@ export function BookingColumn({
           <h3 className="max-w-47.5 text-sm leading-5 font-semibold text-foreground whitespace-nowrap overflow-hidden text-ellipsis">
             {t('promotions')}
           </h3>
-          <PromoForm searchParams={searchParams} promoCode={promoCode} promo={promo} />
+          <PromoForm
+            searchParams={searchParams}
+            promoCode={promoCode}
+            promo={promo}
+            promotions={availablePromotions}
+            promotionsUnavailable={promotionsUnavailable}
+          />
         </div>
         <PricePanel
           quote={quote}

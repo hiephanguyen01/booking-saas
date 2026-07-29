@@ -60,6 +60,7 @@ export function CatalogPage({ loaderData, params }: CatalogPageProps) {
         initialState={state}
         locations={search.locations}
         variant="bar"
+        typeChangeBehavior="navigate-to-catalog"
       />
 
       <div className="mx-auto grid max-w-292.5 gap-8 px-4 py-8 lg:grid-cols-[270px_minmax(0,1fr)] lg:px-0">

@@ -60,6 +60,9 @@ export function PromotionForm({
   const [firstBookingOnly, setFirstBookingOnly] = useState<boolean>(
     promotion?.firstBookingOnly ?? false,
   );
+  const [storefrontVisible, setStorefrontVisible] = useState<boolean>(
+    promotion?.storefrontVisible ?? false,
+  );
   const [windows, setWindows] = useState<TimeWindow[]>(promotion?.timeWindows ?? []);
   const scope = usePromotionScope({
     promotion,
@@ -88,6 +91,11 @@ export function PromotionForm({
       <input type="hidden" name="status" value={status} />
       <input type="hidden" name="isAuto" value={isAuto ? 'true' : 'false'} />
       <input type="hidden" name="firstBookingOnly" value={firstBookingOnly ? 'true' : 'false'} />
+      <input
+        type="hidden"
+        name="storefrontVisible"
+        value={!isAuto && storefrontVisible ? 'true' : 'false'}
+      />
       <input
         type="hidden"
         name="timeWindows"
@@ -129,6 +137,21 @@ export function PromotionForm({
           <label className="flex items-center gap-3 sm:col-span-2">
             <Switch checked={isAuto} onCheckedChange={setIsAuto} />
             <span className="text-sm">Chiến dịch tự động áp dụng (không cần khách nhập mã)</span>
+          </label>
+
+          <label className="flex items-start gap-3 sm:col-span-2">
+            <Switch
+              checked={!isAuto && storefrontVisible}
+              disabled={isAuto}
+              onCheckedChange={setStorefrontVisible}
+              className="mt-0.5"
+            />
+            <span className="space-y-1 text-sm">
+              <span className="block">Hiển thị mã trong popup checkout</span>
+              <span className="block text-xs text-muted-foreground">
+                Mã riêng vẫn có thể được nhập thủ công. Chiến dịch tự động không xuất hiện trong danh sách.
+              </span>
+            </span>
           </label>
 
           <Field label="Loại giảm giá" htmlFor="discountType">

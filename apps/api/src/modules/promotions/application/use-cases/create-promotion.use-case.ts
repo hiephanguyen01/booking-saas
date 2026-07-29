@@ -67,6 +67,7 @@ export class CreatePromotionUseCase {
           fundedBy: input.fundedBy,
           minOrderAmount: input.minOrderAmount != null ? vnd(input.minOrderAmount) : null,
           firstBookingOnly: input.firstBookingOnly,
+          storefrontVisible: code !== null && input.storefrontVisible,
           usageLimitTotal: input.usageLimitTotal ?? null,
           usageLimitPerCustomer: input.usageLimitPerCustomer ?? null,
           timeWindows: input.timeWindows?.length ? input.timeWindows : null,
