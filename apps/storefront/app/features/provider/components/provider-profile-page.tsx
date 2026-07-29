@@ -106,11 +106,9 @@ export function ProviderProfilePage({
           </div>
           {listings.length ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <>
-                {listings.map((listing) => (
-                  <ListingCard key={`${listing.kind}:${listing.id}`} listing={listing} />
-                ))}
-              </>
+              {listings.map((listing) => (
+                <ListingCard key={`${listing.kind}:${listing.id}`} listing={listing} />
+              ))}
             </div>
           ) : (
             <div className="mt-6 rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">

@@ -7,9 +7,9 @@ import { formatCurrency } from '@booking/i18n';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { CalendarDays, Check, MapPin } from 'lucide-react';
 import { SectionCard } from '~/components/section-card';
-import { cancellationCutoffParts, type CancellationPolicyLine } from '~/lib/cancellation-policy';
+import { cancellationLineTexts, type CancellationPolicyLine } from '~/lib/cancellation-policy';
 import { NsI18n, type ScopedI18n, useTranslation } from '@booking/i18n';
-import { dateLabelInTz, dateOnlyInTz, nightsBetween, timeInTz } from '~/lib/time';
+import { dateLabelInTz, dateOnlyInTz, hoursBetween, nightsBetween, timeInTz } from '~/lib/time';
 import { formatListingLocation } from '~/lib/ui';
 import { useLocale } from '~/hooks/use-locale';
 import type { checkoutAmounts } from '~/features/checkout/lib/checkout-presentation';
@@ -146,31 +146,25 @@ export function BookingColumn({
               <span>{t('policy.unspecified')}</span>
             </p>
           ) : (
-            policyLines.map((line, index) => {
-              const { time, day, month } = cancellationCutoffParts(
-                line.cutoffUtc,
-                locale,
-                listing.timezone,
-              );
-              const date = t('policy.cutoffDate', { time, day, month });
-              const isFree = line.feePercent <= 0;
-              const text = isFree
-                ? t('policy.freeCancellationUntil', { date })
-                : t('policy.lateCancellationFrom', {
-                    date,
-                    amount: formatCurrency(BigInt(line.feeAmount), 'VND', locale),
-                    percent: line.feePercent,
-                  });
-              return (
-                <p
-                  key={index}
-                  className={`flex items-start gap-2 text-sm leading-5 ${isFree ? 'text-primary' : 'text-foreground'}`}
-                >
-                  <Check className="mt-0.5 size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
-                  <span>{text}</span>
-                </p>
-              );
-            })
+            cancellationLineTexts(
+              policyLines,
+              locale,
+              listing.timezone,
+              {
+                cutoffDate: (parts) => t('policy.cutoffDate', parts),
+                free: (vars) => t('policy.freeCancellationUntil', vars),
+                late: (vars) => t('policy.lateCancellationFrom', vars),
+              },
+              (feeAmount) => formatCurrency(BigInt(feeAmount), 'VND', locale),
+            ).map((line, index) => (
+              <p
+                key={index}
+                className={`flex items-start gap-2 text-sm leading-5 ${line.isFree ? 'text-primary' : 'text-foreground'}`}
+              >
+                <Check className="mt-0.5 size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                <span>{line.text}</span>
+              </p>
+            ))
           )}
         </div>
       </div>
@@ -196,11 +190,9 @@ export function BookingColumn({
   );
 }
 
+/** At least one slot: an unparseable or inverted interval still shows a single row. */
 function hourlySlotCount(start: string, end: string): number {
-  const startMs = Date.parse(start);
-  const endMs = Date.parse(end);
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return 1;
-  return Math.max(1, Math.round((endMs - startMs) / 3_600_000));
+  return Math.max(1, Math.round(hoursBetween(start, end) ?? 1));
 }
 
 function buildScheduleBadges(

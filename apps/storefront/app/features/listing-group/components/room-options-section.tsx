@@ -49,6 +49,17 @@ export function RoomOptionsSection({
     visibleOptions,
   } = useRoomOptionsController({ hideUnavailableByDefault, roomOptions });
   const gallery = useMediaGallery(visibleOptions, (option) => option.child.id);
+  // The desktop table and the mobile cards render the same rooms with the same
+  // eight props; CSS decides which is visible.
+  const cellProps = (option: RoomOption): RoomProps => ({
+    option,
+    attributeSchema,
+    groupSlug,
+    mode,
+    date,
+    slots: slotsByRoom.get(option.child.id) ?? [],
+    onOpenMedia: gallery.open,
+  });
   const activeRoom = gallery.item;
   const mediaItems = usePhotoMediaItems(
     activeRoom?.child.photos ?? EMPTY_PHOTOS,
@@ -102,32 +113,14 @@ export function RoomOptionsSection({
               </thead>
               <tbody>
                 {visibleOptions.map((option) => (
-                  <RoomRow
-                    key={option.child.id}
-                    option={option}
-                    attributeSchema={attributeSchema}
-                    groupSlug={groupSlug}
-                    mode={mode}
-                    date={date}
-                    slots={slotsByRoom.get(option.child.id) ?? []}
-                    onOpenMedia={gallery.open}
-                  />
+                  <RoomRow key={option.child.id} {...cellProps(option)} />
                 ))}
               </tbody>
             </table>
           </div>
           <div className="flex flex-col gap-4 xl:hidden">
             {visibleOptions.map((option) => (
-              <RoomCard
-                key={option.child.id}
-                option={option}
-                attributeSchema={attributeSchema}
-                groupSlug={groupSlug}
-                mode={mode}
-                date={date}
-                slots={slotsByRoom.get(option.child.id) ?? []}
-                onOpenMedia={gallery.open}
-              />
+              <RoomCard key={option.child.id} {...cellProps(option)} />
             ))}
           </div>
         </>

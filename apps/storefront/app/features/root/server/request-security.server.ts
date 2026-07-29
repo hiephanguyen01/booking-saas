@@ -74,7 +74,11 @@ function createCspNonce(): string {
   return randomBytes(16).toString('base64');
 }
 
-function contentSecurityPolicy(nonce: string): string {
+const CSP_NONCE_PLACEHOLDER = '__csp-nonce__';
+const CSP_NONCE_PLACEHOLDER_RE = new RegExp(CSP_NONCE_PLACEHOLDER, 'g');
+
+function buildCspTemplate(): string {
+  const nonce = CSP_NONCE_PLACEHOLDER;
   const scriptSources = ["'self'", `'nonce-${nonce}'`];
   const styleSources = ["'self'", 'https://fonts.googleapis.com'];
   const connectSources = ["'self'", ...storefrontEnv.storageUploadOrigins];
@@ -112,6 +116,19 @@ function contentSecurityPolicy(nonce: string): string {
 
   if (storefrontEnv.production) directives.push('upgrade-insecure-requests');
   return directives.join('; ');
+}
+
+/**
+ * Only the nonce varies per request; every other input is frozen at startup
+ * (`storefrontEnv`), so the directive list is assembled once and the nonce
+ * spliced into the finished string.
+ */
+const CSP_TEMPLATE = buildCspTemplate();
+
+function contentSecurityPolicy(nonce: string): string {
+  // The template already carries `'nonce-<placeholder>'`, so only the value is spliced.
+  // A base64 nonce cannot contain `$`, so no replacement-pattern escaping is needed.
+  return CSP_TEMPLATE.replace(CSP_NONCE_PLACEHOLDER_RE, nonce);
 }
 
 function appendVary(headers: Headers, value: string): void {
@@ -200,40 +217,43 @@ export async function storefrontRequestMiddleware(
   const { request, context } = args;
   const cspNonce = createCspNonce();
   context.set(storefrontCspNonceContext, cspNonce);
+  // Every exit from this middleware carries the same headers; naming that once
+  // keeps the single-exit contract legible across the eight returns below.
+  const secure = (response: Response) => withSecurityHeaders(response, request, cspNonce);
 
   const pathname = new URL(request.url).pathname;
   if (OPERATIONAL_PATHS.has(pathname)) {
-    return withSecurityHeaders(await next(), request, cspNonce);
+    return secure(await next());
   }
 
   const rejected = csrfFailure(request);
-  if (rejected) return withSecurityHeaders(rejected, request, cspNonce);
+  if (rejected) return secure(rejected);
   const resolution = await resolveStorefront(request);
   if (resolution.kind === 'platform') {
     const method = request.method.toUpperCase();
     if (method !== 'GET' && method !== 'HEAD') {
-      return withSecurityHeaders(unknownHost(), request, cspNonce);
+      return secure(unknownHost());
     }
 
     const url = new URL(request.url);
     const locale = pathLocale(url.pathname);
     const isLocalizedLanding = url.pathname === '/vi' || url.pathname === '/en';
     if (!PLATFORM_DOCUMENT_PATHS.has(url.pathname) || (isLocalizedLanding && Boolean(url.search))) {
-      return withSecurityHeaders(platformRedirect(locale), request, cspNonce);
+      return secure(platformRedirect(locale));
     }
 
     const response = await runWithStorefrontRequestContext(
       { kind: 'platform', auth: null, suppressSessionCommit: false },
       next,
     );
-    return withSecurityHeaders(response, request, cspNonce);
+    return secure(response);
   }
 
   const tenant = resolution.tenant;
   const unavailable = tenantUnavailableResponse(request, tenant);
   if (unavailable) {
-    throw withSecurityHeaders(unavailable, request, cspNonce);
+    throw secure(unavailable);
   }
   const response = await storefrontAuthMiddleware({ request }, next, tenant);
-  return withSecurityHeaders(response, request, cspNonce);
+  return secure(response);
 }
