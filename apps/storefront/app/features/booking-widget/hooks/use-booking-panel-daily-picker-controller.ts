@@ -4,6 +4,8 @@ import type {
   PublicListingDetailResponse,
 } from '@booking/contracts';
 import { useMemo, useState } from 'react';
+import { openDailyDates } from '~/lib/availability';
+import { dailyModeConfig } from '~/lib/daily-config';
 import { eligibleDailyRange, normalizeDailyRange } from '~/lib/daily-range';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import {
@@ -13,6 +15,7 @@ import {
   localToDateOnly,
   zonedToUtcIso,
 } from '~/lib/time';
+import { useCalendarFormatters } from '~/hooks/use-calendar-formatters';
 import { useLocale } from '~/hooks/use-locale';
 import type { SetSearchParams } from '~/features/booking-widget/lib/booking-panel-types';
 
@@ -35,15 +38,8 @@ export function useFixedDailyPickerController({
 }) {
   const locale = useLocale();
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const days: DayAvailability[] = availability?.mode === 'daily' ? availability.days : [];
-  const openDates = useMemo(
-    () => new Set(days.filter((day) => day.status === 'available').map((day) => day.date)),
-    [days],
-  );
-  const config = (listing.modeConfig.daily ?? {}) as {
-    checkinTime?: string;
-    checkoutTime?: string;
-  };
+  const openDates = useMemo(() => openDailyDates(availability), [availability]);
+  const config = dailyModeConfig(listing.modeConfig);
   const selectedDateValue = sp.get('from');
   const calendarFormatters = useCalendarFormatters(locale);
 
@@ -55,8 +51,8 @@ export function useFixedDailyPickerController({
     next.set('mode', 'daily');
     next.set('from', from);
     next.set('to', to);
-    next.set('start', zonedToUtcIso(from, config.checkinTime ?? '14:00', tz));
-    next.set('end', zonedToUtcIso(to, config.checkoutTime ?? '12:00', tz));
+    next.set('start', zonedToUtcIso(from, config.checkinTime, tz));
+    next.set('end', zonedToUtcIso(to, config.checkoutTime, tz));
     setCalendarOpen(false);
     setSp(next, { preventScrollReset: true });
   }
@@ -90,22 +86,8 @@ export function useDailyPickerController({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarFormatters = useCalendarFormatters(locale);
   const days: DayAvailability[] = availability?.mode === 'daily' ? availability.days : [];
-  const dailyConfig = (listing.modeConfig.daily ?? {}) as {
-    checkinTime?: string;
-    checkoutTime?: string;
-    minNights?: number;
-    maxNights?: number;
-  };
-  const checkinTime = dailyConfig.checkinTime ?? '14:00';
-  const checkoutTime = dailyConfig.checkoutTime ?? '12:00';
-  const minNights = dailyConfig.minNights ?? 1;
-  const maxNights = Number.isFinite(Number(dailyConfig.maxNights))
-    ? Number(dailyConfig.maxNights)
-    : null;
-  const openDates = useMemo(
-    () => new Set(days.filter((day) => day.status === 'available').map((day) => day.date)),
-    [days],
-  );
+  const { checkinTime, checkoutTime, minNights, maxNights } = dailyModeConfig(listing.modeConfig);
+  const openDates = useMemo(() => openDailyDates(availability), [availability]);
   const fromDate = sp.get('from');
   const toDate = sp.get('to');
   const range: BookingPanelDateRange | undefined = fromDate
@@ -168,16 +150,4 @@ export function useDailyPickerController({
     selectedDateLabel,
     setCalendarOpen,
   };
-}
-
-function useCalendarFormatters(locale: 'vi' | 'en') {
-  return useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
-    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
-    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
-    return {
-      formatCaption: (month: Date) => caption.format(month),
-      formatWeekdayName: (date: Date) => weekday.format(date),
-    };
-  }, [locale]);
 }

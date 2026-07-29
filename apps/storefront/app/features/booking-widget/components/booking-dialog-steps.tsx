@@ -4,6 +4,7 @@ import { Calendar } from '@booking/ui/components/ui/calendar';
 import { Spinner } from '@booking/ui/components/ui/spinner';
 import { cn } from '@booking/ui/lib/utils';
 import { AlertCircle, CalendarDays, Check, Clock3, RotateCw } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { AvailabilitySkeleton } from '~/components/loading-skeletons';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import type { PublicPackageOption } from '~/lib/package-options';
@@ -53,114 +54,48 @@ interface BookingDialogStepsProps {
 type BookingDialogStepModel = ReturnType<typeof useBookingDialogStepsController>;
 
 export function BookingDialogSteps(props: BookingDialogStepsProps) {
-  const {
-    mode,
-    supportedModes,
-    fixedPackages,
-    packageOptions,
-    packageId,
-    selectedPackage,
-    listingTitle,
-    listingPhotos,
-    date,
-    today,
-    from,
-    to,
-    availability,
-    availabilityPending,
-    availabilityError,
-    hasAvailability,
-    requestError,
-    slots,
-    selectedSlots,
-    selectionError,
-    selectionUnavailable,
-    quotePending,
-    quoteError,
-    onSwitchMode,
-    onSelectPackage,
-    onSelectDate,
-    onChangeDate,
-    onToggleSlot,
-    onSelectRange,
-    onRetryHourly,
-    onRetryQuote,
-    onRetryDaily,
-    onOpenPackageMedia,
-    packageFlow = false,
-  } = props;
-  const model = useBookingDialogStepsController({
-    mode,
-    packageOptions,
-    packageId,
-    selectedPackage,
-    listingTitle,
-    listingPhotos,
-    date,
-    today,
-    from,
-    to,
-    availability,
-    availabilityPending,
-    slots,
-    selectedSlots,
-    onSelectDate,
-    packageFlow,
-  });
+  const { mode, supportedModes, fixedPackages, selectionError, selectionUnavailable } = props;
+  const packageFlow = props.packageFlow ?? false;
+  const model = useBookingDialogStepsController({ ...props, packageFlow });
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-      <BookingModeSwitch mode={mode} supportedModes={supportedModes} onSwitchMode={onSwitchMode} />
+      <BookingModeSwitch
+        mode={mode}
+        supportedModes={supportedModes}
+        onSwitchMode={props.onSwitchMode}
+      />
       <BookingPackageSelector
         visible={fixedPackages && !packageFlow}
         model={model}
-        onSelectPackage={onSelectPackage}
-        onOpenPackageMedia={onOpenPackageMedia}
+        onSelectPackage={props.onSelectPackage}
+        onOpenPackageMedia={props.onOpenPackageMedia}
       />
 
       {mode === 'hourly' ? (
-        <HourlyBookingStep
-          date={date}
-          availability={availability}
-          availabilityPending={availabilityPending}
-          availabilityError={availabilityError}
-          hasAvailability={hasAvailability}
-          requestError={requestError}
-          quotePending={quotePending}
-          quoteError={quoteError}
-          packageFlow={packageFlow}
-          model={model}
-          onChangeDate={onChangeDate}
-          onToggleSlot={onToggleSlot}
-          onRetryHourly={onRetryHourly}
-          onRetryQuote={onRetryQuote}
-        />
+        <HourlyBookingStep {...props} packageFlow={packageFlow} model={model} />
       ) : (
-        <DailyBookingStep
-          availabilityPending={availabilityPending}
-          requestError={requestError}
-          model={model}
-          onSelectRange={onSelectRange}
-          onRetryDaily={onRetryDaily}
-        />
+        <DailyBookingStep {...props} model={model} />
       )}
 
       {!packageFlow && selectionError ? (
-        <p role="alert" className="mt-4 flex items-start gap-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {selectionError}
-        </p>
+        <SelectionAlert className="mt-4">{selectionError}</SelectionAlert>
       ) : null}
       {selectionUnavailable ? (
-        <p
-          role="alert"
-          className={cn('flex items-start gap-2 text-sm text-destructive', !packageFlow && 'mt-4')}
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <SelectionAlert className={cn(!packageFlow && 'mt-4')}>
           {model.selectionUnavailableMessage}
-        </p>
+        </SelectionAlert>
       ) : null}
     </div>
+  );
+}
+
+function SelectionAlert({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <p role="alert" className={cn('flex items-start gap-2 text-sm text-destructive', className)}>
+      <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      {children}
+    </p>
   );
 }
 
@@ -275,30 +210,18 @@ function HourlyBookingStep({
   onToggleSlot,
   onRetryHourly,
   onRetryQuote,
-}: {
-  date: string | null;
-  availability: AvailabilityResponse | null;
-  availabilityPending: boolean;
-  availabilityError: boolean;
-  hasAvailability: boolean;
-  requestError: boolean;
-  quotePending: boolean;
-  quoteError: boolean;
-  packageFlow: boolean;
-  model: BookingDialogStepModel;
-  onChangeDate: () => void;
-  onToggleSlot: (slot: HourlySlot) => void;
-  onRetryHourly: () => void;
-  onRetryQuote: () => void;
-}) {
+}: BookingDialogStepsProps & { packageFlow: boolean; model: BookingDialogStepModel }) {
   const { t } = useTranslation([NsI18n.Listing, NsI18n.Common]);
+  const titleId = packageFlow ? 'packages-day-step-title' : 'room-day-step-title';
+  // The two flows load and fail through different fetchers: the packages page keeps its
+  // availability across package switches, the room dialog refetches per request.
+  const loaded = packageFlow ? hasAvailability : Boolean(availability);
+  const failed = packageFlow ? availabilityError : requestError;
+
   if (!date) {
     return (
-      <section aria-labelledby={packageFlow ? 'packages-day-step-title' : 'room-day-step-title'}>
-        <h3
-          id={packageFlow ? 'packages-day-step-title' : 'room-day-step-title'}
-          className="font-semibold"
-        >
+      <section aria-labelledby={titleId}>
+        <h3 id={titleId} className="font-semibold">
           {t('pickDay')}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -322,17 +245,13 @@ function HourlyBookingStep({
     );
   }
 
+  const slotTitleId = packageFlow ? 'packages-hourly-step-title' : 'room-hourly-step-title';
+
   return (
-    <section
-      aria-labelledby={packageFlow ? 'packages-hourly-step-title' : 'room-hourly-step-title'}
-      className="space-y-4"
-    >
+    <section aria-labelledby={slotTitleId} className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3
-            id={packageFlow ? 'packages-hourly-step-title' : 'room-hourly-step-title'}
-            className="font-semibold"
-          >
+          <h3 id={slotTitleId} className="font-semibold">
             {t('pickSlot')}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">{model.hourlyDateInstruction}</p>
@@ -348,25 +267,17 @@ function HourlyBookingStep({
         </Button>
       </div>
 
-      {availabilityPending && !(packageFlow ? hasAvailability : availability) ? (
+      {availabilityPending && !loaded ? (
         <AvailabilitySkeleton label={t('common:loading')} />
-      ) : packageFlow ? (
-        availabilityError ? (
-          <BookingDialogErrorMessage onRetry={onRetryHourly} />
-        ) : model.slotModels.length ? (
-          <BookingSlotGrid
-            slotModels={model.slotModels}
-            quotePending={quotePending}
-            packageFlow
-            onToggleSlot={onToggleSlot}
-          />
-        ) : (
-          <EmptyAvailability message={t('group.noOpenSlots')} />
-        )
-      ) : requestError ? (
+      ) : failed ? (
         <BookingDialogErrorMessage onRetry={onRetryHourly} />
       ) : model.slotModels.length ? (
-        <BookingSlotGrid slotModels={model.slotModels} onToggleSlot={onToggleSlot} />
+        <BookingSlotGrid
+          slotModels={model.slotModels}
+          quotePending={quotePending}
+          packageFlow={packageFlow}
+          onToggleSlot={onToggleSlot}
+        />
       ) : (
         <EmptyAvailability message={t('group.noOpenSlots')} />
       )}
@@ -382,13 +293,7 @@ function DailyBookingStep({
   model,
   onSelectRange,
   onRetryDaily,
-}: {
-  availabilityPending: boolean;
-  requestError: boolean;
-  model: BookingDialogStepModel;
-  onSelectRange: (range: RoomBookingDateRange | undefined) => void;
-  onRetryDaily: () => void;
-}) {
+}: BookingDialogStepsProps & { model: BookingDialogStepModel }) {
   const { t } = useTranslation(NsI18n.Listing);
   return (
     <section aria-labelledby="room-range-step-title" aria-busy={availabilityPending}>

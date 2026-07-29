@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Locale } from '@booking/i18n';
+import { useCalendarFormatters } from '~/hooks/use-calendar-formatters';
 import { dateLabelInTz, dateOnlyToLocal, DEFAULT_TZ, localToDateOnly, todayInTz } from '~/lib/time';
 import type { DateRange } from '~/features/search/lib/search-form-types';
 import type { SearchMode } from '~/features/search/lib/search-state';
@@ -42,15 +43,7 @@ export function useSearchDatePickerController({
     return () => window.clearInterval(timer);
   }, []);
 
-  const formatters = useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
-    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
-    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
-    return {
-      formatCaption: (month: Date) => caption.format(month),
-      formatWeekdayName: (day: Date) => weekday.format(day),
-    };
-  }, [locale]);
+  const formatters = useCalendarFormatters(locale);
 
   const singleMode = mode === 'hourly' || singleDate;
   const selectedDate = date ? dateOnlyToLocal(date) : undefined;

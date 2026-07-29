@@ -4,6 +4,8 @@
  * lib). Correct for fixed-offset zones like `Asia/Ho_Chi_Minh`; DST zones have a
  * rare ambiguous-hour edge we accept for Phase 1 (VN has no DST).
  */
+import { intlLocale } from './intl';
+
 export const DEFAULT_TZ = 'Asia/Ho_Chi_Minh';
 
 /** ms to add to a UTC instant to get the given zone's wall time (e.g. +7h for ICT). */
@@ -55,7 +57,7 @@ export function dateLabelInTz(utcIsoOrDate: string, tz: string, locale: string):
   const value = dateOnly
     ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
     : new Date(utcIsoOrDate);
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: dateOnly ? 'UTC' : tz,
     weekday: 'short',
     day: '2-digit',

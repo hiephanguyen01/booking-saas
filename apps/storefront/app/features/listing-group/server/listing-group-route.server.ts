@@ -1,6 +1,17 @@
-import { MAX_BOOKING_RANGE_DAYS, moneyStringSchema, timeOfDaySchema } from '@booking/contracts';
+import {
+  MAX_BOOKING_RANGE_DAYS,
+  moneyStringSchema,
+  type AvailabilityResponse,
+  type PublicListingDetailWithTimezoneResponse,
+  type QuoteResponse,
+} from '@booking/contracts';
 import { submitContentReport } from '~/features/content-reports/server/content-report.server';
-import { parseSearchState, rangeDates } from '~/features/search/lib/search-state';
+import {
+  parseSearchState,
+  rangeDates,
+  type SearchMode,
+  type StorefrontSearchState,
+} from '~/features/search/lib/search-state';
 import { loadAdministrativeProvinces } from '~/lib/server/administrative-divisions.server';
 import { fetchAvailability } from '~/features/booking/server/booking.server';
 import {
@@ -9,6 +20,9 @@ import {
   fetchListings,
   fetchQuote,
 } from '~/features/catalog/server/catalog.server';
+import { openDailyDates } from '~/lib/availability';
+import { dailyModeConfig } from '~/lib/daily-config';
+import { compareMoney, minMoney } from '~/lib/money';
 import { mapWithConcurrency } from '~/lib/server/concurrency.server';
 import { optionalData } from '~/lib/server/optional-data.server';
 import { loadPublicReviews } from '~/features/listing/server/public-reviews.server';
@@ -50,213 +64,16 @@ export async function loadListingGroupRoute(request: Request, url: URL, groupSlu
     async (child) => {
       const detail = await safe(fetchListing(request, child.slug));
       if (!detail) return null;
-      const bookingToday = todayInTz(detail.timezone, requestNow);
-      if (!hasAvailabilityFilter) {
-        return {
-          child,
-          detail,
-          bookingToday,
-          browsing: true as const,
-          availability: null,
-          available: null,
-          price: child.priceFrom,
-          quote: null,
-          start: null,
-          end: null,
-        };
-      }
-      if (state.mode === 'none') return null;
-      if (!detail.bookingModes.includes(state.mode)) return null;
-      if (state.mode === 'hourly') {
-        if (detail.bookingSelection === 'fixed_packages') {
-          const packages = publicPackages(detail.modeConfig.hourly, 'durationMinutes');
-          const results = await mapWithConcurrency(
-            packages,
-            PACKAGE_AVAILABILITY_CONCURRENCY,
-            async (item) => ({
-              item,
-              availability: await safe(
-                fetchAvailability(request, child.slug, {
-                  mode: 'hourly',
-                  from: state.date,
-                  to: state.date,
-                  packageId: item.id,
-                }),
-              ),
-            }),
-          );
-          const availableResults = results.flatMap((result) => {
-            const slots =
-              result.availability?.mode === 'hourly'
-                ? result.availability.days
-                    .flatMap((day) => day.slots)
-                    .filter((slot) => slot.available)
-                : [];
-            return slots.length ? [{ ...result, slots }] : [];
-          });
-          const cheapest = availableResults.sort((left, right) =>
-            compareMoney(left.item.price, right.item.price),
-          )[0];
-          return {
-            child,
-            detail,
-            bookingToday,
-            browsing: false as const,
-            availability: cheapest?.availability ?? null,
-            available: Boolean(cheapest),
-            price: cheapest?.item.price ?? null,
-            quote: null,
-            start: null,
-            end: null,
-          };
-        }
-        const availability = await safe(
-          fetchAvailability(request, child.slug, {
-            mode: 'hourly',
-            from: state.date,
-            to: state.date,
-          }),
-        );
-        const slots =
-          availability?.mode === 'hourly' ? availability.days.flatMap((day) => day.slots) : [];
-        const openSlots = slots.filter((slot) => slot.available);
-        const timezone = availability?.timezone ?? detail.timezone;
-        const requestedStart = state.hasTimeSelection
-          ? zonedToUtcIso(state.date, state.startTime, timezone)
-          : null;
-        const requestedEnd = state.hasTimeSelection
-          ? zonedToUtcIso(state.date, state.endTime, timezone)
-          : null;
-        const requestedSlot =
-          requestedStart && requestedEnd
-            ? slots.find(
-                (slot) =>
-                  slot.startUtc === requestedStart &&
-                  slot.endUtc === requestedEnd &&
-                  slot.available,
-              )
-            : null;
-        const quote = requestedSlot
-          ? await safe(
-              fetchQuote(
-                request,
-                child.slug,
-                new URLSearchParams({
-                  mode: 'hourly',
-                  from: requestedStart!,
-                  to: requestedEnd!,
-                  quantity: '1',
-                }),
-              ),
-            )
-          : null;
-        const price = state.hasTimeSelection
-          ? (quote?.subtotal ?? null)
-          : openSlots.length
-            ? openSlots.reduce(
-                (lowest, slot) => (compareMoney(slot.price, lowest) < 0 ? slot.price : lowest),
-                openSlots[0]!.price,
-              )
-            : null;
-        return {
-          child,
-          detail,
-          bookingToday,
-          browsing: false as const,
-          availability,
-          available: state.hasTimeSelection
-            ? Boolean(requestedSlot && quote)
-            : openSlots.length > 0,
-          price,
-          quote,
-          start: requestedStart,
-          end: requestedEnd,
-        };
-      }
-      const daily = (detail.modeConfig.daily ?? {}) as Record<string, unknown>;
-      if (detail.bookingSelection === 'fixed_packages') {
-        const packages = publicPackages(daily, 'durationDays');
-        const results = await mapWithConcurrency(
-          packages,
-          PACKAGE_AVAILABILITY_CONCURRENCY,
-          async (item) => ({
-            item,
-            availability: await safe(
-              fetchAvailability(request, child.slug, {
-                mode: 'daily',
-                from: state.date,
-                to: state.date,
-                packageId: item.id,
-              }),
-            ),
-          }),
-        );
-        const cheapest = results
-          .filter(
-            (result) =>
-              result.availability?.mode === 'daily' &&
-              result.availability.days.some(
-                (day) => day.date === state.date && day.status === 'available',
-              ),
-          )
-          .sort((left, right) => compareMoney(left.item.price, right.item.price))[0];
-        return {
-          child,
-          detail,
-          bookingToday,
-          browsing: false as const,
-          availability: cheapest?.availability ?? null,
-          available: Boolean(cheapest),
-          price: cheapest?.item.price ?? null,
-          quote: null,
-          start: null,
-          end: null,
-        };
-      }
-      const minNights = Number(daily.minNights ?? 1);
-      const maxNights = Number(daily.maxNights ?? Number.POSITIVE_INFINITY);
-      const nights = nightsBetween(state.from, state.to);
-      const availability = await safe(
-        fetchAvailability(request, child.slug, {
-          mode: 'daily',
-          from: state.from,
-          to: addDays(state.to, -1),
-        }),
-      );
-      const open = new Set(
-        availability?.mode === 'daily'
-          ? availability.days.filter((day) => day.status === 'available').map((day) => day.date)
-          : [],
-      );
-      const available =
-        nights >= minNights &&
-        nights <= maxNights &&
-        rangeDates(state.from, state.to).every((date) => open.has(date));
-      const timezone = availability?.timezone ?? detail.timezone;
-      const checkinTime = validTime(daily.checkinTime, '14:00');
-      const checkoutTime = validTime(daily.checkoutTime, '12:00');
-      const roomStart = zonedToUtcIso(state.from, checkinTime, timezone);
-      const roomEnd = zonedToUtcIso(state.to, checkoutTime, timezone);
-      const quote = available
-        ? await safe(
-            fetchQuote(
-              request,
-              child.slug,
-              new URLSearchParams({ mode: 'daily', from: roomStart, to: roomEnd, quantity: '1' }),
-            ),
-          )
-        : null;
+      const availability = hasAvailabilityFilter
+        ? await resolveRoomAvailability(request, child.slug, detail, state)
+        : browsingRoom(child.priceFrom);
+      // A room the filter excludes drops out of the list entirely.
+      if (!availability) return null;
       return {
         child,
         detail,
-        bookingToday,
-        browsing: false as const,
-        availability,
-        available: Boolean(available && quote),
-        price: quote?.subtotal ?? null,
-        quote,
-        start: roomStart,
-        end: roomEnd,
+        bookingToday: todayInTz(detail.timezone, requestNow),
+        ...availability,
       };
     },
   );
@@ -294,13 +111,224 @@ function safe<T>(promise: Promise<T>): Promise<T | null> {
   return optionalData(promise, null);
 }
 
+/**
+ * What resolving a room against the current search adds to its listing data. `null`
+ * from a resolver means the room does not belong in the list at all (wrong mode),
+ * as distinct from `available: false`, which means "shown, but not bookable".
+ */
+interface RoomAvailability {
+  browsing: boolean;
+  availability: AvailabilityResponse | null;
+  /** `null` while browsing — availability was never asked for. */
+  available: boolean | null;
+  price: string | null;
+  quote: QuoteResponse | null;
+  start: string | null;
+  end: string | null;
+}
+
+/** No date filter is active, so every room is listed at its catalogue "from" price. */
+function browsingRoom(priceFrom: string | null): RoomAvailability {
+  return {
+    browsing: true,
+    availability: null,
+    available: null,
+    price: priceFrom,
+    quote: null,
+    start: null,
+    end: null,
+  };
+}
+
+function resolveRoomAvailability(
+  request: Request,
+  slug: string,
+  detail: PublicListingDetailWithTimezoneResponse,
+  state: StorefrontSearchState,
+): Promise<RoomAvailability | null> {
+  if (state.mode === 'none' || !detail.bookingModes.includes(state.mode)) {
+    return Promise.resolve(null);
+  }
+  if (detail.bookingSelection === 'fixed_packages') {
+    // Inventory rooms have no package calendar of their own; they price off the
+    // daily packages, same as a daily room.
+    return cheapestPackageRoom(request, slug, detail.modeConfig, state.mode, state.date);
+  }
+  return state.mode === 'hourly'
+    ? hourlyRoom(request, slug, detail, state)
+    : dailyRoom(request, slug, detail, state);
+}
+
+/**
+ * A fixed-package room is bookable if any one of its packages has an opening on the
+ * chosen day; it advertises the cheapest such package. Packages are probed
+ * concurrently because each one is a separate availability call.
+ */
+async function cheapestPackageRoom(
+  request: Request,
+  slug: string,
+  modeConfig: Record<string, unknown>,
+  searchMode: Exclude<SearchMode, 'none'>,
+  date: string,
+): Promise<RoomAvailability> {
+  const mode = searchMode === 'hourly' ? 'hourly' : 'daily';
+  const packages = publicPackages(modeConfig[mode], mode);
+  const probed = await mapWithConcurrency(
+    packages,
+    PACKAGE_AVAILABILITY_CONCURRENCY,
+    async (item) => ({
+      item,
+      availability: await safe(
+        fetchAvailability(request, slug, { mode, from: date, to: date, packageId: item.id }),
+      ),
+    }),
+  );
+  const cheapest = probed
+    .filter((result) => hasOpening(result.availability, date))
+    .sort((left, right) => compareMoney(left.item.price, right.item.price))[0];
+
+  return {
+    browsing: false,
+    availability: cheapest?.availability ?? null,
+    available: Boolean(cheapest),
+    price: cheapest?.item.price ?? null,
+    quote: null,
+    start: null,
+    end: null,
+  };
+}
+
+function hasOpening(availability: AvailabilityResponse | null, date: string): boolean {
+  if (availability?.mode === 'hourly') {
+    return availability.days.some((day) => day.slots.some((slot) => slot.available));
+  }
+  if (availability?.mode === 'daily') {
+    return availability.days.some((day) => day.date === date && day.status === 'available');
+  }
+  return false;
+}
+
+/**
+ * With a time range chosen the room is bookable only if that exact slot is open, and
+ * it is priced by a real quote. With only a day chosen it is bookable if anything is
+ * open, priced "from" the cheapest slot.
+ */
+async function hourlyRoom(
+  request: Request,
+  slug: string,
+  detail: PublicListingDetailWithTimezoneResponse,
+  state: StorefrontSearchState,
+): Promise<RoomAvailability> {
+  const availability = await safe(
+    fetchAvailability(request, slug, { mode: 'hourly', from: state.date, to: state.date }),
+  );
+  const slots =
+    availability?.mode === 'hourly' ? availability.days.flatMap((day) => day.slots) : [];
+  const openSlots = slots.filter((slot) => slot.available);
+  const timezone = availability?.timezone ?? detail.timezone;
+
+  if (!state.hasTimeSelection) {
+    return {
+      browsing: false,
+      availability,
+      available: openSlots.length > 0,
+      price: minMoney(openSlots.map((slot) => slot.price)),
+      quote: null,
+      start: null,
+      end: null,
+    };
+  }
+
+  const start = zonedToUtcIso(state.date, state.startTime, timezone);
+  const end = zonedToUtcIso(state.date, state.endTime, timezone);
+  const requestedSlot = slots.find(
+    (slot) => slot.startUtc === start && slot.endUtc === end && slot.available,
+  );
+  const quote = requestedSlot
+    ? await safe(
+        fetchQuote(
+          request,
+          slug,
+          new URLSearchParams({ mode: 'hourly', from: start, to: end, quantity: '1' }),
+        ),
+      )
+    : null;
+
+  return {
+    browsing: false,
+    availability,
+    available: Boolean(requestedSlot && quote),
+    price: quote?.subtotal ?? null,
+    quote,
+    start,
+    end,
+  };
+}
+
+/** Bookable when the stay length fits the listing's night bounds and every night is open. */
+async function dailyRoom(
+  request: Request,
+  slug: string,
+  detail: PublicListingDetailWithTimezoneResponse,
+  state: StorefrontSearchState,
+): Promise<RoomAvailability> {
+  const config = dailyModeConfig(detail.modeConfig);
+  const nights = nightsBetween(state.from, state.to);
+  const availability = await safe(
+    fetchAvailability(request, slug, {
+      mode: 'daily',
+      from: state.from,
+      // The checkout day is not a night, so it is not part of the availability window.
+      to: addDays(state.to, -1),
+    }),
+  );
+  const open = openDailyDates(availability);
+  const fits =
+    nights >= config.minNights &&
+    (config.maxNights === null || nights <= config.maxNights) &&
+    rangeDates(state.from, state.to).every((date) => open.has(date));
+
+  const timezone = availability?.timezone ?? detail.timezone;
+  const start = zonedToUtcIso(state.from, config.checkinTime, timezone);
+  const end = zonedToUtcIso(state.to, config.checkoutTime, timezone);
+  const quote = fits
+    ? await safe(
+        fetchQuote(
+          request,
+          slug,
+          new URLSearchParams({ mode: 'daily', from: start, to: end, quantity: '1' }),
+        ),
+      )
+    : null;
+
+  return {
+    browsing: false,
+    availability,
+    available: Boolean(fits && quote),
+    price: quote?.subtotal ?? null,
+    quote,
+    start,
+    end,
+  };
+}
+
+/**
+ * The bookable packages under one mode config, as `{ id, price }` — all this loader
+ * needs to probe availability and pick the cheapest. Duration is not returned, only
+ * validated: a package with a missing or out-of-range duration is not offerable, and
+ * a daily one longer than the availability window could never be quoted.
+ *
+ * Deliberately stricter than `~/lib/package-options`' `packagesForMode`, which does not
+ * validate the money shape or bound the duration.
+ */
 function publicPackages(
   raw: unknown,
-  durationKey: 'durationMinutes' | 'durationDays',
-): Array<{ id: string; price: string; duration: number }> {
+  mode: 'hourly' | 'daily',
+): Array<{ id: string; price: string }> {
   if (!raw || typeof raw !== 'object') return [];
   const packages = (raw as Record<string, unknown>).packages;
   if (!Array.isArray(packages)) return [];
+  const durationKey = mode === 'hourly' ? 'durationMinutes' : 'durationDays';
   return packages.flatMap((item) => {
     if (!item || typeof item !== 'object') return [];
     const row = item as Record<string, unknown>;
@@ -309,20 +337,9 @@ function publicPackages(
     const validDuration =
       Number.isInteger(duration) &&
       duration > 0 &&
-      (durationKey !== 'durationDays' || duration <= MAX_BOOKING_RANGE_DAYS);
+      (mode !== 'daily' || duration <= MAX_BOOKING_RANGE_DAYS);
     return typeof row.id === 'string' && price.success && validDuration
-      ? [{ id: row.id, price: price.data, duration }]
+      ? [{ id: row.id, price: price.data }]
       : [];
   });
-}
-
-function validTime(value: unknown, fallback: string): string {
-  const parsed = timeOfDaySchema.safeParse(value);
-  return parsed.success ? parsed.data : fallback;
-}
-
-function compareMoney(left: string, right: string): number {
-  const a = BigInt(left);
-  const b = BigInt(right);
-  return a < b ? -1 : a > b ? 1 : 0;
 }

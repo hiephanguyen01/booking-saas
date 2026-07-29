@@ -38,6 +38,40 @@ import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server'
 
 const CHECKOUT_MAX_FORM_BYTES = 64 * 1024;
 
+/** Backend codes meaning the chosen slot or package is gone — the form re-opens the picker. */
+const BOOKING_SELECTION_ERRORS = new Set([
+  'PACKAGE_UNAVAILABLE',
+  'PACKAGE_DURATION_MISMATCH',
+  'SLOT_TAKEN',
+  'SLOT_HELD',
+]);
+
+/**
+ * Every checkout failure answers with the same four fields, because the form reads
+ * all of them on every render — `checkoutAttemptId` in particular has to survive a
+ * failed submit or the retry would mint a new idempotency key and risk a double
+ * booking. Building the payload in one place is what keeps that guarantee visible.
+ */
+function checkoutFailure(
+  { status, headers }: { status: number; headers?: Headers },
+  payload: {
+    fieldErrors?: Record<string, string[] | undefined> | null;
+    error: string | null | undefined;
+    code: string | null | undefined;
+    checkoutAttemptId: string;
+  },
+) {
+  return data(
+    {
+      fieldErrors: payload.fieldErrors ?? null,
+      error: payload.error,
+      code: payload.code,
+      checkoutAttemptId: payload.checkoutAttemptId,
+    },
+    headers ? { status, headers } : { status },
+  );
+}
+
 export async function loadCheckout(request: Request, url: URL, locale: Locale) {
   const searchParams = url.searchParams;
   const slug = searchParams.get('listing');
@@ -103,14 +137,13 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   const t = createTranslator(locale).t;
   const formBody = await readFormRequestBody(request, CHECKOUT_MAX_FORM_BYTES);
   if (!formBody.ok) {
-    return data(
+    return checkoutFailure(
+      { status: formRequestFailureStatus(formBody.code) },
       {
-        fieldErrors: null,
         error: t('checkout.bookingFailed'),
         code: formBody.code,
         checkoutAttemptId: createCheckoutAttemptId(),
       },
-      { status: formRequestFailureStatus(formBody.code) },
     );
   }
   const form = formBody.value;
@@ -136,14 +169,14 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   });
 
   if (!guest.success || !paymentMethod.success) {
-    return data(
+    return checkoutFailure(
+      { status: 400 },
       {
         fieldErrors: guest.success ? null : guest.error.flatten().fieldErrors,
         error: paymentMethod.success ? null : 'PAYMENT_METHOD_UNAVAILABLE',
         code: paymentMethod.success ? null : 'PAYMENT_METHOD_UNAVAILABLE',
         checkoutAttemptId,
       },
-      { status: 400 },
     );
   }
 
@@ -166,14 +199,9 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   });
 
   if (!parsed.success) {
-    return data(
-      {
-        fieldErrors: null,
-        error: 'INVALID_CHECKOUT_INPUT',
-        code: 'INVALID_CHECKOUT_INPUT',
-        checkoutAttemptId,
-      },
+    return checkoutFailure(
       { status: 400 },
+      { error: 'INVALID_CHECKOUT_INPUT', code: 'INVALID_CHECKOUT_INPUT', checkoutAttemptId },
     );
   }
 
@@ -185,19 +213,16 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   const created = await createBooking(request, input, idempotencyKey);
 
   if (!created.ok || !created.data) {
-    const bookingSelectionError =
-      created.code === 'PACKAGE_UNAVAILABLE' ||
-      created.code === 'PACKAGE_DURATION_MISMATCH' ||
-      created.code === 'SLOT_TAKEN' ||
-      created.code === 'SLOT_HELD';
-    return data(
+    // A selection that lost its slot or package is surfaced verbatim so the form can
+    // point the customer back at the picker; anything else reads as a generic failure.
+    const bookingSelectionError = BOOKING_SELECTION_ERRORS.has(created.code ?? '');
+    return checkoutFailure(
+      { status: errorStatus(created.status) },
       {
-        fieldErrors: null,
         error: bookingSelectionError ? created.code : t('checkout.bookingFailed'),
         code: created.code,
         checkoutAttemptId,
       },
-      { status: errorStatus(created.status) },
     );
   }
 
@@ -237,14 +262,14 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
     accessGrant,
   });
   if (!checkout.ok) {
-    return data(
+    return checkoutFailure(
+      { status: errorStatus(checkout.status), headers },
       {
         fieldErrors: checkout.fieldErrors ?? null,
         error: t('checkout.paymentFailed'),
         code: checkout.code,
         checkoutAttemptId,
       },
-      { status: errorStatus(checkout.status), headers },
     );
   }
 
@@ -265,14 +290,13 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   const paymentUrl =
     destination?.type === 'redirect' ? allowedPaymentRedirect(destination.paymentUrl) : null;
   if (!paymentUrl) {
-    return data(
+    return checkoutFailure(
+      { status: 502, headers },
       {
-        fieldErrors: null,
         error: t('checkout.paymentFailed'),
         code: 'INVALID_PAYMENT_REDIRECT',
         checkoutAttemptId,
       },
-      { status: 502, headers },
     );
   }
 

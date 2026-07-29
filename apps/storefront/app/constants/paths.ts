@@ -34,7 +34,13 @@ export const storefrontPaths = {
   login: (locale: Locale, redirectTo?: string) =>
     `/${locale}/auth/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`,
   register: (locale: Locale) => `/${locale}/auth/register`,
+  registerVerify: (locale: Locale) => `/${locale}/auth/register/verify`,
+  registerPassword: (locale: Locale) => `/${locale}/auth/register/password`,
+  registerSuccess: (locale: Locale) => `/${locale}/auth/register/success`,
   forgotPassword: (locale: Locale) => `/${locale}/auth/forgot-password`,
+  forgotPasswordVerify: (locale: Locale) => `/${locale}/auth/forgot-password/verify`,
+  forgotPasswordNewPassword: (locale: Locale) => `/${locale}/auth/forgot-password/new-password`,
+  forgotPasswordSuccess: (locale: Locale) => `/${locale}/auth/forgot-password/success`,
   logout: (locale: Locale) => `/${locale}/auth/logout`,
   community: (locale: Locale) => `/${locale}/community`,
   account: {

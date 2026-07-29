@@ -5,8 +5,10 @@ import type {
 } from '@booking/contracts';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useFetcher } from 'react-router';
+import { dailyModeConfig } from '~/lib/daily-config';
 import { normalizeDailyRange } from '~/lib/daily-range';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { intlLocale } from '~/lib/intl';
 import { packagesForMode } from '~/lib/package-options';
 import { addDays, dateLabelInTz, localToDateOnly, zonedToUtcIso } from '~/lib/time';
 import { useLocale } from '~/hooks/use-locale';
@@ -54,19 +56,26 @@ export function useBookingDialogController({
     ? preferredMode
     : (supportedModes[0] ?? 'hourly');
   const fixedPackages = listing.bookingSelection === 'fixed_packages';
-  const dailyConfig = (listing.modeConfig.daily ?? {}) as {
-    checkinTime?: string;
-    checkoutTime?: string;
-  };
-  const dailyCheckinTime = dailyConfig.checkinTime ?? '14:00';
-  const dailyCheckoutTime = dailyConfig.checkoutTime ?? '12:00';
-  const packageOptions = (selectedMode: ListingBookingMode) =>
-    packagesForMode(listing.modeConfig, selectedMode);
+  const { checkinTime: dailyCheckinTime, checkoutTime: dailyCheckoutTime } = dailyModeConfig(
+    listing.modeConfig,
+  );
+  // Parsed once per listing rather than on every read: `packagesForMode` walks the
+  // untyped `modeConfig` jsonb, and the render path alone asks for it several times.
+  const packagesByMode = useMemo(
+    () => ({
+      hourly: packagesForMode(listing.modeConfig, 'hourly'),
+      daily: packagesForMode(listing.modeConfig, 'daily'),
+    }),
+    [listing.modeConfig],
+  );
+  const packageOptions = (selectedMode: ListingBookingMode) => packagesByMode[selectedMode];
+  const firstPackageId = (selectedMode: ListingBookingMode) =>
+    fixedPackages ? (packageOptions(selectedMode)[0]?.id ?? null) : null;
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mode, setMode] = useState<ListingBookingMode>(initialMode);
   const [internalPackageId, setInternalPackageId] = useState<string | null>(
-    fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null,
+    firstPackageId(initialMode),
   );
   const packageId = controlled ? (controlledPackageId ?? null) : internalPackageId;
   const selectedPackage = packageOptions(mode).find((item) => item.id === packageId) ?? null;
@@ -94,10 +103,11 @@ export function useBookingDialogController({
     },
     kind: BookingRequestKind,
   ): void {
-    if (fixedPackages && !(next.packageId ?? packageId)) return;
+    const requestPackageId = next.packageId ?? packageId;
+    if (fixedPackages && !requestPackageId) return;
     setRequestKind(kind);
     const params = new URLSearchParams({ mode: next.mode });
-    if (next.packageId ?? packageId) params.set('packageId', (next.packageId ?? packageId)!);
+    if (requestPackageId) params.set('packageId', requestPackageId);
     if (next.mode === 'hourly' && next.date) params.set('date', next.date);
     if (next.mode === 'daily' && next.from) params.set('from', next.from);
     if (next.mode === 'daily' && next.to) params.set('to', next.to);
@@ -108,15 +118,20 @@ export function useBookingDialogController({
     void fetcher.load(`${basePath}?${params.toString()}`);
   }
 
-  function reset(): void {
-    setMode(initialMode);
-    setInternalPackageId(fixedPackages ? (packageOptions(initialMode)[0]?.id ?? null) : null);
+  /** Drops every part of a selection that a mode, package or date change invalidates. */
+  function clearSelection(): void {
     setDate(null);
     setFrom(null);
     setTo(null);
     setSelectedSlots([]);
     setCachedAvailability(null);
     setSelectionError('');
+  }
+
+  function reset(): void {
+    clearSelection();
+    setMode(initialMode);
+    setInternalPackageId(firstPackageId(initialMode));
     setRequestKind('availability');
   }
 
@@ -153,26 +168,17 @@ export function useBookingDialogController({
 
   function switchMode(next: ListingBookingMode): void {
     if (next === mode) return;
+    const nextPackageId = firstPackageId(next);
+    clearSelection();
     setMode(next);
-    const nextPackageId = fixedPackages ? (packageOptions(next)[0]?.id ?? null) : null;
     setInternalPackageId(nextPackageId);
-    setDate(null);
-    setFrom(null);
-    setTo(null);
-    setSelectedSlots([]);
-    setCachedAvailability(null);
-    setSelectionError('');
     if (next === 'daily')
       load({ mode: next, from: today, packageId: nextPackageId }, 'availability');
   }
 
   function selectPackage(nextPackageId: string): void {
+    clearSelection();
     setInternalPackageId(nextPackageId);
-    setDate(null);
-    setFrom(null);
-    setTo(null);
-    setSelectedSlots([]);
-    setCachedAvailability(null);
     if (mode === 'daily') {
       load({ mode, from: today, packageId: nextPackageId }, 'availability');
     }
@@ -241,18 +247,13 @@ export function useBookingDialogController({
       : null;
 
   function selectDate(nextDate: string): void {
+    clearSelection();
     setDate(nextDate);
-    setSelectedSlots([]);
-    setCachedAvailability(null);
-    setSelectionError('');
     load({ mode: 'hourly', date: nextDate, packageId }, 'availability');
   }
 
   function changeDate(): void {
-    setDate(null);
-    setSelectedSlots([]);
-    setCachedAvailability(null);
-    setSelectionError('');
+    clearSelection();
   }
 
   function toggleSlot(slot: HourlySlot): void {
@@ -294,7 +295,7 @@ export function useBookingDialogController({
 
   function selectRange(next: RoomBookingDateRange | undefined): void {
     const nextFrom = next?.from ? localToDateOnly(next.from) : null;
-    const dailyPackage = packageOptions('daily').find((item) => item.id === packageId);
+    const dailyPackage = packagesByMode.daily.find((item) => item.id === packageId);
     const nextTo =
       fixedPackages && nextFrom && dailyPackage
         ? addDays(nextFrom, dailyPackage.duration)
@@ -312,7 +313,7 @@ export function useBookingDialogController({
   const bookingTimezone = availability?.timezone ?? listing.timezone;
   const timeFormatter = useMemo(
     () =>
-      new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'vi-VN', {
+      new Intl.DateTimeFormat(intlLocale(locale), {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
@@ -321,7 +322,7 @@ export function useBookingDialogController({
     [bookingTimezone, locale],
   );
   const bookingDateTimeFormatter = useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
+    const tag = intlLocale(locale);
     const weekday = new Intl.DateTimeFormat(tag, {
       weekday: 'long',
       timeZone: bookingTimezone,
@@ -339,11 +340,13 @@ export function useBookingDialogController({
       timeZone: bookingTimezone,
     });
 
-    return (value: string): string =>
-      `${weekday.format(new Date(value))}, ${time.format(new Date(value))} ${dateFormatter.format(new Date(value))}`;
+    return (value: string): string => {
+      const at = new Date(value);
+      return `${weekday.format(at)}, ${time.format(at)} ${dateFormatter.format(at)}`;
+    };
   }, [bookingTimezone, locale]);
   const numberFormatter = useMemo(
-    () => new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'vi-VN', { maximumFractionDigits: 1 }),
+    () => new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }),
     [locale],
   );
   const selectionSummary = useMemo(() => {

@@ -9,6 +9,7 @@ import { storefrontPaths } from '~/constants/paths';
 import type { loadProviderRoute } from '~/features/provider/server/provider-route.server';
 import { useLocale } from '~/hooks/use-locale';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { intlLocale } from '~/lib/intl';
 import type { ServerDataFrom } from '~/lib/react-router-data';
 
 export function ProviderProfilePage({
@@ -20,8 +21,7 @@ export function ProviderProfilePage({
     loaderData;
   const locale = useLocale();
   const { t } = useTranslation(NsI18n.Catalog);
-  const en = locale === 'en';
-  const activeSince = new Intl.DateTimeFormat(en ? 'en-US' : 'vi-VN', {
+  const activeSince = new Intl.DateTimeFormat(intlLocale(locale, 'en-US'), {
     month: 'long',
     year: 'numeric',
   }).format(new Date(profile.activeSince));

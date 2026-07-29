@@ -1,14 +1,15 @@
 import {
   MAX_BOOKING_RANGE_DAYS,
   bookingDateRangeSchema,
-  timeOfDaySchema,
   type AvailabilityMode,
   type PublicListingDetailWithTimezoneResponse,
 } from '@booking/contracts';
 import { data } from 'react-router';
 import { fetchAvailability } from '~/features/booking/server/booking.server';
 import { fetchListing, fetchQuote } from '~/features/catalog/server/catalog.server';
+import { openDailyDates } from '~/lib/availability';
 import { canOffsetDateOnly, isValidDateOnly } from '~/lib/date-only';
+import { dailyModeConfig } from '~/lib/daily-config';
 import { datesInDailyRange, eligibleDailyRange } from '~/lib/daily-range';
 import { rethrowCriticalDataError } from '~/lib/server/optional-data.server';
 import { selectedPackageForListing } from '~/lib/package-options';
@@ -127,7 +128,7 @@ export async function loadListingBookingData(
       to: addDays(from, MAX_BOOKING_RANGE_DAYS - 1),
       ...(packageId ? { packageId } : {}),
     });
-    const config = (listing.modeConfig.daily ?? {}) as Record<string, unknown>;
+    const config = dailyModeConfig(listing.modeConfig);
     const durationDays = selectedPackage?.duration ?? 0;
     const fixedPackageRange =
       listing.bookingSelection === 'fixed_packages' &&
@@ -137,10 +138,8 @@ export async function loadListingBookingData(
         ? { from, to: addDays(from, durationDays) }
         : null;
     const effectiveTo = fixedPackageRange?.to ?? to;
-    const minNights = finiteNumber(config.minNights, 1);
-    const maxNights = finiteNumber(config.maxNights, Number.POSITIVE_INFINITY);
     const flexibleRange = effectiveTo
-      ? eligibleDailyRange(from, effectiveTo, minNights, maxNights)
+      ? eligibleDailyRange(from, effectiveTo, config.minNights, config.maxNights)
       : null;
     const range =
       listing.bookingSelection === 'fixed_packages'
@@ -148,24 +147,18 @@ export async function loadListingBookingData(
           ? fixedPackageRange
           : null
         : flexibleRange;
-    const openDates = new Set(
-      availability.mode === 'daily'
-        ? availability.days.filter((day) => day.status === 'available').map((day) => day.date)
-        : [],
-    );
+    const openDates = openDailyDates(availability);
     const selectionAvailable = Boolean(
       range &&
       (listing.bookingSelection === 'fixed_packages'
         ? openDates.has(range.from)
         : datesInDailyRange(flexibleRange!).every((dateValue) => openDates.has(dateValue))),
     );
-    const checkinTime = validTime(config.checkinTime, '14:00');
-    const checkoutTime = validTime(config.checkoutTime, '12:00');
     const selectionStart = selectionAvailable
-      ? zonedToUtcIso(range!.from, checkinTime, availability.timezone)
+      ? zonedToUtcIso(range!.from, config.checkinTime, availability.timezone)
       : null;
     const selectionEnd = selectionAvailable
-      ? zonedToUtcIso(range!.to, checkoutTime, availability.timezone)
+      ? zonedToUtcIso(range!.to, config.checkoutTime, availability.timezone)
       : null;
     const quote =
       selectionStart && selectionEnd
@@ -202,14 +195,4 @@ export async function loadListingBookingData(
 
 export function bookingDataError(error: BookingDataError, status: 400 | 404 | 502) {
   return data({ ok: false as const, error }, { status });
-}
-
-function finiteNumber(value: unknown, fallback: number): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function validTime(value: unknown, fallback: string): string {
-  const parsed = timeOfDaySchema.safeParse(value);
-  return parsed.success ? parsed.data : fallback;
 }

@@ -8,6 +8,7 @@ import {
 } from '~/features/booking-widget/lib/slot-selection';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { dateLabelInTz, dateOnlyToLocal, localToDateOnly, timeInTz } from '~/lib/time';
+import { useCalendarFormatters } from '~/hooks/use-calendar-formatters';
 import { useLocale } from '~/hooks/use-locale';
 import type { SetSearchParams } from '~/features/booking-widget/lib/booking-panel-types';
 
@@ -34,21 +35,12 @@ export function useBookingPanelHourlyPickerController({
   const locale = useLocale();
   const selectedDayValue = sp.get('day') || sp.get('date');
   const availabilityDay = selectedDayValue ?? today;
-  const durationSlots: HourlySlot[] =
-    availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
-  const slots = useMemo(
-    () => (fixedPackage ? durationSlots : atomicHourlySlots(durationSlots)),
-    [durationSlots, fixedPackage],
-  );
-  const calendarFormatters = useMemo(() => {
-    const tag = locale === 'en' ? 'en-GB' : 'vi-VN';
-    const caption = new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' });
-    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' });
-    return {
-      formatCaption: (month: Date) => caption.format(month),
-      formatWeekdayName: (date: Date) => weekday.format(date),
-    };
-  }, [locale]);
+  const slots = useMemo(() => {
+    const durationSlots: HourlySlot[] =
+      availability?.mode === 'hourly' ? (availability.days[0]?.slots ?? []) : [];
+    return fixedPackage ? durationSlots : atomicHourlySlots(durationSlots);
+  }, [availability, fixedPackage]);
+  const calendarFormatters = useCalendarFormatters(locale);
   const selectedDay = selectedDayValue ? dateOnlyToLocal(selectedDayValue) : undefined;
   const calendarMonth = selectedDay ?? dateOnlyToLocal(availabilityDay);
   const formattedDay = selectedDayValue

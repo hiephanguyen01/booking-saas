@@ -1,5 +1,6 @@
 import type { CancellationTier } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
+import { intlLocale } from './intl';
 
 export interface CancellationPolicyLine {
   /** The exact instant this tier's refund rate stops applying, derived from `startUtc - hoursBefore`. */
@@ -50,7 +51,7 @@ function cutoffFormatters(locale: Locale, timeZone: string): CutoffFormatters {
   const cached = CUTOFF_FORMATTERS.get(key);
   if (cached) return cached;
 
-  const localeCode = locale === 'en' ? 'en-US' : 'vi-VN';
+  const localeCode = intlLocale(locale, 'en-US');
   const formatters = {
     time: new Intl.DateTimeFormat(localeCode, {
       hour: '2-digit',
