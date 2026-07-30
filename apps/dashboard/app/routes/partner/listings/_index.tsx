@@ -257,7 +257,7 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
           canWrite && listingTypesAvailable ? <CreateListingDialog listingTypes={listingTypes} /> : null
         }
       />
-heck      {view === 'all' ? (
+      {view === 'all' ? (
         <DashboardDataTable
           {...tableProps}
           key="all"

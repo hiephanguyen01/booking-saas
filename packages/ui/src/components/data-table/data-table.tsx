@@ -52,6 +52,8 @@ export interface DataTableProps<T> {
   rowClassName?: (row: T, index: number) => string | undefined;
   /** Optional table-header treatment for composed dashboard surfaces. */
   headerClassName?: string;
+  /** Whether table rows render their default horizontal dividers. */
+  showRowDividers?: boolean;
   className?: string;
 }
 
@@ -78,6 +80,7 @@ export function DataTable<T>({
   visibleColumnIds,
   rowClassName,
   headerClassName,
+  showRowDividers = true,
   className,
 }: DataTableProps<T>) {
   const visibleIds = visibleColumnIds
@@ -97,8 +100,8 @@ export function DataTable<T>({
       )}
     >
       <Table className="w-max min-w-full">
-        <TableHeader className={headerClassName}>
-          <TableRow>
+        <TableHeader className={cn(!showRowDividers && '[&_tr]:border-b-0', headerClassName)}>
+          <TableRow className={cn(!showRowDividers && 'border-b-0')}>
             {renderedColumns.map((col, i) => (
               <TableHead
                 key={col.id ?? i}
@@ -116,7 +119,7 @@ export function DataTable<T>({
         <TableBody>
           {isLoading ? (
             Array.from({ length: skeletonRows }).map((_, r) => (
-              <TableRow key={`skeleton-${r}`}>
+              <TableRow key={`skeleton-${r}`} className={cn(!showRowDividers && 'border-b-0')}>
                 {renderedColumns.map((col, c) => (
                   <TableCell
                     key={col.id ?? c}
@@ -131,7 +134,7 @@ export function DataTable<T>({
               </TableRow>
             ))
           ) : data.length === 0 ? (
-            <TableRow>
+            <TableRow className={cn(!showRowDividers && 'border-b-0')}>
               <TableCell
                 colSpan={Math.max(1, renderedColumns.length)}
                 className="h-24 text-center text-sm text-muted-foreground"
@@ -141,7 +144,10 @@ export function DataTable<T>({
             </TableRow>
           ) : (
             data.map((row, r) => (
-              <TableRow key={getRowKey ? getRowKey(row, r) : r} className={rowClassName?.(row, r)}>
+              <TableRow
+                key={getRowKey ? getRowKey(row, r) : r}
+                className={cn(!showRowDividers && 'border-b-0', rowClassName?.(row, r))}
+              >
                 {renderedColumns.map((col, c) => (
                   <TableCell
                     key={col.id ?? c}

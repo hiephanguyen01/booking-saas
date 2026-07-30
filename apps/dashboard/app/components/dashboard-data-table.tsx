@@ -44,6 +44,40 @@ export interface DashboardDataTableTabs {
   ariaLabel?: string;
 }
 
+function DashboardDataTableTabsNav<T extends DashboardDataTableTab>({
+  activeValue,
+  items,
+  ariaLabel,
+}: DashboardDataTableTabs & { items: readonly T[] }) {
+  return (
+    <nav
+      aria-label={ariaLabel ?? 'Điều hướng danh sách'}
+      className="flex flex-wrap items-end gap-x-5 gap-y-1 px-4 pt-1 lg:px-5"
+    >
+      {items.map((item) => {
+        const isActive = item.value === activeValue;
+
+        return (
+          <Link
+            key={item.value}
+            to={item.href}
+            prefetch="intent"
+            aria-current={isActive ? 'page' : undefined}
+            className={cn(
+              'inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              isActive
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+            )}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export interface DashboardDataTableProps<T> extends Omit<
   DataTableProps<T>,
   'columns' | 'visibleColumnIds'
@@ -162,33 +196,7 @@ export function DashboardDataTable<T>({
 
   return (
     <section className={cn('w-full min-w-0 max-w-full bg-transparent', className)}>
-      {tabs && tabs.items.length > 0 ? (
-        <nav
-          aria-label={tabs.ariaLabel ?? 'Điều hướng danh sách'}
-          className="flex flex-wrap items-end gap-x-5 gap-y-1 px-4 pt-1 lg:px-5"
-        >
-          {tabs.items.map((item) => {
-            const isActive = item.value === tabs.activeValue;
-
-            return (
-              <Link
-                key={item.value}
-                to={item.href}
-                prefetch="intent"
-                aria-current={isActive ? 'page' : undefined}
-                className={cn(
-                  'inline-flex min-h-11 items-center border-b-2 px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  isActive
-                    ? 'border-primary text-foreground'
-                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      ) : null}
+      {tabs ? <DashboardDataTableTabsNav {...tabs} /> : null}
       {showToolbar ? (
         <div className="w-full min-w-0 max-w-full px-4 py-4 lg:px-5">
           <ListToolbar
@@ -223,6 +231,7 @@ export function DashboardDataTable<T>({
           columns={columns}
           visibleColumnIds={visibleColumnIds}
           headerClassName="bg-muted/55"
+          showRowDividers={false}
           className="w-full min-w-0 max-w-full overflow-hidden rounded-none border-0"
         />
       </div>
