@@ -35,21 +35,39 @@ export function TimeWindowsEditor({ windows, onChange }: { windows: TimeWindow[]
     update(i, { days });
   };
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="space-y-3 rounded-lg border bg-muted/15 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Label>Khung giờ ưu đãi (off-peak, tuỳ chọn)</Label>
-          <p className="text-sm text-muted-foreground">Chỉ áp dụng khi giờ bắt đầu đặt rơi vào một trong các khung giờ.</p>
+          <Label>Giới hạn theo khung giờ</Label>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Chỉ áp dụng khi giờ bắt đầu đặt nằm trong một khung dưới đây. Không thêm khung nghĩa là
+            áp dụng cả ngày.
+          </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => onChange([...windows, { days: [], from: '18:00', to: '22:00' }])}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            onChange([...windows, { days: [], from: '18:00', to: '22:00' }])
+          }
+        >
           <Plus className="size-4" /> Thêm khung giờ
         </Button>
       </div>
+      {windows.length === 0 ? (
+        <p className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
+          Đang áp dụng cho mọi ngày và mọi khung giờ.
+        </p>
+      ) : null}
       {windows.map((w, i) => (
-        <div key={i} className="flex flex-wrap items-end gap-3 rounded-md border border-border p-3">
-          <div className="space-y-1">
+        <div
+          key={i}
+          className="grid gap-3 rounded-md border bg-background p-3 xl:grid-cols-[minmax(22rem,1fr)_8rem_8rem_auto] xl:items-end"
+        >
+          <div className="min-w-0 space-y-1.5">
             <Label className="text-xs">Ngày trong tuần</Label>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {WEEKDAY_SHORT.map((lbl, day) => (
                 <button
                   key={day}
@@ -65,15 +83,31 @@ export function TimeWindowsEditor({ windows, onChange }: { windows: TimeWindow[]
               ))}
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label className="text-xs" htmlFor={`from-${i}`}>Từ</Label>
-            <Input id={`from-${i}`} type="time" value={w.from} onChange={(e) => update(i, { from: e.target.value })} className="w-32" />
+            <Input
+              id={`from-${i}`}
+              type="time"
+              value={w.from}
+              onChange={(e) => update(i, { from: e.target.value })}
+            />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label className="text-xs" htmlFor={`to-${i}`}>Đến</Label>
-            <Input id={`to-${i}`} type="time" value={w.to} onChange={(e) => update(i, { to: e.target.value })} className="w-32" />
+            <Input
+              id={`to-${i}`}
+              type="time"
+              value={w.to}
+              onChange={(e) => update(i, { to: e.target.value })}
+            />
           </div>
-          <Button type="button" variant="ghost" size="icon" onClick={() => onChange(windows.filter((_, idx) => idx !== i))} aria-label="Xoá khung giờ">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onChange(windows.filter((_, idx) => idx !== i))}
+            aria-label="Xoá khung giờ"
+          >
             <Trash2 className="size-4" />
           </Button>
         </div>

@@ -453,7 +453,7 @@ Example `attribute_schema`: "Model Booking" → height, measurements, style, por
 | title, slug, description  |                                                                                                          |
 | address, working_area     | studio address or working area                                                                           |
 | photos                    | the post's shared photo album (first photo used as the cover)                                            |
-| amenities                 | post-level amenities (reception, parking, cameras...) — options from the listing type's attribute_schema |
+| amenities                 | jsonb ordered rows `[{label, icon}]`; each icon is a tenant-chosen Lucide name from the shared allowlist |
 | status                    | `draft / pending_review / published / archived` — **moderated at the post level**                        |
 | published_by, hidden_by   | `partner / admin` — a post **hidden by admin** cannot be re-enabled by the partner (a domain rule)       |
 | rating_avg, booking_count | denormalized for display + sorting (`rating_avg` only used once reviews are enabled — section 24)        |
@@ -557,6 +557,7 @@ Each listing generates its own resource 1:1 by default. When **a single physical
 | affiliate_id, referral_code       | null if none (recorded at creation time, immutable)                                                                                              |
 | cancellation_policy_snapshot      | jsonb — snapshot of the policy at booking time                                                                                                   |
 | pricing_snapshot                  | jsonb — price breakdown at booking time                                                                                                          |
+| listing_snapshot                  | jsonb — immutable listing title/slug/content, attributes + attribute schema/icons, capacity and group link at booking time                        |
 | commission_snapshot               | jsonb — the % rates applied at booking time (immutable even if the rule later changes)                                                           |
 | customer_note, partner_note       |                                                                                                                                                  |
 | expires_at                        | payment/approval deadline while pending                                                                                                          |

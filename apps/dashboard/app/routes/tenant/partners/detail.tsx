@@ -1,5 +1,10 @@
 import { data as routeData } from 'react-router';
-import type { PartnerResponse } from '@booking/contracts';
+import {
+  createCommissionRuleInputSchema,
+  updateCommissionRuleInputSchema,
+  type CommissionRuleResponse,
+  type PartnerResponse,
+} from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import {
   Card,
@@ -11,7 +16,7 @@ import {
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
 import type { Route } from './+types/detail';
-import { apiGet, apiPost } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPatch, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { BackLink } from '~/components/back-link';
@@ -26,6 +31,12 @@ import { PartnerIdentityCard } from '~/features/tenant/components/partners/partn
 import { PartnerLegalCard } from '~/features/tenant/components/partners/partner-legal-card';
 import { PartnerModerationActions } from '~/features/tenant/components/partners/partner-moderation-actions';
 import { PartnerPayoutCard } from '~/features/tenant/components/partners/partner-payout-card';
+import { PartnerCommissionCard } from '~/features/tenant/components/partners/partner-commission-card';
+import {
+  readCommissionRatePatch,
+  readCreateCommissionRule,
+} from '~/features/tenant/server/commission-rule-form.server';
+import { useTenantArea } from '~/features/tenant/lib/area-context';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Chi tiết đối tác · Tenant · BookingOS' }];
@@ -33,12 +44,24 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.partners.read');
-  const res = await apiGet<PartnerResponse>(`/tenant/partners/${params.partnerId}`, auth);
+  const canCommissions = can('tenant.commissions.manage');
+  const [res, rulesRes] = await Promise.all([
+    apiGet<PartnerResponse>(`/tenant/partners/${params.partnerId}`, auth),
+    canCommissions
+      ? apiGet<CommissionRuleResponse[]>('/tenant/finance/commission-rules', auth)
+      : Promise.resolve(null),
+  ]);
   if (!res.ok || !res.data) throw new Response('Không tìm thấy đối tác', { status: 404 });
+  const rules = rulesRes?.ok ? (rulesRes.data ?? []) : [];
   return {
     partner: res.data,
     canApprove: can('tenant.partners.approve'),
     canManage: can('tenant.partners.manage'),
+    canCommissions,
+    defaultCommission: rules.find((rule) => rule.appliesTo === 'tenant_default') ?? null,
+    partnerCommission:
+      rules.find((rule) => rule.appliesTo === 'partner' && rule.partnerId === params.partnerId) ??
+      null,
   };
 }
 
@@ -53,6 +76,82 @@ export async function action({ request, params }: Route.ActionArgs) {
   const { auth, can } = await requireTenant(request);
   const form = await request.formData();
   const intent = String(form.get('intent'));
+
+  if (
+    intent === 'create-partner-commission' ||
+    intent === 'update-partner-commission' ||
+    intent === 'delete-partner-commission'
+  ) {
+    if (!can('tenant.commissions.manage')) {
+      return routeData({ error: 'Bạn không có quyền quản lý hoa hồng.' }, { status: 403 });
+    }
+
+    const rulesRes = await apiGet<CommissionRuleResponse[]>(
+      '/tenant/finance/commission-rules',
+      auth,
+    );
+    if (!rulesRes.ok) {
+      return routeData(
+        { error: rulesRes.error ?? 'Không kiểm tra được quy tắc hoa hồng.' },
+        { status: 400 },
+      );
+    }
+    const partnerRule =
+      rulesRes.data?.find(
+        (rule) => rule.appliesTo === 'partner' && rule.partnerId === params.partnerId,
+      ) ?? null;
+
+    if (intent === 'delete-partner-commission') {
+      const ruleId = String(form.get('ruleId') ?? '');
+      if (!partnerRule || partnerRule.id !== ruleId) {
+        return routeData({ error: 'Quy tắc không thuộc đối tác này.' }, { status: 400 });
+      }
+      const res = await apiDelete(`/tenant/finance/commission-rules/${ruleId}`, auth);
+      if (!res.ok)
+        return routeData(
+          { error: res.error ?? 'Không xoá được mức hoa hồng riêng.' },
+          { status: 400 },
+        );
+      return { ok: true, intent, verificationStatus: null };
+    }
+
+    if (intent === 'create-partner-commission') {
+      const parsed = createCommissionRuleInputSchema.safeParse(readCreateCommissionRule(form));
+      if (!parsed.success || parsed.data.partnerId !== params.partnerId) {
+        return routeData({ error: 'Tỷ lệ hoa hồng không hợp lệ.' }, { status: 400 });
+      }
+      if (partnerRule) {
+        return routeData(
+          { error: 'Đối tác đã có mức riêng. Tải lại trang để cập nhật.' },
+          { status: 409 },
+        );
+      }
+      const res = await apiPost('/tenant/finance/commission-rules', parsed.data, auth);
+      if (!res.ok)
+        return routeData(
+          { error: res.error ?? 'Không tạo được mức hoa hồng riêng.' },
+          { status: 400 },
+        );
+      return { ok: true, intent, verificationStatus: null };
+    }
+
+    const ruleId = String(form.get('ruleId') ?? '');
+    if (!partnerRule || partnerRule.id !== ruleId) {
+      return routeData({ error: 'Quy tắc không thuộc đối tác này.' }, { status: 400 });
+    }
+    const parsed = updateCommissionRuleInputSchema.safeParse(readCommissionRatePatch(form));
+    if (!parsed.success) {
+      return routeData({ error: 'Tỷ lệ hoa hồng không hợp lệ.' }, { status: 400 });
+    }
+    const res = await apiPatch(`/tenant/finance/commission-rules/${ruleId}`, parsed.data, auth);
+    if (!res.ok)
+      return routeData(
+        { error: res.error ?? 'Không cập nhật được mức hoa hồng.' },
+        { status: 400 },
+      );
+    return { ok: true, intent, verificationStatus: null };
+  }
+
   const perm = PERM[intent];
   if (!perm) return routeData({ error: 'Hành động không hợp lệ.' }, { status: 400 });
   if (!can(perm))
@@ -74,7 +173,9 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function PartnerDetail({ loaderData, actionData }: Route.ComponentProps) {
-  const { partner, canApprove, canManage } = loaderData;
+  const { partner, canApprove, canManage, canCommissions, defaultCommission, partnerCommission } =
+    loaderData;
+  const { readOnly } = useTenantArea();
   const error = actionData && 'error' in actionData ? actionData.error : null;
   const success = actionData && 'ok' in actionData ? actionData : null;
 
@@ -92,7 +193,9 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {partner.isHouse ? <Badge variant="outline">Nội bộ</Badge> : null}
-            <Badge variant="secondary">{TYPE_LABEL[partner.partnerType] ?? partner.partnerType}</Badge>
+            <Badge variant="secondary">
+              {TYPE_LABEL[partner.partnerType] ?? partner.partnerType}
+            </Badge>
             <PartnerStatusBadge status={partner.status} />
             <PartnerVerificationBadge status={partner.verificationStatus} />
           </div>
@@ -130,6 +233,14 @@ export default function PartnerDetail({ loaderData, actionData }: Route.Componen
 
       <PartnerIdentityCard partner={partner} business={business} />
       <PartnerPayoutCard payoutInfo={partner.payoutInfo} />
+      {canCommissions && !partner.isHouse ? (
+        <PartnerCommissionCard
+          partner={partner}
+          defaultRule={defaultCommission}
+          partnerRule={partnerCommission}
+          readOnly={readOnly}
+        />
+      ) : null}
       <PartnerLegalCard partner={partner} business={business} />
 
       {/* Timestamps. */}
@@ -166,5 +277,10 @@ function successMessage(result: { intent: string; verificationStatus: string | n
       ? 'Đã xác minh danh tính đối tác.'
       : 'Đã ghi nhận kết quả xét duyệt danh tính.';
   }
+  if (result.intent === 'create-partner-commission')
+    return 'Đã tạo mức hoa hồng riêng cho đối tác.';
+  if (result.intent === 'update-partner-commission') return 'Đã cập nhật mức hoa hồng của đối tác.';
+  if (result.intent === 'delete-partner-commission')
+    return 'Đối tác đã quay lại dùng mức mặc định.';
   return 'Thao tác thành công.';
 }

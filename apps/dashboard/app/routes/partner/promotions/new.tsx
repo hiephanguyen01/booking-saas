@@ -1,6 +1,5 @@
 import { redirect, data as routeData } from 'react-router';
 import { createPartnerPromotionInputSchema } from '@booking/contracts';
-import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
@@ -41,21 +40,19 @@ export default function NewPartnerPromotion({ loaderData, actionData }: Route.Co
   return (
     <div className="space-y-6">
       <BackLink to="/partner/promotions" label="Khuyến mãi" />
-      <PageHeader title="Tạo khuyến mãi" description="Bạn tài trợ chi phí giảm giá cho tin đăng của mình." />
+      <PageHeader
+        title="Tạo khuyến mãi"
+        description="Thiết lập ưu đãi, phạm vi áp dụng và thời gian chạy trong một luồng duy nhất."
+      />
       <ErrorBanner error={error} />
-      <Card>
-        <CardHeader><CardTitle>Thông tin khuyến mãi</CardTitle></CardHeader>
-        <CardContent>
-          <PromotionForm
-            mode="create"
-            submitLabel="Tạo khuyến mãi"
-            scopeOptions={loaderData.scopeOptions}
-            scopeChoices={['partner', 'listing', 'listing_group']}
-            restrictPartnerFunded
-            selfPartnerId={loaderData.partnerId}
-          />
-        </CardContent>
-      </Card>
+      <PromotionForm
+        mode="create"
+        submitLabel="Tạo khuyến mãi"
+        scopeOptions={loaderData.scopeOptions}
+        scopeChoices={['partner', 'listing', 'listing_group']}
+        restrictPartnerFunded
+        selfPartnerId={loaderData.partnerId}
+      />
     </div>
   );
 }

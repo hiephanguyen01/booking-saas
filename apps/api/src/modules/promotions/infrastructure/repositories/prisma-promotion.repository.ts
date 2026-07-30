@@ -60,6 +60,7 @@ function toRecord(p: Row): PromotionRecord {
     createdByPartnerId: p.createdByPartnerId,
     fundingPartnerId: p.fundingPartnerId,
     partnerOptInAt: p.partnerOptInAt,
+    storefrontVisible: p.storefrontVisible,
     createdAt: p.createdAt,
   };
 }
@@ -91,6 +92,7 @@ function toWriteData(data: PromotionPatch): Omit<Prisma.PromotionUncheckedUpdate
     createdByPartnerId: data.createdByPartnerId,
     fundingPartnerId: data.fundingPartnerId,
     partnerOptInAt: data.partnerOptInAt,
+    storefrontVisible: data.storefrontVisible,
   };
 }
 
@@ -149,6 +151,14 @@ export class PrismaPromotionRepository implements IPromotionRepository {
   async listActiveAutoCampaigns(tx: PrismaTx): Promise<PromotionRecord[]> {
     const rows = await tx.promotion.findMany({
       where: { code: null, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map(toRecord);
+  }
+
+  async listStorefrontVisibleCodes(tx: PrismaTx): Promise<PromotionRecord[]> {
+    const rows = await tx.promotion.findMany({
+      where: { code: { not: null }, status: 'active', storefrontVisible: true },
       orderBy: { createdAt: 'desc' },
     });
     return rows.map(toRecord);

@@ -4,13 +4,13 @@ import {
   createdTenantResponseSchema,
   type CreatedTenantResponse,
 } from '@booking/contracts';
-import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { Route } from './+types/new';
 import { apiPost } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
 import { tenantCreateFields } from '~/features/admin/tenant-form-fields';
 import { BackLink } from '~/components/back-link';
+import { fieldNode, FormSurface, Grid, Section } from '~/components/form-layout';
 import { PageHeader } from '~/components/page-header';
 
 export function meta(): Route.MetaDescriptors {
@@ -55,28 +55,46 @@ export default function NewTenant({ actionData }: Route.ComponentProps) {
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Thông tin tenant</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GenericForm
-            schema={createTenantInputSchema}
-            fields={tenantCreateFields}
-            columns={2}
-            submitLabel="Tạo tenant"
-            defaultValues={{
-              name: '',
-              slug: '',
-              vertical: 'studio',
-              defaultTimezone: 'Asia/Ho_Chi_Minh',
-              defaultLocale: 'vi',
-            }}
-            serverError={serverError}
-            fieldErrors={fieldErrors}
-          />
-        </CardContent>
-      </Card>
+      <GenericForm
+        schema={createTenantInputSchema}
+        fields={tenantCreateFields}
+        columns={2}
+        submitLabel="Tạo tenant"
+        defaultValues={{
+          name: '',
+          slug: '',
+          vertical: 'studio',
+          defaultTimezone: 'Asia/Ho_Chi_Minh',
+          defaultLocale: 'vi',
+        }}
+        serverError={serverError}
+        fieldErrors={fieldErrors}
+        actionsClassName="justify-end border-t pt-4"
+        warnOnUnsavedChanges
+        renderFields={(renderedFields) => (
+          <FormSurface>
+            <Section
+              title="Nhận diện tenant"
+              description="Tên hiển thị, đường dẫn hệ thống và loại hình kinh doanh."
+            >
+              {fieldNode(renderedFields, 'name')}
+              <Grid>
+                {fieldNode(renderedFields, 'slug')}
+                {fieldNode(renderedFields, 'vertical')}
+              </Grid>
+            </Section>
+            <Section
+              title="Thiết lập mặc định"
+              description="Áp dụng cho dữ liệu mới và giao diện của tenant."
+            >
+              <Grid>
+                {fieldNode(renderedFields, 'defaultTimezone')}
+                {fieldNode(renderedFields, 'defaultLocale')}
+              </Grid>
+            </Section>
+          </FormSurface>
+        )}
+      />
     </div>
   );
 }

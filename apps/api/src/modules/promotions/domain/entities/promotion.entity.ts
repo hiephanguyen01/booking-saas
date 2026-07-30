@@ -25,6 +25,7 @@ export interface PromotionState {
   fundingPartnerId: string | null;
   partnerOptInAt: Date | null;
   createdByPartnerId: string | null;
+  storefrontVisible: boolean;
 }
 
 /** Validated insert payload (id/redeemedCount/createdAt assigned by the DB). */
@@ -39,6 +40,7 @@ export interface NewPromotion {
   appliesToId: string | null;
   minOrderAmount: bigint | null;
   firstBookingOnly: boolean;
+  storefrontVisible: boolean;
   usageLimitTotal: number | null;
   usageLimitPerCustomer: number | null;
   timeWindows: PromoTimeWindow[] | null;
@@ -76,6 +78,7 @@ export interface PromotionUpdateInput {
   maxDiscount?: bigint | null;
   minOrderAmount?: bigint | null;
   firstBookingOnly?: boolean;
+  storefrontVisible?: boolean;
   usageLimitTotal?: number | null;
   usageLimitPerCustomer?: number | null;
   timeWindows?: PromoTimeWindow[] | null;
@@ -250,6 +253,7 @@ export class Promotion {
     if (input.maxDiscount !== undefined) patch.maxDiscount = input.maxDiscount;
     if (input.minOrderAmount !== undefined) patch.minOrderAmount = input.minOrderAmount;
     if (input.firstBookingOnly !== undefined) patch.firstBookingOnly = input.firstBookingOnly;
+    if (input.storefrontVisible !== undefined) patch.storefrontVisible = input.storefrontVisible;
     if (input.usageLimitTotal !== undefined) patch.usageLimitTotal = input.usageLimitTotal;
     if (input.usageLimitPerCustomer !== undefined) {
       patch.usageLimitPerCustomer = input.usageLimitPerCustomer;

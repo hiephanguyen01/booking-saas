@@ -16,6 +16,7 @@ import { BookingCardHeader } from '~/features/account/components/shared/booking-
 import { BookingPaymentForm } from '~/features/account/components/bookings/booking-payment-form';
 import { CancelBookingDialog } from '~/features/account/components/bookings/cancel-booking-dialog';
 import { useBookingDetailOverviewController } from '~/features/account/hooks/use-booking-detail-overview-controller';
+import { AttributeSpecCards } from '~/components/attribute-spec-cards';
 
 export function BookingDetailOverview({
   booking,
@@ -96,6 +97,11 @@ function ListingSummary({
           {booking.resourceName ? (
             <p className="mt-0.5 text-xs text-muted-foreground">{booking.resourceName}</p>
           ) : null}
+          {booking.selectedPackageName ? (
+            <p className="mt-0.5 text-xs font-medium text-foreground">
+              {booking.selectedPackageName}
+            </p>
+          ) : null}
           <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
             <CalendarDays aria-hidden="true" className="mt-px size-4 shrink-0" />
             <span>{booking.dateLabel}</span>
@@ -121,15 +127,8 @@ function ListingSummary({
           label={isInventory ? t('bookings.quantity') : t('bookings.guests')}
           value={participantCount}
         />
-        {booking.attributes.map((attribute) => (
-          <BookingFact
-            key={`${attribute.label}-${attribute.value}`}
-            icon={PackageCheck}
-            label={attribute.label}
-            value={attribute.value}
-          />
-        ))}
       </dl>
+      <AttributeSpecCards cards={booking.attributes} className="mt-4" />
 
       {booking.listingDescription ? (
         <p className="mt-4 border-t border-border py-4 text-xs leading-5 text-muted-foreground">

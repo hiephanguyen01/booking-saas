@@ -2,12 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useFetcher } from 'react-router';
 import type { AdministrativeProvince, AdministrativeWard } from '@booking/contracts';
 import { FieldRenderer } from '@booking/ui/components/form/field-renderer';
-import type {
-  FieldValues,
-  Path,
-  UseFormReturn,
-} from '@booking/ui/components/form/rhf';
-import { Grid, Section } from './form-layout';
+import type { FieldValues, Path, UseFormReturn } from '@booking/ui/components/form/rhf';
+import { Grid, Section } from '~/components/form-layout';
 
 type AddressValues = FieldValues & {
   provinceCode: string;
@@ -50,7 +46,10 @@ export function AdministrativeAddressFields<T extends AddressValues>({
   const wards = wardsFetcher.data?.provinceCode === provinceCode ? wardsFetcher.data.wards : [];
 
   return (
-    <Section title="Địa chỉ">
+    <Section
+      title="Địa chỉ"
+      description="Địa chỉ này được dùng để hiển thị khu vực hoạt động và giúp khách tìm đúng địa điểm."
+    >
       <Grid>
         <FieldRenderer<T>
           field={{

@@ -35,6 +35,7 @@ export function DeferredSearchBar({
             initialState={parseSearchState(searchParams, today)}
             locations={resolvedLocations}
             variant="bar"
+            typeChangeBehavior="navigate-to-catalog"
           />
         )}
       </Await>

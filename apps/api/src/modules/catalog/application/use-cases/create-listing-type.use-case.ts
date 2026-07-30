@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CreateListingTypeInput } from '@booking/contracts';
+import { buildPublicSlug } from '../../../../shared/domain/public-slug';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import { OutboxService } from '../../../../shared/outbox/outbox.service';
 import { ListingType } from '../../domain/entities/listing-type.entity';
@@ -20,12 +22,20 @@ export class CreateListingTypeUseCase {
   ) {}
 
   async execute(tenantId: string, input: CreateListingTypeInput): Promise<ListingTypeRecord> {
+    const slug =
+      input.slug ??
+      buildPublicSlug(
+        input.name,
+        randomUUID().replaceAll('-', '').slice(0, 6),
+        'loai-dich-vu',
+      );
+
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       // Pre-check only: the `(tenant_id, slug)` unique index is the real arbiter.
-      if (await this.repo.findBySlug(tx, input.slug)) {
-        throw new ListingTypeSlugTaken(input.slug);
+      if (await this.repo.findBySlug(tx, slug)) {
+        throw new ListingTypeSlugTaken(slug);
       }
-      const created = await this.repo.create(tx, tenantId, ListingType.open(input));
+      const created = await this.repo.create(tx, tenantId, ListingType.open({ ...input, slug }));
       await this.outbox.emit(tx, {
         tenantId,
         eventType: 'listing_type.created',

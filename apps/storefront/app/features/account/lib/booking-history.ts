@@ -1,5 +1,6 @@
 import {
   quoteLineItemSchema,
+  selectedPackageSchema,
   type AdditionalCharge,
   type BookingResponse,
   type BookingStatus,
@@ -16,6 +17,7 @@ import {
 } from '~/lib/cancellation-policy';
 import { subtractMoney } from '~/lib/money';
 import { bookingDateInTz, bookingTimeInTz, dateOnlyInTz, nightsBetween } from '~/lib/time';
+import { specCards, type SpecCard } from '~/lib/listing-attributes';
 
 export { cancellationCutoffParts, type CancellationPolicyLine };
 
@@ -41,6 +43,7 @@ export interface AccountBookingViewModel {
   listingSlug: string;
   listingTitle: string;
   listingDescription: string | null;
+  selectedPackageName: string | null;
   imageUrl: string | null;
   resourceName: string;
   resourceTimezone: string;
@@ -74,7 +77,7 @@ export interface AccountBookingViewModel {
   refundPercent: number | null;
   cancelledAt: string | null;
   cancellationReason: string | null;
-  attributes: Array<{ label: string; value: string }>;
+  attributes: SpecCard[];
   review: CustomerReviewItem | null;
 }
 
@@ -180,6 +183,7 @@ export function toAccountBookingViewModel(
     listingSlug: booking.listingSlug,
     listingTitle: booking.listingTitle,
     listingDescription: booking.listingDescription,
+    selectedPackageName: selectedPackageName(booking.pricingSnapshot),
     imageUrl: booking.listingImageUrl,
     resourceName: booking.resourceName,
     resourceTimezone: booking.resourceTimezone,
@@ -215,7 +219,7 @@ export function toAccountBookingViewModel(
     refundPercent: booking.refundPercent,
     cancelledAt: null,
     cancellationReason: null,
-    attributes: displayAttributes(booking.listingAttributes),
+    attributes: specCards(booking.listingAttributes, booking.listingAttributeSchema),
     review,
   };
 }
@@ -233,17 +237,7 @@ function pricingLineItems(snapshot: BookingResponse['pricingSnapshot']): QuoteLi
   );
 }
 
-function displayAttributes(
-  attributes: Record<string, unknown>,
-): Array<{ label: string; value: string }> {
-  return Object.entries(attributes).flatMap(([label, value]) => {
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-      return [{ label, value: String(value) }];
-    }
-    if (Array.isArray(value)) {
-      const values = value.filter((item) => typeof item === 'string' || typeof item === 'number');
-      return values.length ? [{ label, value: values.join(', ') }] : [];
-    }
-    return [];
-  });
+function selectedPackageName(snapshot: BookingResponse['pricingSnapshot']): string | null {
+  const parsed = selectedPackageSchema.safeParse(snapshot?.selectedPackage);
+  return parsed.success ? parsed.data.name : null;
 }

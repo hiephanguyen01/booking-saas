@@ -2,15 +2,9 @@ import type { PartnerResponse, UpdatePayoutInfoInput } from '@booking/contracts'
 import { updatePayoutInfoInputSchema } from '@booking/contracts';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@booking/ui/components/ui/card';
 import { SuccessBanner } from '~/components/action-feedback';
 import type { PartnerProfileActionResult } from '../../server/profile-actions.server';
+import { Section } from '~/components/form-layout';
 
 const payoutFields: FieldConfig<UpdatePayoutInfoInput>[] = [
   { name: 'bank', type: 'text', label: 'Ngân hàng', required: true },
@@ -23,7 +17,7 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-/** "Tài khoản nhận tiền" — the payout bank account the platform pays out to. */
+/** Payout account editor inside the shared profile settings surface. */
 export function ProfilePayoutCard({
   partner,
   result,
@@ -39,25 +33,20 @@ export function ProfilePayoutCard({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tài khoản nhận tiền</CardTitle>
-        <CardDescription>Nền tảng chi trả doanh thu về tài khoản này.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {result?.ok ? <SuccessBanner message="Đã lưu tài khoản nhận tiền." /> : null}
-        <GenericForm
-          schema={updatePayoutInfoInputSchema}
-          fields={payoutFields}
-          defaultValues={payoutDefaults}
-          columns={2}
-          submitLabel="Lưu tài khoản"
-          method="patch"
-          transform={(v) => ({ ...v, intent: 'payout' })}
-          serverError={result?.error ?? null}
-          fieldErrors={result?.fieldErrors ?? null}
-        />
-      </CardContent>
-    </Card>
+    <Section title="Tài khoản nhận tiền" description="Doanh thu được chi trả về tài khoản này.">
+      {result?.ok ? <SuccessBanner message="Đã lưu tài khoản nhận tiền." /> : null}
+      <GenericForm
+        schema={updatePayoutInfoInputSchema}
+        fields={payoutFields}
+        defaultValues={payoutDefaults}
+        columns={2}
+        submitLabel="Lưu tài khoản"
+        method="patch"
+        transform={(v) => ({ ...v, intent: 'payout' })}
+        serverError={result?.error ?? null}
+        fieldErrors={result?.fieldErrors ?? null}
+        warnOnUnsavedChanges
+      />
+    </Section>
   );
 }

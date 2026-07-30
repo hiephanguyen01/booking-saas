@@ -1,6 +1,8 @@
+import type { ListingGroupAmenity } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { DetailSection } from '@booking/ui/components/detail/detail-section';
 import { PhotoStrip } from '~/components/photo-strip';
+import { ListingTypeIcon } from '~/components/listing-type-icon';
 
 /**
  * "Ảnh" + "Mô tả" `DetailSection`s — the identical pair reused by the tenant
@@ -37,14 +39,15 @@ export function PhotoAndDescriptionSections({
  * "Tiện ích" `DetailSection` — amenity badges shared by the tenant group
  * review content card and the partner listing-group content card.
  */
-export function AmenitiesSection({ amenities }: { amenities: string[] }) {
+export function AmenitiesSection({ amenities }: { amenities: ListingGroupAmenity[] }) {
   return (
     <DetailSection title="Tiện ích" emptyMessage="Chưa có tiện ích.">
       {amenities.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {amenities.map((amenity) => (
-            <Badge key={amenity} variant="secondary">
-              {amenity}
+            <Badge key={amenity.label} variant="secondary" className="gap-1.5">
+              <ListingTypeIcon name={amenity.icon} className="size-3.5" />
+              {amenity.label}
             </Badge>
           ))}
         </div>

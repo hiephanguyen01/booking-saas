@@ -35,9 +35,12 @@ export interface ListingRecord {
   attributes: Record<string, unknown>;
   bookingModes: BookingMode[];
   bookingSelection: BookingSelection;
+  /** Listing-type presentation frozen onto bookings with the attribute values. */
+  attributeSchema: AttributeField[];
   modeConfig: Record<string, unknown>;
   stockQuantity: number | null;
   capacity: number | null;
+  group: { title: string; slug: string } | null;
   bufferBefore: number;
   bufferAfter: number;
   approvalRequired: boolean;
@@ -74,9 +77,6 @@ export interface ListingRecord {
 export interface PublicListingRecord extends ListingRecord {
   resourceTimezone: string;
   listingTypeSlug: string;
-  /** The listing type's attribute definitions (label + icon + type + order). */
-  attributeSchema: AttributeField[];
-  group: { title: string; slug: string } | null;
   partnerName: string;
   partnerSlug: string;
   partnerLogoUrl: string | null;

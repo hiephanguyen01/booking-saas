@@ -8,6 +8,7 @@ import {
 } from '../../domain/ports/commission-rule-repository.port';
 import { isHousePartner } from '../is-house-partner';
 import { CommissionRule } from '../../domain/entities/commission-rule.entity';
+import { NEW_TENANT_PLATFORM_RATE } from '../../domain/default-commission-rule';
 
 /**
  * Create a commission rule (§3.2). `platform_rate` is platform-admin-only (§7.7),
@@ -24,7 +25,8 @@ export class CreateCommissionRuleUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const existing = await this.rules.list(tx);
       const platformRate =
-        existing.find((r) => r.appliesTo === 'tenant_default')?.platformRate ?? 0;
+        existing.find((r) => r.appliesTo === 'tenant_default')?.platformRate ??
+        NEW_TENANT_PLATFORM_RATE;
 
       const isHouse =
         input.appliesTo === 'partner' && input.partnerId

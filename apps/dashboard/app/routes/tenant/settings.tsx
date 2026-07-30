@@ -201,7 +201,7 @@ export default function TenantSettings({ loaderData, actionData }: Route.Compone
   };
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Cài đặt cửa hàng"
         description="Quản lý nhận diện, vận hành và dòng tiền của storefront tại một nơi."

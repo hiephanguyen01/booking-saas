@@ -57,6 +57,7 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   renderFields?: (
     fields: Array<{ name: string; node: React.ReactNode }>,
     values: z.infer<TSchema>,
+    form: UseFormReturn<z.infer<TSchema>>,
   ) => React.ReactNode;
   /**
    * Final mapping of the validated form values into the JSON payload, applied
@@ -67,6 +68,8 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   /** Extra content rendered below the fields (e.g. a secondary button). */
   children?: React.ReactNode;
   className?: string;
+  /** Optional layout classes for the submit/action row (for example a sticky footer). */
+  actionsClassName?: string;
   /** Warn before closing/reloading a page that contains unsaved changes. */
   warnOnUnsavedChanges?: boolean;
   /** Reset react-hook-form's dirty state after the parent confirms a successful save. */
@@ -116,6 +119,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   transform,
   children,
   className,
+  actionsClassName,
   warnOnUnsavedChanges,
   resetDirtyOnSuccess,
 }: GenericFormProps<TSchema>) {
@@ -224,6 +228,44 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
     ];
   });
 
+  const content = (
+    <>
+      <div>
+        {renderFields ? (
+          renderFields(renderedFields, values as Values, form)
+        ) : (
+          <div className={cn('grid gap-5', COLS[columns])}>
+            {renderedFields.map((field) => field.node)}
+          </div>
+        )}
+
+        {extraFields ? (
+          <div className={cn(!renderFields && renderedFields.length > 0 && 'mt-6')}>
+            {extraFields(form)}
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        className={cn(
+          'flex items-center gap-3',
+          submitFullWidth && 'flex-col',
+          actionsClassName,
+        )}
+      >
+        <Button
+          type="submit"
+          size="control"
+          disabled={isSubmitting}
+          className={cn('px-8 font-semibold', submitFullWidth && 'w-full')}
+        >
+          {isSubmitting ? submitPendingLabel : submitLabel}
+        </Button>
+        {children}
+      </div>
+    </>
+  );
+
   return (
     <Form {...form}>
       <form
@@ -242,27 +284,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
           </div>
         ) : null}
 
-        {renderFields ? (
-          renderFields(renderedFields, values as Values)
-        ) : (
-          <div className={cn('grid gap-5', COLS[columns])}>
-            {renderedFields.map((field) => field.node)}
-          </div>
-        )}
-
-        {extraFields ? extraFields(form) : null}
-
-        <div className={cn('flex items-center gap-3', submitFullWidth && 'flex-col')}>
-          <Button
-            type="submit"
-            size="control"
-            disabled={isSubmitting}
-            className={cn('px-8 font-semibold', submitFullWidth && 'w-full')}
-          >
-            {isSubmitting ? submitPendingLabel : submitLabel}
-          </Button>
-          {children}
-        </div>
+        {content}
       </form>
     </Form>
   );

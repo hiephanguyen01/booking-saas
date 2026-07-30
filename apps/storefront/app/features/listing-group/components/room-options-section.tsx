@@ -15,10 +15,11 @@ import { NsI18n, useTranslation } from '@booking/i18n';
 import { useMediaViewerLabels } from '~/hooks/use-media-viewer-labels';
 import type { BookingMode, RoomOption } from '~/features/listing-group/lib/listing-group-types';
 import { roomAvailabilityState } from '~/features/booking-widget/lib/slot-selection';
-import { CapacityDetails, PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
+import { PolicyList, RoomAction, RoomDetails, RoomPrice } from './room-cells';
 import { RoomMediaDetails } from './room-media-details';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
 import { useRoomOptionsController } from '~/features/listing-group/hooks/use-room-options-controller';
+import { GuestCapacityRules } from '~/components/guest-capacity-rules';
 
 /** Stable identity so the media-items memo does not rebuild while nothing is open. */
 const EMPTY_PHOTOS: string[] = [];
@@ -181,7 +182,7 @@ function RoomRow({
         />
       </td>
       <td className="border-l border-border p-5">
-        <CapacityDetails option={option} />
+        <GuestCapacityRules capacity={option.child.capacity} />
       </td>
       <td className="border-l border-border p-5">
         <RoomPrice option={option} mode={mode} state={state} />
@@ -221,7 +222,7 @@ function RoomCard({
       <div className="flex flex-col gap-5 p-5">
         <RoomDetails option={option} attributeSchema={attributeSchema} hidePhotos />
         <div className="grid gap-4 sm:grid-cols-2">
-          <CapacityDetails option={option} />
+          <GuestCapacityRules capacity={option.child.capacity} />
           <RoomPrice option={option} mode={mode} state={state} />
         </div>
         <RoomAction

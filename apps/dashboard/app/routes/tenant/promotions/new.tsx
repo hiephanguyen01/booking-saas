@@ -1,6 +1,5 @@
 import { redirect, data as routeData } from 'react-router';
 import { createPromotionInputSchema, type PromotionCategoryOption } from '@booking/contracts';
-import { Card, CardContent, CardHeader, CardTitle } from '@booking/ui/components/ui/card';
 import type { Route } from './+types/new';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
@@ -48,19 +47,17 @@ export default function NewPromotion({ loaderData, actionData }: Route.Component
   return (
     <div className="space-y-6">
       <BackLink to="/tenant/promotions" label="Khuyến mãi" />
-      <PageHeader title="Tạo mã khuyến mãi" description="Thiết lập điều kiện và giá trị giảm giá." />
+      <PageHeader
+        title="Tạo khuyến mãi"
+        description="Thiết lập ưu đãi, phạm vi áp dụng và thời gian chạy trong một luồng duy nhất."
+      />
       <ErrorBanner error={error} />
-      <Card>
-        <CardHeader><CardTitle>Thông tin khuyến mãi</CardTitle></CardHeader>
-        <CardContent>
-          <PromotionForm
-            mode="create"
-            submitLabel="Tạo khuyến mãi"
-            scopeOptions={loaderData.scopeOptions}
-            categoryOptions={loaderData.categoryOptions}
-          />
-        </CardContent>
-      </Card>
+      <PromotionForm
+        mode="create"
+        submitLabel="Tạo khuyến mãi"
+        scopeOptions={loaderData.scopeOptions}
+        categoryOptions={loaderData.categoryOptions}
+      />
     </div>
   );
 }

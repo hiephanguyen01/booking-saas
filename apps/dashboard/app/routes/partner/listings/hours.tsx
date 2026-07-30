@@ -14,6 +14,7 @@ import { apiGet, apiPut } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ErrorBanner, SuccessBanner } from '~/components/action-feedback';
 import { BackLink } from '~/components/back-link';
+import { FormActions, FormSurface, Section } from '~/components/form-layout';
 import { PageHeader } from '~/components/page-header';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import {
@@ -115,7 +116,7 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
         />
         <PageHeader
           title="Giờ mở cửa"
-          description={`Lịch mở cửa hằng tuần cho “${listing.title}”. Cần thiết để tạo khung giờ cho đặt theo giờ. Một ngày có thể có nhiều khung giờ (ví dụ nghỉ trưa).`}
+          description={`Lịch hoạt động hằng tuần của “${listing.title}”. Có thể thêm nhiều khung trong một ngày nếu có giờ nghỉ.`}
         />
       </div>
 
@@ -124,115 +125,130 @@ export default function ListingHoursPage({ loaderData, actionData }: Route.Compo
 
       <Form method="post" className="space-y-3" onSubmit={handleSubmit}>
         <fieldset disabled={saving} className="m-0 min-w-0 space-y-3 border-0 p-0">
-          {DAYS.map((day) => {
-            const windows = week[day.dow] ?? [];
-            const open = windows.length > 0;
-            const clashes = overlappingIndices(windows);
+          <FormSurface>
+            <Section
+              title="Lịch trong tuần"
+              description="Bật những ngày nhận đặt lịch và khai báo giờ mở, giờ đóng."
+            >
+              {DAYS.map((day) => {
+                const windows = week[day.dow] ?? [];
+                const open = windows.length > 0;
+                const clashes = overlappingIndices(windows);
 
-            return (
-              <div key={day.dow} className="rounded-lg border px-4 py-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex w-28 items-center gap-2">
-                    <Switch
-                      checked={open}
-                      onCheckedChange={(enabled) =>
-                        setDay(
-                          day.dow,
-                          enabled ? [{ open: DEFAULT_OPEN, close: DEFAULT_CLOSE }] : [],
-                        )
-                      }
-                      aria-label={`Bật ${day.label}`}
-                    />
-                    <span className="text-sm font-medium">{day.label}</span>
-                  </div>
-                  {!open ? <span className="text-sm text-muted-foreground">Đóng cửa</span> : null}
-                </div>
-
-                {open ? (
-                  <div className="mt-3 space-y-2 sm:pl-28">
-                    {windows.map((window, index) => (
-                      <div key={index} className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <input
-                            type="hidden"
-                            name={WINDOW_FIELD}
-                            value={encodeWindow(day.dow, window)}
-                          />
-                          <Input
-                            type="time"
-                            value={window.open}
-                            onChange={(event) =>
-                              updateWindow(day.dow, index, { open: event.target.value })
-                            }
-                            className="w-32"
-                            aria-label={`${day.label} — giờ mở, khung ${index + 1}`}
-                          />
-                          <span className="text-muted-foreground" aria-hidden>
-                            →
-                          </span>
-                          <Input
-                            type="time"
-                            value={window.close}
-                            onChange={(event) =>
-                              updateWindow(day.dow, index, { close: event.target.value })
-                            }
-                            className="w-32"
-                            aria-label={`${day.label} — giờ đóng, khung ${index + 1}`}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              setDay(
-                                day.dow,
-                                windows.filter((_, currentIndex) => currentIndex !== index),
-                              )
-                            }
-                            aria-label={`Xoá khung giờ ${index + 1} của ${day.label}`}
-                          >
-                            <X className="size-4" aria-hidden />
-                          </Button>
-                        </div>
-                        {!isValidWindow(window) ? (
-                          <p className="text-xs text-destructive">Giờ đóng phải sau giờ mở</p>
-                        ) : clashes.has(index) ? (
-                          <p className="text-xs text-destructive">Trùng với khung giờ khác</p>
-                        ) : null}
+                return (
+                  <div key={day.dow} className="rounded-lg border px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex w-28 items-center gap-2">
+                        <Switch
+                          checked={open}
+                          onCheckedChange={(enabled) =>
+                            setDay(
+                              day.dow,
+                              enabled ? [{ open: DEFAULT_OPEN, close: DEFAULT_CLOSE }] : [],
+                            )
+                          }
+                          aria-label={`Bật ${day.label}`}
+                        />
+                        <span className="text-sm font-medium">{day.label}</span>
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setDay(day.dow, [
-                          ...windows,
-                          { open: DEFAULT_OPEN, close: DEFAULT_CLOSE },
-                        ])
-                      }
-                    >
-                      <Plus className="size-4" aria-hidden /> Thêm khung giờ
-                    </Button>
+                      {!open ? (
+                        <span className="text-sm text-muted-foreground">Đóng cửa</span>
+                      ) : null}
+                    </div>
+
+                    {open ? (
+                      <div className="mt-3 space-y-2 sm:pl-28">
+                        {windows.map((window, index) => (
+                          <div key={index} className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                              <input
+                                type="hidden"
+                                name={WINDOW_FIELD}
+                                value={encodeWindow(day.dow, window)}
+                              />
+                              <Input
+                                type="time"
+                                value={window.open}
+                                onChange={(event) =>
+                                  updateWindow(day.dow, index, { open: event.target.value })
+                                }
+                                className="w-32"
+                                aria-label={`${day.label} — giờ mở, khung ${index + 1}`}
+                              />
+                              <span className="text-muted-foreground" aria-hidden>
+                                →
+                              </span>
+                              <Input
+                                type="time"
+                                value={window.close}
+                                onChange={(event) =>
+                                  updateWindow(day.dow, index, { close: event.target.value })
+                                }
+                                className="w-32"
+                                aria-label={`${day.label} — giờ đóng, khung ${index + 1}`}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  setDay(
+                                    day.dow,
+                                    windows.filter(
+                                      (_, currentIndex) => currentIndex !== index,
+                                    ),
+                                  )
+                                }
+                                aria-label={`Xoá khung giờ ${index + 1} của ${day.label}`}
+                              >
+                                <X className="size-4" aria-hidden />
+                              </Button>
+                            </div>
+                            {!isValidWindow(window) ? (
+                              <p className="text-xs text-destructive">
+                                Giờ đóng phải sau giờ mở
+                              </p>
+                            ) : clashes.has(index) ? (
+                              <p className="text-xs text-destructive">
+                                Trùng với khung giờ khác
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setDay(day.dow, [
+                              ...windows,
+                              { open: DEFAULT_OPEN, close: DEFAULT_CLOSE },
+                            ])
+                          }
+                        >
+                          <Plus className="size-4" aria-hidden /> Thêm khung giờ
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            );
-          })}
+                );
+              })}
 
-          {errors.length > 0 ? (
-            <ul className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {errors.map((error) => (
-                <li key={error}>{error}</li>
-              ))}
-            </ul>
-          ) : null}
+              {errors.length > 0 ? (
+                <ul className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  {errors.map((error) => (
+                    <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </Section>
+          </FormSurface>
 
-          <div className="flex justify-end pt-1">
-            <Button type="submit" disabled={saving || errors.length > 0}>
+          <FormActions hint="Thay đổi chỉ có hiệu lực sau khi lưu.">
+            <Button type="submit" size="control" disabled={saving || errors.length > 0}>
               {saving ? 'Đang lưu…' : 'Lưu giờ mở cửa'}
             </Button>
-          </div>
+          </FormActions>
         </fieldset>
       </Form>
     </div>

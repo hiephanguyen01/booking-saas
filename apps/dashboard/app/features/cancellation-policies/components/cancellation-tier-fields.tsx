@@ -32,13 +32,7 @@ export function CancellationTierFields({
         const add = () => field.onChange([...rows, { hoursBefore: 0, refundPercent: 0 }]);
 
         return (
-          <section className="space-y-3 rounded-xl border bg-muted/20 p-4">
-            <div>
-              <h3 className="text-sm font-semibold">Mốc hoàn tiền</h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Xác định khách được hoàn bao nhiêu phần trăm theo thời điểm huỷ trước lịch đặt.
-              </p>
-            </div>
+          <div className="space-y-3">
             {rootMessage ? <p className="text-xs text-destructive">{String(rootMessage)}</p> : null}
             <div className="space-y-3">
               {rows.map((row, index) => (
@@ -101,7 +95,7 @@ export function CancellationTierFields({
             <Button type="button" variant="outline" size="sm" onClick={add}>
               <Plus className="size-4" /> Thêm mốc
             </Button>
-          </section>
+          </div>
         );
       }}
     />

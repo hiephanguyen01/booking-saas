@@ -1,6 +1,5 @@
-import { data, Link } from 'react-router';
+import { data } from 'react-router';
 import { useSearchParams } from 'react-router';
-import { ChevronDown, Plus } from 'lucide-react';
 import type {
   ListingGroupResponse,
   ListingResponse,
@@ -11,14 +10,7 @@ import type {
   SubmitListingResponse,
 } from '@booking/contracts';
 import { submitListingResponseSchema } from '@booking/contracts';
-import { Button } from '@booking/ui/components/ui/button';
 import { DataTable } from '@booking/ui/components/data-table/data-table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@booking/ui/components/ui/dropdown-menu';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
@@ -26,14 +18,12 @@ import { buildListingColumns } from '~/features/partner/components/listings/list
 import { buildListingGroupColumns } from '~/features/partner/components/listings/listing-group-table-columns';
 import { CreateListingDialog } from '~/features/partner/components/listings/create-listing-dialog';
 import type { ListingsActionResult } from '~/features/partner/components/listings/types';
-import { ListingTypeIcon } from '~/components/listing-type-icon';
 import { PageHeader } from '~/components/page-header';
 import { RelationshipHint } from '~/components/relationship-hint';
 import { ErrorBanner } from '~/components/action-feedback';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
 import { readListParams } from '~/lib/pagination';
 import { PaginationBar } from '~/components/pagination-bar';
-import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng · Đối tác · BookingOS' }];
@@ -149,8 +139,6 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
   const total = result?.total ?? 0;
   const counts = result?.counts;
   const statusValue = filters.status || 'all';
-  const eligibleTypes = listingTypes.filter((type) => type.structure !== 'standalone');
-
   const columns = buildListingColumns({ canWrite, canPublish, canAvailability });
   const groupColumns = buildListingGroupColumns({ listingTypes });
   const viewCounts = { single: total, grouped: groups.length };
@@ -160,37 +148,7 @@ export default function PartnerListingsPage({ loaderData }: Route.ComponentProps
       <PageHeader
         title="Tin đăng"
         description="Tạo, gửi duyệt, hiển thị hoặc ẩn các tin đăng của bạn."
-        actions={
-          canWrite ? (
-            <>
-              <CreateListingDialog listingTypes={listingTypes} />
-              {eligibleTypes.length > 0 ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Plus className="size-4" aria-hidden /> Thêm tin đăng nhiều hạng mục
-                      <ChevronDown className="size-4" aria-hidden />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {eligibleTypes.map((type) => (
-                      <DropdownMenuItem key={type.id} asChild>
-                        <Link to={dashboardPaths.partner.newListingGroup(type.id)}>
-                          <ListingTypeIcon
-                            imageUrl={type.iconImageUrl}
-                            name={type.icon}
-                            className="size-4"
-                          />
-                          {type.name}
-                        </Link>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : null}
-            </>
-          ) : null
-        }
+        actions={canWrite ? <CreateListingDialog listingTypes={listingTypes} /> : null}
       />
 
       <RelationshipHint variant="listings" />

@@ -118,6 +118,21 @@ export async function seedBooking(input: SeedBookingInput) {
   if (unitPrice * BigInt(durationHours) !== amount) {
     throw new Error(`Seed booking ${input.code} amount must divide evenly across its hourly slot`);
   }
+  const listing = await prisma.listing.findUniqueOrThrow({
+    where: { id: input.listingId },
+    select: {
+      title: true,
+      slug: true,
+      description: true,
+      photos: true,
+      attributes: true,
+      capacity: true,
+      bufferBefore: true,
+      bufferAfter: true,
+      listingType: { select: { attributeSchema: true } },
+      group: { select: { title: true, slug: true } },
+    },
+  });
   const depositAmount = percentOfBps(amount, 5_000);
   const bookingData = {
     listingId: input.listingId,
@@ -158,14 +173,20 @@ export async function seedBooking(input: SeedBookingInput) {
         },
       ],
     },
+    listingSnapshot: {
+      title: listing.title,
+      slug: listing.slug,
+      description: listing.description,
+      photos: listing.photos,
+      attributes: listing.attributes,
+      attributeSchema: listing.listingType.attributeSchema,
+      capacity: listing.capacity,
+      group: listing.group,
+    },
     createdAt: input.createdAt,
   };
 
   return prisma.$transaction(async (tx) => {
-    const listing = await tx.listing.findUniqueOrThrow({
-      where: { id: input.listingId },
-      select: { bufferBefore: true, bufferAfter: true },
-    });
     const blockedStartAt = addMinutes(input.startAt, -listing.bufferBefore);
     const blockedEndAt = addMinutes(input.endAt, listing.bufferAfter);
     const existing = await tx.booking.findFirst({

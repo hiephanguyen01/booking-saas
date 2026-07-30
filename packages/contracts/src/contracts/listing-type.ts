@@ -420,7 +420,8 @@ export const attributeSchemaSchema = z.array(attributeFieldSchema).superRefine((
 
 const listingTypeBaseSchema = z.object({
   name: z.string().min(1).max(120),
-  slug: slugSchema,
+  /** Optional on create: the API derives a stable slug from the name. */
+  slug: slugSchema.optional(),
   /** A lucide-react icon NAME from `LISTING_TYPE_ICONS` — never a URL. */
   icon: listingTypeIconSchema.optional(),
   /**

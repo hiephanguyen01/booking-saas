@@ -2,7 +2,7 @@ import { data, redirect } from 'react-router';
 import { Lock } from 'lucide-react';
 import {
   updateListingInputSchema,
-  type CancellationPolicySummary,
+  type CancellationPolicyResponse,
   type ListingResponse,
   type ListingTypeResponse,
   type DepositRequirementResponse,
@@ -54,7 +54,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [listingRes, typesRes, policiesRes] = await Promise.all([
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
-    apiGet<CancellationPolicySummary[]>('/partner/cancellation-policies', auth),
+    apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
   ]);
   if (!listingRes.ok || !listingRes.data) {
     throw new Response('Không tìm thấy tin đăng.', {

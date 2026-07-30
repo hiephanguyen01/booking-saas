@@ -1,6 +1,6 @@
 import {
   updateListingInputSchema,
-  type CancellationPolicySummary,
+  type CancellationPolicyResponse,
   type ListingGroupDetailResponse,
   type ListingResponse,
   type ListingTypeResponse,
@@ -19,7 +19,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
-    apiGet<CancellationPolicySummary[]>('/partner/cancellation-policies', auth),
+    apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
   ]);
   if (
     !groupRes.ok ||

@@ -1132,6 +1132,7 @@ model Booking {
   promotionSnapshot          Json?                     @map("promotion_snapshot")
   cancellationPolicySnapshot Json?                     @map("cancellation_policy_snapshot")
   pricingSnapshot            Json?                     @map("pricing_snapshot")
+  listingSnapshot            Json?                     @map("listing_snapshot")
   commissionSnapshot         Json?                     @map("commission_snapshot")
   customerNote               String?                   @map("customer_note")
   partnerNote                String?                   @map("partner_note")
@@ -1655,6 +1656,8 @@ model Promotion {
   fundingPartnerId      String?               @map("funding_partner_id") @db.Uuid
   /// gate for a tenant-created partner-funded promo: null = pending the partner's opt-in (§12.2).
   partnerOptInAt        DateTime?             @map("partner_opt_in_at") @db.Timestamptz(6)
+  /// Whether a customer-entered code may be discovered in the storefront checkout picker.
+  storefrontVisible     Boolean               @default(false) @map("storefront_visible")
   createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 

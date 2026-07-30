@@ -18,6 +18,7 @@ import type {
   NewListingGroup,
 } from '../../domain/entities/listing-group.entity';
 import { pageOffset } from '../../../../shared/pagination/pagination';
+import { normalizeListingGroupAmenities } from '../../../../shared/domain/listing-group-amenities';
 
 /**
  * The child fields the post's aggregates are computed from (see
@@ -63,7 +64,7 @@ function toRecord(g: Row): ListingGroupRecord {
     wardName: g.wardName,
     address: g.address,
     workingArea: g.workingArea,
-    amenities: (g.amenities ?? []) as string[],
+    amenities: normalizeListingGroupAmenities(g.amenities),
     photos: (g.photos ?? []) as string[],
     status: g.status,
     publishedBy: g.publishedBy as ModerationActor | null,

@@ -5,6 +5,7 @@ import {
   attributeFieldSchema,
   bookingModeSchema,
   bookingSelectionSchema,
+  listingTypeIconSchema,
   type BookingMode,
 } from './listing-type';
 import { partnerVerificationStatusSchema } from './partner';
@@ -155,15 +156,40 @@ export type ModeConfig = z.infer<typeof modeConfigSchema>;
 
 // ── Inputs ───────────────────────────────────────────────────────────────────
 
+export const listingGroupAmenitySchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  icon: listingTypeIconSchema,
+});
+export type ListingGroupAmenity = z.infer<typeof listingGroupAmenitySchema>;
+
+export const listingGroupAmenitiesSchema = z
+  .array(listingGroupAmenitySchema)
+  .max(24)
+  .superRefine((amenities, ctx) => {
+    const labels = new Set<string>();
+    for (const [index, amenity] of amenities.entries()) {
+      const normalized = amenity.label.toLocaleLowerCase('vi');
+      if (labels.has(normalized)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, 'label'],
+          message: 'Amenity labels must be unique',
+        });
+      }
+      labels.add(normalized);
+    }
+  });
+
 export const createListingGroupInputSchema = z
   .object({
     partnerId: uuidSchema,
     listingTypeId: uuidSchema,
     title: z.string().min(1).max(200),
-    slug: slugSchema,
+    /** Optional on create: the API generates a stable public slug when omitted. */
+    slug: slugSchema.optional(),
     description: z.string().max(5000).optional(),
     workingArea: z.string().max(200).optional(),
-    amenities: z.array(z.string().min(1)).default([]),
+    amenities: listingGroupAmenitiesSchema.default([]),
     photos: z.array(z.string().url()).default([]),
   })
   .merge(administrativeAddressInputSchema);
@@ -222,7 +248,12 @@ const modeConfigCoversModes = (
   }
 };
 
-export const createListingInputSchema = listingBaseSchema.superRefine(modeConfigCoversModes);
+export const createListingInputSchema = listingBaseSchema
+  .extend({
+    /** Optional on create: the API generates a stable public slug when omitted. */
+    slug: slugSchema.optional(),
+  })
+  .superRefine(modeConfigCoversModes);
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
 export const depositRequirementResponseSchema = z.object({
@@ -406,7 +437,7 @@ export const listingGroupResponseSchema = z
     slug: z.string(),
     description: z.string().nullable(),
     workingArea: z.string().nullable(),
-    amenities: z.array(z.string()),
+    amenities: listingGroupAmenitiesSchema,
     photos: z.array(z.string()),
     status: publishStatusSchema,
     publishedBy: moderationActorSchema.nullable(),
@@ -560,6 +591,7 @@ export const publicListingDetailResponseSchema = z
     bookingModes: z.array(bookingModeSchema),
     bookingSelection: bookingSelectionSchema,
     modeConfig: z.record(z.unknown()),
+    capacity: z.number().int().positive().nullable(),
     depositPercent: z.number(),
     listingTypeSlug: z.string(),
     group: z.object({ title: z.string(), slug: z.string() }).nullable(),
@@ -581,7 +613,7 @@ export const publicListingGroupDetailResponseSchema = z
     slug: z.string(),
     description: z.string().nullable(),
     workingArea: z.string().nullable(),
-    amenities: z.array(z.string()),
+    amenities: listingGroupAmenitiesSchema,
     photos: z.array(z.string()),
     listingTypeSlug: z.string(),
     /** The listing type's attribute definitions, shared by every child listing. */
@@ -599,6 +631,7 @@ export const publicListingGroupDetailResponseSchema = z
         description: z.string().nullable(),
         photos: z.array(z.string()),
         attributes: z.record(z.unknown()),
+        capacity: z.number().int().positive().nullable(),
         bookingModes: z.array(bookingModeSchema),
         priceFrom: z.string().nullable(),
         ratingAvg: z.number().nullable(),

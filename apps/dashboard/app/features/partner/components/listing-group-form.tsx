@@ -4,12 +4,11 @@ import type {
   ListingTypeResponse,
 } from '@booking/contracts';
 import { createListingGroupInputSchema } from '@booking/contracts';
-import { Controller } from '@booking/ui/components/form/rhf';
 import { GenericForm } from '@booking/ui/components/form/generic-form';
 import type { FieldConfig } from '@booking/ui/components/form/types';
-import { Input } from '@booking/ui/components/ui/input';
-import { Field, FieldDescription, FieldLabel } from '@booking/ui/components/ui/field';
+import { fieldNode, FormSurface, Section } from '~/components/form-layout';
 import { AdministrativeAddressFields } from './administrative-address-fields';
+import { ListingGroupAmenitiesField } from './listing-group-amenities-field';
 
 export function ListingGroupForm({
   partnerId,
@@ -25,8 +24,13 @@ export function ListingGroupForm({
   fieldErrors?: Record<string, string[]> | null;
 }) {
   const fields: FieldConfig<CreateListingGroupInput>[] = [
-    { name: 'title', type: 'text', label: 'Tên tin đăng', colSpan: 1 },
-    { name: 'slug', type: 'text', label: 'Slug', placeholder: 'ten-tin-dang', colSpan: 1 },
+    {
+      name: 'title',
+      type: 'text',
+      label: 'Tên tin đăng',
+      description: 'Ví dụ: Lumière Studio · Không gian chụp ảnh Quận 3',
+      colSpan: 2,
+    },
     { name: 'description', type: 'textarea', label: 'Mô tả', rows: 6, colSpan: 2 },
     {
       name: 'photos',
@@ -37,7 +41,6 @@ export function ListingGroupForm({
       maxFiles: 12,
       colSpan: 2,
     },
-    { name: 'workingArea', type: 'text', label: 'Khu vực hoạt động (tuỳ chọn)', colSpan: 1 },
   ];
 
   return (
@@ -49,7 +52,7 @@ export function ListingGroupForm({
         partnerId,
         listingTypeId: listingType.id,
         title: group?.title ?? '',
-        slug: group?.slug ?? '',
+        slug: group?.slug,
         description: group?.description ?? undefined,
         provinceCode: group?.provinceCode ?? '',
         wardCode: group?.wardCode ?? '',
@@ -61,34 +64,33 @@ export function ListingGroupForm({
       submitLabel={group ? 'Lưu thay đổi' : 'Lưu & thêm hạng mục'}
       serverError={serverError}
       fieldErrors={fieldErrors}
-      extraFields={(form) => (
-        <div className="space-y-6">
+      className="w-full space-y-4"
+      actionsClassName="justify-end border-t pt-4"
+      warnOnUnsavedChanges
+      renderFields={(renderedFields, _values, form) => (
+        <FormSurface>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-5 py-4 md:px-7">
+            <div>
+              <p className="text-xs text-muted-foreground">Loại dịch vụ</p>
+              <p className="text-sm font-medium">
+                {listingType.name} · Nhiều {listingType.itemLabel || 'hạng mục'}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">Đường dẫn được tạo tự động khi lưu</p>
+          </div>
+          <Section title="Thông tin chung" description="Nội dung đại diện cho toàn bộ tin đăng.">
+            {fieldNode(renderedFields, 'title')}
+            {fieldNode(renderedFields, 'description')}
+            {fieldNode(renderedFields, 'photos')}
+          </Section>
           <AdministrativeAddressFields form={form} />
-          <Controller
-            control={form.control}
-            name="amenities"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor="group-amenities">Tiện ích hoặc thông tin chung</FieldLabel>
-                <Input
-                  id="group-amenities"
-                  value={(field.value ?? []).join(', ')}
-                  onBlur={field.onBlur}
-                  onChange={(event) =>
-                    field.onChange(
-                      event.target.value
-                        .split(',')
-                        .map((value) => value.trim())
-                        .filter(Boolean),
-                    )
-                  }
-                  placeholder="Bãi đỗ xe, lễ tân, wifi"
-                />
-                <FieldDescription>Phân tách các mục bằng dấu phẩy.</FieldDescription>
-              </Field>
-            )}
-          />
-        </div>
+          <Section
+            title="Tiện ích chung"
+            description={`Chỉ thêm nội dung áp dụng cho mọi ${listingType.itemLabel || 'hạng mục'} trong tin đăng.`}
+          >
+            <ListingGroupAmenitiesField form={form} />
+          </Section>
+        </FormSurface>
       )}
       transform={(values) => ({
         ...values,

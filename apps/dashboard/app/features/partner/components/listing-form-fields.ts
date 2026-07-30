@@ -1,6 +1,5 @@
 import type {
   BookingMode,
-  CancellationPolicySummary,
   CreateListingInput,
   ListingResponse,
   ListingTypeResponse,
@@ -10,41 +9,36 @@ import type { FieldConfig } from '@booking/ui/components/form/types';
 /** GenericForm field config for the partner listing form (presentation only). */
 export function listingFormFields(opts: {
   listingTypes: ListingTypeResponse[];
-  cancellationPolicies: CancellationPolicySummary[];
   isEdit: boolean;
   lockedListingTypeId?: string;
   minimumDepositPercent?: number | null;
 }): FieldConfig<CreateListingInput>[] {
-  const {
-    listingTypes,
-    cancellationPolicies,
-    isEdit,
-    lockedListingTypeId,
-    minimumDepositPercent,
-  } = opts;
+  const { listingTypes, isEdit, lockedListingTypeId, minimumDepositPercent } = opts;
   return [
+    ...(!isEdit && !lockedListingTypeId
+      ? [
+          {
+            name: 'listingTypeId' as const,
+            type: 'select' as const,
+            label: 'Loại dịch vụ',
+            placeholder: 'Chọn loại dịch vụ',
+            colSpan: 2 as const,
+            options: listingTypes.map((t) => ({ label: t.name, value: t.id })),
+          },
+        ]
+      : []),
     {
-      name: 'listingTypeId',
-      type: 'select',
-      label: 'Loại dịch vụ',
-      placeholder: 'Chọn loại dịch vụ',
-      disabled: isEdit || Boolean(lockedListingTypeId),
-      colSpan: 2,
-      options: listingTypes.map((t) => ({ label: t.name, value: t.id })),
-    },
-    { name: 'title', type: 'text', label: 'Tiêu đề', colSpan: 1 },
-    {
-      name: 'slug',
+      name: 'title',
       type: 'text',
-      label: 'Slug (đường dẫn)',
-      placeholder: 'vd: studio-a-han-quoc',
-      colSpan: 1,
+      label: 'Tên hạng mục',
+      description: 'Ví dụ: Studio Ánh Dương · Phòng 01',
+      colSpan: 2,
     },
-    { name: 'description', type: 'textarea', label: 'Mô tả', colSpan: 2 },
+    { name: 'description', type: 'textarea', label: 'Mô tả chi tiết', rows: 6, colSpan: 2 },
     {
       name: 'photos',
       type: 'file',
-      label: 'Ảnh',
+      label: 'Hình ảnh',
       target: 'listings',
       multiple: true,
       maxFiles: 12,
@@ -87,21 +81,6 @@ export function listingFormFields(opts: {
       label: 'Yêu cầu duyệt trước khi thanh toán',
       colSpan: 2,
     },
-    ...(cancellationPolicies.length
-      ? [
-          {
-            name: 'cancellationPolicyId' as const,
-            type: 'select' as const,
-            label: 'Chính sách hủy',
-            colSpan: 2,
-            placeholder: 'Chọn chính sách hủy',
-            options: cancellationPolicies.map((policy) => ({
-              label: policy.name,
-              value: policy.id,
-            })),
-          },
-        ]
-      : []),
   ];
 }
 
@@ -119,7 +98,7 @@ export function listingFormDefaults(opts: {
     listingTypeId: listing?.listingTypeId ?? lockedListingTypeId ?? listingTypes[0]?.id ?? '',
     groupId: listing?.groupId ?? groupId,
     title: listing?.title ?? '',
-    slug: listing?.slug ?? '',
+    slug: listing?.slug,
     description: listing?.description ?? '',
     provinceCode: listing?.provinceCode ?? '',
     wardCode: listing?.wardCode ?? '',

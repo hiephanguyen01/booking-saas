@@ -218,7 +218,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   // ── A basic promo code ───────────────────────────────────────────────────────
   await prisma.promotion.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: 'WELCOME10' } },
-    update: {},
+    update: { storefrontVisible: true },
     create: {
       tenantId: tenant.id,
       name: 'Chào mừng khách mới',
@@ -230,6 +230,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
       appliesTo: 'all',
       minOrderAmount: 500_000n,
       usageLimitTotal: 1000,
+      storefrontVisible: true,
       status: 'active',
       startsAt: new Date(),
     },
@@ -279,7 +280,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
   // A tenant-created partner-funded code, pending the partner's opt-in (gated until accepted).
   await prisma.promotion.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: 'PARTNER15' } },
-    update: {},
+    update: { storefrontVisible: true },
     create: {
       tenantId: tenant.id,
       name: 'Đối tác tài trợ 15%',
@@ -291,6 +292,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
       appliesToId: studioA.id,
       fundingPartnerId: partner.id,
       partnerOptInAt: null, // pending — will not apply until the partner opts in (§12.2)
+      storefrontVisible: true,
       status: 'active',
       startsAt: new Date(),
     },

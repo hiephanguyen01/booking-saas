@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import { Switch } from '@booking/ui/components/ui/switch';
-import { CalendarRange, SlidersHorizontal } from 'lucide-react';
+import { CalendarRange } from 'lucide-react';
 import { SEARCH_SCHEDULE_LABEL } from '../constants';
 import { AttributeFacetEditor } from './attribute-facet-editor';
 import { EMPTY_CONFIG, normalizeSearchConfig, SEARCHABLE_MODES } from './listing-type-search-config';
@@ -46,19 +46,7 @@ export function ListingTypeSearchConfigFields({
   ];
 
   return (
-    <section className="space-y-5 rounded-xl border bg-muted/15 p-4 sm:p-5">
-      <div className="flex items-start gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <SlidersHorizontal className="size-4" aria-hidden />
-        </div>
-        <div>
-          <h2 className="font-semibold">Tìm kiếm &amp; bộ lọc Storefront</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Quyết định thanh tìm kiếm và các bộ lọc khách hàng nhìn thấy cho loại dịch vụ này.
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-5">
       {configError?.message ? (
         <p className="text-sm text-destructive">{String(configError.message)}</p>
       ) : null}
@@ -108,6 +96,6 @@ export function ListingTypeSearchConfigFields({
 
       <SystemFacetEditor config={config} updateConfig={updateConfig} />
       <AttributeFacetEditor config={config} fields={filterable} updateConfig={updateConfig} />
-    </section>
+    </div>
   );
 }

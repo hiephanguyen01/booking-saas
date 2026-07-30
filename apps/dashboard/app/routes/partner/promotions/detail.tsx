@@ -108,23 +108,23 @@ export default function PartnerPromotionDetail({ loaderData, actionData }: Route
       </DetailSection>
 
       {!ended ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Chỉnh sửa</CardTitle>
-            <CardDescription>Cập nhật điều kiện áp dụng.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PromotionForm
-              mode="edit"
-              promotion={promotion}
-              submitLabel="Lưu thay đổi"
-              scopeOptions={scopeOptions}
-              scopeChoices={['partner', 'listing', 'listing_group']}
-              restrictPartnerFunded
-              selfPartnerId={partnerId}
-            />
-          </CardContent>
-        </Card>
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Chỉnh sửa khuyến mãi</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cập nhật mức ưu đãi, điều kiện và lịch chạy.
+            </p>
+          </div>
+          <PromotionForm
+            mode="edit"
+            promotion={promotion}
+            submitLabel="Lưu thay đổi"
+            scopeOptions={scopeOptions}
+            scopeChoices={['partner', 'listing', 'listing_group']}
+            restrictPartnerFunded
+            selfPartnerId={partnerId}
+          />
+        </section>
       ) : null}
 
       {!ended ? (

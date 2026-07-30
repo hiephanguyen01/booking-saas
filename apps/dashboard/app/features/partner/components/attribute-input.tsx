@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@booking/ui/components/ui/select';
-import { Field } from './form-layout';
+import { Field } from '~/components/form-layout';
 
 /** One dynamic listing-type attribute rendered as its declared control. */
 export function AttributeInput({

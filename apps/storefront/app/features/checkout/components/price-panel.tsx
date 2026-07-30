@@ -33,12 +33,20 @@ export function PricePanel({
         ? t('inventoryQuantityLine', { quantity })
         : t('quantityLine', { rooms: quantity, slots: slotCount });
   const hasCalendarSale = quote.regularSubtotal !== quote.subtotal;
+  const hasPromotion = hasDiscount || hasCalendarSale;
 
   return (
-    <div className="mt-3 rounded-lg bg-primary/10 px-5 py-4 text-sm leading-5 text-foreground">
+    <div
+      className={cn(
+        'mt-3 rounded-lg px-5 py-4 text-sm leading-5 text-foreground',
+        hasPromotion ? 'bg-success/10' : 'bg-muted/40',
+      )}
+    >
       {hasCalendarSale ? (
         <div className="mb-2 flex items-center justify-between gap-4">
-          <Badge className="rounded-sm bg-emerald-600 text-white">Sale</Badge>
+          <Badge variant="success" className="rounded-sm">
+            Sale
+          </Badge>
           <span className="text-muted-foreground line-through">
             {formatVnd(quote.regularSubtotal)}
           </span>
@@ -46,7 +54,7 @@ export function PricePanel({
       ) : null}
       {hasDiscount ? (
         <div className="flex items-center justify-between gap-4">
-          <Badge variant="destructive" className="rounded-sm font-semibold">
+          <Badge variant="success" className="rounded-sm font-semibold">
             {promo?.code ?? t('discount')}
           </Badge>
           <span className="text-muted-foreground line-through">{formatVnd(amounts.subtotal)}</span>
@@ -57,7 +65,11 @@ export function PricePanel({
         value={formatVnd(amounts.subtotal)}
         className={hasDiscount ? 'mt-2' : ''}
       />
-      <PriceRow label={t('discount')} value={`− ${formatVnd(amounts.discount)}`} className="mt-2" />
+      <PriceRow
+        label={t('discount')}
+        value={`− ${formatVnd(amounts.discount)}`}
+        className={cn('mt-2', hasDiscount && 'text-success')}
+      />
       {quote.securityDeposit !== '0' ? (
         <PriceRow
           label={tListing('securityDeposit')}

@@ -1,12 +1,5 @@
 import { CircleAlert } from 'lucide-react';
 import type { PartnerAgreementResponse, PartnerResponse } from '@booking/contracts';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@booking/ui/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { DetailGrid } from '@booking/ui/components/detail/detail-grid';
 import { DetailField } from '@booking/ui/components/detail/detail-field';
@@ -28,6 +21,7 @@ import { EnumValue } from '~/components/enum-value';
 import { CopyableCode } from '~/components/copyable-code';
 import { readString } from '~/lib/records';
 import { PARTNER_TYPE_LABEL } from '~/constants/partner';
+import { FormSurface, Section } from '~/components/form-layout';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Hồ sơ đối tác · Đối tác · BookingOS' }];
@@ -76,11 +70,9 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
           title="Hồ sơ đối tác"
           description="Thông tin, định danh và tài khoản nhận tiền."
         />
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Bạn không có quyền xem và chỉnh sửa hồ sơ đối tác.
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border bg-background p-6 text-sm text-muted-foreground">
+          Bạn không có quyền xem và chỉnh sửa hồ sơ đối tác.
+        </div>
       </div>
     );
   }
@@ -107,8 +99,8 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
   return (
     <div className="space-y-6">
       <PageHeader
-        title={partner.name}
-        description="Thông tin, định danh và tài khoản nhận tiền của bạn."
+        title="Hồ sơ đối tác"
+        description="Quản lý thông tin công khai, xác minh và tài khoản nhận tiền."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <PartnerStatusBadge status={partner.status} />
@@ -117,149 +109,103 @@ export default function PartnerProfile({ loaderData, actionData }: Route.Compone
         }
       />
 
-      {/* 1 · Trạng thái */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Trạng thái hồ sơ</CardTitle>
-          <CardDescription>Tình trạng duyệt đối tác và xác minh danh tính.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <section className="rounded-xl border bg-background">
+        <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-start">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={`Logo ${partner.name}`}
+              className="size-16 shrink-0 rounded-lg border object-cover"
+            />
+          ) : (
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-muted text-xl font-semibold text-muted-foreground">
+              {partner.name.slice(0, 1).toLocaleUpperCase('vi')}
+            </div>
+          )}
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold tracking-tight">{partner.name}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <EnumValue map={PARTNER_TYPE_LABEL} value={partner.partnerType} />
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {partner.description || 'Chưa có phần giới thiệu công khai.'}
+            </p>
+          </div>
+        </div>
+        <div className="border-t px-6 py-5">
           <DetailGrid columns={3}>
             <DetailField
-              label="Trạng thái đối tác"
-              value={<PartnerStatusBadge status={partner.status} />}
+              label="Đường dẫn"
+              value={<CopyableCode value={`/${partner.slug}`} label="đường dẫn đối tác" />}
             />
-            <DetailField
-              label="Xác minh danh tính"
-              value={<PartnerVerificationBadge status={partner.verificationStatus} />}
-            />
-            <DetailField
-              label="Đã xác minh lúc"
-              value={partner.verifiedAt ? <DateTimeValue iso={partner.verifiedAt} /> : null}
-            />
-          </DetailGrid>
-
-          {partner.verificationStatus === 'rejected' && identity.reviewNote ? (
-            <Alert variant="destructive">
-              <CircleAlert className="size-4" />
-              <AlertTitle>Danh tính bị từ chối</AlertTitle>
-              <AlertDescription>{identity.reviewNote}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {partner.status === 'pending' ? (
-            <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground">
-              Hồ sơ đang chờ tenant duyệt. Bạn sẽ có thể đăng listing sau khi được duyệt.
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {/* 2 · Hồ sơ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Hồ sơ</CardTitle>
-          <CardDescription>Thông tin công khai của đối tác.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt="Logo đối tác"
-                className="size-20 shrink-0 rounded-lg border border-border object-cover"
-              />
-            ) : (
-              <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-                Chưa có logo
-              </div>
-            )}
-            <DetailGrid columns={2} className="flex-1">
-              <DetailField label="Tên đối tác" value={partner.name} emphasis="strong" />
-              <DetailField
-                label="Loại đối tác"
-                value={<EnumValue map={PARTNER_TYPE_LABEL} value={partner.partnerType} />}
-              />
-              <DetailField
-                label="Đường dẫn"
-                value={<CopyableCode value={`/${partner.slug}`} label="đường dẫn đối tác" />}
-              />
-              <DetailField
-                label="Giới thiệu"
-                value={partner.description}
-                span={2}
-                omitWhenEmpty={false}
-              />
-            </DetailGrid>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 3 · Liên hệ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Liên hệ</CardTitle>
-          <CardDescription>Thông tin liên hệ đã cung cấp khi đăng ký.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DetailGrid columns={2}>
             <DetailField label="Số điện thoại" value={contact.phone} />
             <DetailField
               label="Khu vực"
               value={[contact.wardName, contact.provinceName].filter(Boolean).join(', ') || null}
             />
             <DetailField label="Địa chỉ" value={contact.address} span={2} />
+            <DetailField
+              label="Xác minh lúc"
+              value={partner.verifiedAt ? <DateTimeValue iso={partner.verifiedAt} /> : null}
+            />
           </DetailGrid>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* 4 · Danh tính */}
-      <ProfileIdentityCard partner={partner} result={resultFor('identity')} />
+      {partner.verificationStatus === 'rejected' && identity.reviewNote ? (
+        <Alert variant="destructive">
+          <CircleAlert className="size-4" />
+          <AlertTitle>Danh tính bị từ chối</AlertTitle>
+          <AlertDescription>{identity.reviewNote}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      {/* 5 · Tài khoản nhận tiền */}
-      <ProfilePayoutCard partner={partner} result={resultFor('payout')} />
+      {partner.status === 'pending' ? (
+        <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground">
+          Hồ sơ đang chờ tenant duyệt. Bạn có thể đăng tin sau khi hồ sơ được phê duyệt.
+        </div>
+      ) : null}
 
-      {/* 6 · Giấy tờ */}
-      <ProfileDocumentsCard partner={partner} result={resultFor('documents')} />
-
-      <Card id="agreements">
-        <CardHeader>
-          <CardTitle>Thỏa thuận đã ghi nhận</CardTitle>
-          <CardDescription>
-            Phiên bản điều khoản được hệ thống ghi nhận khi hồ sơ đối tác được phê duyệt.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {agreements.length ? (
-            <DetailGrid columns={2}>
-              {agreements.map((agreement) => (
-                <DetailField
-                  key={`${agreement.agreementType}:${agreement.version}:${agreement.acceptedAt}`}
-                  label={
-                    agreement.agreementType === 'partner_terms'
-                      ? 'Điều khoản đối tác'
-                      : agreement.agreementType === 'commission_schedule'
-                        ? 'Biểu phí hoa hồng'
-                        : 'Tài trợ khuyến mãi'
-                  }
-                  value={
-                    <span className="space-y-1">
-                      <span className="block font-medium">Phiên bản {agreement.version}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        Ghi nhận <DateTimeValue iso={agreement.acceptedAt} />
+      <FormSurface>
+        <ProfileIdentityCard partner={partner} result={resultFor('identity')} />
+        <ProfilePayoutCard partner={partner} result={resultFor('payout')} />
+        <ProfileDocumentsCard partner={partner} result={resultFor('documents')} />
+        <Section
+          title="Thỏa thuận"
+          description="Các phiên bản điều khoản đã được hệ thống ghi nhận."
+        >
+          <div id="agreements" className="scroll-mt-6">
+            {agreements.length ? (
+              <DetailGrid columns={2}>
+                {agreements.map((agreement) => (
+                  <DetailField
+                    key={`${agreement.agreementType}:${agreement.version}:${agreement.acceptedAt}`}
+                    label={
+                      agreement.agreementType === 'partner_terms'
+                        ? 'Điều khoản đối tác'
+                        : agreement.agreementType === 'commission_schedule'
+                          ? 'Biểu phí hoa hồng'
+                          : 'Tài trợ khuyến mãi'
+                    }
+                    value={
+                      <span className="space-y-1">
+                        <span className="block font-medium">Phiên bản {agreement.version}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Ghi nhận <DateTimeValue iso={agreement.acceptedAt} />
+                        </span>
                       </span>
-                    </span>
-                  }
-                />
-              ))}
-            </DetailGrid>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Chưa có phiên bản thỏa thuận nào được ghi nhận.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                    }
+                  />
+                ))}
+              </DetailGrid>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Chưa có phiên bản thỏa thuận nào được ghi nhận.
+              </p>
+            )}
+          </div>
+        </Section>
+      </FormSurface>
     </div>
   );
 }

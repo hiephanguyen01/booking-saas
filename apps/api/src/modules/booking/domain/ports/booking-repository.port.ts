@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@booking/contracts';
+import type { AttributeField, BookingListingSnapshot, BookingStatus } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPage } from '../../../../shared/pagination/pagination';
 import type { TransitionActor } from '../booking-state-machine';
@@ -29,6 +29,9 @@ export interface BookingRecord {
   listingDescription: string | null;
   listingImageUrl: string | null;
   listingAttributes: unknown;
+  listingAttributeSchema: AttributeField[];
+  listingCapacity: number | null;
+  listingGroup: { title: string; slug: string } | null;
   partnerId: string;
   partnerName: string;
   resourceId: string;
@@ -67,6 +70,7 @@ export interface BookingRecord {
   commissionSnapshot: unknown;
   /** Frozen checkout quote (§9). */
   pricingSnapshot: unknown;
+  listingSnapshot: BookingListingSnapshot;
   /** Affiliate attribution resolved at checkout (§15.1) — null when no referral. */
   affiliateId: string | null;
   referralCode: string | null;
@@ -144,6 +148,7 @@ export interface InsertBookingData {
   cancellationPolicyId: string | null;
   cancellationPolicySnapshot: unknown;
   pricingSnapshot: unknown;
+  listingSnapshot: BookingListingSnapshot;
   customerNote: string | null;
   /** Promotion applied at checkout (Task 1.11) — all null when no code used. */
   promotionId?: string | null;
@@ -246,10 +251,7 @@ export interface IBookingRepository {
     filters: PartnerCalendarFilters,
   ): Promise<PartnerCalendarBooking[]>;
   /** Tenant-wide booking list (RLS-scoped by `forTenant`) for the dashboard, offset-paginated. */
-  listByTenant(
-    tx: PrismaTx,
-    filters: TenantBookingFilters,
-  ): Promise<RepoPage<BookingRecord>>;
+  listByTenant(tx: PrismaTx, filters: TenantBookingFilters): Promise<RepoPage<BookingRecord>>;
   /** Full transition audit trail for one booking, oldest first (§8.2). */
   listStatusHistory(tx: PrismaTx, bookingId: string): Promise<BookingStatusHistoryRecord[]>;
   /** Set/clear the partner's private note (§8.2). `null` clears it. */

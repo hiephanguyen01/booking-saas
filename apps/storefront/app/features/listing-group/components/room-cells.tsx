@@ -1,11 +1,6 @@
 import type { AttributeField, HourlySlot } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@booking/ui/components/ui/collapsible';
-import { Check, ChevronDown, Clock3, MapPin, Users } from 'lucide-react';
+import { Check, Clock3, MapPin } from 'lucide-react';
 import { PendingLink } from '~/components/pending-link';
 import { NsI18n, useTranslation } from '@booking/i18n';
 import { formatListingLocation, formatVnd } from '~/lib/ui';
@@ -16,11 +11,11 @@ import {
   checkoutHref,
   type RoomAvailabilityState,
 } from '~/features/booking-widget/lib/slot-selection';
-import { roomCapacity, specCards } from '~/features/listing-group/lib/room-attributes';
-import { AttributeSpecCards } from '~/components/attribute-spec-cards';
+import { specCards } from '~/lib/listing-attributes';
 import { SlotPicker } from '~/features/booking-widget/components/slot-picker';
 import { RoomBookingDialog } from './room-booking-dialog';
 import { RoomPhotoStrip } from '~/components/room-photo-strip';
+import { OfferingDetailsDisclosure } from '~/components/offering-details-disclosure';
 
 export function RoomDetails({
   option,
@@ -53,39 +48,11 @@ export function RoomDetails({
           onOpenPhoto={onOpenPhoto}
         />
       ) : null}
-      {cards.length || description ? (
-        <Collapsible>
-          <CollapsibleTrigger className="inline-flex items-center gap-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {t('group.viewRoomDetails')} <ChevronDown className="size-4" aria-hidden="true" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-4 pt-3">
-            {cards.length ? <AttributeSpecCards cards={cards} /> : null}
-            {description ? <p className="leading-6 text-muted-foreground">{description}</p> : null}
-          </CollapsibleContent>
-        </Collapsible>
-      ) : (
-        <span className="text-muted-foreground">{t('group.roomInfoPending')}</span>
-      )}
-    </div>
-  );
-}
-
-export function CapacityDetails({ option }: { option: RoomOption }) {
-  const { t } = useTranslation(NsI18n.Listing);
-  const capacity = roomCapacity(option.child.attributes);
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="font-medium">{t('group.capacity')}</p>
-        <p className="mt-2 flex items-center gap-2 text-muted-foreground">
-          <Users className="size-4" aria-hidden="true" />
-          {capacity ? t('group.maxGuests', { count: capacity }) : t('group.notProvided')}
-        </p>
-      </div>
-      <div>
-        <p className="font-medium">{t('group.surcharge')}</p>
-        <p className="mt-2 text-muted-foreground">{t('group.surchargePolicy')}</p>
-      </div>
+      <OfferingDetailsDisclosure
+        cards={cards}
+        description={description}
+        emptyLabel={t('group.roomInfoPending')}
+      />
     </div>
   );
 }

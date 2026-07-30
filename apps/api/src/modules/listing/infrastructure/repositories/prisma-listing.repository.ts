@@ -9,7 +9,11 @@ import type {
   ModerationActor,
   PublishStatus,
 } from '@booking/contracts';
-import { toStatusCounts, type RepoPageWithCounts, pageOffset } from '../../../../shared/pagination/pagination';
+import {
+  toStatusCounts,
+  type RepoPageWithCounts,
+  pageOffset,
+} from '../../../../shared/pagination/pagination';
 import { resolveEffectivePolicy } from '../../domain/cancellation-policy-fallback';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
@@ -35,7 +39,8 @@ const LISTING_INCLUDE = {
     select: { name: true, verificationStatus: true, defaultCancellationPolicy: POLICY_SELECT },
   },
   tenant: { select: { defaultCancellationPolicy: POLICY_SELECT } },
-  listingType: { select: { bookingSelection: true } },
+  listingType: { select: { bookingSelection: true, attributeSchema: true } },
+  group: { select: { title: true, slug: true } },
 } as const satisfies Prisma.ListingInclude;
 
 type Row = Prisma.ListingGetPayload<{ include: typeof LISTING_INCLUDE }>;
@@ -76,9 +81,11 @@ function toRecord(l: Row): ListingRecord {
     attributes: (l.attributes ?? {}) as Record<string, unknown>,
     bookingModes: l.bookingModes as BookingMode[],
     bookingSelection: l.listingType.bookingSelection as BookingSelection,
+    attributeSchema: (l.listingType.attributeSchema ?? []) as unknown as AttributeField[],
     modeConfig: (l.modeConfig ?? {}) as Record<string, unknown>,
     stockQuantity: l.stockQuantity,
     capacity: l.capacity,
+    group: l.group,
     bufferBefore: l.bufferBefore,
     bufferAfter: l.bufferAfter,
     approvalRequired: l.approvalRequired,
