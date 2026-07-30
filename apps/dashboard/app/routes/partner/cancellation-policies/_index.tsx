@@ -3,10 +3,11 @@ import { Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import type { CancellationPolicyResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiDelete, apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { CancellationTiers } from '~/components/cancellation-tiers';
 import { dashboardPaths } from '~/constants/paths';
@@ -114,10 +115,10 @@ export default function PartnerCancellationPolicies({
           {error ?? actionError}
         </div>
       ) : null}
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={policies}
-        getRowKey={(p) => p.id}
+        getRowKey={(policy) => policy.id}
         emptyMessage='Chưa có chính sách huỷ nào. Nhấn "Thêm chính sách" để tạo chính sách đầu tiên.'
       />
     </div>

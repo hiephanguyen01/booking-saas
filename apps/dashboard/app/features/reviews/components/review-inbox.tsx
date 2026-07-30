@@ -11,14 +11,13 @@ import {
   DialogTitle,
 } from '@booking/ui/components/ui/dialog';
 import { Textarea } from '@booking/ui/components/ui/textarea';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { ReviewMediaGallery } from '@booking/ui/components/review/review-media-gallery';
 import { Clock, Images, MessageSquareText, Star } from 'lucide-react';
 import { useNavigation, useSearchParams, useSubmit } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
-import { PaginationBar } from '~/components/pagination-bar';
-import { ListToolbar } from '~/components/list-toolbar';
 import { StatCard } from '~/components/stat-card';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { readListParams } from '~/lib/pagination';
@@ -167,38 +166,36 @@ export function ReviewInbox({
         </div>
       ) : null}
 
-      <ListToolbar
-        spec={REVIEW_FILTER_SPEC}
-        filters={filters}
+      <DashboardDataTable
+        columns={columns}
+        data={items}
+        getRowKey={(review) => review.id}
+        filters={REVIEW_FILTER_SPEC}
+        filterValues={filters}
         resetHref={resetHref}
         pageSize={pageSize}
+        showTable={result !== null}
+        emptyMessage={
+          hasActiveFilters(filters)
+            ? 'Không có đánh giá nào khớp bộ lọc.'
+            : 'Chưa có đánh giá nào.'
+        }
+        pagination={
+          result
+            ? {
+                page: result.page,
+                pageSize: result.pageSize,
+                total: result.total,
+                hrefFor: ({ page, pageSize: size }) => {
+                  const next = new URLSearchParams(searchParams);
+                  next.set('page', String(page));
+                  next.set('pageSize', String(size));
+                  return `?${next.toString()}`;
+                },
+              }
+            : undefined
+        }
       />
-
-      {result ? (
-        <>
-          <DataTable
-            columns={columns}
-            data={items}
-            getRowKey={(review) => review.id}
-            emptyMessage={
-              hasActiveFilters(filters)
-                ? 'Không có đánh giá nào khớp bộ lọc.'
-                : 'Chưa có đánh giá nào.'
-            }
-          />
-          <PaginationBar
-            page={result.page}
-            pageSize={result.pageSize}
-            total={result.total}
-            hrefFor={({ page, pageSize: size }) => {
-              const next = new URLSearchParams(searchParams);
-              next.set('page', String(page));
-              next.set('pageSize', String(size));
-              return `?${next.toString()}`;
-            }}
-          />
-        </>
-      ) : null}
 
       <Dialog
         open={active !== null}

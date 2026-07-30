@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigation, useSubmit } from 'react-router';
 import type { PlanResponse } from '@booking/contracts';
-import { DataTable } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
@@ -13,6 +12,7 @@ import { buildPlanColumns } from '~/features/admin/components/plans/plan-table-c
 import { CreatePlanCard } from '~/features/admin/components/plans/create-plan-card';
 import { EditPlanDialog } from '~/features/admin/components/plans/edit-plan-dialog';
 import { ErrorBanner } from '~/components/action-feedback';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 
@@ -74,14 +74,12 @@ export default function PlansPage({ loaderData, actionData }: Route.ComponentPro
       <fieldset disabled={busy} className="contents">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-3 lg:col-span-2">
-            <div className="overflow-x-auto">
-              <DataTable
-                columns={columns}
-                data={plans}
-                getRowKey={(p) => p.id}
-                emptyMessage="Chưa có gói nào. Tạo gói đầu tiên ở bên phải."
-              />
-            </div>
+            <DashboardDataTable
+              columns={columns}
+              data={plans}
+              getRowKey={(plan) => plan.id}
+              emptyMessage="Chưa có gói nào. Tạo gói đầu tiên ở bên phải."
+            />
           </div>
 
           <CreatePlanCard

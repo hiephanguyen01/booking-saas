@@ -2,7 +2,7 @@ import { Link, useSearchParams } from 'react-router';
 import type { Paginated, PromotionResponse } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Plus, ArrowUpRight } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
@@ -16,9 +16,8 @@ import { SCOPE_LABELS } from '~/constants/promotion';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
 import { PROMOTION_FILTER_SPEC } from '~/features/promotions/lib/promotion-filters';
-import { ListToolbar } from '~/components/list-toolbar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
-import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Khuyến mãi · Tenant · BookingOS' }];
@@ -103,25 +102,21 @@ export default function TenantPromotions({ loaderData }: Route.ComponentProps) {
         <Card><CardContent className="p-4 text-sm text-destructive">{error}</CardContent></Card>
       ) : null}
 
-      <ListToolbar
-        spec={PROMOTION_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.tenant.promotions}
-        pageSize={pageSize}
-      />
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={promotions}
-        getRowKey={(p) => p.id}
+        getRowKey={(promotion) => promotion.id}
+        filters={PROMOTION_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.tenant.promotions}
+        pageSize={pageSize}
         emptyMessage={
           hasActiveFilters(filters)
             ? 'Không có mã khớp bộ lọc.'
             : 'Chưa có mã khuyến mãi nào. Nhấn "Tạo mã mới" để tạo chương trình đầu tiên.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

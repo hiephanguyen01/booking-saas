@@ -5,12 +5,11 @@ import type {
   ContentReportStatus,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Link, useSearchParams } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
-import { ListToolbar } from '~/components/list-toolbar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
-import { PaginationBar } from '~/components/pagination-bar';
 import { StatusFilterTabs } from '~/components/status-filter-tabs';
 import { dashboardPaths } from '~/constants/paths';
 import { formatDateTime } from '~/lib/format';
@@ -112,33 +111,32 @@ export function ContentReportInbox({
         hrefFor={hrefForStatus}
         counts={result?.counts}
       />
-      <ListToolbar
-        spec={CONTENT_REPORT_FILTER_SPEC}
-        filters={filters}
+      <DashboardDataTable
+        columns={columns}
+        data={result?.items ?? []}
+        getRowKey={(report) => report.id}
+        filters={CONTENT_REPORT_FILTER_SPEC}
+        filterValues={filters}
         resetHref={dashboardPaths.tenant.contentReports}
         pageSize={list.pageSize}
+        showTable={result !== null}
+        emptyMessage="Chưa có báo cáo phù hợp bộ lọc."
+        pagination={
+          result
+            ? {
+                page: result.page,
+                pageSize: result.pageSize,
+                total: result.total,
+                hrefFor: ({ page, pageSize }) => {
+                  const next = new URLSearchParams(searchParams);
+                  next.set('page', String(page));
+                  next.set('pageSize', String(pageSize));
+                  return `?${next}`;
+                },
+              }
+            : undefined
+        }
       />
-      {result ? (
-        <>
-          <DataTable
-            columns={columns}
-            data={result.items}
-            getRowKey={(report) => report.id}
-            emptyMessage="Chưa có báo cáo phù hợp bộ lọc."
-          />
-          <PaginationBar
-            page={result.page}
-            pageSize={result.pageSize}
-            total={result.total}
-            hrefFor={({ page, pageSize }) => {
-              const next = new URLSearchParams(searchParams);
-              next.set('page', String(page));
-              next.set('pageSize', String(pageSize));
-              return `?${next}`;
-            }}
-          />
-        </>
-      ) : null}
     </div>
   );
 }

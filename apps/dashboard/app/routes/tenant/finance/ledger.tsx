@@ -6,7 +6,7 @@ import {
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { InfoHint } from '@booking/ui/components/ui/info-hint';
 import { ArrowLeft } from 'lucide-react';
 import type { Route } from './+types/ledger';
@@ -15,13 +15,11 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { LEDGER_ENTRY_LABEL, LEDGER_OWNER_LABEL } from '~/constants/finance';
 import { formatVnd, formatDateTime } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { amountToneClass } from '~/components/money';
-import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
-import { PaginationBar } from '~/components/pagination-bar';
-import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Sổ cái · Tài chính · Tenant · BookingOS' }];
@@ -37,7 +35,7 @@ const LEDGER_FILTER_SPEC: FilterSpec = [
       label: LEDGER_ENTRY_LABEL[t],
     })),
   },
-  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày' },
+  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày ghi nhận' },
 ];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
@@ -163,27 +161,22 @@ export default function TenantLedger({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      <ListToolbar
-        spec={LEDGER_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.tenant.ledger}
-        pageSize={pageSize}
-      />
-
-      <ErrorBanner error={error} />
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={items}
-        getRowKey={(e) => e.id}
+        getRowKey={(entry) => entry.id}
+        filters={LEDGER_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.tenant.ledger}
+        pageSize={pageSize}
+        error={error}
         emptyMessage={
           hasFilters
             ? 'Không có bút toán khớp bộ lọc.'
             : 'Chưa có bút toán nào. Bút toán sẽ xuất hiện sau giao dịch đầu tiên trên cửa hàng.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

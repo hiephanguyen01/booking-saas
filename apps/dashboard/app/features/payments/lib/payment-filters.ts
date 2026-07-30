@@ -21,5 +21,5 @@ export const PAYMENT_FILTER_SPEC: FilterSpec = [
     label: 'Loại',
     options: Object.entries(PAYMENT_KIND_LABEL).map(([value, label]) => ({ value, label })),
   },
-  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày' },
+  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày giao dịch' },
 ];

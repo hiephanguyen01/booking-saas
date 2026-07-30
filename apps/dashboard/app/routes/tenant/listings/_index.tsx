@@ -9,7 +9,7 @@ import type {
 } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { ClipboardCheck, Eye } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
@@ -22,13 +22,11 @@ import { RelationshipHint } from '~/components/relationship-hint';
 import { EntityRef } from '~/components/entity-ref';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { StatusFilterTabs } from '~/components/status-filter-tabs';
-import { ListToolbar } from '~/components/list-toolbar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { listingPriceFrom } from '~/lib/listing-price';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
-import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tin đăng · Tenant · BookingOS' }];
@@ -191,30 +189,37 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
-      <ListToolbar
-        spec={LISTINGS_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.tenant.listings}
-        pageSize={pageSize}
-      />
-
-      <StatusFilterTabs
-        filters={FILTERS}
-        value={statusValue}
-        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
-        counts={counts}
-      />
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={listings}
-        getRowKey={(l) => l.id}
+        getRowKey={(listing) => listing.id}
+        filters={LISTINGS_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.tenant.listings}
+        pageSize={pageSize}
+        tabs={{
+          activeValue: statusValue,
+          ariaLabel: 'Lọc tin đăng theo trạng thái',
+          items: FILTERS.map((filter) => ({
+            value: filter.value,
+            href: filterHref({ status: filter.value === 'all' ? undefined : filter.value }),
+            label: (
+              <span className="inline-flex items-center gap-2">
+                {filter.label}
+                {counts ? (
+                  <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
+                    {counts[filter.value] ?? 0}
+                  </span>
+                ) : null}
+              </span>
+            ),
+          })),
+        }}
         emptyMessage={
           hasActiveFilters(filters) ? 'Không có tin đăng khớp bộ lọc.' : 'Không có tin đăng nào khớp bộ lọc.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

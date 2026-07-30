@@ -1,17 +1,16 @@
 import { Link, useSearchParams } from 'react-router';
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { BookingStatusBadge } from '~/components/status-badge';
-import { StatusFilterTabs } from '~/components/status-filter-tabs';
-import { ListToolbar } from '~/components/list-toolbar';
 import { Money } from '~/components/money';
 import { formatDate, formatTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
-import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
+import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { BOOKINGS_FILTER_SPEC } from '~/features/bookings/lib/booking-filters';
 import { dashboardPaths } from '~/constants/paths';
 import { runPartnerBookingAction } from '~/features/bookings/server/partner-booking-actions.server';
@@ -29,17 +28,26 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: 'completed', label: 'Hoàn tất' },
   { value: 'cancelled', label: 'Đã huỷ' },
 ];
-const STATUS_VALUES = STATUS_FILTERS.filter((f) => f.value !== 'all').map((f) => f.value);
+const PARTNER_BOOKINGS_FILTER_SPEC: FilterSpec = [
+  ...BOOKINGS_FILTER_SPEC.map((field) =>
+    field.kind === 'date-range' ? { ...field, label: 'Ngày diễn ra' } : field,
+  ),
+  {
+    kind: 'enum',
+    key: 'status',
+    label: 'Trạng thái',
+    allLabel: 'Tất cả trạng thái',
+    options: STATUS_FILTERS.filter(({ value }) => value !== 'all'),
+  },
+];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.bookings.read');
   const { toApiQuery } = readListParams(url.searchParams);
-  const statusRaw = url.searchParams.get('status') ?? '';
-  const status = STATUS_VALUES.includes(statusRaw) ? statusRaw : '';
-  const { filters, apiFilters } = readListFilters(url.searchParams, BOOKINGS_FILTER_SPEC);
+  const { filters, apiFilters } = readListFilters(url.searchParams, PARTNER_BOOKINGS_FILTER_SPEC);
   // No fixed window any more: `from`/`to` come from the filters (unbounded when unset).
   const feed = await apiGet<PartnerCalendarBookingResponse[]>('/partner/bookings', auth, {
-    query: toApiQuery({ status, ...apiFilters }),
+    query: toApiQuery(apiFilters),
     signal: request.signal,
   });
   return {
@@ -49,7 +57,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     canManage: can('partner.bookings.cancel'),
     canWrite: can('partner.bookings.write'),
     loadError: feed.ok ? null : (feed.error ?? 'Không tải được danh sách lượt đặt.'),
-    filters: { ...filters, status },
+    filters,
     actionNow: Date.now(),
   };
 }
@@ -62,8 +70,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps) {
   const { bookings, canApprove, canManage, canWrite, loadError, filters, actionNow } = loaderData;
   const [searchParams] = useSearchParams();
-  const { pageSize, filterHref } = readListParams(searchParams);
-  const statusValue = filters.status || 'all';
+  const { pageSize } = readListParams(searchParams);
   const pendingCount = bookings.filter((b) => b.status === 'pending_approval').length;
 
   const columns: DataTableColumn<PartnerCalendarBookingResponse>[] = [
@@ -160,33 +167,17 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
         }
       />
 
-      <ListToolbar
-        spec={BOOKINGS_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.partner.bookings}
-        pageSize={pageSize}
-      />
-
-      <StatusFilterTabs
-        filters={STATUS_FILTERS}
-        value={statusValue}
-        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
-      />
-
-      {loadError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {loadError}
-        </div>
-      ) : null}
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={bookings}
-        getRowKey={(b) => b.id}
+        getRowKey={(booking) => booking.id}
+        filters={PARTNER_BOOKINGS_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.partner.bookings}
+        pageSize={pageSize}
+        error={loadError}
         emptyMessage={
-          hasActiveFilters(filters)
-            ? 'Không có lượt đặt nào khớp bộ lọc.'
-            : 'Chưa có lượt đặt nào.'
+          hasActiveFilters(filters) ? 'Không có lượt đặt nào khớp bộ lọc.' : 'Chưa có lượt đặt nào.'
         }
       />
     </div>

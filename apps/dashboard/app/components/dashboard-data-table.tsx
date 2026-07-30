@@ -52,7 +52,7 @@ function DashboardDataTableTabsNav<T extends DashboardDataTableTab>({
   return (
     <nav
       aria-label={ariaLabel ?? 'Điều hướng danh sách'}
-      className="flex flex-wrap items-end gap-x-5 gap-y-1 px-4 pt-1 lg:px-5"
+      className="flex flex-wrap items-end gap-x-5 gap-y-1 px-0 pt-1"
     >
       {items.map((item) => {
         const isActive = item.value === activeValue;
@@ -80,7 +80,7 @@ function DashboardDataTableTabsNav<T extends DashboardDataTableTab>({
 
 export interface DashboardDataTableProps<T> extends Omit<
   DataTableProps<T>,
-  'columns' | 'visibleColumnIds'
+  'columns' | 'visibleColumnIds' | 'showRowDividers'
 > {
   columns: DataTableColumn<T>[];
   /** URL-backed list views, rendered above the optional toolbar. */
@@ -97,6 +97,8 @@ export interface DashboardDataTableProps<T> extends Omit<
   enableColumnVisibility?: boolean;
   pagination?: DashboardDataTablePagination;
   error?: ReactNode;
+  /** Keep tabs/toolbar/error visible while intentionally hiding the table surface. */
+  showTable?: boolean;
   contentClassName?: string;
 }
 
@@ -118,6 +120,7 @@ export function DashboardDataTable<T>({
   enableColumnVisibility = false,
   pagination,
   error,
+  showTable = true,
   contentClassName,
   className,
   ...tableProps
@@ -198,7 +201,7 @@ export function DashboardDataTable<T>({
     <section className={cn('w-full min-w-0 max-w-full bg-transparent', className)}>
       {tabs ? <DashboardDataTableTabsNav {...tabs} /> : null}
       {showToolbar ? (
-        <div className="w-full min-w-0 max-w-full px-4 py-4 lg:px-5">
+        <div className="w-full min-w-0 max-w-full px-0 py-4">
           <ListToolbar
             spec={filters}
             filters={filterValues}
@@ -220,23 +223,25 @@ export function DashboardDataTable<T>({
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          'w-full min-w-0 max-w-full overflow-hidden p-4 lg:p-5',
-          contentClassName,
-        )}
-      >
-        <DataTable
-          {...tableProps}
-          columns={columns}
-          visibleColumnIds={visibleColumnIds}
-          headerClassName="bg-muted/55"
-          showRowDividers={false}
-          className="w-full min-w-0 max-w-full overflow-hidden rounded-none border-0"
-        />
-      </div>
+      {showTable ? (
+        <div
+          className={cn(
+            'w-full min-w-0 max-w-full overflow-hidden p-4 px-0! lg:p-5',
+            contentClassName,
+          )}
+        >
+          <DataTable
+            {...tableProps}
+            columns={columns}
+            visibleColumnIds={visibleColumnIds}
+            headerClassName="bg-muted/55"
+            showRowDividers={false}
+            className="w-full min-w-0 max-w-full overflow-hidden rounded-none border-0"
+          />
+        </div>
+      ) : null}
 
-      {pagination ? (
+      {showTable && pagination ? (
         <div className="px-4 py-4 lg:px-5">
           <PaginationBar {...pagination} />
         </div>

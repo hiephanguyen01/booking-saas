@@ -5,13 +5,12 @@ import type {
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Card, CardContent } from '@booking/ui/components/ui/card';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Heart, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 import { ErrorBanner } from '~/components/action-feedback';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
-import { PaginationBar } from '~/components/pagination-bar';
-import { ListToolbar } from '~/components/list-toolbar';
 import { BarRow, StatCard } from '~/components/stat-card';
 import { readListParams } from '~/lib/pagination';
 import { hasActiveFilters } from '~/lib/list-filters';
@@ -114,38 +113,36 @@ export function FavoritesInbox({
         </div>
       ) : null}
 
-      <ListToolbar
-        spec={FAVORITE_FILTER_SPEC}
-        filters={filters}
+      <DashboardDataTable
+        columns={columns}
+        data={items}
+        getRowKey={(entry) => entry.id}
+        filters={FAVORITE_FILTER_SPEC}
+        filterValues={filters}
         resetHref={resetHref}
         pageSize={pageSize}
+        showTable={result !== null}
+        emptyMessage={
+          hasActiveFilters(filters)
+            ? 'Không có lượt thích nào khớp bộ lọc.'
+            : 'Chưa có lượt thích nào.'
+        }
+        pagination={
+          result
+            ? {
+                page: result.page,
+                pageSize: result.pageSize,
+                total: result.total,
+                hrefFor: ({ page, pageSize: size }) => {
+                  const next = new URLSearchParams(searchParams);
+                  next.set('page', String(page));
+                  next.set('pageSize', String(size));
+                  return `?${next.toString()}`;
+                },
+              }
+            : undefined
+        }
       />
-
-      {result ? (
-        <>
-          <DataTable
-            columns={columns}
-            data={items}
-            getRowKey={(entry) => entry.id}
-            emptyMessage={
-              hasActiveFilters(filters)
-                ? 'Không có lượt thích nào khớp bộ lọc.'
-                : 'Chưa có lượt thích nào.'
-            }
-          />
-          <PaginationBar
-            page={result.page}
-            pageSize={result.pageSize}
-            total={result.total}
-            hrefFor={({ page, pageSize: size }) => {
-              const next = new URLSearchParams(searchParams);
-              next.set('page', String(page));
-              next.set('pageSize', String(size));
-              return `?${next.toString()}`;
-            }}
-          />
-        </>
-      ) : null}
     </div>
   );
 }

@@ -5,16 +5,14 @@ import {
   type SettlementStatusDto,
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
 import { SETTLEMENT_STATUS_LABEL } from '~/constants/finance';
-import { ErrorBanner } from '~/components/action-feedback';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
-import { PaginationBar } from '~/components/pagination-bar';
-import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, type FilterSpec } from '~/lib/list-filters';
@@ -110,15 +108,23 @@ export default function PlatformSettlements({ loaderData }: Route.ComponentProps
   return (
     <div className="space-y-6">
       <PageHeader title="Đối soát giữ tiền" description="Theo dõi tiền đang giữ, tranh chấp, hoàn tiền và chi trả của mọi Tenant." />
-      <ListToolbar
-        spec={SETTLEMENT_FILTER_SPEC}
-        filters={filters}
+      <DashboardDataTable
+        columns={columns}
+        data={result?.items ?? []}
+        getRowKey={(row) => row.id}
+        filters={SETTLEMENT_FILTER_SPEC}
+        filterValues={filters}
         resetHref={dashboardPaths.admin.settlements}
         pageSize={list.pageSize}
+        error={error}
+        emptyMessage="Chưa có khoản tiền giữ nào."
+        pagination={{
+          page: list.page,
+          pageSize: list.pageSize,
+          total: result?.total ?? 0,
+          hrefFor: list.pageHref,
+        }}
       />
-      <ErrorBanner error={error} />
-      <DataTable columns={columns} data={result?.items ?? []} getRowKey={(row) => row.id} emptyMessage="Chưa có khoản tiền giữ nào." />
-      <PaginationBar page={list.page} pageSize={list.pageSize} total={result?.total ?? 0} hrefFor={list.pageHref} />
     </div>
   );
 }

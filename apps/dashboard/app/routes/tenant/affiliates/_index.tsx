@@ -1,7 +1,7 @@
 import { Link, useFetcher, useSearchParams, data as routeData } from 'react-router';
 import type { AffiliateListItem, AffiliateStatusDto, PaginatedWithCounts } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Check, Eye, Ban } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
@@ -10,10 +10,9 @@ import { formatRate } from '~/lib/format';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { PartnerStatusBadge } from '~/components/status-badge';
-import { StatusFilterTabs } from '~/components/status-filter-tabs';
 import { ErrorBanner } from '~/components/action-feedback';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { readListParams } from '~/lib/pagination';
-import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Cộng tác viên · Tenant · BookingOS' }];
@@ -132,21 +131,31 @@ export default function TenantAffiliates({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
-      <StatusFilterTabs
-        filters={FILTERS}
-        value={statusValue}
-        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
-        counts={counts}
-      />
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={affiliates}
-        getRowKey={(a) => a.id}
+        getRowKey={(affiliate) => affiliate.id}
+        tabs={{
+          activeValue: statusValue,
+          ariaLabel: 'Lọc cộng tác viên theo trạng thái',
+          items: FILTERS.map((filter) => ({
+            value: filter.value,
+            href: filterHref({ status: filter.value === 'all' ? undefined : filter.value }),
+            label: (
+              <span className="inline-flex items-center gap-2">
+                {filter.label}
+                {counts ? (
+                  <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
+                    {counts[filter.value] ?? 0}
+                  </span>
+                ) : null}
+              </span>
+            ),
+          })),
+        }}
         emptyMessage="Chưa có cộng tác viên nào trong nhóm này. Cộng tác viên sẽ xuất hiện khi có người đăng ký chương trình giới thiệu của cửa hàng."
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

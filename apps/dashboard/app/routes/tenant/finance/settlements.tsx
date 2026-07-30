@@ -11,17 +11,15 @@ import {
 import { ArrowLeft, CircleDollarSign, Clock3, HandCoins, Scale } from 'lucide-react';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/settlements';
 import { apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { dashboardPaths } from '~/constants/paths';
 import { SETTLEMENT_STATUS_LABEL } from '~/constants/finance';
-import { ErrorBanner } from '~/components/action-feedback';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
-import { PaginationBar } from '~/components/pagination-bar';
-import { ListToolbar } from '~/components/list-toolbar';
 import { StatCard } from '~/components/stat-card';
 import { formatDateTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
@@ -213,25 +211,22 @@ export default function TenantSettlements({ loaderData }: Route.ComponentProps) 
         </div>
       ) : null}
 
-      <ListToolbar
-        spec={filterSpec}
-        filters={{ status, partnerId }}
-        resetHref={dashboardPaths.tenant.settlements}
-        pageSize={list.pageSize}
-      />
-
-      <ErrorBanner error={error} />
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={items}
         getRowKey={(row) => row.id}
-        emptyMessage="Chưa có khoản tiền giữ nào. Khoản tiền giữ sẽ xuất hiện khi có đơn đặt chỗ được thanh toán."
-      />
-      <PaginationBar
-        page={list.page}
+        filters={filterSpec}
+        filterValues={{ status, partnerId }}
+        resetHref={dashboardPaths.tenant.settlements}
         pageSize={list.pageSize}
-        total={total}
-        hrefFor={list.pageHref}
+        error={error}
+        emptyMessage="Chưa có khoản tiền giữ nào. Khoản tiền giữ sẽ xuất hiện khi có đơn đặt chỗ được thanh toán."
+        pagination={{
+          page: list.page,
+          pageSize: list.pageSize,
+          total,
+          hrefFor: list.pageHref,
+        }}
       />
     </div>
   );

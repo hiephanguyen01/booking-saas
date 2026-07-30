@@ -14,5 +14,5 @@ export const PROMOTION_FILTER_SPEC: FilterSpec = [
       { value: 'ended', label: 'Đã kết thúc' },
     ],
   },
-  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày' },
+  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày tạo' },
 ];
