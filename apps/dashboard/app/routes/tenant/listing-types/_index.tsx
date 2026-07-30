@@ -3,7 +3,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { DEFAULT_PAGE_SIZE, type ListingTypeResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiDelete, apiGet } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
@@ -12,7 +12,7 @@ import { RelationshipHint } from '~/components/relationship-hint';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { SEARCH_SCHEDULE_LABEL, STRUCTURE_LABEL } from '~/features/tenant/constants';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
-import { ListToolbar } from '~/components/list-toolbar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
 
 const LISTING_TYPE_FILTER_SPEC: FilterSpec = [
@@ -148,16 +148,14 @@ export default function TenantListingTypes({ loaderData, actionData }: Route.Com
           {error ?? actionError}
         </div>
       ) : null}
-      <ListToolbar
-        spec={LISTING_TYPE_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.tenant.listingTypes}
-        pageSize={DEFAULT_PAGE_SIZE}
-      />
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={types}
-        getRowKey={(t) => t.id}
+        getRowKey={(type) => type.id}
+        filters={LISTING_TYPE_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.tenant.listingTypes}
+        pageSize={DEFAULT_PAGE_SIZE}
         emptyMessage={
           hasActiveFilters(filters) ? 'Không có loại dịch vụ khớp bộ lọc.' : 'Chưa có loại dịch vụ nào.'
         }

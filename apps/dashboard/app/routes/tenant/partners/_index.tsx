@@ -2,7 +2,7 @@ import { Link, useFetcher, useSearchParams, data as routeData } from 'react-rout
 import type { PartnerResponse, PaginatedWithCounts, PartnerStatus } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import { Badge } from '@booking/ui/components/ui/badge';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Check, Eye, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
@@ -11,14 +11,12 @@ import { formatDate } from '~/lib/format';
 import { PARTNER_TYPE_LABEL as TYPE_LABEL } from '~/constants/partner';
 import { PageHeader } from '~/components/page-header';
 import { PartnerStatusBadge, PartnerVerificationBadge } from '~/components/status-badge';
-import { StatusFilterTabs } from '~/components/status-filter-tabs';
-import { ListToolbar } from '~/components/list-toolbar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PhoneLink } from '~/components/contact-link';
 import { ErrorBanner } from '~/components/action-feedback';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { dashboardPaths } from '~/constants/paths';
-import { PaginationBar } from '~/components/pagination-bar';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Đối tác · Tenant · BookingOS' }];
@@ -150,30 +148,37 @@ export default function TenantPartners({ loaderData }: Route.ComponentProps) {
 
       <ErrorBanner error={error} />
 
-      <ListToolbar
-        spec={PARTNERS_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.tenant.partners}
-        pageSize={pageSize}
-      />
-
-      <StatusFilterTabs
-        filters={FILTERS}
-        value={statusValue}
-        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
-        counts={counts}
-      />
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={partners}
-        getRowKey={(p) => p.id}
+        getRowKey={(partner) => partner.id}
+        filters={PARTNERS_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.tenant.partners}
+        pageSize={pageSize}
+        tabs={{
+          activeValue: statusValue,
+          ariaLabel: 'Lọc đối tác theo trạng thái',
+          items: FILTERS.map((filter) => ({
+            value: filter.value,
+            href: filterHref({ status: filter.value === 'all' ? undefined : filter.value }),
+            label: (
+              <span className="inline-flex items-center gap-2">
+                {filter.label}
+                {counts ? (
+                  <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
+                    {counts[filter.value] ?? 0}
+                  </span>
+                ) : null}
+              </span>
+            ),
+          })),
+        }}
         emptyMessage={
           hasActiveFilters(filters) ? 'Không có đối tác khớp bộ lọc.' : 'Chưa có đối tác nào trong nhóm này.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

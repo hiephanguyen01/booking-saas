@@ -8,7 +8,7 @@ import type {
 } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
@@ -18,10 +18,9 @@ import { ErrorBanner } from '~/components/action-feedback';
 import { PageHeader } from '~/components/page-header';
 import { Money } from '~/components/money';
 import { ListingStatusBadge } from '~/components/status-badge';
-import { PaginationBar } from '~/components/pagination-bar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
-import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 
 const LISTING_GROUP_FILTER_SPEC: FilterSpec = [
@@ -188,21 +187,19 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
         description="Duyệt, ẩn hoặc mở lại các tin đăng nhiều hạng mục của đối tác."
       />
       <ErrorBanner error={error ?? actionError} />
-      <ListToolbar
-        spec={LISTING_GROUP_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.tenant.listingGroups}
-        pageSize={pageSize}
-      />
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={groups}
-        getRowKey={(g) => g.id}
+        getRowKey={(group) => group.id}
+        filters={LISTING_GROUP_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.tenant.listingGroups}
+        pageSize={pageSize}
         emptyMessage={
           hasActiveFilters(filters) ? 'Không có tin đăng khớp bộ lọc.' : 'Chưa có tin đăng nào.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

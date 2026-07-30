@@ -11,6 +11,7 @@ import { requireTenant } from '~/features/tenant/server/tenant.server';
 import { formatDateTime, formatRate } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { PageHeader } from '~/components/page-header';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { StatCard } from '~/components/stat-card';
 import { BookingStatusBadge } from '~/components/status-badge';
 import { Money } from '~/components/money';
@@ -20,8 +21,6 @@ import { fetchBookingList } from '~/features/bookings/server/booking-list.server
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
-import { ListToolbar } from '~/components/list-toolbar';
-import { PaginationBar } from '~/components/pagination-bar';
 
 interface PartnerStat {
   partnerId: string;
@@ -173,9 +172,12 @@ function TenantBookingsPage({ status, bookings, total, stats, partnerNames, filt
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
-          <ListToolbar
-            spec={BOOKINGS_FILTER_SPEC}
-            filters={filters}
+          <DashboardDataTable
+            columns={bookingColumns}
+            data={bookings}
+            getRowKey={(booking) => booking.id}
+            filters={BOOKINGS_FILTER_SPEC}
+            filterValues={filters}
             resetHref={dashboardPaths.tenant.bookings}
             pageSize={pageSize}
             actions={
@@ -192,14 +194,9 @@ function TenantBookingsPage({ status, bookings, total, stats, partnerNames, filt
                 </SelectContent>
               </Select>
             }
-          />
-          <DataTable
-            columns={bookingColumns}
-            data={bookings}
-            getRowKey={(b) => b.id}
             emptyMessage={hasActiveFilters(filters) ? 'Không có đơn nào khớp bộ lọc.' : 'Không có đơn nào.'}
+            pagination={{ page, pageSize, total, hrefFor: pageHref }}
           />
-          <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
         </TabsContent>
 
         <TabsContent value="partners" className="space-y-4">
