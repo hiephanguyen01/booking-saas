@@ -11,6 +11,7 @@ import {
   InputGroupInput,
 } from '@booking/ui/components/ui/input-group';
 import { cn } from '@booking/ui/lib/utils';
+import { DateRangeFilter } from '~/components/date-range-filter';
 import type { FilterField, FilterSpec } from '~/lib/list-filters';
 import { hasActiveFilters } from '~/lib/list-filters';
 
@@ -54,6 +55,7 @@ export function ListToolbar({
 }) {
   const submit = useSubmit();
   const [searchParams] = useSearchParams();
+  const formRef = useRef<HTMLFormElement>(null);
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const isMounted = useRef(false);
 
@@ -86,6 +88,16 @@ export function ListToolbar({
     if (!isMounted.current || !form.isConnected) return;
     submit(form, { replace: true });
   };
+  const submitWithOverrides = (form: HTMLFormElement, overrides: Record<string, string>) => {
+    if (!isMounted.current || !form.isConnected) return;
+    const data = new FormData(form);
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) data.set(key, value);
+      else data.delete(key);
+    }
+    data.delete('page');
+    submit(data, { method: 'get', replace: true });
+  };
   const onSearchInput = (event: FormEvent<HTMLInputElement>) => {
     const form = event.currentTarget.form;
     if (!form) return;
@@ -108,6 +120,18 @@ export function ListToolbar({
   const hiddenInputs = (
     <>
       <input type="hidden" name="pageSize" value={pageSize} />
+      {fields.map((field) =>
+        field.kind === 'date-range' ? (
+          <span key={`date-values-${field.fromKey}`} className="hidden">
+            {filters[field.fromKey] ? (
+              <input type="hidden" name={field.fromKey} value={filters[field.fromKey]} />
+            ) : null}
+            {filters[field.toKey] ? (
+              <input type="hidden" name={field.toKey} value={filters[field.toKey]} />
+            ) : null}
+          </span>
+        ) : null,
+      )}
       {preserved.map(([key, value], i) => (
         <input key={`preserved-${key}-${i}`} type="hidden" name={key} value={value} />
       ))}
@@ -116,11 +140,11 @@ export function ListToolbar({
 
   if (layout === 'split') {
     const showPrimaryRow = searchFields.length > 0 || actions;
-    const showFilterRow =
-      filterFields.length > 0 || customFilters || utilities || activeFilters;
+    const showFilterRow = filterFields.length > 0 || customFilters || utilities || activeFilters;
 
     return (
       <Form
+        ref={formRef}
         method="get"
         className={cn('flex min-w-0 w-full flex-col items-stretch gap-3', className)}
       >
@@ -135,6 +159,15 @@ export function ListToolbar({
                   filters={filters}
                   onSearchInput={onSearchInput}
                   onControlChange={onControlChange}
+                  onDateRangeApply={(field, from, to) => {
+                    const form = formRef.current;
+                    if (form) {
+                      submitWithOverrides(form, {
+                        [field.fromKey]: from,
+                        [field.toKey]: to,
+                      });
+                    }
+                  }}
                   compact
                   split
                 />
@@ -157,6 +190,15 @@ export function ListToolbar({
                 filters={filters}
                 onSearchInput={onSearchInput}
                 onControlChange={onControlChange}
+                onDateRangeApply={(field, from, to) => {
+                  const form = formRef.current;
+                  if (form) {
+                    submitWithOverrides(form, {
+                      [field.fromKey]: from,
+                      [field.toKey]: to,
+                    });
+                  }
+                }}
                 compact={variant === 'compact'}
                 split
               />
@@ -185,6 +227,7 @@ export function ListToolbar({
 
   return (
     <Form
+      ref={formRef}
       method="get"
       className={cn(
         'flex flex-wrap items-end gap-3',
@@ -200,6 +243,15 @@ export function ListToolbar({
           filters={filters}
           onSearchInput={onSearchInput}
           onControlChange={onControlChange}
+          onDateRangeApply={(field, from, to) => {
+            const form = formRef.current;
+            if (form) {
+              submitWithOverrides(form, {
+                [field.fromKey]: from,
+                [field.toKey]: to,
+              });
+            }
+          }}
           compact={variant === 'compact'}
         />
       ))}
@@ -235,6 +287,7 @@ function ToolbarField({
   filters,
   onSearchInput,
   onControlChange,
+  onDateRangeApply,
   compact,
   split = false,
 }: {
@@ -242,6 +295,11 @@ function ToolbarField({
   filters: Record<string, string>;
   onSearchInput: (e: FormEvent<HTMLInputElement>) => void;
   onControlChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onDateRangeApply: (
+    field: Extract<FilterField, { kind: 'date-range' }>,
+    from: string,
+    to: string,
+  ) => void;
   compact: boolean;
   split?: boolean;
 }) {
@@ -308,29 +366,12 @@ function ToolbarField({
     );
   }
   return (
-    <>
-      <div className={cn('space-y-1.5', split && 'w-full sm:w-auto')}>
-        <Label htmlFor={field.fromKey}>{field.label} từ</Label>
-        <Input
-          id={field.fromKey}
-          name={field.fromKey}
-          type="date"
-          defaultValue={filters[field.fromKey] ?? ''}
-          className={cn('w-auto', split && 'w-full sm:w-auto')}
-          onChange={onControlChange}
-        />
-      </div>
-      <div className={cn('space-y-1.5', split && 'w-full sm:w-auto')}>
-        <Label htmlFor={field.toKey}>{field.label} đến</Label>
-        <Input
-          id={field.toKey}
-          name={field.toKey}
-          type="date"
-          defaultValue={filters[field.toKey] ?? ''}
-          className={cn('w-auto', split && 'w-full sm:w-auto')}
-          onChange={onControlChange}
-        />
-      </div>
-    </>
+    <DateRangeFilter
+      field={field}
+      from={filters[field.fromKey] ?? ''}
+      to={filters[field.toKey] ?? ''}
+      onApply={(from, to) => onDateRangeApply(field, from, to)}
+      className={cn(split && 'w-full sm:w-auto')}
+    />
   );
 }

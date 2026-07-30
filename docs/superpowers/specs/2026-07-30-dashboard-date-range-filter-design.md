@@ -17,7 +17,7 @@ future `DashboardDataTable` receives the same interaction without route-specific
 The closed trigger shows the field's contextual label while no range is active, for example:
 
 - `Ngày tạo`
-- `Ngày đặt`
+- `Ngày diễn ra`
 - `Ngày giao dịch`
 - `Ngày ghi nhận`
 
@@ -67,7 +67,8 @@ No browser-side API request is introduced.
 Existing generic `Ngày` labels are replaced with the closest domain meaning while keeping the same
 query keys:
 
-- bookings: `Ngày đặt`;
+- tenant bookings: `Ngày tạo` because the list filters booking creation time;
+- partner bookings: `Ngày diễn ra` because the calendar feed filters timeslot overlap;
 - payments and transactions: `Ngày giao dịch`;
 - reviews, promotions, affiliate commissions: `Ngày tạo`;
 - ledger: `Ngày ghi nhận`.

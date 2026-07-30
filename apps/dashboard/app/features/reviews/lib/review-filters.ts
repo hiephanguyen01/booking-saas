@@ -20,5 +20,5 @@ export const REVIEW_FILTER_SPEC: FilterSpec = [
     allLabel: 'Tất cả số sao',
     options: [5, 4, 3, 2, 1].map((r) => ({ value: String(r), label: `${r} sao` })),
   },
-  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày' },
+  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày tạo' },
 ];

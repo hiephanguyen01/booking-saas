@@ -22,7 +22,7 @@ const COMMISSION_FILTER_SPEC: FilterSpec = [
     label: 'Trạng thái',
     options: Object.entries(COMMISSION_STATUS_LABEL).map(([value, label]) => ({ value, label })),
   },
-  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày' },
+  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày tạo' },
 ];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
@@ -57,7 +57,12 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
     },
     {
       header: 'Giá trị đơn',
-      cell: (c) => (c.bookingTotal ? <Money value={c.bookingTotal} /> : <span className="text-muted-foreground">—</span>),
+      cell: (c) =>
+        c.bookingTotal ? (
+          <Money value={c.bookingTotal} />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
       className: 'hidden lg:table-cell text-right',
       headClassName: 'hidden lg:table-cell text-right',
     },

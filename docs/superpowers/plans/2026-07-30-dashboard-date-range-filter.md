@@ -182,8 +182,8 @@ Expected: all commands exit 0.
 Apply these exact labels:
 
 ```ts
-// BOOKINGS_FILTER_SPEC
-label: 'Ngày đặt'
+// BOOKINGS_FILTER_SPEC (tenant created-at semantics)
+label: 'Ngày tạo'
 
 // PAYMENT_FILTER_SPEC
 label: 'Ngày giao dịch'
@@ -238,7 +238,9 @@ Keep the shared bookings spec unchanged for tenant bookings. Add:
 
 ```ts
 const PARTNER_BOOKINGS_FILTER_SPEC: FilterSpec = [
-  ...BOOKINGS_FILTER_SPEC,
+  ...BOOKINGS_FILTER_SPEC.map((field) =>
+    field.kind === 'date-range' ? { ...field, label: 'Ngày diễn ra' } : field,
+  ),
   {
     kind: 'enum',
     key: 'status',
@@ -324,7 +326,7 @@ At `http://localhost:5174/partner/bookings`, confirm:
 
 - no status tabs are rendered;
 - status is a toolbar dropdown and updates `status` in the URL;
-- inactive date trigger says `Ngày đặt`;
+- inactive date trigger says `Ngày diễn ra`;
 - the popup contains exactly six presets;
 - applying a range shows `dd/MM/yyyy – dd/MM/yyyy`, resets page, and preserves status/pageSize/search;
 - Close and Escape do not apply draft values;

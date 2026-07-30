@@ -35,7 +35,7 @@ const LEDGER_FILTER_SPEC: FilterSpec = [
       label: LEDGER_ENTRY_LABEL[t],
     })),
   },
-  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày' },
+  { kind: 'date-range', fromKey: 'from', toKey: 'to', label: 'Ngày ghi nhận' },
 ];
 
 export async function loader({ request, url }: Route.LoaderArgs) {
