@@ -52,7 +52,7 @@ function DashboardDataTableTabsNav<T extends DashboardDataTableTab>({
   return (
     <nav
       aria-label={ariaLabel ?? 'Điều hướng danh sách'}
-      className="flex flex-wrap items-end gap-x-5 gap-y-1 px-4 pt-1 lg:px-5"
+      className="flex flex-wrap items-end gap-x-5 gap-y-1 px-0 pt-1"
     >
       {items.map((item) => {
         const isActive = item.value === activeValue;
@@ -201,7 +201,7 @@ export function DashboardDataTable<T>({
     <section className={cn('w-full min-w-0 max-w-full bg-transparent', className)}>
       {tabs ? <DashboardDataTableTabsNav {...tabs} /> : null}
       {showToolbar ? (
-        <div className="w-full min-w-0 max-w-full px-4 py-4 lg:px-5">
+        <div className="w-full min-w-0 max-w-full px-0 py-4">
           <ListToolbar
             spec={filters}
             filters={filterValues}
@@ -226,7 +226,7 @@ export function DashboardDataTable<T>({
       {showTable ? (
         <div
           className={cn(
-            'w-full min-w-0 max-w-full overflow-hidden p-4 lg:p-5',
+            'w-full min-w-0 max-w-full overflow-hidden p-4 px-0! lg:p-5',
             contentClassName,
           )}
         >
