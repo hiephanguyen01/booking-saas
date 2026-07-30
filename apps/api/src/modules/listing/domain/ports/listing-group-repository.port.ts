@@ -48,6 +48,7 @@ export interface ListingGroupRecord {
   ratingAvg: number | null;
   reviewCount: number;
   bookingCount: number;
+  favoriteCount: number;
   partnerPublic: {
     name: string;
     slug: string;
@@ -65,12 +66,22 @@ export interface ListingGroupRecord {
 export interface IListingGroupRepository {
   create(tx: PrismaTx, tenantId: string, data: NewListingGroup): Promise<ListingGroupRecord>;
   findById(tx: PrismaTx, id: string): Promise<ListingGroupRecord | null>;
+  /** Loads records in any database order; callers restore their requested key order. */
+  findByIds(tx: PrismaTx, ids: readonly string[]): Promise<ListingGroupRecord[]>;
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingGroupRecord | null>;
-  list(tx: PrismaTx, filter?: { partnerId?: string }): Promise<ListingGroupRecord[]>;
+  list(
+    tx: PrismaTx,
+    filter?: { partnerId?: string; listingTypeId?: string; status?: PublishStatus },
+  ): Promise<ListingGroupRecord[]>;
   /** One page of `list`, plus the unpaginated total (§13 pagination shape). */
   listPage(
     tx: PrismaTx,
-    filter: { partnerId?: string; q?: string },
+    filter: {
+      partnerId?: string;
+      listingTypeId?: string;
+      status?: PublishStatus;
+      q?: string;
+    },
     page: { page: number; pageSize: number },
   ): Promise<RepoPage<ListingGroupRecord>>;
   update(

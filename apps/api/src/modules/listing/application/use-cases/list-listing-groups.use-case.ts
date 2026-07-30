@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
 import type { RepoPage } from '../../../../shared/pagination/pagination';
+import type { PublishStatus } from '@booking/contracts';
 import {
   LISTING_GROUP_REPOSITORY,
   type IListingGroupRepository,
@@ -17,7 +18,7 @@ export class ListListingGroupsUseCase {
 
   execute(
     tenantId: string,
-    filter: { partnerId?: string; q?: string },
+    filter: { partnerId?: string; listingTypeId?: string; status?: PublishStatus; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<RepoPage<ListingGroupRecord>> {
     return this.tenantDb.forTenant(tenantId, (tx) => this.repo.listPage(tx, filter, page));

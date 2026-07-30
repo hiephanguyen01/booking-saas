@@ -26,6 +26,7 @@ import { normalizeListingGroupAmenities } from '../../../../shared/domain/listin
  * `readyListingCount` / `priceFrom` never cost a follow-up round trip.
  */
 const GROUP_INCLUDE = {
+  _count: { select: { favorites: true } },
   partner: {
     select: {
       name: true,
@@ -38,6 +39,7 @@ const GROUP_INCLUDE = {
   },
   listings: {
     select: {
+      _count: { select: { bookings: { where: { status: 'completed' } } } },
       description: true,
       photos: true,
       bookingModes: true,
@@ -73,7 +75,8 @@ function toRecord(g: Row): ListingGroupRecord {
     // is a display statistic, never money.
     ratingAvg: g.ratingAvg === null ? null : g.ratingAvg.toNumber(),
     reviewCount: g.reviewCount,
-    bookingCount: g.bookingCount,
+    bookingCount: g.listings.reduce((total, listing) => total + listing._count.bookings, 0),
+    favoriteCount: g._count.favorites,
     partnerPublic: {
       name: g.partner.name,
       slug: g.partner.slug,
@@ -128,14 +131,30 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
     return g ? toRecord(g) : null;
   }
 
+  async findByIds(tx: PrismaTx, ids: readonly string[]): Promise<ListingGroupRecord[]> {
+    if (ids.length === 0) return [];
+    const items = await tx.listingGroup.findMany({
+      where: { id: { in: [...ids] } },
+      include: GROUP_INCLUDE,
+    });
+    return items.map(toRecord);
+  }
+
   async findBySlug(tx: PrismaTx, slug: string): Promise<ListingGroupRecord | null> {
     const g = await tx.listingGroup.findFirst({ where: { slug }, include: GROUP_INCLUDE });
     return g ? toRecord(g) : null;
   }
 
-  async list(tx: PrismaTx, filter: { partnerId?: string } = {}): Promise<ListingGroupRecord[]> {
+  async list(
+    tx: PrismaTx,
+    filter: { partnerId?: string; listingTypeId?: string; status?: PublishStatus } = {},
+  ): Promise<ListingGroupRecord[]> {
     const items = await tx.listingGroup.findMany({
-      where: filter.partnerId ? { partnerId: filter.partnerId } : {},
+      where: {
+        ...(filter.partnerId ? { partnerId: filter.partnerId } : {}),
+        ...(filter.listingTypeId ? { listingTypeId: filter.listingTypeId } : {}),
+        ...(filter.status ? { status: filter.status } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: GROUP_INCLUDE,
     });
@@ -144,11 +163,13 @@ export class PrismaListingGroupRepository implements IListingGroupRepository {
 
   async listPage(
     tx: PrismaTx,
-    filter: { partnerId?: string; q?: string },
+    filter: { partnerId?: string; listingTypeId?: string; status?: PublishStatus; q?: string },
     page: { page: number; pageSize: number },
   ): Promise<RepoPage<ListingGroupRecord>> {
     const where: Prisma.ListingGroupWhereInput = {
       ...(filter.partnerId ? { partnerId: filter.partnerId } : {}),
+      ...(filter.listingTypeId ? { listingTypeId: filter.listingTypeId } : {}),
+      ...(filter.status ? { status: filter.status } : {}),
       ...(filter.q ? { title: { contains: filter.q, mode: 'insensitive' } } : {}),
     };
     const { skip, take } = pageOffset(page);

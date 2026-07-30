@@ -1,7 +1,9 @@
 import {
   uuidSchema,
   type ListingResponse,
+  type Paginated,
   type PaginatedWithCounts,
+  type PartnerListingFeedItemResponse,
   type DepositRequirementResponse,
   type SubmitListingResponse,
 } from '@booking/contracts';
@@ -20,10 +22,12 @@ import {
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
+  ApiExtraModels,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
@@ -35,10 +39,14 @@ import { RequirePermissions } from '../../../identity-access/infrastructure/http
 import { EnforcePlanLimit } from '../../../tenancy/infrastructure/http/decorators/enforce-plan-limit.decorator';
 import { PlanLimitGuard } from '../../../tenancy/infrastructure/http/guards/plan-limit.guard';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
-import { toListingResponse } from '../../application/listing.mapper';
+import {
+  toListingResponse,
+  toPartnerListingFeedItemResponse,
+} from '../../application/listing.mapper';
 import { CreateListingUseCase } from '../../application/use-cases/create-listing.use-case';
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
 import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
+import { ListPartnerListingFeedUseCase } from '../../application/use-cases/list-partner-listing-feed.use-case';
 import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
 import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
 import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
@@ -48,6 +56,8 @@ import { GetListingDepositRequirementUseCase } from '../../application/use-cases
 import {
   CreateListingDto,
   ListingResponseDto,
+  ListingGroupResponseDto,
+  ListPartnerListingFeedQueryDto,
   ListPartnerListingsQueryDto,
   ModerationReasonDto,
   SubmitListingResponseDto,
@@ -68,6 +78,7 @@ export class PartnerListingModerationController {
     private readonly hideListing: HideListingUseCase,
     private readonly republishListing: RepublishListingUseCase,
     private readonly listListings: ListListingsUseCase,
+    private readonly listPartnerListingFeed: ListPartnerListingFeedUseCase,
     private readonly createListing: CreateListingUseCase,
     private readonly getListing: GetListingUseCase,
     private readonly updateListing: UpdateListingUseCase,
@@ -108,10 +119,75 @@ export class PartnerListingModerationController {
     const partnerId = this.tenantContext.partnerIdOrThrow();
     const result = await this.listListings.execute(
       tenantId,
-      { partnerId, groupId: query.groupId, status: query.status, q: query.q },
+      {
+        partnerId,
+        groupId: query.groupId,
+        standaloneOnly: query.standaloneOnly,
+        listingTypeId: query.listingTypeId,
+        status: query.status,
+        q: query.q,
+      },
       { page: query.page, pageSize: query.pageSize },
     );
     return { ...toPaginated(query, result, toListingResponse), counts: result.counts };
+  }
+
+  /**
+   * A globally ordered partner feed of standalone listings and listing groups.
+   * This must remain before `:id`, otherwise the dynamic route captures `feed`.
+   */
+  @RequirePermissions('partner.listings.read')
+  @Get('feed')
+  @ApiOperation({ summary: "List the calling partner's unified listing feed" })
+  @ApiExtraModels(ListingResponseDto, ListingGroupResponseDto)
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      required: ['items', 'page', 'pageSize', 'total'],
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            oneOf: [
+              {
+                type: 'object',
+                required: ['kind', 'item'],
+                properties: {
+                  kind: { type: 'string', enum: ['single'] },
+                  item: { $ref: getSchemaPath(ListingResponseDto) },
+                },
+              },
+              {
+                type: 'object',
+                required: ['kind', 'item'],
+                properties: {
+                  kind: { type: 'string', enum: ['grouped'] },
+                  item: { $ref: getSchemaPath(ListingGroupResponseDto) },
+                },
+              },
+            ],
+          },
+        },
+        page: { type: 'integer', example: 1 },
+        pageSize: { type: 'integer', example: 20 },
+        total: { type: 'integer', example: 0 },
+      },
+    },
+  })
+  async feed(
+    @Query() query: ListPartnerListingFeedQueryDto,
+  ): Promise<Paginated<PartnerListingFeedItemResponse>> {
+    const result = await this.listPartnerListingFeed.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      {
+        partnerId: this.tenantContext.partnerIdOrThrow(),
+        listingTypeId: query.listingTypeId,
+        status: query.status,
+        q: query.q,
+      },
+      { page: query.page, pageSize: query.pageSize },
+    );
+    return toPaginated(query, result, toPartnerListingFeedItemResponse);
   }
 
   /**

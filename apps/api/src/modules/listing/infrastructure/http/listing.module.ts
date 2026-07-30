@@ -12,11 +12,13 @@ import { PrismaCommissionCoverageReader } from '../repositories/prisma-commissio
 import { PrismaReviewAggregateProjector } from '../repositories/prisma-review-aggregate.projector';
 import { AssertListingDepositCoverageUseCase } from '../../application/use-cases/assert-listing-deposit-coverage.use-case';
 import { LISTING_GROUP_REPOSITORY } from '../../domain/ports/listing-group-repository.port';
+import { LISTING_FEED_REPOSITORY } from '../../domain/ports/listing-feed-repository.port';
 import { LISTING_REPOSITORY } from '../../domain/ports/listing-repository.port';
 import { RESOURCE_REPOSITORY } from '../../domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY } from '../../domain/ports/pricing-rule-repository.port';
 import { CANCELLATION_POLICY_REPOSITORY } from '../../domain/ports/cancellation-policy-repository.port';
 import { PrismaListingGroupRepository } from '../repositories/prisma-listing-group.repository';
+import { PrismaListingFeedRepository } from '../repositories/prisma-listing-feed.repository';
 import { PrismaListingRepository } from '../repositories/prisma-listing.repository';
 import { PrismaResourceRepository } from '../repositories/prisma-resource.repository';
 import { PrismaPricingRuleRepository } from '../repositories/prisma-pricing-rule.repository';
@@ -30,6 +32,7 @@ import { CreateResourceUseCase } from '../../application/use-cases/create-resour
 import { ListResourcesUseCase } from '../../application/use-cases/list-resources.use-case';
 import { CreateListingUseCase } from '../../application/use-cases/create-listing.use-case';
 import { ListListingsUseCase } from '../../application/use-cases/list-listings.use-case';
+import { ListPartnerListingFeedUseCase } from '../../application/use-cases/list-partner-listing-feed.use-case';
 import { ListListingsPageUseCase } from '../../application/use-cases/list-listings-page.use-case';
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
@@ -105,6 +108,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
   ],
   providers: [
     { provide: LISTING_GROUP_REPOSITORY, useClass: PrismaListingGroupRepository },
+    { provide: LISTING_FEED_REPOSITORY, useClass: PrismaListingFeedRepository },
     { provide: LISTING_REPOSITORY, useClass: PrismaListingRepository },
     { provide: RESOURCE_REPOSITORY, useClass: PrismaResourceRepository },
     { provide: PRICING_RULE_REPOSITORY, useClass: PrismaPricingRuleRepository },
@@ -123,6 +127,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     AssertListingDepositCoverageUseCase,
     GetListingDepositRequirementUseCase,
     ListListingsUseCase,
+    ListPartnerListingFeedUseCase,
     ListListingsPageUseCase,
     GetListingUseCase,
     UpdateListingUseCase,

@@ -64,7 +64,7 @@ export class TenantListingGroupController {
   async list(@Query() query: ListListingGroupsQueryDto): Promise<Paginated<ListingGroupResponse>> {
     const result = await this.listGroups.execute(
       this.tenantContext.tenantIdOrThrow(),
-      { q: query.q },
+      { listingTypeId: query.listingTypeId, status: query.status, q: query.q },
       query,
     );
     return toPaginated(query, result, toListingGroupResponse);

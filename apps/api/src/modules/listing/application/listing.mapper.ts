@@ -2,6 +2,7 @@ import type {
   CancellationPolicyResponse,
   ListingGroupResponse,
   ListingResponse,
+  PartnerListingFeedItemResponse,
   PricingRuleResponse,
   PublicListingDetailWithTimezoneResponse,
   PublicListingGroupDetailResponse,
@@ -12,6 +13,7 @@ import { computeGroupStats } from '../domain/group-stats';
 import type { CancellationPolicyRecord } from '../domain/ports/cancellation-policy-repository.port';
 import type { ListingGroupRecord } from '../domain/ports/listing-group-repository.port';
 import type { ListingRecord, PublicListingRecord } from '../domain/ports/listing-repository.port';
+import type { PartnerListingFeedItem } from './use-cases/list-partner-listing-feed.use-case';
 import type { ResourceRecord } from '../domain/ports/resource-repository.port';
 import type { PricingRuleRecord } from '../domain/ports/pricing-rule-repository.port';
 import { publicModeConfig } from '../../../shared/domain/pricing/package-config';
@@ -61,6 +63,7 @@ export function toListingGroupResponse(g: ListingGroupRecord): ListingGroupRespo
     ratingAvg: g.ratingAvg,
     reviewCount: g.reviewCount,
     bookingCount: g.bookingCount,
+    favoriteCount: g.favoriteCount,
     createdAt: g.createdAt.toISOString(),
     updatedAt: g.updatedAt.toISOString(),
   };
@@ -105,6 +108,8 @@ export function toListingResponse(l: ListingRecord): ListingResponse {
     partner: l.partner,
     ratingAvg: l.ratingAvg,
     reviewCount: l.reviewCount,
+    bookingCount: l.bookingCount,
+    favoriteCount: l.favoriteCount,
     status: l.status,
     publishedBy: l.publishedBy,
     hiddenBy: l.hiddenBy,
@@ -113,6 +118,16 @@ export function toListingResponse(l: ListingRecord): ListingResponse {
     createdAt: l.createdAt.toISOString(),
     updatedAt: l.updatedAt.toISOString(),
   };
+}
+
+/** Maps the discriminated partner feed without leaking persistence records to HTTP. */
+export function toPartnerListingFeedItemResponse(
+  item: PartnerListingFeedItem,
+): PartnerListingFeedItemResponse {
+  if (item.kind === 'single') {
+    return { kind: 'single', item: toListingResponse(item.item) };
+  }
+  return { kind: 'grouped', item: toListingGroupResponse(item.item) };
 }
 
 export function toResourceResponse(r: ResourceRecord): ResourceResponse {
