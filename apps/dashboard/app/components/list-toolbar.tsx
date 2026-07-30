@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { useRef, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Form, Link, useSearchParams, useSubmit } from 'react-router';
 import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
@@ -55,6 +55,16 @@ export function ListToolbar({
   const submit = useSubmit();
   const [searchParams] = useSearchParams();
   const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const isMounted = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+
+    return () => {
+      isMounted.current = false;
+      clearTimeout(debounce.current);
+    };
+  }, []);
 
   // Keys the toolbar controls own — everything else in the URL is preserved verbatim.
   const owned = new Set<string>(['page', 'pageSize']);
@@ -72,12 +82,18 @@ export function ListToolbar({
     if (!owned.has(key)) preserved.push([key, value]);
   });
 
-  const submitForm = (form: HTMLFormElement) => submit(form, { replace: true });
+  const submitForm = (form: HTMLFormElement) => {
+    if (!isMounted.current || !form.isConnected) return;
+    submit(form, { replace: true });
+  };
   const onSearchInput = (event: FormEvent<HTMLInputElement>) => {
     const form = event.currentTarget.form;
     if (!form) return;
     clearTimeout(debounce.current);
-    debounce.current = setTimeout(() => submitForm(form), SEARCH_DEBOUNCE_MS);
+    debounce.current = setTimeout(() => {
+      debounce.current = undefined;
+      submitForm(form);
+    }, SEARCH_DEBOUNCE_MS);
   };
   const onControlChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (event.currentTarget.form) submitForm(event.currentTarget.form);

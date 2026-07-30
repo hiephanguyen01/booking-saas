@@ -44,10 +44,12 @@ export function ListingSummaryCell({
         <div className="flex items-center gap-2 text-xs tabular-nums">
           <span className="inline-flex items-center gap-1 rounded-full bg-destructive/8 px-2 py-1 text-muted-foreground">
             <Heart className="size-3.5 fill-destructive text-destructive" aria-hidden />
+            <span className="sr-only">Yêu thích: </span>
             {compactCount(favoriteCount)}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-1 text-muted-foreground">
             <Star className="size-3.5 fill-warning text-warning" aria-hidden />
+            <span className="sr-only">Đánh giá: </span>
             {ratingAvg === null ? '—' : ratingAvg.toFixed(1)}
           </span>
         </div>

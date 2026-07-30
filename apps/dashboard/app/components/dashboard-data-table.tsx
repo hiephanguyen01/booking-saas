@@ -162,7 +162,7 @@ export function DashboardDataTable<T>({
     enableColumnVisibility && hideableColumns.length > 0 ? (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size="control">
+          <Button type="button" variant="outline" size="control" aria-label="Hiển thị cột">
             <Columns3 aria-hidden />
             <span className="hidden sm:inline">Cột</span>
           </Button>
