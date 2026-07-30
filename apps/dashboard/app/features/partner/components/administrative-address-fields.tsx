@@ -13,8 +13,10 @@ type AddressValues = FieldValues & {
 
 export function AdministrativeAddressFields<T extends AddressValues>({
   form,
+  embedded = false,
 }: {
   form: UseFormReturn<T>;
+  embedded?: boolean;
 }) {
   const provincesFetcher = useFetcher<{ provinces: AdministrativeProvince[] }>();
   const wardsFetcher = useFetcher<{ provinceCode: string; wards: AdministrativeWard[] }>();
@@ -45,11 +47,8 @@ export function AdministrativeAddressFields<T extends AddressValues>({
   const provinces = provincesFetcher.data?.provinces ?? [];
   const wards = wardsFetcher.data?.provinceCode === provinceCode ? wardsFetcher.data.wards : [];
 
-  return (
-    <Section
-      title="Địa chỉ"
-      description="Địa chỉ này được dùng để hiển thị khu vực hoạt động và giúp khách tìm đúng địa điểm."
-    >
+  const fields = (
+    <>
       <Grid>
         <FieldRenderer<T>
           field={{
@@ -95,6 +94,17 @@ export function AdministrativeAddressFields<T extends AddressValues>({
           />
         </div>
       </Grid>
+    </>
+  );
+
+  if (embedded) return fields;
+
+  return (
+    <Section
+      title="Địa chỉ"
+      description="Địa chỉ này được dùng để hiển thị khu vực hoạt động và giúp khách tìm đúng địa điểm."
+    >
+      {fields}
     </Section>
   );
 }

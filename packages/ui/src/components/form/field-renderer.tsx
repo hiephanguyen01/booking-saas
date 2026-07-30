@@ -445,6 +445,7 @@ function FileControl<T extends FieldValues>({
       accept={field.accept}
       maxSizeMb={field.maxSizeMb}
       maxFiles={field.maxFiles}
+      reorderable={field.reorderable}
       presignEndpoint={field.presignEndpoint}
       disabled={field.disabled}
       variant={field.variant}

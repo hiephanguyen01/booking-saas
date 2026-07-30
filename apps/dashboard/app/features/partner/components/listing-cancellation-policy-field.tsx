@@ -19,17 +19,16 @@ const USE_DEFAULT = '__use_default__';
 export function ListingCancellationPolicyField({
   form,
   policies,
+  embedded = false,
 }: {
   form: UseFormReturn<CreateListingInput>;
   policies: CancellationPolicyResponse[];
+  embedded?: boolean;
 }) {
   const defaultPolicy = policies.find((policy) => policy.isDefault) ?? null;
 
-  return (
-    <Section
-      title="Chính sách hủy"
-      description="Khách sẽ thấy rõ các mốc hoàn tiền này trước khi xác nhận đặt chỗ."
-    >
+  const field = (
+    <>
       <Controller
         control={form.control}
         name="cancellationPolicyId"
@@ -113,6 +112,17 @@ export function ListingCancellationPolicyField({
           );
         }}
       />
+    </>
+  );
+
+  if (embedded) return field;
+
+  return (
+    <Section
+      title="Chính sách hủy"
+      description="Khách sẽ thấy rõ các mốc hoàn tiền này trước khi xác nhận đặt chỗ."
+    >
+      {field}
     </Section>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { CreateListingInput, ListingResponse, ListingTypeResponse } from '@booking/contracts';
 import { Checkbox } from '@booking/ui/components/ui/checkbox';
 import { Input } from '@booking/ui/components/ui/input';
@@ -27,10 +27,12 @@ export function ListingConfig({
   form,
   listingTypes,
   listing,
+  embedded = false,
 }: {
   form: UseFormReturn<CreateListingInput>;
   listingTypes: ListingTypeResponse[];
   listing?: ListingResponse;
+  embedded?: boolean;
 }) {
   const listingTypeId = form.watch('listingTypeId');
   const selectedType = useMemo(
@@ -48,9 +50,9 @@ export function ListingConfig({
   const errors = form.formState.errors;
 
   return (
-    <>
+    <ListingConfigLayoutContext.Provider value={embedded}>
       {selectedType && selectedType.attributeSchema.length > 0 ? (
-        <Section
+        <ConfigSection
           title="Thông tin hạng mục"
           description={`Điền các đặc điểm giúp khách hiểu và so sánh ${selectedType.itemLabel || 'hạng mục'} này.`}
         >
@@ -64,10 +66,10 @@ export function ListingConfig({
               />
             ))}
           </div>
-        </Section>
+        </ConfigSection>
       ) : null}
 
-      <Section
+      <ConfigSection
         title="Cách khách đặt chỗ"
         description="Chọn một hoặc nhiều hình thức. Phần giá tương ứng sẽ xuất hiện ngay bên dưới."
       >
@@ -94,7 +96,7 @@ export function ListingConfig({
         {errors.modeConfig ? (
           <p className="text-xs text-destructive">{String(errors.modeConfig.message)}</p>
         ) : null}
-      </Section>
+      </ConfigSection>
 
       {state.bookingModes.includes('hourly') ? (
         <HourlyConfigSection
@@ -121,7 +123,7 @@ export function ListingConfig({
           stockError={errors.stockQuantity ? [String(errors.stockQuantity.message)] : undefined}
         />
       ) : null}
-    </>
+    </ListingConfigLayoutContext.Provider>
   );
 }
 
@@ -135,7 +137,7 @@ function HourlyConfigSection({
   onChange: (value: DynamicState['hourly']) => void;
 }) {
   return (
-    <Section title="Cấu hình — theo giờ">
+    <ConfigSection title="Cấu hình — theo giờ">
       <Grid>
         {!fixedPackages ? (
           <Field label="Giá / giờ (VND)">
@@ -192,7 +194,7 @@ function HourlyConfigSection({
           onChange={(packages) => onChange({ ...value, packages })}
         />
       ) : null}
-    </Section>
+    </ConfigSection>
   );
 }
 
@@ -206,7 +208,7 @@ function DailyConfigSection({
   onChange: (value: DynamicState['daily']) => void;
 }) {
   return (
-    <Section title="Cấu hình — theo ngày">
+    <ConfigSection title="Cấu hình — theo ngày">
       <Grid>
         {!fixedPackages ? (
           <Field label="Giá / đêm (VND)">
@@ -268,7 +270,7 @@ function DailyConfigSection({
           onChange={(packages) => onChange({ ...value, packages })}
         />
       ) : null}
-    </Section>
+    </ConfigSection>
   );
 }
 
@@ -287,7 +289,7 @@ function InventoryConfigSection({
 }) {
   const unitLower = INVENTORY_UNIT_LABEL[value.unit].toLowerCase();
   return (
-    <Section title="Cấu hình — theo kho">
+    <ConfigSection title="Cấu hình — theo kho">
       <Grid>
         <Field label="Đơn vị">
           <Select
@@ -355,6 +357,40 @@ function InventoryConfigSection({
           />
         </Field>
       </Grid>
-    </Section>
+    </ConfigSection>
+  );
+}
+
+const ListingConfigLayoutContext = createContext(false);
+
+function ConfigSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  const embedded = useContext(ListingConfigLayoutContext);
+
+  if (!embedded) {
+    return (
+      <Section title={title} description={description}>
+        {children}
+      </Section>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border bg-muted/10 p-4 sm:p-5">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </div>
   );
 }
