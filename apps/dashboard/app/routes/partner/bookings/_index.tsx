@@ -1,13 +1,12 @@
 import { Link, useSearchParams } from 'react-router';
 import type { PartnerCalendarBookingResponse } from '@booking/contracts';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { BookingStatusBadge } from '~/components/status-badge';
-import { StatusFilterTabs } from '~/components/status-filter-tabs';
-import { ListToolbar } from '~/components/list-toolbar';
 import { Money } from '~/components/money';
 import { formatDate, formatTime } from '~/lib/format';
 import { readListParams } from '~/lib/pagination';
@@ -160,29 +159,24 @@ export default function PartnerBookingsPage({ loaderData }: Route.ComponentProps
         }
       />
 
-      <ListToolbar
-        spec={BOOKINGS_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.partner.bookings}
-        pageSize={pageSize}
-      />
-
-      <StatusFilterTabs
-        filters={STATUS_FILTERS}
-        value={statusValue}
-        hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
-      />
-
-      {loadError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {loadError}
-        </div>
-      ) : null}
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={bookings}
-        getRowKey={(b) => b.id}
+        getRowKey={(booking) => booking.id}
+        filters={BOOKINGS_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.partner.bookings}
+        pageSize={pageSize}
+        tabs={{
+          activeValue: statusValue,
+          ariaLabel: 'Lọc lượt đặt theo trạng thái',
+          items: STATUS_FILTERS.map((filter) => ({
+            value: filter.value,
+            label: filter.label,
+            href: filterHref({ status: filter.value === 'all' ? undefined : filter.value }),
+          })),
+        }}
+        error={loadError}
         emptyMessage={
           hasActiveFilters(filters)
             ? 'Không có lượt đặt nào khớp bộ lọc.'

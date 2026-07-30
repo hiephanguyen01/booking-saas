@@ -10,21 +10,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { HandCoins, Pencil, Plus } from 'lucide-react';
 import type { Route } from './+types/_index';
 import { apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ErrorBanner } from '~/components/action-feedback';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { useSubmissionGuard } from '~/hooks/use-submission-guard';
 import { PromotionStatusBadge } from '~/components/status-badge';
 import { formatDiscount } from '~/lib/format';
-import { PaginationBar } from '~/components/pagination-bar';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters } from '~/lib/list-filters';
 import { PROMOTION_FILTER_SPEC } from '~/features/promotions/lib/promotion-filters';
-import { ListToolbar } from '~/components/list-toolbar';
 import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
@@ -174,24 +173,20 @@ export default function PartnerPromotions({ loaderData, actionData }: Route.Comp
           {error ? (
             <ErrorBanner error={error} />
           ) : (
-            <div className="space-y-4">
-              <ListToolbar
-                spec={PROMOTION_FILTER_SPEC}
-                filters={filters}
-                resetHref={dashboardPaths.partner.promotions}
-                pageSize={pageSize}
-              />
-              <DataTable
-                data={promotions}
-                columns={columns}
-                emptyMessage={
-                  hasActiveFilters(filters)
-                    ? 'Không có mã khớp bộ lọc.'
-                    : 'Chưa có khuyến mãi nào. Nhấn "Tạo khuyến mãi" để tạo chương trình đầu tiên.'
-                }
-              />
-              <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
-            </div>
+            <DashboardDataTable
+              data={promotions}
+              columns={columns}
+              filters={PROMOTION_FILTER_SPEC}
+              filterValues={filters}
+              resetHref={dashboardPaths.partner.promotions}
+              pageSize={pageSize}
+              emptyMessage={
+                hasActiveFilters(filters)
+                  ? 'Không có mã khớp bộ lọc.'
+                  : 'Chưa có khuyến mãi nào. Nhấn "Tạo khuyến mãi" để tạo chương trình đầu tiên.'
+              }
+              pagination={{ page, pageSize, total, hrefFor: pageHref }}
+            />
           )}
         </CardContent>
       </Card>
