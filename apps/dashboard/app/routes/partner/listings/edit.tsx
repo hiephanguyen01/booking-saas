@@ -103,7 +103,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function EditListingPage({ loaderData, actionData }: Route.ComponentProps) {
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-[1440px] space-y-5">
       <div>
         <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
         <PageHeader title="Sửa tin đăng" description={loaderData.listing.title} />

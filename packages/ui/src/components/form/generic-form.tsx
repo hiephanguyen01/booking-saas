@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   useForm,
   type DefaultValues,
+  type FieldErrors,
   type FieldValues,
   type Path,
   type UseFormReturn,
@@ -70,6 +71,12 @@ export interface GenericFormProps<TSchema extends z.ZodType<FieldValues>> {
   className?: string;
   /** Optional layout classes for the submit/action row (for example a sticky footer). */
   actionsClassName?: string;
+  /**
+   * Render the built-in action row. Set to `false` when a composed form places
+   * its own submit controls inside `renderFields` (for example a sticky rail).
+   * Defaults to `true`.
+   */
+  showActions?: boolean;
   /** Warn before closing/reloading a page that contains unsaved changes. */
   warnOnUnsavedChanges?: boolean;
   /** Reset react-hook-form's dirty state after the parent confirms a successful save. */
@@ -120,6 +127,7 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
   children,
   className,
   actionsClassName,
+  showActions = true,
   warnOnUnsavedChanges,
   resetDirtyOnSuccess,
 }: GenericFormProps<TSchema>) {
@@ -212,6 +220,25 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
     }
   };
 
+  const onInvalid = (errors: FieldErrors<Values>) => {
+    const firstName = Object.keys(errors)[0] as Path<Values> | undefined;
+    if (!firstName) return;
+
+    form.setFocus(firstName);
+    window.requestAnimationFrame(() => {
+      const field = document.querySelector<HTMLElement>(`[name="${String(firstName)}"]`);
+      if (field && document.activeElement !== field) field.focus();
+      const focusedElement = field ?? document.activeElement;
+
+      if (focusedElement instanceof HTMLElement) {
+        focusedElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    });
+  };
+
   const renderedFields = fields.flatMap((field) => {
     if (field.hidden?.(values as Values)) return [];
     const span = field.colSpan ? SPAN[field.colSpan] : undefined;
@@ -246,30 +273,32 @@ export function GenericForm<TSchema extends z.ZodType<FieldValues>>({
         ) : null}
       </div>
 
-      <div
-        className={cn(
-          'flex items-center gap-3',
-          submitFullWidth && 'flex-col',
-          actionsClassName,
-        )}
-      >
-        <Button
-          type="submit"
-          size="control"
-          disabled={isSubmitting}
-          className={cn('px-8 font-semibold', submitFullWidth && 'w-full')}
+      {showActions ? (
+        <div
+          className={cn(
+            'flex items-center gap-3',
+            submitFullWidth && 'flex-col',
+            actionsClassName,
+          )}
         >
-          {isSubmitting ? submitPendingLabel : submitLabel}
-        </Button>
-        {children}
-      </div>
+          <Button
+            type="submit"
+            size="control"
+            disabled={isSubmitting}
+            className={cn('px-8 font-semibold', submitFullWidth && 'w-full')}
+          >
+            {isSubmitting ? submitPendingLabel : submitLabel}
+          </Button>
+          {children}
+        </div>
+      ) : null}
     </>
   );
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onValid)}
+        onSubmit={form.handleSubmit(onValid, onInvalid)}
         className={cn(renderFields ? undefined : 'space-y-6', className)}
         noValidate
         aria-busy={isSubmitting}

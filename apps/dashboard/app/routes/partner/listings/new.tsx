@@ -146,7 +146,7 @@ export default function NewListingPage({ loaderData, actionData }: Route.Compone
     );
   }
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-[1440px] space-y-5">
       <div>
         <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
         <PageHeader

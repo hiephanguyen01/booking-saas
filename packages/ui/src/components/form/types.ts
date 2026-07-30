@@ -90,10 +90,12 @@ export interface FileFieldConfig<T extends FieldValues> extends BaseFieldConfig<
   maxSizeMb?: number;
   /** Cap on total images in multiple mode. */
   maxFiles?: number;
+  /** Show accessible controls for changing image order. */
+  reorderable?: boolean;
   /** Same-origin resource route proxying `POST /uploads/presign`. */
   presignEndpoint?: string;
-  /** Larger dashed tile used by document-verification forms. */
-  variant?: 'default' | 'document';
+  /** Purpose-built presentation for documents or multi-image galleries. */
+  variant?: 'default' | 'document' | 'gallery';
 }
 
 export type FieldConfig<T extends FieldValues> =
