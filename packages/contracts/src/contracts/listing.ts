@@ -348,16 +348,41 @@ export const listTenantListingsQuerySchema = paginationQuerySchema.extend({
 export type ListTenantListingsQuery = z.infer<typeof listTenantListingsQuerySchema>;
 
 /** `GET /partner/listings` — paginated; always scoped to the calling partner. */
-export const listPartnerListingsQuerySchema = paginationQuerySchema.extend({
-  groupId: uuidSchema.optional(),
+export const listPartnerListingsQuerySchema = paginationQuerySchema
+  .extend({
+    groupId: uuidSchema.optional(),
+    /** Management-list only: exclude child listings that belong to a group. */
+    standaloneOnly: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .optional(),
+    listingTypeId: uuidSchema.optional(),
+    status: publishStatusSchema.optional(),
+    /** Case-insensitive search over the listing title. Applied to items + counts. */
+    q: z.string().trim().max(200).optional(),
+  })
+  .refine((query) => !(query.groupId && query.standaloneOnly), {
+    message: 'groupId and standaloneOnly cannot be combined',
+    path: ['standaloneOnly'],
+  });
+export type ListPartnerListingsQuery = z.infer<typeof listPartnerListingsQuerySchema>;
+
+/**
+ * `GET /partner/listings/feed` — a single paginated management feed that
+ * interleaves standalone listings with listing groups.
+ */
+export const listPartnerListingFeedQuerySchema = paginationQuerySchema.extend({
+  listingTypeId: uuidSchema.optional(),
   status: publishStatusSchema.optional(),
-  /** Case-insensitive search over the listing title. Applied to items + counts. */
+  /** Case-insensitive search over a standalone listing or listing-group title. */
   q: z.string().trim().max(200).optional(),
 });
-export type ListPartnerListingsQuery = z.infer<typeof listPartnerListingsQuerySchema>;
+export type ListPartnerListingFeedQuery = z.infer<typeof listPartnerListingFeedQuerySchema>;
 
 /** `GET /tenant/listing-groups` — paginated; case-insensitive search over the group title. */
 export const listListingGroupsQuerySchema = paginationQuerySchema.extend({
+  listingTypeId: uuidSchema.optional(),
+  status: publishStatusSchema.optional(),
   /** Case-insensitive search over the listing-group title. */
   q: z.string().trim().max(200).optional(),
 });
@@ -452,6 +477,7 @@ export const listingGroupResponseSchema = z
     ratingAvg: z.number().nullable(),
     reviewCount: z.number().int().nonnegative(),
     bookingCount: z.number().int().nonnegative(),
+    favoriteCount: z.number().int().nonnegative(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -505,6 +531,9 @@ export const listingResponseSchema = z
     partner: listingPartnerSummarySchema,
     ratingAvg: z.number().nullable(),
     reviewCount: z.number().int().nonnegative(),
+    /** Completed bookings shown on management list surfaces. */
+    bookingCount: z.number().int().nonnegative(),
+    favoriteCount: z.number().int().nonnegative(),
     status: publishStatusSchema,
     publishedBy: moderationActorSchema.nullable(),
     hiddenBy: moderationActorSchema.nullable(),
@@ -517,6 +546,13 @@ export const listingResponseSchema = z
   })
   .merge(administrativeAddressSnapshotSchema);
 export type ListingResponse = z.infer<typeof listingResponseSchema>;
+
+/** A row in the partner listing management feed. */
+export const partnerListingFeedItemResponseSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('single'), item: listingResponseSchema }),
+  z.object({ kind: z.literal('grouped'), item: listingGroupResponseSchema }),
+]);
+export type PartnerListingFeedItemResponse = z.infer<typeof partnerListingFeedItemResponseSchema>;
 
 export const listingGroupDetailResponseSchema = listingGroupResponseSchema.extend({
   listings: z.array(listingResponseSchema),

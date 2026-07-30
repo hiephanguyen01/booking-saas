@@ -72,9 +72,9 @@ export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <SidebarProvider style={tenantBrandStyle(membership?.tenantBranding ?? null)}>
       <AppSidebar info={info} />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <DashboardHeader />
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="min-w-0 flex-1 p-4 lg:p-6">
           <Outlet />
         </main>
       </SidebarInset>

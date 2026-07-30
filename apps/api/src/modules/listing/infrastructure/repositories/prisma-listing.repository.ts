@@ -34,6 +34,12 @@ import type { ListingContentPatch, NewListing } from '../../domain/entities/list
 const POLICY_SELECT = { select: { id: true, name: true, rules: true } } as const;
 
 const LISTING_INCLUDE = {
+  _count: {
+    select: {
+      bookings: { where: { status: 'completed' } },
+      favorites: true,
+    },
+  },
   cancellationPolicy: POLICY_SELECT,
   partner: {
     select: { name: true, verificationStatus: true, defaultCancellationPolicy: POLICY_SELECT },
@@ -102,6 +108,8 @@ function toRecord(l: Row): ListingRecord {
     partner: { name: l.partner.name, verificationStatus: l.partner.verificationStatus },
     ratingAvg: l.ratingAvg === null ? null : l.ratingAvg.toNumber(),
     reviewCount: l.reviewCount,
+    bookingCount: l._count.bookings,
+    favoriteCount: l._count.favorites,
     status: l.status,
     publishedBy: l.publishedBy as ModerationActor | null,
     hiddenBy: l.hiddenBy as ModerationActor | null,
@@ -120,7 +128,9 @@ function toRecord(l: Row): ListingRecord {
 function toWhere(filter: ListingFilter): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {};
   if (filter.groupId) where.groupId = filter.groupId;
+  if (filter.standaloneOnly) where.groupId = null;
   if (filter.partnerId) where.partnerId = filter.partnerId;
+  if (filter.listingTypeId) where.listingTypeId = filter.listingTypeId;
   if (filter.q) where.title = { contains: filter.q, mode: 'insensitive' };
   return where;
 }
@@ -166,6 +176,15 @@ export class PrismaListingRepository implements IListingRepository {
   async findById(tx: PrismaTx, id: string): Promise<ListingRecord | null> {
     const l = await tx.listing.findUnique({ where: { id }, include: LISTING_INCLUDE });
     return l ? toRecord(l) : null;
+  }
+
+  async findByIds(tx: PrismaTx, ids: readonly string[]): Promise<ListingRecord[]> {
+    if (ids.length === 0) return [];
+    const items = await tx.listing.findMany({
+      where: { id: { in: [...ids] } },
+      include: LISTING_INCLUDE,
+    });
+    return items.map(toRecord);
   }
 
   async findBySlug(tx: PrismaTx, slug: string): Promise<ListingRecord | null> {

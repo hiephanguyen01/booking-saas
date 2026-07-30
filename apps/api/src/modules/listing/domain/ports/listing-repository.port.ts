@@ -61,6 +61,8 @@ export interface ListingRecord {
   partner: ListingPartnerSummary;
   ratingAvg: number | null;
   reviewCount: number;
+  bookingCount: number;
+  favoriteCount: number;
   status: PublishStatus;
   publishedBy: ModerationActor | null;
   hiddenBy: ModerationActor | null;
@@ -104,7 +106,9 @@ export interface ModerationUpdate {
 
 export interface ListingFilter {
   groupId?: string;
+  standaloneOnly?: boolean;
   partnerId?: string;
+  listingTypeId?: string;
   status?: PublishStatus;
   /** Case-insensitive search over the listing title. Applied to items + counts. */
   q?: string;
@@ -113,6 +117,8 @@ export interface ListingFilter {
 export interface IListingRepository {
   create(tx: PrismaTx, tenantId: string, data: NewListing): Promise<ListingRecord>;
   findById(tx: PrismaTx, id: string): Promise<ListingRecord | null>;
+  /** Loads records in any database order; callers restore their requested key order. */
+  findByIds(tx: PrismaTx, ids: readonly string[]): Promise<ListingRecord[]>;
   findBySlug(tx: PrismaTx, slug: string): Promise<ListingRecord | null>;
   findPublicBySlug(tx: PrismaTx, slug: string): Promise<PublicListingRecord | null>;
   list(tx: PrismaTx, filter: ListingFilter): Promise<ListingRecord[]>;

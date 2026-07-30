@@ -60,7 +60,10 @@ export const dashboardPaths = {
     booking: (bookingId: string) => partnerPath(`/bookings/${segment(bookingId)}`),
     listings: partnerPath('/listings'),
     listing: (listingId: string) => partnerPath(`/listings/${segment(listingId)}`),
+    listingEdit: (listingId: string) => partnerPath(`/listings/${segment(listingId)}/edit`),
+    listingHours: (listingId: string) => partnerPath(`/listings/${segment(listingId)}/hours`),
     listingGroup: (groupId: string) => partnerPath(`/listing-groups/${segment(groupId)}`),
+    listingGroupEdit: (groupId: string) => partnerPath(`/listing-groups/${segment(groupId)}/edit`),
     newListingGroup: (listingTypeId: string) =>
       `${partnerPath('/listing-groups/new')}?type=${segment(listingTypeId)}`,
     cancellationPolicies: partnerPath('/cancellation-policies'),

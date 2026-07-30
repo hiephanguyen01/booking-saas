@@ -21,7 +21,6 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
-import { PaginationQueryDto } from '../../../../shared/pagination/pagination.dto';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { CreateListingGroupUseCase } from '../../application/use-cases/create-listing-group.use-case';
@@ -32,6 +31,7 @@ import { UpdateListingGroupUseCase } from '../../application/use-cases/update-li
 import { toListingGroupResponse } from '../../application/listing.mapper';
 import {
   CreateListingGroupDto,
+  ListListingGroupsQueryDto,
   ListingGroupDetailResponseDto,
   ListingGroupResponseDto,
   UpdateListingGroupDto,
@@ -52,10 +52,15 @@ export class PartnerListingGroupController {
   @RequirePermissions('partner.listings.read')
   @Get()
   @ApiPaginatedResponse(ListingGroupResponseDto)
-  async list(@Query() query: PaginationQueryDto): Promise<Paginated<ListingGroupResponse>> {
+  async list(@Query() query: ListListingGroupsQueryDto): Promise<Paginated<ListingGroupResponse>> {
     const result = await this.listGroups.execute(
       this.tenantContext.tenantIdOrThrow(),
-      { partnerId: this.tenantContext.partnerIdOrThrow() },
+      {
+        partnerId: this.tenantContext.partnerIdOrThrow(),
+        listingTypeId: query.listingTypeId,
+        status: query.status,
+        q: query.q,
+      },
       query,
     );
     return toPaginated(query, result, toListingGroupResponse);

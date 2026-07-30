@@ -24,10 +24,16 @@ import { usePagination } from '@booking/ui/hooks/use-pagination';
 export interface PaginationLabels {
   previous: string;
   next: string;
+  /** Accessible label for the pagination navigation landmark. */
+  navigation: string;
+  /** Accessible label for a numbered-page link. */
+  page: (page: number) => string;
   /** Label before the page-size select, e.g. "Số dòng". */
   rowsPerPage: string;
-  /** e.g. (1, 20, 137) => "1–20 / 137". */
+  /** e.g. (1, 20, 137) => "1–20 trên 137". */
   showing: (from: number, to: number, total: number) => string;
+  /** e.g. (2, 7) => "Trang 2 / 7". */
+  currentPage: (page: number, totalPages: number) => string;
 }
 
 export interface PaginationProps {
@@ -44,11 +50,9 @@ export interface PaginationProps {
 }
 
 /**
- * Shared, label-agnostic pagination footer — numbered pages + ellipsis + prev/next
- * + a rows-per-page select + a "showing X–Y of N" count. Navigation is href-driven
- * (react-router <Link>/navigate) so the loader re-runs; no browser data fetch. All
- * copy comes from `labels`, so dashboard (vi) and storefront (i18n) both reuse it.
- * Renders nothing when the list is empty.
+ * Shared, label-agnostic pagination footer — range/total + rows-per-page at left,
+ * compact URL-driven navigation at right. Numbered links are desktop-only; mobile
+ * shows a current/total summary instead. No browser data fetch is involved.
  */
 export function Pagination({
   page,
@@ -105,8 +109,8 @@ export function Pagination({
       </div>
 
       {totalPages > 1 ? (
-        <PaginationNav className="mx-0 w-auto justify-end">
-          <PaginationContent>
+        <PaginationNav aria-label={labels.navigation} className="mx-0 w-auto justify-end">
+          <PaginationContent className="gap-1">
             <PaginationItem>
               <Link
                 to={hrefFor({ page: current - 1, pageSize })}
@@ -115,30 +119,36 @@ export function Pagination({
                 aria-disabled={!hasPrev}
                 tabIndex={hasPrev ? undefined : -1}
                 className={cn(
-                  buttonVariants({ variant: 'ghost', size: 'default' }),
-                  'gap-1 px-2.5',
+                  buttonVariants({ variant: 'ghost', size: 'icon' }),
                   !hasPrev && 'pointer-events-none opacity-50',
                 )}
               >
                 <ChevronLeftIcon />
-                <span className="hidden sm:block">{labels.previous}</span>
+                <span className="sr-only">{labels.previous}</span>
               </Link>
+            </PaginationItem>
+
+            <PaginationItem className="sm:hidden">
+              <span className="px-1 text-xs text-muted-foreground tabular-nums">
+                {labels.currentPage(current, totalPages)}
+              </span>
             </PaginationItem>
 
             {range.map((token, i) =>
               token === 'ellipsis' ? (
-                <PaginationItem key={`ellipsis-${i}`}>
+                <PaginationItem key={`ellipsis-${i}`} className="hidden sm:block">
                   <PaginationEllipsis />
                 </PaginationItem>
               ) : (
-                <PaginationItem key={token}>
+                <PaginationItem key={token} className="hidden sm:block">
                   <Link
                     to={hrefFor({ page: token, pageSize })}
                     prefetch="intent"
+                    aria-label={labels.page(token)}
                     aria-current={token === current ? 'page' : undefined}
                     className={cn(
                       buttonVariants({
-                        variant: token === current ? 'outline' : 'ghost',
+                        variant: token === current ? 'default' : 'ghost',
                         size: 'icon',
                       }),
                       'tabular-nums',
@@ -158,12 +168,11 @@ export function Pagination({
                 aria-disabled={!hasNext}
                 tabIndex={hasNext ? undefined : -1}
                 className={cn(
-                  buttonVariants({ variant: 'ghost', size: 'default' }),
-                  'gap-1 px-2.5',
+                  buttonVariants({ variant: 'ghost', size: 'icon' }),
                   !hasNext && 'pointer-events-none opacity-50',
                 )}
               >
-                <span className="hidden sm:block">{labels.next}</span>
+                <span className="sr-only">{labels.next}</span>
                 <ChevronRightIcon />
               </Link>
             </PaginationItem>

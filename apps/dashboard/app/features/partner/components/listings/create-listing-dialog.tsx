@@ -58,11 +58,11 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="size-4" aria-hidden /> Thêm tin đăng
+        <Button size="control">
+          <Plus className="size-4" aria-hidden /> Tạo mới
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[43rem]">
         {flexibleType ? (
           <>
             <DialogHeader>
@@ -71,7 +71,7 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
                 Chọn cấu trúc phù hợp với nội dung bạn muốn đăng.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <ChoiceCard
                 title="Một hạng mục"
                 description="Tạo một lựa chọn có thể đặt độc lập."
@@ -92,43 +92,46 @@ export function CreateListingDialog({ listingTypes }: { listingTypes: ListingTyp
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Thêm tin đăng</DialogTitle>
-              <DialogDescription>Chọn loại dịch vụ để bắt đầu.</DialogDescription>
+              <DialogTitle className="text-2xl">Tạo bài đăng</DialogTitle>
+              <DialogDescription>Vui lòng chọn danh mục để bắt đầu.</DialogDescription>
             </DialogHeader>
             {listingTypes.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {listingTypes.map((type) => (
                   <button
                     key={type.id}
                     type="button"
                     onClick={() => pickType(type)}
                     className={cn(
-                      'flex items-center gap-3 rounded-lg border bg-background p-4 text-left transition-colors',
-                      'hover:border-primary/60 hover:bg-muted',
+                      'flex min-h-24 items-center gap-4 rounded-md border bg-card p-4 text-left shadow-sm transition-all',
+                      'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     )}
                   >
-                    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-muted-foreground">
+                    <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-primary">
                       <ListingTypeIcon
                         imageUrl={type.iconImageUrl}
                         name={type.icon}
-                        className="size-5"
+                        className="size-8"
                       />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{type.name}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className="block font-semibold">{type.name}</span>
+                      <span className="mt-1 block text-sm leading-5 text-muted-foreground">
                         {structureHint(type)}
                       </span>
                     </span>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <ChevronRight
+                      className="size-4 shrink-0 text-muted-foreground/70"
+                      aria-hidden
+                    />
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed bg-muted/30 px-5 py-8 text-center text-sm text-muted-foreground">
                 Chưa có loại dịch vụ nào. Liên hệ quản trị viên để được cấu hình.
-              </p>
+              </div>
             )}
           </>
         )}
@@ -151,8 +154,8 @@ function ChoiceCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-lg border bg-background p-4 text-left transition-colors',
-        'hover:border-primary/60 hover:bg-muted',
+        'min-h-28 rounded-md border bg-card p-5 text-left shadow-sm transition-all',
+        'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       )}
     >

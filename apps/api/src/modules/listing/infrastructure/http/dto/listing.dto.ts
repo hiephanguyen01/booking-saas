@@ -11,6 +11,7 @@ import {
   listingResponseSchema,
   listingReviewResponseSchema,
   listListingGroupsQuerySchema,
+  listPartnerListingFeedQuerySchema,
   listPartnerListingsQuerySchema,
   listTenantListingsQuerySchema,
   moderationReasonInputSchema,
@@ -41,6 +42,7 @@ export class ModerationReasonDto extends createZodDto(moderationReasonInputSchem
 export class PublishListingDto extends createZodDto(publishListingInputSchema) {}
 export class ListTenantListingsQueryDto extends createZodDto(listTenantListingsQuerySchema) {}
 export class ListPartnerListingsQueryDto extends createZodDto(listPartnerListingsQuerySchema) {}
+export class ListPartnerListingFeedQueryDto extends createZodDto(listPartnerListingFeedQuerySchema) {}
 export class ListListingGroupsQueryDto extends createZodDto(listListingGroupsQuerySchema) {}
 export class CreateCancellationPolicyDto extends createZodDto(
   createCancellationPolicyInputSchema,
