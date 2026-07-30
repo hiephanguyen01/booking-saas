@@ -1,96 +1,124 @@
-import { Link } from 'react-router';
 import type { ListingGroupResponse, ListingTypeResponse } from '@booking/contracts';
 import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
-import { Money } from '~/components/money';
-import { ListingTypeIcon } from '~/components/listing-type-icon';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { formatDate } from '~/lib/format';
 import { dashboardPaths } from '~/constants/paths';
+import { ListingGroupRowActions } from './listing-group-row-actions';
+import { ListingSummaryCell } from './listing-summary-cell';
+import { ListingVisibilitySwitch } from './listing-visibility-switch';
 
-/** Table columns for the multi-item (grouped) listings index. */
+/** Figma-adapted columns for multi-item listing groups. */
 export function buildListingGroupColumns(opts: {
   listingTypes: ListingTypeResponse[];
+  canWrite: boolean;
+  canPublish: boolean;
 }): DataTableColumn<ListingGroupResponse>[] {
-  const typeById = new Map(opts.listingTypes.map((t) => [t.id, t]));
+  const typeById = new Map(opts.listingTypes.map((type) => [type.id, type]));
+
   return [
     {
-      header: 'Tin đăng',
-      cell: (g) => (
-        <div className="min-w-0">
-          <Link
-            to={dashboardPaths.partner.listingGroup(g.id)}
-            className="truncate font-medium hover:underline"
-          >
-            {g.title}
-          </Link>
-          <p className="truncate font-mono text-xs text-muted-foreground">/{g.slug}</p>
-        </div>
+      id: 'listing',
+      header: 'Bài đăng',
+      enableHiding: false,
+      cell: (group) => (
+        <ListingSummaryCell
+          href={dashboardPaths.partner.listingGroup(group.id)}
+          title={group.title}
+          photos={group.photos}
+          favoriteCount={group.favoriteCount}
+          ratingAvg={group.ratingAvg}
+          status={group.status}
+        />
       ),
+      className: 'min-w-[22rem] px-4 py-3',
+      headClassName: 'min-w-[22rem] px-4',
     },
     {
-      header: 'Loại dịch vụ',
-      cell: (g) => {
-        const type = typeById.get(g.listingTypeId);
-        return (
-          <span className="flex items-center gap-2 text-sm">
-            <ListingTypeIcon
-              imageUrl={type?.iconImageUrl}
-              name={type?.icon}
-              className="size-4 text-muted-foreground"
-            />
-            <span className="truncate">{type?.name ?? '—'}</span>
-          </span>
-        );
-      },
-      className: 'hidden md:table-cell',
-      headClassName: 'hidden md:table-cell',
+      id: 'type',
+      header: 'Danh mục',
+      columnLabel: 'Danh mục',
+      cell: (group) => (
+        <span className="font-medium">{typeById.get(group.listingTypeId)?.name ?? '—'}</span>
+      ),
+      className: 'min-w-36 px-4',
+      headClassName: 'px-4',
     },
     {
+      id: 'bookings',
+      header: 'Số đơn đặt',
+      columnLabel: 'Số đơn đặt',
+      cell: (group) => <span className="tabular-nums">{group.bookingCount}</span>,
+      className: 'min-w-28 px-4',
+      headClassName: 'px-4',
+    },
+    {
+      id: 'visibility',
+      header: 'Hiển thị',
+      enableHiding: false,
+      cell: (group) => (
+        <ListingVisibilitySwitch
+          id={group.id}
+          target="group"
+          title={group.title}
+          status={group.status}
+          hiddenBy={group.hiddenBy}
+          canPublish={opts.canPublish}
+        />
+      ),
+      className: 'min-w-24 px-4',
+      headClassName: 'px-4',
+    },
+    {
+      id: 'items',
       header: 'Hạng mục',
-      cell: (g) => {
-        const itemLabel = typeById.get(g.listingTypeId)?.itemLabel || 'hạng mục';
+      columnLabel: 'Hạng mục',
+      defaultVisible: false,
+      cell: (group) => {
+        const itemLabel = typeById.get(group.listingTypeId)?.itemLabel || 'hạng mục';
         return (
-          <span className="whitespace-nowrap text-sm">
-            {g.listingCount} {itemLabel}
-            <span className="text-muted-foreground"> · {g.readyListingCount} sẵn sàng</span>
+          <span className="whitespace-nowrap">
+            {group.listingCount} {itemLabel}
+            <span className="text-muted-foreground"> · {group.readyListingCount} sẵn sàng</span>
           </span>
         );
       },
+      className: 'px-4',
+      headClassName: 'px-4',
     },
     {
-      header: 'Giá từ',
-      cell: (g) =>
-        g.priceFrom ? (
-          <Money value={g.priceFrom} />
-        ) : (
-          <span className="text-sm text-muted-foreground">Chưa có giá</span>
-        ),
+      id: 'status',
+      header: 'Trạng thái',
+      columnLabel: 'Trạng thái',
+      defaultVisible: false,
+      cell: (group) => <ListingStatusBadge status={group.status} />,
+      className: 'px-4',
+      headClassName: 'px-4',
     },
     {
+      id: 'updatedAt',
       header: 'Cập nhật',
-      cell: (g) => (
-        <span className="whitespace-nowrap text-sm text-muted-foreground">
-          {formatDate(g.updatedAt)}
+      columnLabel: 'Cập nhật',
+      defaultVisible: false,
+      cell: (group) => (
+        <span className="whitespace-nowrap text-muted-foreground">
+          {formatDate(group.updatedAt)}
         </span>
       ),
-      className: 'hidden lg:table-cell',
-      headClassName: 'hidden lg:table-cell',
+      className: 'px-4',
+      headClassName: 'px-4',
     },
     {
-      header: 'Trạng thái',
-      cell: (g) => <ListingStatusBadge status={g.status} />,
-    },
-    {
-      header: '',
-      headClassName: 'text-right',
-      className: 'text-right',
-      cell: (g) => (
-        <Link
-          to={dashboardPaths.partner.listingGroup(g.id)}
-          className="text-sm font-medium text-primary hover:underline"
-        >
-          Quản lý
-        </Link>
+      id: 'actions',
+      header: 'Thao tác',
+      enableHiding: false,
+      headClassName: 'min-w-28 px-4 text-right',
+      className: 'px-4 text-right',
+      cell: (group) => (
+        <ListingGroupRowActions
+          group={group}
+          canWrite={opts.canWrite}
+          canPublish={opts.canPublish}
+        />
       ),
     },
   ];

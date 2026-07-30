@@ -1,63 +1,135 @@
-import { data } from 'react-router';
-import { useSearchParams } from 'react-router';
-import type {
-  ListingGroupResponse,
-  ListingResponse,
-  ListingTypeResponse,
-  Paginated,
-  PaginatedWithCounts,
-  PublishStatus,
-  SubmitListingResponse,
+import { data, useSearchParams } from 'react-router';
+import {
+  submitListingResponseSchema,
+  uuidSchema,
+  type ListingGroupResponse,
+  type ListingResponse,
+  type ListingTypeResponse,
+  type Paginated,
+  type PaginatedWithCounts,
+  type PartnerListingFeedItemResponse,
+  type PublishStatus,
+  type SubmitListingResponse,
 } from '@booking/contracts';
-import { submitListingResponseSchema } from '@booking/contracts';
-import { DataTable } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
-import { apiGet, apiPost } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPost } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
+import { buildListingFeedColumns } from '~/features/partner/components/listings/listing-feed-table-columns';
 import { buildListingColumns } from '~/features/partner/components/listings/listing-table-columns';
 import { buildListingGroupColumns } from '~/features/partner/components/listings/listing-group-table-columns';
 import { CreateListingDialog } from '~/features/partner/components/listings/create-listing-dialog';
 import type { ListingsActionResult } from '~/features/partner/components/listings/types';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
 import { RelationshipHint } from '~/components/relationship-hint';
-import { ErrorBanner } from '~/components/action-feedback';
-import { StatusFilterTabs } from '~/components/status-filter-tabs';
+import { hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { readListParams } from '~/lib/pagination';
-import { PaginationBar } from '~/components/pagination-bar';
+import { dashboardPaths } from '~/constants/paths';
 
 export function meta(): Route.MetaDescriptors {
-  return [{ title: 'Tin đăng · Đối tác · BookingOS' }];
+  return [{ title: 'Quản lý bài đăng · Đối tác · BookingOS' }];
 }
 
 const STATUS_VALUES: PublishStatus[] = ['published', 'draft', 'pending_review', 'archived'];
-type ListingsView = 'single' | 'grouped';
+const VIEW_VALUES = ['all', 'single', 'grouped'] as const;
+type ListingsView = (typeof VIEW_VALUES)[number];
+
+function readFilters(searchParams: URLSearchParams) {
+  const statusRaw = searchParams.get('status') ?? '';
+  const listingTypeRaw = searchParams.get('listingTypeId') ?? '';
+  const listingType = uuidSchema.safeParse(listingTypeRaw);
+  const viewRaw = searchParams.get('view');
+
+  return {
+    q: searchParams.get('q')?.trim().slice(0, 200) ?? '',
+    status: STATUS_VALUES.includes(statusRaw as PublishStatus) ? (statusRaw as PublishStatus) : '',
+    listingTypeId: listingType.success ? listingType.data : '',
+    view: VIEW_VALUES.includes(viewRaw as ListingsView) ? (viewRaw as ListingsView) : 'all',
+  };
+}
+
+function buildFilterSpec(listingTypes: ListingTypeResponse[]): FilterSpec {
+  return [
+    {
+      kind: 'enum',
+      key: 'status',
+      label: 'Hiển thị',
+      allLabel: 'Tất cả trạng thái',
+      options: [
+        { value: 'published', label: 'Đang hiển thị' },
+        { value: 'draft', label: 'Bản nháp' },
+        { value: 'pending_review', label: 'Chờ duyệt' },
+        { value: 'archived', label: 'Đã ẩn' },
+      ],
+    },
+    {
+      kind: 'enum',
+      key: 'listingTypeId',
+      label: 'Danh mục',
+      allLabel: 'Tất cả danh mục',
+      options: listingTypes.map((type) => ({ value: type.id, label: type.name })),
+    },
+  ];
+}
+
+function listingsHref(searchParams: URLSearchParams, view: ListingsView): string {
+  const next = new URLSearchParams();
+  for (const key of ['q', 'status', 'listingTypeId', 'pageSize']) {
+    const value = searchParams.get(key);
+    if (value) next.set(key, value);
+  }
+  next.set('view', view);
+  return `${dashboardPaths.partner.listings}?${next}`;
+}
+
+function resetListingsHref(view: ListingsView, pageSize: number): string {
+  const next = new URLSearchParams({ view, pageSize: String(pageSize) });
+  return `${dashboardPaths.partner.listings}?${next}`;
+}
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
   const { toApiQuery } = readListParams(url.searchParams);
-  const statusRaw = url.searchParams.get('status') ?? '';
-  const status = STATUS_VALUES.includes(statusRaw as PublishStatus) ? statusRaw : '';
-  const view: ListingsView = url.searchParams.get('view') === 'grouped' ? 'grouped' : 'single';
-  const [res, groupsRes, typesRes] = await Promise.all([
-    apiGet<PaginatedWithCounts<ListingResponse>>('/partner/listings', auth, {
-      query: toApiQuery({ status }),
-    }),
-    // Groups are few and shown as navigation cards — pull them all (bounded).
-    apiGet<Paginated<ListingGroupResponse>>('/partner/listing-groups', auth, {
-      query: { pageSize: 100 },
-    }),
+  const filters = readFilters(url.searchParams);
+  const query = toApiQuery({
+    q: filters.q,
+    status: filters.status,
+    listingTypeId: filters.listingTypeId,
+  });
+
+  const listingsRequest =
+    filters.view === 'all'
+      ? apiGet<Paginated<PartnerListingFeedItemResponse>>('/partner/listings/feed', auth, { query })
+      : filters.view === 'single'
+        ? apiGet<PaginatedWithCounts<ListingResponse>>('/partner/listings', auth, {
+            query: { ...query, standaloneOnly: true },
+          })
+        : apiGet<Paginated<ListingGroupResponse>>('/partner/listing-groups', auth, { query });
+
+  const [listingsRes, listingTypesRes] = await Promise.all([
+    listingsRequest,
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
   ]);
+
   return {
-    result: res.ok ? res.data : null,
-    groups: groupsRes.ok ? (groupsRes.data?.items ?? []) : [],
-    listingTypes: typesRes.data ?? [],
-    filters: { status },
-    view,
+    view: filters.view,
+    filters: {
+      q: filters.q,
+      status: filters.status,
+      listingTypeId: filters.listingTypeId,
+    },
+    items: listingsRes.ok ? (listingsRes.data?.items ?? []) : [],
+    total: listingsRes.ok ? (listingsRes.data?.total ?? 0) : 0,
+    listingTypes: listingTypesRes.ok ? (listingTypesRes.data ?? []) : [],
+    listingTypesAvailable: listingTypesRes.ok,
     canWrite: can('partner.listings.write'),
     canPublish: can('partner.listings.publish'),
     canAvailability: can('partner.availability.manage'),
-    loadError: res.ok ? null : (res.error ?? 'Không tải được tin đăng.'),
+    loadError: !listingsRes.ok
+      ? (listingsRes.error ?? 'Không tải được danh sách bài đăng.')
+      : !listingTypesRes.ok
+        ? (listingTypesRes.error ?? 'Không tải được danh mục bài đăng.')
+        : null,
   };
 }
 
@@ -66,8 +138,24 @@ export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const id = String(form.get('id') ?? '');
   const intent = String(form.get('intent') ?? '');
+  const target = form.get('target') === 'group' ? 'group' : 'listing';
+  const endpoint = target === 'group' ? '/partner/listing-groups' : '/partner/listings';
+
   if (!id) {
-    return data<ListingsActionResult>({ ok: false, error: 'Thiếu mã tin đăng.' }, { status: 400 });
+    return data<ListingsActionResult>({ ok: false, error: 'Thiếu mã bài đăng.' }, { status: 400 });
+  }
+
+  if (intent === 'delete') {
+    if (!can('partner.listings.write')) {
+      return data<ListingsActionResult>({ ok: false, error: 'Không có quyền xóa.' }, { status: 403 });
+    }
+    const res = await apiDelete(`${endpoint}/${id}`, auth);
+    return res.ok
+      ? data<ListingsActionResult>({ ok: true, error: null })
+      : data<ListingsActionResult>(
+          { ok: false, error: res.error ?? 'Không thể xóa bài đăng.' },
+          { status: 400 },
+        );
   }
 
   if (intent === 'submit') {
@@ -77,9 +165,12 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 403 },
       );
     }
-    const res = await apiPost<SubmitListingResponse>(`/partner/listings/${id}/submit`, {}, auth, {
-      schema: submitListingResponseSchema,
-    });
+    const res =
+      target === 'listing'
+        ? await apiPost<SubmitListingResponse>(`${endpoint}/${id}/submit`, {}, auth, {
+            schema: submitListingResponseSchema,
+          })
+        : await apiPost(`${endpoint}/${id}/submit`, {}, auth);
     return res.ok
       ? data<ListingsActionResult>({ ok: true, error: null })
       : data<ListingsActionResult>(
@@ -87,14 +178,15 @@ export async function action({ request }: Route.ActionArgs) {
           { status: 400 },
         );
   }
+
   if (intent === 'hide' || intent === 'republish') {
     if (!can('partner.listings.publish')) {
       return data<ListingsActionResult>(
-        { ok: false, error: 'Không có quyền xuất bản.' },
+        { ok: false, error: 'Không có quyền thay đổi hiển thị.' },
         { status: 403 },
       );
     }
-    const res = await apiPost(`/partner/listings/${id}/${intent}`, {}, auth);
+    const res = await apiPost(`${endpoint}/${id}/${intent}`, {}, auth);
     return res.ok
       ? data<ListingsActionResult>({ ok: true, error: null })
       : data<ListingsActionResult>(
@@ -102,89 +194,88 @@ export async function action({ request }: Route.ActionArgs) {
           { status: 400 },
         );
   }
-  return data<ListingsActionResult>(
-    { ok: false, error: 'Hành động không hợp lệ.' },
-    { status: 400 },
-  );
+
+  return data<ListingsActionResult>({ ok: false, error: 'Hành động không hợp lệ.' }, { status: 400 });
 }
 
-const FILTERS: { value: string; label: string }[] = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'published', label: 'Đang hiển thị' },
-  { value: 'draft', label: 'Nháp' },
-  { value: 'pending_review', label: 'Chờ duyệt' },
-  { value: 'archived', label: 'Đã ẩn' },
-];
-
-const VIEW_FILTERS: { value: string; label: string }[] = [
-  { value: 'single', label: 'Tin đăng đơn' },
-  { value: 'grouped', label: 'Tin đăng nhiều hạng mục' },
-];
-
-export default function PartnerListingsPage({ loaderData }: Route.ComponentProps) {
+export default function PartnerListingsPage({ loaderData, actionData }: Route.ComponentProps) {
   const {
-    result,
-    groups,
+    view,
+    filters,
+    items,
+    total,
     listingTypes,
+    listingTypesAvailable,
     canWrite,
     canPublish,
     canAvailability,
     loadError,
-    filters,
-    view,
   } = loaderData;
   const [searchParams] = useSearchParams();
-  const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
-  const listings = result?.items ?? [];
-  const total = result?.total ?? 0;
-  const counts = result?.counts;
-  const statusValue = filters.status || 'all';
-  const columns = buildListingColumns({ canWrite, canPublish, canAvailability });
-  const groupColumns = buildListingGroupColumns({ listingTypes });
-  const viewCounts = { single: total, grouped: groups.length };
+  const { page, pageSize, pageHref } = readListParams(searchParams);
+  const filterSpec = buildFilterSpec(listingTypes);
+  const hasFilters = hasActiveFilters(filters);
+  const actionError = actionData?.error ?? null;
+  const tabs = {
+    activeValue: view,
+    ariaLabel: 'Kiểu bài đăng',
+    items: [
+      { value: 'all', label: 'Tất cả bài đăng', href: listingsHref(searchParams, 'all') },
+      { value: 'single', label: 'Tin đăng đơn', href: listingsHref(searchParams, 'single') },
+      { value: 'grouped', label: 'Tin đăng nhiều hạng mục', href: listingsHref(searchParams, 'grouped') },
+    ],
+  };
+  const resetHref = resetListingsHref(view, pageSize);
+  const tableProps = {
+    tabs,
+    search: { placeholder: 'Tìm tên bài đăng…' },
+    filters: filterSpec,
+    filterValues: filters,
+    resetHref,
+    pageSize,
+    enableColumnVisibility: true,
+    error: loadError ?? actionError,
+    pagination: { page, pageSize, total, hrefFor: pageHref },
+  };
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Tin đăng"
-        description="Tạo, gửi duyệt, hiển thị hoặc ẩn các tin đăng của bạn."
-        actions={canWrite ? <CreateListingDialog listingTypes={listingTypes} /> : null}
+        title="Quản lý bài đăng"
+        description="Tạo, gửi duyệt và quản lý khả năng hiển thị của bài đăng."
+        actions={
+          canWrite && listingTypesAvailable ? <CreateListingDialog listingTypes={listingTypes} /> : null
+        }
       />
-
       <RelationshipHint variant="listings" />
 
-      <StatusFilterTabs
-        filters={VIEW_FILTERS}
-        value={view}
-        hrefFor={(v) => filterHref({ view: v === 'single' ? undefined : v })}
-        counts={viewCounts}
-      />
-
-      <ErrorBanner error={loadError} />
-
-      {view === 'grouped' ? (
-        <DataTable
-          columns={groupColumns}
-          data={groups}
-          getRowKey={(g) => g.id}
-          emptyMessage="Chưa có tin đăng nhiều hạng mục nào."
+      {view === 'all' ? (
+        <DashboardDataTable
+          {...tableProps}
+          key="all"
+          columns={buildListingFeedColumns({ listingTypes, canWrite, canPublish, canAvailability })}
+          data={items as PartnerListingFeedItemResponse[]}
+          getRowKey={(entry) => `${entry.kind}:${entry.item.id}`}
+          emptyMessage={hasFilters ? 'Không có bài đăng khớp bộ lọc.' : 'Chưa có bài đăng nào.'}
+        />
+      ) : view === 'single' ? (
+        <DashboardDataTable
+          {...tableProps}
+          key="single"
+          columns={buildListingColumns({ listingTypes, canWrite, canPublish, canAvailability })}
+          data={items as ListingResponse[]}
+          getRowKey={(listing) => listing.id}
+          emptyMessage={hasFilters ? 'Không có bài đăng đơn khớp bộ lọc.' : 'Chưa có bài đăng đơn nào.'}
         />
       ) : (
-        <>
-          <StatusFilterTabs
-            filters={FILTERS}
-            value={statusValue}
-            hrefFor={(v) => filterHref({ status: v === 'all' ? undefined : v })}
-            counts={counts}
-          />
-          <DataTable
-            columns={columns}
-            data={listings}
-            getRowKey={(l) => l.id}
-            emptyMessage="Chưa có tin đăng nào."
-          />
-          <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
-        </>
+        <DashboardDataTable
+          {...tableProps}
+          key="grouped"
+          columns={buildListingGroupColumns({ listingTypes, canWrite, canPublish })}
+          data={items as ListingGroupResponse[]}
+          getRowKey={(group) => group.id}
+          emptyMessage={hasFilters ? 'Không có bài đăng nhóm khớp bộ lọc.' : 'Chưa có bài đăng nhóm nào.'}
+        />
       )}
     </div>
   );

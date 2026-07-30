@@ -1,105 +1,142 @@
-import { Lock } from 'lucide-react';
-import { Link } from 'react-router';
-import type { ListingResponse } from '@booking/contracts';
+import type { ListingResponse, ListingTypeResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Money } from '~/components/money';
 import { EnumValue } from '~/components/enum-value';
-import { EffectiveCancellationPolicyCell } from '~/components/cancellation-tiers';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { formatDate } from '~/lib/format';
 import { BOOKING_MODE_LABEL } from '~/constants/booking';
 import { dashboardPaths } from '~/constants/paths';
 import { listingPriceFrom } from '~/lib/listing-price';
 import { ListingRowActions } from './listing-row-actions';
+import { ListingSummaryCell } from './listing-summary-cell';
+import { ListingVisibilitySwitch } from './listing-visibility-switch';
 
-/** Table columns for the standalone (ungrouped) listings index. */
+/** Figma-adapted columns for standalone listings, including optional detail columns. */
 export function buildListingColumns(opts: {
+  listingTypes: ListingTypeResponse[];
   canWrite: boolean;
   canPublish: boolean;
   canAvailability: boolean;
 }): DataTableColumn<ListingResponse>[] {
-  const { canWrite, canPublish, canAvailability } = opts;
+  const { listingTypes, canWrite, canPublish, canAvailability } = opts;
+  const typeById = new Map(listingTypes.map((type) => [type.id, type]));
+
   return [
     {
-      header: 'Tin đăng',
-      cell: (l) => (
-        <div className="min-w-0">
-          <Link to={dashboardPaths.partner.listing(l.id)} className="truncate font-medium hover:underline">
-            {l.title}
-          </Link>
-          <p className="truncate font-mono text-xs text-muted-foreground">/{l.slug}</p>
-        </div>
+      id: 'listing',
+      header: 'Bài đăng',
+      columnLabel: 'Bài đăng',
+      enableHiding: false,
+      cell: (listing) => (
+        <ListingSummaryCell
+          href={dashboardPaths.partner.listing(listing.id)}
+          title={listing.title}
+          photos={listing.photos}
+          favoriteCount={listing.favoriteCount}
+          ratingAvg={listing.ratingAvg}
+          status={listing.status}
+        />
       ),
+      className: 'min-w-[22rem] px-4 py-3',
+      headClassName: 'min-w-[22rem] px-4',
     },
     {
+      id: 'type',
+      header: 'Danh mục',
+      columnLabel: 'Danh mục',
+      cell: (listing) => (
+        <span className="font-medium">{typeById.get(listing.listingTypeId)?.name ?? '—'}</span>
+      ),
+      className: 'min-w-36 px-4',
+      headClassName: 'px-4',
+    },
+    {
+      id: 'bookings',
+      header: 'Số đơn đặt',
+      columnLabel: 'Số đơn đặt',
+      cell: (listing) => <span className="tabular-nums">{listing.bookingCount}</span>,
+      className: 'min-w-28 px-4',
+      headClassName: 'px-4',
+    },
+    {
+      id: 'visibility',
+      header: 'Hiển thị',
+      columnLabel: 'Hiển thị',
+      enableHiding: false,
+      cell: (listing) => (
+        <ListingVisibilitySwitch
+          id={listing.id}
+          target="listing"
+          title={listing.title}
+          status={listing.status}
+          hiddenBy={listing.hiddenBy}
+          canPublish={canPublish}
+        />
+      ),
+      className: 'min-w-24 px-4',
+      headClassName: 'px-4',
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      columnLabel: 'Trạng thái',
+      defaultVisible: false,
+      cell: (listing) => <ListingStatusBadge status={listing.status} />,
+      className: 'min-w-32 px-4',
+      headClassName: 'px-4',
+    },
+    {
+      id: 'modes',
       header: 'Hình thức',
-      cell: (l) => (
-        <div className="flex flex-wrap gap-1">
-          {l.bookingModes.map((m) => (
-            <Badge key={m} variant="outline" className="font-normal">
-              <EnumValue map={BOOKING_MODE_LABEL} value={m} />
+      columnLabel: 'Hình thức',
+      defaultVisible: false,
+      cell: (listing) => (
+        <div className="flex min-w-36 flex-wrap gap-1">
+          {listing.bookingModes.map((mode) => (
+            <Badge key={mode} variant="outline" className="font-normal">
+              <EnumValue map={BOOKING_MODE_LABEL} value={mode} />
             </Badge>
           ))}
         </div>
       ),
+      className: 'px-4',
+      headClassName: 'px-4',
     },
     {
+      id: 'price',
       header: 'Giá từ',
-      cell: (l) => {
-        const price = listingPriceFrom(l);
-        return price ? (
-          <Money value={price} />
-        ) : (
-          <span className="text-sm text-muted-foreground">Chưa có giá</span>
-        );
+      columnLabel: 'Giá từ',
+      defaultVisible: false,
+      cell: (listing) => {
+        const price = listingPriceFrom(listing);
+        return price ? <Money value={price} /> : <span className="text-muted-foreground">—</span>;
       },
+      className: 'min-w-32 px-4',
+      headClassName: 'px-4',
     },
     {
-      header: 'Chính sách huỷ',
-      cell: (l) => (
-        <EffectiveCancellationPolicyCell
-          policy={l.effectiveCancellationPolicy}
-          source={l.effectiveCancellationPolicySource}
-        />
-      ),
-      className: 'hidden lg:table-cell',
-      headClassName: 'hidden lg:table-cell',
-    },
-    {
+      id: 'updatedAt',
       header: 'Cập nhật',
-      cell: (l) => (
-        <span className="whitespace-nowrap text-sm text-muted-foreground">
-          {formatDate(l.updatedAt)}
+      columnLabel: 'Cập nhật',
+      defaultVisible: false,
+      cell: (listing) => (
+        <span className="whitespace-nowrap text-muted-foreground">
+          {formatDate(listing.updatedAt)}
         </span>
       ),
+      className: 'px-4',
+      headClassName: 'px-4',
     },
     {
-      header: 'Trạng thái',
-      cell: (l) => {
-        const adminLocked = l.status === 'archived' && l.hiddenBy === 'admin';
-        return (
-          <div className="flex items-center gap-1.5">
-            <ListingStatusBadge status={l.status} />
-            {adminLocked ? (
-              <span
-                className="inline-flex items-center gap-1 text-xs text-warning"
-                title="Bị quản trị viên ẩn"
-              >
-                <Lock className="size-3" aria-hidden /> Khoá
-              </span>
-            ) : null}
-          </div>
-        );
-      },
-    },
-    {
-      header: '',
-      headClassName: 'text-right',
-      className: 'text-right',
-      cell: (l) => (
+      id: 'actions',
+      header: 'Thao tác',
+      enableHiding: false,
+      headClassName: 'min-w-28 px-4 text-right',
+      className: 'px-4 text-right',
+      cell: (listing) => (
         <ListingRowActions
-          listing={l}
+          listing={listing}
           canWrite={canWrite}
           canPublish={canPublish}
           canAvailability={canAvailability}
