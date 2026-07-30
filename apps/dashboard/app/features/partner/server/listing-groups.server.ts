@@ -1,6 +1,6 @@
 import { data, redirect } from 'react-router';
 import type { ListingResponse } from '@booking/contracts';
-import { apiDelete, apiGet, apiPatch, apiPost, type ApiAuth } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPost, type ApiAuth } from '~/lib/api.server';
 
 /**
  * Result shape every listing-group workspace intent resolves to. Feature
@@ -88,7 +88,7 @@ export async function runListingGroupAction(args: {
   const intent = String(form.get('intent') ?? '');
 
   if (
-    ['submit', 'reopen', 'delete-group', 'delete-child', 'duplicate-child'].includes(intent) &&
+    ['submit', 'delete-group', 'delete-child', 'duplicate-child'].includes(intent) &&
     !can('partner.listings.write')
   ) {
     return groupResult({ ok: false, error: 'Không có quyền thay đổi tin đăng.' }, 403);
@@ -107,17 +107,6 @@ export async function runListingGroupAction(args: {
     return res.ok
       ? groupResult({ ok: true, error: null })
       : groupResult({ ok: false, error: res.error ?? 'Thao tác không thành công.' }, 400);
-  }
-  if (intent === 'reopen') {
-    // Updating an archived group intentionally moves the group and all children
-    // back to draft in the API, making item editing available again.
-    const res = await apiPatch(`/partner/listing-groups/${groupId}`, {}, auth);
-    return res.ok
-      ? groupResult({ ok: true, error: null })
-      : groupResult(
-          { ok: false, error: res.error ?? 'Không thể chuyển tin đăng về bản nháp.' },
-          400,
-        );
   }
   if (intent === 'delete-group') {
     const res = await apiDelete(`/partner/listing-groups/${groupId}`, auth);

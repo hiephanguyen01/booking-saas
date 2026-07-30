@@ -12,6 +12,8 @@ export function buildListingGroupColumns(opts: {
   listingTypes: ListingTypeResponse[];
   canWrite: boolean;
   canPublish: boolean;
+  /** Post ids with an edit (their own or an item's) waiting for the tenant. */
+  pendingChangeIds?: ReadonlySet<string>;
 }): DataTableColumn<ListingGroupResponse>[] {
   const typeById = new Map(opts.listingTypes.map((type) => [type.id, type]));
 
@@ -28,6 +30,7 @@ export function buildListingGroupColumns(opts: {
           favoriteCount={group.favoriteCount}
           ratingAvg={group.ratingAvg}
           status={group.status}
+          hasPendingChange={opts.pendingChangeIds?.has(group.id) ?? false}
         />
       ),
       className: 'min-w-[22rem] px-4 py-3',

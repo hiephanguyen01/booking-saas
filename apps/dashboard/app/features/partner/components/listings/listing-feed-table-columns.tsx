@@ -14,6 +14,8 @@ export function buildListingFeedColumns(opts: {
   canWrite: boolean;
   canPublish: boolean;
   canAvailability: boolean;
+  /** Listing/post ids with an edit waiting for the tenant. */
+  pendingChangeIds?: ReadonlySet<string>;
 }): DataTableColumn<PartnerListingFeedItemResponse>[] {
   const typeById = new Map(opts.listingTypes.map((type) => [type.id, type]));
 
@@ -35,6 +37,7 @@ export function buildListingFeedColumns(opts: {
           favoriteCount={item.favoriteCount}
           ratingAvg={item.ratingAvg}
           status={item.status}
+          hasPendingChange={opts.pendingChangeIds?.has(item.id) ?? false}
         />
       ),
       className: 'min-w-[22rem] px-4 py-3',

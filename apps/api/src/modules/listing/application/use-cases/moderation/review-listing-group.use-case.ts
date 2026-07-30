@@ -9,19 +9,31 @@ import {
   LISTING_REPOSITORY,
   type IListingRepository,
 } from '../../../domain/ports/listing-repository.port';
+import {
+  LISTING_REVISION_REPOSITORY,
+  type IListingRevisionRepository,
+} from '../../../domain/ports/listing-revision-repository.port';
+import {
+  LISTING_GROUP_REVIEWED_FIELDS,
+  LISTING_REVIEWED_FIELDS,
+  mergeRevisionPayload,
+} from '../../../domain/revisions/revision-diff';
 import { buildListingGroupReview } from '../../moderation/build-listing-group-review';
 import { groupNotFound } from '../../moderation/moderation-support';
 
 /**
  * Read model a tenant reviewer sees for a post: the submission checklist plus
  * contact-info flags for the post AND every item it would publish (§7.3). The
- * group-level mirror of `ReviewListingUseCase`.
+ * group-level mirror of `ReviewListingUseCase`, including its rule that waiting
+ * edits are screened as the content they would become.
  */
 @Injectable()
 export class ReviewListingGroupUseCase {
   constructor(
     @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
+    @Inject(LISTING_REVISION_REPOSITORY)
+    private readonly revisions: IListingRevisionRepository,
     private readonly tenantDb: TenantDbService,
   ) {}
 
@@ -33,7 +45,24 @@ export class ReviewListingGroupUseCase {
         groupId: group.id,
         partnerId: group.partnerId,
       });
-      return buildListingGroupReview(group, children);
+      const [groupRevision, childRevisions] = await Promise.all([
+        this.revisions.findPending(tx, 'listing_group', groupId),
+        this.revisions.findPendingForTargets(
+          tx,
+          'listing',
+          children.map((child) => child.id),
+        ),
+      ]);
+      const payloadByChild = new Map(childRevisions.map((r) => [r.targetId, r.payload]));
+      return buildListingGroupReview(
+        groupRevision
+          ? mergeRevisionPayload(group, groupRevision.payload, LISTING_GROUP_REVIEWED_FIELDS)
+          : group,
+        children.map((child) => {
+          const payload = payloadByChild.get(child.id);
+          return payload ? mergeRevisionPayload(child, payload, LISTING_REVIEWED_FIELDS) : child;
+        }),
+      );
     });
   }
 }

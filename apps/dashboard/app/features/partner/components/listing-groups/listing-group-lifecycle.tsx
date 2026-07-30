@@ -1,5 +1,5 @@
 import { useFetcher } from 'react-router';
-import { EyeOff, Info, Lock, Pencil, RotateCcw, Send, Trash2 } from 'lucide-react';
+import { EyeOff, Info, Lock, RotateCcw, Send, Trash2 } from 'lucide-react';
 import type { ListingGroupDetailResponse, PublishStatus } from '@booking/contracts';
 import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import { Button } from '@booking/ui/components/ui/button';
@@ -20,18 +20,19 @@ export const GROUP_STATUS_COPY: Record<
   pending_review: {
     label: 'Chờ duyệt',
     title: 'Tin đăng đang chờ duyệt',
-    description: 'Nội dung tạm thời chỉ đọc trong lúc quản trị viên xem xét.',
+    description:
+      'Bạn vẫn sửa được nội dung — mỗi lần lưu sẽ cập nhật bản đang chờ tenant xem xét.',
   },
   published: {
     label: 'Đang hiển thị',
     title: 'Tin đăng đang hiển thị',
     description:
-      'Bạn vẫn có thể quản lý giờ hoạt động. Hãy ẩn tin đăng trước khi sửa nội dung hạng mục.',
+      'Sửa nội dung không làm gián đoạn hiển thị: thay đổi được gửi duyệt, khách vẫn thấy bản đã duyệt cho tới khi tenant chấp nhận.',
   },
   archived: {
     label: 'Đã ẩn',
     title: 'Tin đăng đang được ẩn',
-    description: 'Chuyển về bản nháp để sửa hạng mục, hoặc đăng lại nội dung hiện tại.',
+    description: 'Sửa nội dung rồi đăng lại, hoặc đăng lại ngay nội dung đã duyệt trước đó.',
   },
 };
 
@@ -96,12 +97,7 @@ export function GroupLifecycleActions({
     <div className="mt-2 flex flex-wrap gap-2" aria-busy={busy}>
       {group.status === 'published' && canPublish ? (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => submit('hide')}>
-          <EyeOff /> Ẩn để chỉnh sửa
-        </Button>
-      ) : null}
-      {group.status === 'archived' && canWrite && !adminLocked ? (
-        <Button size="sm" disabled={busy} onClick={() => submit('reopen')}>
-          <Pencil /> Chuyển về bản nháp
+          <EyeOff /> Ẩn tin đăng
         </Button>
       ) : null}
       {group.status === 'archived' && canPublish && !adminLocked ? (

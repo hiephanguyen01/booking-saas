@@ -21,6 +21,11 @@ import { ListingStateChanged } from '../../../domain/errors/listing-errors';
  * Re-publish an archived post (→ published). Enforces the lockout: a partner
  * cannot re-publish a post an admin hid — that raises 403 LISTING_ADMIN_LOCKED
  * (§7.3). An admin can always unlock.
+ *
+ * Un-hiding can no longer smuggle content past review: a partner's edit of an
+ * already-reviewed listing is parked as a revision, so the row itself only ever
+ * holds approved content, and a listing that was never published comes back as
+ * `pending_review` rather than live (see `transitionRepublish`).
  */
 @Injectable()
 export class RepublishListingUseCase {

@@ -93,8 +93,10 @@ export function buildGroupedListingColumns(opts: {
   canEdit: boolean;
   canWrite: boolean;
   canAvailability: boolean;
+  /** Item ids whose edit is waiting for the tenant to review. */
+  pendingChangeIds?: ReadonlySet<string>;
 }): DataTableColumn<ListingResponse>[] {
-  const { groupId, itemLabel, canEdit, canWrite, canAvailability } = opts;
+  const { groupId, itemLabel, canEdit, canWrite, canAvailability, pendingChangeIds } = opts;
   return [
     {
       header: itemLabel,
@@ -105,7 +107,11 @@ export function buildGroupedListingColumns(opts: {
             <p className="truncate font-medium">
               <ChildTitleLink groupId={groupId} listing={listing} canEdit={canEdit} />
             </p>
-            <ChildSlugLine slug={listing.slug} />
+            {pendingChangeIds?.has(listing.id) ? (
+              <p className="mt-0.5 text-xs text-warning">Có thay đổi đang chờ duyệt</p>
+            ) : (
+              <ChildSlugLine slug={listing.slug} />
+            )}
           </div>
         </div>
       ),

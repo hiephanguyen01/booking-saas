@@ -7,8 +7,10 @@ import {
   createResourceInputSchema,
   listingGroupResponseSchema,
   listingGroupDetailResponseSchema,
+  listingGroupPendingChangesResponseSchema,
   listingGroupReviewResponseSchema,
   listingResponseSchema,
+  listingRevisionResponseSchema,
   listingReviewResponseSchema,
   listListingGroupsQuerySchema,
   listPartnerListingFeedQuerySchema,
@@ -22,6 +24,7 @@ import {
   publishListingInputSchema,
   quoteQuerySchema,
   quoteResponseSchema,
+  rejectRevisionInputSchema,
   resourceResponseSchema,
   submitListingResponseSchema,
   updateCancellationPolicyInputSchema,
@@ -40,6 +43,7 @@ export class PricingRuleDto extends createZodDto(pricingRuleInputSchema) {}
 export class QuoteQueryDto extends createZodDto(quoteQuerySchema) {}
 export class ModerationReasonDto extends createZodDto(moderationReasonInputSchema) {}
 export class PublishListingDto extends createZodDto(publishListingInputSchema) {}
+export class RejectRevisionDto extends createZodDto(rejectRevisionInputSchema) {}
 export class ListTenantListingsQueryDto extends createZodDto(listTenantListingsQuerySchema) {}
 export class ListPartnerListingsQueryDto extends createZodDto(listPartnerListingsQuerySchema) {}
 export class ListPartnerListingFeedQueryDto extends createZodDto(listPartnerListingFeedQuerySchema) {}
@@ -66,6 +70,10 @@ export class PublicListingGroupDetailResponseDto extends createZodDto(
 export class QuoteResponseDto extends createZodDto(quoteResponseSchema) {}
 export class ListingReviewResponseDto extends createZodDto(listingReviewResponseSchema) {}
 export class ListingGroupReviewResponseDto extends createZodDto(listingGroupReviewResponseSchema) {}
+export class ListingRevisionResponseDto extends createZodDto(listingRevisionResponseSchema) {}
+export class ListingGroupPendingChangesResponseDto extends createZodDto(
+  listingGroupPendingChangesResponseSchema,
+) {}
 export class CancellationPolicyResponseDto extends createZodDto(cancellationPolicyResponseSchema) {}
 export class DepositRequirementResponseDto extends createZodDto(depositRequirementResponseSchema) {}
 

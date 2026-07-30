@@ -1,17 +1,20 @@
 import type { CreateListingGroupInput } from '@booking/contracts';
 import { Controller, useFieldArray, type UseFormReturn } from '@booking/ui/components/form/rhf';
-import { Button } from '@booking/ui/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@booking/ui/components/ui/dropdown-menu';
+  SortableCollection,
+  SortableHandle,
+  SortableItem,
+} from '@booking/ui/components/form/sortable-collection';
+import { Button } from '@booking/ui/components/ui/button';
 import { Input } from '@booking/ui/components/ui/input';
-import { ArrowDown, ArrowUp, MoreHorizontal, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { CirclePlus, Sparkles } from 'lucide-react';
 import { IconPicker } from '~/components/icon-picker';
 
+/**
+ * The listing group's shared amenities. Rows mirror the sortable list attribute
+ * of the listing form (`attribute-input.tsx`) — same geometry, same dnd-kit
+ * primitive — so both forms reorder the same way. Order is the array order.
+ */
 export function ListingGroupAmenitiesField({
   form,
 }: {
@@ -21,6 +24,7 @@ export function ListingGroupAmenitiesField({
     control: form.control,
     name: 'amenities',
   });
+  const sortingDisabled = fields.length < 2;
 
   return (
     <div className="space-y-3">
@@ -37,86 +41,92 @@ export function ListingGroupAmenitiesField({
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
-          {fields.map((amenity, index) => (
-            <div
-              key={amenity.id}
-              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 border-b p-2.5 last:border-b-0"
-            >
-              <Controller
-                control={form.control}
-                name={`amenities.${index}.icon`}
-                render={({ field }) => (
-                  <IconPicker
-                    value={field.value}
-                    onChange={(icon) => field.onChange(icon ?? 'Check')}
-                    ariaLabel={`Chọn biểu tượng cho tiện ích ${index + 1}`}
-                    compact
-                    clearable={false}
-                  />
-                )}
-              />
-              <Controller
-                control={form.control}
-                name={`amenities.${index}.label`}
-                render={({ field, fieldState }) => (
-                  <div className="min-w-0">
-                    <Input
-                      {...field}
-                      placeholder="Ví dụ: Wi-Fi tốc độ cao"
-                      aria-label={`Tên tiện ích ${index + 1}`}
-                      aria-invalid={fieldState.invalid}
-                      className="border-0 bg-transparent shadow-none focus-visible:ring-1"
+        <SortableCollection onMove={move} announcementLabel="Tiện ích">
+          <div className="space-y-2">
+            {fields.map((amenity, index) => (
+              <SortableItem
+                key={amenity.id}
+                id={amenity.id}
+                index={index}
+                disabled={sortingDisabled}
+              >
+                {({ itemRef, handleRef, isDragging }) => (
+                  <div
+                    ref={itemRef}
+                    className={[
+                      'grid min-w-0 grid-cols-[2rem_2.75rem_auto_minmax(0,1fr)_auto] items-center gap-2 rounded-xl transition',
+                      isDragging ? 'z-10 opacity-45 ring-2 ring-primary/40' : '',
+                    ].join(' ')}
+                  >
+                    <span className="text-center text-sm tabular-nums text-muted-foreground">
+                      #{index + 1}
+                    </span>
+                    <SortableHandle
+                      ref={handleRef}
+                      label={`Kéo để sắp xếp tiện ích ${index + 1}`}
+                      disabled={sortingDisabled}
+                      className="border bg-muted/30"
                     />
-                    {fieldState.error?.message ? (
-                      <p className="mt-1 text-xs text-destructive">{fieldState.error.message}</p>
-                    ) : null}
+                    <Controller
+                      control={form.control}
+                      name={`amenities.${index}.icon`}
+                      render={({ field }) => (
+                        <IconPicker
+                          value={field.value}
+                          onChange={(icon) => field.onChange(icon ?? 'Check')}
+                          ariaLabel={`Chọn biểu tượng cho tiện ích ${index + 1}`}
+                          compact
+                          clearable={false}
+                        />
+                      )}
+                    />
+                    <Controller
+                      control={form.control}
+                      name={`amenities.${index}.label`}
+                      render={({ field, fieldState }) => (
+                        <div className="min-w-0">
+                          <Input
+                            {...field}
+                            placeholder="Ví dụ: Wi-Fi tốc độ cao"
+                            aria-label={`Tên tiện ích ${index + 1}`}
+                            aria-invalid={fieldState.invalid}
+                            className="min-w-0 rounded-xl"
+                          />
+                          {fieldState.error?.message ? (
+                            <p className="mt-1 text-xs text-destructive">
+                              {fieldState.error.message}
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="control"
+                      onClick={() => remove(index)}
+                      aria-label={`Xóa tiện ích ${index + 1}`}
+                      className="rounded-xl px-4"
+                    >
+                      Xóa
+                    </Button>
                   </div>
                 )}
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Tùy chọn tiện ích ${index + 1}`}
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem disabled={index === 0} onSelect={() => move(index, index - 1)}>
-                    <ArrowUp />
-                    Đưa lên trên
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={index === fields.length - 1}
-                    onSelect={() => move(index, index + 1)}
-                  >
-                    <ArrowDown />
-                    Đưa xuống dưới
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onSelect={() => remove(index)}>
-                    <Trash2 />
-                    Xóa tiện ích
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ))}
-        </div>
+              </SortableItem>
+            ))}
+          </div>
+        </SortableCollection>
       )}
 
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="sm"
         onClick={() => append({ label: '', icon: 'Check' }, { shouldFocus: true })}
         disabled={fields.length >= 24}
+        className="px-1"
       >
-        <Plus className="size-4" />
+        <CirclePlus className="size-4" />
         Thêm tiện ích
       </Button>
       {fields.length >= 24 ? (

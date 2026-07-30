@@ -1,7 +1,10 @@
+import { createListingInputSchema, type CreateListingInput } from '@booking/contracts';
 import {
-  createListingInputSchema,
-  type CreateListingInput,
-} from '@booking/contracts';
+  createFormProgress,
+  type FormProgress,
+  type FormProgressItem,
+  type FormSectionDefinition,
+} from '~/features/partner/lib/form-progress';
 
 export const LISTING_FORM_SECTIONS = [
   {
@@ -29,9 +32,12 @@ export const LISTING_FORM_SECTIONS = [
     label: 'Thanh toán & chính sách',
     shortLabel: 'Thanh toán',
   },
-] as const;
+] as const satisfies ReadonlyArray<FormSectionDefinition<string>>;
 
 export type ListingFormSectionId = (typeof LISTING_FORM_SECTIONS)[number]['id'];
+
+export type ListingFormProgressItem = FormProgressItem<ListingFormSectionId>;
+export type ListingFormProgress = FormProgress<ListingFormSectionId>;
 
 const FIELD_SECTION: Record<string, ListingFormSectionId> = {
   partnerId: 'listing-content',
@@ -63,56 +69,14 @@ const FIELD_SECTION: Record<string, ListingFormSectionId> = {
   cancellationPolicyId: 'listing-payment',
 };
 
-export interface ListingFormProgressItem {
-  id: ListingFormSectionId;
-  label: string;
-  shortLabel: string;
-  complete: boolean;
-}
+const progress = createFormProgress<ListingFormSectionId, CreateListingInput>({
+  sections: LISTING_FORM_SECTIONS,
+  fieldSection: FIELD_SECTION,
+  schema: createListingInputSchema,
+});
 
-export interface ListingFormProgress {
-  percentage: number;
-  completedCount: number;
-  items: ListingFormProgressItem[];
-}
-
-/**
- * Derive completion from the same contract used for submission. Optional fields
- * do not produce Zod issues, so they never reduce the save-readiness score.
- */
-export function getListingFormProgress(values: CreateListingInput): ListingFormProgress {
-  const invalidSections = new Set<ListingFormSectionId>();
-  const result = createListingInputSchema.safeParse(values);
-
-  if (!result.success) {
-    for (const issue of result.error.issues) {
-      const field = String(issue.path[0] ?? '');
-      const section = FIELD_SECTION[field];
-      if (section) invalidSections.add(section);
-    }
-  }
-
-  const items = LISTING_FORM_SECTIONS.map((section) => ({
-    ...section,
-    complete: !invalidSections.has(section.id),
-  }));
-  const completedCount = items.filter((item) => item.complete).length;
-
-  return {
-    items,
-    completedCount,
-    percentage: Math.round((completedCount / items.length) * 100),
-  };
-}
+/** Derive completion from the same contract used for submission. */
+export const getListingFormProgress = progress.getProgress;
 
 /** Map RHF/server field errors to the same five visual sections. */
-export function getListingFormErrorSections(errors: unknown): Set<ListingFormSectionId> {
-  const sections = new Set<ListingFormSectionId>();
-  if (!errors || typeof errors !== 'object') return sections;
-
-  for (const field of Object.keys(errors)) {
-    const section = FIELD_SECTION[field];
-    if (section) sections.add(section);
-  }
-  return sections;
-}
+export const getListingFormErrorSections = progress.getErrorSections;

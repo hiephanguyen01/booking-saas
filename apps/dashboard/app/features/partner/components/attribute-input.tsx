@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@booking/ui/components/ui/select';
 import { Field } from '~/components/form-layout';
+import { ListingTypeIcon } from '~/components/listing-type-icon';
 
 /** One dynamic listing-type attribute rendered as its declared control. */
 export function AttributeInput({
@@ -29,17 +30,22 @@ export function AttributeInput({
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
+  // The attribute schema carries its own glyph (same allowlist as the listing
+  // type's icon); label it here exactly as the storefront spec cards do.
+  const icon = field.icon ? <ListingTypeIcon name={field.icon} className="size-4" /> : null;
+
   if (field.type === 'boolean') {
     return (
       <label className="flex items-center gap-2 text-sm">
         <Switch checked={value === true} onCheckedChange={(v) => onChange(v)} />
+        {icon ? <span className="text-muted-foreground">{icon}</span> : null}
         {field.label}
       </label>
     );
   }
   if (field.type === 'select') {
     return (
-      <Field label={field.label}>
+      <Field label={field.label} icon={icon}>
         <Select value={typeof value === 'string' ? value : ''} onValueChange={onChange}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="—" />
@@ -58,7 +64,7 @@ export function AttributeInput({
   if (field.type === 'multiselect') {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     return (
-      <Field label={field.label}>
+      <Field label={field.label} icon={icon}>
         <div className="flex flex-wrap gap-3">
           {(field.options ?? []).map((o) => (
             <label key={o} className="flex items-center gap-2 text-sm">
@@ -77,11 +83,11 @@ export function AttributeInput({
   }
   if (field.type === 'list') {
     return (
-      <SortableListAttribute label={field.label} value={value} onChange={onChange} />
+      <SortableListAttribute label={field.label} icon={icon} value={value} onChange={onChange} />
     );
   }
   return (
-    <Field label={field.label}>
+    <Field label={field.label} icon={icon}>
       <Input
         type={field.type === 'number' ? 'number' : 'text'}
         value={value === undefined || value === null ? '' : String(value)}
@@ -100,18 +106,18 @@ interface EditableListRow {
 
 function SortableListAttribute({
   label,
+  icon,
   value,
   onChange,
 }: {
   label: string;
+  icon?: React.ReactNode;
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
   const externalLines = React.useMemo(
     () =>
-      Array.isArray(value)
-        ? value.filter((line): line is string => typeof line === 'string')
-        : [],
+      Array.isArray(value) ? value.filter((line): line is string => typeof line === 'string') : [],
     [value],
   );
   const externalSignature = JSON.stringify(externalLines);
@@ -119,30 +125,35 @@ function SortableListAttribute({
   const nextId = React.useRef(0);
   const inputRefs = React.useRef(new Map<string, HTMLInputElement>());
   const lastEmitted = React.useRef(externalSignature);
-  const createId = React.useCallback(
-    () => `${idSeed}-list-row-${nextId.current++}`,
-    [idSeed],
+  const createId = React.useCallback(() => `${idSeed}-list-row-${nextId.current++}`, [idSeed]);
+  /**
+   * The editor always shows at least one row: an empty list would otherwise
+   * render as a bare "Thêm giá trị" button, hiding that the attribute is
+   * editable. A blank row emits nothing, so the submitted value stays empty.
+   */
+  const withLeadingRow = React.useCallback(
+    (nextRows: EditableListRow[]) =>
+      nextRows.length > 0 ? nextRows : [{ id: createId(), value: '' }],
+    [createId],
   );
   const [rows, setRows] = React.useState<EditableListRow[]>(() =>
-    externalLines.map((line) => ({ id: createId(), value: line })),
+    withLeadingRow(externalLines.map((line) => ({ id: createId(), value: line }))),
   );
 
   React.useEffect(() => {
     if (externalSignature === lastEmitted.current) return;
     lastEmitted.current = externalSignature;
     setRows((current) =>
-      externalLines.map((line, index) =>
-        current[index]?.value === line
-          ? current[index]
-          : { id: createId(), value: line },
+      withLeadingRow(
+        externalLines.map((line, index) =>
+          current[index]?.value === line ? current[index] : { id: createId(), value: line },
+        ),
       ),
     );
-  }, [createId, externalLines, externalSignature]);
+  }, [createId, externalLines, externalSignature, withLeadingRow]);
 
   const emit = (nextRows: EditableListRow[]) => {
-    const nextValue = nextRows
-      .map((row) => row.value)
-      .filter((line) => line.trim() !== '');
+    const nextValue = nextRows.map((row) => row.value).filter((line) => line.trim() !== '');
     lastEmitted.current = JSON.stringify(nextValue);
     onChange(nextValue);
   };
@@ -156,7 +167,7 @@ function SortableListAttribute({
   };
 
   const remove = (index: number) => {
-    const nextRows = rows.filter((_, current) => current !== index);
+    const nextRows = withLeadingRow(rows.filter((_, current) => current !== index));
     setRows(nextRows);
     emit(nextRows);
   };
@@ -183,17 +194,12 @@ function SortableListAttribute({
   };
 
   return (
-    <Field label={label}>
+    <Field label={label} icon={icon}>
       <div className="space-y-2">
         <SortableCollection onMove={move} announcementLabel="Giá trị">
           <div className="space-y-2">
             {rows.map((row, index) => (
-              <SortableItem
-                key={row.id}
-                id={row.id}
-                index={index}
-                disabled={rows.length < 2}
-              >
+              <SortableItem key={row.id} id={row.id} index={index} disabled={rows.length < 2}>
                 {({ itemRef, handleRef, isDragging }) => (
                   <div
                     ref={itemRef}

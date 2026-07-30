@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { CalendarCheck, CheckCircle2, Circle, Layers3, Pencil, Plus, Star } from 'lucide-react';
-import type { ListingGroupDetailResponse, ListingTypeResponse } from '@booking/contracts';
+import type {
+  ListingGroupDetailResponse,
+  ListingGroupPendingChangesResponse,
+  ListingTypeResponse,
+} from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
 import {
   Card,
@@ -86,14 +90,21 @@ function WorkspaceMetric({
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request);
-  const [groupRes, typesRes] = await Promise.all([
+  const [groupRes, typesRes, pendingRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    apiGet<ListingGroupPendingChangesResponse>(
+      `/partner/listing-groups/${params.groupId}/pending-changes`,
+      auth,
+    ),
   ]);
   if (!groupRes.ok || !groupRes.data)
     throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
+  const pending = pendingRes.ok ? pendingRes.data : null;
   return {
     group: groupRes.data,
+    pendingGroupChange: pending?.group ?? null,
+    pendingItemIds: (pending?.listings ?? []).map((revision) => revision.targetId),
     listingType:
       (typesRes.data ?? []).find((type) => type.id === groupRes.data?.listingTypeId) ?? null,
     canWrite: can('partner.listings.write'),
@@ -108,10 +119,14 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function ListingGroupWorkspace({ loaderData, actionData }: Route.ComponentProps) {
-  const { group, canWrite, canPublish, canAvailability } = loaderData;
+  const { group, canWrite, canPublish, canAvailability, pendingGroupChange, pendingItemIds } =
+    loaderData;
+  const pendingChangeIds = new Set(pendingItemIds);
   const itemLabel = group.itemLabel;
   const adminLocked = isAdminLocked(group);
-  const canEditItems = canWrite && group.status === 'draft';
+  // Items of a live post are editable now: the change waits for review instead of
+  // taking the whole post offline.
+  const canEditItems = canWrite;
   const readyPct =
     group.listingCount > 0 ? Math.round((group.readyListingCount / group.listingCount) * 100) : 0;
   const commonContentReady = Boolean(group.description && group.photos.length);
@@ -123,6 +138,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
     canEdit: canEditItems,
     canWrite,
     canAvailability,
+    pendingChangeIds,
   });
 
   return (
@@ -133,7 +149,7 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
         actions={
           <>
             <ListingStatusBadge status={group.status} />
-            {canWrite && ['draft', 'archived'].includes(group.status) && !adminLocked ? (
+            {canWrite && !adminLocked ? (
               <Button asChild variant="outline" size="sm">
                 <Link to={`/partner/listing-groups/${group.id}/edit`}>
                   <Pencil data-icon="inline-start" /> Sửa thông tin chung
@@ -143,6 +159,17 @@ export default function ListingGroupWorkspace({ loaderData, actionData }: Route.
           </>
         }
       />
+      {pendingGroupChange || pendingChangeIds.size > 0 ? (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+          <p className="font-medium">Tin đăng có thay đổi đang chờ duyệt</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+            {pendingGroupChange ? 'Thông tin chung' : null}
+            {pendingGroupChange && pendingChangeIds.size > 0 ? ' và ' : null}
+            {pendingChangeIds.size > 0 ? `${pendingChangeIds.size} ${itemLabel}` : null} đang chờ
+            tenant duyệt. Khách vẫn thấy bản đã duyệt cho tới khi thay đổi được chấp nhận.
+          </p>
+        </div>
+      ) : null}
       <ErrorBanner error={actionData?.error} />
       <GroupStatusAlert group={group} canWrite={canWrite} canPublish={canPublish} />
       <ListingGroupOverviewCard group={group} />

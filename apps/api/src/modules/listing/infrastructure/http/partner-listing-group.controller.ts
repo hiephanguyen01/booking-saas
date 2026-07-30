@@ -21,13 +21,15 @@ import { TenantContextService } from '../../../../shared/tenant-context/tenant-c
 import { ZodValidationPipe } from '../../../../shared/validation/zod-validation.pipe';
 import { ApiPaginatedResponse, UuidParam } from '../../../../shared/openapi/decorators';
 import { toPaginated } from '../../../../shared/pagination/pagination';
+import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
 import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/http/guards/require-active-subscription.guard';
 import { CreateListingGroupUseCase } from '../../application/use-cases/create-listing-group.use-case';
 import { DeleteListingGroupUseCase } from '../../application/use-cases/delete-listing-group.use-case';
 import { GetListingGroupDetailUseCase } from '../../application/use-cases/get-listing-group-detail.use-case';
 import { ListListingGroupsUseCase } from '../../application/use-cases/list-listing-groups.use-case';
-import { UpdateListingGroupUseCase } from '../../application/use-cases/update-listing-group.use-case';
+import { SaveListingGroupEditUseCase } from '../../application/use-cases/save-listing-group-edit.use-case';
 import { toListingGroupResponse } from '../../application/listing.mapper';
 import {
   CreateListingGroupDto,
@@ -44,7 +46,7 @@ export class PartnerListingGroupController {
     private readonly createGroup: CreateListingGroupUseCase,
     private readonly listGroups: ListListingGroupsUseCase,
     private readonly getDetail: GetListingGroupDetailUseCase,
-    private readonly updateGroup: UpdateListingGroupUseCase,
+    private readonly saveGroupEdit: SaveListingGroupEditUseCase,
     private readonly deleteGroup: DeleteListingGroupUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -93,6 +95,12 @@ export class PartnerListingGroupController {
     );
   }
 
+  /**
+   * Save the post's shared information. A post nobody has reviewed is written in
+   * place; a reviewed post stays live and the change waits for the tenant — the
+   * response is the LIVE post, with the pending change read from
+   * `GET :id/pending-changes`.
+   */
   @RequirePermissions('partner.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':id')
@@ -101,12 +109,18 @@ export class PartnerListingGroupController {
   async update(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() input: UpdateListingGroupDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ListingGroupResponse> {
-    return toListingGroupResponse(
-      await this.updateGroup.execute(this.tenantContext.tenantIdOrThrow(), id, input, {
-        requirePartnerId: this.tenantContext.partnerIdOrThrow(),
-      }),
+    const { group } = await this.saveGroupEdit.execute(
+      this.tenantContext.tenantIdOrThrow(),
+      id,
+      input,
+      {
+        partnerId: this.tenantContext.partnerIdOrThrow(),
+        actorUserId: principal.userId,
+      },
     );
+    return toListingGroupResponse(group);
   }
 
   @RequirePermissions('partner.listings.write')

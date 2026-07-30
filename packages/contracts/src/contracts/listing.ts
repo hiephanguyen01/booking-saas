@@ -778,3 +778,69 @@ export const listingGroupReviewResponseSchema = z.object({
   listings: z.array(listingReviewResponseSchema),
 });
 export type ListingGroupReviewResponse = z.infer<typeof listingGroupReviewResponseSchema>;
+
+// ── Edit revisions ───────────────────────────────────────────────────────────
+
+/**
+ * Editing an already-reviewed listing does not touch the live row: the change is
+ * parked as a **revision** and only written onto the listing when a tenant
+ * reviewer approves it (§7.3). A draft that has never been reviewed is still
+ * edited in place — there is nothing published to protect yet.
+ */
+export const revisionStatusSchema = z.enum(['pending', 'approved', 'rejected', 'discarded']);
+export type RevisionStatus = z.infer<typeof revisionStatusSchema>;
+
+export const revisionTargetSchema = z.enum(['listing', 'listing_group']);
+export type RevisionTarget = z.infer<typeof revisionTargetSchema>;
+
+/** Which part of the edit form a changed field belongs to — drives the reviewer's grouping. */
+export const revisionDiffSectionSchema = z.enum(['content', 'pricing', 'location', 'policy']);
+export type RevisionDiffSection = z.infer<typeof revisionDiffSectionSchema>;
+
+/**
+ * One changed field. `before`/`after` carry the raw values (string, number,
+ * boolean, string[], or a nested object for `attributes`/`modeConfig`) so the
+ * reviewer UI can render each field type in its own way.
+ */
+export const revisionDiffEntrySchema = z.object({
+  field: z.string(),
+  section: revisionDiffSectionSchema,
+  before: z.unknown(),
+  after: z.unknown(),
+});
+export type RevisionDiffEntry = z.infer<typeof revisionDiffEntrySchema>;
+
+export const listingRevisionResponseSchema = z.object({
+  id: uuidSchema,
+  targetType: revisionTargetSchema,
+  targetId: uuidSchema,
+  /** Title of the edited listing/post at read time — for post-level review lists. */
+  targetTitle: z.string(),
+  status: revisionStatusSchema,
+  submittedAt: z.string(),
+  reviewedAt: z.string().nullable(),
+  reviewNote: z.string().nullable(),
+  appliedAt: z.string().nullable(),
+  /** Only the fields that actually differ from the live record. */
+  diff: z.array(revisionDiffEntrySchema),
+});
+export type ListingRevisionResponse = z.infer<typeof listingRevisionResponseSchema>;
+
+/**
+ * Every pending change on a post, reviewed as one unit (§7.3 — posts are
+ * moderated at the post level): the group's own revision plus one per edited item.
+ */
+export const listingGroupPendingChangesResponseSchema = z.object({
+  groupId: uuidSchema,
+  group: listingRevisionResponseSchema.nullable(),
+  listings: z.array(listingRevisionResponseSchema),
+});
+export type ListingGroupPendingChangesResponse = z.infer<
+  typeof listingGroupPendingChangesResponseSchema
+>;
+
+/** A reviewer must say why a change was turned down — the partner sees this note. */
+export const rejectRevisionInputSchema = z.object({
+  note: z.string().trim().min(1).max(1000),
+});
+export type RejectRevisionInput = z.infer<typeof rejectRevisionInputSchema>;

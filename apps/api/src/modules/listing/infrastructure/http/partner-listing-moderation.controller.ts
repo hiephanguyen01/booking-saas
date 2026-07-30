@@ -50,7 +50,7 @@ import { ListPartnerListingFeedUseCase } from '../../application/use-cases/list-
 import { HideListingUseCase } from '../../application/use-cases/moderation/hide-listing.use-case';
 import { RepublishListingUseCase } from '../../application/use-cases/moderation/republish-listing.use-case';
 import { SubmitListingUseCase } from '../../application/use-cases/moderation/submit-listing.use-case';
-import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
+import { SaveListingEditUseCase } from '../../application/use-cases/save-listing-edit.use-case';
 import { DeleteListingUseCase } from '../../application/use-cases/delete-listing.use-case';
 import { GetListingDepositRequirementUseCase } from '../../application/use-cases/get-listing-deposit-requirement.use-case';
 import {
@@ -81,7 +81,7 @@ export class PartnerListingModerationController {
     private readonly listPartnerListingFeed: ListPartnerListingFeedUseCase,
     private readonly createListing: CreateListingUseCase,
     private readonly getListing: GetListingUseCase,
-    private readonly updateListing: UpdateListingUseCase,
+    private readonly saveListingEdit: SaveListingEditUseCase,
     private readonly deleteListing: DeleteListingUseCase,
     private readonly getDepositRequirement: GetListingDepositRequirementUseCase,
     private readonly tenantContext: TenantContextService,
@@ -224,6 +224,12 @@ export class PartnerListingModerationController {
     );
   }
 
+  /**
+   * Save the edit form. A draft is written in place; anything that has already
+   * been through review keeps serving its approved content and the change is
+   * parked for the tenant to review — the response is therefore the LIVE listing,
+   * and the pending change is read from `GET :id/revision`.
+   */
   @RequirePermissions('partner.listings.write')
   @UseGuards(RequireActiveSubscriptionGuard)
   @Patch(':id')
@@ -233,12 +239,15 @@ export class PartnerListingModerationController {
   async update(
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body() input: UpdateListingDto,
+    @CurrentPrincipal() principal: SessionPrincipal,
   ): Promise<ListingResponse> {
     const tenantId = this.tenantContext.tenantIdOrThrow();
     const partnerId = this.tenantContext.partnerIdOrThrow();
-    return toListingResponse(
-      await this.updateListing.execute(tenantId, id, input, { requirePartnerId: partnerId }),
-    );
+    const { listing } = await this.saveListingEdit.execute(tenantId, id, input, {
+      partnerId,
+      actorUserId: principal.userId,
+    });
+    return toListingResponse(listing);
   }
 
   @RequirePermissions('partner.listings.write')

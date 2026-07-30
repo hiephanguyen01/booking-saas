@@ -68,8 +68,11 @@ export function runGroupModeration(
     if (!updated) throw new ListingStateChanged();
     for (const child of children) {
       const childAggregate = Listing.rehydrate(child);
+      // The children follow the post's OUTCOME, not the action name: un-hiding a
+      // post that never passed review lands in `pending_review`, and its items
+      // must queue up with it rather than go live on their own.
       const childOutcome =
-        action === 'submitted'
+        outcome.status === 'pending_review'
           ? childAggregate.submit()
           : action === 'published'
             ? childAggregate.publish('admin')

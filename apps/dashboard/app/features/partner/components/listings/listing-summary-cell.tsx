@@ -1,4 +1,4 @@
-import { Heart, ImageIcon, Star } from 'lucide-react';
+import { Clock3, Heart, ImageIcon, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublishStatus } from '@booking/contracts';
 
@@ -15,6 +15,7 @@ export function ListingSummaryCell({
   favoriteCount,
   ratingAvg,
   status,
+  hasPendingChange = false,
 }: {
   href: string;
   title: string;
@@ -22,6 +23,8 @@ export function ListingSummaryCell({
   favoriteCount: number;
   ratingAvg: number | null;
   status: PublishStatus;
+  /** An edit is waiting for the tenant; what customers see is the approved version. */
+  hasPendingChange?: boolean;
 }) {
   return (
     <div className="flex min-w-72 items-center gap-3.5">
@@ -39,6 +42,15 @@ export function ListingSummaryCell({
           </Link>
           {status === 'draft' ? (
             <span className="shrink-0 text-xs text-muted-foreground">· Bản nháp</span>
+          ) : null}
+          {hasPendingChange ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning"
+              title="Thay đổi của bạn đang chờ tenant duyệt"
+            >
+              <Clock3 className="size-3" aria-hidden />
+              Chờ duyệt thay đổi
+            </span>
           ) : null}
         </div>
         <div className="flex items-center gap-2 text-xs tabular-nums">

@@ -2,6 +2,7 @@ import { data as routeData, Link, useFetcher, useSearchParams } from 'react-rout
 import { Check, Eye, EyeOff, Undo2 } from 'lucide-react';
 import type {
   ListingGroupResponse,
+  ListingRevisionResponse,
   ListingTypeResponse,
   Paginated,
   PartnerResponse,
@@ -48,12 +49,15 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       : Promise.resolve(null),
     apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
   ]);
+  // Waiting edits never move a post's `status`, so surface them on the row itself.
+  const revisionsRes = await apiGet<ListingRevisionResponse[]>('/tenant/listing-revisions', auth);
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
   const typeNames: Record<string, string> = {};
   if (typesRes.ok) for (const t of typesRes.data ?? []) typeNames[t.id] = t.name;
   return {
     result: res.ok ? res.data : null,
+    pendingChanges: revisionsRes.ok ? (revisionsRes.data ?? []) : [],
     partnerNames,
     typeNames,
     canModerate: can('tenant.listings.publish'),
@@ -82,7 +86,9 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function TenantListingGroups({ loaderData, actionData }: Route.ComponentProps) {
-  const { result, partnerNames, typeNames, canModerate, error, filters } = loaderData;
+  const { result, pendingChanges, partnerNames, typeNames, canModerate, error, filters } =
+    loaderData;
+  const pendingChangeIds = new Set(pendingChanges.map((revision) => revision.targetId));
   const actionError = actionData && 'error' in actionData ? actionData.error : null;
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref } = readListParams(searchParams);
@@ -100,6 +106,9 @@ export default function TenantListingGroups({ loaderData, actionData }: Route.Co
           >
             {g.title}
           </Link>
+          {pendingChangeIds.has(g.id) ? (
+            <p className="text-xs font-medium text-warning">Có thay đổi chờ duyệt</p>
+          ) : null}
           <p className="truncate font-mono text-xs text-muted-foreground">{g.slug}</p>
         </div>
       ),

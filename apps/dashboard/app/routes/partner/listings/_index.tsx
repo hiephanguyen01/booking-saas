@@ -4,6 +4,7 @@ import {
   uuidSchema,
   type ListingGroupResponse,
   type ListingResponse,
+  type ListingRevisionResponse,
   type ListingTypeResponse,
   type Paginated,
   type PaginatedWithCounts,
@@ -106,9 +107,11 @@ export async function loader({ request, url }: Route.LoaderArgs) {
           })
         : apiGet<Paginated<ListingGroupResponse>>('/partner/listing-groups', auth, { query });
 
-  const [listingsRes, listingTypesRes] = await Promise.all([
+  const [listingsRes, listingTypesRes, revisionsRes] = await Promise.all([
     listingsRequest,
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    // One call for the whole table: which rows have an edit waiting for review.
+    apiGet<ListingRevisionResponse[]>('/partner/listing-revisions', auth),
   ]);
 
   if (listingsRes.ok) {
@@ -129,6 +132,9 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       listingTypeId: filters.listingTypeId,
     },
     items: listingsRes.ok ? (listingsRes.data?.items ?? []) : [],
+    pendingChangeIds: revisionsRes.ok
+      ? (revisionsRes.data ?? []).map((revision) => revision.targetId)
+      : [],
     total: listingsRes.ok ? (listingsRes.data?.total ?? 0) : 0,
     listingTypes: listingTypesRes.ok ? (listingTypesRes.data ?? []) : [],
     listingTypesAvailable: listingTypesRes.ok,
@@ -214,6 +220,7 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
     filters,
     items,
     total,
+    pendingChangeIds: pendingChangeIdList,
     listingTypes,
     listingTypesAvailable,
     canWrite,
@@ -222,6 +229,7 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
     loadError,
   } = loaderData;
   const [searchParams] = useSearchParams();
+  const pendingChangeIds = new Set(pendingChangeIdList);
   const { page, pageSize, pageHref } = readListParams(searchParams);
   const filterSpec = buildFilterSpec(listingTypes);
   const hasFilters = hasActiveFilters(filters);
@@ -261,7 +269,13 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
         <DashboardDataTable
           {...tableProps}
           key="all"
-          columns={buildListingFeedColumns({ listingTypes, canWrite, canPublish, canAvailability })}
+          columns={buildListingFeedColumns({
+            listingTypes,
+            canWrite,
+            canPublish,
+            canAvailability,
+            pendingChangeIds,
+          })}
           data={items as PartnerListingFeedItemResponse[]}
           getRowKey={(entry) => `${entry.kind}:${entry.item.id}`}
           emptyMessage={hasFilters ? 'Không có bài đăng khớp bộ lọc.' : 'Chưa có bài đăng nào.'}
@@ -270,7 +284,13 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
         <DashboardDataTable
           {...tableProps}
           key="single"
-          columns={buildListingColumns({ listingTypes, canWrite, canPublish, canAvailability })}
+          columns={buildListingColumns({
+            listingTypes,
+            canWrite,
+            canPublish,
+            canAvailability,
+            pendingChangeIds,
+          })}
           data={items as ListingResponse[]}
           getRowKey={(listing) => listing.id}
           emptyMessage={hasFilters ? 'Không có bài đăng đơn khớp bộ lọc.' : 'Chưa có bài đăng đơn nào.'}
@@ -279,7 +299,12 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
         <DashboardDataTable
           {...tableProps}
           key="grouped"
-          columns={buildListingGroupColumns({ listingTypes, canWrite, canPublish })}
+          columns={buildListingGroupColumns({
+            listingTypes,
+            canWrite,
+            canPublish,
+            pendingChangeIds,
+          })}
           data={items as ListingGroupResponse[]}
           getRowKey={(group) => group.id}
           emptyMessage={hasFilters ? 'Không có bài đăng nhóm khớp bộ lọc.' : 'Chưa có bài đăng nhóm nào.'}
