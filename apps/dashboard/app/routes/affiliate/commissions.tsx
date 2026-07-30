@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router';
 import type { AffiliateCommissionResponse, Paginated } from '@booking/contracts';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/commissions';
 import { apiGet } from '~/lib/api.server';
 import { requireAffiliate } from '~/features/affiliate/server/affiliate.server';
@@ -9,10 +9,9 @@ import { Money } from '~/components/money';
 import { DateTimeValue } from '~/components/date-time-value';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
-import { ListToolbar } from '~/components/list-toolbar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
 import { COMMISSION_STATUS_LABEL } from '~/constants/affiliate';
-import { PaginationBar } from '~/components/pagination-bar';
 import { PageHeader } from '~/components/page-header';
 
 const COMMISSION_FILTER_SPEC: FilterSpec = [
@@ -106,24 +105,21 @@ export default function AffiliateCommissions({ loaderData }: Route.ComponentProp
         description="Chi tiết hoa hồng bạn nhận được từ các lượt đặt qua link giới thiệu."
       />
 
-      <ListToolbar
-        spec={COMMISSION_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.affiliate.commissions}
-        pageSize={pageSize}
-      />
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={commissions}
-        getRowKey={(c) => c.id}
+        getRowKey={(commission) => commission.id}
+        filters={COMMISSION_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.affiliate.commissions}
+        pageSize={pageSize}
         emptyMessage={
           hasActiveFilters(filters)
             ? 'Không có hoa hồng khớp bộ lọc.'
             : 'Chưa có hoa hồng nào. Hoa hồng sẽ xuất hiện sau khi có lượt đặt qua link giới thiệu của bạn.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }

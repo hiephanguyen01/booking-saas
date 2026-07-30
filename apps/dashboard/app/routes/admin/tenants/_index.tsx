@@ -2,7 +2,7 @@ import { Link, useSearchParams } from 'react-router';
 import { Plus } from 'lucide-react';
 import type { Paginated, TenantResponse, TenantStatus, Vertical } from '@booking/contracts';
 import { Button } from '@booking/ui/components/ui/button';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import type { Route } from './+types/_index';
 import { apiGet } from '~/lib/api.server';
 import { requirePlatform } from '~/features/admin/server/admin.server';
@@ -10,12 +10,10 @@ import { TENANT_STATUS_LABELS, VERTICAL_LABELS } from '~/constants/tenancy';
 import { PageHeader } from '~/components/page-header';
 import { DateTimeValue } from '~/components/date-time-value';
 import { TenantStatusBadge } from '~/components/status-badge';
-import { ListToolbar } from '~/components/list-toolbar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { dashboardPaths } from '~/constants/paths';
 import { readListParams } from '~/lib/pagination';
 import { readListFilters, hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
-import { PaginationBar } from '~/components/pagination-bar';
-import { ErrorBanner } from '~/components/action-feedback';
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: 'Tenant · BookingOS Admin' }];
@@ -105,27 +103,22 @@ export default function TenantsList({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      <ListToolbar
-        spec={TENANTS_FILTER_SPEC}
-        filters={filters}
-        resetHref={dashboardPaths.admin.tenants}
-        pageSize={pageSize}
-      />
-
-      <ErrorBanner error={error ? <>Không tải được danh sách tenant: {error}</> : null} />
-
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={items}
-        getRowKey={(t) => t.id}
+        getRowKey={(tenant) => tenant.id}
+        filters={TENANTS_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={dashboardPaths.admin.tenants}
+        pageSize={pageSize}
+        error={error ? <>Không tải được danh sách tenant: {error}</> : null}
         emptyMessage={
           hasFilters
             ? 'Không có tenant khớp bộ lọc.'
             : 'Chưa có tenant nào. Tạo tenant đầu tiên để bắt đầu.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }
