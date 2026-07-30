@@ -1,12 +1,10 @@
 import type { Paginated, PaymentHistoryItem } from '@booking/contracts';
-import { DataTable, type DataTableColumn } from '@booking/ui/components/data-table/data-table';
+import type { DataTableColumn } from '@booking/ui/components/data-table/data-table';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Link, useSearchParams } from 'react-router';
 import type { ReactNode } from 'react';
-import { ErrorBanner } from '~/components/action-feedback';
-import { PaginationBar } from '~/components/pagination-bar';
+import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
-import { ListToolbar } from '~/components/list-toolbar';
 import {
   PAYMENT_GATEWAY_LABEL,
   PAYMENT_KIND_LABEL,
@@ -119,25 +117,22 @@ export function PaymentTransactionsPage({
 
       {supplementary}
 
-      <ListToolbar
-        spec={PAYMENT_FILTER_SPEC}
-        filters={filters}
-        resetHref={resetHref}
-        pageSize={pageSize}
-      />
-
-      <ErrorBanner error={error} />
-      <DataTable
+      <DashboardDataTable
         columns={columns}
         data={items}
         getRowKey={(item) => item.id}
+        filters={PAYMENT_FILTER_SPEC}
+        filterValues={filters}
+        resetHref={resetHref}
+        pageSize={pageSize}
+        error={error}
         emptyMessage={
           hasFilters
             ? 'Không có giao dịch khớp bộ lọc.'
             : 'Chưa có giao dịch nào. Giao dịch sẽ xuất hiện sau lượt thanh toán đầu tiên.'
         }
+        pagination={{ page, pageSize, total, hrefFor: pageHref }}
       />
-      <PaginationBar page={page} pageSize={pageSize} total={total} hrefFor={pageHref} />
     </div>
   );
 }
