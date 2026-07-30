@@ -63,7 +63,7 @@ export default function NewListingGroupPage({ loaderData, actionData }: Route.Co
         <BackLink to="/partner/listings" label="Tin đăng" className="mb-2" />
         <PageHeader
           title={`Tạo tin đăng nhiều ${loaderData.listingType.itemLabel || 'hạng mục'}`}
-          description={`Bước 1: thêm thông tin chung của ${loaderData.listingType.name}. Sau khi lưu, bạn sẽ thêm giá và lịch đặt cho từng ${loaderData.listingType.itemLabel || 'hạng mục'}.`}
+          description={`Thêm thông tin chung của ${loaderData.listingType.name}. Sau khi lưu, bạn sẽ thêm giá và lịch đặt cho từng ${loaderData.listingType.itemLabel || 'hạng mục'}.`}
         />
       </div>
       <ListingGroupForm

@@ -10,12 +10,15 @@ import {
 import { Button } from '@booking/ui/components/ui/button';
 import { Progress } from '@booking/ui/components/ui/progress';
 import { cn } from '@booking/ui/lib/utils';
-import type {
-  ListingFormProgress,
-  ListingFormSectionId,
-} from './listing-form-progress';
+import type { FormProgress } from '~/features/partner/lib/form-progress';
 
-export function ListingFormSection({
+/**
+ * The stepped-form design shared by the partner listing form and the listing
+ * group ("thông tin chung") form. Section ids are generic so each form declares
+ * its own steps in its `*-form-progress` module.
+ */
+
+export function ListingFormSection<Id extends string>({
   id,
   step,
   title,
@@ -26,7 +29,7 @@ export function ListingFormSection({
   children,
   contentClassName,
 }: {
-  id: ListingFormSectionId;
+  id: Id;
   step: number;
   title: string;
   description: string;
@@ -96,10 +99,12 @@ export function ListingContextStrip({
   typeName,
   itemContext,
   dirty,
+  idleLabel = 'Đường dẫn tạo tự động khi lưu',
 }: {
   typeName: string;
   itemContext: string;
   dirty: boolean;
+  idleLabel?: string;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border bg-card px-5 py-4 shadow-[0_12px_36px_-28px_hsl(var(--foreground)/0.35)] sm:px-6">
@@ -121,14 +126,14 @@ export function ListingContextStrip({
               : 'bg-muted/40 text-muted-foreground',
           )}
         >
-          {dirty ? 'Có thay đổi chưa lưu' : 'Đường dẫn tạo tự động khi lưu'}
+          {dirty ? 'Có thay đổi chưa lưu' : idleLabel}
         </span>
       </div>
     </div>
   );
 }
 
-export function ListingFormRail({
+export function ListingFormRail<Id extends string>({
   progress,
   errorSections,
   activeSection,
@@ -136,7 +141,8 @@ export function ListingFormRail({
   isSubmitting,
   submitLabel,
   onNavigate,
-}: ListingNavigationProps) {
+  hint = 'Tin đăng được lưu ở trạng thái nháp để bạn kiểm tra.',
+}: ListingNavigationProps<Id> & { hint?: ReactNode }) {
   return (
     <aside className="hidden self-stretch lg:block">
       <div className="sticky top-20 space-y-4">
@@ -186,7 +192,7 @@ export function ListingFormRail({
               {isSubmitting ? 'Đang lưu…' : submitLabel}
             </Button>
             <p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">
-              Tin đăng được lưu ở trạng thái nháp để bạn kiểm tra.
+              {hint}
             </p>
           </div>
         </div>
@@ -195,13 +201,13 @@ export function ListingFormRail({
   );
 }
 
-export function ListingFormMobileNav({
+export function ListingFormMobileNav<Id extends string>({
   progress,
   errorSections,
   activeSection,
   onNavigate,
 }: Pick<
-  ListingNavigationProps,
+  ListingNavigationProps<Id>,
   'progress' | 'errorSections' | 'activeSection' | 'onNavigate'
 >) {
   return (
@@ -242,11 +248,11 @@ export function ListingFormMobileNav({
   );
 }
 
-export function ListingFormMobileActions({
+export function ListingFormMobileActions<Id extends string>({
   progress,
   isSubmitting,
   submitLabel,
-}: Pick<ListingNavigationProps, 'progress' | 'isSubmitting' | 'submitLabel'>) {
+}: Pick<ListingNavigationProps<Id>, 'progress' | 'isSubmitting' | 'submitLabel'>) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_-24px_hsl(var(--foreground)/0.5)] backdrop-blur lg:hidden">
       <div className="mx-auto flex max-w-2xl items-center gap-3">
@@ -264,17 +270,17 @@ export function ListingFormMobileActions({
   );
 }
 
-interface ListingNavigationProps {
-  progress: ListingFormProgress;
-  errorSections: Set<ListingFormSectionId>;
-  activeSection: ListingFormSectionId;
+interface ListingNavigationProps<Id extends string> {
+  progress: FormProgress<Id>;
+  errorSections: Set<Id>;
+  activeSection: Id;
   dirty: boolean;
   isSubmitting: boolean;
   submitLabel: string;
-  onNavigate: (id: ListingFormSectionId) => void;
+  onNavigate: (id: Id) => void;
 }
 
-function SectionNavigationButton({
+function SectionNavigationButton<Id extends string>({
   index,
   id,
   label,
@@ -284,12 +290,12 @@ function SectionNavigationButton({
   onNavigate,
 }: {
   index: number;
-  id: ListingFormSectionId;
+  id: Id;
   label: string;
   active: boolean;
   complete: boolean;
   error: boolean;
-  onNavigate: (id: ListingFormSectionId) => void;
+  onNavigate: (id: Id) => void;
 }) {
   return (
     <button
@@ -328,13 +334,14 @@ function SectionNavigationButton({
   );
 }
 
-export function useActiveListingFormSection(): {
-  activeSection: ListingFormSectionId;
-  navigateToSection: (id: ListingFormSectionId) => void;
+export function useActiveListingFormSection<Id extends string>(
+  initialSection: Id,
+): {
+  activeSection: Id;
+  navigateToSection: (id: Id) => void;
 } {
-  const [activeSection, setActiveSection] =
-    useState<ListingFormSectionId>('listing-content');
-  const navigationTargetRef = useRef<ListingFormSectionId | null>(null);
+  const [activeSection, setActiveSection] = useState<Id>(initialSection);
+  const navigationTargetRef = useRef<Id | null>(null);
   const navigationReleaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateActiveSection = useCallback(() => {
@@ -350,7 +357,7 @@ export function useActiveListingFormSection(): {
     if (isAtPageBottom) {
       const lastSection = sections[sections.length - 1];
       if (lastSection?.id) {
-        setActiveSection(lastSection.id as ListingFormSectionId);
+        setActiveSection(lastSection.id as Id);
       }
       return;
     }
@@ -362,7 +369,7 @@ export function useActiveListingFormSection(): {
       active = section;
     }
 
-    if (active?.id) setActiveSection(active.id as ListingFormSectionId);
+    if (active?.id) setActiveSection(active.id as Id);
   }, []);
 
   const scheduleNavigationRelease = useCallback(() => {
@@ -407,7 +414,7 @@ export function useActiveListingFormSection(): {
   }, [scheduleNavigationRelease, updateActiveSection]);
 
   const navigateToSection = useCallback(
-    (id: ListingFormSectionId) => {
+    (id: Id) => {
       navigationTargetRef.current = id;
       setActiveSection(id);
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });

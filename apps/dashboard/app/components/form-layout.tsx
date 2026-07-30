@@ -43,16 +43,26 @@ export function Grid({ children }: { children: ReactNode }) {
 
 export function Field({
   label,
+  icon,
   error,
   children,
 }: {
   label: string;
+  /** Optional leading glyph, e.g. a listing-type attribute's own icon. */
+  icon?: ReactNode;
   error?: string[];
   children: ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label>
+        {icon ? (
+          <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+            {icon}
+          </span>
+        ) : null}
+        {label}
+      </Label>
       {children}
       {error?.length ? <p className="text-xs text-destructive">{error[0]}</p> : null}
     </div>

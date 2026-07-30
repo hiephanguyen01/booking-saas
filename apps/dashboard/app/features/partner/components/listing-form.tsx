@@ -63,7 +63,8 @@ export function ListingForm({
   const submitLabel = isEdit ? 'Lưu thay đổi' : 'Tạo tin đăng';
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
-  const { activeSection, navigateToSection } = useActiveListingFormSection();
+  const { activeSection, navigateToSection } =
+    useActiveListingFormSection<ListingFormSectionId>('listing-content');
 
   return (
     <GenericForm

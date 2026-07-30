@@ -56,7 +56,7 @@ export function ListingConfig({
           title="Thông tin hạng mục"
           description={`Điền các đặc điểm giúp khách hiểu và so sánh ${selectedType.itemLabel || 'hạng mục'} này.`}
         >
-          <div className="space-y-3">
+          <div className="space-y-6">
             {selectedType.attributeSchema.map((f) => (
               <AttributeInput
                 key={f.key}
