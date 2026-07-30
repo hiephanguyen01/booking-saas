@@ -13,8 +13,11 @@ import {
 const VI_LABELS: PaginationLabels = {
   previous: 'Trước',
   next: 'Sau',
+  navigation: 'Phân trang danh sách',
+  page: (page) => `Trang ${page}`,
   rowsPerPage: 'Số dòng',
-  showing: (from, to, total) => `${from}–${to} / ${total}`,
+  showing: (from, to, total) => `${from}–${to} trên ${total}`,
+  currentPage: (page, totalPages) => `Trang ${page} / ${totalPages}`,
 };
 
 export function PaginationBar({
