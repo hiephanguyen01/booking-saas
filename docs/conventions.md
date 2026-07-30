@@ -210,6 +210,13 @@ Not for: action-only buttons (logout). GET search/filter on **list pages** goes 
 Every server-paginated list page in `apps/dashboard` filters through one shared, URL-driven mechanism —
 do not hand-roll a `<Form method="get">` with `<Input>`/`<NativeSelect>` per page.
 
+For new table-based screens, prefer `DashboardDataTable` (`~/components/dashboard-data-table`). It
+composes the generic `@booking/ui` `DataTable` with the same URL-backed toolbar, optional `search`,
+config-driven `filters`, custom filter/action slots, session-only column visibility, error/empty/loading
+states and server pagination. Omit `search`, `filters`, `actions` or
+`enableColumnVisibility` to hide that capability. Existing screens may keep using `ListToolbar` and
+`DataTable` directly and migrate incrementally.
+
 1. **Declare a filter spec** — a `FilterSpec` (`~/lib/list-filters`): an array of typed field
    descriptors (`text` | `enum` | `date-range`). It is the single source of truth: both the loader
    (parsing) and the component (rendering) import the same spec, so they cannot drift. Put a spec shared

@@ -1,4 +1,4 @@
-import { data, useSearchParams } from 'react-router';
+import { data, redirect, useSearchParams } from 'react-router';
 import {
   submitListingResponseSchema,
   uuidSchema,
@@ -21,7 +21,6 @@ import { CreateListingDialog } from '~/features/partner/components/listings/crea
 import type { ListingsActionResult } from '~/features/partner/components/listings/types';
 import { DashboardDataTable } from '~/components/dashboard-data-table';
 import { PageHeader } from '~/components/page-header';
-import { RelationshipHint } from '~/components/relationship-hint';
 import { hasActiveFilters, type FilterSpec } from '~/lib/list-filters';
 import { readListParams } from '~/lib/pagination';
 import { dashboardPaths } from '~/constants/paths';
@@ -89,7 +88,8 @@ function resetListingsHref(view: ListingsView, pageSize: number): string {
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   const { auth, can } = await requirePartner(request, 'partner.listings.read');
-  const { toApiQuery } = readListParams(url.searchParams);
+  const listParams = readListParams(url.searchParams);
+  const { page, pageSize, toApiQuery } = listParams;
   const filters = readFilters(url.searchParams);
   const query = toApiQuery({
     q: filters.q,
@@ -110,6 +110,16 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     listingsRequest,
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
   ]);
+
+  if (listingsRes.ok) {
+    const total = listingsRes.data?.total ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages) {
+      const next = new URL(url);
+      next.searchParams.set('page', String(totalPages));
+      throw redirect(`${next.pathname}?${next.searchParams}`);
+    }
+  }
 
   return {
     view: filters.view,
@@ -220,7 +230,7 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
     activeValue: view,
     ariaLabel: 'Kiểu bài đăng',
     items: [
-      { value: 'all', label: 'Tất cả bài đăng', href: listingsHref(searchParams, 'all') },
+      { value: 'all', label: 'Tất cả', href: listingsHref(searchParams, 'all') },
       { value: 'single', label: 'Tin đăng đơn', href: listingsHref(searchParams, 'single') },
       { value: 'grouped', label: 'Tin đăng nhiều hạng mục', href: listingsHref(searchParams, 'grouped') },
     ],
@@ -247,9 +257,7 @@ export default function PartnerListingsPage({ loaderData, actionData }: Route.Co
           canWrite && listingTypesAvailable ? <CreateListingDialog listingTypes={listingTypes} /> : null
         }
       />
-      <RelationshipHint variant="listings" />
-
-      {view === 'all' ? (
+heck      {view === 'all' ? (
         <DashboardDataTable
           {...tableProps}
           key="all"

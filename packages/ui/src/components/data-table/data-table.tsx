@@ -90,7 +90,12 @@ export function DataTable<T>({
     : columns;
 
   return (
-    <div className={cn('w-full min-w-0 max-w-full overflow-hidden rounded-md border', className)}>
+    <div
+      className={cn(
+        'w-full min-w-0 max-w-full overflow-hidden rounded-md border [&_[data-slot=table-container]]:overscroll-x-contain',
+        className,
+      )}
+    >
       <Table className="w-max min-w-full">
         <TableHeader className={headerClassName}>
           <TableRow>

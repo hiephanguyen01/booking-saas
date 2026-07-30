@@ -39,7 +39,6 @@ const GROUP_INCLUDE = {
   },
   listings: {
     select: {
-      _count: { select: { bookings: { where: { status: 'completed' } } } },
       description: true,
       photos: true,
       bookingModes: true,
@@ -75,7 +74,7 @@ function toRecord(g: Row): ListingGroupRecord {
     // is a display statistic, never money.
     ratingAvg: g.ratingAvg === null ? null : g.ratingAvg.toNumber(),
     reviewCount: g.reviewCount,
-    bookingCount: g.listings.reduce((total, listing) => total + listing._count.bookings, 0),
+    bookingCount: g.bookingCount,
     favoriteCount: g._count.favorites,
     partnerPublic: {
       name: g.partner.name,
