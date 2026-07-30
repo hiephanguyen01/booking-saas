@@ -1,8 +1,17 @@
-import type { ListingResponse, ListingReviewResponse, ListingTypeResponse } from '@booking/contracts';
+import type {
+  ListingResponse,
+  ListingReviewResponse,
+  ListingRevisionResponse,
+  ListingTypeResponse,
+} from '@booking/contracts';
+import { data, redirect } from 'react-router';
 import type { Route } from './+types/review';
-import { apiGet } from '~/lib/api.server';
+import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { runModerationAction } from '~/features/tenant/server/moderation-action.server';
+import {
+  moderationErrorMessage,
+  runModerationAction,
+} from '~/features/tenant/server/moderation-action.server';
 import { CONTACT_FIELD_LABEL, LISTING_CHECKLIST_LABEL } from '~/features/tenant/constants';
 import { BackLink } from '~/components/back-link';
 import { ErrorBanner } from '~/components/action-feedback';
@@ -12,6 +21,8 @@ import { useBusy } from '~/hooks/use-busy';
 import { PartnerSummaryCard } from '~/features/tenant/components/moderation/partner-summary-card';
 import { ModerationReviewPanel } from '~/features/tenant/components/moderation/moderation-review-panel';
 import { ModerationActionsCard } from '~/features/tenant/components/moderation/moderation-actions-card';
+import { RevisionDecisionCard } from '~/features/tenant/components/moderation/revision-decision-card';
+import { RevisionDiffCard } from '~/features/tenant/components/moderation/revision-diff-card';
 import {
   ListingContentCard,
   ListingModerationLogCard,
@@ -26,9 +37,10 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth } = await requireTenant(request, 'tenant.listings.publish');
-  const [listingRes, reviewRes] = await Promise.all([
+  const [listingRes, reviewRes, revisionRes] = await Promise.all([
     apiGet<ListingResponse>(`/tenant/listings/${params.listingId}`, auth),
     apiGet<ListingReviewResponse>(`/tenant/listings/${params.listingId}/review`, auth),
+    apiGet<ListingRevisionResponse | null>(`/tenant/listings/${params.listingId}/revision`, auth),
   ]);
   if (!reviewRes.ok || !reviewRes.data) {
     throw new Response(reviewRes.error ?? 'Không tìm thấy tin đăng', { status: reviewRes.status });
@@ -49,13 +61,49 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     else listingTypeFailed = true;
   }
 
-  return { listing, review: reviewRes.data, listingType, listingTypeFailed };
+  return {
+    listing,
+    review: reviewRes.data,
+    // A waiting edit: the checklist above already reflects the edited content.
+    revision: revisionRes.ok ? (revisionRes.data ?? null) : null,
+    listingType,
+    listingTypeFailed,
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { auth } = await requireTenant(request, 'tenant.listings.publish');
+  const form = await request.formData();
+  const intent = String(form.get('intent') ?? '');
+
+  // Deciding a parked edit is its own pair of endpoints — it changes the listing's
+  // content, not its publish status.
+  if (intent === 'approve-change' || intent === 'reject-change') {
+    const res =
+      intent === 'approve-change'
+        ? await apiPost(
+            `/tenant/listings/${params.listingId}/revision/approve`,
+            { force: form.get('force') === '1' },
+            auth,
+          )
+        : await apiPost(
+            `/tenant/listings/${params.listingId}/revision/reject`,
+            { note: String(form.get('note') ?? '').trim() },
+            auth,
+          );
+    if (!res.ok) {
+      return data({
+        error: moderationErrorMessage(
+          res,
+          'Nội dung sửa còn lộ thông tin liên hệ. Tích “Bỏ qua cảnh báo” nếu vẫn muốn duyệt.',
+        ),
+      });
+    }
+    return redirect(`/tenant/listings/${params.listingId}/review`);
+  }
+
   return runModerationAction({
-    form: await request.formData(),
+    form,
     auth,
     basePath: `/tenant/listings/${params.listingId}`,
     intents: ['publish', 'republish', 'hide'],
@@ -66,7 +114,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function ReviewListing({ loaderData, actionData }: Route.ComponentProps) {
-  const { listing, review, listingType, listingTypeFailed } = loaderData;
+  const { listing, review, revision, listingType, listingTypeFailed } = loaderData;
   const busy = useBusy();
 
   const hasContactLeak = review.contactFlags.length > 0;
@@ -105,6 +153,11 @@ export default function ReviewListing({ loaderData, actionData }: Route.Componen
         fieldLabel={(field) => CONTACT_FIELD_LABEL[field] ?? field}
         scanDescription="Chống lách sàn (§7.3)"
       />
+
+      {revision ? <RevisionDiffCard revision={revision} /> : null}
+      {revision ? (
+        <RevisionDecisionCard entityLabel="tin đăng" hasContactLeak={hasContactLeak} busy={busy} />
+      ) : null}
 
       {listing ? <ListingContentCard listing={listing} type={listingType} /> : null}
       {listing ? <ListingPricingCard listing={listing} /> : null}

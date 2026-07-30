@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { ListingGroupReviewResponse } from '@booking/contracts';
+import type { ListingGroupPendingChangesResponse } from '@booking/contracts';
 import { TenantDbService } from '../../../../../shared/tenant-context/tenant-db.service';
 import {
   LISTING_GROUP_REPOSITORY,
@@ -13,22 +13,20 @@ import {
   LISTING_REVISION_REPOSITORY,
   type IListingRevisionRepository,
 } from '../../../domain/ports/listing-revision-repository.port';
+import { ListingGroup } from '../../../domain/entities/listing-group.entity';
+import { ListingGroupNotFound } from '../../../domain/errors/listing-group-errors';
 import {
-  LISTING_GROUP_REVIEWED_FIELDS,
-  LISTING_REVIEWED_FIELDS,
-  mergeRevisionPayload,
-} from '../../../domain/revisions/revision-diff';
-import { buildListingGroupReview } from '../../moderation/build-listing-group-review';
-import { groupNotFound } from '../../moderation/moderation-support';
+  toListingGroupRevisionResponse,
+  toListingRevisionResponse,
+} from '../../listing-revision.mapper';
 
 /**
- * Read model a tenant reviewer sees for a post: the submission checklist plus
- * contact-info flags for the post AND every item it would publish (§7.3). The
- * group-level mirror of `ReviewListingUseCase`, including its rule that waiting
- * edits are screened as the content they would become.
+ * Everything waiting on a post, read as one unit — posts are moderated at the
+ * post level (§7.3), so the reviewer sees the group's own edit together with any
+ * edited item and approves them together.
  */
 @Injectable()
-export class ReviewListingGroupUseCase {
+export class GetListingGroupPendingChangesUseCase {
   constructor(
     @Inject(LISTING_GROUP_REPOSITORY) private readonly groups: IListingGroupRepository,
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
@@ -37,12 +35,18 @@ export class ReviewListingGroupUseCase {
     private readonly tenantDb: TenantDbService,
   ) {}
 
-  async execute(tenantId: string, groupId: string): Promise<ListingGroupReviewResponse> {
+  async execute(
+    tenantId: string,
+    groupId: string,
+    opts: { requirePartnerId?: string } = {},
+  ): Promise<ListingGroupPendingChangesResponse> {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const group = await this.groups.findById(tx, groupId);
-      if (!group) groupNotFound();
+      if (!group) throw new ListingGroupNotFound();
+      ListingGroup.rehydrate(group).assertOwnedForManage(opts.requirePartnerId);
+
       const children = await this.listings.list(tx, {
-        groupId: group.id,
+        groupId,
         partnerId: group.partnerId,
       });
       const [groupRevision, childRevisions] = await Promise.all([
@@ -53,16 +57,16 @@ export class ReviewListingGroupUseCase {
           children.map((child) => child.id),
         ),
       ]);
-      const payloadByChild = new Map(childRevisions.map((r) => [r.targetId, r.payload]));
-      return buildListingGroupReview(
-        groupRevision
-          ? mergeRevisionPayload(group, groupRevision.payload, LISTING_GROUP_REVIEWED_FIELDS)
-          : group,
-        children.map((child) => {
-          const payload = payloadByChild.get(child.id);
-          return payload ? mergeRevisionPayload(child, payload, LISTING_REVIEWED_FIELDS) : child;
+      const byId = new Map(children.map((child) => [child.id, child]));
+
+      return {
+        groupId,
+        group: groupRevision ? toListingGroupRevisionResponse(groupRevision, group) : null,
+        listings: childRevisions.flatMap((revision) => {
+          const child = byId.get(revision.targetId);
+          return child ? [toListingRevisionResponse(revision, child)] : [];
         }),
-      );
+      };
     });
   }
 }

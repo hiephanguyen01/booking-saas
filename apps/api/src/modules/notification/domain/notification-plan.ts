@@ -22,6 +22,8 @@ export type NotificationTemplateId =
   | 'booking_otp_customer'
   | 'listing_published_partner'
   | 'listing_hidden_partner'
+  | 'listing_change_approved_partner'
+  | 'listing_change_rejected_partner'
   | 'partner_application_received'
   | 'partner_approved'
   | 'partner_agreement_recorded'
@@ -48,6 +50,8 @@ export const BOOKING_NOTIFICATION_EVENTS: readonly string[] = [
 export const LISTING_NOTIFICATION_EVENTS: readonly string[] = [
   'listing.published',
   'listing.hidden',
+  'listing.revision_approved',
+  'listing.revision_rejected',
 ];
 
 /** Events routed by partner context. */
@@ -103,6 +107,12 @@ export function planForEvent(
       return [{ audience: 'partner', templateId: 'listing_published_partner' }];
     case 'listing.hidden':
       return [{ audience: 'partner', templateId: 'listing_hidden_partner' }];
+    // A parked edit was decided — the partner needs to know their listing changed,
+    // or why it did not (§7.3).
+    case 'listing.revision_approved':
+      return [{ audience: 'partner', templateId: 'listing_change_approved_partner' }];
+    case 'listing.revision_rejected':
+      return [{ audience: 'partner', templateId: 'listing_change_rejected_partner' }];
     case 'partner.applied':
       return [{ audience: 'partner', templateId: 'partner_application_received' }];
     case 'partner.approved':

@@ -1,38 +1,65 @@
 import { data, redirect } from 'react-router';
-import { Lock, TriangleAlert } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import {
   createListingGroupInputSchema,
   type ListingGroupDetailResponse,
+  type ListingGroupPendingChangesResponse,
   type ListingTypeResponse,
 } from '@booking/contracts';
-import { Alert, AlertDescription, AlertTitle } from '@booking/ui/components/ui/alert';
 import type { Route } from './+types/edit';
-import { apiGet, apiPatch } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { ListingGroupForm } from '~/features/partner/components/listing-group-form';
+import { PendingChangeBanner } from '~/features/partner/components/pending-change-banner';
+import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
-  const [groupRes, typesRes] = await Promise.all([
+  const [groupRes, typesRes, pendingRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/partner/listing-groups/${params.groupId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
+    apiGet<ListingGroupPendingChangesResponse>(
+      `/partner/listing-groups/${params.groupId}/pending-changes`,
+      auth,
+    ),
   ]);
   if (!groupRes.ok || !groupRes.data)
     throw new Response('Không tìm thấy tin đăng.', { status: groupRes.status });
-  if (!['draft', 'archived'].includes(groupRes.data.status))
-    throw new Response('Hãy ẩn tin đăng trước khi chỉnh sửa.', { status: 409 });
   const listingType = (typesRes.data ?? []).find(
     (type) => type.id === groupRes.data?.listingTypeId,
   );
   if (!listingType) throw new Response('Không tìm thấy loại dịch vụ.', { status: 404 });
-  return { group: groupRes.data, listingType, partnerId: membership.partnerId };
+  const revision = pendingRes.ok ? (pendingRes.data?.group ?? null) : null;
+  return {
+    group: groupRes.data,
+    // The form opens on the partner's waiting edit, not the approved version.
+    formGroup: applyRevisionDiff(groupRes.data, revision),
+    revision,
+    listingType,
+    partnerId: membership.partnerId,
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { auth, membership } = await requirePartner(request);
+  // The edit form posts JSON; the "huỷ thay đổi" button posts a form field.
+  if (!request.headers.get('content-type')?.includes('application/json')) {
+    const form = await request.formData();
+    if (form.get('intent') === 'discard-revision') {
+      const res = await apiDelete(`/partner/listing-groups/${params.groupId}/revision`, auth);
+      if (!res.ok) {
+        return data(
+          { error: res.error ?? 'Huỷ thay đổi không thành công.', fieldErrors: null },
+          { status: 400 },
+        );
+      }
+      return redirect(`/partner/listing-groups/${params.groupId}/edit`);
+    }
+    return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
+  }
   const parsed = createListingGroupInputSchema.safeParse(await request.json());
   if (!parsed.success)
     return data({ error: null, fieldErrors: parsed.error.flatten().fieldErrors }, { status: 400 });
@@ -71,20 +98,11 @@ export default function EditListingGroupPage({ loaderData, actionData }: Route.C
           </span>
         ) : null}
       </div>
-      {group.status === 'archived' ? (
-        <Alert>
-          <TriangleAlert />
-          <AlertTitle>Tin đăng đang được ẩn</AlertTitle>
-          <AlertDescription>
-            Lưu thay đổi sẽ chuyển tin đăng và toàn bộ hạng mục về bản nháp; bạn sẽ cần gửi duyệt
-            lại để hiển thị.
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <PendingChangeBanner revision={loaderData.revision} />
       <ListingGroupForm
         partnerId={loaderData.partnerId}
         listingType={loaderData.listingType}
-        group={group}
+        group={loaderData.formGroup}
         serverError={actionData?.error ?? null}
         fieldErrors={actionData?.fieldErrors ?? null}
       />

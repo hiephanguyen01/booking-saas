@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router';
 import type {
   ListingResponse,
+  ListingRevisionResponse,
   ListingTypeResponse,
   Paginated,
   PaginatedWithCounts,
@@ -53,12 +54,16 @@ export async function loader({ request, url }: Route.LoaderArgs) {
       : Promise.resolve(null),
     apiGet<ListingTypeResponse[]>('/tenant/listing-types', auth),
   ]);
+  // Edits waiting on already-published listings — they never change `status`, so
+  // the status tabs alone would hide them from the reviewer.
+  const revisionsRes = await apiGet<ListingRevisionResponse[]>('/tenant/listing-revisions', auth);
   const partnerNames: Record<string, string> = {};
   if (partnersRes?.ok) for (const p of partnersRes.data?.items ?? []) partnerNames[p.id] = p.name;
   const typeNames: Record<string, string> = {};
   if (typesRes.ok) for (const t of typesRes.data ?? []) typeNames[t.id] = t.name;
   return {
     result: res.ok ? res.data : null,
+    pendingChanges: revisionsRes.ok ? (revisionsRes.data ?? []) : [],
     partnerNames,
     typeNames,
     error: res.ok ? null : (res.error ?? 'Không tải được danh sách tin đăng.'),
@@ -78,7 +83,9 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 export default function TenantListings({ loaderData }: Route.ComponentProps) {
-  const { result, partnerNames, typeNames, error, canModerate, filters } = loaderData;
+  const { result, pendingChanges, partnerNames, typeNames, error, canModerate, filters } =
+    loaderData;
+  const pendingChangeIds = new Set(pendingChanges.map((revision) => revision.targetId));
   const [searchParams] = useSearchParams();
   const { page, pageSize, pageHref, filterHref } = readListParams(searchParams);
   const listings = result?.items ?? [];
@@ -92,6 +99,9 @@ export default function TenantListings({ loaderData }: Route.ComponentProps) {
       cell: (l) => (
         <div className="min-w-0">
           <div className="truncate font-medium">{l.title}</div>
+          {pendingChangeIds.has(l.id) ? (
+            <div className="text-xs font-medium text-warning">Có thay đổi chờ duyệt</div>
+          ) : null}
           <div className="truncate text-xs text-muted-foreground">/{l.slug}</div>
           {l.groupId && (
             <div className="truncate text-xs">

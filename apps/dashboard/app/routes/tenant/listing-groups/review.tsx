@@ -1,4 +1,8 @@
-import type { ListingGroupDetailResponse, ListingGroupReviewResponse } from '@booking/contracts';
+import type {
+  ListingGroupDetailResponse,
+  ListingGroupPendingChangesResponse,
+  ListingGroupReviewResponse,
+} from '@booking/contracts';
 import {
   Card,
   CardContent,
@@ -6,10 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@booking/ui/components/ui/card';
+import { data, redirect } from 'react-router';
 import type { Route } from './+types/review';
-import { apiGet } from '~/lib/api.server';
+import { apiGet, apiPost } from '~/lib/api.server';
 import { requireTenant } from '~/features/tenant/server/tenant.server';
-import { runModerationAction } from '~/features/tenant/server/moderation-action.server';
+import {
+  moderationErrorMessage,
+  runModerationAction,
+} from '~/features/tenant/server/moderation-action.server';
 import { CONTACT_FIELD_LABEL, GROUP_CHECKLIST_LABEL } from '~/features/tenant/constants';
 import { BackLink } from '~/components/back-link';
 import { ErrorBanner } from '~/components/action-feedback';
@@ -20,6 +28,8 @@ import { useBusy } from '~/hooks/use-busy';
 import { PartnerSummaryCard } from '~/features/tenant/components/moderation/partner-summary-card';
 import { ModerationReviewPanel } from '~/features/tenant/components/moderation/moderation-review-panel';
 import { ModerationActionsCard } from '~/features/tenant/components/moderation/moderation-actions-card';
+import { RevisionDecisionCard } from '~/features/tenant/components/moderation/revision-decision-card';
+import { RevisionDiffCard } from '~/features/tenant/components/moderation/revision-diff-card';
 import { ChildListingCard } from '~/features/tenant/components/group-review/child-listing-card';
 import { GroupContentCard } from '~/features/tenant/components/group-review/group-content-card';
 
@@ -39,27 +49,63 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, can } = await requireTenant(request, 'tenant.listings.read');
-  const [detailRes, reviewRes] = await Promise.all([
+  const [detailRes, reviewRes, pendingRes] = await Promise.all([
     apiGet<ListingGroupDetailResponse>(`/tenant/listing-groups/${params.groupId}/detail`, auth),
     // The review endpoint requires `tenant.listings.publish`; a read-only user
     // (or a transient failure) gets no checklist rather than a broken page.
     apiGet<ListingGroupReviewResponse>(`/tenant/listing-groups/${params.groupId}/review`, auth),
+    apiGet<ListingGroupPendingChangesResponse>(
+      `/tenant/listing-groups/${params.groupId}/pending-changes`,
+      auth,
+    ),
   ]);
   if (!detailRes.ok || !detailRes.data) {
     throw new Response('Không tìm thấy tin đăng.', { status: detailRes.status });
   }
+  const pending = pendingRes.ok ? pendingRes.data : null;
   return {
     group: detailRes.data,
     review: reviewRes.ok ? (reviewRes.data ?? null) : null,
     reviewFailed: !reviewRes.ok,
+    // A post is reviewed as a unit: its own edit plus every edited item.
+    pendingChanges: [...(pending?.group ? [pending.group] : []), ...(pending?.listings ?? [])],
     canModerate: can('tenant.listings.publish'),
   };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { auth } = await requireTenant(request, 'tenant.listings.publish');
+  const form = await request.formData();
+  const intent = String(form.get('intent') ?? '');
+
+  // Deciding the post's parked edits changes content, not publish status — and it
+  // covers the post and its items in one call.
+  if (intent === 'approve-change' || intent === 'reject-change') {
+    const res =
+      intent === 'approve-change'
+        ? await apiPost(
+            `/tenant/listing-groups/${params.groupId}/pending-changes/approve`,
+            { force: form.get('force') === '1' },
+            auth,
+          )
+        : await apiPost(
+            `/tenant/listing-groups/${params.groupId}/revision/reject`,
+            { note: String(form.get('note') ?? '').trim() },
+            auth,
+          );
+    if (!res.ok) {
+      return data({
+        error: moderationErrorMessage(
+          res,
+          'Nội dung sửa còn lộ thông tin liên hệ. Tích “Bỏ qua cảnh báo” nếu vẫn muốn duyệt.',
+        ),
+      });
+    }
+    return redirect(`/tenant/listing-groups/${params.groupId}/review`);
+  }
+
   return runModerationAction({
-    form: await request.formData(),
+    form,
     auth,
     basePath: `/tenant/listing-groups/${params.groupId}`,
     intents: ['publish', 'republish', 'hide'],
@@ -70,7 +116,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function ListingGroupReviewPage({ loaderData, actionData }: Route.ComponentProps) {
-  const { group, review, reviewFailed, canModerate } = loaderData;
+  const { group, review, reviewFailed, pendingChanges, canModerate } = loaderData;
   const busy = useBusy();
 
   const partner = group.listings[0]?.partner ?? null;
@@ -115,6 +161,25 @@ export default function ListingGroupReviewPage({ loaderData, actionData }: Route
           </CardContent>
         </Card>
       )}
+
+      {pendingChanges.map((revision) => (
+        <RevisionDiffCard
+          key={revision.id}
+          revision={revision}
+          title={
+            revision.targetType === 'listing_group'
+              ? 'Thay đổi thông tin chung'
+              : `Thay đổi hạng mục · ${revision.targetTitle}`
+          }
+        />
+      ))}
+      {pendingChanges.length > 0 && canModerate ? (
+        <RevisionDecisionCard
+          entityLabel="tin đăng"
+          hasContactLeak={(review?.contactFlags.length ?? 0) > 0}
+          busy={busy}
+        />
+      ) : null}
 
       <GroupContentCard group={group} />
 

@@ -140,6 +140,24 @@ enum ContentReportTarget {
   @@map("content_report_target")
 }
 
+/// What a pending edit targets — a standalone listing/item or the post itself.
+enum RevisionTarget {
+  listing
+  listing_group
+
+  @@map("revision_target")
+}
+
+/// Lifecycle of a parked edit; only `approved` is ever written onto the live row.
+enum RevisionStatus {
+  pending
+  approved
+  rejected
+  discarded
+
+  @@map("revision_status")
+}
+
 enum ContentReportReason {
   misleading
   fraud_or_scam
@@ -508,6 +526,8 @@ model User {
   favorites             Favorite[]       @relation("FavoriteCustomer")
   contentReports        ContentReport[]  @relation("ContentReportReporter")
   contentReportsHandled ContentReport[]  @relation("ContentReportHandler")
+  listingRevisions      ListingRevision[] @relation("ListingRevisionSubmitter")
+  listingRevisionsReviewed ListingRevision[] @relation("ListingRevisionReviewer")
 
   @@map("users")
 }
@@ -670,6 +690,7 @@ model Tenant {
   reviewReplies             ReviewReply[]
   favorites                 Favorite[]
   contentReports            ContentReport[]
+  listingRevisions          ListingRevision[]
   payoutAllocations         PayoutAllocation[]
   promotions                Promotion[]
   affiliates                Affiliate[]
@@ -1281,6 +1302,39 @@ model ContentReport {
   @@index([tenantId, targetType, targetId])
   @@index([reporterUserId, createdAt(sort: Desc)])
   @@map("content_reports")
+}
+
+/// A partner's edit of an already-reviewed listing or post, parked until a tenant
+/// reviewer approves it (§7.3). The live row keeps serving customers meanwhile;
+/// `payload` is the update input, applied verbatim through the update use-case on
+/// approval. At most one `pending` row per target — enforced by a partial unique
+/// index that lives in the migration (Prisma cannot express `WHERE`).
+model ListingRevision {
+  id                String         @id @default(uuid(7)) @db.Uuid
+  tenantId          String         @map("tenant_id") @db.Uuid
+  targetType        RevisionTarget @map("target_type")
+  targetId          String         @map("target_id") @db.Uuid
+  /// The edit itself, shaped like updateListingInput / updateListingGroupInput.
+  payload           Json
+  status            RevisionStatus @default(pending)
+  submittedByUserId String?        @map("submitted_by_user_id") @db.Uuid
+  submittedAt       DateTime       @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  reviewedByUserId  String?        @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt        DateTime?      @map("reviewed_at") @db.Timestamptz(6)
+  /// Required when rejected — the partner reads it and fixes the change.
+  reviewNote        String?        @map("review_note")
+  /// Set when the payload was written onto the live row.
+  appliedAt         DateTime?      @map("applied_at") @db.Timestamptz(6)
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submittedBy User?  @relation("ListingRevisionSubmitter", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy  User?  @relation("ListingRevisionReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, submittedAt(sort: Desc)])
+  @@index([tenantId, targetType, targetId, submittedAt(sort: Desc)])
+  @@map("listing_revisions")
 }
 
 /// Audit mirror of Redis holds (Redis is the source of truth) — §7.5.

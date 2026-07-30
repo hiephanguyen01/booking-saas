@@ -60,6 +60,9 @@ prisma, redis, tenant-context, time, validation). Details in
 - **Every protected endpoint declares `@RequirePermissions('scope.resource.action')`** (or `@Public()`
   / `@AuthenticatedOnly()`). The global guard is **deny-by-default**: an undeclared route is 403.
 - **Auth is opaque session cookies, not JWT** (`sid`/`rid`, SHA-256-hashed, rotated) — see [ADR 0001](./docs/decisions/0001-opaque-sessions-over-jwt.md).
+- **A partner's edit of an already-reviewed listing never touches the live row**: it is parked in
+  `listing_revisions` and applied only on tenant approval, so the storefront only ever reads approved
+  content and editing no longer takes a listing offline — see [ADR 0007](./docs/decisions/0007-listing-edit-revisions.md).
 - **A module's write-path side effects cross module lines via the outbox, never a direct call**:
   producer `OutboxService.emit(tx, {eventType, payload})` inside its `forTenant` tx; consumer
   `OutboxHandlerRegistry.register(eventType, handler)`. This is what keeps a state change and its
@@ -184,6 +187,6 @@ never drift between what production configures and what the demo fills in.
 - [`docs/glossary.md`](./docs/glossary.md) — domain terminology
 - [`docs/deployment.md`](./docs/deployment.md) — staging & production containers, migrations, releases, scaling
 - [`docs/deployment-runbook.md`](./docs/deployment-runbook.md) — step-by-step first deploy (AWS + Cloudflare R2 + Resend)
-- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services)
+- [`docs/decisions/`](./docs/decisions/) — ADRs (opaque sessions, RLS, outbox, migrations, no tests, no services, listing edit revisions)
 - [`docs/deprecated-artifacts.md`](./docs/deprecated-artifacts.md) — dead code slated for deletion (don't extend it)
 - Per-subtree `CLAUDE.md`: [`apps/api`](./apps/api/CLAUDE.md) · [`apps/storefront`](./apps/storefront/CLAUDE.md) · [`apps/dashboard`](./apps/dashboard/CLAUDE.md) · [`packages/ui`](./packages/ui/CLAUDE.md) · [`packages/contracts`](./packages/contracts/CLAUDE.md)

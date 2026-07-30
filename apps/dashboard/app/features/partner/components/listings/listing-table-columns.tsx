@@ -18,8 +18,10 @@ export function buildListingColumns(opts: {
   canWrite: boolean;
   canPublish: boolean;
   canAvailability: boolean;
+  /** Ids whose edit is waiting for the tenant — the row shows a "chờ duyệt" chip. */
+  pendingChangeIds?: ReadonlySet<string>;
 }): DataTableColumn<ListingResponse>[] {
-  const { listingTypes, canWrite, canPublish, canAvailability } = opts;
+  const { listingTypes, canWrite, canPublish, canAvailability, pendingChangeIds } = opts;
   const typeById = new Map(listingTypes.map((type) => [type.id, type]));
 
   return [
@@ -36,6 +38,7 @@ export function buildListingColumns(opts: {
           favoriteCount={listing.favoriteCount}
           ratingAvg={listing.ratingAvg}
           status={listing.status}
+          hasPendingChange={pendingChangeIds?.has(listing.id) ?? false}
         />
       ),
       className: 'min-w-[22rem] px-4 py-3',

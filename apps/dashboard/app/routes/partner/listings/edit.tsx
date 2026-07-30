@@ -4,16 +4,19 @@ import {
   updateListingInputSchema,
   type CancellationPolicyResponse,
   type ListingResponse,
+  type ListingRevisionResponse,
   type ListingTypeResponse,
   type DepositRequirementResponse,
 } from '@booking/contracts';
 import type { Route } from './+types/edit';
-import { apiGet, apiPatch } from '~/lib/api.server';
+import { apiDelete, apiGet, apiPatch } from '~/lib/api.server';
 import { requirePartner } from '~/features/partner/server/partner.server';
 import { BackLink } from '~/components/back-link';
 import { PageHeader } from '~/components/page-header';
 import { ListingStatusBadge } from '~/components/status-badge';
 import { ListingForm } from '~/features/partner/components/listing-form';
+import { PendingChangeBanner } from '~/features/partner/components/pending-change-banner';
+import { applyRevisionDiff } from '~/features/partner/lib/listing-revision';
 
 /**
  * A read-only strip above the edit form: current publish status + who last hid or
@@ -34,13 +37,15 @@ function ListingStatusStrip({ listing }: { listing: ListingResponse }) {
         </span>
       ) : listing.hiddenBy ? (
         <span className="text-muted-foreground">Đã ẩn bởi {actor(listing.hiddenBy)}.</span>
-      ) : listing.status === 'published' ? (
+      ) : listing.status === 'draft' ? (
         <span className="text-muted-foreground">
-          Đang hiển thị — hãy ẩn tin đăng trước khi sửa nếu không muốn thay đổi hiện ngay.
+          Bản nháp — thay đổi được lưu trực tiếp cho tới khi tin được duyệt lần đầu.
         </span>
-      ) : listing.publishedBy ? (
-        <span className="text-muted-foreground">Đã xuất bản bởi {actor(listing.publishedBy)}.</span>
-      ) : null}
+      ) : (
+        <span className="text-muted-foreground">
+          Đã qua kiểm duyệt — mỗi thay đổi sẽ được gửi duyệt lại, bản đang hiển thị giữ nguyên.
+        </span>
+      )}
     </div>
   );
 }
@@ -51,10 +56,14 @@ export function meta(): Route.MetaDescriptors {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { auth, membership } = await requirePartner(request, 'partner.listings.write');
-  const [listingRes, typesRes, policiesRes] = await Promise.all([
+  const [listingRes, typesRes, policiesRes, revisionRes] = await Promise.all([
     apiGet<ListingResponse>(`/partner/listings/${params.listingId}`, auth),
     apiGet<ListingTypeResponse[]>('/partner/listing-types', auth),
     apiGet<CancellationPolicyResponse[]>('/partner/cancellation-policies', auth),
+    apiGet<ListingRevisionResponse | null>(
+      `/partner/listings/${params.listingId}/revision`,
+      auth,
+    ),
   ]);
   if (!listingRes.ok || !listingRes.data) {
     throw new Response('Không tìm thấy tin đăng.', {
@@ -71,8 +80,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       },
     },
   );
+  const revision = revisionRes.ok ? (revisionRes.data ?? null) : null;
   return {
     listing: listingRes.data,
+    // The form opens on the partner's waiting edit, not the approved version.
+    formListing: applyRevisionDiff(listingRes.data, revision),
+    revision,
     listingTypes: typesRes.data ?? [],
     cancellationPolicies: policiesRes.data ?? [],
     partnerId: membership.partnerId,
@@ -86,6 +99,20 @@ export async function action({ request, params }: Route.ActionArgs) {
   const { auth, can } = await requirePartner(request);
   if (!can('partner.listings.write')) {
     return data({ error: 'Không có quyền sửa tin đăng.', fieldErrors: null }, { status: 403 });
+  }
+  // The edit form posts JSON; the "huỷ thay đổi" button posts a form field.
+  if (!request.headers.get('content-type')?.includes('application/json')) {
+    const form = await request.formData();
+    if (form.get('intent') === 'discard-revision') {
+      const res = await apiDelete(`/partner/listings/${params.listingId}/revision`, auth);
+      if (!res.ok) {
+        return data({ error: res.error ?? 'Huỷ thay đổi không thành công.', fieldErrors: null }, {
+          status: 400,
+        });
+      }
+      return redirect(`/partner/listings/${params.listingId}/edit`);
+    }
+    return data({ error: 'Yêu cầu không hợp lệ.', fieldErrors: null }, { status: 400 });
   }
   const parsed = updateListingInputSchema.safeParse(await request.json());
   if (!parsed.success) {
@@ -109,10 +136,11 @@ export default function EditListingPage({ loaderData, actionData }: Route.Compon
         <PageHeader title="Sửa tin đăng" description={loaderData.listing.title} />
       </div>
       <ListingStatusStrip listing={loaderData.listing} />
+      <PendingChangeBanner revision={loaderData.revision} />
       <ListingForm
         listingTypes={loaderData.listingTypes}
         partnerId={loaderData.partnerId}
-        listing={loaderData.listing}
+        listing={loaderData.formListing}
         cancellationPolicies={loaderData.cancellationPolicies}
         minimumDepositPercent={loaderData.minimumDepositPercent}
         serverError={actionData?.error ?? null}

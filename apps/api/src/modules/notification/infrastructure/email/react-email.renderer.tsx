@@ -123,6 +123,14 @@ const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
     vi: { subject: 'Tin “{listingTitle}” đã bị ẩn', title: 'Tin của bạn đã bị ẩn', intro: 'Tin “{listingTitle}” đã bị ẩn. {reason}', cta: 'Xem tin' },
     en: { subject: 'Listing “{listingTitle}” was hidden', title: 'Your listing was hidden', intro: '“{listingTitle}” was hidden. {reason}', cta: 'View listing' },
   },
+  listing_change_approved_partner: {
+    vi: { subject: 'Thay đổi cho tin “{listingTitle}” đã được duyệt', title: 'Thay đổi đã được duyệt', intro: 'Thay đổi bạn gửi cho tin “{listingTitle}” đã được duyệt và đang hiển thị.', cta: 'Xem tin' },
+    en: { subject: 'Your change to “{listingTitle}” was approved', title: 'Change approved', intro: 'The change you submitted for “{listingTitle}” has been approved and is now live.', cta: 'View listing' },
+  },
+  listing_change_rejected_partner: {
+    vi: { subject: 'Thay đổi cho tin “{listingTitle}” chưa được duyệt', title: 'Thay đổi chưa được duyệt', intro: 'Thay đổi bạn gửi cho tin “{listingTitle}” chưa được duyệt. {reason} Tin vẫn đang hiển thị bản đã duyệt trước đó.', cta: 'Sửa lại tin' },
+    en: { subject: 'Your change to “{listingTitle}” was not approved', title: 'Change not approved', intro: 'The change you submitted for “{listingTitle}” was turned down. {reason} The listing keeps serving its previously approved content.', cta: 'Edit listing' },
+  },
   partner_application_received: {
     vi: { subject: 'Đã nhận hồ sơ đối tác tại {tenantName}', title: 'Hồ sơ đối tác đã được ghi nhận', intro: 'Chào {recipientName}, hồ sơ “{partnerName}” đã được gửi thành công và đang chờ tenant duyệt.', cta: 'Tài khoản của tôi' },
     en: { subject: 'Partner application received by {tenantName}', title: 'Partner application received', intro: 'Hi {recipientName}, the application for “{partnerName}” was submitted and is awaiting tenant approval.', cta: 'Open my account' },

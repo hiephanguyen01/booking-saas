@@ -72,7 +72,14 @@ export function transitionHide(state: ModerationState, actor: ModerationActor): 
   return { status: 'archived', publishedBy: state.publishedBy, hiddenBy };
 }
 
-/** archived → published. A partner cannot re-publish an admin-hidden post. */
+/**
+ * archived → published. A partner cannot re-publish an admin-hidden post.
+ *
+ * A post that was hidden while still awaiting its FIRST review has never had its
+ * content approved (`publishedBy === null`), so un-hiding it must not put it in
+ * front of customers: for a partner it goes back into the review queue instead.
+ * An admin re-publishing is itself the review decision, so it still publishes.
+ */
 export function transitionRepublish(
   state: ModerationState,
   actor: ModerationActor,
@@ -84,6 +91,9 @@ export function transitionRepublish(
     );
   }
   assertNotAdminLocked(state, actor);
+  if (actor !== 'admin' && state.publishedBy === null) {
+    return { status: 'pending_review', publishedBy: null, hiddenBy: null };
+  }
   return { status: 'published', publishedBy: actor, hiddenBy: null };
 }
 

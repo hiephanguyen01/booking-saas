@@ -14,12 +14,14 @@ import { AssertListingDepositCoverageUseCase } from '../../application/use-cases
 import { LISTING_GROUP_REPOSITORY } from '../../domain/ports/listing-group-repository.port';
 import { LISTING_FEED_REPOSITORY } from '../../domain/ports/listing-feed-repository.port';
 import { LISTING_REPOSITORY } from '../../domain/ports/listing-repository.port';
+import { LISTING_REVISION_REPOSITORY } from '../../domain/ports/listing-revision-repository.port';
 import { RESOURCE_REPOSITORY } from '../../domain/ports/resource-repository.port';
 import { PRICING_RULE_REPOSITORY } from '../../domain/ports/pricing-rule-repository.port';
 import { CANCELLATION_POLICY_REPOSITORY } from '../../domain/ports/cancellation-policy-repository.port';
 import { PrismaListingGroupRepository } from '../repositories/prisma-listing-group.repository';
 import { PrismaListingFeedRepository } from '../repositories/prisma-listing-feed.repository';
 import { PrismaListingRepository } from '../repositories/prisma-listing.repository';
+import { PrismaListingRevisionRepository } from '../repositories/prisma-listing-revision.repository';
 import { PrismaResourceRepository } from '../repositories/prisma-resource.repository';
 import { PrismaPricingRuleRepository } from '../repositories/prisma-pricing-rule.repository';
 import { PrismaCancellationPolicyRepository } from '../repositories/prisma-cancellation-policy.repository';
@@ -36,6 +38,16 @@ import { ListPartnerListingFeedUseCase } from '../../application/use-cases/list-
 import { ListListingsPageUseCase } from '../../application/use-cases/list-listings-page.use-case';
 import { GetListingUseCase } from '../../application/use-cases/get-listing.use-case';
 import { UpdateListingUseCase } from '../../application/use-cases/update-listing.use-case';
+import { ApplyListingUpdateUseCase } from '../../application/use-cases/apply-listing-update.use-case';
+import { ApplyListingGroupUpdateUseCase } from '../../application/use-cases/apply-listing-group-update.use-case';
+import { SaveListingEditUseCase } from '../../application/use-cases/save-listing-edit.use-case';
+import { SaveListingGroupEditUseCase } from '../../application/use-cases/save-listing-group-edit.use-case';
+import { GetListingRevisionUseCase } from '../../application/use-cases/revisions/get-listing-revision.use-case';
+import { GetListingGroupPendingChangesUseCase } from '../../application/use-cases/revisions/get-listing-group-pending-changes.use-case';
+import { ListPendingRevisionsUseCase } from '../../application/use-cases/revisions/list-pending-revisions.use-case';
+import { DiscardListingRevisionUseCase } from '../../application/use-cases/revisions/discard-listing-revision.use-case';
+import { ApproveListingRevisionUseCase } from '../../application/use-cases/revisions/approve-listing-revision.use-case';
+import { RejectListingRevisionUseCase } from '../../application/use-cases/revisions/reject-listing-revision.use-case';
 import { DeleteListingUseCase } from '../../application/use-cases/delete-listing.use-case';
 import { CreatePricingRuleUseCase } from '../../application/use-cases/create-pricing-rule.use-case';
 import { ListPricingRulesUseCase } from '../../application/use-cases/list-pricing-rules.use-case';
@@ -56,6 +68,8 @@ import { TenantListingGroupController } from './tenant-listing-group.controller'
 import { TenantListingController } from './tenant-listing.controller';
 import { TenantListingModerationController } from './tenant-listing-moderation.controller';
 import { PartnerListingModerationController } from './partner-listing-moderation.controller';
+import { PartnerListingRevisionController } from './partner-listing-revision.controller';
+import { TenantListingRevisionController } from './tenant-listing-revision.controller';
 import { TenantListingGroupModerationController } from './tenant-listing-group-moderation.controller';
 import { PartnerListingGroupModerationController } from './partner-listing-group-moderation.controller';
 import { TenantResourceController } from './tenant-resource.controller';
@@ -95,7 +109,9 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     TenantListingGroupController,
     TenantListingController,
     TenantListingModerationController,
+    TenantListingRevisionController,
     PartnerListingModerationController,
+    PartnerListingRevisionController,
     TenantListingGroupModerationController,
     PartnerListingGroupModerationController,
     PartnerListingGroupController,
@@ -110,6 +126,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     { provide: LISTING_GROUP_REPOSITORY, useClass: PrismaListingGroupRepository },
     { provide: LISTING_FEED_REPOSITORY, useClass: PrismaListingFeedRepository },
     { provide: LISTING_REPOSITORY, useClass: PrismaListingRepository },
+    { provide: LISTING_REVISION_REPOSITORY, useClass: PrismaListingRevisionRepository },
     { provide: RESOURCE_REPOSITORY, useClass: PrismaResourceRepository },
     { provide: PRICING_RULE_REPOSITORY, useClass: PrismaPricingRuleRepository },
     { provide: CANCELLATION_POLICY_REPOSITORY, useClass: PrismaCancellationPolicyRepository },
@@ -131,6 +148,16 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     ListListingsPageUseCase,
     GetListingUseCase,
     UpdateListingUseCase,
+    ApplyListingUpdateUseCase,
+    ApplyListingGroupUpdateUseCase,
+    SaveListingEditUseCase,
+    SaveListingGroupEditUseCase,
+    GetListingRevisionUseCase,
+    GetListingGroupPendingChangesUseCase,
+    ListPendingRevisionsUseCase,
+    DiscardListingRevisionUseCase,
+    ApproveListingRevisionUseCase,
+    RejectListingRevisionUseCase,
     DeleteListingUseCase,
     CreatePricingRuleUseCase,
     ListPricingRulesUseCase,
