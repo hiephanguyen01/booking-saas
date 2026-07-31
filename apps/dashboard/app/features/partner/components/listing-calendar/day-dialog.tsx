@@ -19,7 +19,8 @@ import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
 import { formatDayLong, type CalendarMode } from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
-import { useSubmitSuccess, type SubmitResult } from './use-submit-success';
+import { WindowListField } from './window-list-field';
+import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
 interface Props {
   date: string | null;
@@ -57,6 +58,7 @@ export function DayDialog({
   const [notice, setNotice] = useState<string | null>(null);
   const [setting, setSetting] = useState<string>(exception?.type ?? 'default');
   const [acknowledged, setAcknowledged] = useState(false);
+  const [windowsValid, setWindowsValid] = useState(true);
 
   // A new date is a new decision: never carry the previous day's confirmation
   // or its "closed" choice into it.
@@ -64,7 +66,13 @@ export function DayDialog({
     setNotice(null);
     setSetting(exception?.type ?? 'default');
     setAcknowledged(false);
+    setWindowsValid(true);
   }, [date, exception?.type]);
+
+  const exceptionWindows = (exception?.windows ?? []).map((window) => ({
+    open: window.openTime,
+    close: window.closeTime,
+  }));
 
   useSubmitSuccess(availabilityFetcher, () => onSaved('Đã lưu lịch mở cửa.', true));
   useSubmitSuccess(priceFetcher, () => {
@@ -136,8 +144,8 @@ export function DayDialog({
                       </p>
                     ) : null}
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2 sm:col-span-2">
+                  <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label htmlFor="availability-setting">Trạng thái</Label>
                       <select
                         id="availability-setting"
@@ -151,24 +159,14 @@ export function DayDialog({
                         <option value="closed">Đóng cả ngày</option>
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="open-time">Mở</Label>
-                      <Input
-                        id="open-time"
-                        name="openTime"
-                        type="time"
-                        defaultValue={exception?.openTime ?? '08:00'}
+                    {setting === 'custom_hours' ? (
+                      <WindowListField
+                        key={`windows:${date}`}
+                        idPrefix="day"
+                        initial={exceptionWindows}
+                        onValidityChange={setWindowsValid}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="close-time">Đóng</Label>
-                      <Input
-                        id="close-time"
-                        name="closeTime"
-                        type="time"
-                        defaultValue={exception?.closeTime ?? '22:00'}
-                      />
-                    </div>
+                    ) : null}
                   </div>
 
                   {needsAck ? (
@@ -187,7 +185,11 @@ export function DayDialog({
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={availabilityFetcher.state !== 'idle' || (needsAck && !acknowledged)}
+                    disabled={
+                      availabilityFetcher.state !== 'idle' ||
+                      (needsAck && !acknowledged) ||
+                      (setting === 'custom_hours' && !windowsValid)
+                    }
                   >
                     {availabilityFetcher.state === 'idle' ? 'Lưu lịch mở cửa' : 'Đang lưu...'}
                   </Button>

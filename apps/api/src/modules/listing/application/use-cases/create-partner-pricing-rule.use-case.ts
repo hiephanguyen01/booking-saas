@@ -21,6 +21,7 @@ import {
 } from '../../../../shared/domain/availability/open-windows';
 import {
   PricingRule,
+  findOverlappingRecurring,
   findOverlappingWindow,
   sameWindowKey,
 } from '../../domain/entities/pricing-rule.entity';
@@ -28,6 +29,7 @@ import { ListingNotFound, ListingNotOwned } from '../../domain/errors/listing-er
 import {
   PricingRuleOverlap,
   PricingWindowOutsideOpenHours,
+  RecurringPricingRuleOverlap,
 } from '../../domain/errors/pricing-rule-errors';
 
 @Injectable()
@@ -76,6 +78,27 @@ export class CreatePartnerPricingRuleUseCase {
           }
           await this.assertInsideOpenHours(tx, listingId, listing.resourceId, candidate.params);
         }
+        for (const rule of existing) {
+          if (sameWindowKey(rule, candidate)) await this.rules.delete(tx, rule.id);
+        }
+      } else if (input.ruleType === 'day_of_week' || input.ruleType === 'time_range') {
+        // Recurring rules all share one priority band, so two that match the
+        // same instant resolve by array order — refuse the collision instead of
+        // letting an arbitrary one win.
+        const existing = await this.rules.listByListing(tx, listingId);
+        const overlap = findOverlappingRecurring(existing, candidate);
+        if (overlap) {
+          const days = Array.isArray(overlap.params.days) ? overlap.params.days.map(Number) : [];
+          throw new RecurringPricingRuleOverlap(
+            days,
+            input.ruleType === 'time_range'
+              ? { from: String(overlap.params.from), to: String(overlap.params.to) }
+              : undefined,
+          );
+        }
+        // `findOverlappingRecurring` deliberately does NOT flag an identical
+        // scope, so this replace is what stops that case becoming a duplicate
+        // row — same save/replace contract as the date-scoped branch above.
         for (const rule of existing) {
           if (sameWindowKey(rule, candidate)) await this.rules.delete(tx, rule.id);
         }

@@ -36,31 +36,75 @@ export type SetAvailabilityRulesInput = z.infer<typeof setAvailabilityRulesInput
 export const availabilityExceptionTypeSchema = z.enum(['closed', 'custom_hours']);
 export type AvailabilityExceptionType = z.infer<typeof availabilityExceptionTypeSchema>;
 
+/** One opening window, resource-local `HH:MM`. */
+export const availabilityWindowSchema = z
+  .object({ openTime: timeOfDaySchema, closeTime: timeOfDaySchema })
+  .refine((w) => w.openTime < w.closeTime, {
+    path: ['closeTime'],
+    message: 'closeTime must be after openTime',
+  });
+export type AvailabilityWindow = z.infer<typeof availabilityWindowSchema>;
+
+/** A day may not open twice over the same minute — that would double-generate slots. */
+export function windowsOverlap(windows: readonly AvailabilityWindow[]): boolean {
+  const sorted = [...windows].sort((a, b) => a.openTime.localeCompare(b.openTime));
+  return sorted.some((window, index) => {
+    const previous = sorted[index - 1];
+    return previous !== undefined && window.openTime < previous.closeTime;
+  });
+}
+
+/**
+ * Shared `custom_hours` check for the single-date and range inputs: a custom day
+ * needs windows, and they must not overlap. `windows` is the modern shape; the
+ * bare `openTime`/`closeTime` pair is still accepted as the one-window form.
+ */
+function refineCustomHours(
+  input: {
+    type: AvailabilityExceptionType;
+    windows?: AvailabilityWindow[];
+    openTime?: string;
+    closeTime?: string;
+  },
+  ctx: z.RefinementCtx,
+): void {
+  if (input.type !== 'custom_hours') return;
+  if (input.windows && input.windows.length > 0) {
+    if (windowsOverlap(input.windows)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['windows'],
+        message: 'Windows must not overlap',
+      });
+    }
+    return;
+  }
+  if (!input.openTime || !input.closeTime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['windows'],
+      message: 'custom_hours requires at least one window',
+    });
+  } else if (input.openTime >= input.closeTime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['closeTime'],
+      message: 'closeTime must be after openTime',
+    });
+  }
+}
+
 export const availabilityExceptionInputSchema = z
   .object({
     date: dateOnlySchema,
     type: availabilityExceptionTypeSchema,
+    /** Preferred shape. Omit and send `openTime`/`closeTime` for a single window. */
+    windows: z.array(availabilityWindowSchema).min(1).max(12).optional(),
     openTime: timeOfDaySchema.optional(),
     closeTime: timeOfDaySchema.optional(),
     reason: z.string().max(200).optional(),
   })
-  .superRefine((e, ctx) => {
-    if (e.type === 'custom_hours') {
-      if (!e.openTime || !e.closeTime) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['openTime'],
-          message: 'custom_hours requires openTime and closeTime',
-        });
-      } else if (e.openTime >= e.closeTime) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['closeTime'],
-          message: 'closeTime must be after openTime',
-        });
-      }
-    }
-  });
+  .superRefine(refineCustomHours);
 export type AvailabilityExceptionInput = z.infer<typeof availabilityExceptionInputSchema>;
 
 /**
@@ -73,11 +117,13 @@ export const availabilityExceptionRangeInputSchema = z
     from: dateOnlySchema,
     to: dateOnlySchema,
     type: availabilityExceptionTypeSchema,
+    windows: z.array(availabilityWindowSchema).min(1).max(12).optional(),
     openTime: timeOfDaySchema.optional(),
     closeTime: timeOfDaySchema.optional(),
     reason: z.string().max(200).optional(),
   })
   .superRefine((input, ctx) => {
+    refineCustomHours(input, ctx);
     const days = dateOnlyDistanceDays(input.from, input.to);
     if (days === null || days < 0) {
       ctx.addIssue({
@@ -91,21 +137,6 @@ export const availabilityExceptionRangeInputSchema = z
         path: ['to'],
         message: `Range must be at most ${MAX_BULK_CALENDAR_DAYS} days`,
       });
-    }
-    if (input.type === 'custom_hours') {
-      if (!input.openTime || !input.closeTime) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['openTime'],
-          message: 'custom_hours requires openTime and closeTime',
-        });
-      } else if (input.openTime >= input.closeTime) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['closeTime'],
-          message: 'closeTime must be after openTime',
-        });
-      }
     }
   });
 export type AvailabilityExceptionRangeInput = z.infer<
@@ -176,7 +207,14 @@ export const availabilityExceptionResponseSchema = z.object({
   resourceId: z.string(),
   date: dateOnlySchema,
   type: availabilityExceptionTypeSchema,
+  /**
+   * Every opening window of the day; empty when the day is `closed`. Always
+   * present, so a reader never has to branch on the legacy pair below.
+   */
+  windows: z.array(availabilityWindowSchema),
+  /** Compatibility mirror of `windows[0]`. Read `windows` instead. */
   openTime: timeOfDaySchema.nullable(),
+  /** Compatibility mirror of `windows[0]`. Read `windows` instead. */
   closeTime: timeOfDaySchema.nullable(),
   reason: z.string().nullable(),
 });

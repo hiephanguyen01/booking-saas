@@ -1,4 +1,4 @@
-import { CalendarCheck, Clock3 } from 'lucide-react';
+import { CalendarCheck, Clock3, Repeat } from 'lucide-react';
 import type { PricingRuleResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
@@ -21,6 +21,8 @@ interface Props {
   basePrice: string | null;
   /** Bookings still holding the resource on this date. */
   bookingCount: number;
+  /** A repeating rule is in force — the number shown may not be what a guest pays. */
+  hasRecurring: boolean;
   isPast: boolean;
   isSelected: boolean;
   onPick: (date: string, extendRange: boolean) => void;
@@ -45,6 +47,7 @@ export function DayCell({
   rules,
   basePrice,
   bookingCount,
+  hasRecurring,
   isPast,
   isSelected,
   onPick,
@@ -65,7 +68,9 @@ export function DayCell({
       aria-label={
         isPast
           ? `${formatDayLong(date)} đã qua, không thể chỉnh sửa`
-          : `${formatDayLong(date)} — ${STATE_LABEL[closure]}${booked ? `, ${bookingCount} lượt đặt` : ''}`
+          : `${formatDayLong(date)} — ${STATE_LABEL[closure]}${booked ? `, ${bookingCount} lượt đặt` : ''}${
+              hasRecurring ? ', có quy tắc giá lặp lại' : ''
+            }`
       }
       title={isPast ? 'Ngày đã qua — chỉ xem, không thể chỉnh sửa' : undefined}
       onClick={(event) => !isPast && onPick(date, event.shiftKey)}
@@ -95,6 +100,17 @@ export function DayCell({
           <Clock3 className="size-3 text-primary" aria-hidden />
         ) : null}
       </div>
+
+      {hasRecurring ? (
+        // Hourly cells cannot fold a repeating rule into one number, so mark the
+        // day instead of printing a price no guest would be charged.
+        <span
+          className="absolute right-2 bottom-2 text-primary"
+          title="Ngày này có quy tắc giá lặp lại — giá trên ô chưa phải giá cuối"
+        >
+          <Repeat className="size-3" aria-hidden />
+        </span>
+      ) : null}
 
       {price ? (
         <div className="mt-3 space-y-0.5">

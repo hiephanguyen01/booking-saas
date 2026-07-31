@@ -43,6 +43,9 @@ export interface PublicListingRecord {
   availabilityExceptions: Array<{
     date: string;
     type: 'closed' | 'custom_hours';
+    /** Every opening window of the day; null for rows predating the column. */
+    windows: { openTime: string; closeTime: string }[] | null;
+    /** Mirror of `windows[0]`, read only when `windows` is null. */
     openTime: string | null;
     closeTime: string | null;
   }>;

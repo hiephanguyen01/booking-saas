@@ -18,7 +18,8 @@ import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
 import { formatDayShort, type CalendarMode } from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
-import { useSubmitSuccess, type SubmitResult } from './use-submit-success';
+import { WindowListField } from './window-list-field';
+import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
 interface Props {
   range: { from: string; to: string } | null;
@@ -68,11 +69,13 @@ export function RangeDialog({
   const [notice, setNotice] = useState<string | null>(null);
   const [setting, setSetting] = useState('closed');
   const [acknowledged, setAcknowledged] = useState(false);
+  const [windowsValid, setWindowsValid] = useState(true);
 
   useEffect(() => {
     setNotice(null);
     setSetting('closed');
     setAcknowledged(false);
+    setWindowsValid(true);
   }, [range?.from, range?.to]);
 
   useSubmitSuccess(availabilityFetcher, () => onSaved(`Đã lưu lịch mở cửa cho ${dates.length} ngày.`));
@@ -131,8 +134,8 @@ export function RangeDialog({
                       dải — bỏ thiết lập riêng vẫn phải làm từng ngày.
                     </p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2 sm:col-span-2">
+                  <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label htmlFor="range-availability-setting">Trạng thái</Label>
                       <select
                         id="range-availability-setting"
@@ -145,24 +148,14 @@ export function RangeDialog({
                         <option value="custom_hours">Mở theo giờ riêng</option>
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="range-open-time">Mở</Label>
-                      <Input
-                        id="range-open-time"
-                        name="openTime"
-                        type="time"
-                        defaultValue="08:00"
+                    {setting === 'custom_hours' ? (
+                      <WindowListField
+                        key={`range-windows:${range.from}:${range.to}`}
+                        idPrefix="range"
+                        initial={[]}
+                        onValidityChange={setWindowsValid}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="range-close-time">Đóng</Label>
-                      <Input
-                        id="range-close-time"
-                        name="closeTime"
-                        type="time"
-                        defaultValue="22:00"
-                      />
-                    </div>
+                    ) : null}
                   </div>
 
                   {needsAck ? (
@@ -181,7 +174,11 @@ export function RangeDialog({
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={availabilityFetcher.state !== 'idle' || (needsAck && !acknowledged)}
+                    disabled={
+                      availabilityFetcher.state !== 'idle' ||
+                      (needsAck && !acknowledged) ||
+                      (setting === 'custom_hours' && !windowsValid)
+                    }
                   >
                     {availabilityFetcher.state === 'idle'
                       ? `Áp cho ${dates.length} ngày`

@@ -1,4 +1,5 @@
 import argon2 from 'argon2';
+import { PRICING_RULE_PRIORITY } from '@booking/contracts';
 import { prisma } from '../client';
 import { ensureRoleAssignment } from '../shared';
 import { seedSportCatalog } from '../catalog/sport-catalog';
@@ -93,7 +94,7 @@ export async function seedSportDemo(setup: TenantSetup): Promise<void> {
         ruleType: 'time_range',
         params: { from: '17:00', to: '22:00' },
         price: 400_000n, // vs the 250k off-peak base rate
-        priority: 10,
+        priority: PRICING_RULE_PRIORITY.recurring,
       },
     });
   }

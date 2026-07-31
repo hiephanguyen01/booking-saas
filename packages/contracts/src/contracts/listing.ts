@@ -281,6 +281,26 @@ export const createResourceInputSchema = z.object({
 });
 export type CreateResourceInput = z.infer<typeof createResourceInputSchema>;
 
+/**
+ * Priority band per rule type — the single source of "which rule wins".
+ *
+ * The quote calculator sorts matching rules by `priority` descending and takes
+ * the first ([quote-calculator.ts] `matchingRule`), so **a higher number wins**.
+ * The bands go up as the rule gets narrower, which is the only ordering that
+ * behaves the way an operator expects: a recurring weekend price is the
+ * baseline, a season override beats it, and a price set on one specific
+ * date+window beats everything. Never write a raw priority at a call site —
+ * that is how the three surfaces drifted to 0 / 10 / 1000 before this existed.
+ */
+export const PRICING_RULE_PRIORITY = {
+  /** `day_of_week`, `time_range` — repeats forever, so it is the floor. */
+  recurring: 100,
+  /** `date_range` — an override covering a span of dates. */
+  dateRange: 500,
+  /** `date_time_range` — the narrowest scope, so it outranks all of them. */
+  dateTimeRange: 1000,
+} as const;
+
 export const dayOfWeekParamsSchema = z.object({ days: z.array(weekdaySchema).min(1) });
 export const timeRangeParamsSchema = z.object({
   from: timeStringSchema,
@@ -402,6 +422,53 @@ export type PricingRuleRangeInput = z.infer<typeof pricingRuleRangeInputSchema>;
 /** Why a date in a bulk range received no rule. */
 export const pricingRuleSkipReasonSchema = z.enum(['closed', 'outside_open_hours', 'overlap']);
 export type PricingRuleSkipReason = z.infer<typeof pricingRuleSkipReasonSchema>;
+
+export const recurringPricingKindSchema = z.enum(['day_of_week', 'time_range']);
+export type RecurringPricingKind = z.infer<typeof recurringPricingKindSchema>;
+
+/**
+ * The form shape for a repeating price, translated into a `pricingRuleInput`
+ * (params + `PRICING_RULE_PRIORITY.recurring`) before it reaches the API.
+ *
+ * `days` is always explicit here even though `timeRangeParamsSchema` allows it
+ * to be absent: "every weekday" and "the weekdays I picked" must not be the
+ * same edit, or a partner who clears the selection silently widens the rule to
+ * the whole week.
+ */
+export const recurringPricingRuleInputSchema = z
+  .object({
+    bookingMode: bookingModeSchema,
+    kind: recurringPricingKindSchema,
+    days: z.array(weekdaySchema).min(1, 'Chọn ít nhất một thứ trong tuần'),
+    window: z.object({ from: timeStringSchema, to: timeStringSchema }).optional(),
+    price: vndAmountSchema,
+    salePrice: vndAmountSchema.optional(),
+  })
+  .superRefine((rule, ctx) => {
+    if (rule.kind === 'time_range') {
+      if (!rule.window) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['window'],
+          message: 'Khung giờ là bắt buộc',
+        });
+      } else if (rule.window.from >= rule.window.to) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['window', 'to'],
+          message: 'Giờ kết thúc phải sau giờ bắt đầu',
+        });
+      }
+    }
+    if (rule.salePrice !== undefined && BigInt(rule.salePrice) >= BigInt(rule.price)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['salePrice'],
+        message: 'Sale price must be lower than regular price',
+      });
+    }
+  });
+export type RecurringPricingRuleInput = z.infer<typeof recurringPricingRuleInputSchema>;
 
 export const quoteQuerySchema = z.object({
   mode: bookingModeSchema,

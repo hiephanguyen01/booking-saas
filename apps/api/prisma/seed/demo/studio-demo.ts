@@ -1,4 +1,5 @@
 import argon2 from 'argon2';
+import { PRICING_RULE_PRIORITY } from '@booking/contracts';
 import { prisma } from '../client';
 import { bookingHistory, ensure, ensureRoleAssignment, seedBooking } from '../shared';
 import { seedDemoCatalog } from '../catalog/studio-catalog';
@@ -211,7 +212,7 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
         ruleType: 'time_range',
         params: { from: '18:00', to: '22:00' },
         price: 450_000n, // vs the 300k base per-hour rate
-        priority: 10,
+        priority: PRICING_RULE_PRIORITY.recurring,
       },
     });
   }

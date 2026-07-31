@@ -12,6 +12,12 @@ export interface WeeklyRule {
 /** A date-specific exception (§7.4). `closed` shuts the day; `custom_hours` overrides. */
 export interface DateException {
   type: 'closed' | 'custom_hours';
+  /**
+   * The day's opening windows — the source of truth. A special day may break
+   * for lunch, exactly as a weekday can.
+   */
+  windows?: { openTime: string; closeTime: string }[] | null;
+  /** Legacy single-window pair, read only when `windows` is absent. */
   openTime?: string | null;
   closeTime?: string | null;
 }
@@ -34,8 +40,17 @@ export function localOpenWindowsForDate(
   exception?: DateException | null,
 ): LocalWindow[] {
   if (exception?.type === 'closed') return [];
-  if (exception?.type === 'custom_hours' && exception.openTime && exception.closeTime) {
-    return [{ openTime: exception.openTime, closeTime: exception.closeTime }];
+  if (exception?.type === 'custom_hours') {
+    // `windows` is authoritative; the pair is the pre-multi-window shape and is
+    // only consulted for rows written before that column existed.
+    if (exception.windows && exception.windows.length > 0) {
+      return exception.windows
+        .map((w) => ({ openTime: w.openTime, closeTime: w.closeTime }))
+        .sort((a, b) => a.openTime.localeCompare(b.openTime));
+    }
+    if (exception.openTime && exception.closeTime) {
+      return [{ openTime: exception.openTime, closeTime: exception.closeTime }];
+    }
   }
   const weekday = weekdayOf(date);
   return rules

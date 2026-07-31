@@ -1,4 +1,4 @@
-import type { AvailabilityExceptionType } from '@booking/contracts';
+import type { AvailabilityExceptionType, AvailabilityWindow } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 
 export const AVAILABILITY_EXCEPTION_REPOSITORY = Symbol('AVAILABILITY_EXCEPTION_REPOSITORY');
@@ -8,6 +8,9 @@ export interface AvailabilityExceptionRecord {
   resourceId: string;
   date: string; // YYYY-MM-DD
   type: AvailabilityExceptionType;
+  /** Every opening window of the day; empty when `closed`. Authoritative. */
+  windows: AvailabilityWindow[];
+  /** Mirror of `windows[0]`, kept for readers predating the `windows` column. */
   openTime: string | null;
   closeTime: string | null;
   reason: string | null;
@@ -16,6 +19,8 @@ export interface AvailabilityExceptionRecord {
 export interface AvailabilityExceptionInputData {
   date: string;
   type: AvailabilityExceptionType;
+  /** Preferred. Falls back to the `openTime`/`closeTime` pair when absent. */
+  windows?: AvailabilityWindow[];
   openTime?: string | null;
   closeTime?: string | null;
   reason?: string | null;

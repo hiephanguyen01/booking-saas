@@ -30,8 +30,10 @@ import {
   dateMatches,
   datesBetween,
   defaultPrice,
+  hasRecurringOn,
   monthShift,
   openWindowsFor,
+  pricingRulesForCell,
   weekday,
   type CalendarMode,
 } from '~/features/partner/lib/listing-calendar';
@@ -240,8 +242,9 @@ export function ListingCalendarPricing({
             <Repeat className="size-4" /> {recurringRules.length} quy tắc giá lặp lại đang áp dụng
           </p>
           <p className="mt-1">
-            Lịch bên dưới chỉ hiển thị giá riêng theo từng ngày, nên giá khách thực trả có thể khác.
-            Các quy tắc lặp lại hiện chưa sửa được tại đây:
+            {mode === 'hourly'
+              ? 'Ô ngày có dấu ↻ chịu ảnh hưởng của các quy tắc này, nên giá hiển thị chưa phải giá cuối.'
+              : 'Ô ngày đã tính các quy tắc này; giá riêng đặt cho một ngày cụ thể vẫn đè lên.'}
           </p>
           <ul className="mt-2 space-y-1">
             {recurringRules.map((rule) => (
@@ -254,6 +257,9 @@ export function ListingCalendarPricing({
               </li>
             ))}
           </ul>
+          <Button asChild size="sm" variant="outline" className="mt-3">
+            <Link to="?tab=pricing">Quản lý giá lặp lại</Link>
+          </Button>
         </div>
       ) : null}
 
@@ -300,11 +306,12 @@ export function ListingCalendarPricing({
                 date={date}
                 mode={mode}
                 closure={closureStateOf(date, mode, weeklyRules, exceptionMap.get(date))}
-                rules={rules.filter(
-                  (rule) => rule.bookingMode === mode && dateMatches(rule, date),
-                )}
+                rules={pricingRulesForCell(date, mode, rules)}
                 basePrice={basePrice}
                 bookingCount={bookingsByDay.get(date)?.length ?? 0}
+                // Daily cells already fold the weekly rule into their price, so
+                // only hourly needs the "this is not the final price" marker.
+                hasRecurring={mode === 'hourly' && hasRecurringOn(date, mode, rules)}
                 isPast={date < today}
                 isSelected={date === anchor || (rangeDates.length > 0 && rangeDates.includes(date))}
                 onPick={pick}

@@ -1088,6 +1088,12 @@ model AvailabilityException {
   resourceId String                    @map("resource_id") @db.Uuid
   date       DateTime                  @db.Date
   type       AvailabilityExceptionType
+  /// `custom_hours` opening windows: `[{ openTime, closeTime }]`, resource-local HH:MM.
+  /// The source of truth — a day may open, break for lunch and reopen, exactly as the
+  /// weekly schedule already allows.
+  windows    Json?
+  /// Mirror of `windows[0]`, written on every save. Kept as a compatibility field for
+  /// readers predating `windows`; never edit these directly.
   openTime   String?                   @map("open_time")
   closeTime  String?                   @map("close_time")
   reason     String?

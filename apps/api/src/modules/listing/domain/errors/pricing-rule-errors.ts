@@ -32,6 +32,25 @@ export class PricingRuleOverlap extends DomainError {
 }
 
 /**
+ * Two recurring rules that match the same instant leave the applied price
+ * decided by array order, not by the partner. Separate from
+ * {@link PricingRuleOverlap}, whose message names a window inside one specific
+ * date and so cannot describe a weekly collision.
+ */
+export class RecurringPricingRuleOverlap extends DomainError {
+  constructor(days: readonly number[], window?: { from: string; to: string }) {
+    super(
+      'RECURRING_PRICING_RULE_OVERLAP',
+      400,
+      window
+        ? `A recurring rule already covers ${window.from}-${window.to} on one of those weekdays`
+        : 'A recurring rule already covers one of those weekdays',
+      { days, ...(window ? { window } : {}) },
+    );
+  }
+}
+
+/**
  * An hourly pricing window must sit inside the date's opening hours — a price
  * on an hour the listing never sells is unreachable, and a partner who sees it
  * saved reasonably assumes those hours became bookable.

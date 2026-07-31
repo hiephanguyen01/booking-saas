@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
-import type { AvailabilityExceptionType } from '@booking/contracts';
+import { Prisma } from '@prisma/client';
+import type { AvailabilityExceptionType, AvailabilityWindow } from '@booking/contracts';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
 import type {
   AvailabilityExceptionInputData,
@@ -15,16 +15,55 @@ function toDateString(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * The day's windows. `windows` is authoritative; the legacy pair is only read
+ * for rows written before that column existed, and a `closed` day has none.
+ */
+function toWindows(e: Row): AvailabilityWindow[] {
+  if (Array.isArray(e.windows)) {
+    return (e.windows as unknown[]).flatMap((value) => {
+      const window = value as { openTime?: unknown; closeTime?: unknown };
+      return typeof window.openTime === 'string' && typeof window.closeTime === 'string'
+        ? [{ openTime: window.openTime, closeTime: window.closeTime }]
+        : [];
+    });
+  }
+  if (e.type === 'custom_hours' && e.openTime && e.closeTime) {
+    return [{ openTime: e.openTime, closeTime: e.closeTime }];
+  }
+  return [];
+}
+
 function toRecord(e: Row): AvailabilityExceptionRecord {
   return {
     id: e.id,
     resourceId: e.resourceId,
     date: toDateString(e.date),
     type: e.type as AvailabilityExceptionType,
+    windows: toWindows(e),
     openTime: e.openTime,
     closeTime: e.closeTime,
     reason: e.reason,
   };
+}
+
+/** `windows` to persist, plus the `windows[0]` mirror kept for legacy readers. */
+function toWindowColumns(data: AvailabilityExceptionInputData): {
+  windows: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+  openTime: string | null;
+  closeTime: string | null;
+} {
+  const windows =
+    data.windows && data.windows.length > 0
+      ? [...data.windows].sort((a, b) => a.openTime.localeCompare(b.openTime))
+      : data.openTime && data.closeTime
+        ? [{ openTime: data.openTime, closeTime: data.closeTime }]
+        : [];
+  if (data.type === 'closed' || windows.length === 0) {
+    return { windows: Prisma.JsonNull, openTime: null, closeTime: null };
+  }
+  const first = windows[0]!;
+  return { windows, openTime: first.openTime, closeTime: first.closeTime };
 }
 
 @Injectable()
@@ -51,6 +90,7 @@ export class PrismaAvailabilityExceptionRepository implements IAvailabilityExcep
     resourceId: string,
     data: AvailabilityExceptionInputData,
   ): Promise<AvailabilityExceptionRecord> {
+    const columns = toWindowColumns(data);
     return toRecord(
       await tx.availabilityException.upsert({
         where: {
@@ -61,8 +101,7 @@ export class PrismaAvailabilityExceptionRepository implements IAvailabilityExcep
         },
         update: {
           type: data.type,
-          openTime: data.openTime ?? null,
-          closeTime: data.closeTime ?? null,
+          ...columns,
           reason: data.reason ?? null,
         },
         create: {
@@ -70,8 +109,7 @@ export class PrismaAvailabilityExceptionRepository implements IAvailabilityExcep
           resourceId,
           date: new Date(`${data.date}T00:00:00Z`),
           type: data.type,
-          openTime: data.openTime ?? null,
-          closeTime: data.closeTime ?? null,
+          ...columns,
           reason: data.reason ?? null,
         },
       }),

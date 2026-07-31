@@ -53,6 +53,7 @@ export class AddAvailabilityExceptionRangeUseCase {
         const input = calendar.newException({
           date,
           type: data.type,
+          ...(data.windows ? { windows: data.windows } : {}),
           ...(data.openTime ? { openTime: data.openTime } : {}),
           ...(data.closeTime ? { closeTime: data.closeTime } : {}),
           ...(data.reason ? { reason: data.reason } : {}),

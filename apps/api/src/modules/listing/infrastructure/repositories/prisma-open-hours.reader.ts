@@ -5,6 +5,17 @@ import type {
   OpenHoursForDate,
 } from '../../domain/ports/open-hours-reader.port';
 
+/** Narrow the stored jsonb into the kernel's window shape; junk entries are dropped. */
+function toWindows(value: unknown): { openTime: string; closeTime: string }[] | null {
+  if (!Array.isArray(value)) return null;
+  return value.flatMap((entry) => {
+    const window = entry as { openTime?: unknown; closeTime?: unknown };
+    return typeof window.openTime === 'string' && typeof window.closeTime === 'string'
+      ? [{ openTime: window.openTime, closeTime: window.closeTime }]
+      : [];
+  });
+}
+
 @Injectable()
 export class PrismaOpenHoursReader implements IOpenHoursReader {
   async forDate(
@@ -21,7 +32,7 @@ export class PrismaOpenHoursReader implements IOpenHoursReader {
       }),
       tx.availabilityException.findUnique({
         where: { resourceId_date: { resourceId, date: new Date(`${date}T00:00:00Z`) } },
-        select: { type: true, openTime: true, closeTime: true },
+        select: { type: true, windows: true, openTime: true, closeTime: true },
       }),
     ]);
     return {
@@ -29,6 +40,7 @@ export class PrismaOpenHoursReader implements IOpenHoursReader {
       exception: exception
         ? {
             type: exception.type as 'closed' | 'custom_hours',
+            windows: toWindows(exception.windows),
             openTime: exception.openTime,
             closeTime: exception.closeTime,
           }

@@ -121,6 +121,47 @@ export function findOverlappingWindow(
   return overlap ?? null;
 }
 
+/** Weekdays a recurring rule covers. An absent `days` on `time_range` means all seven. */
+function coveredDays(params: Record<string, unknown>): number[] {
+  const days = params.days;
+  return Array.isArray(days) && days.length > 0 ? days.map(Number) : [0, 1, 2, 3, 4, 5, 6];
+}
+
+/**
+ * Does `candidate` (a `day_of_week` / `time_range` rule about to be saved)
+ * collide with an already-stored recurring rule?
+ *
+ * Two recurring rules that both match the same instant are not merely
+ * redundant — which one applies is decided by `priority`, and recurring rules
+ * all share one band, so a tie resolves by array order. That is not a price the
+ * partner chose. Refusing the overlap keeps the answer deterministic.
+ *
+ * Collision means: same `bookingMode`, same rule type, at least one shared
+ * weekday, and — for `time_range` only — half-open `[from, to)` clock overlap.
+ * A `day_of_week` rule has no clock, so sharing a weekday is already a
+ * collision. The candidate's own identical params are excluded so re-saving the
+ * same rule reads as a replace, matching {@link findOverlappingWindow}.
+ */
+export function findOverlappingRecurring(
+  existing: { bookingMode: BookingMode; ruleType: RuleType; params: Record<string, unknown> }[],
+  candidate: { bookingMode: BookingMode; ruleType: RuleType; params: Record<string, unknown> },
+): (typeof existing)[number] | null {
+  if (candidate.ruleType !== 'day_of_week' && candidate.ruleType !== 'time_range') return null;
+  const paramsKey = JSON.stringify(candidate.params);
+  const days = new Set(coveredDays(candidate.params));
+  const from = String(candidate.params.from);
+  const to = String(candidate.params.to);
+  const overlap = existing.find((rule) => {
+    if (rule.bookingMode !== candidate.bookingMode) return false;
+    if (rule.ruleType !== candidate.ruleType) return false;
+    if (JSON.stringify(rule.params) === paramsKey) return false;
+    if (!coveredDays(rule.params).some((day) => days.has(day))) return false;
+    if (candidate.ruleType === 'day_of_week') return true;
+    return from < String(rule.params.to) && to > String(rule.params.from);
+  });
+  return overlap ?? null;
+}
+
 /**
  * Partner-path-only replace-match predicate: does `a` occupy the exact same
  * scope as `b` (same `bookingMode` + `ruleType` + `params`)? The

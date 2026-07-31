@@ -88,6 +88,57 @@ export function dateMatches(rule: PricingRuleResponse, date: string): boolean {
   return date >= String(rule.params.from) && date <= String(rule.params.to);
 }
 
+/** Weekdays a recurring rule covers; an absent `days` on `time_range` means all seven. */
+function recurringDays(rule: PricingRuleResponse): number[] {
+  const days = rule.params.days;
+  return Array.isArray(days) && days.length > 0 ? days.map(Number) : [0, 1, 2, 3, 4, 5, 6];
+}
+
+/**
+ * Rules that decide a cell's displayed price.
+ *
+ * For `daily` a `day_of_week` rule is included, because a night is one priced
+ * unit and the rule either covers it or does not — the cell can state the real
+ * price. For `hourly` it is deliberately excluded: a day holds many units at
+ * different prices, so folding a recurring rule into one number would print a
+ * figure no customer ever pays. Use {@link hasRecurringOn} to flag those days
+ * instead.
+ *
+ * `time_range` never participates — it prices hours, and the UI only offers it
+ * on hourly listings.
+ */
+export function pricingRulesForCell(
+  date: string,
+  mode: CalendarMode,
+  rules: PricingRuleResponse[],
+): PricingRuleResponse[] {
+  const dated = rules.filter((rule) => rule.bookingMode === mode && dateMatches(rule, date));
+  if (mode !== 'daily') return dated;
+  // A date override outranks a weekly rule (PRICING_RULE_PRIORITY), so once one
+  // exists it alone decides the cell.
+  if (dated.length > 0) return dated;
+  return rules.filter(
+    (rule) =>
+      rule.bookingMode === mode &&
+      rule.ruleType === 'day_of_week' &&
+      recurringDays(rule).includes(weekday(date)),
+  );
+}
+
+/** Is a repeating rule in force on this date, whatever the cell shows? */
+export function hasRecurringOn(
+  date: string,
+  mode: CalendarMode,
+  rules: PricingRuleResponse[],
+): boolean {
+  return rules.some(
+    (rule) =>
+      rule.bookingMode === mode &&
+      (rule.ruleType === 'day_of_week' || rule.ruleType === 'time_range') &&
+      recurringDays(rule).includes(weekday(date)),
+  );
+}
+
 /** The listing's per-unit base price for a mode, or null when unset. */
 export function defaultPrice(listing: ListingResponse, mode: CalendarMode): string | null {
   const config = listing.modeConfig[mode] as Record<string, unknown> | undefined;
@@ -130,8 +181,17 @@ export function openWindowsFor(
   exception: AvailabilityExceptionResponse | undefined,
 ): { from: string; to: string }[] {
   if (exception?.type === 'closed') return [];
-  if (exception?.type === 'custom_hours' && exception.openTime && exception.closeTime) {
-    return [{ from: exception.openTime, to: exception.closeTime }];
+  if (exception?.type === 'custom_hours') {
+    // `windows` is the source of truth; the pair is a mirror kept for rows
+    // written before multi-window days existed.
+    if (exception.windows.length > 0) {
+      return exception.windows
+        .map((window) => ({ from: window.openTime, to: window.closeTime }))
+        .sort((a, b) => a.from.localeCompare(b.from));
+    }
+    if (exception.openTime && exception.closeTime) {
+      return [{ from: exception.openTime, to: exception.closeTime }];
+    }
   }
   return weeklyRules
     .filter((rule) => rule.dayOfWeek === weekday(date))
