@@ -63,6 +63,14 @@ const SUPPORTING_ASSETS = {
 } as const;
 
 const COPY: Record<EmailTemplateId, Record<Locale, Copy>> = {
+  legal_document_published_partner: {
+    vi: { subject: 'Điều khoản Đối tác vừa có phiên bản mới', title: 'Điều khoản Đối tác đã được cập nhật', intro: 'Phiên bản {legalVersionNo} của Điều khoản Đối tác tại {tenantName} đã có hiệu lực. Bạn có thể cần chấp thuận lại điều khoản này trước khi thực hiện thao tác tiếp theo.', cta: 'Xem điều khoản mới' },
+    en: { subject: 'Partner Terms has a new version', title: 'The Partner Terms were updated', intro: 'Version {legalVersionNo} of the Partner Terms at {tenantName} is now in effect. You may need to accept it again before your next action.', cta: 'View the new terms' },
+  },
+  legal_document_published_affiliate: {
+    vi: { subject: 'Điều khoản Cộng tác viên vừa có phiên bản mới', title: 'Điều khoản Cộng tác viên đã được cập nhật', intro: 'Phiên bản {legalVersionNo} của Điều khoản Cộng tác viên tại {tenantName} đã có hiệu lực. Bạn có thể cần chấp thuận lại điều khoản này trước khi thực hiện thao tác tiếp theo.', cta: 'Xem điều khoản mới' },
+    en: { subject: 'Affiliate Terms has a new version', title: 'The Affiliate Terms were updated', intro: 'Version {legalVersionNo} of the Affiliate Terms at {tenantName} is now in effect. You may need to accept it again before your next action.', cta: 'View the new terms' },
+  },
   booking_pending_approval_partner: {
     vi: { subject: 'Đơn đặt mới {bookingCode} cần duyệt', title: 'Bạn có đơn đặt mới', intro: 'Đơn {bookingCode} cho “{listingTitle}” lúc {startsAt} đang chờ duyệt.', cta: 'Xem đơn đặt' },
     en: { subject: 'New booking {bookingCode} needs approval', title: 'You have a new booking', intro: 'Booking {bookingCode} for “{listingTitle}” at {startsAt} is waiting for approval.', cta: 'Review booking' },

@@ -21,6 +21,10 @@ import { DispatchBookingEventUseCase } from '../../application/use-cases/dispatc
 import { DispatchListingEventUseCase } from '../../application/use-cases/dispatch-listing-event.use-case';
 import { DispatchPartnerEventUseCase } from '../../application/use-cases/dispatch-partner-event.use-case';
 import { DispatchPayoutEventUseCase } from '../../application/use-cases/dispatch-payout-event.use-case';
+import {
+  DispatchLegalDocumentEventUseCase,
+  type LegalDocumentPublishedPayload,
+} from '../../application/use-cases/dispatch-legal-document-event.use-case';
 import { DispatchReminderUseCase } from '../../application/use-cases/dispatch-reminder.use-case';
 import { SendBookingOtpUseCase } from '../../application/use-cases/send-booking-otp.use-case';
 
@@ -43,6 +47,7 @@ import { SendBookingOtpUseCase } from '../../application/use-cases/send-booking-
     DispatchListingEventUseCase,
     DispatchPartnerEventUseCase,
     DispatchPayoutEventUseCase,
+    DispatchLegalDocumentEventUseCase,
     DispatchReminderUseCase,
     SendBookingOtpUseCase,
     ReminderWorker,
@@ -59,9 +64,18 @@ export class NotificationModule implements OnModuleInit {
     private readonly dispatchListingEvent: DispatchListingEventUseCase,
     private readonly dispatchPartnerEvent: DispatchPartnerEventUseCase,
     private readonly dispatchPayoutEvent: DispatchPayoutEventUseCase,
+    private readonly dispatchLegalDocumentEvent: DispatchLegalDocumentEventUseCase,
   ) {}
 
   onModuleInit(): void {
+    // Task 20 — single event, registered directly (ListingModule:202-225 is the
+    // reference shape): a material legal-document publish tells the tenant's active
+    // partners/affiliates they have a new version to accept.
+    this.registry.register('legal.document_published', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.dispatchLegalDocumentEvent.execute(tenantId, legalDocumentPayloadOf(event.payload));
+    });
     for (const eventType of BOOKING_NOTIFICATION_EVENTS) {
       this.registry.register(eventType, (event) => {
         const tenantId = this.requireTenantId(event.eventType, event.tenantId);
@@ -104,6 +118,10 @@ export class NotificationModule implements OnModuleInit {
     this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
     return null;
   }
+}
+
+function legalDocumentPayloadOf(payload: unknown): LegalDocumentPublishedPayload {
+  return (payload ?? {}) as LegalDocumentPublishedPayload;
 }
 
 function payoutPayloadOf(payload: unknown): {

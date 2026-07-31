@@ -4,9 +4,11 @@
  * dispatcher can be unit-tested and the recipient/locale resolution stays in the
  * application layer. Phase 1 is email-only (ZNS is Phase 2).
  */
-export type Audience = 'customer' | 'partner';
+export type Audience = 'customer' | 'partner' | 'affiliate';
 
 export type NotificationTemplateId =
+  | 'legal_document_published_partner'
+  | 'legal_document_published_affiliate'
   | 'booking_pending_approval_partner'
   | 'booking_approved_customer'
   | 'booking_confirmed_customer'
@@ -133,6 +135,31 @@ export function planForPayout(payload: { payeeType: string }): NotificationPlanI
   return payload.payeeType === 'partner'
     ? [{ audience: 'partner', templateId: 'payout_paid_partner' }]
     : [];
+}
+
+/**
+ * `legal.document_published` routing (Task 20). The event fires only for a *material*
+ * change, so every branch here means "the re-acceptance bar just moved for this
+ * audience" — never a cosmetic fix. `partner_terms` addresses the tenant's active
+ * partners, `affiliate_terms` its active affiliates.
+ *
+ * `customer_terms` / `privacy_policy` deliberately return no plan item: a tenant can
+ * have thousands of customers, and mailing all of them on every material change does
+ * not scale — they are told at their next checkout instead (a notice, not an email).
+ * This is an explicit skip, not a gap to "fix" later.
+ */
+export function planForLegalDocumentPublished(docType: string): NotificationPlanItem[] {
+  switch (docType) {
+    case 'partner_terms':
+      return [{ audience: 'partner', templateId: 'legal_document_published_partner' }];
+    case 'affiliate_terms':
+      return [{ audience: 'affiliate', templateId: 'legal_document_published_affiliate' }];
+    case 'customer_terms':
+    case 'privacy_policy':
+      return [];
+    default:
+      return [];
+  }
 }
 
 /** The T−24h reminder addresses the booking's customer (was hardcoded in the use-case). */

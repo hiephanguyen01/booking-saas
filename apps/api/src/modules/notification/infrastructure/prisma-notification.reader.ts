@@ -216,6 +216,25 @@ export class PrismaNotificationReader implements INotificationReader {
     };
   }
 
+  async loadActivePartnerRecipients(tx: PrismaTx, tenantId: string): Promise<NotificationRecipient[]> {
+    const rows = await tx.$queryRaw<UserRow[]>(Prisma.sql`
+      SELECT DISTINCT u.id, u.email, u.full_name, u.locale, u.phone
+      FROM partners p
+      JOIN partner_members pm ON pm.partner_id = p.id
+      JOIN users u ON u.id = pm.user_id
+      WHERE p.tenant_id = ${tenantId}::uuid AND p.status = 'approved'`);
+    return rows.map((u) => this.toRecipient(u));
+  }
+
+  async loadActiveAffiliateRecipients(tx: PrismaTx, tenantId: string): Promise<NotificationRecipient[]> {
+    const rows = await tx.$queryRaw<UserRow[]>(Prisma.sql`
+      SELECT u.id, u.email, u.full_name, u.locale, u.phone
+      FROM affiliates a
+      JOIN users u ON u.id = a.user_id
+      WHERE a.tenant_id = ${tenantId}::uuid AND a.status = 'approved'`);
+    return rows.map((u) => this.toRecipient(u));
+  }
+
   async findUpcomingConfirmed(from: Date, to: Date): Promise<Array<{ tenantId: string; bookingId: string }>> {
     const rows = await this.prisma.admin.$queryRaw<{ tenant_id: string; id: string }[]>(Prisma.sql`
       SELECT tenant_id, id FROM bookings
@@ -243,13 +262,17 @@ export class PrismaNotificationReader implements INotificationReader {
       SELECT u.id, u.email, u.full_name, u.locale, u.phone
       FROM partner_members pm JOIN users u ON u.id = pm.user_id
       WHERE pm.partner_id = ${partnerId}::uuid`);
-    return rows.map((u) => ({
+    return rows.map((u) => this.toRecipient(u));
+  }
+
+  private toRecipient(u: UserRow): NotificationRecipient {
+    return {
       userId: u.id,
       email: u.email,
       name: u.full_name,
       locale: u.locale,
       ...(u.phone ? { phone: u.phone } : {}),
-    }));
+    };
   }
 
   private async loadAgreementVersions(tx: PrismaTx, partnerId: string): Promise<string[]> {

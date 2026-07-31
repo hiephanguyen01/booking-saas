@@ -107,6 +107,8 @@ export interface TemplateData {
   /** Guest-lookup OTP (§8.6) — the plaintext code and its lifetime in minutes. */
   otp?: string;
   expiresInMin?: number;
+  /** The version number just published — `legal.document_published` mails only (Task 20). */
+  legalVersionNo?: number;
 }
 
 /** The recipient's locale, normalized to a supported one (`vi` is the fallback). */
