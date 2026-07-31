@@ -31,6 +31,7 @@ import { RequireActiveSubscriptionGuard } from '../../../tenancy/infrastructure/
 import { toExceptionResponse, toRuleResponse } from '../../application/scheduling.mapper';
 import { AddAvailabilityExceptionUseCase } from '../../application/use-cases/add-availability-exception.use-case';
 import { AddAvailabilityExceptionRangeUseCase } from '../../application/use-cases/add-availability-exception-range.use-case';
+import { ClearAvailabilityExceptionsRangeUseCase } from '../../application/use-cases/clear-availability-exceptions-range.use-case';
 import { DeleteAvailabilityExceptionUseCase } from '../../application/use-cases/delete-availability-exception.use-case';
 import { ListAvailabilityExceptionsUseCase } from '../../application/use-cases/list-availability-exceptions.use-case';
 import { ListAvailabilityRulesUseCase } from '../../application/use-cases/list-availability-rules.use-case';
@@ -41,6 +42,7 @@ import {
   AvailabilityExceptionResponseDto,
   AvailabilityRuleResponseDto,
   CalendarRangeQueryDto,
+  RequiredCalendarRangeQueryDto,
   SetAvailabilityRulesDto,
 } from './dto/scheduling.dto';
 
@@ -54,6 +56,7 @@ export class PartnerAvailabilityController {
     private readonly listExceptionsUseCase: ListAvailabilityExceptionsUseCase,
     private readonly addExceptionUseCase: AddAvailabilityExceptionUseCase,
     private readonly addExceptionRangeUseCase: AddAvailabilityExceptionRangeUseCase,
+    private readonly clearExceptionRangeUseCase: ClearAvailabilityExceptionsRangeUseCase,
     private readonly deleteExceptionUseCase: DeleteAvailabilityExceptionUseCase,
     private readonly tenantContext: TenantContextService,
   ) {}
@@ -139,6 +142,27 @@ export class PartnerAvailabilityController {
     return (await this.addExceptionRangeUseCase.execute(this.ctx(), id, body)).map(
       toExceptionResponse,
     );
+  }
+
+  /**
+   * Hand a span of dates back to the weekly schedule by dropping their
+   * overrides. `from`/`to` are REQUIRED — an unbounded delete here would mean
+   * "clear the whole calendar", which no caller ever wants by accident.
+   *
+   * Declared before the `:exceptionId` route because `availability-exceptions`
+   * with no trailing segment must not be captured as an id.
+   */
+  @RequirePermissions('partner.availability.manage')
+  @UseGuards(RequireActiveSubscriptionGuard)
+  @Delete('resources/:id/availability-exceptions')
+  @ApiOperation({ summary: 'Clear date-specific overrides across a range of dates' })
+  @UuidParam()
+  @ApiOkResponse({ schema: { properties: { cleared: { type: 'number' } } } })
+  async clearExceptionRange(
+    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
+    @Query() range: RequiredCalendarRangeQueryDto,
+  ): Promise<{ cleared: number }> {
+    return this.clearExceptionRangeUseCase.execute(this.ctx(), id, range);
   }
 
   @RequirePermissions('partner.availability.manage')
