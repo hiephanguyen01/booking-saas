@@ -27,7 +27,30 @@ export interface PricingRuleView {
   price: string;
   /** Optional effective sale price; regular `price` remains visible in the quote. */
   salePrice?: string | null;
+  /**
+   * Campaign window for `salePrice` only, half-open `[start, end)`, compared
+   * against booking time. Null on a side = unbounded there.
+   */
+  saleStartsAt?: Date | null;
+  saleEndsAt?: Date | null;
+  /** Display-only campaign name, surfaced on the quote line that used the sale. */
+  campaignLabel?: string | null;
   priority: number;
+}
+
+/**
+ * The sale price to charge right now, or null when there is none in force.
+ *
+ * A campaign bounds the SALE, not the rule: once it ends the rule keeps applying
+ * its regular `price`. Dropping the rule entirely instead would send the price
+ * back to the listing's base, which a partner cannot tell apart from someone
+ * having deleted their rule.
+ */
+export function activeSalePrice(rule: PricingRuleView, now: Date): string | null {
+  if (!rule.salePrice) return null;
+  if (rule.saleStartsAt && now < rule.saleStartsAt) return null;
+  if (rule.saleEndsAt && now >= rule.saleEndsAt) return null;
+  return rule.salePrice;
 }
 
 export interface QuoteLine {
@@ -38,6 +61,8 @@ export interface QuoteLine {
   amount: Vnd;
   regularAmount: Vnd;
   appliedRuleId?: string;
+  /** Set only when this line is discounted by a named campaign. */
+  campaignLabel?: string;
   block?: boolean;
 }
 
@@ -62,6 +87,12 @@ export interface QuoteRequest {
   depositPercent: number;
   bookingSelection: BookingSelection;
   packageId?: string;
+  /**
+   * Booking-time instant a sale campaign is judged against. Required on purpose:
+   * defaulting it here would let a call site silently price against the wrong
+   * clock, and this is the only path that turns rules into money.
+   */
+  now: Date;
 }
 
 /** Input shape of {@link computeQuoteResponse} (the former quote-service input). */
@@ -119,7 +150,7 @@ function matchingRule(
 
 /** Merge consecutive units with the same price + rule into one line item. */
 function coalesce(
-  units: { price: Vnd; regularPrice: Vnd; ruleId?: string }[],
+  units: { price: Vnd; regularPrice: Vnd; ruleId?: string; campaignLabel?: string }[],
   label: string,
 ): QuoteLine[] {
   const lines: QuoteLine[] = [];
@@ -143,6 +174,7 @@ function coalesce(
         amount: unit.price,
         regularAmount: unit.regularPrice,
         ...(unit.ruleId ? { appliedRuleId: unit.ruleId } : {}),
+        ...(unit.campaignLabel ? { campaignLabel: unit.campaignLabel } : {}),
       });
     }
   }
@@ -238,10 +270,12 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
       const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
       const rule = matchingRule(rules, unitStart, req.timezone);
       const regularPrice = rule ? vnd(rule.price) : basePrice;
+      const sale = rule ? activeSalePrice(rule, req.now) : null;
       return {
-        price: rule?.salePrice ? vnd(rule.salePrice) : regularPrice,
+        price: sale ? vnd(sale) : regularPrice,
         regularPrice,
         ruleId: rule?.id,
+        ...(sale && rule?.campaignLabel ? { campaignLabel: rule.campaignLabel } : {}),
         calendarOverride: rule?.ruleType === 'date_range' || rule?.ruleType === 'date_time_range',
       };
     });
@@ -262,10 +296,12 @@ export function computeQuote(req: QuoteRequest): QuoteResult {
       const unitStart = new Date(req.startUtc.getTime() + i * unitMs);
       const rule = matchingRule(rules, unitStart, req.timezone);
       const regularPrice = rule ? vnd(rule.price) : basePrice;
+      const sale = rule ? activeSalePrice(rule, req.now) : null;
       return {
-        price: rule?.salePrice ? vnd(rule.salePrice) : regularPrice,
+        price: sale ? vnd(sale) : regularPrice,
         regularPrice,
         ruleId: rule?.id,
+        ...(sale && rule?.campaignLabel ? { campaignLabel: rule.campaignLabel } : {}),
       };
     });
     // Price one item across the range, then scale each line by the quantity rented.
@@ -324,6 +360,7 @@ export function computeQuoteResponse(input: QuoteInput): QuoteResponse {
       amount: l.amount.toString(),
       regularAmount: l.regularAmount.toString(),
       ...(l.appliedRuleId ? { appliedRuleId: l.appliedRuleId } : {}),
+      ...(l.campaignLabel ? { campaignLabel: l.campaignLabel } : {}),
       ...(l.block ? { block: true } : {}),
     })),
     ...(result.selectedPackage ? { selectedPackage: result.selectedPackage } : {}),

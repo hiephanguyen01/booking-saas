@@ -153,6 +153,9 @@ export function toPricingRuleResponse(p: PricingRuleRecord): PricingRuleResponse
     params: p.params,
     price: p.price,
     salePrice: p.salePrice,
+    saleStartsAt: p.saleStartsAt?.toISOString() ?? null,
+    saleEndsAt: p.saleEndsAt?.toISOString() ?? null,
+    campaignLabel: p.campaignLabel,
     priority: p.priority,
     createdAt: p.createdAt.toISOString(),
   };

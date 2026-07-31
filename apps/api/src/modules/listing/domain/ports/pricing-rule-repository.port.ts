@@ -16,6 +16,10 @@ export interface PricingRuleRecord {
   price: string;
   /** Optional partner-funded sale price; lower than `price`. */
   salePrice: string | null;
+  /** Campaign window for `salePrice`, half-open `[start, end)` at booking time. */
+  saleStartsAt: Date | null;
+  saleEndsAt: Date | null;
+  campaignLabel: string | null;
   priority: number;
   createdAt: Date;
 }

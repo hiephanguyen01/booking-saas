@@ -17,8 +17,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@booking/ui/components
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
-import { formatDayLong, type CalendarMode } from '~/features/partner/lib/listing-calendar';
+import {
+  campaignEndDate,
+  dateOnly,
+  formatDayLong,
+  type CalendarMode,
+} from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
+import { SaleCampaignFields } from './sale-campaign-fields';
 import { WindowListField } from './window-list-field';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
@@ -31,6 +37,8 @@ interface Props {
   exception: AvailabilityExceptionResponse | undefined;
   rules: PricingRuleResponse[];
   bookings: PartnerCalendarBookingResponse[];
+  /** Hours swept in the week grid — prefills the price form and opens that tab. */
+  presetWindow?: { from: string; to: string } | null;
   canAvailability: boolean;
   canPricing: boolean;
   onClose: () => void;
@@ -47,6 +55,7 @@ export function DayDialog({
   exception,
   rules,
   bookings,
+  presetWindow,
   canAvailability,
   canPricing,
   onClose,
@@ -59,6 +68,8 @@ export function DayDialog({
   const [setting, setSetting] = useState<string>(exception?.type ?? 'default');
   const [acknowledged, setAcknowledged] = useState(false);
   const [windowsValid, setWindowsValid] = useState(true);
+  // Controlled so the campaign fields can appear the moment a sale is entered.
+  const [salePrice, setSalePrice] = useState('');
 
   // A new date is a new decision: never carry the previous day's confirmation
   // or its "closed" choice into it.
@@ -67,7 +78,8 @@ export function DayDialog({
     setSetting(exception?.type ?? 'default');
     setAcknowledged(false);
     setWindowsValid(true);
-  }, [date, exception?.type]);
+    setSalePrice(mode === 'daily' ? (rules[0]?.salePrice ?? '') : '');
+  }, [date, exception?.type, mode, rules]);
 
   const exceptionWindows = (exception?.windows ?? []).map((window) => ({
     open: window.openTime,
@@ -103,7 +115,12 @@ export function DayDialog({
         <SuccessBanner message={notice} />
 
         {date && (canAvailability || canPricing) ? (
-          <Tabs defaultValue={canAvailability ? 'availability' : 'price'} className="pt-2">
+          <Tabs
+            // A sweep in the week grid is a pricing gesture; landing on the
+            // opening-hours tab would make the partner re-navigate every time.
+            defaultValue={presetWindow && canPricing ? 'price' : canAvailability ? 'availability' : 'price'}
+            className="pt-2"
+          >
             <TabsList
               className={cn(
                 'grid w-full',
@@ -247,7 +264,7 @@ export function DayDialog({
                 ) : null}
 
                 <priceFetcher.Form
-                  key={`price:${date}:${mode}:${rules.map((rule) => rule.id).join(',')}`}
+                  key={`price:${date}:${mode}:${presetWindow?.from ?? ''}-${presetWindow?.to ?? ''}:${rules.map((rule) => rule.id).join(',')}`}
                   method="post"
                   className="space-y-4"
                 >
@@ -285,7 +302,7 @@ export function DayDialog({
                             id="price-from"
                             name="from"
                             type="time"
-                            defaultValue={openWindows[0]?.from ?? '08:00'}
+                            defaultValue={presetWindow?.from ?? openWindows[0]?.from ?? '08:00'}
                             required
                           />
                         </div>
@@ -295,7 +312,7 @@ export function DayDialog({
                             id="price-to"
                             name="to"
                             type="time"
-                            defaultValue={openWindows[0]?.to ?? '09:00'}
+                            defaultValue={presetWindow?.to ?? openWindows[0]?.to ?? '09:00'}
                             required
                           />
                         </div>
@@ -318,11 +335,25 @@ export function DayDialog({
                         id="sale-price"
                         name="salePrice"
                         inputMode="numeric"
-                        defaultValue={mode === 'daily' ? (firstRule?.salePrice ?? '') : ''}
+                        value={salePrice}
+                        onChange={(event) => setSalePrice(event.target.value)}
                         placeholder="Không bắt buộc"
                       />
                     </div>
                   </div>
+                  <SaleCampaignFields
+                    idPrefix="day"
+                    enabled={salePrice.trim().length > 0}
+                    initial={
+                      mode === 'daily'
+                        ? {
+                            startDate: dateOnly(firstRule?.saleStartsAt),
+                            endDate: campaignEndDate(firstRule?.saleEndsAt),
+                            label: firstRule?.campaignLabel ?? undefined,
+                          }
+                        : undefined
+                    }
+                  />
                   {priceFetcher.data?.error ? (
                     <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                       {priceFetcher.data.error}

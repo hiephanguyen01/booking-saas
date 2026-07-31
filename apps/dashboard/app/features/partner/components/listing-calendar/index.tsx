@@ -20,7 +20,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
-import { todayString } from '~/lib/calendar-dates';
+import { addDays, parseDay, toDayString, todayString } from '~/lib/calendar-dates';
 import { dayKey } from '~/lib/format';
 import {
   WEEKDAY_HEADS,
@@ -30,6 +30,7 @@ import {
   dateMatches,
   datesBetween,
   defaultPrice,
+  formatDayShort,
   hasRecurringOn,
   monthShift,
   openWindowsFor,
@@ -40,6 +41,12 @@ import {
 import { DayCell } from './day-cell';
 import { DayDialog } from './day-dialog';
 import { RangeDialog } from './range-dialog';
+import { WeekGrid } from './week-grid';
+
+/** Monday `days` away — the week nav's only date arithmetic. */
+function shiftWeek(weekStart: string, days: number): string {
+  return toDayString(addDays(parseDay(weekStart), days));
+}
 
 interface Props {
   listing: ListingResponse;
@@ -51,6 +58,10 @@ interface Props {
   bookings: PartnerCalendarBookingResponse[];
   /** Other listings sharing this listing's resource calendar. */
   siblingCount: number;
+  view: 'month' | 'week';
+  /** Monday of the week on screen, and its seven dates. */
+  weekStart: string;
+  weekDates: string[];
   canWrite: boolean;
   canAvailability: boolean;
 }
@@ -64,6 +75,9 @@ export function ListingCalendarPricing({
   weeklyRules,
   bookings,
   siblingCount,
+  view,
+  weekStart,
+  weekDates,
   canWrite,
   canAvailability,
 }: Props) {
@@ -72,6 +86,7 @@ export function ListingCalendarPricing({
   const [rangeMode, setRangeMode] = useState(false);
   const [anchor, setAnchor] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [presetWindow, setPresetWindow] = useState<{ from: string; to: string } | null>(null);
   const today = todayString();
 
   const days = useMemo(() => calendarDays(month), [month]);
@@ -86,6 +101,12 @@ export function ListingCalendarPricing({
     (item): item is CalendarMode => item === 'hourly' || item === 'daily',
   );
   const rangeDates = range ? datesBetween(range.from, range.to) : [];
+
+  /** Every calendar link carries the whole view state, so no nav loses a setting. */
+  const calendarLink = (patch: { mode?: CalendarMode; view?: 'month' | 'week'; month?: string; week?: string }): string => {
+    const next = { mode, view, month, week: weekStart, ...patch };
+    return `?tab=calendar&mode=${next.mode}&view=${next.view}&month=${next.month}&week=${next.week}`;
+  };
 
   /**
    * A plain click edits one day; shift-click (or the explicit range toggle, for
@@ -112,6 +133,7 @@ export function ListingCalendarPricing({
   const closeDay = (): void => {
     setSelected(null);
     setAnchor(null);
+    setPresetWindow(null);
   };
   const closeRange = (): void => {
     setRange(null);
@@ -165,11 +187,23 @@ export function ListingCalendarPricing({
         <div className="flex flex-wrap gap-2">
           {enabledModes.map((item) => (
             <Button key={item} asChild size="sm" variant={item === mode ? 'default' : 'outline'}>
-              <Link to={`?tab=calendar&month=${month}&mode=${item}`}>
+              <Link to={calendarLink({ mode: item })}>
                 {item === 'hourly' ? 'Theo giờ' : 'Theo ngày'}
               </Link>
             </Button>
           ))}
+          {mode === 'hourly' ? (
+            // An hour grid only carries information for hourly listings — a
+            // night is one priced unit, so rows of hours would say nothing.
+            <div className="flex rounded-lg border p-0.5">
+              <Button asChild size="sm" variant={view === 'month' ? 'secondary' : 'ghost'}>
+                <Link to={calendarLink({ view: 'month' })}>Tháng</Link>
+              </Button>
+              <Button asChild size="sm" variant={view === 'week' ? 'secondary' : 'ghost'}>
+                <Link to={calendarLink({ view: 'week' })}>Tuần</Link>
+              </Button>
+            </div>
+          ) : null}
           <Button
             size="sm"
             variant={rangeMode ? 'default' : 'outline'}
@@ -271,56 +305,91 @@ export function ListingCalendarPricing({
 
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <Button asChild variant="ghost" size="icon" aria-label="Tháng trước">
-            <Link to={`?tab=calendar&month=${monthShift(month, -1)}&mode=${mode}`}>
+          <Button asChild variant="ghost" size="icon" aria-label={view === 'week' ? 'Tuần trước' : 'Tháng trước'}>
+            <Link
+              to={
+                view === 'week'
+                  ? calendarLink({ week: shiftWeek(weekStart, -7) })
+                  : calendarLink({ month: monthShift(month, -1) })
+              }
+            >
               <ChevronLeft />
             </Link>
           </Button>
           <div className="text-center">
             <p className="text-sm text-muted-foreground">Lịch và giá</p>
             <p className="font-semibold">
-              Tháng {Number(month.slice(5))}/{month.slice(0, 4)}
+              {view === 'week'
+                ? `${formatDayShort(weekDates[0] ?? weekStart)} – ${formatDayShort(weekDates[6] ?? weekStart)}`
+                : `Tháng ${Number(month.slice(5))}/${month.slice(0, 4)}`}
             </p>
           </div>
-          <Button asChild variant="ghost" size="icon" aria-label="Tháng sau">
-            <Link to={`?tab=calendar&month=${monthShift(month, 1)}&mode=${mode}`}>
+          <Button asChild variant="ghost" size="icon" aria-label={view === 'week' ? 'Tuần sau' : 'Tháng sau'}>
+            <Link
+              to={
+                view === 'week'
+                  ? calendarLink({ week: shiftWeek(weekStart, 7) })
+                  : calendarLink({ month: monthShift(month, 1) })
+              }
+            >
               <ChevronRight />
             </Link>
           </Button>
         </div>
-        <div className="grid grid-cols-7 border-b bg-muted/30">
-          {WEEKDAY_HEADS.map((label) => (
-            <div
-              key={label}
-              className="px-2 py-2 text-center text-xs font-medium text-muted-foreground"
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {days.map((date, index) =>
-            date ? (
-              <DayCell
-                key={date}
-                date={date}
-                mode={mode}
-                closure={closureStateOf(date, mode, weeklyRules, exceptionMap.get(date))}
-                rules={pricingRulesForCell(date, mode, rules)}
-                basePrice={basePrice}
-                bookingCount={bookingsByDay.get(date)?.length ?? 0}
-                // Daily cells already fold the weekly rule into their price, so
-                // only hourly needs the "this is not the final price" marker.
-                hasRecurring={mode === 'hourly' && hasRecurringOn(date, mode, rules)}
-                isPast={date < today}
-                isSelected={date === anchor || (rangeDates.length > 0 && rangeDates.includes(date))}
-                onPick={pick}
-              />
-            ) : (
-              <div key={`empty-${index}`} className="min-h-24 border-r border-b bg-muted/10" />
-            ),
-          )}
-        </div>
+        {view === 'week' ? null : (
+          <div className="grid grid-cols-7 border-b bg-muted/30">
+            {WEEKDAY_HEADS.map((label) => (
+              <div
+                key={label}
+                className="px-2 py-2 text-center text-xs font-medium text-muted-foreground"
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+        )}
+        {view === 'week' ? (
+          <WeekGrid
+            dates={weekDates}
+            mode={mode}
+            rules={rules}
+            weeklyRules={weeklyRules}
+            exceptionMap={exceptionMap}
+            bookings={bookings}
+            today={today}
+            onPickWindow={(date, from, to) => {
+              setNotice(null);
+              setPresetWindow({ from, to });
+              setSelected(date);
+            }}
+          />
+        ) : (
+          <div className="grid grid-cols-7">
+            {days.map((date, index) =>
+              date ? (
+                <DayCell
+                  key={date}
+                  date={date}
+                  mode={mode}
+                  closure={closureStateOf(date, mode, weeklyRules, exceptionMap.get(date))}
+                  rules={pricingRulesForCell(date, mode, rules)}
+                  basePrice={basePrice}
+                  bookingCount={bookingsByDay.get(date)?.length ?? 0}
+                  // Daily cells already fold the weekly rule into their price, so
+                  // only hourly needs the "this is not the final price" marker.
+                  hasRecurring={mode === 'hourly' && hasRecurringOn(date, mode, rules)}
+                  isPast={date < today}
+                  isSelected={
+                    date === anchor || (rangeDates.length > 0 && rangeDates.includes(date))
+                  }
+                  onPick={pick}
+                />
+              ) : (
+                <div key={`empty-${index}`} className="min-h-24 border-r border-b bg-muted/10" />
+              ),
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
@@ -351,6 +420,7 @@ export function ListingCalendarPricing({
         exception={selectedException}
         rules={selectedRules}
         bookings={selected ? (bookingsByDay.get(selected) ?? []) : []}
+        presetWindow={presetWindow}
         canAvailability={canAvailability}
         canPricing={canPricing}
         onClose={closeDay}

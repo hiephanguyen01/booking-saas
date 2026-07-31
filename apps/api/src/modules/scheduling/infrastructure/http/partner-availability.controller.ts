@@ -153,7 +153,7 @@ export class PartnerAvailabilityController {
    * with no trailing segment must not be captured as an id.
    */
   @RequirePermissions('partner.availability.manage')
-  @UseGuards(RequireActiveSubscriptionGuard)
+  @UseGuards(RequireActiveSubscriptionGuard, RequireCurrentAgreementGuard)
   @Delete('resources/:id/availability-exceptions')
   @ApiOperation({ summary: 'Clear date-specific overrides across a range of dates' })
   @UuidParam()

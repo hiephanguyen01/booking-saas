@@ -224,10 +224,120 @@ export function bucketBookingsByDay<T extends { startUtc: string }>(
   return byDay;
 }
 
+/**
+ * A stored campaign instant back as the `YYYY-MM-DD` a date input expects.
+ *
+ * The window is half-open, so `saleEndsAt` is midnight of the day AFTER the last
+ * day of the campaign — {@link campaignEndDate} shifts it back so the partner
+ * sees the date they actually typed.
+ */
+export function dateOnly(instant: string | null | undefined): string | undefined {
+  return instant ? dayKeyInTz(instant) : undefined;
+}
+
+export function campaignEndDate(instant: string | null | undefined): string | undefined {
+  if (!instant) return undefined;
+  return dayKeyInTz(new Date(Date.parse(instant) - 86_400_000).toISOString());
+}
+
+function dayKeyInTz(iso: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(iso));
+  const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Is a rule's sale campaign running right now? */
+export function campaignState(
+  rule: PricingRuleResponse,
+  now: number = Date.now(),
+): 'none' | 'scheduled' | 'running' | 'ended' {
+  if (!rule.salePrice) return 'none';
+  if (rule.saleStartsAt && now < Date.parse(rule.saleStartsAt)) return 'scheduled';
+  if (rule.saleEndsAt && now >= Date.parse(rule.saleEndsAt)) return 'ended';
+  return 'running';
+}
+
+/** Fallback hour span when a whole week is closed — a grid still needs a shape. */
+const DEFAULT_HOUR_ROWS: [number, number] = [8, 20];
+
+/**
+ * The hour rows a week grid spans: the union of every day's opening hours.
+ *
+ * Derived from OPENING HOURS, not from bookings — a week with no bookings still
+ * has to show the hours the partner sells, which is the whole point of the view.
+ * Clamped to 0–23 and rounded outwards so a window like 08:30–20:30 is fully
+ * visible.
+ */
+export function weekHourRows(
+  days: string[],
+  weeklyRules: AvailabilityRuleResponse[],
+  exceptionByDate: Map<string, AvailabilityExceptionResponse>,
+): number[] {
+  let min = 24;
+  let max = 0;
+  for (const date of days) {
+    for (const window of openWindowsFor(date, weeklyRules, exceptionByDate.get(date))) {
+      min = Math.min(min, Math.floor(Number(window.from.slice(0, 2))));
+      // A window closing at 20:30 still occupies the 20:00 row; one closing at
+      // 20:00 does not.
+      const endHour = Number(window.to.slice(0, 2));
+      const endMinute = Number(window.to.slice(3, 5));
+      max = Math.max(max, endMinute > 0 ? endHour : endHour - 1);
+    }
+  }
+  const [from, to] = min > max ? DEFAULT_HOUR_ROWS : [min, Math.min(23, max)];
+  return Array.from({ length: to - from + 1 }, (_, index) => from + index);
+}
+
+/** Is an hour inside any of a date's open windows? */
+export function hourIsOpen(
+  date: string,
+  hour: number,
+  weeklyRules: AvailabilityRuleResponse[],
+  exception: AvailabilityExceptionResponse | undefined,
+): boolean {
+  const stamp = `${String(hour).padStart(2, '0')}:00`;
+  return openWindowsFor(date, weeklyRules, exception).some(
+    (window) => stamp >= window.from && stamp < window.to,
+  );
+}
+
+/** The date-scoped hourly rule pricing this hour, if one does. */
+export function ruleCoveringHour(
+  rules: PricingRuleResponse[],
+  date: string,
+  hour: number,
+  mode: CalendarMode,
+): PricingRuleResponse | undefined {
+  const stamp = `${String(hour).padStart(2, '0')}:00`;
+  return rules.find(
+    (rule) =>
+      rule.bookingMode === mode &&
+      rule.ruleType === 'date_time_range' &&
+      String(rule.params.date) === date &&
+      stamp >= String(rule.params.from) &&
+      stamp < String(rule.params.to),
+  );
+}
+
+/**
+ * The price a rule charges right now — its sale only while the campaign runs.
+ * A scheduled or finished campaign must not colour the calendar, or the partner
+ * reads a number no guest is being offered.
+ */
+export function effectivePriceOf(rule: PricingRuleResponse): string {
+  return campaignState(rule) === 'running' ? (rule.salePrice ?? rule.price) : rule.price;
+}
+
 /** The lowest effective price among a date's rules, or null when it has none. */
 export function cheapestOf(rules: PricingRuleResponse[]): string | null {
   return rules.reduce<string | null>((low, rule) => {
-    const value = rule.salePrice ?? rule.price;
+    const value = effectivePriceOf(rule);
     return low === null || BigInt(value) < BigInt(low) ? value : low;
   }, null);
 }

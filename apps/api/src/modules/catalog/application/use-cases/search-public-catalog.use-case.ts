@@ -11,7 +11,7 @@ import {
   type PublicCatalogSearchResponse,
 } from '@booking/contracts';
 import { TenantDbService } from '../../../../shared/tenant-context/tenant-db.service';
-import { addMinutes, zonedTimeToUtc } from '../../../../shared/time/time';
+import { addMinutes, utcNow, zonedTimeToUtc } from '../../../../shared/time/time';
 import { toVnd } from '../../../../shared/money/money';
 import { pageOffset } from '../../../../shared/pagination/pagination';
 import { ResolveTenantByHostUseCase } from '../../../tenancy/application/use-cases/resolve-tenant-by-host.use-case';
@@ -128,6 +128,9 @@ export class SearchPublicCatalogUseCase {
       const inventoryUsed = new Map(inventoryRows.map((r) => [r.listingId, r.used]));
 
       const facetRows: EvaluatedListing[] = [];
+      // One clock for the whole search: two listings in the same result page
+      // must not disagree about whether a sale campaign is still running.
+      const now = utcNow();
       for (const listing of facetCandidates) {
         const result = this.evaluate(
           listing,
@@ -136,6 +139,7 @@ export class SearchPublicCatalogUseCase {
           busy.get(listing.resourceId) ?? [],
           holds.get(listing.resourceId) ?? [],
           inventoryUsed.get(listing.id) ?? 0,
+          now,
         );
         if (result) facetRows.push(result);
       }
@@ -314,12 +318,13 @@ export class SearchPublicCatalogUseCase {
     busy: Interval[],
     holds: Interval[],
     inventoryUsed: number,
+    now: Date,
   ): EvaluatedListing | null {
     if (!mode) return configuredRawPrice(listing);
     const config = parseModeConfig(listing.modeConfig);
     if (!config) return null;
     if (mode === 'daily' && listing.bookingSelection === 'fixed_packages' && query.date) {
-      return this.evaluateFixedDailyDate(listing, config, query.date, busy, holds);
+      return this.evaluateFixedDailyDate(listing, config, query.date, busy, holds, now);
     }
     const hasExplicitWindow = mode === 'hourly' ? Boolean(query.date) : Boolean(query.from);
     if (!hasExplicitWindow) return configuredPrice(listing, config, mode);
@@ -332,7 +337,7 @@ export class SearchPublicCatalogUseCase {
       const hourly = config.hourly;
       if (!hourly || !query.date) return null;
       if (!query.startTime || !query.endTime) {
-        return this.evaluateHourlyDate(listing, config, query.date, busy, holds);
+        return this.evaluateHourlyDate(listing, config, query.date, busy, holds, now);
       }
       start = localInstant(query.date, query.startTime, tz);
       end = localInstant(query.date, query.endTime, tz);
@@ -404,6 +409,7 @@ export class SearchPublicCatalogUseCase {
         depositPercent: listing.depositPercent,
         bookingSelection: listing.bookingSelection,
         packageId,
+        now,
       });
       return {
         listing,
@@ -423,6 +429,7 @@ export class SearchPublicCatalogUseCase {
     date: string,
     busy: Interval[],
     holds: Interval[],
+    now: Date,
   ): EvaluatedListing | null {
     const daily = config.daily;
     if (!daily) return null;
@@ -450,6 +457,7 @@ export class SearchPublicCatalogUseCase {
           depositPercent: listing.depositPercent,
           bookingSelection: listing.bookingSelection,
           packageId: selected.id,
+          now,
         });
         if (!cheapest || quote.subtotal < cheapest.price) {
           cheapest = {
@@ -472,6 +480,7 @@ export class SearchPublicCatalogUseCase {
     date: string,
     busy: Interval[],
     holds: Interval[],
+    now: Date,
   ): EvaluatedListing | null {
     const hourly = config.hourly;
     if (!hourly) return null;
@@ -521,6 +530,7 @@ export class SearchPublicCatalogUseCase {
               depositPercent: listing.depositPercent,
               bookingSelection: listing.bookingSelection,
               packageId: candidate.packageId,
+              now,
             });
             if (cheapest === null || quote.subtotal < cheapest.price) {
               cheapest = { price: quote.subtotal, regularPrice: quote.regularSubtotal };

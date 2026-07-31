@@ -44,6 +44,9 @@ export class CreatePartnerPricingRuleUseCase {
         params: input.params,
         price: input.price,
         salePrice: input.salePrice ?? null,
+        saleStartsAt: input.saleStartsAt ? new Date(input.saleStartsAt) : null,
+        saleEndsAt: input.saleEndsAt ? new Date(input.saleEndsAt) : null,
+        campaignLabel: input.campaignLabel ?? null,
         priority: input.priority,
       });
       PricingRule.of(candidate).assertAllowedOn({

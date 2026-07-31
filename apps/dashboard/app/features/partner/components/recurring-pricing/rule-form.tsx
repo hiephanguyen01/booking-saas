@@ -11,6 +11,8 @@ import { Money } from '~/components/money';
 import { DAYS } from '~/features/partner/lib/listing-hours';
 import type { CalendarMode } from '~/features/partner/lib/listing-calendar';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
+import { campaignEndDate, dateOnly } from '~/features/partner/lib/listing-calendar';
+import { SaleCampaignFields } from '../listing-calendar/sale-campaign-fields';
 
 interface Props {
   mode: CalendarMode;
@@ -37,6 +39,7 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
     mode === 'hourly' ? 'time_range' : 'day_of_week',
   );
   const [days, setDays] = useState<string[]>(WEEKEND);
+  const [salePrice, setSalePrice] = useState('');
 
   // Editing reuses the create form and the create request: the API replaces a
   // rule that names the same scope, so "edit" is seeding these fields. Picking a
@@ -46,6 +49,7 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
   useEffect(() => {
     if (!editing) return;
     setKind(editing.ruleType === 'time_range' ? 'time_range' : 'day_of_week');
+    setSalePrice(editing.salePrice ?? '');
     const picked = daysOf(editing);
     setDays(picked.length > 0 ? picked : ['0', '1', '2', '3', '4', '5', '6']);
   }, [editing]);
@@ -161,11 +165,26 @@ export function RuleForm({ mode, basePrice, editing, onSaved, onCancelEdit }: Pr
             id="recurring-sale-price"
             name="salePrice"
             inputMode="numeric"
-            defaultValue={editing?.salePrice ?? ''}
+            value={salePrice}
+            onChange={(event) => setSalePrice(event.target.value)}
             placeholder="Không bắt buộc"
           />
         </div>
       </div>
+
+      <SaleCampaignFields
+        idPrefix="recurring"
+        enabled={salePrice.trim().length > 0}
+        initial={
+          editing
+            ? {
+                startDate: dateOnly(editing.saleStartsAt),
+                endDate: campaignEndDate(editing.saleEndsAt),
+                label: editing.campaignLabel ?? undefined,
+              }
+            : undefined
+        }
+      />
 
       {basePrice ? (
         <p className="text-xs text-muted-foreground">

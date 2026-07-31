@@ -124,6 +124,9 @@ export class GetAvailabilityUseCase {
         params: r.params,
         price: r.price,
         salePrice: r.salePrice,
+        saleStartsAt: r.saleStartsAt,
+        saleEndsAt: r.saleEndsAt,
+        campaignLabel: r.campaignLabel,
         priority: r.priority,
       }));
       const ruleRows = await this.rules.listByListing(tx, listing.id);
@@ -149,6 +152,11 @@ export class GetAvailabilityUseCase {
       // and merge at read time so an expired hold never leaves a ghost-busy slot.
       const liveHolds = await this.holds.activeHolds(listing.resourceId, rangeStart, rangeEnd);
 
+      // One clock for the whole response: every slot in it must be priced
+      // against the same instant, or two slots could disagree about whether a
+      // sale campaign is still running.
+      const now = utcNow();
+
       const priceFor = (startUtc: Date, endUtc: Date): string =>
         priceQuote({
           mode: query.mode,
@@ -161,10 +169,10 @@ export class GetAvailabilityUseCase {
           depositPercent: listing.depositPercent,
           bookingSelection: listing.bookingSelection,
           packageId: query.packageId,
+          now,
         }).subtotal;
 
       const dates = eachDate(query.from, query.to);
-      const now = utcNow();
 
       if (query.mode === 'hourly') {
         const hourly = modeConfig.hourly;

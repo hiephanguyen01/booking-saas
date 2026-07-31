@@ -4,6 +4,7 @@ import { Badge } from '@booking/ui/components/ui/badge';
 import { cn } from '@booking/ui/lib/utils';
 import { Money } from '~/components/money';
 import {
+  campaignState,
   cheapestOf,
   formatDayLong,
   isClosed,
@@ -54,6 +55,10 @@ export function DayCell({
 }: Props) {
   const closed = isClosed(closure);
   const priceRule = rules[0];
+  // Only a RUNNING campaign should tint the cell and strike the old price —
+  // a scheduled or ended one is not what a guest is offered today.
+  const saleActive = priceRule ? campaignState(priceRule) === 'running' : false;
+  const campaignLabel = saleActive ? priceRule?.campaignLabel : null;
   // With several windows on one day a single number is a misread — show the
   // cheapest and say how many there are.
   const multiple = rules.length > 1;
@@ -81,7 +86,7 @@ export function DayCell({
         closure === 'closed_override' && !isPast && 'hover:bg-destructive/15',
         closure === 'closed_weekly' && 'bg-muted/50 text-muted-foreground',
         !closed && closure === 'custom_hours' && 'bg-primary/5',
-        !closed && priceRule?.salePrice && 'bg-emerald-50/70 dark:bg-emerald-950/15',
+        !closed && saleActive && 'bg-emerald-50/70 dark:bg-emerald-950/15',
         isPast && 'cursor-not-allowed opacity-40 saturate-50',
         isSelected && 'z-10 ring-2 ring-inset ring-primary',
       )}
@@ -114,7 +119,7 @@ export function DayCell({
 
       {price ? (
         <div className="mt-3 space-y-0.5">
-          {!multiple && priceRule?.salePrice ? (
+          {!multiple && saleActive ? (
             <div className="text-[10px] text-muted-foreground line-through">
               <Money value={priceRule.price} />
             </div>
@@ -122,7 +127,7 @@ export function DayCell({
           <div
             className={cn(
               'text-xs font-medium',
-              !multiple && priceRule?.salePrice && 'text-emerald-700 dark:text-emerald-400',
+              !multiple && saleActive && 'text-emerald-700 dark:text-emerald-400',
             )}
           >
             {multiple ? 'từ ' : null}
@@ -131,6 +136,11 @@ export function DayCell({
           <div className="text-[10px] text-muted-foreground">
             {multiple ? `${rules.length} khung giá` : `/${mode === 'hourly' ? 'giờ' : 'ngày'}`}
           </div>
+          {campaignLabel ? (
+            <div className="truncate text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+              {campaignLabel}
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-3 text-[10px] text-muted-foreground">Chưa có giá</p>

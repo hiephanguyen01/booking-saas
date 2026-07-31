@@ -6,6 +6,7 @@ import { Button } from '@booking/ui/components/ui/button';
 import { cn } from '@booking/ui/lib/utils';
 import { Money } from '~/components/money';
 import { DAYS } from '~/features/partner/lib/listing-hours';
+import { campaignState } from '~/features/partner/lib/listing-calendar';
 
 interface Props {
   rule: PricingRuleResponse;
@@ -29,6 +30,7 @@ function describeDays(params: Record<string, unknown>): string {
 export function RuleRow({ rule, unit, canWrite, isEditing, onEdit }: Props) {
   const fetcher = useFetcher<{ ok: boolean; error?: string | null }>();
   const isWindow = rule.ruleType === 'time_range';
+  const campaign = campaignState(rule);
 
   return (
     <div
@@ -50,13 +52,22 @@ export function RuleRow({ rule, unit, canWrite, isEditing, onEdit }: Props) {
           )}
         </p>
         <p className="flex flex-wrap items-center gap-2 text-xs">
-          <span className={cn(rule.salePrice && 'font-medium text-emerald-700')}>
-            <Money value={rule.salePrice ?? rule.price} />/{unit}
+          {/* A sale that is scheduled or over is NOT what a guest pays today,
+              so the headline number stays the regular price in those states. */}
+          <span className={cn(campaign === 'running' && 'font-medium text-emerald-700')}>
+            <Money value={campaign === 'running' ? (rule.salePrice ?? rule.price) : rule.price} />/
+            {unit}
           </span>
-          {rule.salePrice ? (
+          {campaign === 'running' ? (
             <span className="text-muted-foreground line-through">
               <Money value={rule.price} />
             </span>
+          ) : null}
+          {campaign !== 'none' ? (
+            <Badge variant={campaign === 'running' ? 'default' : 'outline'}>
+              {rule.campaignLabel ?? 'Khuyến mãi'}
+              {campaign === 'scheduled' ? ' · sắp chạy' : campaign === 'ended' ? ' · đã kết thúc' : ''}
+            </Badge>
           ) : null}
         </p>
       </div>

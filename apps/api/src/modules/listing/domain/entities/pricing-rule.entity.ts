@@ -35,6 +35,10 @@ export interface NewPricingRule {
   price: string;
   /** Optional partner-funded sale price; lower than `price`. */
   salePrice: string | null;
+  /** Campaign window for `salePrice` only, half-open `[start, end)`. */
+  saleStartsAt: Date | null;
+  saleEndsAt: Date | null;
+  campaignLabel: string | null;
   priority: number;
 }
 
@@ -105,8 +109,14 @@ export class PricingRule {
     params: Record<string, unknown>;
     price: string;
     salePrice: string | null;
+    saleStartsAt?: Date | null;
+    saleEndsAt?: Date | null;
+    campaignLabel?: string | null;
     priority: number;
   }): NewPricingRule {
+    // A campaign without a sale price would be a window bounding nothing; drop
+    // it rather than persist a state the calculator can never act on.
+    const hasSale = Boolean(input.salePrice);
     return {
       listingId: input.listingId,
       bookingMode: input.bookingMode,
@@ -114,6 +124,9 @@ export class PricingRule {
       params: normalizeParams(input.ruleType, input.params),
       price: input.price,
       salePrice: input.salePrice,
+      saleStartsAt: hasSale ? (input.saleStartsAt ?? null) : null,
+      saleEndsAt: hasSale ? (input.saleEndsAt ?? null) : null,
+      campaignLabel: hasSale ? (input.campaignLabel ?? null) : null,
       priority: input.priority,
     };
   }

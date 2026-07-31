@@ -18,6 +18,7 @@ import { SuccessBanner } from '~/components/action-feedback';
 import { Money } from '~/components/money';
 import { formatDayShort, type CalendarMode } from '~/features/partner/lib/listing-calendar';
 import { BookingWarning } from './booking-warning';
+import { SaleCampaignFields } from './sale-campaign-fields';
 import { WindowListField } from './window-list-field';
 import { useSubmitSuccess, type SubmitResult } from '~/features/partner/lib/use-submit-success';
 
@@ -70,12 +71,14 @@ export function RangeDialog({
   const [setting, setSetting] = useState('closed');
   const [acknowledged, setAcknowledged] = useState(false);
   const [windowsValid, setWindowsValid] = useState(true);
+  const [salePrice, setSalePrice] = useState('');
 
   useEffect(() => {
     setNotice(null);
     setSetting('closed');
     setAcknowledged(false);
     setWindowsValid(true);
+    setSalePrice('');
   }, [range?.from, range?.to]);
 
   useSubmitSuccess(availabilityFetcher, () =>
@@ -266,10 +269,16 @@ export function RangeDialog({
                         id="range-sale-price"
                         name="salePrice"
                         inputMode="numeric"
+                        value={salePrice}
+                        onChange={(event) => setSalePrice(event.target.value)}
                         placeholder="Không bắt buộc"
                       />
                     </div>
                   </div>
+                  <SaleCampaignFields
+                    idPrefix="range"
+                    enabled={salePrice.trim().length > 0}
+                  />
                   {priceFetcher.data?.error ? (
                     <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                       {priceFetcher.data.error}
