@@ -5,6 +5,7 @@ import { RestrictedMarkdown } from '@booking/ui/components/markdown/restricted-m
 import { storefrontPaths } from '~/constants/paths';
 import { LEGAL_FALLBACK_NOTICE_VI } from '~/features/legal/lib/legal-copy';
 import { useLocale } from '~/hooks/use-locale';
+import { DEFAULT_TZ } from '~/lib/time';
 
 /**
  * The public rendering of one tenant legal document (current or a specific
@@ -29,7 +30,11 @@ export function LegalDocumentPage({
         <h1 className="text-2xl font-semibold tracking-tight">{document.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {t('versionLabel', { versionNo: document.versionNo })} · {t('effectiveFrom')}{' '}
-          {formatDate(document.publishedAt, locale)}
+          {/* Explicit zone (not the runtime default): this page runs with no live tenant in
+              scope (see the doc comment above), so there is no per-tenant zone to read — and
+              without one, Intl falls back to the host's local zone, which differs between the
+              SSR process and the browser and causes a hydration mismatch. */}
+          {formatDate(document.publishedAt, locale, DEFAULT_TZ)}
         </p>
 
         {isHistorical ? (

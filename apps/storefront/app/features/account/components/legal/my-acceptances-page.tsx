@@ -10,6 +10,7 @@ import {
 } from '~/features/account/components/shared/account-primitives';
 import type { loadAccountTermsRoute } from '~/features/account/server/account-terms-route.server';
 import type { ServerDataFrom } from '~/lib/react-router-data';
+import { DEFAULT_TZ } from '~/lib/time';
 
 const DOCUMENT_AGREEMENT_TYPES = new Set<string>([
   'customer_terms',
@@ -96,7 +97,11 @@ function AcceptanceRow({
         <p className="mt-0.5 text-xs text-muted-foreground">
           {Number.isNaN(versionNo) ? acceptance.version : t('versionLabel', { versionNo })}
           {' · '}
-          {formatDate(acceptance.acceptedAt, locale)}
+          {/* Explicit zone: this loader never resolves a live tenant (see
+              account-terms-route.server.ts), and without one Intl falls back to the runtime's
+              local zone, which differs between SSR and the browser and causes a hydration
+              mismatch. */}
+          {formatDate(acceptance.acceptedAt, locale, DEFAULT_TZ)}
           {' · '}
           {languageLabel}
         </p>
