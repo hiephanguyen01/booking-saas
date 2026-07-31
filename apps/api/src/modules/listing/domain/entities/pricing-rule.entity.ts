@@ -9,19 +9,17 @@ import { ModeNotEnabled, PackagePricingFixed } from '../errors/pricing-rule-erro
  * `salePrice`, with a `priority` the quote calculator uses to pick among
  * matching rules.
  *
- * Owns the two-check gate duplicated verbatim across the tenant- and
- * partner-path create use-cases — mode-enabled first, then
- * not-fixed-packages ({@link PricingRule.assertAllowedOn}) — plus the pure,
- * partner-path-only helpers for the calendar-edit save/replace flow
- * ({@link findOverlappingWindow}, {@link sameWindowKey}).
+ * Owns the two-check gate shared by the tenant- and partner-path create
+ * use-cases — mode-enabled first, then not-fixed-packages
+ * ({@link PricingRule.assertAllowedOn}) — plus the pure predicates behind the
+ * save/replace flow ({@link findOverlappingWindow},
+ * {@link findOverlappingRecurring}, {@link sameWindowKey}).
  *
- * NOT owned here (deliberately): overlap detection and replace-on-save both
- * run ONLY on the partner path today (`create-partner-pricing-rule.use-case.ts`)
- * — the tenant path (`create-pricing-rule.use-case.ts`) has neither, a
- * preserved known gap (§8a). This aggregate exposes the pure predicates only;
- * the use-case decides when (and whether) to call them and throws
- * `PricingRuleOverlap` from the result. Money stays `string` here — `price`/
- * `salePrice` are handed through untouched; the repository does the
+ * This aggregate exposes the predicates only; deciding when to call them and
+ * turning a hit into an error is `PreparePricingRuleWriteUseCase`, which both
+ * create paths now run — they used to differ, and the tenant path having no
+ * checks at all is exactly how they drifted. Money stays `string` here —
+ * `price`/`salePrice` are handed through untouched; the repository does the
  * `BigInt()` parse, this aggregate does no arithmetic.
  *
  * Framework-free: no Nest, no Prisma.
@@ -41,13 +39,30 @@ export interface NewPricingRule {
 }
 
 /**
- * `params` in its one canonical form: `days` sorted, because it names a SET of
- * weekdays and `[6,0]` must not read as a different scope from `[0,6]`.
+ * `params` in its one canonical form.
+ *
+ * Two normalisations, both about scope identity:
+ * - `days` is sorted: it names a SET of weekdays, so `[6,0]` must not read as a
+ *   different scope from `[0,6]`.
+ * - On `time_range`, an all-seven `days` is DROPPED, because an absent `days`
+ *   already means "every weekday" there (`timeRangeParamsSchema` makes it
+ *   optional). Keeping both spellings made a rule stored one way un-editable
+ *   from a client that sends the other — it read as a second, overlapping rule.
+ *   `day_of_week` has no such choice: its schema requires `days`.
  */
-function normalizeParams(params: Record<string, unknown>): Record<string, unknown> {
+function normalizeParams(
+  ruleType: RuleType,
+  params: Record<string, unknown>,
+): Record<string, unknown> {
   const days = params.days;
   if (!Array.isArray(days)) return params;
-  return { ...params, days: [...days].map(Number).sort((a, b) => a - b) };
+  const sorted = [...days].map(Number).sort((a, b) => a - b);
+  if (ruleType === 'time_range' && new Set(sorted).size === 7) {
+    const rest = { ...params };
+    delete rest.days;
+    return rest;
+  }
+  return { ...params, days: sorted };
 }
 
 /**
@@ -96,7 +111,7 @@ export class PricingRule {
       listingId: input.listingId,
       bookingMode: input.bookingMode,
       ruleType: input.ruleType,
-      params: normalizeParams(input.params),
+      params: normalizeParams(input.ruleType, input.params),
       price: input.price,
       salePrice: input.salePrice,
       priority: input.priority,

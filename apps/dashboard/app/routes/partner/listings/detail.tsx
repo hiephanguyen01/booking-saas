@@ -275,11 +275,31 @@ export async function action({ request, params }: Route.ActionArgs) {
         );
   }
 
-  if (intent === 'save_availability_range' || intent === 'save_price_range') {
+  if (
+    intent === 'save_availability_range' ||
+    intent === 'save_price_range' ||
+    intent === 'clear_availability_range'
+  ) {
     const from = String(form.get('from') ?? '');
     const to = String(form.get('to') ?? '');
     if (from < todayString())
       return data({ ok: false, error: 'Dải ngày không được bắt đầu trước hôm nay.' }, { status: 400 });
+
+    if (intent === 'clear_availability_range') {
+      if (!can('partner.availability.manage'))
+        return data({ ok: false, error: 'Không có quyền quản lý lịch.' }, { status: 403 });
+      const result = await apiDelete(
+        `/partner/resources/${listing.resourceId}/availability-exceptions`,
+        auth,
+        { query: { from, to } },
+      );
+      return result.ok
+        ? data({ ok: true, error: null })
+        : data(
+            { ok: false, error: result.error ?? 'Không xoá được thiết lập riêng của dải ngày.' },
+            { status: 400 },
+          );
+    }
 
     if (intent === 'save_availability_range') {
       if (!can('partner.availability.manage'))

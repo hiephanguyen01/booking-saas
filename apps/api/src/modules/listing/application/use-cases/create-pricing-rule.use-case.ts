@@ -13,6 +13,7 @@ import {
 } from '../../domain/ports/pricing-rule-repository.port';
 import { PricingRule } from '../../domain/entities/pricing-rule.entity';
 import { ListingNotFound } from '../../domain/errors/listing-errors';
+import { PreparePricingRuleWriteUseCase } from './prepare-pricing-rule-write.use-case';
 
 /** Conditional pricing (weekday/weekend + golden-hour windows) for a listing (§7.3). */
 @Injectable()
@@ -20,6 +21,7 @@ export class CreatePricingRuleUseCase {
   constructor(
     @Inject(PRICING_RULE_REPOSITORY) private readonly rules: IPricingRuleRepository,
     @Inject(LISTING_REPOSITORY) private readonly listings: IListingRepository,
+    private readonly prepareWrite: PreparePricingRuleWriteUseCase,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -47,6 +49,7 @@ export class CreatePricingRuleUseCase {
         bookingModes: listing.bookingModes,
         bookingSelection: listing.bookingSelection,
       });
+      await this.prepareWrite.execute(tx, { ...listing, id: listingId }, candidate);
       const created = await this.rules.create(tx, tenantId, candidate);
       await this.outbox.emit(tx, {
         tenantId,

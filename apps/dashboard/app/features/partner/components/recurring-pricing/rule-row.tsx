@@ -1,5 +1,5 @@
 import { useFetcher } from 'react-router';
-import { Repeat, Trash2 } from 'lucide-react';
+import { Pencil, Repeat, Trash2 } from 'lucide-react';
 import type { PricingRuleResponse } from '@booking/contracts';
 import { Badge } from '@booking/ui/components/ui/badge';
 import { Button } from '@booking/ui/components/ui/button';
@@ -11,6 +11,8 @@ interface Props {
   rule: PricingRuleResponse;
   unit: 'giờ' | 'ngày';
   canWrite: boolean;
+  isEditing: boolean;
+  onEdit: () => void;
 }
 
 /** "T7, CN" — Monday-first, matching the weekly-hours screen. */
@@ -24,12 +26,17 @@ function describeDays(params: Record<string, unknown>): string {
     .join(', ');
 }
 
-export function RuleRow({ rule, unit, canWrite }: Props) {
+export function RuleRow({ rule, unit, canWrite, isEditing, onEdit }: Props) {
   const fetcher = useFetcher<{ ok: boolean; error?: string | null }>();
   const isWindow = rule.ruleType === 'time_range';
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
+    <div
+      className={cn(
+        'flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3',
+        isEditing && 'border-primary ring-1 ring-primary',
+      )}
+    >
       <div className="min-w-0 space-y-1">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
           <Repeat className="size-4 text-primary" aria-hidden />
@@ -54,19 +61,30 @@ export function RuleRow({ rule, unit, canWrite }: Props) {
         </p>
       </div>
       {canWrite ? (
-        <fetcher.Form method="post">
-          <input type="hidden" name="intent" value="delete_recurring_price" />
-          <input type="hidden" name="ruleId" value={rule.id} />
+        <div className="flex items-center gap-1">
           <Button
-            type="submit"
+            type="button"
             variant="ghost"
             size="icon"
-            aria-label={`Xoá quy tắc ${describeDays(rule.params)}`}
-            disabled={fetcher.state !== 'idle'}
+            aria-label={`Sửa quy tắc ${describeDays(rule.params)}`}
+            onClick={onEdit}
           >
-            <Trash2 className="size-4 text-destructive" />
+            <Pencil className="size-4" />
           </Button>
-        </fetcher.Form>
+          <fetcher.Form method="post">
+            <input type="hidden" name="intent" value="delete_recurring_price" />
+            <input type="hidden" name="ruleId" value={rule.id} />
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              aria-label={`Xoá quy tắc ${describeDays(rule.params)}`}
+              disabled={fetcher.state !== 'idle'}
+            >
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </fetcher.Form>
+        </div>
       ) : null}
     </div>
   );

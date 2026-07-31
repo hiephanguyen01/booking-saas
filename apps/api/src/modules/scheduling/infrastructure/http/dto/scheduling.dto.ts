@@ -7,6 +7,7 @@ import {
   availabilityResponseSchema,
   availabilityRuleResponseSchema,
   calendarRangeQuerySchema,
+  requiredCalendarRangeQuerySchema,
   setAvailabilityRulesInputSchema,
 } from '@booking/contracts';
 
@@ -18,6 +19,9 @@ export class AvailabilityExceptionRangeDto extends createZodDto(
 ) {}
 export class AvailabilityQueryDto extends createZodDto(availabilityQuerySchema) {}
 export class CalendarRangeQueryDto extends createZodDto(calendarRangeQuerySchema) {}
+export class RequiredCalendarRangeQueryDto extends createZodDto(
+  requiredCalendarRangeQuerySchema,
+) {}
 
 // Responses
 export class AvailabilityRuleResponseDto extends createZodDto(availabilityRuleResponseSchema) {}
