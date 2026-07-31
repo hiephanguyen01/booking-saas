@@ -15,6 +15,14 @@ export interface TenantRecord {
   settings: Record<string, unknown>;
   /** Tenant-level fallback cancellation policy (§11.3); null = no tenant default. */
   defaultCancellationPolicyId: string | null;
+  /**
+   * Stamped by the legal-readiness outbox handler when all four required
+   * documents are published in the tenant's defaultLocale; null otherwise.
+   * The storefront hard gate keys on this being non-null.
+   */
+  legalReadyAt: Date | null;
+  /** How many of the four required documents are published in defaultLocale (0-4). */
+  legalDocumentsReady: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,6 +73,12 @@ export interface ITenantRepository {
   findBySlug(slug: string): Promise<TenantRecord | null>;
   list(params: ListTenantsParams): Promise<RepoPage<TenantRecord>>;
   update(id: string, data: UpdateTenantData): Promise<TenantRecord>;
+  /**
+   * Stamps or clears the legal-readiness marker. Separate from `update()`
+   * because the only writer is the legal-readiness outbox handler, never the
+   * platform-admin tenant form.
+   */
+  setLegalReadiness(tenantId: string, at: Date | null, publishedCount: number): Promise<void>;
   /** True when `policyId` is a tenant-level (partner_id null) cancellation policy of this tenant. */
   isTenantLevelPolicy(tenantId: string, policyId: string): Promise<boolean>;
   countPartners(tenantId: string): Promise<number>;

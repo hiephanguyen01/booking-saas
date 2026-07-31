@@ -22,8 +22,9 @@ import { UnknownTenantHost } from '../../domain/errors/tenancy-errors';
  * Resolves a storefront Host header to its tenant (§6.1). Runs on the admin
  * pool (no tenant context exists yet — this IS the resolution). The host→tenant
  * mapping is cached in Redis (60s, negative caching for unknown hosts); the
- * `live` flag is computed fresh each call from tenant status + subscription so
- * an expiry takes effect immediately (§6.5).
+ * `live` flag is computed fresh each call from tenant status + subscription +
+ * legal-document readiness so an expiry — or a just-published fourth legal
+ * document — takes effect immediately (§6.5, §7).
  */
 @Injectable()
 export class ResolveTenantByHostUseCase {
@@ -61,7 +62,8 @@ export class ResolveTenantByHostUseCase {
       selection.current?.subscription ?? null,
       selection.evaluatedAt,
     );
-    const live = tenant.status === 'active' && evaluation.storefrontLive;
+    const live =
+      tenant.status === 'active' && evaluation.storefrontLive && tenant.legalReadyAt !== null;
     return toPublicTenantResponse(tenant, live);
   }
 }

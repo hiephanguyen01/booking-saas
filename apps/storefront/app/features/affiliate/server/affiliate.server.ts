@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { signedCookie } from '~/lib/server/signed-cookie.server';
-import { affiliateResponseSchema, trackReferralResponseSchema } from '@booking/contracts';
+import {
+  affiliateResponseSchema,
+  trackReferralResponseSchema,
+  type LegalConsentInput,
+} from '@booking/contracts';
 import { apiPost, publicPost } from '~/lib/server/api.server';
 
 /**
@@ -77,6 +81,7 @@ export async function trackReferral(
 export interface AffiliateApplyPayload {
   tenantId: string;
   payoutInfo: { bankName?: string; accountNo?: string; accountHolder?: string; note?: string };
+  legalConsent: LegalConsentInput;
 }
 
 /**

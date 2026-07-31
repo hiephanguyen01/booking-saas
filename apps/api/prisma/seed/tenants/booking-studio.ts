@@ -1,15 +1,22 @@
 import argon2 from 'argon2';
-import type { ThemeConfigInput } from '@booking/contracts';
+import type { Locale, ThemeConfigInput } from '@booking/contracts';
 import { prisma } from '../client';
 import { ensure, ensureRoleAssignment } from '../shared';
 import { seedStudioCatalogTypes, type CatalogTypes } from '../catalog/studio-catalog';
+import { publishTenantLegalDocuments, seedTenantLegalDrafts, type PublishedLegalVersions } from '../legal';
 import { ownerPassword, storagePublicUrl, type SeedScope } from '../scope';
 
 export type TenantSetup = {
-  tenant: { id: string; name: string };
+  tenant: { id: string; name: string; defaultLocale: string };
   owner: { id: string };
   cancellationPolicyId: string;
   types: CatalogTypes;
+  /**
+   * Published versionId per required doc type — `null` in `tenants` scope,
+   * where the four documents are seeded as drafts only (see `../legal.ts`) and
+   * there is nothing published yet for a demo seed to reference.
+   */
+  legalVersions: PublishedLegalVersions | null;
 };
 
 /**
@@ -170,5 +177,20 @@ export async function seedBookingStudio(input: {
   );
 
   const types = await seedStudioCatalogTypes(prisma, tenant.id);
-  return { tenant, owner, cancellationPolicyId: cancellationPolicy.id, types };
+
+  // Every tenant starts dark with four drafts (§ tenant legal documents); only
+  // the dev/staging demo publishes them so `pnpm dev` serves a live storefront.
+  // `SEED_SCOPE=tenants` stops at drafts — a real owner must read and publish.
+  await seedTenantLegalDrafts(tenant.id, tenant.name);
+  const legalVersions =
+    input.scope === 'full'
+      ? await publishTenantLegalDocuments({
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          defaultLocale: tenant.defaultLocale as Locale,
+          publishedByUserId: owner.id,
+        })
+      : null;
+
+  return { tenant, owner, cancellationPolicyId: cancellationPolicy.id, types, legalVersions };
 }

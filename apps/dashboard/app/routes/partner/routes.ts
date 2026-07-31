@@ -5,6 +5,7 @@ import { index, route, type RouteConfigEntry } from '@react-router/dev/routes';
 // (requireScope('partner')) is wired in app/routes.ts.
 export const partnerChildren: RouteConfigEntry[] = [
   index('routes/partner/_index.tsx'),
+  route('legal-update', 'routes/partner/legal-update.tsx'),
   route('calendar', 'routes/partner/calendar.tsx'),
   route('bookings', 'routes/partner/bookings/_index.tsx'),
   route('bookings/:bookingId', 'routes/partner/bookings/detail.tsx'),

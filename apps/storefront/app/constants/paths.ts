@@ -1,3 +1,5 @@
+import type { LegalDocumentType } from '@booking/contracts';
+import { LEGAL_DOCUMENT_SLUGS } from '@booking/contracts';
 import type { Locale } from '@booking/i18n';
 
 export function localeParam(value: string | undefined): Locale {
@@ -50,6 +52,11 @@ export const storefrontPaths = {
     `/${locale}/l/${segment(listingSlug)}/booking-data`,
   listingGroupRoomBookingData: (locale: Locale, groupSlug: string, listingSlug: string) =>
     `/${locale}/g/${segment(groupSlug)}/rooms/${segment(listingSlug)}/booking-data`,
+  /** The four tenant legal documents (§ tenant-legal-documents); stable slugs, never translated. */
+  legal: (locale: Locale, docType: LegalDocumentType) =>
+    `/${locale}/legal/${LEGAL_DOCUMENT_SLUGS[docType]}`,
+  legalVersion: (locale: Locale, docType: LegalDocumentType, versionNo: number) =>
+    `/${locale}/legal/${LEGAL_DOCUMENT_SLUGS[docType]}/v/${versionNo}`,
   becomePartner: (locale: Locale) => `/${locale}/become-partner`,
   becomePartnerStep: (locale: Locale, step: PartnerOnboardingStep) =>
     `/${locale}/become-partner/${step}`,

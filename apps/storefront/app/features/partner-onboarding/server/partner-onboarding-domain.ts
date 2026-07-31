@@ -75,5 +75,9 @@ export function partnerApplyPayloadFor(
       accountNumber: value.bankAccountNumber,
       holderName: value.bankAccountHolder,
     },
+    legalConsent: {
+      acceptedVersionIds: value.acceptedVersionIds,
+      acceptedLocale: value.acceptedLocale,
+    },
   };
 }

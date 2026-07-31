@@ -26,6 +26,8 @@ function toRecord(t: PrismaTenant): TenantRecord {
     themeConfig: (t.themeConfig ?? {}) as Record<string, unknown>,
     settings: (t.settings ?? {}) as Record<string, unknown>,
     defaultCancellationPolicyId: t.defaultCancellationPolicyId,
+    legalReadyAt: t.legalReadyAt,
+    legalDocumentsReady: t.legalDocumentsReady,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
   };
@@ -99,6 +101,17 @@ export class PrismaTenantRepository implements ITenantRepository {
         },
       }),
     );
+  }
+
+  /**
+   * Stamps or clears the legal-readiness marker. Only called by the
+   * legal-readiness outbox handler — never by the platform-admin tenant form.
+   */
+  async setLegalReadiness(tenantId: string, at: Date | null, publishedCount: number): Promise<void> {
+    await this.prisma.admin.tenant.update({
+      where: { id: tenantId },
+      data: { legalReadyAt: at, legalDocumentsReady: publishedCount },
+    });
   }
 
   /** True when `policyId` is a tenant-level (partner_id null) policy of this tenant. */

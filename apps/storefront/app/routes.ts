@@ -20,6 +20,7 @@ export default [
     route('bookings/:code/payment-status', 'routes/booking-payment-status.ts'),
     route('bookings/:code', 'routes/booking-detail.tsx'),
     route('community', 'routes/community.tsx'),
+    route('legal/:docSlug/*', 'routes/legal.tsx'),
     route('account', 'routes/account/layout.tsx', [
       index('routes/account/_index.tsx'),
       route('profile', 'routes/account/profile.tsx'),

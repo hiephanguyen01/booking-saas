@@ -1,8 +1,9 @@
 import argon2 from 'argon2';
-import type { ThemeConfigInput } from '@booking/contracts';
+import type { Locale, ThemeConfigInput } from '@booking/contracts';
 import { prisma } from '../client';
 import { ensure, ensureRoleAssignment } from '../shared';
 import { seedSportCatalogTypes } from '../catalog/sport-catalog';
+import { publishTenantLegalDocuments, seedTenantLegalDrafts } from '../legal';
 import { ownerPassword, type SeedScope } from '../scope';
 import type { TenantSetup } from './booking-studio';
 
@@ -154,5 +155,20 @@ export async function seedBookingStad(input: {
   );
 
   const types = await seedSportCatalogTypes(prisma, tenant.id);
-  return { tenant, owner, cancellationPolicyId: cancellationPolicy.id, types };
+
+  // Every tenant starts dark with four drafts (§ tenant legal documents); only
+  // the dev/staging demo publishes them so `pnpm dev` serves a live storefront.
+  // `SEED_SCOPE=tenants` stops at drafts — a real owner must read and publish.
+  await seedTenantLegalDrafts(tenant.id, tenant.name);
+  const legalVersions =
+    input.scope === 'full'
+      ? await publishTenantLegalDocuments({
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          defaultLocale: tenant.defaultLocale as Locale,
+          publishedByUserId: owner.id,
+        })
+      : null;
+
+  return { tenant, owner, cancellationPolicyId: cancellationPolicy.id, types, legalVersions };
 }

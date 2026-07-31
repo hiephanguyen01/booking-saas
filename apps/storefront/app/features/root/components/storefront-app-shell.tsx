@@ -26,6 +26,7 @@ export function StorefrontAppShell({ loaderData }: { loaderData: RootLoaderPaylo
 function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoaderPayload }) {
   const {
     accountMenuSummary,
+    bypassTenantGate,
     currentUser,
     documentNonce,
     isStandalone,
@@ -38,7 +39,7 @@ function TenantStorefrontAppShell({ loaderData }: { loaderData: TenantRootLoader
   return (
     <div className="flex min-h-dvh flex-col bg-(--sf-background) text-foreground">
       <TenantThemeStyle theme={tenant.themeConfig} nonce={documentNonce} />
-      {!tenant.live ? (
+      {!tenant.live && !bypassTenantGate ? (
         <SuspendedNotice name={tenant.name} />
       ) : isStandalone ? (
         <Outlet context={outletContext} />

@@ -10,9 +10,9 @@ import {
   type PartnerRecord,
 } from '../../domain/ports/partner-repository.port';
 import {
-  AGREEMENT_REPOSITORY,
-  type IAgreementRepository,
-} from '../../domain/ports/agreement-repository.port';
+  AGREEMENT_ACCEPTANCE_REPOSITORY,
+  type IAgreementAcceptanceRepository,
+} from '../../../legal/domain/ports/agreement-acceptance-repository.port';
 
 export interface ApproveContext {
   userId: string;
@@ -41,15 +41,19 @@ function toPartnerState(partner: PartnerRecord): PartnerState {
 }
 
 /**
- * Tenant approves a pending partner (§7.3). Fee-schedule + partner-terms
+ * Tenant approves a pending partner (§7.3). Fee-schedule (commission-schedule)
  * acceptance is recorded in agreement_acceptances at approval (§7.2) so a later
- * commission dispute has proof. Idempotent for an already-approved partner.
+ * commission dispute has proof. Partner-terms acceptance is recorded earlier, at
+ * application time, from the applicant's own real consent (see
+ * `ApplyAsPartnerUseCase`) — a tenant approver never signs on the partner's
+ * behalf. Idempotent for an already-approved partner.
  */
 @Injectable()
 export class ApprovePartnerUseCase {
   constructor(
     @Inject(PARTNER_REPOSITORY) private readonly partners: IPartnerRepository,
-    @Inject(AGREEMENT_REPOSITORY) private readonly agreements: IAgreementRepository,
+    @Inject(AGREEMENT_ACCEPTANCE_REPOSITORY)
+    private readonly agreements: IAgreementAcceptanceRepository,
     private readonly tenantDb: TenantDbService,
     private readonly outbox: OutboxService,
   ) {}
@@ -74,6 +78,8 @@ export class ApprovePartnerUseCase {
           partnerId,
           userId: ctx.userId,
           agreementType: agreement.agreementType,
+          documentVersionId: null,
+          acceptedLocale: null,
           version: agreement.version,
           ip: ctx.ip,
         });

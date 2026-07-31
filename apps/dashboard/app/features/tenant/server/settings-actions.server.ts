@@ -17,6 +17,7 @@ import {
 } from '@booking/contracts';
 import { apiDelete, apiPatch, apiPost, apiPut, type ApiAuth } from '~/lib/api.server';
 import { TENANT_FLAGS_PATH, type TenantFlags } from '~/features/tenant/lib/flags';
+import { handleLegalSettingsAction, isLegalIntent } from '~/features/legal/server/legal.server';
 
 /**
  * The tenant settings route's multi-intent action, kept out of the route module.
@@ -32,6 +33,11 @@ export async function handleSettingsAction(request: Request, auth: ApiAuth) {
 
     if (body && typeof body === 'object' && 'intent' in body) {
       const intent = String((body as { intent?: unknown }).intent ?? '');
+
+      if (isLegalIntent(intent)) {
+        return handleLegalSettingsAction(intent, body, auth);
+      }
+
       if (
         intent === 'create-tenant-cancellation-policy' ||
         intent === 'update-tenant-cancellation-policy'

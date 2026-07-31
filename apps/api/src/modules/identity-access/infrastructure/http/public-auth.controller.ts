@@ -114,8 +114,11 @@ export class PublicAuthController {
   @Post('registration/complete')
   @HttpCode(200)
   @ApiOkResponse({ type: AuthFlowCompleteResponseDto })
-  completeRegistration(@Body() input: AuthPasswordCompleteDto): Promise<AuthFlowCompleteResponse> {
-    return this.completeRegistrationUseCase.execute(input);
+  completeRegistration(
+    @Body() input: AuthPasswordCompleteDto,
+    @Ip() ip: string,
+  ): Promise<AuthFlowCompleteResponse> {
+    return this.completeRegistrationUseCase.execute(input, { ip });
   }
 
   @Public()

@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
+import { OutboxHandlerRegistry } from '../../../../shared/outbox/outbox-handler.registry';
 import { PrismaModule } from '../../../../shared/prisma/prisma.module';
 import { TenantContextModule } from '../../../../shared/tenant-context/tenant-context.module';
 import { TENANT_REPOSITORY } from '../../domain/ports/tenant-repository.port';
@@ -49,6 +50,7 @@ import { AssertCanAddPartnerUseCase } from '../../application/use-cases/assert-c
 import { AssertCanAddListingUseCase } from '../../application/use-cases/assert-can-add-listing.use-case';
 import { AssertCustomDomainAllowedUseCase } from '../../application/use-cases/assert-custom-domain-allowed.use-case';
 import { CheckBookingQuotaUseCase } from '../../application/use-cases/check-booking-quota.use-case';
+import { ApplyLegalReadinessUseCase } from '../../application/use-cases/apply-legal-readiness.use-case';
 import { PlanLimitGuard } from './guards/plan-limit.guard';
 import { RequireActiveSubscriptionGuard } from './guards/require-active-subscription.guard';
 import { AdminTenantController } from './admin-tenant.controller';
@@ -110,6 +112,7 @@ import { TenantSettingsController } from './tenant-settings.controller';
     AssertCanAddListingUseCase,
     AssertCustomDomainAllowedUseCase,
     CheckBookingQuotaUseCase,
+    ApplyLegalReadinessUseCase,
     PlanLimitGuard,
     RequireActiveSubscriptionGuard,
   ],
@@ -131,4 +134,28 @@ import { TenantSettingsController } from './tenant-settings.controller';
     ResolveTenantByHostUseCase,
   ],
 })
-export class TenancyModule {}
+export class TenancyModule implements OnModuleInit {
+  private readonly logger = new Logger(TenancyModule.name);
+
+  constructor(
+    private readonly registry: OutboxHandlerRegistry,
+    private readonly applyLegalReadiness: ApplyLegalReadinessUseCase,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register('legal.readiness_changed', (event) => {
+      const tenantId = this.requireTenantId(event.eventType, event.tenantId);
+      if (!tenantId) return Promise.resolve();
+      return this.applyLegalReadiness.execute(
+        tenantId,
+        (event.payload ?? {}) as { legalReady: boolean; publishedCount: number },
+      );
+    });
+  }
+
+  private requireTenantId(eventType: string, tenantId: string | null): string | null {
+    if (tenantId) return tenantId;
+    this.logger.warn(`skipping ${eventType}: outbox event has no tenantId`);
+    return null;
+  }
+}

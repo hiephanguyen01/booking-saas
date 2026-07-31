@@ -7,6 +7,7 @@ import { authFlow } from '~/features/auth/server/auth-flow.server';
 import { requireAuth } from '~/lib/server/auth.server';
 import { requireLocale } from '~/lib/server/i18n.server';
 import { readJsonRequestBody } from '~/lib/server/json-request.server';
+import { loadLegalConsentBundle } from '~/features/legal/server/legal.server';
 import { applyAsPartner } from '~/features/partner-onboarding/server/partner.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 import { partnerApplyPayloadFor } from '~/features/partner-onboarding/server/partner-onboarding-domain';
@@ -16,13 +17,19 @@ import {
   requirePartnerPhase,
 } from '~/features/partner-onboarding/server/partner-onboarding-shared.server';
 
+/** Per D6, a partner application's one consent tick covers all three documents. */
+const PARTNER_APPLICATION_LEGAL_TYPES = ['partner_terms', 'customer_terms', 'privacy_policy'] as const;
+
 export async function loadPartnerProfileRoute(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   await requirePartnerPhase(request, 'partner_registration_profile', locale);
   const auth = requireAuth(storefrontPaths.becomePartner(locale));
   const tenant = getCurrentStorefrontTenant();
-  const provinces = await loadAdministrativeProvinces(request);
-  return { email: auth.info.user.email, tenantName: tenant.name, provinces };
+  const [provinces, legalConsent] = await Promise.all([
+    loadAdministrativeProvinces(request),
+    loadLegalConsentBundle(request, locale, PARTNER_APPLICATION_LEGAL_TYPES),
+  ]);
+  return { email: auth.info.user.email, tenantName: tenant.name, provinces, legalConsent };
 }
 
 export async function submitPartnerProfileRoute(request: Request, localeParam?: string) {

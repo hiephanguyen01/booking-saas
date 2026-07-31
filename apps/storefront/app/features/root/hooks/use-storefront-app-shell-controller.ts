@@ -13,6 +13,15 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
   const isStandalone = matches.some(
     (match) => (match.handle as { standalone?: boolean } | undefined)?.standalone,
   );
+  // Legal document pages (`routes/legal.tsx`) declare this so they keep
+  // rendering their `<Outlet/>` even when `tenant.live` is false — otherwise
+  // the request-security exemption alone is not enough: this shell would still
+  // swap the whole route tree for `SuspendedNotice` and the document would
+  // never actually render. See `request-security.server.ts`'s matching
+  // `isLegalDocumentPath` exemption for the other half of this gate.
+  const bypassTenantGate = matches.some(
+    (match) => (match.handle as { bypassTenantGate?: boolean } | undefined)?.bypassTenantGate,
+  );
   const outletContext: StorefrontContext = {
     tenant,
     listingTypes,
@@ -25,6 +34,7 @@ export function useStorefrontAppShellController(loaderData: TenantRootLoaderPayl
 
   return {
     accountMenuSummary,
+    bypassTenantGate,
     currentUser,
     documentNonce,
     isStandalone,

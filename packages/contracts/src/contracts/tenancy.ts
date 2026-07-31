@@ -403,6 +403,10 @@ export const subscriptionStatusResponseSchema = z.object({
   daysUntilExpiry: z.number(),
   expiresAt: z.string().nullable(),
   bookingQuota: bookingQuotaStatusSchema.nullable(),
+  /** false → the storefront is dark because required legal documents are unpublished. */
+  legalReady: z.boolean(),
+  /** How many of the four required documents are published in the tenant's default language. */
+  legalDocumentsReady: z.number().int().min(0).max(4),
 });
 export type SubscriptionStatusResponse = z.infer<typeof subscriptionStatusResponseSchema>;
 

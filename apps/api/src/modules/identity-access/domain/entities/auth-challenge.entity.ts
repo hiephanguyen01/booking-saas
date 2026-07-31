@@ -14,6 +14,9 @@ export interface AuthChallengeState {
   locale: 'vi' | 'en';
   fullName?: string;
   userId?: string;
+  tenantId?: string;
+  acceptedVersionIds?: string[];
+  acceptedLocale?: 'vi' | 'en';
   otpHash: string;
   attempts: number;
   resendAt: number;
@@ -91,6 +94,11 @@ export class AuthChallenge {
       locale: this.state.locale,
       ...(this.state.fullName ? { fullName: this.state.fullName } : {}),
       ...(this.state.userId ? { userId: this.state.userId } : {}),
+      ...(this.state.tenantId ? { tenantId: this.state.tenantId } : {}),
+      ...(this.state.acceptedVersionIds?.length
+        ? { acceptedVersionIds: this.state.acceptedVersionIds }
+        : {}),
+      ...(this.state.acceptedLocale ? { acceptedLocale: this.state.acceptedLocale } : {}),
     };
   }
 }

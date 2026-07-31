@@ -18,8 +18,8 @@ export function meta({ matches, params }: Route.MetaArgs): Route.MetaDescriptors
 /** Tells root.tsx to hide the SiteHeader and SiteFooter on this page. */
 export const handle = { standalone: true };
 
-export function loader() {
-  return loadAffiliateApplicationRoute();
+export function loader({ request, params }: Route.LoaderArgs) {
+  return loadAffiliateApplicationRoute(request, params.locale);
 }
 
 export function action({ request }: Route.ActionArgs) {

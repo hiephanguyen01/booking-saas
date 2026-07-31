@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { paginationQuerySchema, uuidSchema } from './common';
+import { localeSchema, paginationQuerySchema, uuidSchema } from './common';
 import {
   administrativeProvinceTypeSchema,
   administrativeWardTypeSchema,
@@ -7,6 +7,7 @@ import {
   wardCodeSchema,
 } from './administrative-division';
 import { slugSchema } from './tenancy';
+import { acceptanceRecordSchema, legalConsentInputSchema } from './legal';
 
 /** Partner classification (§7.3): a freelancer vs a registered company. */
 export const partnerTypeSchema = z.enum(['individual', 'company']);
@@ -85,6 +86,7 @@ export const partnerApplyInputSchema = z.object({
   businessInfo: z.record(z.unknown()).optional(),
   contactInfo: partnerContactInfoSchema,
   payoutInfo: payoutInfoSchema.optional(),
+  legalConsent: legalConsentInputSchema,
 });
 export type PartnerApplyInput = z.infer<typeof partnerApplyInputSchema>;
 
@@ -260,6 +262,8 @@ export const partnerOnboardingProfileSchema = z
     identityCardFrontUrl: z.string().url('Vui lòng tải ảnh CMND/CCCD mặt trước').or(z.literal('')),
     identityCardBackUrl: z.string().url('Vui lòng tải ảnh CMND/CCCD mặt sau').or(z.literal('')),
     acceptedTerms: z.boolean().refine(Boolean, 'Vui lòng đồng ý với Hợp đồng đối tác'),
+    acceptedVersionIds: z.array(uuidSchema).min(1).max(4),
+    acceptedLocale: localeSchema,
   })
   .superRefine((value, context) => {
     const required = (key: keyof typeof value, message: string) => {
@@ -362,10 +366,6 @@ export const partnerResponseSchema = z.object({
 });
 export type PartnerResponse = z.infer<typeof partnerResponseSchema>;
 
-export const partnerAgreementResponseSchema = z.object({
-  agreementType: z.enum(['partner_terms', 'commission_schedule', 'promo_funding']),
-  version: z.string(),
-  acceptedAt: z.string(),
-});
+export const partnerAgreementResponseSchema = acceptanceRecordSchema;
 export type PartnerAgreementResponse = z.infer<typeof partnerAgreementResponseSchema>;
 export const partnerAgreementListResponseSchema = z.array(partnerAgreementResponseSchema);

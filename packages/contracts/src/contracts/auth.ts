@@ -18,6 +18,8 @@ export const registrationStartInputSchema = z.object({
   email: z.string().email().toLowerCase(),
   locale: localeSchema.default('vi'),
   tenantId: uuidSchema.optional(),
+  acceptedVersionIds: z.array(uuidSchema).min(1).max(4).optional(),
+  acceptedLocale: localeSchema.optional(),
 });
 export type RegistrationStartInput = z.infer<typeof registrationStartInputSchema>;
 

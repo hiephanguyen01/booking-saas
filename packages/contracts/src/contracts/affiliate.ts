@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { paginationQuerySchema, uuidSchema } from './common';
+import { localeSchema, paginationQuerySchema, uuidSchema } from './common';
 import { bookingStatusSchema } from './booking';
 import { rateTypeSchema } from './finance';
+import { legalConsentInputSchema } from './legal';
 
 /**
  * Affiliate system contracts (TONG-QUAN.md §15, §7.8). Affiliates refer customers
@@ -65,6 +66,7 @@ export type AffiliatePayoutInfo = z.infer<typeof affiliatePayoutInfoSchema>;
 export const applyAffiliateInputSchema = z.object({
   tenantId: uuidSchema,
   payoutInfo: affiliatePayoutInfoSchema.default({}),
+  legalConsent: legalConsentInputSchema,
 });
 export type ApplyAffiliateInput = z.infer<typeof applyAffiliateInputSchema>;
 
@@ -93,6 +95,9 @@ export const affiliateRegistrationSchema = z.object({
   bankName: z.string().max(200).optional(),
   accountNo: z.string().max(50).optional(),
   accountHolder: z.string().max(200).optional(),
+  acceptedTerms: z.boolean().refine(Boolean, 'Vui lòng đồng ý với điều khoản'),
+  acceptedVersionIds: z.array(uuidSchema).min(1).max(4),
+  acceptedLocale: localeSchema,
 });
 export type AffiliateRegistrationInput = z.infer<typeof affiliateRegistrationSchema>;
 

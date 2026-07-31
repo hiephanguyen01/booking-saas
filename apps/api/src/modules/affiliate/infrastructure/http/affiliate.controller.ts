@@ -5,10 +5,12 @@ import {
   Get,
   Headers,
   HttpCode,
+  Ip,
   Param,
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -31,8 +33,10 @@ import { toPaginated } from '../../../../shared/pagination/pagination';
 import { AuthenticatedOnly } from '../../../identity-access/infrastructure/http/decorators/authenticated-only.decorator';
 import { CurrentPrincipal } from '../../../identity-access/infrastructure/http/decorators/current-principal.decorator';
 import type { SessionPrincipal } from '../../../identity-access/domain/ports/session-store.port';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
 import { RequireApprovedAffiliateUseCase } from '../../application/use-cases/require-approved-affiliate.use-case';
 import { RequireAffiliateMembershipUseCase } from '../../application/use-cases/require-affiliate-membership.use-case';
+import { ResolveAffiliateTenantContextGuard } from './guards/resolve-affiliate-tenant-context.guard';
 import { ApplyAffiliateUseCase } from '../../application/use-cases/apply-affiliate.use-case';
 import { ListAffiliateMembershipsUseCase } from '../../application/use-cases/list-affiliate-memberships.use-case';
 import { UpdateAffiliatePayoutInfoUseCase } from '../../application/use-cases/update-affiliate-payout-info.use-case';
@@ -64,6 +68,17 @@ import {
  * user; the affiliate account is resolved from the `affiliates` table. The optional
  * `x-affiliate-tenant` header picks a specific membership when the user is an
  * affiliate for more than one tenant (defaults to the first approved one).
+ *
+ * Writes to an existing membership (`payout-info`, `links` POST/DELETE) carry
+ * `@UseGuards(ResolveAffiliateTenantContextGuard, RequireCurrentAgreementGuard)`
+ * so a caller whose tenant has since published a materially changed affiliate
+ * terms document is blocked until they re-accept — see
+ * `ResolveAffiliateTenantContextGuard`'s docblock for why the plain
+ * `RequireCurrentAgreementGuard` cannot be attached here directly. `apply` is
+ * deliberately excluded: it IS the consent-recording action, and a first-time
+ * applicant has no prior acceptance to check. Read routes (`me`, `links` GET,
+ * `stats`, `commissions`) stay open so a blocked caller can still see their own
+ * data.
  */
 @ApiTags('affiliate')
 @Controller('affiliate')
@@ -97,11 +112,15 @@ export class AffiliateController {
   async apply(
     @CurrentPrincipal() principal: SessionPrincipal,
     @Body() input: ApplyAffiliateDto,
+    @Ip() ip: string,
   ): Promise<AffiliateResponse> {
-    return toAffiliateResponse(await this.applyAffiliate.execute(principal.userId, input));
+    return toAffiliateResponse(
+      await this.applyAffiliate.execute(principal.userId, input, { ip }),
+    );
   }
 
   @AuthenticatedOnly()
+  @UseGuards(ResolveAffiliateTenantContextGuard, RequireCurrentAgreementGuard)
   @Patch('payout-info')
   @ApiOperation({ summary: "Correct the affiliate's own payout (bank) details" })
   @ApiOkResponse({ type: AffiliateResponseDto })
@@ -133,6 +152,7 @@ export class AffiliateController {
   }
 
   @AuthenticatedOnly()
+  @UseGuards(ResolveAffiliateTenantContextGuard, RequireCurrentAgreementGuard)
   @Post('links')
   @ApiOperation({ summary: 'Create a referral link' })
   @ApiCreatedResponse({ type: ReferralLinkResponseDto })
@@ -148,6 +168,7 @@ export class AffiliateController {
   }
 
   @AuthenticatedOnly()
+  @UseGuards(ResolveAffiliateTenantContextGuard, RequireCurrentAgreementGuard)
   @Delete('links/:id')
   @UuidParam()
   @HttpCode(204)

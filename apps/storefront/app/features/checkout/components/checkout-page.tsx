@@ -21,6 +21,7 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
     promotionsUnavailable,
     currentUser,
     paymentMethods,
+    legalConsent,
   } = loaderData;
   const { t } = useTranslation(NsI18n.Checkout);
   const {
@@ -79,6 +80,7 @@ export function CheckoutPage({ loaderData, actionData }: CheckoutPageControllerP
               expectedSubtotal={quote.subtotal}
               paymentMethods={paymentMethods}
               checkoutAttemptId={checkoutAttemptId}
+              legalConsent={legalConsent}
             />
           </div>
         </div>

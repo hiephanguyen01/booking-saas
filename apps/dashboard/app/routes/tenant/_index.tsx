@@ -24,6 +24,7 @@ import { Money } from '~/components/money';
 import { PageHeader } from '~/components/page-header';
 import { QuickLink } from '~/components/quick-link';
 import { StatCard } from '~/components/stat-card';
+import { LegalReadinessCard } from '~/features/tenant/components/overview/legal-readiness-card';
 import { PayablesCard } from '~/features/tenant/components/overview/payables-card';
 import { RecentBookingsCard } from '~/features/tenant/components/overview/recent-bookings-card';
 import { SubscriptionStatusCard } from '~/features/tenant/components/overview/subscription-status-card';
@@ -135,6 +136,10 @@ export default function TenantOverview({ loaderData }: Route.ComponentProps) {
         <RecentBookingsCard bookings={recentBookings} canView={can.bookings} className="lg:col-span-2" />
 
         <div className="space-y-6">
+          {subscription && !subscription.legalReady ? (
+            <LegalReadinessCard published={subscription.legalDocumentsReady} required={4} />
+          ) : null}
+
           {subscription ? <SubscriptionStatusCard sub={subscription} /> : null}
 
           {summary ? <PayablesCard summary={summary} /> : null}

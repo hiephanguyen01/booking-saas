@@ -1,11 +1,12 @@
 import type { PartnerAgreementResponse, PartnerResponse } from '@booking/contracts';
-import { Body, Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TenantContextService } from '../../../../shared/tenant-context/tenant-context.service';
 import { RequirePermissions } from '../../../identity-access/infrastructure/http/decorators/require-permissions.decorator';
+import { RequireCurrentAgreementGuard } from '../../../legal/infrastructure/http/guards/require-current-agreement.guard';
+import { ListPartnerAcceptancesUseCase } from '../../../legal/application/use-cases/list-partner-acceptances.use-case';
 import { toPartnerResponse } from '../../application/partner.mapper';
 import { GetPartnerProfileUseCase } from '../../application/use-cases/get-partner-profile.use-case';
-import { ListPartnerAgreementsUseCase } from '../../application/use-cases/list-partner-agreements.use-case';
 import { SetPartnerDefaultCancellationPolicyUseCase } from '../../application/use-cases/set-partner-default-cancellation-policy.use-case';
 import { SubmitIdentityUseCase } from '../../application/use-cases/submit-identity.use-case';
 import { UpdatePartnerDocumentsUseCase } from '../../application/use-cases/update-partner-documents.use-case';
@@ -22,13 +23,21 @@ import {
 /** Partner self-service (§7.3) — the partner reads its own record, sets payout
  *  details + submits ID. Scope via x-tenant-id + x-partner-id; the
  *  PermissionsGuard verifies the caller holds a role assignment on that partner,
- *  so every route here is inherently own-record-only. */
+ *  so every route here is inherently own-record-only.
+ *
+ *  Write routes additionally carry `RequireCurrentAgreementGuard`: a partner
+ *  whose tenant has published new/updated terms since the partner last accepted
+ *  is blocked from writing (payout, documents, identity, cancellation policy)
+ *  until they re-accept via `POST /me/legal/accept`. Read routes (`profile`,
+ *  `agreements`) stay open so a blocked partner can still see their own data —
+ *  the dashboard redirect alone is not enforcement, since any caller that skips
+ *  the UI would otherwise proceed unsigned. */
 @ApiTags('partner-profile')
 @Controller('partner/profile')
 export class PartnerProfileController {
   constructor(
     private readonly getProfile: GetPartnerProfileUseCase,
-    private readonly listAgreements: ListPartnerAgreementsUseCase,
+    private readonly listAgreements: ListPartnerAcceptancesUseCase,
     private readonly updatePayoutInfo: UpdatePayoutInfoUseCase,
     private readonly updateDocuments: UpdatePartnerDocumentsUseCase,
     private readonly submitIdentity: SubmitIdentityUseCase,
@@ -60,6 +69,7 @@ export class PartnerProfileController {
   }
 
   @RequirePermissions('partner.profile.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Patch('payout')
   @ApiOperation({ summary: 'Update partner payout (bank) details' })
   @ApiOkResponse({ type: PartnerResponseDto })
@@ -69,6 +79,7 @@ export class PartnerProfileController {
   }
 
   @RequirePermissions('partner.profile.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Patch('documents')
   @ApiOperation({ summary: 'Update partner logo + license/business documents' })
   @ApiOkResponse({ type: PartnerResponseDto })
@@ -78,6 +89,7 @@ export class PartnerProfileController {
   }
 
   @RequirePermissions('partner.profile.manage')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Post('identity')
   @HttpCode(200)
   @ApiOperation({ summary: 'Submit identity document metadata for review' })
@@ -88,6 +100,7 @@ export class PartnerProfileController {
   }
 
   @RequirePermissions('partner.listings.write')
+  @UseGuards(RequireCurrentAgreementGuard)
   @Patch('default-cancellation-policy')
   @ApiOperation({ summary: "Set the partner's fallback cancellation policy (§11.3)" })
   @ApiOkResponse({ type: PartnerResponseDto })

@@ -28,6 +28,7 @@ import {
 } from '~/features/checkout/server/checkout-flow.server';
 import { formRequestFailureStatus, readFormRequestBody } from '~/lib/server/form-request.server';
 import { errorStatus } from '~/lib/http-status';
+import { loadLegalConsentBundle } from '~/features/legal/server/legal.server';
 import { storefrontPaths } from '~/constants/paths';
 import {
   allowedPaymentFormPost,
@@ -38,6 +39,9 @@ import { appendRecentCookie } from '~/features/account/server/recent.server';
 import { getCurrentStorefrontTenant } from '~/lib/server/request-context.server';
 
 const CHECKOUT_MAX_FORM_BYTES = 64 * 1024;
+
+/** Checkout is a passive notice, not a tick (§ Consent capture) — one document. */
+const CHECKOUT_LEGAL_TYPES = ['customer_terms'] as const;
 
 /** Backend codes meaning the chosen slot or package is gone — the form re-opens the picker. */
 const BOOKING_SELECTION_ERRORS = new Set([
@@ -107,9 +111,10 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
   if (!quote) throw redirect(storefrontPaths.listing(locale, slug));
 
   const promoInput = { listingId: listing.id, amount: quote.subtotal, start, end };
-  const [promoResult, promotionsResult] = await Promise.all([
+  const [promoResult, promotionsResult, legalConsent] = await Promise.all([
     promoCode ? validatePromo(request, { code: promoCode, ...promoInput }) : Promise.resolve(null),
     fetchStorefrontPromotions(request, promoInput),
+    loadLegalConsentBundle(request, locale, CHECKOUT_LEGAL_TYPES),
   ]);
   const promo: ValidatePromoResponse | null = promoResult?.data ?? null;
 
@@ -127,6 +132,7 @@ export async function loadCheckout(request: Request, url: URL, locale: Locale) {
     promotionsUnavailable: !promotionsResult.ok,
     currentUser: getOptionalAuth()?.info.user ?? null,
     paymentMethods: paymentOptions.methods,
+    legalConsent,
     checkoutAttemptId: createCheckoutAttemptId(),
   };
 }
@@ -160,6 +166,12 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
   const note = String(form.get('customerNote') ?? '').trim() || undefined;
   const expectedSubtotal = String(form.get('expectedSubtotal') ?? '');
   const packageId = String(form.get('packageId') ?? '') || undefined;
+  // Passive notice, not a tick (§ Consent capture) — present only when the
+  // legal service returned a current customer_terms version to show a link
+  // for; absent otherwise, which the API treats as "skip silently" rather
+  // than failing the booking.
+  const acceptedVersionId = String(form.get('acceptedVersionIds') ?? '') || undefined;
+  const acceptedLocale = String(form.get('acceptedLocale') ?? '') || undefined;
   const guest = guestInfoSchema.safeParse({
     fullName: String(form.get('fullName') ?? '').trim(),
     email: String(form.get('email') ?? '').trim(),
@@ -194,6 +206,8 @@ export async function handleCheckoutAction(request: Request, locale: Locale) {
     guest: guest.data,
     promoCode,
     refCode,
+    ...(acceptedVersionId ? { acceptedVersionIds: [acceptedVersionId] } : {}),
+    ...(acceptedLocale ? { acceptedLocale } : {}),
   });
 
   if (!parsed.success) {

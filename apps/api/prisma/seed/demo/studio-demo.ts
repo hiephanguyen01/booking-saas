@@ -109,7 +109,17 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
       data: { tenantId: tenant.id, partnerId: partner.id, userId: partnerUser.id },
     });
   }
-  // Fee-schedule + terms acceptance recorded at approval (§7.2).
+  // Fee-schedule + terms acceptance recorded at approval (§7.2). `partner_terms`
+  // is document-backed (§ tenant legal documents): its row carries the exact
+  // published version and language the partner saw on screen.
+  // `commission_schedule` is NOT a legal document — its row keeps
+  // documentVersionId/acceptedLocale null.
+  const partnerTermsVersionId = setup.legalVersions?.partner_terms;
+  if (!partnerTermsVersionId) {
+    throw new Error(
+      'Studio demo seed requires partner_terms to already be published — seedBookingStudio must run with scope "full" before seedStudioDemo',
+    );
+  }
   for (const agreementType of ['partner_terms', 'commission_schedule'] as const) {
     if (
       !(await prisma.agreementAcceptance.findFirst({
@@ -123,6 +133,8 @@ export async function seedStudioDemo(setup: TenantSetup): Promise<void> {
           userId: partnerUser.id,
           agreementType,
           version: '2026-01',
+          documentVersionId: agreementType === 'partner_terms' ? partnerTermsVersionId : null,
+          acceptedLocale: agreementType === 'partner_terms' ? tenant.defaultLocale : null,
         },
       });
     }

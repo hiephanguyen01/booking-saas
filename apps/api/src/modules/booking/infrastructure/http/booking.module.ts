@@ -5,6 +5,7 @@ import { TenantContextModule } from '../../../../shared/tenant-context/tenant-co
 import { AffiliateModule } from '../../../affiliate/infrastructure/http/affiliate.module';
 import { FinanceModule } from '../../../finance/infrastructure/http/finance.module';
 import { IdentityAccessModule } from '../../../identity-access/infrastructure/http/identity-access.module';
+import { LegalModule } from '../../../legal/infrastructure/http/legal.module';
 import { ListingModule } from '../../../listing/infrastructure/http/listing.module';
 import { NotificationModule } from '../../../notification/infrastructure/http/notification.module';
 import { PromotionsModule } from '../../../promotions/infrastructure/http/promotions.module';
@@ -58,6 +59,7 @@ import { TenantBookingController } from './tenant-booking.controller';
     FinanceModule,
     AffiliateModule,
     NotificationModule,
+    LegalModule,
   ],
   controllers: [PublicBookingController, PartnerBookingController, TenantBookingController],
   providers: [

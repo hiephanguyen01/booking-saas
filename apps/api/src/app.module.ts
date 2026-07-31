@@ -28,6 +28,7 @@ import { AdministrativeDivisionModule } from './modules/administrative-division/
 import { ReviewsModule } from './modules/reviews/infrastructure/http/reviews.module';
 import { FavoritesModule } from './modules/favorites/infrastructure/http/favorites.module';
 import { ContentReportsModule } from './modules/content-reports/infrastructure/http/content-reports.module';
+import { LegalModule } from './modules/legal/infrastructure/http/legal.module';
 
 const prettyLogs =
   process.env.LOG_PRETTY === 'true' ||
@@ -84,6 +85,7 @@ const prettyLogs =
     ReviewsModule,
     FavoritesModule,
     ContentReportsModule,
+    LegalModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

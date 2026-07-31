@@ -30,6 +30,7 @@ import {
   invalidAuthInput,
   readAuthForm,
 } from '~/features/auth/server/auth-form.server';
+import { loadLegalConsentBundle } from '~/features/legal/server/legal.server';
 import { requireLocale } from '~/lib/server/i18n.server';
 import {
   getOptionalStorefrontTenant,
@@ -86,6 +87,17 @@ const AUTH_PURPOSES = {
   }
 >;
 
+/** Customer registration requires accepting these two documents (§ Consent capture). */
+const CUSTOMER_REGISTRATION_LEGAL_TYPES = ['customer_terms', 'privacy_policy'] as const;
+
+/** `register.tsx`'s loader: the guest gate plus the two documents its consent tick names. */
+export async function loadRegisterRoute(request: Request, localeParam?: string) {
+  const locale = requireLocale(localeParam);
+  requireGuestAuth(locale);
+  const legalConsent = await loadLegalConsentBundle(request, locale, CUSTOMER_REGISTRATION_LEGAL_TYPES);
+  return { legalConsent };
+}
+
 export async function startRegistrationAction(request: Request, localeParam?: string) {
   const locale = requireLocale(localeParam);
   requireGuestAuth(locale);
@@ -96,6 +108,21 @@ export async function startResetAction(request: Request, localeParam?: string) {
   return startAuthFlowAction(request, requireLocale(localeParam), 'password_reset');
 }
 
+/**
+ * `useAuthStartFormController` submits a plain JS object via `useSubmit`, which
+ * React Router serializes through `new URLSearchParams(object)` (no
+ * `encType: 'application/json'` here, unlike the GenericForm-based flows) — an
+ * array value there is coerced through `Array.prototype.toString`, i.e. joined
+ * with commas, not kept as multiple form entries. Undo that before validating
+ * against `registrationStartInputSchema`'s `acceptedVersionIds: uuid[]`; a
+ * blank/missing field stays `undefined` so `passwordResetStartInputSchema`
+ * (which has no such field) is unaffected — zod strips unknown keys.
+ */
+function splitAcceptedVersionIds(value: FormDataEntryValue | undefined): string[] | undefined {
+  if (typeof value !== 'string' || value === '') return undefined;
+  return value.split(',').filter(Boolean);
+}
+
 /** Requests the OTP challenge and parks the flow on its verify step. */
 async function startAuthFlowAction(request: Request, locale: Locale, purpose: AuthPurpose) {
   const flow = AUTH_PURPOSES[purpose];
@@ -103,8 +130,11 @@ async function startAuthFlowAction(request: Request, locale: Locale, purpose: Au
   if (!formBody.ok) return failedAuthForm(formBody);
 
   const tenant = getOptionalStorefrontTenant();
+  const fields = formFields(formBody.value);
+  const acceptedVersionIds = splitAcceptedVersionIds(fields.acceptedVersionIds);
   const parsed = flow.startSchema.safeParse({
-    ...formFields(formBody.value),
+    ...fields,
+    ...(acceptedVersionIds ? { acceptedVersionIds } : {}),
     locale,
     ...(tenant ? { tenantId: tenant.id } : {}),
   });

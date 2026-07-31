@@ -14,6 +14,9 @@ import { CircleAlert, type LucideIcon } from 'lucide-react';
 import { Form, Link } from 'react-router';
 import { SectionCard } from '~/components/section-card';
 import { NsI18n, useTranslation } from '@booking/i18n';
+import { LegalDocumentLinks } from '~/features/legal/components/legal-document-links';
+import { LEGAL_COPY } from '~/features/legal/lib/legal-copy';
+import type { LegalConsentBundle } from '~/features/legal/server/legal.server';
 import { formatVnd } from '~/lib/ui';
 import {
   useCheckoutFormController,
@@ -37,6 +40,7 @@ export function CheckoutForm({
   expectedSubtotal,
   paymentMethods,
   checkoutAttemptId,
+  legalConsent,
 }: {
   listingId: string;
   listingSlug: string;
@@ -53,8 +57,10 @@ export function CheckoutForm({
   expectedSubtotal: string;
   paymentMethods: CustomerPaymentMethod[];
   checkoutAttemptId: string;
+  legalConsent: LegalConsentBundle;
 }) {
   const { t } = useTranslation(NsI18n.Checkout);
+  const copy = LEGAL_COPY[legalConsent.locale];
   const {
     contactFields,
     defaultPaymentMethod,
@@ -89,6 +95,10 @@ export function CheckoutForm({
       {packageId ? <input type="hidden" name="packageId" value={packageId} /> : null}
       <input type="hidden" name="expectedSubtotal" value={expectedSubtotal} />
       {promoCode ? <input type="hidden" name="promoCode" value={promoCode} /> : null}
+      {legalConsent.versionIds[0] ? (
+        <input type="hidden" name="acceptedVersionIds" value={legalConsent.versionIds[0]} />
+      ) : null}
+      <input type="hidden" name="acceptedLocale" value={legalConsent.locale} />
 
       <SectionCard aria-labelledby="checkout-contact-heading">
         <h2
@@ -135,6 +145,17 @@ export function CheckoutForm({
           disabled={submitting}
         />
       </SectionCard>
+
+      {legalConsent.documents.length ? (
+        <p className="text-xs leading-5 text-muted-foreground lg:text-right">
+          {copy.checkoutNoticePrefix}{' '}
+          <LegalDocumentLinks
+            documents={legalConsent.documents}
+            locale={legalConsent.locale}
+            className="inline text-xs"
+          />
+        </p>
+      ) : null}
 
       <Button
         type="submit"
