@@ -2,89 +2,70 @@
 
 ## Problem
 
-The legal layer exists in the schema and nowhere else.
+The legal layer was designed but never built. What exists is a table with nothing to point at.
 
-`agreement_acceptances` is already modelled — `tenant_id`, `user_id`/`partner_id`, `agreement_type`,
-`version`, `accepted_at`, `ip` (`apps/api/prisma/schema.prisma:719`) — and `TONG-QUAN.md:412`
-describes exactly what it is for: proof of acceptance, so a partner cannot claim "I never agreed to a
-25% rate". But nothing behind it is real:
+`agreement_acceptances` is in the schema (`apps/api/prisma/schema.prisma:719`) with `tenant_id`,
+`user_id`/`partner_id`, `agreement_type`, `version`, `accepted_at` and `ip` — exactly the proof-of-
+acceptance shape `TONG-QUAN.md:412` calls for. But:
 
-- **There is no document content anywhere.** The version recorded is a hand-edited constant,
-  `CURRENT_PARTNER_TERMS_VERSION = '2026-01'`
-  (`apps/api/src/modules/partner/domain/agreement-versions.ts:6`). An acceptance row points at a
-  string that corresponds to no stored text. If a partner disputes a term, nobody can produce the
-  document they supposedly accepted.
-- **The tenant signs on the partner's behalf.** `Partner.approve` returns the two acceptance rows
-  (`domain/entities/partner.entity.ts:243-265`) and `ApprovePartnerUseCase` writes them at *tenant
-  approval* time (`approve-partner.use-case.ts:72-79`). The partner never saw a document and never
-  clicked anything. Worse, the row is stamped `userId: ctx.userId` — the **tenant staff member who
-  clicked approve**, not the partner. Read literally, the record says a tenant employee accepted the
-  partner terms. It is evidence of the tenant's action and nothing else. The version can even be
-  overridden per call through `input.agreementVersion`.
-- **Affiliates (CTV) record nothing at all.** `ApplyAffiliateUseCase` creates the membership and emits
-  `affiliate.applied` with no acceptance whatsoever
-  (`apps/api/src/modules/affiliate/application/use-cases/apply-affiliate.use-case.ts`). `AgreementType`
-  has no affiliate value (`schema.prisma:69`).
-- **Customers record nothing either.** Registration and checkout never mention terms. The only
-  customer-facing legal page is four paragraphs of static i18n text
-  (`apps/storefront/app/features/account/components/legal/terms-page.tsx`) served from
-  `/:locale/account/terms` (`apps/storefront/app/routes.ts:32`) — platform boilerplate, identical for
-  every tenant, authored by nobody.
-- **Nothing gates a tenant on having terms.** A tenant goes live on subscription status alone
-  (`resolve-tenant-by-host.use-case.ts`), so a storefront can take money from customers, recruit
-  partners and pay affiliate commission without a single published term.
+- **There is no document.** No table, column or file holds the text of any terms. `version` is
+  satisfied by two hard-coded constants, `CURRENT_PARTNER_TERMS_VERSION = '2026-01'` and
+  `CURRENT_COMMISSION_SCHEDULE_VERSION = '2026-01'`
+  (`apps/api/src/modules/partner/domain/agreement-versions.ts`). A row saying a partner accepted
+  `partner_terms` version `2026-01` is unfalsifiable — nobody can produce what `2026-01` said.
+- **The tenant signs on the partner's behalf.** The only writer of `partner_terms` acceptance is
+  `ApprovePartnerUseCase` (`apps/api/src/modules/partner/application/use-cases/approve-partner.use-case.ts:76`,
+  rows built in `apps/api/src/modules/partner/domain/entities/partner.entity.ts:256-260`). The
+  partner never saw a checkbox; the tenant clicking "approve" is what records their consent. This is
+  the exact dispute the design set out to prevent, inverted.
+- **Affiliates and customers record nothing at all.** `ApplyAffiliateUseCase`
+  (`apps/api/src/modules/affiliate/application/use-cases/apply-affiliate.use-case.ts`),
+  `ApplyAsPartnerUseCase` and every customer registration and checkout path write zero acceptance
+  rows. `AgreementType` has no `affiliate_terms`, `customer_terms` or `privacy_policy` value
+  (`apps/api/prisma/schema.prisma:69`).
+- **The public terms page is platform boilerplate.** `/:locale/account/terms`
+  (`apps/storefront/app/routes.ts:32`) renders four static i18n strings
+  (`apps/storefront/app/features/account/components/legal/terms-page.tsx`). Every tenant serves the
+  same text, which no tenant wrote and none is bound by.
 
-Under Vietnamese law the tenant is the one collecting personal data (phone numbers, partner national
-IDs, payout bank details) and the one contracting with partners and affiliates. Nghị định 13/2023
-requires notice and consent for that processing. Today BookingOS gives tenants no way to publish
-either, and no way to prove anyone agreed.
+So a tenant can run a marketplace — take bookings, onboard partners, pay affiliate commissions —
+with no terms of service, no privacy notice, and no evidence anyone agreed to anything. Under Nghị
+định 13/2023 the privacy notice alone is not optional: tenants collect phone numbers, partner
+national-ID documents and payout bank details.
 
 ## Owner decisions
 
-Settled during brainstorming; these override any conflicting reading of the sections below.
+Settled during brainstorming; these are the constraints the design must satisfy, not options.
 
-1. **Hard gate.** A tenant that has not published the full required set does not serve a storefront at
-   all — not a degraded one.
-2. **Platform ships templates.** BookingOS provides a Vietnamese starting draft per document type;
-   the tenant edits and publishes it. The gate still bites because publishing is an explicit act.
+1. **Hard gate.** A tenant missing any required document does not serve a storefront at all. Not
+   degraded, not read-only — dark.
+2. **Platform ships templates.** BookingOS provides a Vietnamese draft per document type. The tenant
+   edits and publishes it. The gate still bites because publishing is an explicit act.
 3. **Four required documents:** customer terms, privacy policy, partner terms, affiliate (CTV) terms.
-   All four are gate conditions.
-4. **The tenant classifies its own edits.** At publish time the tenant declares either a cosmetic fix
-   (no re-acceptance) or a material change (new version, re-acceptance required).
-5. **No platform moderation.** The tenant publishes directly and carries the responsibility; the
-   platform keeps a full immutable history and can take a document down.
-6. **Customer consent:** an explicit required tick at registration; at checkout a notice line plus a
-   recorded acceptance, no second tick.
-7. **No migration path.** The product has not launched. `prisma migrate reset` + reseed is the
-   deployment procedure for this change.
+   Missing any one closes the storefront.
+4. **The tenant classifies its own edits.** At publish time it declares either a cosmetic fix (no
+   re-acceptance) or a material change (new version, everyone re-accepts).
+5. **No platform moderation.** The tenant publishes directly and owns the content. The platform keeps
+   an immutable history and can take a document down.
+6. **Customer consent:** a required tick at registration; at checkout only a notice line plus a
+   silently recorded acceptance.
+7. **No migration path.** The app has not launched. Deploy is `prisma migrate reset` + reseed.
+8. **Architecture:** a new `legal` bounded context owns document content and all acceptances;
+   storefront readiness reaches `tenancy` through the outbox.
 
-## Architecture
+Two choices made inside the design rather than asked:
 
-A new bounded context, `apps/api/src/modules/legal/`, owns document content **and** every acceptance
-record. It is the 18th context.
-
-The readiness signal reaches `tenancy` through the outbox, never through an import. `legal` publishes
-`legal.document_published`; a handler registered by `tenancy` recomputes a denormalised
-`tenants.legal_ready_at`. Therefore:
-
-- `legal` does not import `tenancy`; `tenancy` does not import `legal`. `pnpm check:module-cycles`
-  stays green even after `partner` and `affiliate` start depending on `legal`.
-- `ResolveTenantByHostUseCase` runs on the storefront hot path for every request. Reading a column of
-  the tenant row it already fetches costs nothing; querying `legal_documents` there would add a query
-  per request and a module edge.
-
-The rejected alternatives were folding this into `tenancy` (which already carries plans,
-subscriptions, domains, limits and platform health — affiliate consent does not belong there) and
-leaving acceptance writes scattered across `partner`/`affiliate` (which makes "produce everything
-this person ever agreed to" a three-table union).
+- **Markdown, not HTML.** Free HTML from a tenant would have to survive
+  `pnpm --filter=@booking/storefront security`. Markdown stored, sanitized at render.
+- **One language per document (Vietnamese).** The `/en` route serves the same Vietnamese text.
+  Translating legal prose is a later phase, not MVP.
 
 ## Data model
 
-Two new tables, one column added to an existing table, one column added to `tenants`, three enum
-values.
+Two new tables, both tenant-scoped, plus one new column on two existing tables.
 
 ```prisma
-enum LegalDocumentType {          // maps to the four gate documents
+enum LegalDocumentType {
   customer_terms
   privacy_policy
   partner_terms
@@ -109,58 +90,62 @@ model LegalDocumentVersion {
   id                String   @id @default(uuid(7)) @db.Uuid
   tenantId          String   @map("tenant_id") @db.Uuid
   documentId        String   @map("document_id") @db.Uuid
-  versionNo         Int      @map("version_no")          // 1-based, per document
+  versionNo         Int      @map("version_no")
   title             String
   bodyMd            String   @map("body_md")
-  isMaterialChange  Boolean  @default(true) @map("is_material_change")
+  isMaterialChange  Boolean  @default(false) @map("is_material_change")
   publishedAt       DateTime? @map("published_at") @db.Timestamptz(6)
   publishedByUserId String?  @map("published_by_user_id") @db.Uuid
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([documentId, versionNo])
-  @@index([tenantId])
   @@map("legal_document_versions")
 }
 ```
 
-**Draft state is `published_at IS NULL`.** At most one draft row per document; a partial unique index
-enforces it (`CREATE UNIQUE INDEX ... ON legal_document_versions (document_id) WHERE published_at IS
-NULL`). This mirrors `listing_revisions` (ADR 0007) rather than inventing a second revision idiom.
+**Draft = `published_at IS NULL`.** At most one draft per document, enforced by a partial unique
+index on `(document_id) WHERE published_at IS NULL`. Publishing stamps `published_at`,
+`published_by_user_id` and repoints `legal_documents.current_version_id`. A published row is never
+updated again — this is the same shape as `listing_revisions`
+(`docs/decisions/0007-listing-edit-revisions.md`), so the codebase already has the pattern and the
+reviewer already has the mental model.
 
-A published row is **immutable** except for the cosmetic-fix path (below), which rewrites `title` and
-`body_md` in place and leaves `version_no` alone. That is the whole point of the tenant's
-classification: a typo fix does not fork the evidence chain, a term change does.
+**Every publish creates a new version row**, cosmetic or not — a published row is never rewritten, so
+the text someone accepted can always be produced. The cosmetic/material distinction (decision 4) is
+carried by `is_material_change`, and it changes who must re-accept, not whether history is kept:
 
-**`agreement_acceptances` gains one nullable column:**
+- **cosmetic** — new row, `is_material_change = false`, `current_version_id` moves. Nobody re-accepts.
+- **material** — new row, `is_material_change = true`. The re-acceptance bar moves with it.
 
-```prisma
-  documentVersionId String? @map("document_version_id") @db.Uuid
+The consequence is that "has this user accepted the current text?" is **not** an id comparison. The
+bar is the newest *material* version:
+
+```
+pending  ⟺  max(accepted version_no for this doc_type)
+             < max(version_no where is_material_change) for this doc_type
 ```
 
-An acceptance of one of the four documents points at the exact version row that was on screen. The
-two pre-existing acceptance types keep working untouched: `commission_schedule` and `promo_funding`
-leave it `NULL` and continue to use the free-text `version` column. `AgreementType` gains
-`customer_terms`, `privacy_policy` and `affiliate_terms`.
+A tenant fixing a typo therefore republishes freely without dragging every partner through an
+acceptance screen, and the storefront still serves the corrected text immediately.
 
-**Two enums, on purpose.** `AgreementType` answers "what did this person agree to" and must keep
-covering `commission_schedule` and `promo_funding`, neither of which is a tenant-authored document.
-`LegalDocumentType` answers "what does a tenant publish" and is exactly the four gate documents.
-Collapsing them would let a row claim a `promo_funding` document exists. The four overlapping names
-are the same strings, and `legal` owns the mapping between them in one place.
+**`agreement_acceptances` gains one nullable column**, `document_version_id uuid NULL`, FK to
+`legal_document_versions` with `ON DELETE RESTRICT` — an accepted version can never be deleted out
+from under its own evidence. The existing `version` string column stays and is still the only
+identifier for `commission_schedule` and `promo_funding`, which are not documents. `AgreementType`
+gains `customer_terms`, `privacy_policy`, `affiliate_terms`.
 
-**`tenants` gains `legal_ready_at timestamptz NULL`** — set when all four documents have a published
-version, cleared when any is missing or taken down.
+**`tenants` gains `legal_ready_at timestamptz NULL`** — see the gate below.
 
-Both new tables are tenant-scoped, so both need `tenant_id uuid NOT NULL` plus the hand-written
-FORCE-RLS + `tenant_isolation` policy migration (ADR 0004), or
-`pnpm --filter=@booking/api check:rls` fails in CI. Migration directory:
-`apps/api/prisma/migrations/20260731120000_tenant_legal_documents/`.
+Both new tables require `tenant_id uuid NOT NULL` and a hand-written RLS migration (FORCE RLS +
+`tenant_isolation` policy) or `pnpm --filter=@booking/api check:rls` fails in CI. Migration
+`apps/api/prisma/migrations/20260731120000_tenant_legal_documents/migration.sql`, hand-authored per
+[ADR 0004](../../decisions/0004-hand-written-migrations.md).
 
-## The hard gate
+## Hard gate
 
-`ResolveTenantByHostUseCase` computes `live` from tenant status and subscription today. One
-conjunct is added:
+`ResolveTenantByHostUseCase`
+(`apps/api/src/modules/tenancy/application/use-cases/resolve-tenant-by-host.use-case.ts`) already
+computes the storefront's liveness from tenant status and subscription. One term is added:
 
 ```ts
 const live = tenant.status === 'active'
@@ -168,175 +153,186 @@ const live = tenant.status === 'active'
   && tenant.legalReadyAt !== null;
 ```
 
-The storefront already has the full downstream path: `tenantUnavailableResponse` returns HTTP 423
-with `code: 'TENANT_UNAVAILABLE'` (`apps/storefront/app/lib/tenant-availability.ts`). No new plumbing.
+The storefront already knows what to do with `live: false` — `tenantUnavailableResponse`
+(`apps/storefront/app/lib/tenant-availability.ts`) returns HTTP 423 `TENANT_UNAVAILABLE`. No new
+plumbing; the gate reuses the expiry path.
 
-Three boundaries on the gate, each deliberate:
+`legal_ready_at` is denormalized onto `tenants` deliberately. Host resolution runs on the admin pool
+before any tenant context exists and is the hottest path in the system; the tenant row is fetched
+there already, so reading one more column costs nothing, whereas querying `legal_documents` would add
+a round trip to every storefront request. The column only changes when a document is published or
+withdrawn, so drift risk is low, and both events go through the same use case.
 
-- **The dashboard is never gated.** Gating it would lock the tenant out of the only screen where they
-  can publish the documents that would unlock them.
-- **Public legal pages are never gated.** A storefront that has gone dark must still serve the
-  documents people have already accepted. Otherwise taking one document down erases everyone's
-  ability to read the terms they are bound by.
-- **A newly created tenant starts dark.** `CreateTenantUseCase` seeds four *drafts* from the
-  templates. Auto-publishing on the tenant's behalf would make the gate decorative — nobody would
-  ever have read the document their business is operating under.
+**The dashboard is not gated.** Gating it would trap a tenant outside the only screen where it can
+fix the problem. Storefront dark, dashboard open, banner loud.
+
+**The public legal pages are not gated either** (see below).
+
+## Module boundaries
+
+`apps/api/src/modules/legal/` — the 18th bounded context, laid out `domain/` · `application/` ·
+`infrastructure/` like its neighbours, one exported `@Injectable XxxUseCase` per file with a single
+public `execute()`.
+
+The gate crosses a module line, so it goes through the outbox
+([ADR 0003](../../decisions/0003-outbox-for-inter-module.md)). Publishing or withdrawing emits, inside
+the same `forTenant` transaction as the write:
+
+```
+legal.document.published    { docType, documentId, versionId, versionNo, isMaterialChange }
+legal.document.withdrawn    { docType, documentId }
+```
+
+Two registered handlers:
+
+- `tenancy` recomputes `legal_ready_at`: set to `now()` when all four types have a
+  `current_version_id`, cleared otherwise.
+- `notification` emails active partners (on `partner_terms`) or active affiliates (on
+  `affiliate_terms`) when `isMaterialChange` is true. **No fan-out for `customer_terms` /
+  `privacy_policy`** — a tenant can have thousands of customers and they are handled at their next
+  booking instead.
+
+`legal` imports nothing from `tenancy`, `partner` or `affiliate`. Those modules import `legal`'s
+guard and read port, which is sanctioned (guards and decorators cross freely; a use case or
+repository *port* may be injected for a synchronous read). The graph stays acyclic for
+`pnpm check:module-cycles`.
 
 ## Templates and seeding
 
-Templates are static Vietnamese Markdown shipped with the API — one file per `LegalDocumentType`,
-under `apps/api/src/modules/legal/domain/templates/`. They carry placeholder tokens (`{{tenantName}}`,
-`{{tenantEmail}}`, `{{commissionNote}}`) substituted at draft-creation time. They are starting text,
-not a live dependency: once a draft exists it is the tenant's copy and template edits never reach it.
+Templates live in the API as plain constants, one Markdown string per `LegalDocumentType`, versioned
+in git with the code that ships them. They are drafts, never auto-published content.
 
-Seeding follows the existing scope split:
+Seeding follows the existing scope split (`AGENTS.md` → Seed scopes):
 
 | Scope | Behaviour |
 | --- | --- |
-| `SEED_SCOPE=tenants` (production) | Create the four documents as **drafts**. The real tenant owner must read and publish. `legal_ready_at` stays null; the storefront is dark until they act. |
-| dev / staging (default) | Create **and publish** all four for `bookingstudio` and `bookingstad`, `published_by_user_id` = the seeded tenant owner. Without this, `pnpm dev` brings up two dark demo storefronts. |
+| `SEED_SCOPE=tenants` (production) | Creates the four documents as **drafts**. The real tenant owner must read and publish. The gate has teeth. |
+| dev / staging (default) | Creates them **published**, so `bookingstudio.localhost` and `bookingstad.localhost` are live after `pnpm dev`. |
 
-This lands in `apps/api/prisma/seed/tenants/booking-studio.ts` and `booking-stad.ts`, which already
-own per-tenant settings, with the shared publishing helper next to them.
+Document seeding belongs in `apps/api/prisma/seed/tenants/booking-studio.ts` and `booking-stad.ts`,
+alongside the other tenant settings, not in `demo/`.
+
+`CreateTenantUseCase` seeds the four drafts for every new tenant in its existing transaction. A new
+tenant's storefront is therefore dark until its owner publishes — which is the intended behaviour,
+not a regression.
 
 ## Tenant authoring
 
-A new **"Pháp lý"** tab in `apps/dashboard/app/routes/tenant/settings.tsx`, which is already a
-`Tabs` shell (brand / domains / operations / payments / payouts) with a `SETTINGS_TAB_BY_FORM` map
-for action routing. One card per document type showing status (never published / published vN /
-draft pending), a Markdown editor with preview, and the published-version history.
+A **"Pháp lý"** tab in `apps/dashboard/app/routes/tenant/settings.tsx`, which is already tab-based
+(brand / domains / operations / payments / payouts) with `SETTINGS_TAB_BY_FORM` routing form
+submissions back to their tab. Four cards, one per document type, each showing state (no draft /
+draft pending / published v*n*), a Markdown editor with preview, and the published history.
 
-Publishing opens a dialog that forces the classification and states the consequence in plain
-Vietnamese:
+Publishing opens a dialog that forces the decision from constraint 4:
 
-- *Sửa lỗi chính tả / trình bày* — rewrites the current published version in place. `version_no`
-  unchanged, nobody re-accepts.
-- *Thay đổi điều khoản* — creates version `n+1`, `is_material_change = true`, and triggers
-  re-acceptance for partners and affiliates.
+- **Sửa lỗi chính tả / trình bày** — new version, `is_material_change = false`. Live immediately,
+  nobody re-accepts.
+- **Thay đổi điều khoản** — new version, `is_material_change = true`. Re-acceptance flow fires.
 
-The tenant overview page gains a readiness card — "Storefront chưa lên sóng — còn thiếu 2/4 tài
-liệu" — linking into the tab. Given a hard gate, discovering the reason must not require reading
-docs.
+The tenant overview screen gets a readiness card — *"Storefront chưa lên sóng — còn thiếu 2/4 tài
+liệu"* — linking into the tab. Without it a tenant sees a dead site and no explanation.
 
-New permission `tenant.legal.manage`; the global guard is deny-by-default so it must be declared on
-every route. Write routes also carry `RequireActiveSubscriptionGuard`, consistent with the rest of
-tenant settings.
+New permission `tenant.legal.manage` (the global guard is deny-by-default; an undeclared route is
+403). Write routes carry `@UseGuards(RequireActiveSubscriptionGuard)` like every other tenant
+settings write.
 
 ## Consent capture
 
 | Gate | Types recorded | Where |
 | --- | --- | --- |
-| Customer registration | `customer_terms` + `privacy_policy` | Required tick on the email step of the storefront register flow; rows written when the user is created |
-| Checkout | `customer_terms` | Notice line + link, no tick; row written inside the booking-creation transaction |
-| Partner application | `partner_terms` | Required tick in the apply form; row written in `ApplyAsPartnerUseCase` |
-| Affiliate (CTV) application | `affiliate_terms` | Required tick in the apply form; row written in `ApplyAffiliateUseCase` |
+| Customer registration | `customer_terms`, `privacy_policy` | Required tick at the email step of the storefront register flow; rows written when the user is created |
+| Checkout | `customer_terms` | Notice line only; row written inside the booking-creation transaction |
+| Partner application | `partner_terms` | Required tick in the form; row written in `ApplyAsPartnerUseCase` |
+| Affiliate application | `affiliate_terms` | Required tick in the form; row written in `ApplyAffiliateUseCase` |
 
-Every row carries `document_version_id` and the request IP, and is written **inside the same
-`forTenant` transaction as the action it belongs to**. There is no state in which a partner exists
-without their signature.
+Every row carries `document_version_id` and `ip`, and is written in the **same** `forTenant`
+transaction as the action it authorizes. A partner that exists without a signature is not a state the
+database can reach.
 
-Guest checkout needs no special case: `CreateBookingUseCase.resolveCustomer` provisions a user for a
-guest before the booking is written (`create-booking.use-case.ts:415-425`), so `user_id` on the
-acceptance row is always populated and the consent is attributable to a person.
+The client sends the `documentVersionId` it displayed; the use case rejects it if it is not the
+document's `current_version_id`. This catches the stale-tab case where someone reads v3, the tenant
+publishes v4, and the submit would otherwise record consent to text the user never saw.
 
-The client submits the `documentVersionId` it displayed; the use case re-reads the document's
-`current_version_id` and rejects a mismatch rather than silently recording the current version. A
-stale form must not produce a signature for text the person never saw.
-
-**The tenant-signs-for-the-partner bug is fixed here**: `partner_terms` moves out of
-`ApprovePartnerUseCase` into `ApplyAsPartnerUseCase`, written with the applicant's own user id, and
-`Partner.approve` stops returning it (`partner.entity.ts:253-264` drops to a single entry).
-`commission_schedule` stays at approval time and keeps the hard-coded constant — the commission rate
-is set by the tenant during approval, so wiring partner consent to it is a separate change. Recorded
-as remaining debt in "Out of scope".
+**Fix to existing behaviour:** `partner_terms` moves out of `ApprovePartnerUseCase`
+(`approve-partner.use-case.ts:76`) into `ApplyAsPartnerUseCase`. Approval keeps writing
+`commission_schedule` only.
 
 ## Re-acceptance
 
-Publishing with `is_material_change = true` emits `legal.document_published` (payload: `docType`,
-`documentId`, `versionId`, `versionNo`, `isMaterialChange`). Two handlers:
+A user is pending when their newest accepted `version_no` for a type is below the newest **material**
+`version_no` for that type (see Data model). Comparing against `current_version_id` instead would
+drag every partner through an acceptance screen over a typo fix. One read port, one query.
 
-- `tenancy` recomputes `legal_ready_at`. This handler runs for **every** publish, material or not,
-  because a first publish is what opens the gate.
-- `notification` emails active partners (`partner_terms`) or active affiliates (`affiliate_terms`)
-  that the terms changed. No bulk mail for `customer_terms` / `privacy_policy` — a tenant may have
-  thousands of customers, and the checkout notice covers them.
+Partners and affiliates are blocked at two layers, on purpose:
 
-"Has not accepted the current version" = the person's newest acceptance row for that type has a
-`document_version_id` other than the document's `current_version_id`. One read port, one query.
+- **UI** — the partner-area and affiliate-area layout loaders in the dashboard call
+  `GET /me/legal/pending` and redirect to a read-and-accept screen when it returns anything.
+- **API** — `RequireCurrentAgreementGuard`, exported by `legal`, applied to **write** routes in the
+  partner and affiliate scopes. Read routes stay open so a blocked user can still see their own data.
 
-Enforcement is deliberately two-layer:
+The loader alone is not enough: the dashboard is a BFF, and a write action that skips the redirected
+route would otherwise proceed unsigned.
 
-1. **UI** — the partner-area and affiliate-area layout loaders in the dashboard call
-   `GET /me/legal/pending` and redirect to a read-and-accept screen when it returns anything.
-2. **API** — `RequireCurrentAgreementGuard`, exported by `legal` and imported by `partner` and
-   `affiliate` (importing another module's guard is explicitly allowed), applied to the **write**
-   routes of those two scopes. Read routes stay open so someone who has not yet accepted can still
-   see their own data.
-
-A loader redirect alone is not enforcement — the dashboard's own actions call the API server-side,
-and any other caller bypasses the UI entirely.
-
-Customers are never blocked: the next checkout shows the notice again and records an acceptance
-against the new version.
+Customers are never blocked. At the next checkout the notice line reappears and a fresh acceptance
+row is recorded against the new version, which is what "ghi nhận ngầm" means in constraint 6.
 
 ## Public pages
 
-New storefront route `/:locale/legal/:docSlug` with Vietnamese slugs — `dieu-khoan-su-dung`,
-`chinh-sach-bao-mat`, `dieu-khoan-doi-tac`, `dieu-khoan-ctv` — rendering the Markdown sanitised
-server-side. Adding a version segment (`/v/:versionNo`) serves a specific historical version, which is
-what an acceptance record links to.
+New storefront route `/:locale/legal/:docSlug`, with Vietnamese slugs — `dieu-khoan-su-dung`,
+`chinh-sach-bao-mat`, `dieu-khoan-doi-tac`, `dieu-khoan-ctv` — rendering the current published
+Markdown, sanitized server-side. The site footer
+(`apps/storefront/app/features/site-shell/components/site-footer.tsx`) links all four.
 
-Markdown, not rich-text HTML: tenant-authored HTML rendered on the storefront would have to clear
-`pnpm --filter=@booking/storefront security`, and storing markup the tenant can inject into their own
-customers' browsers is not a fight worth taking for a text document.
+Three rules that are easy to get wrong:
 
-Each document is single-language (Vietnamese) and renders as authored on every locale route,
-including `/en`. Multilingual legal text is a later phase; a half-translated contract is worse than an
-untranslated one.
+1. **Legal pages bypass the hard gate.** A dark storefront must still serve its terms; someone who
+   already signed needs to reread what they signed, and withdrawing one document must not hide the
+   other three.
+2. **The platform landing keeps its static i18n text.** A single-label host (`localhost`) or bare IP
+   resolves to no tenant at all, so there is no tenant document to serve. That page is BookingOS
+   speaking for itself.
+3. **`/account/terms` changes meaning** — from static prose to *"điều khoản tôi đã đồng ý"*: type,
+   version number, date, and a link to that exact version's text.
+   `ListPartnerAgreementsUseCase` (`apps/api/src/modules/partner/application/use-cases/list-partner-agreements.use-case.ts`)
+   already does this for partners; it generalizes to customers and affiliates.
 
-Two existing surfaces change:
+Reading a superseded version by id must keep working forever — that is the whole point of keeping
+published rows immutable.
 
-- **`site-footer.tsx`** links the four documents (currently one static `footer.aboutLinks.terms`
-  entry).
-- **`/:locale/account/terms`** changes role: from static i18n prose to "the terms I have accepted" —
-  type, version, date, and a link to that exact text. `ListPartnerAgreementsUseCase` already does this
-  for partners; the read generalises to customers and affiliates.
+## API surface
 
-**The platform landing keeps its static i18n page.** A single-label host (`localhost`) or bare IP
-resolves to no tenant, so there is no tenant document to serve; that page is BookingOS speaking for
-itself.
+| Route | Auth | Purpose |
+| --- | --- | --- |
+| `GET /public/legal` | `@Public()` | Published documents for the host's tenant (list) |
+| `GET /public/legal/:docType` | `@Public()` | Current published version |
+| `GET /public/legal/versions/:id` | `@Public()` | A specific historical version |
+| `GET /tenant/legal` | `tenant.legal.manage` | All four with draft + published state |
+| `PUT /tenant/legal/:docType/draft` | `tenant.legal.manage` | Create or update the draft |
+| `POST /tenant/legal/:docType/publish` | `tenant.legal.manage` | Publish; body carries the cosmetic/material choice |
+| `DELETE /tenant/legal/:docType/publish` | `tenant.legal.manage` | Withdraw (closes the storefront) |
+| `GET /me/legal/pending` | `@AuthenticatedOnly()` | Types awaiting this user's re-acceptance |
+| `POST /me/legal/accept` | `@AuthenticatedOnly()` | Record acceptance of a version |
+| `GET /me/legal/acceptances` | `@AuthenticatedOnly()` | This user's acceptance history |
 
-## Contracts and endpoints
-
-Zod schemas in `packages/contracts` (`src/contracts/legal.ts`).
-
-| Endpoint | Auth |
-| --- | --- |
-| `GET /public/legal` · `GET /public/legal/:docType` · `GET /public/legal/:docType/versions/:versionNo` | `@Public()` |
-| `GET /tenant/legal` · `PUT /tenant/legal/:docType/draft` · `POST /tenant/legal/:docType/publish` · `DELETE /tenant/legal/:docType/draft` | `tenant.legal.manage` |
-| `GET /me/legal/pending` · `POST /me/legal/accept` · `GET /me/legal/acceptances` | `@AuthenticatedOnly()` |
-
-The `/public/legal` routes have no tenant context of their own; they resolve the tenant from
-`x-forwarded-host` exactly as `PublicTenantController` does, then read through
-`TenantDbService.forTenant`. Only published versions are served — a draft is never reachable from a
-public route.
-
-`PublicTenantResponse` (`packages/contracts/src/contracts/tenancy.ts:422`) gains an optional
-`unavailableReason` so the 423 page can distinguish "chưa hoàn thiện điều khoản" from a lapsed
-subscription.
+Zod schemas and inferred types go in `packages/contracts` as `legal.ts`, following the existing
+contract layout.
 
 ## Out of scope
 
-- **`commission_schedule` consent.** Still recorded by the tenant at approval against a hard-coded
-  version string. The document/version machinery built here is what a later change would hang it on.
-- **`promo_funding`** is per-promotion, not a tenant-authored document; untouched.
-- **Platform-level terms** (BookingOS ↔ tenant owner, accepted at tenant signup) — same tables would
-  serve it, but the platform scope is a separate decision.
-- **Multilingual documents**, PDF export, e-signature, and platform moderation of tenant text.
+- **`commission_schedule` consent stays where it is** — written by the tenant at partner approval.
+  `TONG-QUAN.md:412` wants the partner to re-accept when a commission rule changes; that requires
+  versioning commission rules, which is a separate piece of work. Recording it here as the known
+  remaining gap.
+- **`promo_funding`** is per-promotion, not a tenant document. Unchanged.
+- **Multi-language documents.**
+- **Platform-level terms** (BookingOS ↔ tenant owner at signup). Same machinery would serve it, but
+  it is a different counterparty and a different gate.
+- **Platform moderation of tenant-authored text** (decision 5).
 
 ## Verification
 
-No tests (ADR 0005). Verification is the static gate plus running the app:
+No tests, per [ADR 0005](../../decisions/0005-no-tests-policy.md). Verification is the static gate
+plus running the app:
 
 ```
 pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure \
@@ -345,14 +341,16 @@ pnpm check:no-tests && pnpm check:module-cycles && pnpm check:frontend-structure
   && pnpm --filter=@booking/api check:rls
 ```
 
-Then `pnpm --filter=@booking/api exec prisma migrate reset`, reseed, and walk the paths manually:
+Then, against a reset database:
 
-1. `bookingstudio.localhost:5173` serves normally (dev seed publishes all four).
-2. Unpublish one document in the tenant dashboard → the storefront returns the 423 page, the
-   dashboard stays reachable, and `/legal/dieu-khoan-su-dung` still renders.
+1. `prisma migrate reset` + dev seed → `bookingstudio.localhost:5173` is live, all four documents
+   published, footer links render.
+2. Withdraw one document in the dashboard → the storefront returns 423, the dashboard stays usable
+   and shows the readiness card, `/legal/dieu-khoan-su-dung` still renders.
 3. Republish → storefront live again.
-4. Apply as partner and as CTV → the tick is required, and `agreement_acceptances` holds a row with a
-   real `document_version_id` and IP.
-5. Publish `partner_terms` as a material change → the partner is redirected to the accept screen and
-   a partner write route returns the guard's error until they accept.
-6. Cosmetic fix → `version_no` unchanged, nobody is asked to re-accept.
+4. Register a new customer without ticking → blocked; with ticking → two acceptance rows.
+5. Apply as partner and as affiliate → one acceptance row each, `document_version_id` populated,
+   and no `partner_terms` row appears at approval.
+6. Publish `partner_terms` as a material change → the partner is redirected to the accept screen on
+   next dashboard load and a partner write route returns the guard's error until they accept.
+7. `SEED_SCOPE=tenants` on a clean database → four drafts, storefront dark.
