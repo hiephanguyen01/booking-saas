@@ -717,6 +717,8 @@ model Tenant {
   promotions                Promotion[]
   affiliates                Affiliate[]
   legalDocuments            LegalDocument[]
+  legalDocumentVersions     LegalDocumentVersion[]
+  legalDocumentTranslations LegalDocumentTranslation[]
 
   @@map("tenants")
 }
@@ -780,6 +782,7 @@ model LegalDocument {
   versions       LegalDocumentVersion[] @relation("LegalDocumentVersions")
 
   @@unique([tenantId, docType])
+  @@index([tenantId])
   @@map("legal_documents")
 }
 
@@ -796,6 +799,7 @@ model LegalDocumentVersion {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   document        LegalDocument              @relation("LegalDocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
   publishedBy     User?                      @relation(fields: [publishedByUserId], references: [id], onDelete: SetNull)
   translations    LegalDocumentTranslation[]
@@ -819,6 +823,7 @@ model LegalDocumentTranslation {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  tenant  Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   version LegalDocumentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
 
   @@unique([versionId, locale])

@@ -2,7 +2,13 @@ import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.servi
 
 export const AGREEMENT_REPOSITORY = Symbol('AGREEMENT_REPOSITORY');
 
-export type AgreementTypeKey = 'partner_terms' | 'commission_schedule' | 'promo_funding';
+export type AgreementTypeKey =
+  | 'partner_terms'
+  | 'commission_schedule'
+  | 'promo_funding'
+  | 'customer_terms'
+  | 'privacy_policy'
+  | 'affiliate_terms';
 
 export interface RecordAgreementData {
   tenantId: string;

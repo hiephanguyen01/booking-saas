@@ -17,7 +17,12 @@ export class ListPartnerAgreementsUseCase {
     return this.tenantDb.forTenant(tenantId, async (tx) => {
       const rows = await this.agreements.listByPartner(tx, partnerId);
       return rows.map((row) => ({
-        agreementType: row.agreementType,
+        // listByPartner is filtered by partnerId, and record() requires a partnerId, so a
+        // row here is always partner_terms/commission_schedule/promo_funding — the tenant
+        // legal-document types (customer_terms/privacy_policy/affiliate_terms) are recorded
+        // without a partnerId. AgreementTypeKey was widened to match the Prisma enum
+        // (§ tenant legal documents); this contract's response shape was not.
+        agreementType: row.agreementType as PartnerAgreementResponse['agreementType'],
         version: row.version,
         acceptedAt: row.acceptedAt.toISOString(),
       }));
