@@ -53,16 +53,19 @@ Settled during brainstorming; these are the constraints the design must satisfy,
 8. **Architecture:** a new `legal` bounded context owns document content and all acceptances;
    storefront readiness reaches `tenancy` through the outbox.
 
-Two choices made inside the design rather than asked:
+9. **Multi-language.** A document is stored in every locale the platform serves and each visitor is
+   shown their own language. The storefront is already localized per route (`/:locale/…`) and
+   `localeSchema` is `['vi', 'en']` (`packages/contracts/src/contracts/common.ts:5`); serving an
+   English-speaking customer a Vietnamese contract and calling it consent does not hold up.
+
+One choice made inside the design rather than asked:
 
 - **Markdown, not HTML.** Free HTML from a tenant would have to survive
   `pnpm --filter=@booking/storefront security`. Markdown stored, sanitized at render.
-- **One language per document (Vietnamese).** The `/en` route serves the same Vietnamese text.
-  Translating legal prose is a later phase, not MVP.
 
 ## Data model
 
-Two new tables, both tenant-scoped, plus one new column on two existing tables.
+Three new tables, all tenant-scoped, plus new columns on two existing tables.
 
 ```prisma
 enum LegalDocumentType {
@@ -91,8 +94,6 @@ model LegalDocumentVersion {
   tenantId          String   @map("tenant_id") @db.Uuid
   documentId        String   @map("document_id") @db.Uuid
   versionNo         Int      @map("version_no")
-  title             String
-  bodyMd            String   @map("body_md")
   isMaterialChange  Boolean  @default(false) @map("is_material_change")
   publishedAt       DateTime? @map("published_at") @db.Timestamptz(6)
   publishedByUserId String?  @map("published_by_user_id") @db.Uuid
@@ -101,7 +102,39 @@ model LegalDocumentVersion {
   @@unique([documentId, versionNo])
   @@map("legal_document_versions")
 }
+
+model LegalDocumentTranslation {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  versionId String   @map("version_id") @db.Uuid
+  locale    String                                  // localeSchema: 'vi' | 'en'
+  title     String
+  bodyMd    String   @map("body_md")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([versionId, locale])
+  @@index([tenantId])
+  @@map("legal_document_translations")
+}
 ```
+
+**A version is the agreement; a translation is one rendering of it.** The text hangs off a row below
+the version rather than on it, because `vi` and `en` of version 3 are one contract expressed twice,
+not two contracts. Putting `locale` on the version row would make an acceptance point at "the
+Vietnamese row", leaving no way to say that an English reader agreed to the same thing — and it would
+double `version_no` bookkeeping for every publish.
+
+Immutability extends to translations, with exactly one carve-out. Once a version is published:
+
+- **Adding a locale that was missing is allowed.** Attaching English to a version published
+  Vietnamese-only changes nothing anyone has read; it only widens who can read it.
+- **Editing a translation that already exists is not.** Someone may have accepted against that text.
+  Fixing a bad translation is a publish like any other — a new version, marked cosmetic if the
+  Vietnamese meaning did not move.
+
+So every row any person could ever have read stays reproducible, which is the only property that
+makes an acceptance record worth storing.
 
 **Draft = `published_at IS NULL`.** At most one draft per document, enforced by a partial unique
 index on `(document_id) WHERE published_at IS NULL`. Publishing stamps `published_at`,
@@ -128,16 +161,21 @@ pending  ⟺  max(accepted version_no for this doc_type)
 A tenant fixing a typo therefore republishes freely without dragging every partner through an
 acceptance screen, and the storefront still serves the corrected text immediately.
 
-**`agreement_acceptances` gains one nullable column**, `document_version_id uuid NULL`, FK to
+**`agreement_acceptances` gains two nullable columns**: `document_version_id uuid NULL`, FK to
 `legal_document_versions` with `ON DELETE RESTRICT` — an accepted version can never be deleted out
-from under its own evidence. The existing `version` string column stays and is still the only
+from under its own evidence — and `accepted_locale text NULL`, the language actually rendered on
+screen when the person clicked. Version alone does not identify what someone read once a version has
+two renderings; "they agreed to v3" and "they agreed to v3 in English" are different claims, and the
+second is the one worth defending. The existing `version` string column stays and is still the only
 identifier for `commission_schedule` and `promo_funding`, which are not documents. `AgreementType`
 gains `customer_terms`, `privacy_policy`, `affiliate_terms`.
 
 **`tenants` gains `legal_ready_at timestamptz NULL`** — see the gate below.
 
-Both new tables require `tenant_id uuid NOT NULL` and a hand-written RLS migration (FORCE RLS +
-`tenant_isolation` policy) or `pnpm --filter=@booking/api check:rls` fails in CI. Migration
+All three new tables require `tenant_id uuid NOT NULL` and a hand-written RLS migration (FORCE RLS +
+`tenant_isolation` policy) or `pnpm --filter=@booking/api check:rls` fails in CI. That includes
+`legal_document_translations`, whose `tenant_id` is redundant against its parent version and is
+carried anyway because the RLS check is per-table. Migration
 `apps/api/prisma/migrations/20260731120000_tenant_legal_documents/migration.sql`, hand-authored per
 [ADR 0004](../../decisions/0004-hand-written-migrations.md).
 
@@ -163,6 +201,11 @@ there already, so reading one more column costs nothing, whereas querying `legal
 a round trip to every storefront request. The column only changes when a document is published or
 withdrawn, so drift risk is low, and both events go through the same use case.
 
+**Only the tenant's `defaultLocale` is required to open the gate** (`tenants.default_locale`, default
+`vi`). Requiring a complete `vi` + `en` set would hold a Vietnamese studio's storefront hostage to an
+English translation it has no customers for. A missing locale degrades to a fallback (see Public
+pages); a missing document closes the site.
+
 **The dashboard is not gated.** Gating it would trap a tenant outside the only screen where it can
 fix the problem. Storefront dark, dashboard open, banner loud.
 
@@ -186,7 +229,8 @@ legal.document.withdrawn    { docType, documentId }
 Two registered handlers:
 
 - `tenancy` recomputes `legal_ready_at`: set to `now()` when all four types have a
-  `current_version_id`, cleared otherwise.
+  `current_version_id` **whose translation set covers the tenant's `defaultLocale`**, cleared
+  otherwise.
 - `notification` emails active partners (on `partner_terms`) or active affiliates (on
   `affiliate_terms`) when `isMaterialChange` is true. **No fan-out for `customer_terms` /
   `privacy_policy`** — a tenant can have thousands of customers and they are handled at their next
@@ -199,8 +243,11 @@ repository *port* may be injected for a synchronous read). The graph stays acycl
 
 ## Templates and seeding
 
-Templates live in the API as plain constants, one Markdown string per `LegalDocumentType`, versioned
-in git with the code that ships them. They are drafts, never auto-published content.
+Templates live in the API as plain constants, one Markdown string per `LegalDocumentType` **per
+locale** (`vi` and `en`), versioned in git with the code that ships them. They are drafts, never
+auto-published content. A tenant that never touches the English draft simply publishes without it and
+falls back; a tenant that wants it has a starting point rather than a blank editor and a translation
+bill.
 
 Seeding follows the existing scope split (`AGENTS.md` → Seed scopes):
 
@@ -222,6 +269,12 @@ A **"Pháp lý"** tab in `apps/dashboard/app/routes/tenant/settings.tsx`, which 
 (brand / domains / operations / payments / payouts) with `SETTINGS_TAB_BY_FORM` routing form
 submissions back to their tab. Four cards, one per document type, each showing state (no draft /
 draft pending / published v*n*), a Markdown editor with preview, and the published history.
+
+Inside a card, a locale switch (`Tiếng Việt` / `English`) swaps which translation the editor is
+editing; both belong to the same draft and publish together. The card labels a locale that has no
+text — *"Chưa có bản tiếng Anh — khách xem tiếng Anh sẽ thấy bản tiếng Việt"* — so the fallback is a
+visible choice rather than a silent gap. The tenant's `defaultLocale` is marked required and blocks
+the publish button when empty.
 
 Publishing opens a dialog that forces the decision from constraint 4:
 
@@ -245,13 +298,14 @@ settings write.
 | Partner application | `partner_terms` | Required tick in the form; row written in `ApplyAsPartnerUseCase` |
 | Affiliate application | `affiliate_terms` | Required tick in the form; row written in `ApplyAffiliateUseCase` |
 
-Every row carries `document_version_id` and `ip`, and is written in the **same** `forTenant`
-transaction as the action it authorizes. A partner that exists without a signature is not a state the
-database can reach.
+Every row carries `document_version_id`, `accepted_locale` and `ip`, and is written in the **same**
+`forTenant` transaction as the action it authorizes. A partner that exists without a signature is not
+a state the database can reach.
 
-The client sends the `documentVersionId` it displayed; the use case rejects it if it is not the
-document's `current_version_id`. This catches the stale-tab case where someone reads v3, the tenant
-publishes v4, and the submit would otherwise record consent to text the user never saw.
+The client sends the `documentVersionId` and locale it displayed; the use case rejects the submission
+if the version is not the document's `current_version_id`. This catches the stale-tab case where
+someone reads v3, the tenant publishes v4, and the submit would otherwise record consent to text the
+user never saw.
 
 **Fix to existing behaviour:** `partner_terms` moves out of `ApprovePartnerUseCase`
 (`approve-partner.use-case.ts:76`) into `ApplyAsPartnerUseCase`. Approval keeps writing
@@ -283,7 +337,17 @@ New storefront route `/:locale/legal/:docSlug`, with Vietnamese slugs — `dieu-
 Markdown, sanitized server-side. The site footer
 (`apps/storefront/app/features/site-shell/components/site-footer.tsx`) links all four.
 
-Three rules that are easy to get wrong:
+**Locale resolution** is one rule, applied identically on the public page and at every consent gate:
+the route's `:locale`, falling back to the tenant's `defaultLocale`, which is guaranteed to exist
+because the gate requires it. When the fallback fires, the page renders a notice above the document —
+*"Bản tiếng Anh chưa có. Đây là bản tiếng Việt đang có hiệu lực."* — and `Content-Language` reports
+the language actually served, not the one requested. A contract silently appearing in the wrong
+language is how someone ends up agreeing to something they could not read.
+
+The consent gates resolve the same way and record `accepted_locale` as whatever was rendered,
+fallback included. The record then states plainly that a `/en` visitor accepted the Vietnamese text.
+
+Three further rules that are easy to get wrong:
 
 1. **Legal pages bypass the hard gate.** A dark storefront must still serve its terms; someone who
    already signed needs to reread what they signed, and withdrawing one document must not hide the
@@ -304,10 +368,10 @@ published rows immutable.
 | Route | Auth | Purpose |
 | --- | --- | --- |
 | `GET /public/legal` | `@Public()` | Published documents for the host's tenant (list) |
-| `GET /public/legal/:docType` | `@Public()` | Current published version |
-| `GET /public/legal/versions/:id` | `@Public()` | A specific historical version |
-| `GET /tenant/legal` | `tenant.legal.manage` | All four with draft + published state |
-| `PUT /tenant/legal/:docType/draft` | `tenant.legal.manage` | Create or update the draft |
+| `GET /public/legal/:docType?locale=` | `@Public()` | Current published version, resolved locale + `servedLocale` in the response |
+| `GET /public/legal/versions/:id?locale=` | `@Public()` | A specific historical version |
+| `GET /tenant/legal` | `tenant.legal.manage` | All four with draft + published state, every locale |
+| `PUT /tenant/legal/:docType/draft` | `tenant.legal.manage` | Create or update the draft; body carries one locale's title + body |
 | `POST /tenant/legal/:docType/publish` | `tenant.legal.manage` | Publish; body carries the cosmetic/material choice |
 | `DELETE /tenant/legal/:docType/publish` | `tenant.legal.manage` | Withdraw (closes the storefront) |
 | `GET /me/legal/pending` | `@AuthenticatedOnly()` | Types awaiting this user's re-acceptance |
@@ -315,7 +379,14 @@ published rows immutable.
 | `GET /me/legal/acceptances` | `@AuthenticatedOnly()` | This user's acceptance history |
 
 Zod schemas and inferred types go in `packages/contracts` as `legal.ts`, following the existing
-contract layout.
+contract layout. Every response carrying document text also carries `servedLocale`, so the caller can
+decide whether to show the fallback notice instead of re-deriving the rule. `POST /me/legal/accept`
+takes `versionId` **and** the locale rendered, which is what lands in `accepted_locale`.
+
+The `/public/legal` routes have no tenant context of their own: they resolve the tenant from
+`x-forwarded-host` exactly as `PublicTenantController` does
+(`apps/api/src/modules/tenancy/infrastructure/http/public-tenant.controller.ts`), then read through
+`TenantDbService.forTenant`. Drafts are never reachable from a public route.
 
 ## Out of scope
 
@@ -324,7 +395,10 @@ contract layout.
   versioning commission rules, which is a separate piece of work. Recording it here as the known
   remaining gap.
 - **`promo_funding`** is per-promotion, not a tenant document. Unchanged.
-- **Multi-language documents.**
+- **Machine translation of drafts.** Locales are authored by the tenant or taken from the shipped
+  template. Nothing calls a translation API.
+- **Locales beyond `localeSchema`.** Adding a third language is adding it to `['vi', 'en']` platform-
+  wide; the document tables need no change to follow.
 - **Platform-level terms** (BookingOS ↔ tenant owner at signup). Same machinery would serve it, but
   it is a different counterparty and a different gate.
 - **Platform moderation of tenant-authored text** (decision 5).
@@ -354,3 +428,10 @@ Then, against a reset database:
 6. Publish `partner_terms` as a material change → the partner is redirected to the accept screen on
    next dashboard load and a partner write route returns the guard's error until they accept.
 7. `SEED_SCOPE=tenants` on a clean database → four drafts, storefront dark.
+8. `/vi/legal/dieu-khoan-su-dung` and `/en/legal/dieu-khoan-su-dung` serve different text; delete the
+   English translation and `/en` falls back to Vietnamese **with the notice** and
+   `Content-Language: vi`.
+9. Clear the tenant's `defaultLocale` translation on one document → storefront goes dark, proving the
+   gate keys on the default locale and not merely on a version existing.
+10. Register from `/en` while only Vietnamese exists → the acceptance row carries
+    `accepted_locale = 'vi'`, not `'en'`.
