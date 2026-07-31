@@ -14,12 +14,13 @@ describes exactly what it is for: proof of acceptance, so a partner cannot claim
   (`apps/api/src/modules/partner/domain/agreement-versions.ts:6`). An acceptance row points at a
   string that corresponds to no stored text. If a partner disputes a term, nobody can produce the
   document they supposedly accepted.
-- **The tenant signs on the partner's behalf.** `ApprovePartnerUseCase` writes both the
-  `partner_terms` and `commission_schedule` acceptance rows at *tenant approval* time
-  (`apps/api/src/modules/partner/application/use-cases/approve-partner.use-case.ts:76`, built by
-  `Partner.buildAgreements` at `domain/entities/partner.entity.ts:256-260`). The partner never saw a
-  document and never clicked anything. This is the weakest possible evidence — it records the
-  tenant's action, not the partner's consent.
+- **The tenant signs on the partner's behalf.** `Partner.approve` returns the two acceptance rows
+  (`domain/entities/partner.entity.ts:243-265`) and `ApprovePartnerUseCase` writes them at *tenant
+  approval* time (`approve-partner.use-case.ts:72-79`). The partner never saw a document and never
+  clicked anything. Worse, the row is stamped `userId: ctx.userId` — the **tenant staff member who
+  clicked approve**, not the partner. Read literally, the record says a tenant employee accepted the
+  partner terms. It is evidence of the tenant's action and nothing else. The version can even be
+  overridden per call through `input.agreementVersion`.
 - **Affiliates (CTV) record nothing at all.** `ApplyAffiliateUseCase` creates the membership and emits
   `affiliate.applied` with no acceptance whatsoever
   (`apps/api/src/modules/affiliate/application/use-cases/apply-affiliate.use-case.ts`). `AgreementType`
@@ -243,7 +244,8 @@ The client submits the `documentVersionId` it displayed; the use case re-reads t
 stale form must not produce a signature for text the person never saw.
 
 **The tenant-signs-for-the-partner bug is fixed here**: `partner_terms` moves out of
-`ApprovePartnerUseCase` into `ApplyAsPartnerUseCase`, and `Partner.buildAgreements` stops emitting it.
+`ApprovePartnerUseCase` into `ApplyAsPartnerUseCase`, written with the applicant's own user id, and
+`Partner.approve` stops returning it (`partner.entity.ts:253-264` drops to a single entry).
 `commission_schedule` stays at approval time and keeps the hard-coded constant — the commission rate
 is set by the tenant during approval, so wiring partner consent to it is a separate change. Recorded
 as remaining debt in "Out of scope".
