@@ -78,6 +78,7 @@ import { TenantResourceController } from './tenant-resource.controller';
 import { TenantPricingRuleController } from './tenant-pricing-rule.controller';
 import { PartnerPricingRuleController } from './partner-pricing-rule.controller';
 import { CreatePartnerPricingRuleUseCase } from '../../application/use-cases/create-partner-pricing-rule.use-case';
+import { PreparePricingRuleWriteUseCase } from '../../application/use-cases/prepare-pricing-rule-write.use-case';
 import { CreatePartnerPricingRuleRangeUseCase } from '../../application/use-cases/create-partner-pricing-rule-range.use-case';
 import { DeletePartnerPricingRuleUseCase } from '../../application/use-cases/delete-partner-pricing-rule.use-case';
 import { ListPartnerPricingRulesUseCase } from '../../application/use-cases/list-partner-pricing-rules.use-case';
@@ -166,6 +167,7 @@ import { ProjectReviewAggregatesUseCase } from '../../application/use-cases/proj
     CreatePricingRuleUseCase,
     ListPricingRulesUseCase,
     DeletePricingRuleUseCase,
+    PreparePricingRuleWriteUseCase,
     CreatePartnerPricingRuleUseCase,
     CreatePartnerPricingRuleRangeUseCase,
     DeletePartnerPricingRuleUseCase,
