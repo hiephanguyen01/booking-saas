@@ -32,6 +32,21 @@ export class PricingRuleOverlap extends DomainError {
 }
 
 /**
+ * The database refused a second rule for a scope that already has one — i.e.
+ * two saves of the same scope raced, and the loser lost. 409 rather than 400:
+ * nothing about the request is malformed, it simply arrived second.
+ */
+export class PricingRuleScopeTaken extends DomainError {
+  constructor() {
+    super(
+      'PRICING_RULE_SCOPE_TAKEN',
+      409,
+      'Another save for this same scope landed first — reload and try again',
+    );
+  }
+}
+
+/**
  * Two recurring rules that match the same instant leave the applied price
  * decided by array order, not by the partner. Separate from
  * {@link PricingRuleOverlap}, whose message names a window inside one specific

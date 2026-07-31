@@ -1038,6 +1038,12 @@ model PricingRule {
 
   @@index([tenantId])
   @@index([listingId])
+  /// NOT the whole story: a UNIQUE index `pricing_rules_scope_key` on
+  /// (listing_id, booking_mode, rule_type, params) also exists — one rule per scope,
+  /// which is what makes "saving a scope replaces it" true under concurrency.
+  /// Prisma cannot express a Json column in `@@unique`, so it lives only in the
+  /// migration `20260731130000_pricing_rule_scope_unique`. Violations surface as
+  /// P2002 and are translated to `PricingRuleScopeTaken` in the repository.
   @@map("pricing_rules")
 }
 

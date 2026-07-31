@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import type { PrismaTx } from '../../../../shared/tenant-context/tenant-db.service';
+import { PricingRuleScopeTaken } from '../../domain/errors/pricing-rule-errors';
 import type { RuleType } from '../../../../shared/domain/pricing/quote-calculator';
 import type {
   IPricingRuleRepository,
@@ -52,20 +53,31 @@ function windowClauses(window: PricingRuleDateWindow): Prisma.PricingRuleWhereIn
 @Injectable()
 export class PrismaPricingRuleRepository implements IPricingRuleRepository {
   async create(tx: PrismaTx, tenantId: string, data: NewPricingRule): Promise<PricingRuleRecord> {
-    return toRecord(
-      await tx.pricingRule.create({
-        data: {
-          tenantId,
-          listingId: data.listingId,
-          bookingMode: data.bookingMode as never,
-          ruleType: data.ruleType as never,
-          params: data.params as Prisma.InputJsonValue,
-          price: BigInt(data.price),
-          salePrice: data.salePrice ? BigInt(data.salePrice) : null,
-          priority: data.priority,
-        },
-      }),
-    );
+    try {
+      return toRecord(
+        await tx.pricingRule.create({
+          data: {
+            tenantId,
+            listingId: data.listingId,
+            bookingMode: data.bookingMode as never,
+            ruleType: data.ruleType as never,
+            params: data.params as Prisma.InputJsonValue,
+            price: BigInt(data.price),
+            salePrice: data.salePrice ? BigInt(data.salePrice) : null,
+            priority: data.priority,
+          },
+        }),
+      );
+    } catch (error) {
+      // `pricing_rules_scope_key` — a concurrent save took this scope between
+      // our read and our write. Surfaced as a named 409 rather than swallowed:
+      // the caller's price was NOT applied, and hiding that would recreate the
+      // silent-overwrite class of bug this index exists to end.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new PricingRuleScopeTaken();
+      }
+      throw error;
+    }
   }
 
   async findById(tx: PrismaTx, id: string): Promise<PricingRuleRecord | null> {

@@ -62,6 +62,8 @@ export function meta(): Route.MetaDescriptors {
 /** Vietnamese wording for the pricing-rule rejections the API can return. */
 const PRICING_ERROR_MESSAGE: Record<string, string> = {
   PRICING_RULE_OVERLAP: 'Khung giờ này trùng với một khung giá đã lưu của cùng ngày.',
+  PRICING_RULE_SCOPE_TAKEN:
+    'Một thay đổi khác cho đúng phạm vi này vừa được lưu trước — tải lại trang rồi thử lại.',
   RECURRING_PRICING_RULE_OVERLAP:
     'Đã có một quy tắc lặp lại phủ lên các thứ (và khung giờ) này — sửa hoặc xoá quy tắc cũ trước.',
   PRICING_WINDOW_OUTSIDE_OPEN_HOURS: 'Khung giá phải nằm trong giờ mở cửa của ngày này.',
